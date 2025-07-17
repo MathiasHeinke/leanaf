@@ -1466,11 +1466,52 @@ const Index = () => {
             </div>
           )}
 
-          {/* Daily Meals */}
-          {dailyMeals.length > 0 && (
-            <div className="space-y-3 mb-6">
-              <h3 className="font-semibold">Heutige Mahlzeiten</h3>
-              {dailyMeals.slice(0, 7).map((meal, index) => (
+          {/* Weight Input Modal */}
+          <Dialog open={showWeightInput} onOpenChange={setShowWeightInput}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Gewicht heute eintragen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="weightInput">Gewicht (kg)</Label>
+                  <Input
+                    id="weightInput"
+                    type="number"
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(e.target.value)}
+                    placeholder="70.5"
+                    step="0.1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveWeightEntry} disabled={!weightInput} className="flex-1">
+                    Speichern
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowWeightInput(false)} className="flex-1">
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Empty State */}
+          {dailyMeals.length === 0 && (
+            <Card className="p-8 text-center border-dashed border-2 border-muted">
+              <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
+              <p className="text-muted-foreground text-sm">
+                Füge deine erste Mahlzeit hinzu
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  export default Index;
                 <Card key={index} className="p-4 border-l-4 border-l-primary">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
