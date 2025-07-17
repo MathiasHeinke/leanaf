@@ -491,22 +491,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center justify-end mb-6">
-        {/* Auto-save status */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {autoSaving ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-              <span>Speichert...</span>
-            </>
-          ) : lastSaved ? (
-            <>
-              <Check className="h-4 w-4 text-green-500" />
-              <span>Gespeichert um {lastSaved.toLocaleTimeString()}</span>
-            </>
-          ) : null}
-        </div>
-      </div>
 
         <div className="space-y-6">
           {/* Basic Information */}
