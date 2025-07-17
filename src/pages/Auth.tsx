@@ -76,40 +76,72 @@ const Auth = () => {
     setError('');
     
     try {
-      cleanupAuthState();
+      // Add retry logic for network issues
+      let attempt = 0;
+      const maxAttempts = 3;
       
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        // Continue even if this fails
-      }
-      
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`
+      while (attempt < maxAttempts) {
+        try {
+          if (attempt > 0) {
+            cleanupAuthState();
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Wait before retry
           }
-        });
-        
-        if (error) throw error;
-        
-        toast.success('Account created successfully! Please check your email to verify your account.');
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (error) throw error;
-        
-        if (data.user) {
-          window.location.href = '/';
+          
+          if (isSignUp) {
+            const { error } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                emailRedirectTo: `${window.location.origin}/`
+              }
+            });
+            
+            if (error) {
+              if (error.message.includes('already registered')) {
+                setError('Diese E-Mail ist bereits registriert. Versuchen Sie sich anzumelden.');
+                return;
+              }
+              throw error;
+            }
+            
+            toast.success('Konto erfolgreich erstellt! Bitte überprüfen Sie Ihre E-Mail zur Bestätigung.');
+            setIsSignUp(false); // Switch to login view after successful signup
+            break;
+          } else {
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            
+            if (error) {
+              if (error.message.includes('Invalid login credentials')) {
+                setError('Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.');
+                return;
+              }
+              throw error;
+            }
+            
+            if (data.user) {
+              toast.success('Erfolgreich angemeldet!');
+              window.location.href = '/';
+            }
+            break;
+          }
+        } catch (networkError: any) {
+          attempt++;
+          if (attempt >= maxAttempts) {
+            throw networkError;
+          }
+          console.log(`Auth attempt ${attempt} failed, retrying...`);
         }
       }
     } catch (error: any) {
-      setError(error.message || t('auth.error'));
+      console.error('Auth error:', error);
+      if (error.message.includes('Load failed') || error.message.includes('network')) {
+        setError('Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.');
+      } else {
+        setError(error.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+      }
     } finally {
       setLoading(false);
     }
