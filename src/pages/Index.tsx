@@ -33,7 +33,8 @@ import {
   Menu,
   User,
   CreditCard,
-  LogOut
+  LogOut,
+  RefreshCw
 } from "lucide-react";
 
 interface MealData {
@@ -65,6 +66,10 @@ const Index = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [startY, setStartY] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -84,8 +89,12 @@ const Index = () => {
     }
   }, [user]);
 
-  const loadUserData = async () => {
+  const loadUserData = async (showRefreshIndicator = false) => {
     try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      }
+      
       // Load daily goals
       const { data: goalsData, error: goalsError } = await supabase
         .from('daily_goals')
@@ -132,12 +141,47 @@ const Index = () => {
         }));
         setDailyMeals(formattedMeals);
       }
+      
+      if (showRefreshIndicator) {
+        toast.success('Daten aktualisiert');
+      }
     } catch (error: any) {
       console.error('Error loading user data:', error);
       toast.error(t('common.error'));
     } finally {
       setLoading(false);
+      if (showRefreshIndicator) {
+        setIsRefreshing(false);
+      }
     }
+  };
+
+  const handleManualRefresh = () => {
+    loadUserData(true);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartY(e.touches[0].clientY);
+    setIsPulling(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling) return;
+    
+    const currentY = e.touches[0].clientY;
+    const distance = currentY - startY;
+    
+    if (distance > 0 && window.scrollY === 0) {
+      setPullDistance(Math.min(distance, 100));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 50) {
+      handleManualRefresh();
+    }
+    setIsPulling(false);
+    setPullDistance(0);
   };
 
   // Calculate daily totals
@@ -340,7 +384,10 @@ const Index = () => {
   if (currentView === 'history') {
     return (
       <History 
-        onClose={() => setCurrentView('main')} 
+        onClose={() => {
+          setCurrentView('main');
+          loadUserData(true); // Refresh data when returning from history
+        }} 
         dailyGoal={dailyGoal}
       />
     );
@@ -370,8 +417,27 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20">
-      <div className="container mx-auto px-4 py-6 max-w-md">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-background to-accent/20"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull to refresh indicator */}
+      {isPulling && pullDistance > 0 && (
+        <div 
+          className="fixed top-0 left-0 right-0 bg-primary/10 flex items-center justify-center transition-all duration-200 z-50"
+          style={{ height: `${pullDistance}px` }}
+        >
+          <RefreshCw className={`h-5 w-5 text-primary ${pullDistance > 50 ? 'animate-spin' : ''}`} />
+          <span className="ml-2 text-sm text-primary">
+            {pullDistance > 50 ? 'Loslassen zum Aktualisieren' : 'Ziehen zum Aktualisieren'}
+          </span>
+        </div>
+      )}
+      
+      <div className="container mx-auto px-4 py-6 max-w-md"
+           style={{ transform: `translateY(${pullDistance}px)` }}>
         
         {/* Header */}
         <div className="text-center mb-8">
@@ -386,6 +452,17 @@ const Index = () => {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Refresh Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+              
               {/* Language Toggle */}
               <Button
                 variant="outline"
