@@ -1093,9 +1093,10 @@ const Index = () => {
                   variant="outline"
                   onClick={() => setShowImageUpload(true)}
                   className="flex-1"
+                  disabled={uploadedImages.length >= 5}
                 >
                   <Camera className="h-4 w-4 mr-2" />
-                  Foto
+                  Foto ({uploadedImages.length}/5)
                 </Button>
                 <Button
                   variant="outline"
@@ -1251,38 +1252,149 @@ const Index = () => {
         <Dialog open={showImageUpload} onOpenChange={setShowImageUpload}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Bild hochladen</DialogTitle>
+              <DialogTitle>Bilder hochladen ({uploadedImages.length}/5)</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={async (e) => {
-                  const files = Array.from(e.target.files || []);
-                  for (const file of files) {
-                    try {
-                      const fileName = `${Date.now()}-${file.name}`;
-                      const { data, error } = await supabase.storage
-                        .from('meal-images')
-                        .upload(fileName, file);
-                      
-                      if (error) throw error;
-                      
-                      const { data: { publicUrl } } = supabase.storage
-                        .from('meal-images')
-                        .getPublicUrl(fileName);
-                      
-                      setUploadedImages(prev => [...prev, publicUrl]);
-                    } catch (error) {
-                      console.error('Error uploading image:', error);
-                      toast.error('Fehler beim Hochladen des Bildes');
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    const remainingSlots = 5 - uploadedImages.length;
+                    const filesToUpload = files.slice(0, remainingSlots);
+                    
+                    for (const file of filesToUpload) {
+                      try {
+                        toast.info(`Lade Bild hoch: ${file.name}`);
+                        
+                        // Generate unique filename
+                        const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                        
+                        // Upload to Supabase Storage
+                        const { data, error } = await supabase.storage
+                          .from('meal-images')
+                          .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: false
+                          });
+                        
+                        if (error) {
+                          console.error('Upload error:', error);
+                          throw error;
+                        }
+                        
+                        // Get public URL
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('meal-images')
+                          .getPublicUrl(fileName);
+                        
+                        console.log('Image uploaded successfully:', publicUrl);
+                        setUploadedImages(prev => [...prev, publicUrl]);
+                        toast.success(`${file.name} erfolgreich hochgeladen!`);
+                        
+                      } catch (error) {
+                        console.error('Error uploading image:', error);
+                        toast.error(`Fehler beim Hochladen von ${file.name}: ${error.message}`);
+                      }
                     }
-                  }
-                  setShowImageUpload(false);
-                }}
-                className="w-full"
-              />
+                    
+                    if (files.length > remainingSlots) {
+                      toast.warning(`Nur ${remainingSlots} Bilder konnten hochgeladen werden (Maximum: 5)`);
+                    }
+                    
+                    // Reset input
+                    e.target.value = '';
+                    
+                    // Close dialog if we have images
+                    if (uploadedImages.length > 0 || filesToUpload.length > 0) {
+                      setShowImageUpload(false);
+                    }
+                  }}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label 
+                  htmlFor="image-upload" 
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <ImagePlus className="h-12 w-12 text-muted-foreground" />
+                  <div className="text-sm text-muted-foreground">
+                    Klicken Sie hier, um bis zu {5 - uploadedImages.length} Bilder auszuwählen
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Unterstützte Formate: JPG, PNG, WEBP
+                  </div>
+                </label>
+              </div>
+              
+              {uploadedImages.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium">Hochgeladene Bilder ({uploadedImages.length}/5)</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {uploadedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative group">
+                        <img 
+                          src={imageUrl} 
+                          alt={`Uploaded ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border"
+                          onError={(e) => {
+                            console.error('Image failed to load:', imageUrl);
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
+                        />
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={async () => {
+                            try {
+                              // Extract filename from URL for deletion
+                              const url = new URL(imageUrl);
+                              const fileName = url.pathname.split('/').pop();
+                              
+                              if (fileName) {
+                                await supabase.storage
+                                  .from('meal-images')
+                                  .remove([fileName]);
+                              }
+                              
+                              setUploadedImages(prev => prev.filter((_, i) => i !== index));
+                              toast.success('Bild gelöscht');
+                            } catch (error) {
+                              console.error('Error deleting image:', error);
+                              // Remove from UI even if backend deletion fails
+                              setUploadedImages(prev => prev.filter((_, i) => i !== index));
+                              toast.warning('Bild aus Liste entfernt (Server-Fehler ignoriert)');
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowImageUpload(false)}
+                  className="flex-1"
+                >
+                  Schließen
+                </Button>
+                {uploadedImages.length > 0 && (
+                  <Button 
+                    onClick={() => setShowImageUpload(false)}
+                    className="flex-1"
+                  >
+                    Fertig ({uploadedImages.length} Bilder)
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
