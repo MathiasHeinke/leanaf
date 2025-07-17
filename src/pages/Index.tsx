@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -151,12 +151,69 @@ const Index = () => {
     initializeQuotes();
   }, []);
 
+  // Get current weight from weight_history or fallback to profile
+  const getCurrentWeight = async () => {
+    if (!user) return null;
+    
+    try {
+      const { data: latestWeight } = await supabase
+        .from('weight_history')
+        .select('weight, date')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return latestWeight?.weight || profileData?.weight || null;
+    } catch (error) {
+      console.error('Error getting current weight:', error);
+      return profileData?.weight || null;
+    }
+  };
+
+  // Calculate BMI progress based on current weight
+  const calculateBMIProgress = async () => {
+    if (!profileData) return null;
+    
+    const currentWeight = await getCurrentWeight();
+    if (!currentWeight) return null;
+    
+    const heightInMeters = profileData.height / 100;
+    const startBMI = profileData.weight / (heightInMeters * heightInMeters);
+    const currentBMI = currentWeight / (heightInMeters * heightInMeters);
+    const targetBMI = profileData.target_weight / (heightInMeters * heightInMeters);
+    
+    return {
+      start: parseFloat(startBMI.toFixed(1)),
+      current: parseFloat(currentBMI.toFixed(1)),
+      target: parseFloat(targetBMI.toFixed(1)),
+      progress: Math.round(((startBMI - currentBMI) / (startBMI - targetBMI)) * 100)
+    };
+  };
+
+  const [showWeightInput, setShowWeightInput] = useState(false);
+  const [weightInput, setWeightInput] = useState('');
+  const [bmiProgress, setBMIProgress] = useState<any>(null);
+
   // Load user data
   useEffect(() => {
     if (user) {
       loadUserData();
     }
   }, [user]);
+
+  // Load BMI progress when profile data changes
+  useEffect(() => {
+    if (user && profileData) {
+      const loadBMIProgress = async () => {
+        const bmiData = await calculateBMIProgress();
+        setBMIProgress(bmiData);
+      };
+      loadBMIProgress();
+    }
+  }, [user, profileData]);
+
+  // Load user data
 
   const loadUserData = async (showRefreshIndicator = false) => {
     try {
@@ -558,6 +615,37 @@ const Index = () => {
         fats: editingMeal.fats,
         meal_type: editingMeal.meal_type,
       });
+    }
+  };
+
+  // Save weight entry
+  const saveWeightEntry = async () => {
+    if (!user || !weightInput) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { error } = await supabase
+        .from('weight_history')
+        .upsert({
+          user_id: user.id,
+          weight: parseFloat(weightInput),
+          date: today
+        });
+      
+      if (error) throw error;
+      
+      toast.success('Gewicht erfolgreich eingetragen!');
+      setShowWeightInput(false);
+      setWeightInput('');
+      
+      // Refresh BMI progress
+      const newBMIProgress = await calculateBMIProgress();
+      setBMIProgress(newBMIProgress);
+      
+    } catch (error: any) {
+      console.error('Error saving weight:', error);
+      toast.error('Fehler beim Speichern des Gewichts');
     }
   };
 
@@ -995,19 +1083,86 @@ const Index = () => {
             </div>
           )}
 
+          {/* BMI Progress Card */}
+          {bmiProgress && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  BMI Fortschritt
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{bmiProgress.start}</div>
+                    <div className="text-sm text-muted-foreground">Start BMI</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{bmiProgress.current}</div>
+                    <div className="text-sm text-muted-foreground">Aktuell BMI</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">{bmiProgress.target}</div>
+                    <div className="text-sm text-muted-foreground">Ziel BMI</div>
+                  </div>
+                </div>
+                <div className="bg-muted rounded-full h-2 mb-2">
+                  <div 
+                    className="bg-primary rounded-full h-2 transition-all duration-300"
+                    style={{ width: `${Math.min(Math.max(bmiProgress.progress, 0), 100)}%` }}
+                  />
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  {bmiProgress.progress}% erreicht
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Weight Input Modal */}
+          <Dialog open={showWeightInput} onOpenChange={setShowWeightInput}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Gewicht heute eintragen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="weightInput">Gewicht (kg)</Label>
+                  <Input
+                    id="weightInput"
+                    type="number"
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(e.target.value)}
+                    placeholder="70.5"
+                    step="0.1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveWeightEntry} disabled={!weightInput} className="flex-1">
+                    Speichern
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowWeightInput(false)} className="flex-1">
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           {/* Empty State */}
           {dailyMeals.length === 0 && (
             <Card className="p-8 text-center border-dashed border-2 border-muted">
               <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
-               <p className="text-muted-foreground text-sm">
-                 Füge deine erste Mahlzeit hinzu
-               </p>
-             </Card>
-           )}
-         </div>
-       </div>
-     );
-   };
+              <p className="text-muted-foreground text-sm">
+                Füge deine erste Mahlzeit hinzu
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  };
 
-   export default Index;
+  export default Index;

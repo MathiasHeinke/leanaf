@@ -556,7 +556,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="weight">{t('profile.weight')}</Label>
+                  <Label htmlFor="weight">Startgewicht (kg)</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -564,6 +564,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     onChange={(e) => setWeight(e.target.value)}
                     placeholder="70"
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Dein Startgewicht für BMI-Berechnungen. Aktuelles Gewicht wird im Dashboard verwaltet.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
