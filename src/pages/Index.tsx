@@ -557,16 +557,87 @@ const Index = () => {
         throw new Error('Invalid response format from analysis service');
       }
 
-      // Always show confirmation dialog for review and editing
+      // Set analyzed data and meal type for inline display
       setAnalyzedMealData(data);
       setSelectedMealType(getCurrentMealType());
-      setShowConfirmationDialog(true);
     } catch (error: any) {
       console.error('Error analyzing meal:', error);
       toast.error(error.message || t('app.error'));
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleDirectSave = async () => {
+    if (!inputText.trim() || !analyzedMealData) return;
+    
+    setIsAnalyzing(true);
+    
+    try {
+      const newMeal = {
+        user_id: user?.id,
+        text: inputText,
+        calories: Math.round(analyzedMealData.total.calories),
+        protein: Math.round(analyzedMealData.total.protein),
+        carbs: Math.round(analyzedMealData.total.carbs),
+        fats: Math.round(analyzedMealData.total.fats),
+        meal_type: selectedMealType || getCurrentMealType(),
+      };
+
+      const { data: insertedMeal, error: insertError } = await supabase
+        .from('meals')
+        .insert([newMeal])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Save image references
+      if (uploadedImages.length > 0) {
+        const imageInserts = uploadedImages.map(imageUrl => ({
+          user_id: user?.id,
+          meal_id: insertedMeal.id,
+          image_url: imageUrl
+        }));
+
+        const { error: imageError } = await supabase
+          .from('meal_images')
+          .insert(imageInserts);
+
+        if (imageError) {
+          console.error('Error saving image references:', imageError);
+        }
+      }
+
+      const formattedMeal: MealData = {
+        id: insertedMeal.id,
+        text: insertedMeal.text,
+        calories: Number(insertedMeal.calories),
+        protein: Number(insertedMeal.protein),
+        carbs: Number(insertedMeal.carbs),
+        fats: Number(insertedMeal.fats),
+        timestamp: new Date(insertedMeal.created_at),
+        meal_type: insertedMeal.meal_type,
+      };
+
+      setDailyMeals(prev => [formattedMeal, ...prev]);
+      setInputText("");
+      setAnalyzedMealData(null);
+      setUploadedImages([]);
+      setSelectedMealType('');
+      
+      toast.success('Mahlzeit erfolgreich hinzugefügt!');
+      
+    } catch (error: any) {
+      console.error('Error saving meal:', error);
+      toast.error(error.message || 'Fehler beim Speichern der Mahlzeit');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const getCurrentMealType = () => {
@@ -1160,121 +1231,110 @@ const Index = () => {
           </div>
         </Card>
 
-        {/* ChatGPT-style Input */}
-        <div className="fixed bottom-4 left-4 right-4 z-50">
-          <div className="max-w-sm mx-auto">
-            <Card className="p-3 shadow-lg border-2 border-primary/20 bg-background/95 backdrop-blur">
-              <div className="flex items-end gap-2">
-                {/* Text Input */}
-                <div className="flex-1">
-                  <Textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder={t('input.placeholder')}
-                    className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (inputText.trim()) {
-                          handleSubmitMeal();
-                        }
-                      }
-                    }}
-                  />
+        {/* Simplified Meal Input */}
+        <Card className="p-4 mb-4 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1">
+                <Textarea
+                  placeholder="Beschreibe deine Mahlzeit oder lade Bilder hoch..."
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  className="w-full min-h-[60px] p-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="file-input"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('file-input')?.click()}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSubmitMeal}
+                  disabled={isAnalyzing || (!inputText.trim() && uploadedImages.length === 0)}
+                >
+                  {isAnalyzing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  ) : (
+                    "Analysieren"
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {uploadedImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {uploadedImages.map((imageUrl, index) => (
+                  <div key={index} className="relative">
+                    <img 
+                      src={imageUrl} 
+                      alt={`Upload ${index + 1}`}
+                      className="w-16 h-16 object-cover rounded-lg border"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-destructive/90"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {analyzedMealData && (
+              <div className="bg-muted p-4 rounded-lg space-y-3">
+                <h3 className="font-semibold">Analysierte Nährwerte:</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                  <div>Kalorien: {Math.round(analyzedMealData.total.calories)}</div>
+                  <div>Protein: {Math.round(analyzedMealData.total.protein)}g</div>
+                  <div>Kohlenhydrate: {Math.round(analyzedMealData.total.carbs)}g</div>
+                  <div>Fett: {Math.round(analyzedMealData.total.fats)}g</div>
                 </div>
                 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-1 pb-2">
-                  {/* Camera Upload */}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      onClick={() => document.getElementById('camera-upload')?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                    <input
-                      id="camera-upload"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      multiple
-                    />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Mahlzeittyp:</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
+                      <Button
+                        key={type}
+                        type="button"
+                        variant={selectedMealType === type ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedMealType(type)}
+                      >
+                        {type === 'breakfast' && 'Frühstück'}
+                        {type === 'lunch' && 'Mittagessen'}
+                        {type === 'dinner' && 'Abendessen'}
+                        {type === 'snack' && 'Snack'}
+                      </Button>
+                    ))}
                   </div>
-                  
-                  {/* Gallery Upload */}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      onClick={() => document.getElementById('gallery-upload')?.click()}
-                    >
-                      <ImagePlus className="h-4 w-4" />
-                    </Button>
-                    <input
-                      id="gallery-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      multiple
-                    />
-                  </div>
-                  
-                  {/* Voice Recording */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 w-8 p-0 transition-all duration-200 ${
-                      isRecording 
-                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
-                        : 'hover:bg-primary/10'
-                    }`}
-                    onClick={handleVoiceRecord}
-                    disabled={isAnalyzing}
-                  >
-                    {isRecording ? (
-                      <StopCircle className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
-                  {/* Send Button */}
-                  <Button
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={handleSubmitMeal}
-                    disabled={!inputText.trim() || isAnalyzing}
-                  >
-                    {isAnalyzing ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
                 </div>
+                
+                <Button onClick={handleDirectSave} className="w-full">
+                  Mahlzeit bestätigen
+                </Button>
               </div>
-              
-              {/* Recording Indicator */}
-              {isRecording && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-red-500">
-                  <div className="flex gap-1">
-                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
-                    <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                  <span>{t('input.recording')}</span>
-                </div>
-              )}
-            </Card>
+            )}
           </div>
-        </div>
+        </Card>
 
         <div className="pb-24">
 
