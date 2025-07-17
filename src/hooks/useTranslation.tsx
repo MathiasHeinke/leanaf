@@ -162,6 +162,17 @@ const translations = {
     'ui.kcal': 'kcal',
     'ui.gram': 'g',
     'ui.overBy': 'über',
+    'ui.goal': 'Ziel',
+    'ui.until': 'bis',
+    
+    // Motivational messages
+    'motivation.start': 'Perfekter Start! 🌟 Du bist auf dem richtigen Weg!',
+    'motivation.half': 'Großartig! 💪 Die Hälfte ist geschafft!',
+    'motivation.progress': 'Super Disziplin! 🎯 Bleib dran, du schaffst das!',
+    'motivation.almost': 'Fast geschafft! 🏆 Nur noch ein kleiner Schritt!',
+    'motivation.perfect': 'Perfekt! 🎉 Ziel erreicht - du bist fantastisch!',
+    'motivation.over': 'Nicht schlimm! 😊 Morgen ist ein neuer Tag!',
+    'motivation.discipline': 'Super Disziplin! 🎯 Bleib dran, du schaffst das!',
   },
   en: {
     // Navigation
@@ -308,6 +319,17 @@ const translations = {
     'ui.kcal': 'kcal',
     'ui.gram': 'g',
     'ui.overBy': 'over',
+    'ui.goal': 'Goal',
+    'ui.until': 'until',
+    
+    // Motivational messages
+    'motivation.start': 'Perfect start! 🌟 You\'re on the right track!',
+    'motivation.half': 'Great! 💪 Halfway there!',
+    'motivation.progress': 'Super discipline! 🎯 Keep it up, you got this!',
+    'motivation.almost': 'Almost there! 🏆 Just one more step!',
+    'motivation.perfect': 'Perfect! 🎉 Goal achieved - you\'re fantastic!',
+    'motivation.over': 'No worries! 😊 Tomorrow is a new day!',
+    'motivation.discipline': 'Super discipline! 🎯 Stay strong, you can do it!',
   },
 };
 

@@ -283,20 +283,19 @@ const Index = () => {
   // Motivational messages
   const getMotivationalMessage = () => {
     const progress = calorieProgress;
-    const timeOfDay = new Date().getHours();
     
     if (progress <= 25) {
-      return "Perfekter Start! 🌟 Du bist auf dem richtigen Weg!";
+      return t('motivation.start');
     } else if (progress <= 50) {
-      return "Großartig! 💪 Die Hälfte ist geschafft!";
+      return t('motivation.half');
     } else if (progress <= 75) {
-      return "Super Disziplin! 🎯 Bleib dran, du schaffst das!";
+      return t('motivation.progress');
     } else if (progress <= 95) {
-      return "Fast geschafft! 🏆 Nur noch ein kleiner Schritt!";
+      return t('motivation.almost');
     } else if (progress <= 100) {
-      return "Perfekt! 🎉 Ziel erreicht - du bist fantastisch!";
+      return t('motivation.perfect');
     } else {
-      return "Nicht schlimm! 😊 Morgen ist ein neuer Tag!";
+      return t('motivation.over');
     }
   };
 
@@ -631,15 +630,15 @@ const Index = () => {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setCurrentView('profile')}>
                     <User className="h-4 w-4 mr-2" />
-                    Profil
+                    {t('nav.profile')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setCurrentView('subscription')}>
                     <CreditCard className="h-4 w-4 mr-2" />
-                    Abonnement
+                    {t('nav.subscription')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="h-4 w-4 mr-2" />
-                    Abmelden
+                    {t('nav.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -783,9 +782,9 @@ const Index = () => {
           {profileData?.target_date && (
             <div className="mt-4 p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Ziel: {profileData.target_weight}kg</span>
+                <span className="text-muted-foreground">{t('ui.goal')}: {profileData.target_weight}kg</span>
                 <span className="text-muted-foreground">
-                  bis {new Date(profileData.target_date).toLocaleDateString()}
+                  {t('ui.until')} {new Date(profileData.target_date).toLocaleDateString()}
                 </span>
               </div>
             </div>
