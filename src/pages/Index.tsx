@@ -398,8 +398,8 @@ const Index = () => {
       if (error) throw error;
 
       toast.success('Mahlzeit aktualisiert');
+      setEditingMeal(null); // Close modal immediately
       await loadUserData(true);
-      setEditingMeal(null);
     } catch (error) {
       console.error('Error updating meal:', error);
       toast.error('Fehler beim Aktualisieren der Mahlzeit');

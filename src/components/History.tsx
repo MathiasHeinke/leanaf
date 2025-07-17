@@ -169,8 +169,8 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
       if (error) throw error;
 
       toast.success('Mahlzeit aktualisiert');
+      setEditingMeal(null); // Close modal immediately
       await loadHistoryData();
-      setEditingMeal(null);
     } catch (error) {
       console.error('Error updating meal:', error);
       toast.error('Fehler beim Aktualisieren der Mahlzeit');
