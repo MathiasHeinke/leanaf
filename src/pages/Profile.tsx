@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Target } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +37,12 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [newWeight, setNewWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [dailyGoals, setDailyGoals] = useState({
+    calories: 2000,
+    protein: 150,
+    carbs: 250,
+    fats: 65
+  });
   
   const { user } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -45,6 +51,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     if (user) {
       loadProfile();
       loadWeightHistory();
+      loadDailyGoals();
     }
   }, [user]);
 
@@ -106,6 +113,31 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   };
 
+  const loadDailyGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('daily_goals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        setDailyGoals({
+          calories: data.calories || 2000,
+          protein: data.protein || 150,
+          carbs: data.carbs || 250,
+          fats: data.fats || 65
+        });
+      }
+    } catch (error: any) {
+      console.error('Error loading daily goals:', error);
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
@@ -131,6 +163,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         });
 
       if (error) throw error;
+
+      // Update daily goals
+      const { error: goalsError } = await supabase
+        .from('daily_goals')
+        .upsert({
+          user_id: user.id,
+          calories: dailyGoals.calories,
+          protein: dailyGoals.protein,
+          carbs: dailyGoals.carbs,
+          fats: dailyGoals.fats,
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (goalsError) throw goalsError;
 
       toast.success(t('profile.saved'));
     } catch (error: any) {
@@ -380,6 +427,57 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
                   />
+                </div>
+              </div>
+
+              {/* Daily Goals Section */}
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-4 flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Tägliche Kalorienziele
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dailyCalories">Kalorien</Label>
+                    <Input
+                      id="dailyCalories"
+                      type="number"
+                      value={dailyGoals.calories}
+                      onChange={(e) => setDailyGoals({...dailyGoals, calories: Number(e.target.value)})}
+                      placeholder="2000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dailyProtein">Protein (g)</Label>
+                    <Input
+                      id="dailyProtein"
+                      type="number"
+                      value={dailyGoals.protein}
+                      onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
+                      placeholder="150"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dailyCarbs">Kohlenhydrate (g)</Label>
+                    <Input
+                      id="dailyCarbs"
+                      type="number"
+                      value={dailyGoals.carbs}
+                      onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
+                      placeholder="250"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dailyFats">Fette (g)</Label>
+                    <Input
+                      id="dailyFats"
+                      type="number"
+                      value={dailyGoals.fats}
+                      onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
+                      placeholder="65"
+                    />
+                  </div>
                 </div>
               </div>
 
