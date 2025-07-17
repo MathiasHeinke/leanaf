@@ -98,24 +98,7 @@ Mahlzeit: ${text}`;
     console.log('OpenAI raw response:', content);
     
     try {
-      // Clean up markdown code blocks if present
-      let cleanContent = content.trim();
-      
-      // Remove ```json from start and ``` from end
-      if (cleanContent.startsWith('```json')) {
-        cleanContent = cleanContent.substring(7);
-      } else if (cleanContent.startsWith('```')) {
-        cleanContent = cleanContent.substring(3);
-      }
-      
-      if (cleanContent.endsWith('```')) {
-        cleanContent = cleanContent.substring(0, cleanContent.length - 3);
-      }
-      
-      cleanContent = cleanContent.trim();
-      console.log('Cleaned content for parsing:', cleanContent);
-      
-      const parsed = JSON.parse(cleanContent);
+      const parsed = JSON.parse(content);
       console.log('Parsed nutrition data:', parsed);
       
       return new Response(JSON.stringify(parsed), {
