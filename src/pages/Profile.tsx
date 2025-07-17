@@ -176,7 +176,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         .upsert({
           user_id: user.id,
           calories: targetCalories,
-          protein: macroGrams.protein,
+          protein: macroGrams.protein,  // Keep existing columns for grams
           carbs: macroGrams.carbs,
           fats: macroGrams.fats,
           calorie_deficit: dailyGoals.calorieDeficit,
@@ -187,7 +187,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           onConflict: 'user_id'
         });
 
-      if (goalsError) throw goalsError;
+      if (goalsError) {
+        console.error('Goals error:', goalsError);
+        throw goalsError;
+      }
 
       toast.success(t('profile.saved'));
     } catch (error: any) {
