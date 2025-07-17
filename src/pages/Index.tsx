@@ -539,8 +539,14 @@ const Index = () => {
     console.log('Starting meal analysis for:', inputText);
     
     try {
+      // Check if there are uploaded images to include in analysis
+      const hasImages = uploadedImages.length > 0;
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
-        body: { text: inputText },
+        body: { 
+          text: inputText,
+          images: hasImages ? uploadedImages : undefined
+        },
       });
 
       console.log('Supabase function response:', { data, error });
@@ -554,46 +560,54 @@ const Index = () => {
         throw new Error('Invalid response format from analysis service');
       }
 
-      const newMeal = {
-        user_id: user?.id,
-        text: inputText,
-        calories: Math.round(data.total.calories),
-        protein: Math.round(data.total.protein),
-        carbs: Math.round(data.total.carbs),
-        fats: Math.round(data.total.fats),
-        meal_type: getCurrentMealType()
-      };
+      // If images were included, show confirmation dialog instead of directly saving
+      if (hasImages) {
+        setAnalyzedMealData(data);
+        setSelectedMealType(getCurrentMealType());
+        setShowConfirmationDialog(true);
+      } else {
+        // Direct save for text-only meals
+        const newMeal = {
+          user_id: user?.id,
+          text: inputText,
+          calories: Math.round(data.total.calories),
+          protein: Math.round(data.total.protein),
+          carbs: Math.round(data.total.carbs),
+          fats: Math.round(data.total.fats),
+          meal_type: getCurrentMealType()
+        };
 
-      console.log('Inserting meal:', newMeal);
+        console.log('Inserting meal:', newMeal);
 
-      const { data: insertedMeal, error: insertError } = await supabase
-        .from('meals')
-        .insert([newMeal])
-        .select()
-        .single();
+        const { data: insertedMeal, error: insertError } = await supabase
+          .from('meals')
+          .insert([newMeal])
+          .select()
+          .single();
 
-      if (insertError) {
-        console.error('Database insert error:', insertError);
-        throw insertError;
+        if (insertError) {
+          console.error('Database insert error:', insertError);
+          throw insertError;
+        }
+
+        console.log('Successfully inserted meal:', insertedMeal);
+
+        const formattedMeal: MealData = {
+          id: insertedMeal.id,
+          text: insertedMeal.text,
+          calories: Number(insertedMeal.calories),
+          protein: Number(insertedMeal.protein),
+          carbs: Number(insertedMeal.carbs),
+          fats: Number(insertedMeal.fats),
+          timestamp: new Date(insertedMeal.created_at),
+          meal_type: insertedMeal.meal_type,
+        };
+
+        setDailyMeals(prev => [formattedMeal, ...prev]);
+        setInputText("");
+        
+        toast.success(t('app.mealAdded'));
       }
-
-      console.log('Successfully inserted meal:', insertedMeal);
-
-      const formattedMeal: MealData = {
-        id: insertedMeal.id,
-        text: insertedMeal.text,
-        calories: Number(insertedMeal.calories),
-        protein: Number(insertedMeal.protein),
-        carbs: Number(insertedMeal.carbs),
-        fats: Number(insertedMeal.fats),
-        timestamp: new Date(insertedMeal.created_at),
-        meal_type: insertedMeal.meal_type,
-      };
-
-      setDailyMeals(prev => [formattedMeal, ...prev]);
-      setInputText("");
-      
-      toast.success(t('app.mealAdded'));
     } catch (error: any) {
       console.error('Error analyzing meal:', error);
       toast.error(error.message || t('app.error'));
