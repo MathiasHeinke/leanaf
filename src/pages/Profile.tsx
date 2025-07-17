@@ -44,6 +44,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     fats: 30,    // Percentage
     calorieDeficit: 300 // Calories below maintenance
   });
+  const [autoCalculated, setAutoCalculated] = useState(false);
   
   const { user } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -273,6 +274,67 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9), // 9 cal/g
     };
   };
+
+  const calculateRequiredCalorieDeficit = () => {
+    if (!weight || !targetWeight || !targetDate) return null;
+    
+    const currentWeight = parseFloat(weight);
+    const goalWeight = parseFloat(targetWeight);
+    const weightDiff = Math.abs(currentWeight - goalWeight);
+    const targetDateObj = new Date(targetDate);
+    const today = new Date();
+    const timeDiff = Math.max(0, (targetDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const weeksLeft = Math.floor(timeDiff / 7);
+    
+    if (timeDiff <= 0 || weeksLeft === 0) return null;
+    
+    // 1kg fat = ~7700 calories
+    const totalCalorieDeficit = weightDiff * 7700;
+    const dailyCalorieDeficit = Math.round(totalCalorieDeficit / timeDiff);
+    
+    return {
+      daily: dailyCalorieDeficit,
+      weekly: Math.round(dailyCalorieDeficit * 7),
+      total: Math.round(totalCalorieDeficit)
+    };
+  };
+
+  const getDefaultMacrosByGoal = () => {
+    switch (goal) {
+      case 'lose':
+        return { protein: 35, carbs: 30, fats: 35 }; // Higher protein for muscle preservation
+      case 'gain':
+        return { protein: 25, carbs: 50, fats: 25 }; // Higher carbs for muscle building
+      default:
+        return { protein: 30, carbs: 40, fats: 30 }; // Balanced for maintenance
+    }
+  };
+
+  const autoCalculateGoals = () => {
+    if (!weight || !targetWeight || !targetDate) return;
+    
+    const requiredDeficit = calculateRequiredCalorieDeficit();
+    if (!requiredDeficit) return;
+    
+    const defaultMacros = getDefaultMacrosByGoal();
+    
+    setDailyGoals({
+      ...dailyGoals,
+      calorieDeficit: requiredDeficit.daily,
+      protein: defaultMacros.protein,
+      carbs: defaultMacros.carbs,
+      fats: defaultMacros.fats
+    });
+    
+    setAutoCalculated(true);
+  };
+
+  // Auto-calculate when target weight, date, or goal changes
+  useEffect(() => {
+    if (weight && targetWeight && targetDate && goal) {
+      autoCalculateGoals();
+    }
+  }, [weight, targetWeight, targetDate, goal]);
 
   const calculateBMI = () => {
     if (!weight || !height) return null;
@@ -585,8 +647,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               {/* Weight Goal Estimation */}
               {weight && targetWeight && targetDate && (
                 <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
-                  <h4 className="font-medium mb-2">Gewichtsziel-Schätzung</h4>
-                  <div className="text-sm space-y-1">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium">Gewichtsziel-Schätzung</h4>
+                    {autoCalculated && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => autoCalculateGoals()}
+                        className="text-xs"
+                      >
+                        Neu berechnen
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="text-sm space-y-2">
                     {(() => {
                       const currentWeight = parseFloat(weight);
                       const goalWeight = parseFloat(targetWeight);
@@ -595,6 +670,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       const today = new Date();
                       const timeDiff = Math.max(0, (targetDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                       const weeksLeft = Math.floor(timeDiff / 7);
+                      const requiredDeficit = calculateRequiredCalorieDeficit();
                       
                       if (timeDiff <= 0) {
                         return <span className="text-amber-600">Zieldatum ist bereits erreicht oder überschritten</span>;
@@ -605,22 +681,36 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       const isHealthy = weeklyTarget <= 1;
                       
                       return (
-                        <div className="space-y-1">
-                          <p>
-                            <span className="font-medium">Gewichtsdifferenz:</span> {weightDiff.toFixed(1)} kg
-                          </p>
-                          <p>
-                            <span className="font-medium">Zeit bis zum Ziel:</span> {weeksLeft} Wochen
-                          </p>
-                          <p>
-                            <span className="font-medium">Benötigter Fortschritt:</span> {weeklyTarget.toFixed(1)} kg/Woche
-                          </p>
-                          <p className={isHealthy ? 'text-green-600' : 'text-red-600'}>
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p><span className="font-medium">Gewichtsdifferenz:</span> {weightDiff.toFixed(1)} kg</p>
+                              <p><span className="font-medium">Zeit bis zum Ziel:</span> {weeksLeft} Wochen</p>
+                              <p><span className="font-medium">Benötigter Fortschritt:</span> {weeklyTarget.toFixed(1)} kg/Woche</p>
+                            </div>
+                            
+                            {requiredDeficit && (
+                              <div className="bg-white/50 p-3 rounded-lg">
+                                <p className="font-medium mb-1">Benötigtes Kaloriendefizit:</p>
+                                <p className="text-xs"><span className="font-medium">Täglich:</span> {requiredDeficit.daily} kcal</p>
+                                <p className="text-xs"><span className="font-medium">Wöchentlich:</span> {requiredDeficit.weekly} kcal</p>
+                                <p className="text-xs text-muted-foreground">Gesamt: {requiredDeficit.total.toLocaleString()} kcal</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className={`p-2 rounded ${isHealthy ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                             {isHealthy 
                               ? '✓ Realistisches und gesundes Ziel' 
                               : '⚠ Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche'
                             }
-                          </p>
+                          </div>
+                          
+                          {autoCalculated && (
+                            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                              💡 Die Kaloriendefizit- und Makrowerte wurden automatisch basierend auf deinem Ziel berechnet
+                            </div>
+                          )}
                         </div>
                       );
                     })()}
