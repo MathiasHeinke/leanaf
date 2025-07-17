@@ -111,6 +111,7 @@ export type Database = {
           height: number | null
           id: string
           preferred_language: string | null
+          start_weight: number | null
           subscription_id: string | null
           subscription_status: string | null
           target_date: string | null
@@ -131,6 +132,7 @@ export type Database = {
           height?: number | null
           id?: string
           preferred_language?: string | null
+          start_weight?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
           target_date?: string | null
@@ -151,6 +153,7 @@ export type Database = {
           height?: number | null
           id?: string
           preferred_language?: string | null
+          start_weight?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
           target_date?: string | null
