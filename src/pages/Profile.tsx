@@ -927,14 +927,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
 
           {/* Manual Save Button - now optional */}
-          <Button onClick={handleSave} disabled={loading} className="w-full" variant="outline">
-            <Save className="h-4 w-4 mr-2" />
-            {loading ? t('common.loading') : 'Manuell speichern'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
+           <Button onClick={handleSave} disabled={loading} className="w-full" variant="outline">
+             <Save className="h-4 w-4 mr-2" />
+             {loading ? t('common.loading') : 'Manuell speichern'}
+           </Button>
+         </div>
+       </div>
+     );
+   };
 
-export default Profile;
+   export default Profile;
