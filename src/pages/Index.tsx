@@ -6,6 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import Settings from "@/components/Settings";
+import History from "@/components/History";
+import Coach from "@/components/Coach";
 import { 
   Camera, 
   Mic, 
@@ -16,7 +19,11 @@ import {
   Flame,
   Activity,
   Zap,
-  Heart
+  Heart,
+  Settings as SettingsIcon,
+  History as HistoryIcon,
+  MessageCircle,
+  Menu
 } from "lucide-react";
 
 interface NutritionData {
@@ -35,7 +42,8 @@ const Index = () => {
   const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<NutritionData[]>([]);
-  const [dailyGoal] = useState(1500); // Standard Ziel
+  const [dailyGoal, setDailyGoal] = useState(1500); // Standard Ziel
+  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'history' | 'coach'>('main');
   const { toast } = useToast();
 
   // Berechne Tagessummen
@@ -109,6 +117,49 @@ const Index = () => {
     });
   };
 
+  // Render different views based on currentView
+  if (currentView === 'settings') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+        <div className="container mx-auto px-4 py-6 max-w-md">
+          <Settings 
+            dailyGoal={dailyGoal} 
+            onGoalChange={setDailyGoal} 
+            onClose={() => setCurrentView('main')} 
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'history') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+        <div className="container mx-auto px-4 py-6 max-w-md">
+          <History 
+            onClose={() => setCurrentView('main')} 
+            dailyGoal={dailyGoal}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'coach') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+        <div className="container mx-auto px-4 py-6 max-w-md">
+          <Coach 
+            onClose={() => setCurrentView('main')} 
+            dailyTotals={dailyTotals}
+            dailyGoal={dailyGoal}
+            mealsCount={dailyMeals.length}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       <div className="container mx-auto px-4 py-6 max-w-md">
@@ -126,6 +177,37 @@ const Index = () => {
           <p className="text-muted-foreground mt-2">
             Erfasse deine Mahlzeiten per Foto, Sprache oder Text
           </p>
+        </div>
+
+        {/* Navigation */}
+        <div className="flex justify-center gap-2 mb-6">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCurrentView('history')}
+            className="flex-1"
+          >
+            <HistoryIcon className="h-4 w-4 mr-2" />
+            Verlauf
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCurrentView('coach')}
+            className="flex-1"
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Coach
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCurrentView('settings')}
+            className="flex-1"
+          >
+            <SettingsIcon className="h-4 w-4 mr-2" />
+            Ziel
+          </Button>
         </div>
 
         {/* Tages-Dashboard */}
