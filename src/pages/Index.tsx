@@ -1036,7 +1036,283 @@ const Index = () => {
 
         {/* Today's Meals */}
         <div className="pb-24">
+          {/* Daily Meals */}
           {dailyMeals.length > 0 && (
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Heutige Mahlzeiten</h3>
+                {dailyMeals.length > 7 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setCurrentView('history')}
+                    className="text-sm"
+                  >
+                    <HistoryIcon className="h-4 w-4 mr-2" />
+                    Alle anzeigen
+                  </Button>
+                )}
+              </div>
+              {dailyMeals.slice(0, 7).map((meal) => (
+                <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-primary/10">
+                        {meal.meal_type === 'breakfast' ? 'Frühstück' : 
+                         meal.meal_type === 'lunch' ? 'Mittagessen' : 
+                         meal.meal_type === 'dinner' ? 'Abendessen' : 'Snack'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(meal.timestamp).toLocaleTimeString('de-DE', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <Zap className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-medium text-green-600">{meal.calories} kcal</span>
+                      </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingMeal(meal)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
+                          </DialogHeader>
+                          {editingMeal && editingMeal.id === meal.id && (
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              updateMeal(editingMeal.id, editingMeal);
+                            }} className="space-y-4">
+                              <div>
+                                <Label htmlFor="text">Beschreibung</Label>
+                                <Textarea
+                                  id="text"
+                                  value={editingMeal.text}
+                                  onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="calories">Kalorien</Label>
+                                <Input
+                                  id="calories"
+                                  type="number"
+                                  value={editingMeal.calories}
+                                  onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <Label htmlFor="protein">Protein (g)</Label>
+                                  <Input
+                                    id="protein"
+                                    type="number"
+                                    value={editingMeal.protein}
+                                    onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
+                                  <Input
+                                    id="carbs"
+                                    type="number"
+                                    value={editingMeal.carbs}
+                                    onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="fats">Fette (g)</Label>
+                                  <Input
+                                    id="fats"
+                                    type="number"
+                                    value={editingMeal.fats}
+                                    onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
+                                <Select 
+                                  value={editingMeal.meal_type} 
+                                  onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="breakfast">Frühstück</SelectItem>
+                                    <SelectItem value="lunch">Mittagessen</SelectItem>
+                                    <SelectItem value="dinner">Abendessen</SelectItem>
+                                    <SelectItem value="snack">Snack</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button type="submit" className="flex-1">
+                                  Speichern
+                                </Button>
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  onClick={() => setEditingMeal(null)}
+                                  className="flex-1"
+                                >
+                                  Abbrechen
+                                </Button>
+                              </div>
+                            </form>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMeal(meal.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {meal.text}
+                  </p>
+                  
+                  <div className="flex justify-between text-xs">
+                    <span className="text-protein">P: {meal.protein}g</span>
+                    <span className="text-carbs">C: {meal.carbs}g</span>
+                    <span className="text-fats">F: {meal.fats}g</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Quick Weight Input */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Gewicht heute eintragen
+                {(() => {
+                  const trend = getWeightTrend();
+                  if (!trend) return null;
+                  const IconComponent = trend.icon;
+                  return (
+                    <div className={`flex items-center gap-1 ${trend.color}`}>
+                      <IconComponent className="h-4 w-4" />
+                      <span className="text-sm">{trend.text}</span>
+                    </div>
+                  );
+                })()}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddWeight();
+                    }
+                  }}
+                  placeholder="Aktuelles Gewicht"
+                  className="flex-1"
+                />
+                <Button onClick={handleAddWeight} disabled={!newWeight}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Eintragen
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* BMI Progress */}
+          {profileData && (
+            <BMIProgress 
+              startWeight={profileData.start_weight || profileData.weight}
+              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
+              targetWeight={profileData.target_weight}
+              height={profileData.height}
+            />
+          )}
+
+          {/* Weight History Card - Last 7 days */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Gewichtsverlauf (letzte 7 Tage)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                {weightHistory.slice(0, 7).map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(entry.date).toLocaleDateString('de-DE')}
+                      </span>
+                      <span className="font-medium">{entry.weight} kg</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteWeight(entry.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {weightHistory.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine Gewichtseinträge vorhanden
+                  </p>
+                )}
+              </div>
+              {weightHistory.length > 7 && (
+                <div className="text-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setCurrentView('history')}
+                    className="text-sm"
+                  >
+                    <HistoryIcon className="h-4 w-4 mr-2" />
+                    Kompletten Verlauf anzeigen
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Link to History */}
+          <div className="text-center mb-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setCurrentView('history')}
+              className="text-primary"
+            >
+              <HistoryIcon className="h-4 w-4 mr-2" />
+              Zur Verlaufsansicht
+            </Button>
+          </div>
+        </div>
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
               
@@ -1190,6 +1466,161 @@ const Index = () => {
             </div>
           )}
 
+          {/* Daily Meals */}
+          {dailyMeals.length > 0 && (
+            <div className="space-y-3 mb-6">
+              <h3 className="font-semibold">Heutige Mahlzeiten</h3>
+              {dailyMeals.slice(0, 7).map((meal, index) => (
+                <Card key={index} className="p-4 border-l-4 border-l-primary">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-primary/10">
+                        {meal.meal_type === 'breakfast' ? 'Frühstück' : 
+                         meal.meal_type === 'lunch' ? 'Mittagessen' : 
+                         meal.meal_type === 'dinner' ? 'Abendessen' : 'Snack'}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(meal.timestamp).toLocaleTimeString('de-DE', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Zap className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-medium text-green-600">{meal.calories} kcal</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingMeal(meal)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
+                          </DialogHeader>
+                          {editingMeal && (
+                            <form onSubmit={(e) => {
+                              e.preventDefault();
+                              updateMeal(editingMeal.id, editingMeal);
+                            }} className="space-y-4">
+                              <div>
+                                <Label htmlFor="text">Beschreibung</Label>
+                                <Textarea
+                                  id="text"
+                                  value={editingMeal.text}
+                                  onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="calories">Kalorien</Label>
+                                <Input
+                                  id="calories"
+                                  type="number"
+                                  value={editingMeal.calories}
+                                  onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <Label htmlFor="protein">Protein (g)</Label>
+                                  <Input
+                                    id="protein"
+                                    type="number"
+                                    value={editingMeal.protein}
+                                    onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
+                                  <Input
+                                    id="carbs"
+                                    type="number"
+                                    value={editingMeal.carbs}
+                                    onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="fats">Fette (g)</Label>
+                                  <Input
+                                    id="fats"
+                                    type="number"
+                                    value={editingMeal.fats}
+                                    onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
+                                <Select 
+                                  value={editingMeal.meal_type} 
+                                  onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
+                                >
+                                  <SelectTrigger className="mt-1">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="breakfast">Frühstück</SelectItem>
+                                    <SelectItem value="lunch">Mittagessen</SelectItem>
+                                    <SelectItem value="dinner">Abendessen</SelectItem>
+                                    <SelectItem value="snack">Snack</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button type="submit" className="flex-1">
+                                  Speichern
+                                </Button>
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  onClick={() => setEditingMeal(null)}
+                                  className="flex-1"
+                                >
+                                  Abbrechen
+                                </Button>
+                              </div>
+                            </form>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMeal(meal.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {meal.text}
+                  </p>
+                  
+                  <div className="flex justify-between text-xs">
+                    <span className="text-protein">P: {meal.protein}g</span>
+                    <span className="text-carbs">C: {meal.carbs}g</span>
+                    <span className="text-fats">F: {meal.fats}g</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {/* Quick Weight Input */}
           <Card className="mb-6">
             <CardHeader>
@@ -1241,14 +1672,14 @@ const Index = () => {
             />
           )}
 
-          {/* Weight History Card */}
+          {/* Weight History Card - Last 7 days */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Gewichtsverlauf</CardTitle>
+              <CardTitle>Gewichtsverlauf (letzte 7 Tage)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                {weightHistory.map((entry) => (
+                {weightHistory.slice(0, 7).map((entry) => (
                   <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <div className="flex flex-col">
                       <span className="text-sm text-muted-foreground">
@@ -1272,6 +1703,19 @@ const Index = () => {
                   </p>
                 )}
               </div>
+              {weightHistory.length > 7 && (
+                <div className="text-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setCurrentView('history')}
+                    className="text-sm"
+                  >
+                    <HistoryIcon className="h-4 w-4 mr-2" />
+                    Kompletten Verlauf anzeigen
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
