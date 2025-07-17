@@ -1190,22 +1190,12 @@ const Index = () => {
             </div>
           )}
 
-          {/* BMI Progress */}
-          {profileData && (
-            <BMIProgress 
-              startWeight={profileData.start_weight || profileData.weight}
-              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
-              targetWeight={profileData.target_weight}
-              height={profileData.height}
-            />
-          )}
-
-          {/* Weight History Card */}
+          {/* Quick Weight Input */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                Gewichtsverlauf
-{(() => {
+                Gewicht heute eintragen
+                {(() => {
                   const trend = getWeightTrend();
                   if (!trend) return null;
                   const IconComponent = trend.icon;
@@ -1218,7 +1208,7 @@ const Index = () => {
                 })()}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -1235,12 +1225,28 @@ const Index = () => {
                 />
                 <Button onClick={handleAddWeight} disabled={!newWeight}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Gewicht hinzufügen
+                  Eintragen
                 </Button>
               </div>
+            </CardContent>
+          </Card>
 
-              <Separator />
+          {/* BMI Progress */}
+          {profileData && (
+            <BMIProgress 
+              startWeight={profileData.start_weight || profileData.weight}
+              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
+              targetWeight={profileData.target_weight}
+              height={profileData.height}
+            />
+          )}
 
+          {/* Weight History Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Gewichtsverlauf</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
                 {weightHistory.map((entry) => (
                   <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
