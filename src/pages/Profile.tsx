@@ -201,6 +201,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   };
 
+  // Add Enter key handler for saving
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleSave();
+    }
+  };
+
   const handleAddWeight = async () => {
     if (!user || !newWeight) return;
 
@@ -429,6 +437,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     id="displayName"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder={t('profile.displayName')}
                   />
                 </div>
@@ -440,6 +449,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder={t('profile.email')}
                   />
                 </div>
@@ -474,6 +484,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={startWeight}
                     onChange={(e) => setStartWeight(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder="75"
                   />
                 </div>
@@ -485,6 +496,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder="70"
                   />
                 </div>
@@ -496,6 +508,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder="175"
                   />
                 </div>
@@ -507,6 +520,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder="25"
                   />
                 </div>
@@ -567,6 +581,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={targetWeight}
                     onChange={(e) => setTargetWeight(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder="65"
                   />
                 </div>
@@ -578,6 +593,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="date"
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
+                    onKeyPress={handleKeyPress}
                   />
                 </div>
               </div>
@@ -631,6 +647,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       type="number"
                       value={dailyGoals.calorieDeficit}
                       onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: Number(e.target.value)})}
+                      onKeyPress={handleKeyPress}
                       placeholder="300"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -648,6 +665,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                           type="number"
                           value={dailyGoals.protein}
                           onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
+                          onKeyPress={handleKeyPress}
                           placeholder="30"
                           min="10"
                           max="50"
@@ -661,6 +679,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                           type="number"
                           value={dailyGoals.carbs}
                           onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
+                          onKeyPress={handleKeyPress}
                           placeholder="40"
                           min="20"
                           max="70"
@@ -674,6 +693,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                           type="number"
                           value={dailyGoals.fats}
                           onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
+                          onKeyPress={handleKeyPress}
                           placeholder="30"
                           min="15"
                           max="50"
@@ -786,6 +806,12 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   type="number"
                   value={newWeight}
                   onChange={(e) => setNewWeight(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddWeight();
+                    }
+                  }}
                   placeholder={t('profile.currentWeight')}
                   className="flex-1"
                 />
