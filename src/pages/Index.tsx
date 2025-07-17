@@ -193,9 +193,11 @@ const Index = () => {
         // Calculate daily goals based on profile
         const calculatedGoals = calculateDailyGoals(profile);
         console.log('Calculated goals:', calculatedGoals);
+        
+        // Set the calculated goals immediately
         setDailyGoal(calculatedGoals);
 
-        // Try to load custom daily goals if they exist, otherwise use calculated ones
+        // Check if custom daily goals exist in database
         const { data: goalsData, error: goalsError } = await supabase
           .from('daily_goals')
           .select('*')
@@ -207,7 +209,8 @@ const Index = () => {
         }
 
         if (goalsData) {
-          console.log('Custom goals found:', goalsData);
+          console.log('Custom goals found, using database values:', goalsData);
+          // Use custom goals from database if they exist
           setDailyGoal({
             calories: Number(goalsData.calories) || calculatedGoals.calories,
             protein: Number(goalsData.protein) || calculatedGoals.protein,
@@ -215,8 +218,8 @@ const Index = () => {
             fats: Number(goalsData.fats) || calculatedGoals.fats,
           });
         } else {
-          console.log('No custom goals found, using calculated goals');
-          // Save calculated goals as default
+          console.log('No custom goals found, saving calculated goals to database');
+          // Save calculated goals as default to database
           const { error: insertError } = await supabase
             .from('daily_goals')
             .insert({
@@ -229,6 +232,8 @@ const Index = () => {
 
           if (insertError) {
             console.error('Error inserting default goals:', insertError);
+          } else {
+            console.log('Successfully saved calculated goals to database');
           }
         }
       }
