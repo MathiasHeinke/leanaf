@@ -41,7 +41,9 @@ import {
   StopCircle,
   ImagePlus,
   Edit2,
-  Trash2
+  Trash2,
+  TrendingUp,
+  TrendingDown
 } from "lucide-react";
 
 interface MealData {
@@ -70,6 +72,7 @@ interface ProfileData {
   activity_level: string;
   goal: string;
   target_weight: number;
+  target_date?: string;
 }
 
 const Index = () => {
@@ -109,7 +112,7 @@ const Index = () => {
   }, [user]);
 
   const calculateDailyGoals = (profile: ProfileData): DailyGoal => {
-    const { weight, height, age, gender, activity_level, goal } = profile;
+    const { weight, height, age, gender, activity_level, goal, target_weight, target_date } = profile;
 
     // BMR calculation using Mifflin-St Jeor equation
     let bmr;
@@ -130,12 +133,38 @@ const Index = () => {
 
     const tdee = bmr * (activityFactors[activity_level as keyof typeof activityFactors] || 1.55);
 
-    // Goal adjustment - apply deficit/surplus
+    // Calculate based on target weight and target date if available
     let calories = tdee;
-    if (goal === 'lose') {
-      calories = tdee - 500; // 500 calorie deficit for weight loss
-    } else if (goal === 'gain') {
-      calories = tdee + 300; // 300 calorie surplus for weight gain
+    
+    if (target_date && target_weight && goal !== 'maintain') {
+      const today = new Date();
+      const targetDate = new Date(target_date);
+      const daysToTarget = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysToTarget > 0) {
+        const weightDifference = target_weight - weight; // negative for weight loss, positive for gain
+        const totalCaloriesNeeded = weightDifference * 7700; // 7700 kcal per kg
+        const dailyCalorieAdjustment = totalCaloriesNeeded / daysToTarget;
+        
+        calories = tdee + dailyCalorieAdjustment;
+        
+        // Safety limits: don't go below 1200 kcal or above 4000 kcal
+        calories = Math.max(1200, Math.min(4000, calories));
+      } else {
+        // Fallback to standard calculation if target date is in the past
+        if (goal === 'lose') {
+          calories = tdee - 500;
+        } else if (goal === 'gain') {
+          calories = tdee + 300;
+        }
+      }
+    } else {
+      // Standard calculation without target date
+      if (goal === 'lose') {
+        calories = tdee - 500;
+      } else if (goal === 'gain') {
+        calories = tdee + 300;
+      }
     }
 
     // Macro calculations (default ratios)
@@ -185,63 +214,18 @@ const Index = () => {
           gender: profileData.gender || 'male',
           activity_level: profileData.activity_level || 'moderate',
           goal: profileData.goal || 'maintain',
-          target_weight: Number(profileData.target_weight) || Number(profileData.weight) || 70
+          target_weight: Number(profileData.target_weight) || Number(profileData.weight) || 70,
+          target_date: profileData.target_date
         };
 
         setProfileData(profile);
 
-        // Calculate daily goals based on profile
+        // Calculate daily goals based on profile with target date consideration
         const calculatedGoals = calculateDailyGoals(profile);
-        console.log('Calculated goals:', calculatedGoals);
+        console.log('Calculated goals with target date:', calculatedGoals);
         
-        // Set the calculated goals immediately - this fixes the display issue
+        // Set the calculated goals immediately
         setDailyGoal(calculatedGoals);
-
-        // Try to check/save goals in database, but don't let errors affect the UI
-        try {
-          const { data: goalsData, error: goalsError } = await supabase
-            .from('daily_goals')
-            .select('*')
-            .eq('user_id', user?.id)
-            .maybeSingle();
-
-          if (goalsError && goalsError.code !== 'PGRST116') {
-            console.error('Goals error:', goalsError);
-          }
-
-          if (goalsData && goalsData.calories) {
-            console.log('Custom goals found, using database values:', goalsData);
-            // Use custom goals from database if they exist and have calorie data
-            setDailyGoal({
-              calories: Number(goalsData.calories),
-              protein: Number(goalsData.protein) || 150,
-              carbs: Number(goalsData.carbs) || 250,
-              fats: Number(goalsData.fats) || 65,
-            });
-          } else {
-            console.log('No custom goals found, saving calculated goals to database');
-            // Try to save calculated goals as default to database
-            const { error: insertError } = await supabase
-              .from('daily_goals')
-              .insert({
-                user_id: user?.id,
-                calories: calculatedGoals.calories,
-                protein: calculatedGoals.protein,
-                carbs: calculatedGoals.carbs,
-                fats: calculatedGoals.fats,
-              });
-
-            if (insertError) {
-              console.error('Error inserting default goals:', insertError);
-              // Don't throw here - we already have the goals set in the UI
-            } else {
-              console.log('Successfully saved calculated goals to database');
-            }
-          }
-        } catch (dbError) {
-          console.error('Database error, but continuing with calculated goals:', dbError);
-          // Continue with the calculated goals that are already set
-        }
       }
 
       // Load today's meals
@@ -327,6 +311,14 @@ const Index = () => {
   );
 
   const calorieProgress = (dailyTotals.calories / dailyGoal.calories) * 100;
+  const proteinProgress = (dailyTotals.protein / dailyGoal.protein) * 100;
+  const carbsProgress = (dailyTotals.carbs / dailyGoal.carbs) * 100;
+  const fatsProgress = (dailyTotals.fats / dailyGoal.fats) * 100;
+
+  const remainingCalories = dailyGoal.calories - dailyTotals.calories;
+  const remainingProtein = dailyGoal.protein - dailyTotals.protein;
+  const remainingCarbs = dailyGoal.carbs - dailyTotals.carbs;
+  const remainingFats = dailyGoal.fats - dailyTotals.fats;
 
   const handleSubmitMeal = async () => {
     if (!inputText.trim()) {
@@ -705,12 +697,12 @@ const Index = () => {
           </Button>
         </div>
 
-        {/* Daily Dashboard */}
+        {/* Enhanced Daily Dashboard */}
         <Card className="p-6 mb-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
-              <span className="font-semibold">{t('app.dailyProgress')}</span>
+              <span className="font-semibold">Täglicher Fortschritt</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
@@ -718,39 +710,72 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Calorie Progress */}
+          {/* Calorie Progress with enhanced visualization */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">{t('app.calories')}</span>
-              <span className="text-sm text-muted-foreground">
-                {dailyTotals.calories}/{dailyGoal.calories} kcal
-              </span>
+              <span className="text-sm font-medium">Kalorien</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {dailyTotals.calories}/{dailyGoal.calories} kcal
+                </span>
+                {remainingCalories > 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+              </div>
             </div>
-            <Progress value={calorieProgress} className="h-3 mb-2" />
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Progress value={Math.min(calorieProgress, 100)} className="h-3 mb-2" />
+            <div className="flex items-center gap-1 text-xs">
               <Flame className="h-3 w-3" />
-              {dailyGoal.calories - dailyTotals.calories > 0 
-                ? `${dailyGoal.calories - dailyTotals.calories} kcal remaining`
-                : `${dailyTotals.calories - dailyGoal.calories} kcal over goal`
-              }
+              <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
+                {remainingCalories > 0 
+                  ? `${remainingCalories} kcal verbleibend`
+                  : `${Math.abs(remainingCalories)} kcal über dem Ziel`
+                }
+              </span>
             </div>
           </div>
 
-          {/* Macro Overview */}
+          {/* Enhanced Macro Overview with progress */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-3 rounded-xl bg-protein-light border border-protein/20">
-              <div className="text-xs text-protein font-medium mb-1">{t('app.protein')}</div>
-              <div className="font-bold text-protein">{dailyTotals.protein}g</div>
+              <div className="text-xs text-protein font-medium mb-1">Protein</div>
+              <div className="font-bold text-protein mb-2">{dailyTotals.protein}g</div>
+              <Progress value={Math.min(proteinProgress, 100)} className="h-1 mb-1" />
+              <div className="text-xs text-protein/70">
+                {remainingProtein > 0 ? `+${remainingProtein}g` : `${Math.abs(remainingProtein)}g über`}
+              </div>
             </div>
             <div className="text-center p-3 rounded-xl bg-carbs-light border border-carbs/20">
-              <div className="text-xs text-carbs font-medium mb-1">{t('app.carbs')}</div>
-              <div className="font-bold text-carbs">{dailyTotals.carbs}g</div>
+              <div className="text-xs text-carbs font-medium mb-1">Kohlenhydrate</div>
+              <div className="font-bold text-carbs mb-2">{dailyTotals.carbs}g</div>
+              <Progress value={Math.min(carbsProgress, 100)} className="h-1 mb-1" />
+              <div className="text-xs text-carbs/70">
+                {remainingCarbs > 0 ? `+${remainingCarbs}g` : `${Math.abs(remainingCarbs)}g über`}
+              </div>
             </div>
             <div className="text-center p-3 rounded-xl bg-fats-light border border-fats/20">
-              <div className="text-xs text-fats font-medium mb-1">{t('app.fats')}</div>
-              <div className="font-bold text-fats">{dailyTotals.fats}g</div>
+              <div className="text-xs text-fats font-medium mb-1">Fette</div>
+              <div className="font-bold text-fats mb-2">{dailyTotals.fats}g</div>
+              <Progress value={Math.min(fatsProgress, 100)} className="h-1 mb-1" />
+              <div className="text-xs text-fats/70">
+                {remainingFats > 0 ? `+${remainingFats}g` : `${Math.abs(remainingFats)}g über`}
+              </div>
             </div>
           </div>
+
+          {/* Goal information */}
+          {profileData?.target_date && (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Ziel: {profileData.target_weight}kg</span>
+                <span className="text-muted-foreground">
+                  bis {new Date(profileData.target_date).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* ChatGPT-style Input */}
@@ -852,7 +877,7 @@ const Index = () => {
         <div className="pb-24">
           {dailyMeals.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
+              <h3 className="text-lg font-semibold">Heutige Mahlzeiten</h3>
               
               {dailyMeals.map((meal) => (
                 <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">
@@ -1008,9 +1033,9 @@ const Index = () => {
           {dailyMeals.length === 0 && (
             <Card className="p-8 text-center border-dashed border-2 border-muted">
               <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="font-semibold mb-2">{t('app.noMeals')}</h3>
+              <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
               <p className="text-muted-foreground text-sm">
-                {t('app.addMeal')}
+                Füge deine erste Mahlzeit hinzu
               </p>
             </Card>
           )}
