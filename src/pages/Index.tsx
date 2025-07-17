@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,12 @@ import {
   Star,
   Sparkles
 } from "lucide-react";
+
+interface WeightEntry {
+  id: string;
+  weight: number;
+  date: string;
+}
 
 interface MealData {
   id: string;
@@ -191,14 +198,112 @@ const Index = () => {
     };
   };
 
+  // Load weight history
+  const loadWeightHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      if (data) {
+        setWeightHistory(data.map(entry => ({
+          id: entry.id,
+          weight: Number(entry.weight),
+          date: entry.date
+        })));
+      }
+    } catch (error: any) {
+      console.error('Error loading weight history:', error);
+    }
+  };
+
+  // Add weight entry
+  const handleAddWeight = async () => {
+    if (!user || !newWeight) return;
+
+    try {
+      const { error } = await supabase
+        .from('weight_history')
+        .insert({
+          user_id: user.id,
+          weight: parseFloat(newWeight),
+          date: new Date().toISOString().split('T')[0]
+        });
+
+      if (error) throw error;
+
+      // Update current weight in profile
+      await supabase
+        .from('profiles')
+        .update({ weight: parseFloat(newWeight) })
+        .eq('user_id', user.id);
+
+      setNewWeight('');
+      toast.success('Gewicht erfolgreich hinzugefügt!');
+      loadWeightHistory();
+      
+      // Refresh BMI progress
+      const newBMIProgress = await calculateBMIProgress();
+      setBMIProgress(newBMIProgress);
+    } catch (error: any) {
+      console.error('Error adding weight:', error);
+      toast.error('Fehler beim Hinzufügen des Gewichts');
+    }
+  };
+
+  // Delete weight entry
+  const handleDeleteWeight = async (entryId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('weight_history')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Gewichtseintrag gelöscht!');
+      loadWeightHistory();
+      
+      // Refresh BMI progress
+      const newBMIProgress = await calculateBMIProgress();
+      setBMIProgress(newBMIProgress);
+    } catch (error: any) {
+      console.error('Error deleting weight entry:', error);
+      toast.error('Fehler beim Löschen des Gewichtseintrags');
+    }
+  };
+
+  // Get weight trend
+  const getWeightTrend = () => {
+    if (weightHistory.length < 2) return null;
+    const latest = weightHistory[0].weight;
+    const previous = weightHistory[1].weight;
+    const diff = latest - previous;
+    
+    if (Math.abs(diff) < 0.1) return { icon: Target, color: 'text-gray-500', text: 'Stable' };
+    if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg` };
+    return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg` };
+  };
+
   const [showWeightInput, setShowWeightInput] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [bmiProgress, setBMIProgress] = useState<any>(null);
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [newWeight, setNewWeight] = useState('');
 
   // Load user data
   useEffect(() => {
     if (user) {
       loadUserData();
+      loadWeightHistory();
     }
   }, [user]);
 
@@ -1082,6 +1187,75 @@ const Index = () => {
               ))}
             </div>
           )}
+
+          {/* Weight History Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Gewichtsverlauf
+{(() => {
+                  const trend = getWeightTrend();
+                  if (!trend) return null;
+                  const IconComponent = trend.icon;
+                  return (
+                    <div className={`flex items-center gap-1 ${trend.color}`}>
+                      <IconComponent className="h-4 w-4" />
+                      <span className="text-sm">{trend.text}</span>
+                    </div>
+                  );
+                })()}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddWeight();
+                    }
+                  }}
+                  placeholder="Aktuelles Gewicht"
+                  className="flex-1"
+                />
+                <Button onClick={handleAddWeight} disabled={!newWeight}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Gewicht hinzufügen
+                </Button>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                {weightHistory.map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(entry.date).toLocaleDateString('de-DE')}
+                      </span>
+                      <span className="font-medium">{entry.weight} kg</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteWeight(entry.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {weightHistory.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine Gewichtseinträge vorhanden
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* BMI Progress Card */}
           {bmiProgress && (

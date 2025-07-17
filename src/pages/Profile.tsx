@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Target, Trash2, Save, Check } from 'lucide-react';
+import { ArrowLeft, Target, Save, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,11 +18,6 @@ interface ProfilePageProps {
   onClose?: () => void;
 }
 
-interface WeightEntry {
-  id: string;
-  weight: number;
-  date: string;
-}
 
 const Profile = ({ onClose }: ProfilePageProps) => {
   const [displayName, setDisplayName] = useState('');
@@ -36,8 +31,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [goal, setGoal] = useState('maintain');
   const [targetWeight, setTargetWeight] = useState('');
   const [targetDate, setTargetDate] = useState('');
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
-  const [newWeight, setNewWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [autoSaving, setAutoSaving] = useState(false);
@@ -98,7 +91,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   useEffect(() => {
     if (user) {
       loadProfile();
-      loadWeightHistory();
       loadDailyGoals();
     }
   }, [user]);
@@ -142,28 +134,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   };
 
-  const loadWeightHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('weight_history')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('date', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-
-      if (data) {
-        setWeightHistory(data.map(entry => ({
-          id: entry.id,
-          weight: Number(entry.weight),
-          date: entry.date
-        })));
-      }
-    } catch (error: any) {
-      console.error('Error loading weight history:', error);
-    }
-  };
 
   const loadDailyGoals = async () => {
     try {
@@ -345,55 +315,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   };
 
-  const handleAddWeight = async () => {
-    if (!user || !newWeight) return;
-
-    try {
-      const { error } = await supabase
-        .from('weight_history')
-        .insert({
-          user_id: user.id,
-          weight: parseFloat(newWeight),
-          date: new Date().toISOString().split('T')[0]
-        });
-
-      if (error) throw error;
-
-      // Update current weight in profile
-      await supabase
-        .from('profiles')
-        .update({ weight: parseFloat(newWeight) })
-        .eq('user_id', user.id);
-
-      setWeight(newWeight);
-      setNewWeight('');
-      toast.success('Weight added successfully!');
-      loadWeightHistory();
-    } catch (error: any) {
-      console.error('Error adding weight:', error);
-      toast.error('Error adding weight');
-    }
-  };
-
-  const handleDeleteWeight = async (entryId: string) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('weight_history')
-        .delete()
-        .eq('id', entryId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast.success('Gewichtseintrag gelöscht!');
-      loadWeightHistory();
-    } catch (error: any) {
-      console.error('Error deleting weight entry:', error);
-      toast.error('Fehler beim Löschen des Gewichtseintrags');
-    }
-  };
 
   const calculateRequiredCalorieDeficit = () => {
     if (!weight || !targetWeight || !targetDate) return null;
@@ -463,16 +384,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     return { text: 'Obese', color: 'text-red-500' };
   };
 
-  const getWeightTrend = () => {
-    if (weightHistory.length < 2) return null;
-    const latest = weightHistory[0].weight;
-    const previous = weightHistory[1].weight;
-    const diff = latest - previous;
-    
-    if (Math.abs(diff) < 0.1) return { icon: Minus, color: 'text-gray-500', text: 'Stable' };
-    if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg` };
-    return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg` };
-  };
 
   if (initialLoading) {
     return (
@@ -487,7 +398,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   const bmi = calculateBMI();
   const bmiCategory = bmi ? getBMICategory(bmi) : null;
-  const weightTrend = getWeightTrend();
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -833,69 +743,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </CardContent>
           </Card>
 
-          {/* Weight History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                {t('profile.weightHistory')}
-                {weightTrend && (
-                  <div className={`flex items-center gap-1 ${weightTrend.color}`}>
-                    <weightTrend.icon className="h-4 w-4" />
-                    <span className="text-sm">{weightTrend.text}</span>
-                  </div>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={newWeight}
-                  onChange={(e) => setNewWeight(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddWeight();
-                    }
-                  }}
-                  placeholder={t('profile.currentWeight')}
-                  className="flex-1"
-                />
-                <Button onClick={handleAddWeight} disabled={!newWeight}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('profile.addWeight')}
-                </Button>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                {weightHistory.map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(entry.date).toLocaleDateString('de-DE')}
-                      </span>
-                      <span className="font-medium">{entry.weight} kg</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteWeight(entry.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                {weightHistory.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Noch keine Gewichtseinträge vorhanden
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Manual Save Button - now optional */}
            <Button onClick={handleSave} disabled={loading} className="w-full" variant="outline">
