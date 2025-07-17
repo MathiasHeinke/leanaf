@@ -130,7 +130,7 @@ const Index = () => {
 
     const tdee = bmr * (activityFactors[activity_level as keyof typeof activityFactors] || 1.55);
 
-    // Goal adjustment - this is where the issue was
+    // Goal adjustment - apply deficit/surplus
     let calories = tdee;
     if (goal === 'lose') {
       calories = tdee - 500; // 500 calorie deficit for weight loss
@@ -190,53 +190,57 @@ const Index = () => {
 
         setProfileData(profile);
 
-        // Now check if we have custom daily goals stored in the database
-        const { data: goalsData, error: goalsError } = await supabase
-          .from('daily_goals')
-          .select('*')
-          .eq('user_id', user?.id)
-          .maybeSingle();
+        // Calculate daily goals based on profile
+        const calculatedGoals = calculateDailyGoals(profile);
+        console.log('Calculated goals:', calculatedGoals);
+        
+        // Set the calculated goals immediately - this fixes the display issue
+        setDailyGoal(calculatedGoals);
 
-        if (goalsError && goalsError.code !== 'PGRST116') {
-          console.error('Goals error:', goalsError);
-        }
-
-        if (goalsData && goalsData.calories) {
-          console.log('Custom goals found, using database values:', goalsData);
-          // Use custom goals from database if they exist and have calorie data
-          setDailyGoal({
-            calories: Number(goalsData.calories),
-            protein: Number(goalsData.protein) || 150,
-            carbs: Number(goalsData.carbs) || 250,
-            fats: Number(goalsData.fats) || 65,
-          });
-        } else {
-          console.log('No custom goals found, calculating and saving goals to database');
-          // Calculate daily goals based on profile
-          const calculatedGoals = calculateDailyGoals(profile);
-          console.log('Calculated goals:', calculatedGoals);
-          
-          // Set the calculated goals immediately
-          setDailyGoal(calculatedGoals);
-
-          // Save calculated goals as default to database
-          const { error: insertError } = await supabase
+        // Try to check/save goals in database, but don't let errors affect the UI
+        try {
+          const { data: goalsData, error: goalsError } = await supabase
             .from('daily_goals')
-            .upsert({
-              user_id: user?.id,
-              calories: calculatedGoals.calories,
-              protein: calculatedGoals.protein,
-              carbs: calculatedGoals.carbs,
-              fats: calculatedGoals.fats,
-            }, {
-              onConflict: 'user_id'
-            });
+            .select('*')
+            .eq('user_id', user?.id)
+            .maybeSingle();
 
-          if (insertError) {
-            console.error('Error upserting default goals:', insertError);
-          } else {
-            console.log('Successfully saved calculated goals to database');
+          if (goalsError && goalsError.code !== 'PGRST116') {
+            console.error('Goals error:', goalsError);
           }
+
+          if (goalsData && goalsData.calories) {
+            console.log('Custom goals found, using database values:', goalsData);
+            // Use custom goals from database if they exist and have calorie data
+            setDailyGoal({
+              calories: Number(goalsData.calories),
+              protein: Number(goalsData.protein) || 150,
+              carbs: Number(goalsData.carbs) || 250,
+              fats: Number(goalsData.fats) || 65,
+            });
+          } else {
+            console.log('No custom goals found, saving calculated goals to database');
+            // Try to save calculated goals as default to database
+            const { error: insertError } = await supabase
+              .from('daily_goals')
+              .insert({
+                user_id: user?.id,
+                calories: calculatedGoals.calories,
+                protein: calculatedGoals.protein,
+                carbs: calculatedGoals.carbs,
+                fats: calculatedGoals.fats,
+              });
+
+            if (insertError) {
+              console.error('Error inserting default goals:', insertError);
+              // Don't throw here - we already have the goals set in the UI
+            } else {
+              console.log('Successfully saved calculated goals to database');
+            }
+          }
+        } catch (dbError) {
+          console.error('Database error, but continuing with calculated goals:', dbError);
+          // Continue with the calculated goals that are already set
         }
       }
 
