@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					glow: 'hsl(var(--primary-glow))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -51,6 +52,18 @@ export default {
 				card: {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
+				},
+				protein: {
+					DEFAULT: 'hsl(var(--protein))',
+					light: 'hsl(var(--protein-light))'
+				},
+				carbs: {
+					DEFAULT: 'hsl(var(--carbs))',
+					light: 'hsl(var(--carbs-light))'
+				},
+				fats: {
+					DEFAULT: 'hsl(var(--fats))',
+					light: 'hsl(var(--fats-light))'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
