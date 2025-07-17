@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface Quote {
   id: string;
@@ -16,10 +17,11 @@ interface RandomQuoteProps {
 export const RandomQuote = ({ userGender, fallbackText = "Willkommen bei KaloTracker", refreshTrigger }: RandomQuoteProps) => {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
+  const { language } = useTranslation();
 
   useEffect(() => {
     loadRandomQuote();
-  }, [userGender, refreshTrigger]);
+  }, [userGender, refreshTrigger, language]);
 
   const loadRandomQuote = async () => {
     try {
@@ -35,10 +37,11 @@ export const RandomQuote = ({ userGender, fallbackText = "Willkommen bei KaloTra
       // Select the appropriate table based on gender
       const tableName = userGender === 'male' ? 'men_quotes' : 'women_quotes';
 
-      // Get random quote from database
+      // Get random quote from database filtered by language
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
+        .eq('language', language)
         .order('created_at', { ascending: false });
 
       if (error) {
