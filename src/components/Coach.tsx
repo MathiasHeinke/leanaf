@@ -90,10 +90,10 @@ const Coach = ({ onClose }: CoachProps) => {
       if (error) throw error;
       
       setDailyGoals({
-        calories: goalsData.calories || 2000,
-        protein: goalsData.protein || 150,
-        carbs: goalsData.carbs || 250,
-        fats: goalsData.fats || 65,
+        calories: goalsData.calories || 1323,
+        protein: goalsData.protein || 116,
+        carbs: goalsData.carbs || 99,
+        fats: goalsData.fats || 51,
         bmr: goalsData.bmr,
         tdee: goalsData.tdee
       });
@@ -257,7 +257,7 @@ const Coach = ({ onClose }: CoachProps) => {
 
   // Generate coaching bot message
   const generateBotMessage = () => {
-    const calorieGoal = dailyGoals?.calories || 2000;
+    const calorieGoal = dailyGoals?.calories || 1323;
     const calorieAverage = averages.calories;
     const progress = calorieAverage > 0 ? ((calorieAverage / calorieGoal) * 100).toFixed(0) : 0;
     
@@ -310,7 +310,7 @@ const Coach = ({ onClose }: CoachProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="p-4 bg-accent/10 rounded-lg">
               <div className="text-sm font-medium text-muted-foreground">Tagesziel</div>
-              <div className="text-xl font-bold text-primary">{dailyGoals?.calories || 2000} kcal</div>
+              <div className="text-xl font-bold text-primary">{dailyGoals?.calories || 1323} kcal</div>
             </div>
             <div className="p-4 bg-accent/10 rounded-lg">
               <div className="text-sm font-medium text-muted-foreground">Ø Kalorien</div>
@@ -322,7 +322,7 @@ const Coach = ({ onClose }: CoachProps) => {
             <div className="p-4 bg-accent/10 rounded-lg">
               <div className="text-sm font-medium text-muted-foreground">Zielerreichung</div>
               <div className="text-xl font-bold text-green-600">
-                {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 2000)) * 100) : 0}%
+                {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
               </div>
             </div>
             <div className="p-4 bg-accent/10 rounded-lg">
@@ -336,17 +336,17 @@ const Coach = ({ onClose }: CoachProps) => {
             <div className="text-center p-3 bg-protein/10 rounded-lg">
               <div className="text-sm font-medium text-muted-foreground">Protein Ø</div>
               <div className="text-lg font-bold text-protein">{averages.protein}g</div>
-              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.protein || 150}g</div>
+              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.protein || 116}g</div>
             </div>
             <div className="text-center p-3 bg-carbs/10 rounded-lg">
               <div className="text-sm font-medium text-muted-foreground">Kohlenhydrate Ø</div>
               <div className="text-lg font-bold text-carbs">{averages.carbs}g</div>
-              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.carbs || 250}g</div>
+              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.carbs || 99}g</div>
             </div>
             <div className="text-center p-3 bg-fats/10 rounded-lg">
               <div className="text-sm font-medium text-muted-foreground">Fette Ø</div>
               <div className="text-lg font-bold text-fats">{averages.fats}g</div>
-              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.fats || 65}g</div>
+              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.fats || 51}g</div>
             </div>
           </div>
         </CardContent>
