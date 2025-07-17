@@ -1194,7 +1194,7 @@ const Index = () => {
           {profileData && (
             <BMIProgress 
               startWeight={profileData.start_weight || profileData.weight}
-              currentWeight={profileData.weight}
+              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
               targetWeight={profileData.target_weight}
               height={profileData.height}
             />
