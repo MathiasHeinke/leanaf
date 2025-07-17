@@ -62,11 +62,22 @@ interface DailyGoal {
   fats: number;
 }
 
+interface ProfileData {
+  weight: number;
+  height: number;
+  age: number;
+  gender: string;
+  activity_level: string;
+  goal: string;
+  target_weight: number;
+}
+
 const Index = () => {
   const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [currentView, setCurrentView] = useState<'main' | 'coach' | 'history' | 'profile' | 'subscription'>('main');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -97,30 +108,129 @@ const Index = () => {
     }
   }, [user]);
 
+  const calculateDailyGoals = (profile: ProfileData): DailyGoal => {
+    const { weight, height, age, gender, activity_level, goal } = profile;
+
+    // BMR calculation using Mifflin-St Jeor equation
+    let bmr;
+    if (gender === 'male') {
+      bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+    } else {
+      bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+    }
+
+    // Activity factor
+    const activityFactors = {
+      sedentary: 1.2,
+      light: 1.375,
+      moderate: 1.55,
+      active: 1.725,
+      very_active: 1.9
+    };
+
+    const tdee = bmr * (activityFactors[activity_level as keyof typeof activityFactors] || 1.55);
+
+    // Goal adjustment
+    let calories = tdee;
+    if (goal === 'lose') {
+      calories = tdee - 500; // 500 calorie deficit for weight loss
+    } else if (goal === 'gain') {
+      calories = tdee + 300; // 300 calorie surplus for weight gain
+    }
+
+    // Macro calculations (default ratios)
+    const proteinRatio = 0.30; // 30% protein
+    const carbsRatio = 0.40;   // 40% carbs
+    const fatsRatio = 0.30;    // 30% fats
+
+    const protein = Math.round((calories * proteinRatio) / 4); // 4 cal per gram
+    const carbs = Math.round((calories * carbsRatio) / 4);     // 4 cal per gram
+    const fats = Math.round((calories * fatsRatio) / 9);       // 9 cal per gram
+
+    return {
+      calories: Math.round(calories),
+      protein,
+      carbs,
+      fats
+    };
+  };
+
   const loadUserData = async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) {
         setIsRefreshing(true);
       }
       
-      // Load daily goals
-      const { data: goalsData, error: goalsError } = await supabase
-        .from('daily_goals')
+      console.log('Loading user data for user:', user?.id);
+      
+      // Load profile data first
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
         .select('*')
         .eq('user_id', user?.id)
         .single();
 
-      if (goalsError && goalsError.code !== 'PGRST116') {
-        throw goalsError;
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        throw profileError;
       }
 
-      if (goalsData) {
-        setDailyGoal({
-          calories: goalsData.calories,
-          protein: goalsData.protein,
-          carbs: goalsData.carbs,
-          fats: goalsData.fats,
-        });
+      console.log('Profile data loaded:', profileData);
+
+      if (profileData) {
+        const profile: ProfileData = {
+          weight: Number(profileData.weight) || 70,
+          height: Number(profileData.height) || 170,
+          age: Number(profileData.age) || 30,
+          gender: profileData.gender || 'male',
+          activity_level: profileData.activity_level || 'moderate',
+          goal: profileData.goal || 'maintain',
+          target_weight: Number(profileData.target_weight) || Number(profileData.weight) || 70
+        };
+
+        setProfileData(profile);
+
+        // Calculate daily goals based on profile
+        const calculatedGoals = calculateDailyGoals(profile);
+        console.log('Calculated goals:', calculatedGoals);
+        setDailyGoal(calculatedGoals);
+
+        // Try to load custom daily goals if they exist, otherwise use calculated ones
+        const { data: goalsData, error: goalsError } = await supabase
+          .from('daily_goals')
+          .select('*')
+          .eq('user_id', user?.id)
+          .maybeSingle();
+
+        if (goalsError && goalsError.code !== 'PGRST116') {
+          console.error('Goals error:', goalsError);
+        }
+
+        if (goalsData) {
+          console.log('Custom goals found:', goalsData);
+          setDailyGoal({
+            calories: Number(goalsData.calories) || calculatedGoals.calories,
+            protein: Number(goalsData.protein) || calculatedGoals.protein,
+            carbs: Number(goalsData.carbs) || calculatedGoals.carbs,
+            fats: Number(goalsData.fats) || calculatedGoals.fats,
+          });
+        } else {
+          console.log('No custom goals found, using calculated goals');
+          // Save calculated goals as default
+          const { error: insertError } = await supabase
+            .from('daily_goals')
+            .insert({
+              user_id: user?.id,
+              calories: calculatedGoals.calories,
+              protein: calculatedGoals.protein,
+              carbs: calculatedGoals.carbs,
+              fats: calculatedGoals.fats,
+            });
+
+          if (insertError) {
+            console.error('Error inserting default goals:', insertError);
+          }
+        }
       }
 
       // Load today's meals
@@ -133,6 +243,7 @@ const Index = () => {
         .order('created_at', { ascending: false });
 
       if (mealsError) {
+        console.error('Meals error:', mealsError);
         throw mealsError;
       }
 
@@ -148,6 +259,7 @@ const Index = () => {
           meal_type: meal.meal_type,
         }));
         setDailyMeals(formattedMeals);
+        console.log('Meals loaded:', formattedMeals.length);
       }
       
       if (showRefreshIndicator) {
@@ -451,7 +563,10 @@ const Index = () => {
 
   if (currentView === 'profile') {
     return (
-      <Profile onClose={() => setCurrentView('main')} />
+      <Profile onClose={() => {
+        setCurrentView('main');
+        loadUserData(true); // Refresh data when returning from profile
+      }} />
     );
   }
 
