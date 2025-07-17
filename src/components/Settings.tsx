@@ -6,9 +6,16 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Settings as SettingsIcon, Target, Save } from "lucide-react";
 
+interface DailyGoal {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
 interface SettingsProps {
-  dailyGoal: number;
-  onGoalChange: (goal: number) => void;
+  dailyGoal: DailyGoal;
+  onGoalChange: (goal: DailyGoal) => void;
   onClose: () => void;
 }
 

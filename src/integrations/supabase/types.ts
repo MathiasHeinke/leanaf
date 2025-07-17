@@ -14,7 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_goals: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          created_at: string
+          fats: number | null
+          id: string
+          protein: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          protein?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          protein?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      meals: {
+        Row: {
+          calories: number | null
+          carbs: number | null
+          created_at: string
+          fats: number | null
+          id: string
+          meal_type: string | null
+          protein: number | null
+          text: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          meal_type?: string | null
+          protein?: number | null
+          text: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          carbs?: number | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          meal_type?: string | null
+          protein?: number | null
+          text?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          display_name: string | null
+          email: string | null
+          id: string
+          preferred_language: string | null
+          subscription_id: string | null
+          subscription_status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          preferred_language?: string | null
+          subscription_id?: string | null
+          subscription_status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          preferred_language?: string | null
+          subscription_id?: string | null
+          subscription_status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -22,9 +22,16 @@ import {
   ArrowLeft
 } from "lucide-react";
 
+interface DailyGoal {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
 interface HistoryProps {
   onClose: () => void;
-  dailyGoal: number;
+  dailyGoal: DailyGoal;
 }
 
 // Mock-Daten für die letzten 30 Tage

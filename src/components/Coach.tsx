@@ -13,6 +13,13 @@ import {
   Award
 } from "lucide-react";
 
+interface DailyGoal {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
+
 interface CoachProps {
   onClose: () => void;
   dailyTotals: {
@@ -21,7 +28,7 @@ interface CoachProps {
     carbs: number;
     fats: number;
   };
-  dailyGoal: number;
+  dailyGoal: DailyGoal;
   mealsCount: number;
 }
 
