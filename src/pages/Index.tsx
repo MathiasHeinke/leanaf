@@ -707,7 +707,7 @@ const Index = () => {
           {/* Calorie Progress with enhanced visualization */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Kalorien</span>
+              <span className="text-sm font-medium">{t('app.calories')}</span>
               <div className="flex items-center gap-2">
                 <span className={`text-sm ${caloriesExceeded ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
                   {dailyTotals.calories}/{dailyGoal.calories} kcal
