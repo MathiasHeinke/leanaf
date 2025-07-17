@@ -97,6 +97,7 @@ const Index = () => {
   const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
+  const [allMeals, setAllMeals] = useState<MealData[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [currentView, setCurrentView] = useState<'main' | 'coach' | 'history' | 'profile' | 'subscription'>('main');
@@ -117,6 +118,9 @@ const Index = () => {
   const [bmiProgress, setBMIProgress] = useState<any>(null);
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState('');
+  const [selectedMealType, setSelectedMealType] = useState<string>('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -348,25 +352,22 @@ const Index = () => {
         }
       }
 
-      // Load meals from last 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const { data: mealsData, error: mealsError } = await supabase
+      // Load today's meals
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayMealsData, error: todayMealsError } = await supabase
         .from('meals')
         .select('*')
         .eq('user_id', user?.id)
-        .gte('created_at', sevenDaysAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(7);
+        .gte('created_at', today)
+        .order('created_at', { ascending: false });
 
-      if (mealsError) {
-        console.error('Meals error:', mealsError);
-        throw mealsError;
+      if (todayMealsError) {
+        console.error('Today meals error:', todayMealsError);
+        throw todayMealsError;
       }
 
-      if (mealsData) {
-        const formattedMeals = mealsData.map(meal => ({
+      if (todayMealsData) {
+        const formattedTodayMeals = todayMealsData.map(meal => ({
           id: meal.id,
           text: meal.text,
           calories: Number(meal.calories),
@@ -376,8 +377,38 @@ const Index = () => {
           timestamp: new Date(meal.created_at),
           meal_type: meal.meal_type,
         }));
-        setDailyMeals(formattedMeals);
-        console.log('Meals loaded:', formattedMeals.length);
+        setDailyMeals(formattedTodayMeals);
+      }
+
+      // Load meals from last 7 days for history section
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: allMealsData, error: allMealsError } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(7);
+
+      if (allMealsError) {
+        console.error('All meals error:', allMealsError);
+        throw allMealsError;
+      }
+
+      if (allMealsData) {
+        const formattedAllMeals = allMealsData.map(meal => ({
+          id: meal.id,
+          text: meal.text,
+          calories: Number(meal.calories),
+          protein: Number(meal.protein),
+          carbs: Number(meal.carbs),
+          fats: Number(meal.fats),
+          timestamp: new Date(meal.created_at),
+          meal_type: meal.meal_type,
+        }));
+        setAllMeals(formattedAllMeals);
       }
       
       if (showRefreshIndicator) {
@@ -406,6 +437,20 @@ const Index = () => {
   );
 
   const calorieProgress = (dailyTotals.calories / dailyGoal.calories) * 100;
+  const proteinProgress = (dailyTotals.protein / dailyGoal.protein) * 100;
+  const carbsProgress = (dailyTotals.carbs / dailyGoal.carbs) * 100;
+  const fatsProgress = (dailyTotals.fats / dailyGoal.fats) * 100;
+
+  const remainingCalories = dailyGoal.calories - dailyTotals.calories;
+  const remainingProtein = dailyGoal.protein - dailyTotals.protein;
+  const remainingCarbs = dailyGoal.carbs - dailyTotals.carbs;
+  const remainingFats = dailyGoal.fats - dailyTotals.fats;
+
+  // Check if any values are exceeded
+  const caloriesExceeded = dailyTotals.calories > dailyGoal.calories;
+  const proteinExceeded = dailyTotals.protein > dailyGoal.protein;
+  const carbsExceeded = dailyTotals.carbs > dailyGoal.carbs;
+  const fatsExceeded = dailyTotals.fats > dailyGoal.fats;
 
   // Get weight trend
   const getWeightTrend = () => {
@@ -417,6 +462,215 @@ const Index = () => {
     if (Math.abs(diff) < 0.1) return { icon: Target, color: 'text-gray-500', text: 'Stabil' };
     if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg` };
     return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg` };
+  };
+
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Start voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setAudioChunks(prev => [...prev, event.data]);
+        }
+      };
+      
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        await processVoiceInput(audioBlob);
+        setAudioChunks([]);
+      };
+      
+      setMediaRecorder(recorder);
+      recorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast.error('Fehler beim Starten der Aufnahme');
+    }
+  };
+
+  // Stop voice recording
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  };
+
+  // Process voice input
+  const processVoiceInput = async (audioBlob: Blob) => {
+    try {
+      setIsAnalyzing(true);
+      
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      formData.append('language', language);
+      
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+        body: formData,
+      });
+      
+      if (error) throw error;
+      
+      if (data.text) {
+        setInputText(data.text);
+        toast.success('Sprache erkannt!');
+      }
+    } catch (error: any) {
+      console.error('Error processing voice:', error);
+      toast.error('Fehler bei der Spracherkennung');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Analyze meal
+  const analyzeMeal = async (inputType: 'text' | 'image' | 'voice') => {
+    if (!inputText.trim() && !imageFile) return;
+    
+    try {
+      setIsAnalyzing(true);
+      
+      let analysisData;
+      
+      if (inputType === 'image' && imageFile) {
+        const base64 = await convertFileToBase64(imageFile);
+        analysisData = {
+          type: 'image',
+          content: base64,
+          text: inputText,
+          language: language,
+        };
+      } else {
+        analysisData = {
+          type: 'text',
+          content: inputText,
+          language: language,
+        };
+      }
+      
+      const { data, error } = await supabase.functions.invoke('analyze-meal', {
+        body: analysisData,
+      });
+      
+      if (error) throw error;
+      
+      if (data) {
+        const newMeal: MealData = {
+          id: Date.now().toString(),
+          text: inputText,
+          calories: data.calories || 0,
+          protein: data.protein || 0,
+          carbs: data.carbs || 0,
+          fats: data.fats || 0,
+          timestamp: new Date(),
+          meal_type: selectedMealType || 'other',
+        };
+        
+        // Save to database
+        const { error: insertError } = await supabase
+          .from('meals')
+          .insert({
+            user_id: user?.id,
+            text: newMeal.text,
+            calories: newMeal.calories,
+            protein: newMeal.protein,
+            carbs: newMeal.carbs,
+            fats: newMeal.fats,
+            meal_type: newMeal.meal_type,
+          });
+        
+        if (insertError) throw insertError;
+        
+        // Update local state
+        setDailyMeals(prev => [newMeal, ...prev]);
+        setInputText('');
+        setImageFile(null);
+        setImagePreview(null);
+        setSelectedMealType('');
+        
+        toast.success('Mahlzeit analysiert und gespeichert!');
+      }
+    } catch (error: any) {
+      console.error('Error analyzing meal:', error);
+      toast.error('Fehler bei der Analyse');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Convert file to base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Delete meal
+  const deleteMeal = async (mealId: string) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .delete()
+        .eq('id', mealId)
+        .eq('user_id', user?.id);
+      
+      if (error) throw error;
+      
+      setDailyMeals(prev => prev.filter(meal => meal.id !== mealId));
+      toast.success('Mahlzeit gelöscht!');
+    } catch (error: any) {
+      console.error('Error deleting meal:', error);
+      toast.error('Fehler beim Löschen');
+    }
+  };
+
+  // Handle pull to refresh
+  const handleManualRefresh = () => {
+    loadUserData(true);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartY(e.touches[0].clientY);
+    setIsPulling(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling) return;
+    
+    const currentY = e.touches[0].clientY;
+    const distance = currentY - startY;
+    
+    if (distance > 0 && window.scrollY === 0) {
+      setPullDistance(Math.min(distance, 100));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 50) {
+      handleManualRefresh();
+    }
+    setIsPulling(false);
+    setPullDistance(0);
   };
 
   // Render different views
@@ -448,9 +702,23 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-purple-900">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-purple-900"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Täglicher Fortschritt */}
+        {/* Pull to refresh indicator */}
+        {isPulling && (
+          <div className="flex justify-center mb-4">
+            <div className={`transition-transform ${pullDistance > 50 ? 'scale-110' : ''}`}>
+              <RefreshCw className={`h-6 w-6 ${pullDistance > 50 ? 'animate-spin' : ''}`} />
+            </div>
+          </div>
+        )}
+
+        {/* Daily Progress with Weight Input and BMI */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl font-bold">Täglicher Fortschritt</CardTitle>
@@ -518,8 +786,227 @@ const Index = () => {
                 </div>
               </div>
             )}
+
+            {/* Daily Nutrition Progress */}
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3">Heute's Fortschritt</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-primary">{dailyTotals.calories}</p>
+                  <p className="text-sm text-muted-foreground">von {dailyGoal.calories} kcal</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-protein">{dailyTotals.protein}g</p>
+                  <p className="text-sm text-muted-foreground">von {dailyGoal.protein}g Protein</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-carbs">{dailyTotals.carbs}g</p>
+                  <p className="text-sm text-muted-foreground">von {dailyGoal.carbs}g Kohlenhydrate</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-fats">{dailyTotals.fats}g</p>
+                  <p className="text-sm text-muted-foreground">von {dailyGoal.fats}g Fette</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Kalorien</span>
+                    <span className={caloriesExceeded ? 'text-red-600' : 'text-green-600'}>
+                      {caloriesExceeded ? '+' : ''}{remainingCalories} kcal
+                    </span>
+                  </div>
+                  <Progress value={Math.min(100, calorieProgress)} className="h-2" />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Protein</span>
+                    <span className={proteinExceeded ? 'text-red-600' : 'text-green-600'}>
+                      {proteinExceeded ? '+' : ''}{remainingProtein}g
+                    </span>
+                  </div>
+                  <Progress value={Math.min(100, proteinProgress)} className="h-2" />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Kohlenhydrate</span>
+                    <span className={carbsExceeded ? 'text-red-600' : 'text-green-600'}>
+                      {carbsExceeded ? '+' : ''}{remainingCarbs}g
+                    </span>
+                  </div>
+                  <Progress value={Math.min(100, carbsProgress)} className="h-2" />
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Fette</span>
+                    <span className={fatsExceeded ? 'text-red-600' : 'text-green-600'}>
+                      {fatsExceeded ? '+' : ''}{remainingFats}g
+                    </span>
+                  </div>
+                  <Progress value={Math.min(100, fatsProgress)} className="h-2" />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Meal Input */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Mahlzeit hinzufügen</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="meal-type">Mahlzeitentyp</Label>
+              <Select value={selectedMealType} onValueChange={setSelectedMealType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Wähle einen Mahlzeitentyp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="breakfast">Frühstück</SelectItem>
+                  <SelectItem value="lunch">Mittagessen</SelectItem>
+                  <SelectItem value="dinner">Abendessen</SelectItem>
+                  <SelectItem value="snack">Snack</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="meal-input">Beschreibung</Label>
+              <Textarea
+                id="meal-input"
+                placeholder="Beschreibe deine Mahlzeit..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+            
+            {imagePreview && (
+              <div className="relative">
+                <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded" />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={() => analyzeMeal('text')}
+                disabled={!inputText.trim() || isAnalyzing}
+                className="flex-1"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Analysiere...
+                  </>
+                ) : (
+                  <>
+                    <Type className="h-4 w-4 mr-2" />
+                    Hinzufügen
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={isRecording ? stopRecording : startRecording}
+                variant={isRecording ? "destructive" : "outline"}
+                disabled={isAnalyzing}
+              >
+                {isRecording ? (
+                  <StopCircle className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+              
+              <Button
+                onClick={() => document.getElementById('image-upload')?.click()}
+                variant="outline"
+                disabled={isAnalyzing}
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+              
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Today's Meals */}
+        {dailyMeals.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Heutige Mahlzeiten</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {dailyMeals.map((meal, index) => (
+                  <Card key={index} className="p-4 border-l-4 border-l-primary">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-primary/10">
+                          {meal.meal_type === 'breakfast' ? 'Frühstück' : 
+                           meal.meal_type === 'lunch' ? 'Mittagessen' : 
+                           meal.meal_type === 'dinner' ? 'Abendessen' : 'Snack'}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {meal.timestamp.toLocaleTimeString('de-DE', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                          {meal.calories} kcal
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMeal(meal.id)}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {meal.text}
+                    </p>
+                    
+                    <div className="flex justify-between text-xs">
+                      <span className="text-protein">P: {meal.protein}g</span>
+                      <span className="text-carbs">C: {meal.carbs}g</span>
+                      <span className="text-fats">F: {meal.fats}g</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Mahlzeiten der letzten 7 Tage */}
         <Card className="mb-6">
@@ -537,9 +1024,9 @@ const Index = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {dailyMeals.length > 0 ? (
+            {allMeals.length > 0 ? (
               <div className="space-y-3">
-                {dailyMeals.map((meal, index) => (
+                {allMeals.map((meal, index) => (
                   <Card key={index} className="p-4 border-l-4 border-l-primary">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
