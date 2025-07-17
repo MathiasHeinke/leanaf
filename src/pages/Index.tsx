@@ -616,24 +616,6 @@ const Index = () => {
         </div>
       )}
       
-      {/* Daily Progress */}
-      <Card className="mb-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-primary-glow to-primary"></div>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-green-400 to-green-600 p-2 rounded-full">
-                <Target className="h-5 w-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">{t('dashboard.dailyProgress')}</h2>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date().toLocaleDateString('de-DE')}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
         <Card className="p-6 mb-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
