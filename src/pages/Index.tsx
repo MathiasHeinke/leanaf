@@ -664,10 +664,6 @@ const Index = () => {
               </DropdownMenu>
             </div>
           </div>
-          <RandomQuote 
-            userGender={profileData?.gender} 
-            fallbackText={t('app.welcome')} 
-          />
         </div>
 
         {/* Navigation */}
@@ -811,23 +807,13 @@ const Index = () => {
             </div>
           )}
 
-          {/* Additional info from database */}
-          {(dailyGoal.bmr || dailyGoal.tdee) && (
-            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-              {dailyGoal.bmr && (
-                <div className="text-center p-2 bg-muted/30 rounded">
-                  <div className="text-muted-foreground">{t('ui.bmr')}</div>
-                  <div className="font-semibold">{dailyGoal.bmr} kcal</div>
-                </div>
-              )}
-              {dailyGoal.tdee && (
-                <div className="text-center p-2 bg-muted/30 rounded">
-                  <div className="text-muted-foreground">{t('ui.tdee')}</div>
-                  <div className="font-semibold">{dailyGoal.tdee} kcal</div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Quote Section */}
+          <div className="mt-4">
+            <RandomQuote 
+              userGender={profileData?.gender} 
+              fallbackText=""
+            />
+          </div>
         </Card>
 
         {/* ChatGPT-style Input */}
