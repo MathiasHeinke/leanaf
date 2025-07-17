@@ -400,13 +400,17 @@ const Index = () => {
         }
       }
 
-      // Load today's meals
-      const today = new Date().toISOString().split('T')[0];
+      // Load today's meals - use user's local timezone
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      
       const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
         .select('*')
         .eq('user_id', user?.id)
-        .gte('created_at', today)
+        .gte('created_at', startOfToday.toISOString())
+        .lt('created_at', startOfTomorrow.toISOString())
         .order('created_at', { ascending: false });
 
       if (mealsError) {
