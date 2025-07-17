@@ -51,8 +51,7 @@ import {
   AlertTriangle,
   Trophy,
   Star,
-  Sparkles,
-  ExternalLink
+  Sparkles
 } from "lucide-react";
 
 interface WeightEntry {
@@ -97,7 +96,6 @@ const Index = () => {
   const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
-  const [allMeals, setAllMeals] = useState<MealData[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [currentView, setCurrentView] = useState<'main' | 'coach' | 'history' | 'profile' | 'subscription'>('main');
@@ -113,14 +111,6 @@ const Index = () => {
   const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const [showMotivation, setShowMotivation] = useState(false);
   const [quoteRefreshTrigger, setQuoteRefreshTrigger] = useState(0);
-  const [showWeightInput, setShowWeightInput] = useState(false);
-  const [weightInput, setWeightInput] = useState('');
-  const [bmiProgress, setBMIProgress] = useState<any>(null);
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
-  const [newWeight, setNewWeight] = useState('');
-  const [selectedMealType, setSelectedMealType] = useState<string>('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -218,7 +208,7 @@ const Index = () => {
         .select('*')
         .eq('user_id', user?.id)
         .order('date', { ascending: false })
-        .limit(7);
+        .limit(10);
 
       if (error) throw error;
 
@@ -234,16 +224,16 @@ const Index = () => {
     }
   };
 
-  // Save weight entry
-  const saveWeightEntry = async () => {
-    if (!user || !weightInput) return;
+  // Add weight entry
+  const handleAddWeight = async () => {
+    if (!user || !newWeight) return;
 
     try {
       const { error } = await supabase
         .from('weight_history')
         .insert({
           user_id: user.id,
-          weight: parseFloat(weightInput),
+          weight: parseFloat(newWeight),
           date: new Date().toISOString().split('T')[0]
         });
 
@@ -252,11 +242,10 @@ const Index = () => {
       // Update current weight in profile
       await supabase
         .from('profiles')
-        .update({ weight: parseFloat(weightInput) })
+        .update({ weight: parseFloat(newWeight) })
         .eq('user_id', user.id);
 
-      setWeightInput('');
-      setShowWeightInput(false);
+      setNewWeight('');
       toast.success('Gewicht erfolgreich hinzugefügt!');
       loadWeightHistory();
       
@@ -268,6 +257,49 @@ const Index = () => {
       toast.error('Fehler beim Hinzufügen des Gewichts');
     }
   };
+
+  // Delete weight entry
+  const handleDeleteWeight = async (entryId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('weight_history')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Gewichtseintrag gelöscht!');
+      loadWeightHistory();
+      
+      // Refresh BMI progress
+      const newBMIProgress = await calculateBMIProgress();
+      setBMIProgress(newBMIProgress);
+    } catch (error: any) {
+      console.error('Error deleting weight entry:', error);
+      toast.error('Fehler beim Löschen des Gewichtseintrags');
+    }
+  };
+
+  // Get weight trend
+  const getWeightTrend = () => {
+    if (weightHistory.length < 2) return null;
+    const latest = weightHistory[0].weight;
+    const previous = weightHistory[1].weight;
+    const diff = latest - previous;
+    
+    if (Math.abs(diff) < 0.1) return { icon: Target, color: 'text-gray-500', text: 'Stable' };
+    if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg` };
+    return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg` };
+  };
+
+  const [showWeightInput, setShowWeightInput] = useState(false);
+  const [weightInput, setWeightInput] = useState('');
+  const [bmiProgress, setBMIProgress] = useState<any>(null);
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [newWeight, setNewWeight] = useState('');
 
   // Load user data
   useEffect(() => {
@@ -289,6 +321,7 @@ const Index = () => {
   }, [user, profileData]);
 
   // Load user data
+
   const loadUserData = async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) {
@@ -325,7 +358,7 @@ const Index = () => {
 
         setProfileData(profile);
 
-        // Load daily goals from database
+        // Load daily goals from database instead of calculating
         const { data: dailyGoalsData, error: dailyGoalsError } = await supabase
           .from('daily_goals')
           .select('*')
@@ -336,6 +369,7 @@ const Index = () => {
 
         if (dailyGoalsError) {
           console.error('Daily goals error:', dailyGoalsError);
+          // Fallback to default values if no goals found
           setDailyGoal({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
         } else if (dailyGoalsData) {
           const goals: DailyGoal = {
@@ -354,20 +388,20 @@ const Index = () => {
 
       // Load today's meals
       const today = new Date().toISOString().split('T')[0];
-      const { data: todayMealsData, error: todayMealsError } = await supabase
+      const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
         .select('*')
         .eq('user_id', user?.id)
         .gte('created_at', today)
         .order('created_at', { ascending: false });
 
-      if (todayMealsError) {
-        console.error('Today meals error:', todayMealsError);
-        throw todayMealsError;
+      if (mealsError) {
+        console.error('Meals error:', mealsError);
+        throw mealsError;
       }
 
-      if (todayMealsData) {
-        const formattedTodayMeals = todayMealsData.map(meal => ({
+      if (mealsData) {
+        const formattedMeals = mealsData.map(meal => ({
           id: meal.id,
           text: meal.text,
           calories: Number(meal.calories),
@@ -377,38 +411,8 @@ const Index = () => {
           timestamp: new Date(meal.created_at),
           meal_type: meal.meal_type,
         }));
-        setDailyMeals(formattedTodayMeals);
-      }
-
-      // Load meals from last 7 days for history section
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const { data: allMealsData, error: allMealsError } = await supabase
-        .from('meals')
-        .select('*')
-        .eq('user_id', user?.id)
-        .gte('created_at', sevenDaysAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(7);
-
-      if (allMealsError) {
-        console.error('All meals error:', allMealsError);
-        throw allMealsError;
-      }
-
-      if (allMealsData) {
-        const formattedAllMeals = allMealsData.map(meal => ({
-          id: meal.id,
-          text: meal.text,
-          calories: Number(meal.calories),
-          protein: Number(meal.protein),
-          carbs: Number(meal.carbs),
-          fats: Number(meal.fats),
-          timestamp: new Date(meal.created_at),
-          meal_type: meal.meal_type,
-        }));
-        setAllMeals(formattedAllMeals);
+        setDailyMeals(formattedMeals);
+        console.log('Meals loaded:', formattedMeals.length);
       }
       
       if (showRefreshIndicator) {
@@ -423,6 +427,34 @@ const Index = () => {
         setIsRefreshing(false);
       }
     }
+  };
+
+  const handleManualRefresh = () => {
+    loadUserData(true);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartY(e.touches[0].clientY);
+    setIsPulling(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling) return;
+    
+    const currentY = e.touches[0].clientY;
+    const distance = currentY - startY;
+    
+    if (distance > 0 && window.scrollY === 0) {
+      setPullDistance(Math.min(distance, 100));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance > 50) {
+      handleManualRefresh();
+    }
+    setIsPulling(false);
+    setPullDistance(0);
   };
 
   // Calculate daily totals
@@ -452,673 +484,877 @@ const Index = () => {
   const carbsExceeded = dailyTotals.carbs > dailyGoal.carbs;
   const fatsExceeded = dailyTotals.fats > dailyGoal.fats;
 
-  // Get weight trend
-  const getWeightTrend = () => {
-    if (weightHistory.length < 2) return null;
-    const latest = weightHistory[0].weight;
-    const previous = weightHistory[1].weight;
-    const diff = latest - previous;
+  // Motivational messages
+  const getMotivationalMessage = () => {
+    const progress = calorieProgress;
     
-    if (Math.abs(diff) < 0.1) return { icon: Target, color: 'text-gray-500', text: 'Stabil' };
-    if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg` };
-    return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg` };
-  };
-
-  // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (progress <= 25) {
+      return t('motivation.start');
+    } else if (progress <= 50) {
+      return t('motivation.half');
+    } else if (progress <= 75) {
+      return t('motivation.progress');
+    } else if (progress <= 95) {
+      return t('motivation.almost');
+    } else if (progress <= 100) {
+      return t('motivation.perfect');
+    } else {
+      return t('motivation.over');
     }
   };
 
-  // Start voice recording
-  const startRecording = async () => {
+  // Show motivation animation when goals are nearly reached
+  useEffect(() => {
+    if (calorieProgress >= 90 && calorieProgress <= 100 && !showMotivation) {
+      setShowMotivation(true);
+      setTimeout(() => setShowMotivation(false), 3000);
+    }
+  }, [calorieProgress, showMotivation]);
+
+  const handleSubmitMeal = async () => {
+    if (!inputText.trim()) {
+      toast.error(t('app.error'));
+      return;
+    }
+
+    setIsAnalyzing(true);
+    console.log('Starting meal analysis for:', inputText);
+    
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const { data, error } = await supabase.functions.invoke('analyze-meal', {
+        body: { text: inputText },
+      });
+
+      console.log('Supabase function response:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      if (!data || !data.total) {
+        throw new Error('Invalid response format from analysis service');
+      }
+
+      const newMeal = {
+        user_id: user?.id,
+        text: inputText,
+        calories: Math.round(data.total.calories),
+        protein: Math.round(data.total.protein),
+        carbs: Math.round(data.total.carbs),
+        fats: Math.round(data.total.fats),
+        meal_type: getCurrentMealType()
+      };
+
+      console.log('Inserting meal:', newMeal);
+
+      const { data: insertedMeal, error: insertError } = await supabase
+        .from('meals')
+        .insert([newMeal])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw insertError;
+      }
+
+      console.log('Successfully inserted meal:', insertedMeal);
+
+      const formattedMeal: MealData = {
+        id: insertedMeal.id,
+        text: insertedMeal.text,
+        calories: Number(insertedMeal.calories),
+        protein: Number(insertedMeal.protein),
+        carbs: Number(insertedMeal.carbs),
+        fats: Number(insertedMeal.fats),
+        timestamp: new Date(insertedMeal.created_at),
+        meal_type: insertedMeal.meal_type,
+      };
+
+      setDailyMeals(prev => [formattedMeal, ...prev]);
+      setInputText("");
       
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          setAudioChunks(prev => [...prev, event.data]);
+      toast.success(t('app.mealAdded'));
+    } catch (error: any) {
+      console.error('Error analyzing meal:', error);
+      toast.error(error.message || t('app.error'));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const getCurrentMealType = () => {
+    const hour = new Date().getHours();
+    if (hour < 10) return "breakfast";
+    if (hour < 15) return "lunch";
+    if (hour < 19) return "dinner";
+    return "snack";
+  };
+
+  const handleVoiceRecord = async () => {
+    if (!isRecording) {
+      try {
+        console.log('Starting voice recording...');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        const chunks: Blob[] = [];
+
+        recorder.ondataavailable = (event) => {
+          chunks.push(event.data);
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+          await processAudioRecording(audioBlob);
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        recorder.start();
+        setMediaRecorder(recorder);
+        setAudioChunks(chunks);
+        setIsRecording(true);
+        toast.info(t('input.recording'));
+      } catch (error) {
+        console.error('Error starting recording:', error);
+        toast.error('Mikrofonzugriff verweigert');
+      }
+    } else {
+      console.log('Stopping voice recording...');
+      if (mediaRecorder) {
+        mediaRecorder.stop();
+        setMediaRecorder(null);
+        setIsRecording(false);
+      }
+    }
+  };
+
+  const processAudioRecording = async (audioBlob: Blob) => {
+    try {
+      console.log('Processing audio recording...');
+      toast.info('Verarbeite Spracheingabe...');
+      
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        
+        try {
+          const { data, error } = await supabase.functions.invoke('voice-to-text', {
+            body: { audio: base64 },
+          });
+
+          if (error) {
+            console.error('Voice-to-text error:', error);
+            throw error;
+          }
+
+          if (data.text) {
+            setInputText(data.text);
+            toast.success('Sprache erkannt: ' + data.text);
+          } else {
+            toast.error('Keine Sprache erkannt');
+          }
+        } catch (error) {
+          console.error('Error processing voice:', error);
+          toast.error('Fehler bei der Spracherkennung');
         }
       };
       
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        await processVoiceInput(audioBlob);
-        setAudioChunks([]);
-      };
-      
-      setMediaRecorder(recorder);
-      recorder.start();
-      setIsRecording(true);
+      reader.readAsDataURL(audioBlob);
     } catch (error) {
-      console.error('Error starting recording:', error);
-      toast.error('Fehler beim Starten der Aufnahme');
+      console.error('Error processing audio:', error);
+      toast.error('Fehler bei der Audioverarbeitung');
     }
   };
 
-  // Stop voice recording
-  const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
-      setIsRecording(false);
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast.info(t('input.photoUpload'));
+      // TODO: Implement photo analysis
     }
   };
 
-  // Process voice input
-  const processVoiceInput = async (audioBlob: Blob) => {
-    try {
-      setIsAnalyzing(true);
-      
-      const formData = new FormData();
-      formData.append('audio', audioBlob);
-      formData.append('language', language);
-      
-      const { data, error } = await supabase.functions.invoke('voice-to-text', {
-        body: formData,
-      });
-      
-      if (error) throw error;
-      
-      if (data.text) {
-        setInputText(data.text);
-        toast.success('Sprache erkannt!');
-      }
-    } catch (error: any) {
-      console.error('Error processing voice:', error);
-      toast.error('Fehler bei der Spracherkennung');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Analyze meal
-  const analyzeMeal = async (inputType: 'text' | 'image' | 'voice') => {
-    if (!inputText.trim() && !imageFile) return;
-    
-    try {
-      setIsAnalyzing(true);
-      
-      let analysisData;
-      
-      if (inputType === 'image' && imageFile) {
-        const base64 = await convertFileToBase64(imageFile);
-        analysisData = {
-          type: 'image',
-          content: base64,
-          text: inputText,
-          language: language,
-        };
-      } else {
-        analysisData = {
-          type: 'text',
-          content: inputText,
-          language: language,
-        };
-      }
-      
-      const { data, error } = await supabase.functions.invoke('analyze-meal', {
-        body: analysisData,
-      });
-      
-      if (error) throw error;
-      
-      if (data) {
-        const newMeal: MealData = {
-          id: Date.now().toString(),
-          text: inputText,
-          calories: data.calories || 0,
-          protein: data.protein || 0,
-          carbs: data.carbs || 0,
-          fats: data.fats || 0,
-          timestamp: new Date(),
-          meal_type: selectedMealType || 'other',
-        };
-        
-        // Save to database
-        const { error: insertError } = await supabase
-          .from('meals')
-          .insert({
-            user_id: user?.id,
-            text: newMeal.text,
-            calories: newMeal.calories,
-            protein: newMeal.protein,
-            carbs: newMeal.carbs,
-            fats: newMeal.fats,
-            meal_type: newMeal.meal_type,
-          });
-        
-        if (insertError) throw insertError;
-        
-        // Update local state
-        setDailyMeals(prev => [newMeal, ...prev]);
-        setInputText('');
-        setImageFile(null);
-        setImagePreview(null);
-        setSelectedMealType('');
-        
-        toast.success('Mahlzeit analysiert und gespeichert!');
-      }
-    } catch (error: any) {
-      console.error('Error analyzing meal:', error);
-      toast.error('Fehler bei der Analyse');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Convert file to base64
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Delete meal
   const deleteMeal = async (mealId: string) => {
     try {
       const { error } = await supabase
         .from('meals')
         .delete()
-        .eq('id', mealId)
-        .eq('user_id', user?.id);
+        .eq('id', mealId);
+
+      if (error) throw error;
+
+      toast.success('Mahlzeit gelöscht');
+      await loadUserData(true);
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast.error('Fehler beim Löschen der Mahlzeit');
+    }
+  };
+
+  const updateMeal = async (mealId: string, updates: Partial<MealData>) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .update(updates)
+        .eq('id', mealId);
+
+      if (error) throw error;
+
+      toast.success('Mahlzeit aktualisiert');
+      setEditingMeal(null); // Close modal immediately
+      await loadUserData(true);
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      toast.error('Fehler beim Aktualisieren der Mahlzeit');
+    }
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingMeal) {
+      updateMeal(editingMeal.id, {
+        text: editingMeal.text,
+        calories: editingMeal.calories,
+        protein: editingMeal.protein,
+        carbs: editingMeal.carbs,
+        fats: editingMeal.fats,
+        meal_type: editingMeal.meal_type,
+      });
+    }
+  };
+
+  // Save weight entry
+  const saveWeightEntry = async () => {
+    if (!user || !weightInput) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { error } = await supabase
+        .from('weight_history')
+        .upsert({
+          user_id: user.id,
+          weight: parseFloat(weightInput),
+          date: today
+        });
       
       if (error) throw error;
       
-      setDailyMeals(prev => prev.filter(meal => meal.id !== mealId));
-      toast.success('Mahlzeit gelöscht!');
+      toast.success('Gewicht erfolgreich eingetragen!');
+      setShowWeightInput(false);
+      setWeightInput('');
+      
+      // Refresh BMI progress
+      const newBMIProgress = await calculateBMIProgress();
+      setBMIProgress(newBMIProgress);
+      
     } catch (error: any) {
-      console.error('Error deleting meal:', error);
-      toast.error('Fehler beim Löschen');
+      console.error('Error saving weight:', error);
+      toast.error('Fehler beim Speichern des Gewichts');
     }
   };
 
-  // Handle pull to refresh
-  const handleManualRefresh = () => {
-    loadUserData(true);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setStartY(e.touches[0].clientY);
-    setIsPulling(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isPulling) return;
-    
-    const currentY = e.touches[0].clientY;
-    const distance = currentY - startY;
-    
-    if (distance > 0 && window.scrollY === 0) {
-      setPullDistance(Math.min(distance, 100));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance > 50) {
-      handleManualRefresh();
-    }
-    setIsPulling(false);
-    setPullDistance(0);
-  };
-
-  // Render different views
-  if (currentView === 'coach') {
-    return <Coach onClose={() => setCurrentView('main')} />;
-  }
-
-  if (currentView === 'history') {
-    return <History onClose={() => setCurrentView('main')} dailyGoal={dailyGoal} />;
-  }
-
-  if (currentView === 'profile') {
-    return <Profile />;
-  }
-
-  if (currentView === 'subscription') {
-    return <Subscription />;
-  }
-
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Lade Daten...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>{t('common.loading')}</p>
         </div>
       </div>
     );
   }
 
+  // Render different views
+  if (currentView === 'history') {
+    return (
+      <History 
+        onClose={() => {
+          setCurrentView('main');
+          loadUserData(true);
+        }} 
+        dailyGoal={dailyGoal}
+      />
+    );
+  }
+
+  if (currentView === 'coach') {
+    return (
+      <Coach onClose={() => setCurrentView('main')} />
+    );
+  }
+
+  if (currentView === 'profile') {
+    return (
+      <Profile onClose={() => {
+        setCurrentView('main');
+        loadUserData(true);
+      }} />
+    );
+  }
+
+  if (currentView === 'subscription') {
+    return (
+      <Subscription onClose={() => setCurrentView('main')} />
+    );
+  }
+
+  // Always use the global header, but pass specific props for the main view
   return (
-    <div 
-      className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-purple-900"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Pull to refresh indicator */}
-        {isPulling && (
-          <div className="flex justify-center mb-4">
-            <div className={`transition-transform ${pullDistance > 50 ? 'scale-110' : ''}`}>
-              <RefreshCw className={`h-6 w-6 ${pullDistance > 50 ? 'animate-spin' : ''}`} />
+    <div>
+      {/* Motivation Animation */}
+      {showMotivation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="animate-bounce">
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-3 rounded-full shadow-lg text-lg font-bold flex items-center gap-2">
+              <Trophy className="h-6 w-6" />
+              Fast geschafft! 🎯
+              <Sparkles className="h-6 w-6" />
             </div>
           </div>
-        )}
+        </div>
+      )}
+      
+        <Card className="p-6 mb-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              <span className="font-semibold">{t('app.dailyProgress')}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              {new Date().toLocaleDateString()}
+            </div>
+          </div>
 
-        {/* Daily Progress with Weight Input and BMI */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-xl font-bold">Täglicher Fortschritt</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Weight Input */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Gewicht heute eintragen</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    value={weightInput}
-                    onChange={(e) => setWeightInput(e.target.value)}
-                    placeholder="z.B. 70.5"
-                    step="0.1"
-                    className="flex-1"
+          {/* Warning for exceeded calories */}
+          {caloriesExceeded && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span className="text-red-700 text-sm font-medium">
+                {language === 'de' 
+                  ? `Achtung: Du hast dein Kalorienziel um ${Math.abs(remainingCalories)} kcal überschritten!`
+                  : `Warning: You have exceeded your calorie goal by ${Math.abs(remainingCalories)} kcal!`
+                }
+              </span>
+            </div>
+          )}
+          
+          {/* Calorie Progress with enhanced visualization */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium">{t('app.calories')}</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${caloriesExceeded ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
+                  {dailyTotals.calories}/{dailyGoal.calories} kcal
+                </span>
+                {remainingCalories > 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+              </div>
+            </div>
+            <Progress 
+              value={Math.min(calorieProgress, 100)} 
+              className={`h-3 mb-2 ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
+            />
+            <div className="flex items-center gap-1 text-xs">
+              <Flame className="h-3 w-3" />
+               <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
+                 {remainingCalories > 0 
+                   ? `${remainingCalories} ${t('ui.kcal')} ${t('ui.remaining')}`
+                   : `${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('ui.overGoal')}`
+                 }
+               </span>
+            </div>
+          </div>
+
+          {/* Enhanced Macro Overview with progress and red indicators */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className={`text-center p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
+              <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{t('app.protein')}</div>
+              <div className={`font-bold mb-2 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{dailyTotals.protein}{t('ui.gram')}</div>
+              <Progress 
+                value={Math.min(proteinProgress, 100)} 
+                className={`h-1 mb-1 ${proteinExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              />
+              <div className={`text-xs ${proteinExceeded ? 'text-red-600 font-bold' : 'text-protein/70'}`}>
+                {remainingProtein > 0 ? `+${remainingProtein}${t('ui.gram')}` : `${Math.abs(remainingProtein)}${t('ui.gram')} ${t('ui.overBy')}`}
+              </div>
+            </div>
+            <div className={`text-center p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
+              <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{t('app.carbs')}</div>
+              <div className={`font-bold mb-2 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{dailyTotals.carbs}{t('ui.gram')}</div>
+              <Progress 
+                value={Math.min(carbsProgress, 100)} 
+                className={`h-1 mb-1 ${carbsExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              />
+              <div className={`text-xs ${carbsExceeded ? 'text-red-600 font-bold' : 'text-carbs/70'}`}>
+                {remainingCarbs > 0 ? `+${remainingCarbs}${t('ui.gram')}` : `${Math.abs(remainingCarbs)}${t('ui.gram')} ${t('ui.overBy')}`}
+              </div>
+            </div>
+            <div className={`text-center p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
+              <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{t('app.fats')}</div>
+              <div className={`font-bold mb-2 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{dailyTotals.fats}{t('ui.gram')}</div>
+              <Progress 
+                value={Math.min(fatsProgress, 100)} 
+                className={`h-1 mb-1 ${fatsExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              />
+              <div className={`text-xs ${fatsExceeded ? 'text-red-600 font-bold' : 'text-fats/70'}`}>
+                {remainingFats > 0 ? `+${remainingFats}${t('ui.gram')}` : `${Math.abs(remainingFats)}${t('ui.gram')} ${t('ui.overBy')}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Motivational message */}
+          <div className="mt-4 p-3 bg-gradient-to-r from-primary/10 to-primary-glow/10 rounded-lg border border-primary/20">
+            <div className="flex items-center gap-2 text-sm text-primary font-medium">
+              <Star className="h-4 w-4" />
+              {getMotivationalMessage()}
+            </div>
+          </div>
+
+          {/* Goal information */}
+          {profileData?.target_date && (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{t('ui.goal')}: {profileData.target_weight}kg</span>
+                <span className="text-muted-foreground">
+                  {t('ui.until')} {new Date(profileData.target_date).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Quote Section */}
+          <div className="mt-4">
+            <RandomQuote 
+              userGender={profileData?.gender} 
+              fallbackText=""
+              refreshTrigger={quoteRefreshTrigger}
+            />
+          </div>
+        </Card>
+
+        {/* ChatGPT-style Input */}
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <div className="max-w-md mx-auto">
+            <Card className="p-3 shadow-lg border-2 border-primary/20 bg-background/95 backdrop-blur">
+              <div className="flex items-end gap-2">
+                {/* Text Input */}
+                <div className="flex-1">
+                  <Textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={t('input.placeholder')}
+                    className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (inputText.trim()) {
+                          handleSubmitMeal();
+                        }
+                      }
+                    }}
                   />
-                  <Button onClick={saveWeightEntry} disabled={!weightInput}>
-                    <Plus className="h-4 w-4" />
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center gap-1 pb-2">
+                  {/* Image Upload */}
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                      onClick={() => document.getElementById('image-upload')?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                    </Button>
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
+                  </div>
+                  
+                  {/* Voice Recording */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-8 w-8 p-0 transition-all duration-200 ${
+                      isRecording 
+                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                        : 'hover:bg-primary/10'
+                    }`}
+                    onClick={handleVoiceRecord}
+                    disabled={isAnalyzing}
+                  >
+                    {isRecording ? (
+                      <StopCircle className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
+                  
+                  {/* Send Button */}
+                  <Button
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleSubmitMeal}
+                    disabled={!inputText.trim() || isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
               
-              {/* Weight Trend */}
-              <div className="flex items-center">
-                {(() => {
-                  const trend = getWeightTrend();
-                  if (!trend) return <p className="text-sm text-muted-foreground">Füge mehr Gewichtseinträge hinzu</p>;
-                  const IconComponent = trend.icon;
-                  return (
-                    <div className={`flex items-center gap-2 ${trend.color}`}>
-                      <IconComponent className="h-5 w-5" />
-                      <span className="font-medium">{trend.text}</span>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
-            {/* BMI Progress */}
-            {bmiProgress && (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-semibold mb-3">BMI Fortschritt</h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Start</p>
-                    <p className="text-lg font-semibold">{bmiProgress.start}</p>
+              {/* Recording Indicator */}
+              {isRecording && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-red-500">
+                  <div className="flex gap-1">
+                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
+                    <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Aktuell</p>
-                    <p className="text-lg font-semibold text-primary">{bmiProgress.current}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ziel</p>
-                    <p className="text-lg font-semibold">{bmiProgress.target}</p>
-                  </div>
+                  <span>{t('input.recording')}</span>
                 </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Fortschritt</span>
-                    <span>{bmiProgress.progress}%</span>
-                  </div>
-                  <Progress value={Math.max(0, Math.min(100, bmiProgress.progress))} className="h-2" />
-                </div>
-              </div>
-            )}
-
-            {/* Daily Nutrition Progress */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <h4 className="font-semibold mb-3">Heute's Fortschritt</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{dailyTotals.calories}</p>
-                  <p className="text-sm text-muted-foreground">von {dailyGoal.calories} kcal</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-protein">{dailyTotals.protein}g</p>
-                  <p className="text-sm text-muted-foreground">von {dailyGoal.protein}g Protein</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-carbs">{dailyTotals.carbs}g</p>
-                  <p className="text-sm text-muted-foreground">von {dailyGoal.carbs}g Kohlenhydrate</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-fats">{dailyTotals.fats}g</p>
-                  <p className="text-sm text-muted-foreground">von {dailyGoal.fats}g Fette</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Kalorien</span>
-                    <span className={caloriesExceeded ? 'text-red-600' : 'text-green-600'}>
-                      {caloriesExceeded ? '+' : ''}{remainingCalories} kcal
-                    </span>
-                  </div>
-                  <Progress value={Math.min(100, calorieProgress)} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Protein</span>
-                    <span className={proteinExceeded ? 'text-red-600' : 'text-green-600'}>
-                      {proteinExceeded ? '+' : ''}{remainingProtein}g
-                    </span>
-                  </div>
-                  <Progress value={Math.min(100, proteinProgress)} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Kohlenhydrate</span>
-                    <span className={carbsExceeded ? 'text-red-600' : 'text-green-600'}>
-                      {carbsExceeded ? '+' : ''}{remainingCarbs}g
-                    </span>
-                  </div>
-                  <Progress value={Math.min(100, carbsProgress)} className="h-2" />
-                </div>
-                
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Fette</span>
-                    <span className={fatsExceeded ? 'text-red-600' : 'text-green-600'}>
-                      {fatsExceeded ? '+' : ''}{remainingFats}g
-                    </span>
-                  </div>
-                  <Progress value={Math.min(100, fatsProgress)} className="h-2" />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Meal Input */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Mahlzeit hinzufügen</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="meal-type">Mahlzeitentyp</Label>
-              <Select value={selectedMealType} onValueChange={setSelectedMealType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Wähle einen Mahlzeitentyp" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="breakfast">Frühstück</SelectItem>
-                  <SelectItem value="lunch">Mittagessen</SelectItem>
-                  <SelectItem value="dinner">Abendessen</SelectItem>
-                  <SelectItem value="snack">Snack</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="meal-input">Beschreibung</Label>
-              <Textarea
-                id="meal-input"
-                placeholder="Beschreibe deine Mahlzeit..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                className="min-h-[100px]"
-              />
-            </div>
-            
-            {imagePreview && (
-              <div className="relative">
-                <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded" />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <Button
-                onClick={() => analyzeMeal('text')}
-                disabled={!inputText.trim() || isAnalyzing}
-                className="flex-1"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Analysiere...
-                  </>
-                ) : (
-                  <>
-                    <Type className="h-4 w-4 mr-2" />
-                    Hinzufügen
-                  </>
-                )}
-              </Button>
-              
-              <Button
-                onClick={isRecording ? stopRecording : startRecording}
-                variant={isRecording ? "destructive" : "outline"}
-                disabled={isAnalyzing}
-              >
-                {isRecording ? (
-                  <StopCircle className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-              
-              <Button
-                onClick={() => document.getElementById('image-upload')?.click()}
-                variant="outline"
-                disabled={isAnalyzing}
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-              
-              <input
-                id="image-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-          </CardContent>
-        </Card>
+              )}
+            </Card>
+          </div>
+        </div>
 
         {/* Today's Meals */}
-        {dailyMeals.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Heutige Mahlzeiten</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {dailyMeals.map((meal, index) => (
-                  <Card key={index} className="p-4 border-l-4 border-l-primary">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-primary/10">
-                          {meal.meal_type === 'breakfast' ? 'Frühstück' : 
-                           meal.meal_type === 'lunch' ? 'Mittagessen' : 
-                           meal.meal_type === 'dinner' ? 'Abendessen' : 'Snack'}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {meal.timestamp.toLocaleTimeString('de-DE', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                          {meal.calories} kcal
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteMeal(meal.id)}
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {meal.text}
-                    </p>
-                    
-                    <div className="flex justify-between text-xs">
-                      <span className="text-protein">P: {meal.protein}g</span>
-                      <span className="text-carbs">C: {meal.carbs}g</span>
-                      <span className="text-fats">F: {meal.fats}g</span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Mahlzeiten der letzten 7 Tage */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Mahlzeiten der letzten 7 Tage</span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setCurrentView('history')}
-              >
-                Alle anzeigen
-                <ExternalLink className="h-4 w-4 ml-1" />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {allMeals.length > 0 ? (
-              <div className="space-y-3">
-                {allMeals.map((meal, index) => (
-                  <Card key={index} className="p-4 border-l-4 border-l-primary">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="bg-primary/10">
-                          {meal.meal_type === 'breakfast' ? 'Frühstück' : 
-                           meal.meal_type === 'lunch' ? 'Mittagessen' : 
-                           meal.meal_type === 'dinner' ? 'Abendessen' : 'Snack'}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {meal.timestamp.toLocaleDateString('de-DE')}
-                        </span>
-                      </div>
-                      <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                        {meal.calories} kcal
-                      </Badge>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {meal.text}
-                    </p>
-                    
-                    <div className="flex justify-between text-xs">
-                      <span className="text-protein">P: {meal.protein}g</span>
-                      <span className="text-carbs">C: {meal.carbs}g</span>
-                      <span className="text-fats">F: {meal.fats}g</span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-8 text-center border-dashed border-2 border-muted">
-                <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-semibold mb-2">Noch keine Mahlzeiten</h3>
-                <p className="text-muted-foreground text-sm">
-                  Füge deine erste Mahlzeit hinzu
-                </p>
-              </Card>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Gewichtsverlauf der letzten 7 Tage */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Gewichtsverlauf der letzten 7 Tage</span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setCurrentView('history')}
-              >
-                Kompletten Verlauf anzeigen
-                <ExternalLink className="h-4 w-4 ml-1" />
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {weightHistory.length > 0 ? (
-              <div className="space-y-3">
-                {weightHistory.map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(entry.date).toLocaleDateString('de-DE', { 
-                          weekday: 'short', 
-                          day: 'numeric', 
-                          month: 'short' 
+        <div className="pb-24">
+          {dailyMeals.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
+              
+              {dailyMeals.map((meal) => (
+                <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      {meal.meal_type && (
+                        <Badge variant="secondary">{meal.meal_type}</Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {meal.timestamp.toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
                         })}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">{entry.weight.toFixed(1)} kg</span>
-                      {index === 0 && <Badge variant="secondary" className="text-xs">Aktuell</Badge>}
+                      <div className="flex items-center gap-1 text-sm font-semibold text-primary">
+                        <Zap className="h-4 w-4" />
+                        {meal.calories} kcal
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
+                          if (!open) setEditingMeal(null);
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingMeal(meal)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
+                            </DialogHeader>
+                            {editingMeal && (
+                              <form onSubmit={handleEditSubmit} className="space-y-4">
+                                <div>
+                                  <Label htmlFor="text">Was gegessen</Label>
+                                  <Textarea
+                                    id="text"
+                                    value={editingMeal.text}
+                                    onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor="calories">Kalorien</Label>
+                                    <Input
+                                      id="calories"
+                                      type="number"
+                                      value={editingMeal.calories}
+                                      onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="protein">Protein (g)</Label>
+                                    <Input
+                                      id="protein"
+                                      type="number"
+                                      value={editingMeal.protein}
+                                      onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
+                                    <Input
+                                      id="carbs"
+                                      type="number"
+                                      value={editingMeal.carbs}
+                                      onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="fats">Fette (g)</Label>
+                                    <Input
+                                      id="fats"
+                                      type="number"
+                                      value={editingMeal.fats}
+                                      onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
+                                  <Select 
+                                    value={editingMeal.meal_type} 
+                                    onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="breakfast">Frühstück</SelectItem>
+                                      <SelectItem value="lunch">Mittagessen</SelectItem>
+                                      <SelectItem value="dinner">Abendessen</SelectItem>
+                                      <SelectItem value="snack">Snack</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button type="submit" className="flex-1">
+                                    Speichern
+                                  </Button>
+                                  <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={() => setEditingMeal(null)}
+                                    className="flex-1"
+                                  >
+                                    Abbrechen
+                                  </Button>
+                                </div>
+                              </form>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteMeal(meal.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-8 text-center border-dashed border-2 border-muted">
-                <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-semibold mb-2">Noch keine Gewichtseinträge</h3>
-                <p className="text-muted-foreground text-sm">
-                  Trage dein erstes Gewicht ein
-                </p>
-              </Card>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
+                  
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {meal.text}
+                  </p>
+                  
+                  <div className="flex justify-between text-xs">
+                    <span className="text-protein">P: {meal.protein}g</span>
+                    <span className="text-carbs">C: {meal.carbs}g</span>
+                    <span className="text-fats">F: {meal.fats}g</span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
-export default Index;
+          {/* Quick Weight Input */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Gewicht heute eintragen
+                {(() => {
+                  const trend = getWeightTrend();
+                  if (!trend) return null;
+                  const IconComponent = trend.icon;
+                  return (
+                    <div className={`flex items-center gap-1 ${trend.color}`}>
+                      <IconComponent className="h-4 w-4" />
+                      <span className="text-sm">{trend.text}</span>
+                    </div>
+                  );
+                })()}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddWeight();
+                    }
+                  }}
+                  placeholder="Aktuelles Gewicht"
+                  className="flex-1"
+                />
+                <Button onClick={handleAddWeight} disabled={!newWeight}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Eintragen
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* BMI Progress */}
+          {profileData && (
+            <BMIProgress 
+              startWeight={profileData.start_weight || profileData.weight}
+              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
+              targetWeight={profileData.target_weight}
+              height={profileData.height}
+            />
+          )}
+
+          {/* Weight History Card */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Gewichtsverlauf</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                {weightHistory.map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(entry.date).toLocaleDateString('de-DE')}
+                      </span>
+                      <span className="font-medium">{entry.weight} kg</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteWeight(entry.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {weightHistory.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Noch keine Gewichtseinträge vorhanden
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* BMI Progress Card */}
+          {bmiProgress && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  BMI Fortschritt
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{bmiProgress.start}</div>
+                    <div className="text-sm text-muted-foreground">Start BMI</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{bmiProgress.current}</div>
+                    <div className="text-sm text-muted-foreground">Aktuell BMI</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">{bmiProgress.target}</div>
+                    <div className="text-sm text-muted-foreground">Ziel BMI</div>
+                  </div>
+                </div>
+                <div className="bg-muted rounded-full h-2 mb-2">
+                  <div 
+                    className="bg-primary rounded-full h-2 transition-all duration-300"
+                    style={{ width: `${Math.min(Math.max(bmiProgress.progress, 0), 100)}%` }}
+                  />
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  {bmiProgress.progress}% erreicht
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Weight Input Modal */}
+          <Dialog open={showWeightInput} onOpenChange={setShowWeightInput}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Gewicht heute eintragen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="weightInput">Gewicht (kg)</Label>
+                  <Input
+                    id="weightInput"
+                    type="number"
+                    value={weightInput}
+                    onChange={(e) => setWeightInput(e.target.value)}
+                    placeholder="70.5"
+                    step="0.1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveWeightEntry} disabled={!weightInput} className="flex-1">
+                    Speichern
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowWeightInput(false)} className="flex-1">
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Empty State */}
+          {dailyMeals.length === 0 && (
+            <Card className="p-8 text-center border-dashed border-2 border-muted">
+              <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
+              <p className="text-muted-foreground text-sm">
+                Füge deine erste Mahlzeit hinzu
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  export default Index;
