@@ -109,6 +109,7 @@ export type Database = {
           author: string | null
           created_at: string
           id: string
+          language: string | null
           quote_text: string
           updated_at: string
         }
@@ -116,6 +117,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           id?: string
+          language?: string | null
           quote_text: string
           updated_at?: string
         }
@@ -123,6 +125,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           id?: string
+          language?: string | null
           quote_text?: string
           updated_at?: string
         }
@@ -232,6 +235,7 @@ export type Database = {
           author: string | null
           created_at: string
           id: string
+          language: string | null
           quote_text: string
           updated_at: string
         }
@@ -239,6 +243,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           id?: string
+          language?: string | null
           quote_text: string
           updated_at?: string
         }
@@ -246,6 +251,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           id?: string
+          language?: string | null
           quote_text?: string
           updated_at?: string
         }
