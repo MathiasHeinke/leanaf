@@ -719,7 +719,10 @@ const Index = () => {
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <span className="text-red-700 text-sm font-medium">
-                Achtung: Du hast dein Kalorienziel um {Math.abs(remainingCalories)} kcal überschritten!
+                {language === 'de' 
+                  ? `Achtung: Du hast dein Kalorienziel um ${Math.abs(remainingCalories)} kcal überschritten!`
+                  : `Warning: You have exceeded your calorie goal by ${Math.abs(remainingCalories)} kcal!`
+                }
               </span>
             </div>
           )}
