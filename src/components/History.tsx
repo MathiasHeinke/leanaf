@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   LineChart, 
   Line, 
@@ -19,8 +20,15 @@ import {
   Calendar, 
   TrendingUp, 
   Target,
-  ArrowLeft
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Edit2,
+  Trash2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface DailyGoal {
   calories: number;
@@ -29,44 +37,136 @@ interface DailyGoal {
   fats: number;
 }
 
+interface MealData {
+  id: string;
+  text: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  created_at: string;
+  meal_type: string;
+}
+
+interface DailyData {
+  date: string;
+  displayDate: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  meals: MealData[];
+}
+
 interface HistoryProps {
   onClose: () => void;
   dailyGoal: DailyGoal;
 }
 
-// Mock-Daten für die letzten 30 Tage
-const generateMockData = () => {
-  const data = [];
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    data.push({
-      date: date.toISOString().split('T')[0],
-      displayDate: date.toLocaleDateString('de-DE', { 
-        day: '2-digit', 
-        month: '2-digit' 
-      }),
-      calories: Math.floor(Math.random() * 800) + 1200,
-      protein: Math.floor(Math.random() * 50) + 80,
-      carbs: Math.floor(Math.random() * 100) + 150,
-      fats: Math.floor(Math.random() * 40) + 40,
-      meals: Math.floor(Math.random() * 3) + 3
-    });
-  }
-  return data;
-};
-
 const History = ({ onClose, dailyGoal }: HistoryProps) => {
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
-  const mockData = generateMockData();
-  
-  const currentData = timeRange === 'week' 
-    ? mockData.slice(-7) 
-    : mockData;
+  const [historyData, setHistoryData] = useState<DailyData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const { user } = useAuth();
 
-  const averageCalories = Math.round(
+  useEffect(() => {
+    if (user) {
+      loadHistoryData();
+    }
+  }, [user, timeRange]);
+
+  const loadHistoryData = async () => {
+    try {
+      setLoading(true);
+      const daysToLoad = timeRange === 'week' ? 7 : 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysToLoad);
+
+      const { data: mealsData, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group meals by date
+      const groupedData = new Map<string, DailyData>();
+      
+      // Initialize empty days
+      for (let i = 0; i < daysToLoad; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        groupedData.set(dateStr, {
+          date: dateStr,
+          displayDate: date.toLocaleDateString('de-DE', { 
+            day: '2-digit', 
+            month: '2-digit' 
+          }),
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          meals: []
+        });
+      }
+
+      // Add meals to their respective days
+      mealsData?.forEach(meal => {
+        const date = new Date(meal.created_at).toISOString().split('T')[0];
+        const day = groupedData.get(date);
+        if (day) {
+          day.meals.push(meal);
+          day.calories += Number(meal.calories);
+          day.protein += Number(meal.protein);
+          day.carbs += Number(meal.carbs);
+          day.fats += Number(meal.fats);
+        }
+      });
+
+      setHistoryData(Array.from(groupedData.values()).sort((a, b) => b.date.localeCompare(a.date)));
+    } catch (error) {
+      console.error('Error loading history:', error);
+      toast.error('Fehler beim Laden der Verlaufsdaten');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMeal = async (mealId: string) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .delete()
+        .eq('id', mealId);
+
+      if (error) throw error;
+
+      toast.success('Mahlzeit gelöscht');
+      await loadHistoryData();
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast.error('Fehler beim Löschen der Mahlzeit');
+    }
+  };
+
+  const toggleExpanded = (date: string) => {
+    const newExpanded = new Set(expandedDays);
+    if (newExpanded.has(date)) {
+      newExpanded.delete(date);
+    } else {
+      newExpanded.add(date);
+    }
+    setExpandedDays(newExpanded);
+  };
+
+  const currentData = historyData;
+  const averageCalories = currentData.length > 0 ? Math.round(
     currentData.reduce((sum, day) => sum + day.calories, 0) / currentData.length
-  );
+  ) : 0;
 
   const goalsAchieved = currentData.filter(day => 
     day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1
@@ -164,36 +264,95 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
         <TabsContent value="table">
           <Card className="p-4">
             <h3 className="font-semibold mb-4">Detaillierte Übersicht</h3>
-            <div className="space-y-3">
-              {currentData.reverse().map((day, index) => (
-                <div key={day.date} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">{day.displayDate}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {day.meals} Mahlzeiten
-                      </div>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p>Lade Daten...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {currentData.map((day) => (
+                  <Collapsible key={day.date} open={expandedDays.has(day.date)}>
+                    <div className="border rounded-lg overflow-hidden">
+                      <CollapsibleTrigger asChild>
+                        <div 
+                          className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 cursor-pointer"
+                          onClick={() => toggleExpanded(day.date)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="font-medium">{day.displayDate}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {day.meals.length} Mahlzeiten
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold">{day.calories} kcal</div>
+                            <div className="text-xs text-muted-foreground">
+                              P: {day.protein}g • K: {day.carbs}g • F: {day.fats}g
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1 ? (
+                              <Badge variant="default">Ziel erreicht</Badge>
+                            ) : day.calories > dailyGoal.calories * 1.1 ? (
+                              <Badge variant="destructive">Über Ziel</Badge>
+                            ) : (
+                              <Badge variant="secondary">Unter Ziel</Badge>
+                            )}
+                            {expandedDays.has(day.date) ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="p-3 bg-background/50 border-t">
+                          {day.meals.length === 0 ? (
+                            <p className="text-center text-muted-foreground text-sm py-4">
+                              Keine Mahlzeiten an diesem Tag
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {day.meals.map((meal) => (
+                                <div key={meal.id} className="flex items-center justify-between p-2 bg-muted/20 rounded">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm">{meal.text}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {meal.calories} kcal • P: {meal.protein}g • K: {meal.carbs}g • F: {meal.fats}g
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {meal.meal_type} • {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                      })}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteMeal(meal.id)}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold">{day.calories} kcal</div>
-                    <div className="text-xs text-muted-foreground">
-                      P: {day.protein}g • K: {day.carbs}g • F: {day.fats}g
-                    </div>
-                  </div>
-                  <div>
-                    {day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1 ? (
-                      <Badge variant="default">Ziel erreicht</Badge>
-                    ) : day.calories > dailyGoal.calories * 1.1 ? (
-                      <Badge variant="destructive">Über Ziel</Badge>
-                    ) : (
-                      <Badge variant="secondary">Unter Ziel</Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </Collapsible>
+                ))}
+              </div>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
