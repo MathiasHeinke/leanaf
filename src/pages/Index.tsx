@@ -687,6 +687,8 @@ const Index = () => {
       return;
     }
     
+    console.log('Starting photo upload with files:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    
     setIsAnalyzing(true);
     toast.info('Lade Bilder hoch...');
     
@@ -695,25 +697,51 @@ const Index = () => {
       
       // Upload each image to Supabase storage
       for (const file of files) {
-        const fileName = `${user?.id}/${Date.now()}-${file.name}`;
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`Datei ${file.name} ist zu groß (max. 10MB)`);
+        }
+        
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`Datei ${file.name} ist kein Bild`);
+        }
+        
+        console.log(`Uploading file: ${file.name} (${file.size} bytes)`);
+        
+        const fileExt = file.name.split('.').pop()?.toLowerCase();
+        const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        console.log('Uploading to storage path:', fileName);
         
         const { data, error } = await supabase.storage
           .from('meal-images')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
         
-        if (error) throw error;
+        console.log('Upload result:', { data, error });
+        
+        if (error) {
+          console.error('Storage upload error:', error);
+          throw new Error(`Upload fehlgeschlagen: ${error.message}`);
+        }
         
         // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
+        const { data: urlData } = supabase.storage
           .from('meal-images')
           .getPublicUrl(fileName);
         
-        uploadedUrls.push(publicUrl);
+        console.log('Public URL:', urlData.publicUrl);
+        uploadedUrls.push(urlData.publicUrl);
       }
       
+      console.log('All uploads completed, URLs:', uploadedUrls);
       setUploadedImages(uploadedUrls);
       
       // Analyze the images
+      console.log('Starting image analysis...');
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
           text: inputText || 'Analysiere diese Mahlzeit',
@@ -721,7 +749,12 @@ const Index = () => {
         },
       });
       
-      if (error) throw error;
+      console.log('Analysis result:', { data, error });
+      
+      if (error) {
+        console.error('Analysis error:', error);
+        throw new Error(`Analyse fehlgeschlagen: ${error.message}`);
+      }
       
       if (!data || !data.total) {
         throw new Error('Ungültige Antwort vom Analysedienst');
@@ -732,10 +765,12 @@ const Index = () => {
       setShowConfirmationDialog(true);
       
     } catch (error: any) {
-      console.error('Error uploading and analyzing images:', error);
+      console.error('Error in photo upload process:', error);
       toast.error(error.message || 'Fehler beim Hochladen der Bilder');
     } finally {
       setIsAnalyzing(false);
+      // Clear the file input
+      event.target.value = '';
     }
   };
 
