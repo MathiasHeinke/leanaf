@@ -545,13 +545,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startWeight">Startgewicht (kg)</Label>
+                  <Label htmlFor="startWeight">Startgewicht</Label>
                   <Input
                     id="startWeight"
                     type="number"
                     value={startWeight}
                     onChange={(e) => setStartWeight(e.target.value)}
-                    placeholder="75"
+                    placeholder="75 kg"
                   />
                 </div>
 
