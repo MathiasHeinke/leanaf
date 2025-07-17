@@ -887,7 +887,7 @@ const Index = () => {
         carbs: Math.round(analyzedMealData.total.carbs),
         fats: Math.round(analyzedMealData.total.fats),
         meal_type: selectedMealType || getCurrentMealType(),
-        created_at: selectedDate ? new Date(selectedDate + 'T' + new Date().toTimeString().slice(0, 8)).toISOString() : undefined
+        created_at: selectedDate ? new Date(selectedDate).toISOString() : new Date().toISOString()
       };
 
       const { data: insertedMeal, error: insertError } = await supabase
