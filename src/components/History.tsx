@@ -371,7 +371,9 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
                                     </div>
                                   </div>
                                    <div className="flex items-center gap-1">
-                                     <Dialog>
+                                     <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
+                                       if (!open) setEditingMeal(null);
+                                     }}>
                                        <DialogTrigger asChild>
                                          <Button
                                            variant="ghost"
