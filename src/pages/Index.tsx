@@ -44,6 +44,7 @@ const Index = () => {
   const [dailyMeals, setDailyMeals] = useState<NutritionData[]>([]);
   const [dailyGoal, setDailyGoal] = useState(1500); // Standard Ziel
   const [currentView, setCurrentView] = useState<'main' | 'settings' | 'history' | 'coach'>('main');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
 
   // Berechne Tagessummen
@@ -69,27 +70,50 @@ const Index = () => {
       return;
     }
 
-    // Hier würde die AI-Analyse stattfinden
-    // Für Demo-Zwecke simulieren wir Werte
-    const mockAnalysis: NutritionData = {
-      id: Date.now().toString(),
-      text: inputText,
-      calories: Math.floor(Math.random() * 400) + 100,
-      protein: Math.floor(Math.random() * 30) + 10,
-      carbs: Math.floor(Math.random() * 50) + 20,
-      fats: Math.floor(Math.random() * 20) + 5,
-      timestamp: new Date(),
-      meal_type: getCurrentMealType()
-    };
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('https://gzczjscctgyxjyodhnhk.functions.supabase.co/analyze-meal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: inputText }),
+      });
 
-    setDailyMeals(prev => [...prev, mockAnalysis]);
-    setInputText("");
-    setInputMode(null);
-    
-    toast({
-      title: "Mahlzeit erfasst! 🍽️",
-      description: `${mockAnalysis.calories} kcal hinzugefügt`
-    });
+      if (!response.ok) {
+        throw new Error('Fehler bei der Analyse');
+      }
+
+      const data = await response.json();
+      
+      const newMeal: NutritionData = {
+        id: Date.now().toString(),
+        text: inputText,
+        calories: Math.round(data.total.calories),
+        protein: Math.round(data.total.protein),
+        carbs: Math.round(data.total.carbs),
+        fats: Math.round(data.total.fats),
+        timestamp: new Date(),
+        meal_type: getCurrentMealType()
+      };
+
+      setDailyMeals(prev => [...prev, newMeal]);
+      setInputText("");
+      setInputMode(null);
+      
+      toast({
+        title: "Mahlzeit erfasst! 🍽️",
+        description: `${newMeal.calories} kcal hinzugefügt`
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler bei der Analyse",
+        description: "Die Mahlzeit konnte nicht analysiert werden. Versuche es erneut.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const getCurrentMealType = () => {
@@ -379,9 +403,24 @@ const Index = () => {
 
             {inputText && (
               <div className="mt-6 pt-4 border-t">
-                <Button variant="hero" size="lg" onClick={handleSubmitMeal} className="w-full">
-                  <Plus className="h-5 w-5 mr-2" />
-                  Mahlzeit analysieren
+                <Button 
+                  variant="hero" 
+                  size="lg" 
+                  onClick={handleSubmitMeal} 
+                  className="w-full"
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2"></div>
+                      Analysiere...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-5 w-5 mr-2" />
+                      Mahlzeit analysieren
+                    </>
+                  )}
                 </Button>
               </div>
             )}
