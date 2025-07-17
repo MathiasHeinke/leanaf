@@ -173,7 +173,7 @@ const Coach = ({ onClose, dailyTotals, dailyGoal, mealsCount }: CoachProps) => {
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">
-                {Math.round((dailyTotals.calories / dailyGoal) * 100)}%
+                {Math.round((dailyTotals.calories / dailyGoal.calories) * 100)}%
               </div>
               <div className="text-sm text-muted-foreground">Zielerfüllung</div>
             </div>

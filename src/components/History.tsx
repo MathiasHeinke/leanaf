@@ -69,7 +69,7 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
   );
 
   const goalsAchieved = currentData.filter(day => 
-    day.calories >= dailyGoal * 0.9 && day.calories <= dailyGoal * 1.1
+    day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1
   ).length;
 
   return (
@@ -183,9 +183,9 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
                     </div>
                   </div>
                   <div>
-                    {day.calories >= dailyGoal * 0.9 && day.calories <= dailyGoal * 1.1 ? (
+                    {day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1 ? (
                       <Badge variant="default">Ziel erreicht</Badge>
-                    ) : day.calories > dailyGoal * 1.1 ? (
+                    ) : day.calories > dailyGoal.calories * 1.1 ? (
                       <Badge variant="destructive">Über Ziel</Badge>
                     ) : (
                       <Badge variant="secondary">Unter Ziel</Badge>

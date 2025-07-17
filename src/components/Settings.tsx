@@ -20,7 +20,7 @@ interface SettingsProps {
 }
 
 const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
-  const [goal, setGoal] = useState(dailyGoal.toString());
+  const [goal, setGoal] = useState(dailyGoal.calories.toString());
   const { toast } = useToast();
 
   const handleSave = () => {
@@ -34,7 +34,10 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
       return;
     }
     
-    onGoalChange(newGoal);
+    onGoalChange({
+      ...dailyGoal,
+      calories: newGoal
+    });
     toast({
       title: "Ziel gespeichert! 🎯",
       description: `Neues Tagesziel: ${newGoal} kcal`
