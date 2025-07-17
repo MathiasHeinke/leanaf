@@ -15,11 +15,11 @@ serve(async (req) => {
   }
 
   try {
-    const { text, image } = await req.json();
+    const { text, images } = await req.json();
     
-    console.log('Received request:', { text, hasImage: !!image });
+    console.log('Received request:', { text, hasImages: !!images && images.length > 0 });
 
-    if (!text && !image) {
+    if (!text && (!images || images.length === 0)) {
       throw new Error('Weder Text noch Bild bereitgestellt');
     }
 
@@ -46,6 +46,19 @@ serve(async (req) => {
 
 Mahlzeit: ${text}`;
 
+    // Build user content with text and images
+    let userContent = [{ type: 'text', text: prompt }];
+    
+    if (images && images.length > 0) {
+      // Add each image to the content array
+      images.forEach((imageUrl: string) => {
+        userContent.push({
+          type: 'image_url',
+          image_url: { url: imageUrl }
+        });
+      });
+    }
+
     const messages = [
       {
         role: 'system',
@@ -53,10 +66,7 @@ Mahlzeit: ${text}`;
       },
       {
         role: 'user',
-        content: image ? [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: image } }
-        ] : prompt
+        content: userContent
       }
     ];
 

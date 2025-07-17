@@ -111,6 +111,9 @@ const Index = () => {
   const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const [showMotivation, setShowMotivation] = useState(false);
   const [quoteRefreshTrigger, setQuoteRefreshTrigger] = useState(0);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [analyzedMealData, setAnalyzedMealData] = useState<any>(null);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -675,10 +678,132 @@ const Index = () => {
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      toast.info(t('input.photoUpload'));
-      // TODO: Implement photo analysis
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    
+    if (files.length > 5) {
+      toast.error('Maximal 5 Bilder erlaubt');
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    toast.info('Lade Bilder hoch...');
+    
+    try {
+      const uploadedUrls: string[] = [];
+      
+      // Upload each image to Supabase storage
+      for (const file of files) {
+        const fileName = `${user?.id}/${Date.now()}-${file.name}`;
+        
+        const { data, error } = await supabase.storage
+          .from('meal-images')
+          .upload(fileName, file);
+        
+        if (error) throw error;
+        
+        // Get the public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('meal-images')
+          .getPublicUrl(fileName);
+        
+        uploadedUrls.push(publicUrl);
+      }
+      
+      setUploadedImages(uploadedUrls);
+      
+      // Analyze the images
+      const { data, error } = await supabase.functions.invoke('analyze-meal', {
+        body: { 
+          text: inputText || 'Analysiere diese Mahlzeit',
+          images: uploadedUrls
+        },
+      });
+      
+      if (error) throw error;
+      
+      if (!data || !data.total) {
+        throw new Error('Ungültige Antwort vom Analysedienst');
+      }
+      
+      setAnalyzedMealData(data);
+      setShowConfirmationDialog(true);
+      
+    } catch (error: any) {
+      console.error('Error uploading and analyzing images:', error);
+      toast.error(error.message || 'Fehler beim Hochladen der Bilder');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleConfirmMeal = async () => {
+    if (!inputText.trim() || !analyzedMealData) return;
+    
+    setIsAnalyzing(true);
+    
+    try {
+      // Save the meal to the database
+      const newMeal = {
+        user_id: user?.id,
+        text: inputText,
+        calories: Math.round(analyzedMealData.total.calories),
+        protein: Math.round(analyzedMealData.total.protein),
+        carbs: Math.round(analyzedMealData.total.carbs),
+        fats: Math.round(analyzedMealData.total.fats),
+        meal_type: getCurrentMealType()
+      };
+
+      const { data: insertedMeal, error: insertError } = await supabase
+        .from('meals')
+        .insert([newMeal])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Save image references to meal_images table
+      if (uploadedImages.length > 0) {
+        const imageInserts = uploadedImages.map(imageUrl => ({
+          user_id: user?.id,
+          meal_id: insertedMeal.id,
+          image_url: imageUrl
+        }));
+
+        const { error: imageError } = await supabase
+          .from('meal_images')
+          .insert(imageInserts);
+
+        if (imageError) {
+          console.error('Error saving image references:', imageError);
+          // Don't throw here, meal was saved successfully
+        }
+      }
+
+      const formattedMeal: MealData = {
+        id: insertedMeal.id,
+        text: insertedMeal.text,
+        calories: Number(insertedMeal.calories),
+        protein: Number(insertedMeal.protein),
+        carbs: Number(insertedMeal.carbs),
+        fats: Number(insertedMeal.fats),
+        timestamp: new Date(insertedMeal.created_at),
+        meal_type: insertedMeal.meal_type,
+      };
+
+      setDailyMeals(prev => [formattedMeal, ...prev]);
+      setInputText("");
+      setShowConfirmationDialog(false);
+      setAnalyzedMealData(null);
+      setUploadedImages([]);
+      
+      toast.success('Mahlzeit erfolgreich hinzugefügt!');
+      
+    } catch (error: any) {
+      console.error('Error saving meal:', error);
+      toast.error(error.message || 'Fehler beim Speichern der Mahlzeit');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -1011,6 +1136,7 @@ const Index = () => {
                       capture="environment"
                       className="hidden"
                       onChange={handlePhotoUpload}
+                      multiple
                     />
                   </div>
                   
@@ -1120,8 +1246,103 @@ const Index = () => {
             </Card>
           )}
         </div>
-      </div>
-    );
-  };
+      
+      {/* Confirmation Dialog for Image Analysis */}
+      <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mahlzeit bestätigen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Display analyzed data */}
+            {analyzedMealData && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="font-medium">Kalorien:</div>
+                  <div>{analyzedMealData.total.calories} kcal</div>
+                  <div className="font-medium">Protein:</div>
+                  <div>{analyzedMealData.total.protein}g</div>
+                  <div className="font-medium">Kohlenhydrate:</div>
+                  <div>{analyzedMealData.total.carbs}g</div>
+                  <div className="font-medium">Fett:</div>
+                  <div>{analyzedMealData.total.fats}g</div>
+                </div>
+                
+                {/* Display uploaded images */}
+                {uploadedImages.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="font-medium text-sm">Hochgeladene Bilder:</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {uploadedImages.map((imageUrl, index) => (
+                        <img
+                          key={index}
+                          src={imageUrl}
+                          alt={`Mahlzeit ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Editable text field */}
+                <div className="space-y-2">
+                  <Label htmlFor="mealDescription">Beschreibung:</Label>
+                  <Textarea
+                    id="mealDescription"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder="Beschreibe deine Mahlzeit..."
+                    className="min-h-[80px]"
+                  />
+                </div>
+                
+                {/* Meal type selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
+                  <Select defaultValue={getCurrentMealType()}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Wähle einen Typ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="breakfast">Frühstück</SelectItem>
+                      <SelectItem value="lunch">Mittagessen</SelectItem>
+                      <SelectItem value="dinner">Abendessen</SelectItem>
+                      <SelectItem value="snack">Snack</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={handleConfirmMeal}
+                disabled={!inputText.trim() || isAnalyzing}
+                className="flex-1"
+              >
+                {isAnalyzing ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                ) : null}
+                Bestätigen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowConfirmationDialog(false);
+                  setAnalyzedMealData(null);
+                  setUploadedImages([]);
+                }}
+                className="flex-1"
+              >
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
 
-  export default Index;
+export default Index;

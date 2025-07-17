@@ -65,6 +65,33 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          meal_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          meal_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          meal_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meals: {
         Row: {
           calories: number | null
