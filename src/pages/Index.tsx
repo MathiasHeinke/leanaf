@@ -737,36 +737,36 @@ const Index = () => {
           {/* Enhanced Macro Overview with progress and red indicators */}
           <div className="grid grid-cols-3 gap-4">
             <div className={`text-center p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
-              <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>Protein</div>
-              <div className={`font-bold mb-2 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{dailyTotals.protein}g</div>
+              <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{t('app.protein')}</div>
+              <div className={`font-bold mb-2 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{dailyTotals.protein}{t('ui.gram')}</div>
               <Progress 
                 value={Math.min(proteinProgress, 100)} 
                 className={`h-1 mb-1 ${proteinExceeded ? '[&>div]:bg-red-500' : ''}`} 
               />
               <div className={`text-xs ${proteinExceeded ? 'text-red-600 font-bold' : 'text-protein/70'}`}>
-                {remainingProtein > 0 ? `+${remainingProtein}g` : `${Math.abs(remainingProtein)}g über`}
+                {remainingProtein > 0 ? `+${remainingProtein}${t('ui.gram')}` : `${Math.abs(remainingProtein)}${t('ui.gram')} ${t('ui.overBy')}`}
               </div>
             </div>
             <div className={`text-center p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
-              <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>Kohlenhydrate</div>
-              <div className={`font-bold mb-2 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{dailyTotals.carbs}g</div>
+              <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{t('app.carbs')}</div>
+              <div className={`font-bold mb-2 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{dailyTotals.carbs}{t('ui.gram')}</div>
               <Progress 
                 value={Math.min(carbsProgress, 100)} 
                 className={`h-1 mb-1 ${carbsExceeded ? '[&>div]:bg-red-500' : ''}`} 
               />
               <div className={`text-xs ${carbsExceeded ? 'text-red-600 font-bold' : 'text-carbs/70'}`}>
-                {remainingCarbs > 0 ? `+${remainingCarbs}g` : `${Math.abs(remainingCarbs)}g über`}
+                {remainingCarbs > 0 ? `+${remainingCarbs}${t('ui.gram')}` : `${Math.abs(remainingCarbs)}${t('ui.gram')} ${t('ui.overBy')}`}
               </div>
             </div>
             <div className={`text-center p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
-              <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>Fette</div>
-              <div className={`font-bold mb-2 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{dailyTotals.fats}g</div>
+              <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{t('app.fats')}</div>
+              <div className={`font-bold mb-2 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{dailyTotals.fats}{t('ui.gram')}</div>
               <Progress 
                 value={Math.min(fatsProgress, 100)} 
                 className={`h-1 mb-1 ${fatsExceeded ? '[&>div]:bg-red-500' : ''}`} 
               />
               <div className={`text-xs ${fatsExceeded ? 'text-red-600 font-bold' : 'text-fats/70'}`}>
-                {remainingFats > 0 ? `+${remainingFats}g` : `${Math.abs(remainingFats)}g über`}
+                {remainingFats > 0 ? `+${remainingFats}${t('ui.gram')}` : `${Math.abs(remainingFats)}${t('ui.gram')} ${t('ui.overBy')}`}
               </div>
             </div>
           </div>
