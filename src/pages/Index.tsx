@@ -18,6 +18,8 @@ import Coach from "@/components/Coach";
 import History from "@/components/History";
 import Profile from "@/pages/Profile";
 import Subscription from "@/pages/Subscription";
+import { RandomQuote } from "@/components/RandomQuote";
+import { populateQuotes } from "@/utils/populateQuotes";
 import { 
   Camera, 
   Mic, 
@@ -110,6 +112,24 @@ const Index = () => {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
+
+  // Populate quotes on first load
+  useEffect(() => {
+    const initializeQuotes = async () => {
+      try {
+        const result = await populateQuotes();
+        if (result.success) {
+          console.log('Quotes populated successfully:', result.message);
+        } else {
+          console.error('Failed to populate quotes:', result.error);
+        }
+      } catch (error) {
+        console.error('Error populating quotes:', error);
+      }
+    };
+
+    initializeQuotes();
+  }, []);
 
   // Load user data
   useEffect(() => {
@@ -644,9 +664,10 @@ const Index = () => {
               </DropdownMenu>
             </div>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Willkommen bei KaloTracker
-          </p>
+          <RandomQuote 
+            userGender={profileData?.gender} 
+            fallbackText={t('app.welcome')} 
+          />
         </div>
 
         {/* Navigation */}

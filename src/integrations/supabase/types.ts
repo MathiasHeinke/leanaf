@@ -104,6 +104,30 @@ export type Database = {
         }
         Relationships: []
       }
+      men_quotes: {
+        Row: {
+          author: string | null
+          created_at: string
+          id: string
+          quote_text: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          quote_text: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          quote_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null
