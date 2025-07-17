@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import BMIProgress from '@/components/BMIProgress';
+
 import { useNavigate } from 'react-router-dom';
 
 interface ProfilePageProps {
@@ -558,18 +558,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 </div>
               </div>
 
-              {/* BMI Progress Section */}
-              {startWeight && weight && targetWeight && height && (
-                <>
-                  <Separator />
-                  <BMIProgress 
-                    startWeight={parseFloat(startWeight)}
-                    currentWeight={parseFloat(weight)}
-                    targetWeight={parseFloat(targetWeight)}
-                    height={parseInt(height)}
-                  />
-                </>
-              )}
 
               {/* Calorie Goals Section */}
               <Separator />

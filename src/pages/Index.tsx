@@ -16,6 +16,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Coach from "@/components/Coach";
+import BMIProgress from "@/components/BMIProgress";
 import History from "@/components/History";
 import Profile from "@/pages/Profile";
 import Subscription from "@/pages/Subscription";
@@ -81,6 +82,7 @@ interface DailyGoal {
 
 interface ProfileData {
   weight: number;
+  start_weight?: number;
   height: number;
   age: number;
   gender: string;
@@ -1186,6 +1188,16 @@ const Index = () => {
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* BMI Progress */}
+          {profileData && (
+            <BMIProgress 
+              startWeight={profileData.start_weight || profileData.weight}
+              currentWeight={profileData.weight}
+              targetWeight={profileData.target_weight}
+              height={profileData.height}
+            />
           )}
 
           {/* Weight History Card */}
