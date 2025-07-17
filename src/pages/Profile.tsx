@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Target, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Target, Trash2, Save, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,6 +39,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [newWeight, setNewWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [dailyGoals, setDailyGoals] = useState({
     calories: 2000,
     protein: 30, // Percentage
@@ -50,6 +52,37 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   
   const { user } = useAuth();
   const { t, language, setLanguage } = useTranslation();
+
+  // Auto-save function
+  const autoSave = async () => {
+    if (!user || autoSaving) return;
+    
+    setAutoSaving(true);
+    try {
+      await performSave();
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setAutoSaving(false);
+    }
+  };
+
+  // Debounced auto-save
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (user && !initialLoading) {
+        autoSave();
+      }
+    }, 1000); // Save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    displayName, email, weight, startWeight, height, age, gender, 
+    activityLevel, goal, targetWeight, targetDate, language,
+    dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
+    dailyGoals.fats, dailyGoals.calorieDeficit
+  ]);
 
   useEffect(() => {
     if (user) {
@@ -200,69 +233,75 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     return parseFloat(bmi.toFixed(1));
   };
 
+  const performSave = async () => {
+    if (!user) return;
+
+    // Calculate all values
+    const bmr = calculateBMR();
+    const tdee = calculateMaintenanceCalories();
+    const targetCalories = calculateTargetCalories();
+    const macroGrams = calculateMacroGrams();
+    
+    // Calculate BMI values
+    const currentBMI = calculateBMI();
+    const startBMI = calculateBMI(startWeight, height);
+    const targetBMI = calculateBMI(targetWeight, height);
+
+    // Update profile with BMI values
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        user_id: user.id,
+        display_name: displayName,
+        email: email,
+        weight: weight ? parseFloat(weight) : null,
+        start_weight: startWeight ? parseFloat(startWeight) : null,
+        height: height ? parseInt(height) : null,
+        age: age ? parseInt(age) : null,
+        gender: gender || null,
+        activity_level: activityLevel,
+        goal: goal,
+        target_weight: targetWeight ? parseFloat(targetWeight) : null,
+        target_date: targetDate || null,
+        preferred_language: language,
+        start_bmi: startBMI,
+        current_bmi: currentBMI,
+        target_bmi: targetBMI,
+      });
+
+    if (error) throw error;
+
+    // Update daily goals with all calculated values
+    const { error: goalsError } = await supabase
+      .from('daily_goals')
+      .upsert({
+        user_id: user.id,
+        calories: targetCalories,
+        protein: macroGrams.protein,  // Keep existing columns for grams
+        carbs: macroGrams.carbs,
+        fats: macroGrams.fats,
+        calorie_deficit: dailyGoals.calorieDeficit,
+        protein_percentage: dailyGoals.protein,
+        carbs_percentage: dailyGoals.carbs,
+        fats_percentage: dailyGoals.fats,
+        bmr: bmr ? Math.round(bmr) : null,
+        tdee: tdee,
+      });
+
+    if (goalsError) {
+      console.error('Goals error:', goalsError);
+      throw goalsError;
+    }
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      // Calculate all values
-      const bmr = calculateBMR();
-      const tdee = calculateMaintenanceCalories();
-      const targetCalories = calculateTargetCalories();
-      const macroGrams = calculateMacroGrams();
-      
-      // Calculate BMI values
-      const currentBMI = calculateBMI();
-      const startBMI = calculateBMI(startWeight, height);
-      const targetBMI = calculateBMI(targetWeight, height);
-
-      // Update profile with BMI values
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: user.id,
-          display_name: displayName,
-          email: email,
-          weight: weight ? parseFloat(weight) : null,
-          start_weight: startWeight ? parseFloat(startWeight) : null,
-          height: height ? parseInt(height) : null,
-          age: age ? parseInt(age) : null,
-          gender: gender || null,
-          activity_level: activityLevel,
-          goal: goal,
-          target_weight: targetWeight ? parseFloat(targetWeight) : null,
-          target_date: targetDate || null,
-          preferred_language: language,
-          start_bmi: startBMI,
-          current_bmi: currentBMI,
-          target_bmi: targetBMI,
-        });
-
-      if (error) throw error;
-
-      // Update daily goals with all calculated values
-      const { error: goalsError } = await supabase
-        .from('daily_goals')
-        .upsert({
-          user_id: user.id,
-          calories: targetCalories,
-          protein: macroGrams.protein,  // Keep existing columns for grams
-          carbs: macroGrams.carbs,
-          fats: macroGrams.fats,
-          calorie_deficit: dailyGoals.calorieDeficit,
-          protein_percentage: dailyGoals.protein,
-          carbs_percentage: dailyGoals.carbs,
-          fats_percentage: dailyGoals.fats,
-          bmr: bmr ? Math.round(bmr) : null,
-          tdee: tdee,
-        });
-
-      if (goalsError) {
-        console.error('Goals error:', goalsError);
-        throw goalsError;
-      }
-
+      await performSave();
       toast.success(t('profile.saved'));
+      setLastSaved(new Date());
     } catch (error: any) {
       console.error('Error saving profile:', error);
       toast.error(t('profile.error'));
@@ -437,6 +476,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             {t('common.back')}
           </Button>
           <h1 className="text-2xl font-bold">{t('profile.title')}</h1>
+          
+          {/* Auto-save status */}
+          <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+            {autoSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span>Speichert...</span>
+              </>
+            ) : lastSaved ? (
+              <>
+                <Check className="h-4 w-4 text-green-500" />
+                <span>Gespeichert um {lastSaved.toLocaleTimeString()}</span>
+              </>
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -453,7 +507,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     id="displayName"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder={t('profile.displayName')}
                   />
                 </div>
@@ -465,7 +518,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder={t('profile.email')}
                   />
                 </div>
@@ -500,7 +552,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={startWeight}
                     onChange={(e) => setStartWeight(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder="75"
                   />
                 </div>
@@ -512,7 +563,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder="70"
                   />
                 </div>
@@ -524,7 +574,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={height}
                     onChange={(e) => setHeight(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder="175"
                   />
                 </div>
@@ -536,7 +585,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder="25"
                   />
                 </div>
@@ -597,7 +645,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="number"
                     value={targetWeight}
                     onChange={(e) => setTargetWeight(e.target.value)}
-                    onKeyPress={handleKeyPress}
                     placeholder="65"
                   />
                 </div>
@@ -609,7 +656,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     type="date"
                     value={targetDate}
                     onChange={(e) => setTargetDate(e.target.value)}
-                    onKeyPress={handleKeyPress}
                   />
                 </div>
               </div>
@@ -663,7 +709,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       type="number"
                       value={dailyGoals.calorieDeficit}
                       onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: Number(e.target.value)})}
-                      onKeyPress={handleKeyPress}
                       placeholder="300"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -681,7 +726,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                           type="number"
                           value={dailyGoals.protein}
                           onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
-                          onKeyPress={handleKeyPress}
                           placeholder="30"
                           min="10"
                           max="50"
@@ -695,7 +739,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                           type="number"
                           value={dailyGoals.carbs}
                           onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
-                          onKeyPress={handleKeyPress}
                           placeholder="40"
                           min="20"
                           max="70"
@@ -709,7 +752,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                           type="number"
                           value={dailyGoals.fats}
                           onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
-                          onKeyPress={handleKeyPress}
                           placeholder="30"
                           min="15"
                           max="50"
@@ -867,8 +909,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </CardContent>
           </Card>
 
-          <Button onClick={handleSave} disabled={loading} className="w-full">
-            {loading ? t('common.loading') : t('profile.save')}
+          {/* Manual Save Button - now optional */}
+          <Button onClick={handleSave} disabled={loading} className="w-full" variant="outline">
+            <Save className="h-4 w-4 mr-2" />
+            {loading ? t('common.loading') : 'Manuell speichern'}
           </Button>
         </div>
       </div>
