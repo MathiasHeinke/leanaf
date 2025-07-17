@@ -129,10 +129,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       if (data) {
         setDailyGoals({
           calories: data.calories || 2000,
-          protein: data.protein || 30,
-          carbs: data.carbs || 40,
-          fats: data.fats || 30,
-          calorieDeficit: data.calorie_deficit || 300
+          protein: (data as any).protein_percentage || 30,
+          carbs: (data as any).carbs_percentage || 40,
+          fats: (data as any).fats_percentage || 30,
+          calorieDeficit: (data as any).calorie_deficit || 300
         });
       }
     } catch (error: any) {

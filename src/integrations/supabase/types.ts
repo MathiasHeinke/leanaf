@@ -16,32 +16,44 @@ export type Database = {
     Tables: {
       daily_goals: {
         Row: {
+          calorie_deficit: number | null
           calories: number | null
           carbs: number | null
+          carbs_percentage: number | null
           created_at: string
           fats: number | null
+          fats_percentage: number | null
           id: string
           protein: number | null
+          protein_percentage: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          calorie_deficit?: number | null
           calories?: number | null
           carbs?: number | null
+          carbs_percentage?: number | null
           created_at?: string
           fats?: number | null
+          fats_percentage?: number | null
           id?: string
           protein?: number | null
+          protein_percentage?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          calorie_deficit?: number | null
           calories?: number | null
           carbs?: number | null
+          carbs_percentage?: number | null
           created_at?: string
           fats?: number | null
+          fats_percentage?: number | null
           id?: string
           protein?: number | null
+          protein_percentage?: number | null
           updated_at?: string
           user_id?: string
         }
