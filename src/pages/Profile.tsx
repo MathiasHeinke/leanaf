@@ -169,7 +169,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
       if (error) throw error;
 
-      // Update daily goals with correct onConflict syntax
+      // Update daily goals with correct syntax
       const targetCalories = calculateTargetCalories();
       const macroGrams = calculateMacroGrams();
       
