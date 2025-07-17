@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import BMIProgress from '@/components/BMIProgress';
 
 interface ProfilePageProps {
   onClose: () => void;
@@ -26,6 +27,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [weight, setWeight] = useState('');
+  const [startWeight, setStartWeight] = useState('');
   const [height, setHeight] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
@@ -73,6 +75,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setDisplayName(data.display_name || '');
         setEmail(data.email || '');
         setWeight(data.weight ? data.weight.toString() : '');
+        setStartWeight((data as any).start_weight ? (data as any).start_weight.toString() : '');
         setHeight(data.height ? data.height.toString() : '');
         setAge(data.age ? data.age.toString() : '');
         setGender(data.gender || '');
@@ -153,6 +156,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           display_name: displayName,
           email: email,
           weight: weight ? parseFloat(weight) : null,
+          start_weight: startWeight ? parseFloat(startWeight) : null,
           height: height ? parseInt(height) : null,
           age: age ? parseInt(age) : null,
           gender: gender || null,
@@ -446,7 +450,18 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <CardTitle>{t('profile.personalInfo')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startWeight">Startgewicht (kg)</Label>
+                  <Input
+                    id="startWeight"
+                    type="number"
+                    value={startWeight}
+                    onChange={(e) => setStartWeight(e.target.value)}
+                    placeholder="75"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="weight">{t('profile.weight')}</Label>
                   <Input
@@ -550,6 +565,19 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   />
                 </div>
               </div>
+
+              {/* BMI Progress Section */}
+              {startWeight && weight && targetWeight && height && (
+                <>
+                  <Separator />
+                  <BMIProgress 
+                    startWeight={parseFloat(startWeight)}
+                    currentWeight={parseFloat(weight)}
+                    targetWeight={parseFloat(targetWeight)}
+                    height={parseInt(height)}
+                  />
+                </>
+              )}
 
               {/* Calorie Goals Section */}
               <Separator />
@@ -717,23 +745,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                         </div>
                       );
                     })()}
-                  </div>
-                </div>
-              )}
-
-              {/* BMI Display */}
-              {bmi && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">BMI:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold">{bmi}</span>
-                      {bmiCategory && (
-                        <Badge variant="secondary" className={bmiCategory.color}>
-                          {bmiCategory.text}
-                        </Badge>
-                      )}
-                    </div>
                   </div>
                 </div>
               )}
