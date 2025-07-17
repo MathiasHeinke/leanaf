@@ -361,6 +361,7 @@ const Index = () => {
       if (profileData) {
         const profile: ProfileData = {
           weight: Number(profileData.weight) || 70,
+          start_weight: Number(profileData.start_weight) || undefined,
           height: Number(profileData.height) || 170,
           age: Number(profileData.age) || 30,
           gender: profileData.gender || 'male',
