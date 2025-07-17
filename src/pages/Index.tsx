@@ -159,7 +159,9 @@ const Index = () => {
           .from('daily_goals')
           .select('*')
           .eq('user_id', user?.id)
-          .single();
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
         if (dailyGoalsError) {
           console.error('Daily goals error:', dailyGoalsError);
