@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Target } from 'lucide-react';
+import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Target, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -232,6 +232,26 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     } catch (error: any) {
       console.error('Error adding weight:', error);
       toast.error('Error adding weight');
+    }
+  };
+
+  const handleDeleteWeight = async (entryId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('weight_history')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Gewichtseintrag gelöscht!');
+      loadWeightHistory();
+    } catch (error: any) {
+      console.error('Error deleting weight entry:', error);
+      toast.error('Fehler beim Löschen des Gewichtseintrags');
     }
   };
 
@@ -783,14 +803,26 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
               <div className="space-y-2">
                 {weightHistory.map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <span className="text-sm">{new Date(entry.date).toLocaleDateString()}</span>
-                    <span className="font-medium">{entry.weight} kg</span>
+                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(entry.date).toLocaleDateString('de-DE')}
+                      </span>
+                      <span className="font-medium">{entry.weight} kg</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteWeight(entry.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
                 {weightHistory.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No weight history yet
+                    Noch keine Gewichtseinträge vorhanden
                   </p>
                 )}
               </div>
