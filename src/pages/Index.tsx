@@ -119,11 +119,17 @@ const Index = () => {
     const handleCoachNavigation = () => {
       setCurrentView('coach');
     };
+    
+    const handleMainNavigation = () => {
+      setCurrentView('main');
+    };
 
     window.addEventListener('navigate-coach', handleCoachNavigation);
+    window.addEventListener('navigate-main', handleMainNavigation);
 
     return () => {
       window.removeEventListener('navigate-coach', handleCoachNavigation);
+      window.removeEventListener('navigate-main', handleMainNavigation);
     };
   }, []);
 

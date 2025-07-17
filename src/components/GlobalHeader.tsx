@@ -1,18 +1,18 @@
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useNavigate, useLocation } from "react-router-dom";
 import { 
-  Menu,
-  User,
-  CreditCard,
-  LogOut,
-  RefreshCw,
-  Activity,
-  LayoutDashboard,
-  MessageCircle,
-  UserIcon
+  Activity, 
+  RefreshCw, 
+  Menu, 
+  LogOut, 
+  CreditCard, 
+  User as UserIcon, 
+  MessageCircle, 
+  LayoutDashboard 
 } from "lucide-react";
 
 interface GlobalHeaderProps {
@@ -25,22 +25,49 @@ interface GlobalHeaderProps {
 export const GlobalHeader = ({ 
   onRefresh, 
   isRefreshing = false, 
-  onViewChange, 
-  currentView = 'main'
+  onViewChange,
+  currentView
 }: GlobalHeaderProps) => {
-  const { language, setLanguage, t } = useTranslation();
+  const [currentActiveView, setCurrentActiveView] = useState<string>('main');
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { language, setLanguage } = useTranslation();
 
+  // Listen for coach navigation events
+  useEffect(() => {
+    const handleCoachNavigation = () => {
+      setCurrentActiveView('coach');
+    };
+    
+    const handleMainNavigation = () => {
+      setCurrentActiveView('main');
+    };
+
+    window.addEventListener('navigate-coach', handleCoachNavigation);
+    window.addEventListener('navigate-main', handleMainNavigation);
+
+    return () => {
+      window.removeEventListener('navigate-coach', handleCoachNavigation);
+      window.removeEventListener('navigate-main', handleMainNavigation);
+    };
+  }, []);
+
+  // Handle navigation to different views
   const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription') => {
     if (onViewChange) {
       onViewChange(view);
+      setCurrentActiveView(view);
     } else {
-      // Default navigation behavior
+      // For route-based navigation
       switch (view) {
         case 'main':
           navigate('/');
+          window.dispatchEvent(new CustomEvent('navigate-main'));
+          break;
+        case 'coach':
+          navigate('/');
+          window.dispatchEvent(new CustomEvent('navigate-coach'));
           break;
         case 'profile':
           navigate('/profile');
@@ -48,36 +75,38 @@ export const GlobalHeader = ({
         case 'subscription':
           navigate('/subscription');
           break;
-        case 'coach':
-          // This is handled by the parent component
-          break;
       }
     }
   };
 
+  // Handle sign out
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
+  // Handle refresh
   const handleRefresh = () => {
     if (onRefresh) {
       onRefresh();
     } else {
-      // Default refresh behavior
       window.location.reload();
     }
   };
 
   // Determine current active tab
   const getActiveTab = () => {
-    if (onViewChange) {
-      return currentView;
+    // If we're on the main page, use the internal state
+    if (location.pathname === '/') {
+      return currentActiveView;
     }
     
+    // For other routes, use the pathname
     switch (location.pathname) {
-      case '/':
-        return 'main';
       case '/profile':
         return 'profile';
       case '/subscription':
@@ -120,13 +149,13 @@ export const GlobalHeader = ({
               variant="outline"
               size="sm"
               onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm"
             >
-              <span className="text-sm font-medium">
-                {language === 'de' ? '🇩🇪 DE' : '🇺🇸 EN'}
-              </span>
+              <span className="text-xs">🇩🇪</span>
+              {language.toUpperCase()}
             </Button>
             
+            {/* Menu Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -136,11 +165,11 @@ export const GlobalHeader = ({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
                   <CreditCard className="h-4 w-4 mr-2" />
-                  {t('nav.subscription')}
+                  Abonnement
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
-                  {t('nav.logout')}
+                  Abmelden
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
