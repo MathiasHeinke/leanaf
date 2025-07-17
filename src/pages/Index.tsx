@@ -587,6 +587,7 @@ const Index = () => {
     );
   }
 
+  // Always use the global header, but pass specific props for the main view
   return (
     <div>
       {/* Motivation Animation */}
@@ -602,38 +603,24 @@ const Index = () => {
         </div>
       )}
       
-      {/* Navigation */}
-      <div className="flex justify-center gap-2 mb-6">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setCurrentView('history')}
-          className="flex-1"
-        >
-          <HistoryIcon className="h-4 w-4 mr-2" />
-          {t('nav.history')}
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setCurrentView('coach')}
-          className="flex-1"
-        >
-          <MessageCircle className="h-4 w-4 mr-2" />
-          {t('ui.ketoCoach')}
-        </Button>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setCurrentView('profile')}
-          className="flex-1"
-        >
-          <User className="h-4 w-4 mr-2" />
-          {t('nav.profile')}
-        </Button>
-      </div>
-
-        {/* Enhanced Daily Dashboard */}
+      {/* Daily Progress */}
+      <Card className="mb-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-primary-glow to-primary"></div>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-green-400 to-green-600 p-2 rounded-full">
+                <Target className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">{t('dashboard.dailyProgress')}</h2>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>{new Date().toLocaleDateString('de-DE')}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
         <Card className="p-6 mb-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -1012,10 +999,10 @@ const Index = () => {
             <Card className="p-8 text-center border-dashed border-2 border-muted">
               <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
-              <p className="text-muted-foreground text-sm">
-                Füge deine erste Mahlzeit hinzu
-              </p>
-            </Card>
+               <p className="text-muted-foreground text-sm">
+                 Füge deine erste Mahlzeit hinzu
+               </p>
+             </Card>
            )}
          </div>
        </div>

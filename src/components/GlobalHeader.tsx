@@ -10,31 +10,30 @@ import {
   LogOut,
   RefreshCw,
   Activity,
-  HistoryIcon,
-  MessageCircle
+  LayoutDashboard,
+  MessageCircle,
+  UserIcon
 } from "lucide-react";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
-  onViewChange?: (view: 'main' | 'coach' | 'history' | 'profile' | 'subscription') => void;
+  onViewChange?: (view: 'main' | 'coach' | 'profile' | 'subscription') => void;
   currentView?: string;
-  showNavigation?: boolean;
 }
 
 export const GlobalHeader = ({ 
   onRefresh, 
   isRefreshing = false, 
   onViewChange, 
-  currentView = 'main',
-  showNavigation = false 
+  currentView = 'main'
 }: GlobalHeaderProps) => {
   const { language, setLanguage, t } = useTranslation();
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleNavigation = (view: 'main' | 'coach' | 'history' | 'profile' | 'subscription') => {
+  const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription') => {
     if (onViewChange) {
       onViewChange(view);
     } else {
@@ -50,8 +49,7 @@ export const GlobalHeader = ({
           navigate('/subscription');
           break;
         case 'coach':
-        case 'history':
-          // These are handled by the parent component
+          // This is handled by the parent component
           break;
       }
     }
@@ -70,6 +68,26 @@ export const GlobalHeader = ({
       window.location.reload();
     }
   };
+
+  // Determine current active tab
+  const getActiveTab = () => {
+    if (onViewChange) {
+      return currentView;
+    }
+    
+    switch (location.pathname) {
+      case '/':
+        return 'main';
+      case '/profile':
+        return 'profile';
+      case '/subscription':
+        return 'subscription';
+      default:
+        return 'main';
+    }
+  };
+
+  const activeTab = getActiveTab();
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
@@ -116,10 +134,6 @@ export const GlobalHeader = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleNavigation('profile')}>
-                  <User className="h-4 w-4 mr-2" />
-                  {t('nav.profile')}
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
                   <CreditCard className="h-4 w-4 mr-2" />
                   {t('nav.subscription')}
@@ -134,38 +148,36 @@ export const GlobalHeader = ({
         </div>
       </div>
 
-      {/* Navigation - only show if requested */}
-      {showNavigation && (
-        <div className="flex justify-center gap-2 mb-6">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleNavigation('history')}
-            className="flex-1"
-          >
-            <HistoryIcon className="h-4 w-4 mr-2" />
-            {t('nav.history')}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleNavigation('coach')}
-            className="flex-1"
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            {t('ui.ketoCoach')}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => handleNavigation('profile')}
-            className="flex-1"
-          >
-            <User className="h-4 w-4 mr-2" />
-            {t('nav.profile')}
-          </Button>
-        </div>
-      )}
+      {/* Global Navigation Tabs */}
+      <div className="flex justify-center gap-2 mb-6">
+        <Button 
+          variant={activeTab === 'main' ? 'default' : 'outline'}
+          size="sm" 
+          onClick={() => handleNavigation('main')}
+          className="flex-1"
+        >
+          <LayoutDashboard className="h-4 w-4 mr-2" />
+          Dashboard
+        </Button>
+        <Button 
+          variant={activeTab === 'coach' ? 'default' : 'outline'}
+          size="sm" 
+          onClick={() => handleNavigation('coach')}
+          className="flex-1"
+        >
+          <MessageCircle className="h-4 w-4 mr-2" />
+          Kalo Coach
+        </Button>
+        <Button 
+          variant={activeTab === 'profile' ? 'default' : 'outline'}
+          size="sm" 
+          onClick={() => handleNavigation('profile')}
+          className="flex-1"
+        >
+          <UserIcon className="h-4 w-4 mr-2" />
+          Profil
+        </Button>
+      </div>
     </div>
   );
 };
