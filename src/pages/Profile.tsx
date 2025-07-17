@@ -126,6 +126,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           target_weight: targetWeight ? parseFloat(targetWeight) : null,
           target_date: targetDate || null,
           preferred_language: language,
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
