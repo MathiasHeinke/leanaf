@@ -34,7 +34,10 @@ import {
   User,
   CreditCard,
   LogOut,
-  RefreshCw
+  RefreshCw,
+  Send,
+  StopCircle,
+  ImagePlus
 } from "lucide-react";
 
 interface MealData {
@@ -56,7 +59,6 @@ interface DailyGoal {
 }
 
 const Index = () => {
-  const [inputMode, setInputMode] = useState<'photo' | 'voice' | 'text' | null>(null);
   const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
@@ -70,6 +72,7 @@ const Index = () => {
   const [pullDistance, setPullDistance] = useState(0);
   const [startY, setStartY] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -260,7 +263,6 @@ const Index = () => {
 
       setDailyMeals(prev => [formattedMeal, ...prev]);
       setInputText("");
-      setInputMode(null);
       
       toast.success(t('app.mealAdded'));
     } catch (error: any) {
@@ -355,8 +357,12 @@ const Index = () => {
     }
   };
 
-  const handlePhotoUpload = () => {
-    toast.info(t('input.photoUpload'));
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast.info(t('input.photoUpload'));
+      // TODO: Implement photo analysis
+    }
   };
 
   if (authLoading || loading) {
@@ -582,196 +588,152 @@ const Index = () => {
           </div>
         </Card>
 
-        {/* Input Modes */}
-        {!inputMode && (
-          <div className="space-y-4 mb-6">
-            <h2 className="text-lg font-semibold text-center mb-4">
-              {t('app.addMeal')}
-            </h2>
-            
-            <div className="grid grid-cols-1 gap-3">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={() => setInputMode('photo')}
-                className="justify-start h-auto p-4"
-              >
-                <Camera className="h-6 w-6 mr-3" />
-                {t('input.photo')}
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={() => setInputMode('voice')}
-                className="justify-start h-auto p-4"
-              >
-                <Mic className="h-6 w-6 mr-3" />
-                {t('input.voice')}
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="lg" 
-                onClick={() => setInputMode('text')}
-                className="justify-start h-auto p-4"
-              >
-                <Type className="h-6 w-6 mr-3" />
-                {t('input.text')}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Input Interface */}
-        {inputMode && (
-          <Card className="p-6 mb-6 border-2 border-primary/20 shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">
-                {inputMode === 'photo' && t('input.photo')}
-                {inputMode === 'voice' && t('input.voice')}
-                {inputMode === 'text' && t('input.text')}
-              </h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setInputMode(null)}
-              >
-                {t('common.cancel')}
-              </Button>
-            </div>
-
-            {inputMode === 'photo' && (
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center">
-                  <Camera className="h-12 w-12 mx-auto mb-4 text-primary/50" />
-                  <p className="text-muted-foreground mb-4">
-                    {t('input.photoUpload')}
-                  </p>
-                  <Button variant="outline" onClick={handlePhotoUpload}>
-                    {t('input.photo')}
-                  </Button>
+        {/* ChatGPT-style Input */}
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <div className="max-w-md mx-auto">
+            <Card className="p-3 shadow-lg border-2 border-primary/20 bg-background/95 backdrop-blur">
+              <div className="flex items-end gap-2">
+                {/* Text Input */}
+                <div className="flex-1">
+                  <Textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={t('input.placeholder')}
+                    className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (inputText.trim()) {
+                          handleSubmitMeal();
+                        }
+                      }
+                    }}
+                  />
                 </div>
-              </div>
-            )}
-
-            {inputMode === 'voice' && (
-              <div className="space-y-4">
-                <div className="text-center p-8">
-                  <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                    isRecording ? 'bg-red-100 border-4 border-red-500 animate-pulse' : 'bg-primary/10'
-                  }`}>
-                    <Mic className={`h-8 w-8 ${isRecording ? 'text-red-500' : 'text-primary'}`} />
+                
+                {/* Action Buttons */}
+                <div className="flex items-center gap-1 pb-2">
+                  {/* Image Upload */}
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                      onClick={() => document.getElementById('image-upload')?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                    </Button>
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
                   </div>
-                  <p className="text-muted-foreground mb-4">
-                    {isRecording ? t('input.recording') : t('input.record')}
-                  </p>
-                  <Button 
-                    variant={isRecording ? "destructive" : "outline"} 
+                  
+                  {/* Voice Recording */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-8 w-8 p-0 transition-all duration-200 ${
+                      isRecording 
+                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
+                        : 'hover:bg-primary/10'
+                    }`}
                     onClick={handleVoiceRecord}
                     disabled={isAnalyzing}
                   >
-                    {isRecording ? t('common.stop') : t('input.record')}
+                    {isRecording ? (
+                      <StopCircle className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
+                  </Button>
+                  
+                  {/* Send Button */}
+                  <Button
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleSubmitMeal}
+                    disabled={!inputText.trim() || isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
-                {inputText && (
-                  <div className="mt-4">
-                    <label className="text-sm font-medium mb-2 block">Text:</label>
-                    <Textarea 
-                      value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
-                      placeholder={t('input.placeholder')}
-                      className="min-h-[100px]"
-                    />
+              </div>
+              
+              {/* Recording Indicator */}
+              {isRecording && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-red-500">
+                  <div className="flex gap-1">
+                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
+                    <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                )}
-              </div>
-            )}
-
-            {inputMode === 'text' && (
-              <div className="space-y-4">
-                <Textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={t('input.placeholder')}
-                  className="min-h-[120px] text-base"
-                />
-              </div>
-            )}
-
-            {inputText && (
-              <div className="mt-6 pt-4 border-t">
-                <Button 
-                  onClick={handleSubmitMeal} 
-                  className="w-full"
-                  disabled={isAnalyzing}
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current mr-2"></div>
-                      {t('app.analyzing')}
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-5 w-5 mr-2" />
-                      {t('app.addMeal')}
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </Card>
-        )}
+                  <span>{t('input.recording')}</span>
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
 
         {/* Today's Meals */}
-        {dailyMeals.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
-            
-            {dailyMeals.map((meal) => (
-              <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    {meal.meal_type && (
-                      <Badge variant="secondary">{meal.meal_type}</Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {meal.timestamp.toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </span>
+        <div className="pb-24">
+          {dailyMeals.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
+              
+              {dailyMeals.map((meal) => (
+                <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      {meal.meal_type && (
+                        <Badge variant="secondary">{meal.meal_type}</Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        {meal.timestamp.toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm font-semibold text-primary">
+                      <Zap className="h-4 w-4" />
+                      {meal.calories} kcal
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-sm font-semibold text-primary">
-                    <Zap className="h-4 w-4" />
-                    {meal.calories} kcal
+                  
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {meal.text}
+                  </p>
+                  
+                  <div className="flex justify-between text-xs">
+                    <span className="text-protein">P: {meal.protein}g</span>
+                    <span className="text-carbs">C: {meal.carbs}g</span>
+                    <span className="text-fats">F: {meal.fats}g</span>
                   </div>
-                </div>
-                
-                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                  {meal.text}
-                </p>
-                
-                <div className="flex justify-between text-xs">
-                  <span className="text-protein">P: {meal.protein}g</span>
-                  <span className="text-carbs">C: {meal.carbs}g</span>
-                  <span className="text-fats">F: {meal.fats}g</span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+                </Card>
+              ))}
+            </div>
+          )}
 
-        {/* Empty State */}
-        {dailyMeals.length === 0 && !inputMode && (
-          <Card className="p-8 text-center border-dashed border-2 border-muted">
-            <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="font-semibold mb-2">{t('app.noMeals')}</h3>
-            <p className="text-muted-foreground text-sm">
-              {t('app.addMeal')}
-            </p>
-          </Card>
-        )}
+          {/* Empty State */}
+          {dailyMeals.length === 0 && (
+            <Card className="p-8 text-center border-dashed border-2 border-muted">
+              <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="font-semibold mb-2">{t('app.noMeals')}</h3>
+              <p className="text-muted-foreground text-sm">
+                {t('app.addMeal')}
+              </p>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
