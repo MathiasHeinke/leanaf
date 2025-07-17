@@ -31,6 +31,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [gender, setGender] = useState('');
   const [activityLevel, setActivityLevel] = useState('moderate');
   const [goal, setGoal] = useState('maintain');
+  const [targetWeight, setTargetWeight] = useState('');
+  const [targetDate, setTargetDate] = useState('');
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState('');
   const [loading, setLoading] = useState(false);
@@ -67,6 +69,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setGender(data.gender || '');
         setActivityLevel(data.activity_level || 'moderate');
         setGoal(data.goal || 'maintain');
+        setTargetWeight(data.target_weight ? data.target_weight.toString() : '');
+        setTargetDate(data.target_date || '');
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
@@ -119,6 +123,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           gender: gender || null,
           activity_level: activityLevel,
           goal: goal,
+          target_weight: targetWeight ? parseFloat(targetWeight) : null,
+          target_date: targetDate || null,
           preferred_language: language,
         });
 
@@ -350,6 +356,76 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   </Select>
                 </div>
               </div>
+
+              {/* Weight Goal Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="targetWeight">Zielgewicht (kg)</Label>
+                  <Input
+                    id="targetWeight"
+                    type="number"
+                    value={targetWeight}
+                    onChange={(e) => setTargetWeight(e.target.value)}
+                    placeholder="65"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="targetDate">Zieldatum</Label>
+                  <Input
+                    id="targetDate"
+                    type="date"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Weight Goal Estimation */}
+              {weight && targetWeight && targetDate && (
+                <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
+                  <h4 className="font-medium mb-2">Gewichtsziel-Schätzung</h4>
+                  <div className="text-sm space-y-1">
+                    {(() => {
+                      const currentWeight = parseFloat(weight);
+                      const goalWeight = parseFloat(targetWeight);
+                      const weightDiff = Math.abs(currentWeight - goalWeight);
+                      const targetDateObj = new Date(targetDate);
+                      const today = new Date();
+                      const timeDiff = Math.max(0, (targetDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      const weeksLeft = Math.floor(timeDiff / 7);
+                      
+                      if (timeDiff <= 0) {
+                        return <span className="text-amber-600">Zieldatum ist bereits erreicht oder überschritten</span>;
+                      }
+                      
+                      // Safe weekly weight loss/gain: 0.5-1kg per week
+                      const weeklyTarget = weightDiff / weeksLeft;
+                      const isHealthy = weeklyTarget <= 1;
+                      
+                      return (
+                        <div className="space-y-1">
+                          <p>
+                            <span className="font-medium">Gewichtsdifferenz:</span> {weightDiff.toFixed(1)} kg
+                          </p>
+                          <p>
+                            <span className="font-medium">Zeit bis zum Ziel:</span> {weeksLeft} Wochen
+                          </p>
+                          <p>
+                            <span className="font-medium">Benötigter Fortschritt:</span> {weeklyTarget.toFixed(1)} kg/Woche
+                          </p>
+                          <p className={isHealthy ? 'text-green-600' : 'text-red-600'}>
+                            {isHealthy 
+                              ? '✓ Realistisches und gesundes Ziel' 
+                              : '⚠ Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche'
+                            }
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
 
               {/* BMI Display */}
               {bmi && (

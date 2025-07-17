@@ -101,6 +101,8 @@ export type Database = {
           preferred_language: string | null
           subscription_id: string | null
           subscription_status: string | null
+          target_date: string | null
+          target_weight: number | null
           updated_at: string
           user_id: string
           weight: number | null
@@ -119,6 +121,8 @@ export type Database = {
           preferred_language?: string | null
           subscription_id?: string | null
           subscription_status?: string | null
+          target_date?: string | null
+          target_weight?: number | null
           updated_at?: string
           user_id: string
           weight?: number | null
@@ -137,6 +141,8 @@ export type Database = {
           preferred_language?: string | null
           subscription_id?: string | null
           subscription_status?: string | null
+          target_date?: string | null
+          target_weight?: number | null
           updated_at?: string
           user_id?: string
           weight?: number | null

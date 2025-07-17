@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Settings as SettingsIcon, Target, Save } from "lucide-react";
 
 interface DailyGoal {
@@ -22,8 +24,11 @@ interface SettingsProps {
 const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const [goal, setGoal] = useState(dailyGoal.calories.toString());
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user) return;
+
     const newGoal = parseInt(goal);
     if (newGoal < 800 || newGoal > 5000) {
       toast({
@@ -34,15 +39,39 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
       return;
     }
     
-    onGoalChange({
-      ...dailyGoal,
-      calories: newGoal
-    });
-    toast({
-      title: "Ziel gespeichert! 🎯",
-      description: `Neues Tagesziel: ${newGoal} kcal`
-    });
-    onClose();
+    try {
+      // Save to database
+      const { error } = await supabase
+        .from('daily_goals')
+        .upsert({
+          user_id: user.id,
+          calories: newGoal,
+          protein: dailyGoal.protein,
+          carbs: dailyGoal.carbs,
+          fats: dailyGoal.fats,
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      onGoalChange({
+        ...dailyGoal,
+        calories: newGoal
+      });
+      
+      toast({
+        title: "Ziel gespeichert! 🎯",
+        description: `Neues Tagesziel: ${newGoal} kcal`
+      });
+      onClose();
+    } catch (error: any) {
+      console.error('Error saving goal:', error);
+      toast({
+        title: "Fehler",
+        description: "Ziel konnte nicht gespeichert werden.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
