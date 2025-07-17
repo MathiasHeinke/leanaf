@@ -588,9 +588,7 @@ const Index = () => {
   }
 
   return (
-    <div 
-      className="min-h-screen bg-gradient-to-br from-background to-accent/20"
-    >
+    <div>
       {/* Motivation Animation */}
       {showMotivation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -604,102 +602,36 @@ const Index = () => {
         </div>
       )}
       
-      <div className="container mx-auto px-4 py-6 max-w-md">
-        
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-primary to-primary-glow p-3 rounded-2xl">
-                <Activity className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                KaloTracker
-              </h1>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Refresh Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  loadUserData(true);
-                  setQuoteRefreshTrigger(prev => prev + 1);
-                }}
-                disabled={isRefreshing}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
-              
-              {/* Language Toggle */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-                className="flex items-center gap-2"
-              >
-                <span className="text-sm font-medium">
-                  {language === 'de' ? '🇩🇪 DE' : '🇺🇸 EN'}
-                </span>
-              </Button>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setCurrentView('profile')}>
-                    <User className="h-4 w-4 mr-2" />
-                    {t('nav.profile')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setCurrentView('subscription')}>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    {t('nav.subscription')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {t('nav.logout')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-center gap-2 mb-6">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setCurrentView('history')}
-            className="flex-1"
-          >
-            <HistoryIcon className="h-4 w-4 mr-2" />
-            {t('nav.history')}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setCurrentView('coach')}
-            className="flex-1"
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            {t('ui.ketoCoach')}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setCurrentView('profile')}
-            className="flex-1"
-          >
-            <User className="h-4 w-4 mr-2" />
-            {t('nav.profile')}
-          </Button>
-        </div>
+      {/* Navigation */}
+      <div className="flex justify-center gap-2 mb-6">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setCurrentView('history')}
+          className="flex-1"
+        >
+          <HistoryIcon className="h-4 w-4 mr-2" />
+          {t('nav.history')}
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setCurrentView('coach')}
+          className="flex-1"
+        >
+          <MessageCircle className="h-4 w-4 mr-2" />
+          {t('ui.ketoCoach')}
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setCurrentView('profile')}
+          className="flex-1"
+        >
+          <User className="h-4 w-4 mr-2" />
+          {t('nav.profile')}
+        </Button>
+      </div>
 
         {/* Enhanced Daily Dashboard */}
         <Card className="p-6 mb-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
@@ -1084,11 +1016,10 @@ const Index = () => {
                 Füge deine erste Mahlzeit hinzu
               </p>
             </Card>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+           )}
+         </div>
+       </div>
+     );
+   };
 
-export default Index;
+   export default Index;
