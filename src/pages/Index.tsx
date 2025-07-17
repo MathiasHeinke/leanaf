@@ -857,7 +857,7 @@ const Index = () => {
 
   const handleAddMealForDate = (date: string) => {
     setSelectedDate(date);
-    setCurrentView('main');
+    // Don't change currentView here - stay in history
     setShowConfirmationDialog(true);
     setAnalyzedMealData({
       total: { calories: 0, protein: 0, carbs: 0, fats: 0 }
