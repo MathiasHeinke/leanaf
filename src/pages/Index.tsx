@@ -803,7 +803,7 @@ const Index = () => {
 
   // Always use the global header, but pass specific props for the main view
   return (
-    <div>
+    <div className="max-w-sm mx-auto px-4">
       {/* Motivation Animation */}
       {showMotivation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -817,7 +817,7 @@ const Index = () => {
         </div>
       )}
       
-        <Card className="p-6 mb-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
+        <Card className="p-4 mb-4 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
@@ -873,8 +873,8 @@ const Index = () => {
           </div>
 
           {/* Enhanced Macro Overview with progress and red indicators */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className={`text-center p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
+          <div className="grid grid-cols-3 gap-2">
+            <div className={`text-center p-2 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
               <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{t('app.protein')}</div>
               <div className={`font-bold mb-2 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{dailyTotals.protein}{t('ui.gram')}</div>
               <Progress 
@@ -885,7 +885,7 @@ const Index = () => {
                 {remainingProtein > 0 ? `+${remainingProtein}${t('ui.gram')}` : `${Math.abs(remainingProtein)}${t('ui.gram')} ${t('ui.overBy')}`}
               </div>
             </div>
-            <div className={`text-center p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
+            <div className={`text-center p-2 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
               <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{t('app.carbs')}</div>
               <div className={`font-bold mb-2 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{dailyTotals.carbs}{t('ui.gram')}</div>
               <Progress 
@@ -896,7 +896,7 @@ const Index = () => {
                 {remainingCarbs > 0 ? `+${remainingCarbs}${t('ui.gram')}` : `${Math.abs(remainingCarbs)}${t('ui.gram')} ${t('ui.overBy')}`}
               </div>
             </div>
-            <div className={`text-center p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
+            <div className={`text-center p-2 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
               <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{t('app.fats')}</div>
               <div className={`font-bold mb-2 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{dailyTotals.fats}{t('ui.gram')}</div>
               <Progress 
@@ -941,7 +941,7 @@ const Index = () => {
 
         {/* ChatGPT-style Input */}
         <div className="fixed bottom-4 left-4 right-4 z-50">
-          <div className="max-w-md mx-auto">
+          <div className="max-w-sm mx-auto">
             <Card className="p-3 shadow-lg border-2 border-primary/20 bg-background/95 backdrop-blur">
               <div className="flex items-end gap-2">
                 {/* Text Input */}
