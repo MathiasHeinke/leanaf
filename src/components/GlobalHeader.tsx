@@ -77,8 +77,9 @@ export const GlobalHeader = ({
           window.dispatchEvent(new CustomEvent('navigate-coach'));
           break;
         case 'history':
-          navigate('/');
+          // Dispatch event first, then navigate to avoid race condition
           window.dispatchEvent(new CustomEvent('navigate-history'));
+          navigate('/');
           break;
         case 'profile':
           navigate('/profile');
