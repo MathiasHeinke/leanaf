@@ -39,9 +39,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [dailyGoals, setDailyGoals] = useState({
     calories: 2000,
-    protein: 150,
-    carbs: 250,
-    fats: 65
+    protein: 30, // Percentage
+    carbs: 40,   // Percentage  
+    fats: 30,    // Percentage
+    calorieDeficit: 300 // Calories below maintenance
   });
   
   const { user } = useAuth();
@@ -128,9 +129,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       if (data) {
         setDailyGoals({
           calories: data.calories || 2000,
-          protein: data.protein || 150,
-          carbs: data.carbs || 250,
-          fats: data.fats || 65
+          protein: data.protein || 30,
+          carbs: data.carbs || 40,
+          fats: data.fats || 30,
+          calorieDeficit: data.calorie_deficit || 300
         });
       }
     } catch (error: any) {
@@ -164,15 +166,22 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
       if (error) throw error;
 
-      // Update daily goals
+      // Update daily goals  
+      const targetCalories = calculateTargetCalories();
+      const macroGrams = calculateMacroGrams();
+      
       const { error: goalsError } = await supabase
         .from('daily_goals')
         .upsert({
           user_id: user.id,
-          calories: dailyGoals.calories,
-          protein: dailyGoals.protein,
-          carbs: dailyGoals.carbs,
-          fats: dailyGoals.fats,
+          calories: targetCalories,
+          protein: macroGrams.protein,
+          carbs: macroGrams.carbs,
+          fats: macroGrams.fats,
+          calorie_deficit: dailyGoals.calorieDeficit,
+          protein_percentage: dailyGoals.protein,
+          carbs_percentage: dailyGoals.carbs,
+          fats_percentage: dailyGoals.fats,
         }, {
           onConflict: 'user_id'
         });
@@ -216,6 +225,53 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       console.error('Error adding weight:', error);
       toast.error('Error adding weight');
     }
+  };
+
+  const calculateBMR = () => {
+    if (!weight || !height || !age || !gender) return null;
+    
+    const w = parseFloat(weight);
+    const h = parseInt(height);
+    const a = parseInt(age);
+    
+    // Mifflin-St Jeor Equation
+    if (gender === 'male') {
+      return (10 * w) + (6.25 * h) - (5 * a) + 5;
+    } else {
+      return (10 * w) + (6.25 * h) - (5 * a) - 161;
+    }
+  };
+
+  const calculateMaintenanceCalories = () => {
+    const bmr = calculateBMR();
+    if (!bmr) return null;
+    
+    const activityMultipliers = {
+      sedentary: 1.2,
+      light: 1.375,
+      moderate: 1.55,
+      active: 1.725,
+      very_active: 1.9
+    };
+    
+    return Math.round(bmr * activityMultipliers[activityLevel as keyof typeof activityMultipliers]);
+  };
+
+  const calculateTargetCalories = () => {
+    const maintenance = calculateMaintenanceCalories();
+    if (!maintenance) return 2000;
+    
+    const multiplier = goal === 'lose' ? -1 : goal === 'gain' ? 1 : 0;
+    return maintenance + (multiplier * dailyGoals.calorieDeficit);
+  };
+
+  const calculateMacroGrams = () => {
+    const targetCalories = calculateTargetCalories();
+    return {
+      protein: Math.round((targetCalories * dailyGoals.protein / 100) / 4), // 4 cal/g
+      carbs: Math.round((targetCalories * dailyGoals.carbs / 100) / 4), // 4 cal/g
+      fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9), // 9 cal/g
+    };
   };
 
   const calculateBMI = () => {
@@ -430,53 +486,98 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 </div>
               </div>
 
-              {/* Daily Goals Section */}
+              {/* Calorie Goals Section */}
               <Separator />
               <div>
                 <h4 className="font-medium mb-4 flex items-center gap-2">
                   <Target className="h-4 w-4" />
-                  Tägliche Kalorienziele
+                  Kalorienberechnung
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dailyCalories">Kalorien</Label>
-                    <Input
-                      id="dailyCalories"
-                      type="number"
-                      value={dailyGoals.calories}
-                      onChange={(e) => setDailyGoals({...dailyGoals, calories: Number(e.target.value)})}
-                      placeholder="2000"
-                    />
+                
+                {/* Maintenance Calories Display */}
+                {calculateMaintenanceCalories() && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="p-3 bg-blue-50 rounded-lg text-center">
+                      <div className="text-sm font-medium text-blue-700">Grundumsatz (BMR)</div>
+                      <div className="text-lg font-bold text-blue-800">{calculateBMR()?.toFixed(0)} kcal</div>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-lg text-center">
+                      <div className="text-sm font-medium text-green-700">Gesamtumsatz</div>
+                      <div className="text-lg font-bold text-green-800">{calculateMaintenanceCalories()} kcal</div>
+                    </div>
+                    <div className="p-3 bg-primary/10 rounded-lg text-center">
+                      <div className="text-sm font-medium text-primary">Zielkalorien</div>
+                      <div className="text-lg font-bold text-primary">{calculateTargetCalories()} kcal</div>
+                    </div>
                   </div>
+                )}
+
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="dailyProtein">Protein (g)</Label>
+                    <Label htmlFor="calorieDeficit">
+                      {goal === 'lose' ? 'Kaloriendefizit' : goal === 'gain' ? 'Kalorienüberschuss' : 'Kalorienanpassung'}
+                    </Label>
                     <Input
-                      id="dailyProtein"
+                      id="calorieDeficit"
                       type="number"
-                      value={dailyGoals.protein}
-                      onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
-                      placeholder="150"
+                      value={dailyGoals.calorieDeficit}
+                      onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: Number(e.target.value)})}
+                      placeholder="300"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {goal === 'lose' ? 'Kalorien unter Gesamtumsatz' : goal === 'gain' ? 'Kalorien über Gesamtumsatz' : 'Kalorienanpassung'}
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dailyCarbs">Kohlenhydrate (g)</Label>
-                    <Input
-                      id="dailyCarbs"
-                      type="number"
-                      value={dailyGoals.carbs}
-                      onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
-                      placeholder="250"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dailyFats">Fette (g)</Label>
-                    <Input
-                      id="dailyFats"
-                      type="number"
-                      value={dailyGoals.fats}
-                      onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
-                      placeholder="65"
-                    />
+
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Makronährstoff-Verteilung (%)</Label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="proteinPercent" className="text-xs">Protein</Label>
+                        <Input
+                          id="proteinPercent"
+                          type="number"
+                          value={dailyGoals.protein}
+                          onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
+                          placeholder="30"
+                          min="10"
+                          max="50"
+                        />
+                        <p className="text-xs text-muted-foreground">{calculateMacroGrams().protein}g</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="carbsPercent" className="text-xs">Kohlenhydrate</Label>
+                        <Input
+                          id="carbsPercent"
+                          type="number"
+                          value={dailyGoals.carbs}
+                          onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
+                          placeholder="40"
+                          min="20"
+                          max="70"
+                        />
+                        <p className="text-xs text-muted-foreground">{calculateMacroGrams().carbs}g</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fatsPercent" className="text-xs">Fette</Label>
+                        <Input
+                          id="fatsPercent"
+                          type="number"
+                          value={dailyGoals.fats}
+                          onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
+                          placeholder="30"
+                          min="15"
+                          max="50"
+                        />
+                        <p className="text-xs text-muted-foreground">{calculateMacroGrams().fats}g</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Gesamt: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}% 
+                      {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats !== 100 && (
+                        <span className="text-red-500 ml-1">(sollte 100% sein)</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
