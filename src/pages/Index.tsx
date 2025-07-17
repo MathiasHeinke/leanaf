@@ -118,6 +118,7 @@ const Index = () => {
   const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([]);
   const [chatInput, setChatInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -836,6 +837,19 @@ const Index = () => {
     }
   };
 
+  const handleAddMealForDate = (date: string) => {
+    setSelectedDate(date);
+    setCurrentView('main');
+    setShowConfirmationDialog(true);
+    setAnalyzedMealData({
+      total: { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    });
+    setInputText('');
+    setUploadedImages([]);
+    setChatMessages([]);
+    setSelectedMealType('');
+  };
+
   const handleConfirmMeal = async () => {
     if (!inputText.trim() || !analyzedMealData) return;
     
@@ -843,6 +857,7 @@ const Index = () => {
     
     try {
       // Save the meal to the database
+      const mealDate = selectedDate || new Date().toISOString();
       const newMeal = {
         user_id: user?.id,
         text: inputText,
@@ -850,7 +865,8 @@ const Index = () => {
         protein: Math.round(analyzedMealData.total.protein),
         carbs: Math.round(analyzedMealData.total.carbs),
         fats: Math.round(analyzedMealData.total.fats),
-        meal_type: selectedMealType || getCurrentMealType()
+        meal_type: selectedMealType || getCurrentMealType(),
+        created_at: selectedDate ? new Date(selectedDate + 'T' + new Date().toTimeString().slice(0, 8)).toISOString() : undefined
       };
 
       const { data: insertedMeal, error: insertError } = await supabase
@@ -896,6 +912,7 @@ const Index = () => {
       setAnalyzedMealData(null);
       setUploadedImages([]);
       setChatMessages([]);
+      setSelectedDate('');
       
       toast.success('Mahlzeit erfolgreich hinzugefügt!');
       
@@ -1007,6 +1024,7 @@ const Index = () => {
           loadUserData(true);
         }} 
         dailyGoal={dailyGoal}
+        onAddMeal={handleAddMealForDate}
       />
     );
   }
@@ -1371,22 +1389,27 @@ const Index = () => {
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Mahlzeit bestätigen</DialogTitle>
+            <DialogTitle>
+              {selectedDate ? `Mahlzeit für ${new Date(selectedDate).toLocaleDateString('de-DE')} hinzufügen` : 'Mahlzeit bestätigen'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Display analyzed data */}
             {analyzedMealData && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm bg-muted/50 p-3 rounded-lg">
-                  <div className="font-medium">Kalorien:</div>
-                  <div>{Math.round(analyzedMealData.total.calories)} kcal</div>
-                  <div className="font-medium">Protein:</div>
-                  <div>{Math.round(analyzedMealData.total.protein)}g</div>
-                  <div className="font-medium">Kohlenhydrate:</div>
-                  <div>{Math.round(analyzedMealData.total.carbs)}g</div>
-                  <div className="font-medium">Fett:</div>
-                  <div>{Math.round(analyzedMealData.total.fats)}g</div>
-                </div>
+                {/* Only show nutritional data if we have valid data */}
+                {analyzedMealData.total.calories > 0 && (
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-muted/50 p-3 rounded-lg">
+                    <div className="font-medium">Kalorien:</div>
+                    <div>{Math.round(analyzedMealData.total.calories)} kcal</div>
+                    <div className="font-medium">Protein:</div>
+                    <div>{Math.round(analyzedMealData.total.protein)}g</div>
+                    <div className="font-medium">Kohlenhydrate:</div>
+                    <div>{Math.round(analyzedMealData.total.carbs)}g</div>
+                    <div className="font-medium">Fett:</div>
+                    <div>{Math.round(analyzedMealData.total.fats)}g</div>
+                  </div>
+                )}
                 
                 {/* Display uploaded images */}
                 {uploadedImages.length > 0 && (
@@ -1493,13 +1516,13 @@ const Index = () => {
             <div className="flex gap-2">
               <Button
                 onClick={handleConfirmMeal}
-                disabled={!inputText.trim() || isAnalyzing}
+                disabled={!inputText.trim() || (analyzedMealData?.total.calories === 0 && !selectedDate)}
                 className="flex-1"
               >
                 {isAnalyzing ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
                 ) : null}
-                Bestätigen
+                {selectedDate ? 'Hinzufügen' : 'Bestätigen'}
               </Button>
               <Button
                 variant="outline"
@@ -1510,6 +1533,7 @@ const Index = () => {
                   setSelectedMealType('');
                   setChatMessages([]);
                   setChatInput('');
+                  setSelectedDate('');
                 }}
                 className="flex-1"
               >

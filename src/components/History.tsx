@@ -29,7 +29,8 @@ import {
   ChevronDown,
   ChevronUp,
   Edit2,
-  Trash2
+  Trash2,
+  Plus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,7 @@ interface MealData {
   fats: number;
   created_at: string;
   meal_type: string;
+  images?: string[];
 }
 
 interface DailyData {
@@ -67,9 +69,10 @@ interface DailyData {
 interface HistoryProps {
   onClose: () => void;
   dailyGoal: DailyGoal;
+  onAddMeal?: (selectedDate: string) => void;
 }
 
-const History = ({ onClose, dailyGoal }: HistoryProps) => {
+const History = ({ onClose, dailyGoal, onAddMeal }: HistoryProps) => {
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
   const [historyData, setHistoryData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +103,26 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
 
       if (error) throw error;
 
+      // Load images for all meals
+      const mealIds = mealsData?.map(meal => meal.id) || [];
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('meal_images')
+        .select('*')
+        .in('meal_id', mealIds);
+
+      if (imagesError) {
+        console.error('Error loading meal images:', imagesError);
+      }
+
+      // Group images by meal_id
+      const imagesByMealId = new Map<string, string[]>();
+      imagesData?.forEach(image => {
+        if (!imagesByMealId.has(image.meal_id)) {
+          imagesByMealId.set(image.meal_id, []);
+        }
+        imagesByMealId.get(image.meal_id)?.push(image.image_url);
+      });
+
       // Group meals by date
       const groupedData = new Map<string, DailyData>();
       
@@ -127,7 +150,11 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
         const date = new Date(meal.created_at).toISOString().split('T')[0];
         const day = groupedData.get(date);
         if (day) {
-          day.meals.push(meal);
+          const mealWithImages = {
+            ...meal,
+            images: imagesByMealId.get(meal.id) || []
+          };
+          day.meals.push(mealWithImages);
           day.calories += Number(meal.calories);
           day.protein += Number(meal.protein);
           day.carbs += Number(meal.carbs);
@@ -347,23 +374,24 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
                             <p className="text-center text-muted-foreground text-sm py-4">
                               Keine Mahlzeiten an diesem Tag
                             </p>
-                          ) : (
-                            <div className="space-y-2">
-                              {day.meals.map((meal) => (
-                                <div key={meal.id} className="flex items-center justify-between p-2 bg-muted/20 rounded">
-                                  <div className="flex-1">
-                                    <div className="font-medium text-sm">{meal.text}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {meal.calories} kcal • P: {meal.protein}g • K: {meal.carbs}g • F: {meal.fats}g
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {meal.meal_type} • {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
-                                        hour: '2-digit', 
-                                        minute: '2-digit' 
-                                      })}
-                                    </div>
-                                  </div>
-                                   <div className="flex items-center gap-1">
+                           ) : (
+                             <div className="space-y-2">
+                               {day.meals.map((meal) => (
+                                 <div key={meal.id} className="space-y-2">
+                                   <div className="flex items-center justify-between p-2 bg-muted/20 rounded">
+                                     <div className="flex-1">
+                                       <div className="font-medium text-sm">{meal.text}</div>
+                                       <div className="text-xs text-muted-foreground">
+                                         {meal.calories} kcal • P: {meal.protein}g • K: {meal.carbs}g • F: {meal.fats}g
+                                       </div>
+                                       <div className="text-xs text-muted-foreground">
+                                         {meal.meal_type} • {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
+                                           hour: '2-digit', 
+                                           minute: '2-digit' 
+                                         })}
+                                       </div>
+                                     </div>
+                                     <div className="flex items-center gap-1">
                                      <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
                                        if (!open) setEditingMeal(null);
                                      }}>
@@ -476,23 +504,53 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
                                      >
                                        <Trash2 className="h-3 w-3" />
                                      </Button>
+                                    </div>
                                    </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                ))}
-              </div>
-            )}
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
-
-export default History;
+                                   {/* Display meal images */}
+                                   {meal.images && meal.images.length > 0 && (
+                                     <div className="pl-2">
+                                       <div className="text-xs text-muted-foreground mb-1">Bilder:</div>
+                                       <div className="flex gap-2">
+                                         {meal.images.map((imageUrl, index) => (
+                                           <img
+                                             key={index}
+                                             src={imageUrl}
+                                             alt={`Mahlzeit ${index + 1}`}
+                                             className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                                             onClick={() => window.open(imageUrl, '_blank')}
+                                           />
+                                         ))}
+                                       </div>
+                                     </div>
+                                   )}
+                                 </div>
+                               ))}
+                               {/* Add meal button */}
+                               <div className="flex justify-center pt-2">
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => onAddMeal?.(day.date)}
+                                   className="h-8 px-3 text-xs"
+                                 >
+                                   <Plus className="h-3 w-3 mr-1" />
+                                   Mahlzeit hinzufügen
+                                 </Button>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       </CollapsibleContent>
+                     </div>
+                   </Collapsible>
+                 ))}
+               </div>
+             )}
+           </Card>
+         </TabsContent>
+       </Tabs>
+     </div>
+   );
+ };
+ 
+ export default History;
