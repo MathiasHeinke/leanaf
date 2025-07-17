@@ -543,7 +543,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <CardTitle>{t('profile.personalInfo')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startWeight">Startgewicht (kg)</Label>
                   <Input
@@ -554,7 +554,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     placeholder="75"
                   />
                 </div>
-
 
                 <div className="space-y-2">
                   <Label htmlFor="height">{t('profile.height')}</Label>
