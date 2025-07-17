@@ -1071,39 +1071,6 @@ const Index = () => {
             />
           )}
 
-          {/* Weight History Card */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Gewichtsverlauf</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {weightHistory.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(entry.date).toLocaleDateString('de-DE')}
-                      </span>
-                      <span className="font-medium">{entry.weight} kg</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteWeight(entry.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                {weightHistory.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Noch keine Gewichtseinträge vorhanden
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
 
           {/* Weight Input Modal */}
