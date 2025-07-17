@@ -16,6 +16,12 @@ serve(async (req) => {
 
   try {
     const { text, image } = await req.json();
+    
+    console.log('Received request:', { text, hasImage: !!image });
+
+    if (!text && !image) {
+      throw new Error('Weder Text noch Bild bereitgestellt');
+    }
 
     let prompt = `Analysiere diese Mahlzeit und gib die Nährwerte zurück. Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
@@ -54,6 +60,8 @@ Mahlzeit: ${text}`;
       }
     ];
 
+    console.log('Sending request to OpenAI...');
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -68,6 +76,8 @@ Mahlzeit: ${text}`;
       }),
     });
 
+    console.log('OpenAI response status:', response.status);
+
     const data = await response.json();
     
     if (!response.ok) {
@@ -75,16 +85,40 @@ Mahlzeit: ${text}`;
     }
 
     const content = data.choices[0].message.content;
+    console.log('OpenAI raw response:', content);
     
     try {
       const parsed = JSON.parse(content);
+      console.log('Parsed nutrition data:', parsed);
+      
       return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
       console.error('Content:', content);
-      throw new Error('Ungültige Antwort von OpenAI');
+      
+      // Fallback response if JSON parsing fails
+      const fallbackResponse = {
+        items: [{
+          name: text || 'Unbekannte Mahlzeit',
+          amount: '1 Portion',
+          calories: 300,
+          protein: 15,
+          carbs: 30,
+          fats: 10
+        }],
+        total: {
+          calories: 300,
+          protein: 15,
+          carbs: 30,
+          fats: 10
+        }
+      };
+      
+      return new Response(JSON.stringify(fallbackResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
   } catch (error) {

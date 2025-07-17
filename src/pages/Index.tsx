@@ -62,6 +62,8 @@ const Index = () => {
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [currentView, setCurrentView] = useState<'main' | 'settings' | 'history' | 'coach' | 'profile' | 'subscription'>('main');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [loading, setLoading] = useState(true);
   
   const { user, loading: authLoading, signOut } = useAuth();
@@ -158,12 +160,23 @@ const Index = () => {
     }
 
     setIsAnalyzing(true);
+    console.log('Starting meal analysis for:', inputText);
+    
     try {
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { text: inputText },
       });
 
-      if (error) throw error;
+      console.log('Supabase function response:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      if (!data || !data.total) {
+        throw new Error('Invalid response format from analysis service');
+      }
 
       const newMeal = {
         user_id: user?.id,
@@ -175,13 +188,20 @@ const Index = () => {
         meal_type: getCurrentMealType()
       };
 
+      console.log('Inserting meal:', newMeal);
+
       const { data: insertedMeal, error: insertError } = await supabase
         .from('meals')
         .insert([newMeal])
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Database insert error:', insertError);
+        throw insertError;
+      }
+
+      console.log('Successfully inserted meal:', insertedMeal);
 
       const formattedMeal: MealData = {
         id: insertedMeal.id,
@@ -201,7 +221,7 @@ const Index = () => {
       toast.success(t('app.mealAdded'));
     } catch (error: any) {
       console.error('Error analyzing meal:', error);
-      toast.error(t('app.error'));
+      toast.error(error.message || t('app.error'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -215,9 +235,80 @@ const Index = () => {
     return "snack";
   };
 
-  const handleVoiceRecord = () => {
-    setIsRecording(!isRecording);
-    toast.info(isRecording ? t('input.recording') : t('input.record'));
+  const handleVoiceRecord = async () => {
+    if (!isRecording) {
+      try {
+        console.log('Starting voice recording...');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        const chunks: Blob[] = [];
+
+        recorder.ondataavailable = (event) => {
+          chunks.push(event.data);
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+          await processAudioRecording(audioBlob);
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        recorder.start();
+        setMediaRecorder(recorder);
+        setAudioChunks(chunks);
+        setIsRecording(true);
+        toast.info(t('input.recording'));
+      } catch (error) {
+        console.error('Error starting recording:', error);
+        toast.error('Mikrofonzugriff verweigert');
+      }
+    } else {
+      console.log('Stopping voice recording...');
+      if (mediaRecorder) {
+        mediaRecorder.stop();
+        setMediaRecorder(null);
+        setIsRecording(false);
+      }
+    }
+  };
+
+  const processAudioRecording = async (audioBlob: Blob) => {
+    try {
+      console.log('Processing audio recording...');
+      toast.info('Verarbeite Spracheingabe...');
+      
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        
+        try {
+          const { data, error } = await supabase.functions.invoke('voice-to-text', {
+            body: { audio: base64 },
+          });
+
+          if (error) {
+            console.error('Voice-to-text error:', error);
+            throw error;
+          }
+
+          if (data.text) {
+            setInputText(data.text);
+            toast.success('Sprache erkannt: ' + data.text);
+          } else {
+            toast.error('Keine Sprache erkannt');
+          }
+        } catch (error) {
+          console.error('Error processing voice:', error);
+          toast.error('Fehler bei der Spracherkennung');
+        }
+      };
+      
+      reader.readAsDataURL(audioBlob);
+    } catch (error) {
+      console.error('Error processing audio:', error);
+      toast.error('Fehler bei der Audioverarbeitung');
+    }
   };
 
   const handlePhotoUpload = () => {
@@ -487,6 +578,7 @@ const Index = () => {
                   <Button 
                     variant={isRecording ? "destructive" : "outline"} 
                     onClick={handleVoiceRecord}
+                    disabled={isAnalyzing}
                   >
                     {isRecording ? t('common.stop') : t('input.record')}
                   </Button>

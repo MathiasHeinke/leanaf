@@ -49,6 +49,7 @@ const translations = {
     'input.record': 'Aufnahme',
     'input.recording': 'Aufnahme läuft...',
     'input.photoUpload': 'Foto hochladen',
+    'common.stop': 'Stop',
     
     // Authentication
     'auth.signIn': 'Anmelden',
@@ -163,6 +164,7 @@ const translations = {
     'input.record': 'Record',
     'input.recording': 'Recording...',
     'input.photoUpload': 'Upload Photo',
+    'common.stop': 'Stop',
     
     // Authentication
     'auth.signIn': 'Sign In',
