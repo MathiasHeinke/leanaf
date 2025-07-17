@@ -525,32 +525,32 @@ const History = ({ onClose, dailyGoal, onAddMeal }: HistoryProps) => {
                                    )}
                                  </div>
                                ))}
-                               {/* Add meal button */}
-                               <div className="flex justify-center pt-2">
-                                 <Button
-                                   variant="outline"
-                                   size="sm"
-                                   onClick={() => onAddMeal?.(day.date)}
-                                   className="h-8 px-3 text-xs"
-                                 >
-                                   <Plus className="h-3 w-3 mr-1" />
-                                   Mahlzeit hinzufügen
-                                 </Button>
-                               </div>
                              </div>
                            )}
+                           {/* Add meal button - now always visible */}
+                           <div className="flex justify-center pt-2">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => onAddMeal?.(day.date)}
+                               className="h-8 px-3 text-xs"
+                             >
+                               <Plus className="h-3 w-3 mr-1" />
+                               Mahlzeit hinzufügen
+                             </Button>
+                           </div>
                          </div>
                        </CollapsibleContent>
                      </div>
                    </Collapsible>
-                 ))}
-               </div>
-             )}
-           </Card>
-         </TabsContent>
-       </Tabs>
-     </div>
-   );
- };
- 
- export default History;
+                  ))}
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  };
+  
+  export default History;

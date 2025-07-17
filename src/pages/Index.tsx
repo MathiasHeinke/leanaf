@@ -1495,6 +1495,49 @@ const Index = () => {
                   />
                 </div>
                 
+                {/* Image upload options */}
+                <div className="space-y-2">
+                  <Label>Bilder hinzufügen:</Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePhotoUpload}
+                      multiple
+                      className="hidden"
+                      id="camera-input"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('camera-input')?.click()}
+                      className="flex-1"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Kamera
+                    </Button>
+                    
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      multiple
+                      className="hidden"
+                      id="gallery-input"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('gallery-input')?.click()}
+                      className="flex-1"
+                    >
+                      <ImagePlus className="h-4 w-4 mr-2" />
+                      Galerie
+                    </Button>
+                  </div>
+                </div>
+                
                 {/* Meal type selection */}
                 <div className="space-y-2">
                   <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
