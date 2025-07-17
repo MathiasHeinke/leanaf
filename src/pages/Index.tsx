@@ -114,6 +114,7 @@ const Index = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [analyzedMealData, setAnalyzedMealData] = useState<any>(null);
+  const [selectedMealType, setSelectedMealType] = useState<string>('');
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -727,6 +728,7 @@ const Index = () => {
       }
       
       setAnalyzedMealData(data);
+      setSelectedMealType(getCurrentMealType());
       setShowConfirmationDialog(true);
       
     } catch (error: any) {
@@ -751,7 +753,7 @@ const Index = () => {
         protein: Math.round(analyzedMealData.total.protein),
         carbs: Math.round(analyzedMealData.total.carbs),
         fats: Math.round(analyzedMealData.total.fats),
-        meal_type: getCurrentMealType()
+        meal_type: selectedMealType || getCurrentMealType()
       };
 
       const { data: insertedMeal, error: insertError } = await supabase
@@ -1300,7 +1302,7 @@ const Index = () => {
                 {/* Meal type selection */}
                 <div className="space-y-2">
                   <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
-                  <Select defaultValue={getCurrentMealType()}>
+                  <Select value={selectedMealType} onValueChange={setSelectedMealType}>
                     <SelectTrigger>
                       <SelectValue placeholder="Wähle einen Typ" />
                     </SelectTrigger>
@@ -1332,6 +1334,7 @@ const Index = () => {
                   setShowConfirmationDialog(false);
                   setAnalyzedMealData(null);
                   setUploadedImages([]);
+                  setSelectedMealType('');
                 }}
                 className="flex-1"
               >
