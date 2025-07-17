@@ -491,20 +491,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleBack}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('common.back')}
-        </Button>
-        <h1 className="text-2xl font-bold">{t('profile.title')}</h1>
-        
+      <div className="flex items-center justify-end mb-6">
         {/* Auto-save status */}
-        <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {autoSaving ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>

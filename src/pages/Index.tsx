@@ -114,6 +114,19 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Listen for coach navigation event from global header
+  useEffect(() => {
+    const handleCoachNavigation = () => {
+      setCurrentView('coach');
+    };
+
+    window.addEventListener('navigate-coach', handleCoachNavigation);
+
+    return () => {
+      window.removeEventListener('navigate-coach', handleCoachNavigation);
+    };
+  }, []);
+
   // Populate quotes on first load
   useEffect(() => {
     const initializeQuotes = async () => {
