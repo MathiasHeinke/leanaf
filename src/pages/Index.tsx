@@ -67,7 +67,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   
   const { user, loading: authLoading, signOut } = useAuth();
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
   const navigate = useNavigate();
 
   // Check authentication
@@ -385,27 +385,41 @@ const Index = () => {
               </h1>
             </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setCurrentView('profile')}>
-                  <User className="h-4 w-4 mr-2" />
-                  {t('nav.profile')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setCurrentView('subscription')}>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  {t('nav.subscription')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {t('nav.logout')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+              {/* Language Toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
+                className="flex items-center gap-2"
+              >
+                <span className="text-sm font-medium">
+                  {language === 'de' ? '🇩🇪 DE' : '🇺🇸 EN'}
+                </span>
+              </Button>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setCurrentView('profile')}>
+                    <User className="h-4 w-4 mr-2" />
+                    {t('nav.profile')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setCurrentView('subscription')}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    {t('nav.subscription')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    {t('nav.logout')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <p className="text-muted-foreground text-sm">
             {t('app.welcome')}

@@ -88,40 +88,82 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activity_level: string | null
+          age: number | null
           created_at: string
           current_period_end: string | null
           display_name: string | null
           email: string | null
+          gender: string | null
+          goal: string | null
+          height: number | null
           id: string
           preferred_language: string | null
           subscription_id: string | null
           subscription_status: string | null
           updated_at: string
           user_id: string
+          weight: number | null
         }
         Insert: {
+          activity_level?: string | null
+          age?: number | null
           created_at?: string
           current_period_end?: string | null
           display_name?: string | null
           email?: string | null
+          gender?: string | null
+          goal?: string | null
+          height?: number | null
           id?: string
           preferred_language?: string | null
           subscription_id?: string | null
           subscription_status?: string | null
           updated_at?: string
           user_id: string
+          weight?: number | null
         }
         Update: {
+          activity_level?: string | null
+          age?: number | null
           created_at?: string
           current_period_end?: string | null
           display_name?: string | null
           email?: string | null
+          gender?: string | null
+          goal?: string | null
+          height?: number | null
           id?: string
           preferred_language?: string | null
           subscription_id?: string | null
           subscription_status?: string | null
           updated_at?: string
           user_id?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      weight_history: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          user_id: string
+          weight: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          user_id?: string
+          weight?: number
         }
         Relationships: []
       }
