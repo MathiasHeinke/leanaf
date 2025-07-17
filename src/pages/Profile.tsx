@@ -12,9 +12,10 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import BMIProgress from '@/components/BMIProgress';
+import { useNavigate } from 'react-router-dom';
 
 interface ProfilePageProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 interface WeightEntry {
@@ -53,6 +54,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   
   const { user } = useAuth();
   const { t, language, setLanguage } = useTranslation();
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/');
+    }
+  };
 
   // Auto-save function
   const autoSave = async () => {
@@ -480,35 +490,25 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const weightTrend = getWeightTrend();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 p-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t('common.back')}
-          </Button>
-          <h1 className="text-2xl font-bold">{t('profile.title')}</h1>
-          
-          {/* Auto-save status */}
-          <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
-            {autoSaving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                <span>Speichert...</span>
-              </>
-            ) : lastSaved ? (
-              <>
-                <Check className="h-4 w-4 text-green-500" />
-                <span>Gespeichert um {lastSaved.toLocaleTimeString()}</span>
-              </>
-            ) : null}
-          </div>
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <h1 className="text-2xl font-bold">{t('profile.title')}</h1>
+        
+        {/* Auto-save status */}
+        <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+          {autoSaving ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              <span>Speichert...</span>
+            </>
+          ) : lastSaved ? (
+            <>
+              <Check className="h-4 w-4 text-green-500" />
+              <span>Gespeichert um {lastSaved.toLocaleTimeString()}</span>
+            </>
+          ) : null}
         </div>
+      </div>
 
         <div className="space-y-6">
           {/* Basic Information */}

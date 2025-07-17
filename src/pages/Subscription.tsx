@@ -7,9 +7,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface SubscriptionPageProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const Subscription = ({ onClose }: SubscriptionPageProps) => {
@@ -19,6 +20,15 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
   
   const { user } = useAuth();
   const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate('/');
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -120,7 +130,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={onClose}
+            onClick={handleBack}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
