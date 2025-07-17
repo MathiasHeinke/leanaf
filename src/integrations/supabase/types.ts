@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       daily_goals: {
         Row: {
+          bmr: number | null
           calorie_deficit: number | null
           calories: number | null
           carbs: number | null
@@ -26,10 +27,12 @@ export type Database = {
           id: string
           protein: number | null
           protein_percentage: number | null
+          tdee: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          bmr?: number | null
           calorie_deficit?: number | null
           calories?: number | null
           carbs?: number | null
@@ -40,10 +43,12 @@ export type Database = {
           id?: string
           protein?: number | null
           protein_percentage?: number | null
+          tdee?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          bmr?: number | null
           calorie_deficit?: number | null
           calories?: number | null
           carbs?: number | null
@@ -54,6 +59,7 @@ export type Database = {
           id?: string
           protein?: number | null
           protein_percentage?: number | null
+          tdee?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -103,6 +109,7 @@ export type Database = {
           activity_level: string | null
           age: number | null
           created_at: string
+          current_bmi: number | null
           current_period_end: string | null
           display_name: string | null
           email: string | null
@@ -111,9 +118,11 @@ export type Database = {
           height: number | null
           id: string
           preferred_language: string | null
+          start_bmi: number | null
           start_weight: number | null
           subscription_id: string | null
           subscription_status: string | null
+          target_bmi: number | null
           target_date: string | null
           target_weight: number | null
           updated_at: string
@@ -124,6 +133,7 @@ export type Database = {
           activity_level?: string | null
           age?: number | null
           created_at?: string
+          current_bmi?: number | null
           current_period_end?: string | null
           display_name?: string | null
           email?: string | null
@@ -132,9 +142,11 @@ export type Database = {
           height?: number | null
           id?: string
           preferred_language?: string | null
+          start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
+          target_bmi?: number | null
           target_date?: string | null
           target_weight?: number | null
           updated_at?: string
@@ -145,6 +157,7 @@ export type Database = {
           activity_level?: string | null
           age?: number | null
           created_at?: string
+          current_bmi?: number | null
           current_period_end?: string | null
           display_name?: string | null
           email?: string | null
@@ -153,9 +166,11 @@ export type Database = {
           height?: number | null
           id?: string
           preferred_language?: string | null
+          start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
+          target_bmi?: number | null
           target_date?: string | null
           target_weight?: number | null
           updated_at?: string

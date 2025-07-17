@@ -75,7 +75,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setDisplayName(data.display_name || '');
         setEmail(data.email || '');
         setWeight(data.weight ? data.weight.toString() : '');
-        setStartWeight((data as any).start_weight ? (data as any).start_weight.toString() : '');
+        setStartWeight(data.start_weight ? data.start_weight.toString() : '');
         setHeight(data.height ? data.height.toString() : '');
         setAge(data.age ? data.age.toString() : '');
         setGender(data.gender || '');
@@ -133,10 +133,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       if (data) {
         setDailyGoals({
           calories: data.calories || 2000,
-          protein: (data as any).protein_percentage || 30,
-          carbs: (data as any).carbs_percentage || 40,
-          fats: (data as any).fats_percentage || 30,
-          calorieDeficit: (data as any).calorie_deficit || 300
+          protein: data.protein_percentage || 30,
+          carbs: data.carbs_percentage || 40,
+          fats: data.fats_percentage || 30,
+          calorieDeficit: data.calorie_deficit || 300
         });
       }
     } catch (error: any) {
@@ -144,11 +144,79 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   };
 
+  const calculateBMR = () => {
+    if (!weight || !height || !age || !gender) return null;
+    
+    const w = parseFloat(weight);
+    const h = parseInt(height);
+    const a = parseInt(age);
+    
+    // Mifflin-St Jeor Equation
+    if (gender === 'male') {
+      return (10 * w) + (6.25 * h) - (5 * a) + 5;
+    } else {
+      return (10 * w) + (6.25 * h) - (5 * a) - 161;
+    }
+  };
+
+  const calculateMaintenanceCalories = () => {
+    const bmr = calculateBMR();
+    if (!bmr) return null;
+    
+    const activityMultipliers = {
+      sedentary: 1.2,
+      light: 1.375,
+      moderate: 1.55,
+      active: 1.725,
+      very_active: 1.9
+    };
+    
+    return Math.round(bmr * activityMultipliers[activityLevel as keyof typeof activityMultipliers]);
+  };
+
+  const calculateTargetCalories = () => {
+    const maintenance = calculateMaintenanceCalories();
+    if (!maintenance) return 2000;
+    
+    const multiplier = goal === 'lose' ? -1 : goal === 'gain' ? 1 : 0;
+    return maintenance + (multiplier * dailyGoals.calorieDeficit);
+  };
+
+  const calculateMacroGrams = () => {
+    const targetCalories = calculateTargetCalories();
+    return {
+      protein: Math.round((targetCalories * dailyGoals.protein / 100) / 4), // 4 cal/g
+      carbs: Math.round((targetCalories * dailyGoals.carbs / 100) / 4), // 4 cal/g
+      fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9), // 9 cal/g
+    };
+  };
+
+  const calculateBMI = (weightValue?: string, heightValue?: string) => {
+    const w = weightValue || weight;
+    const h = heightValue || height;
+    if (!w || !h) return null;
+    const heightInMeters = parseInt(h) / 100;
+    const bmi = parseFloat(w) / (heightInMeters * heightInMeters);
+    return parseFloat(bmi.toFixed(1));
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
+      // Calculate all values
+      const bmr = calculateBMR();
+      const tdee = calculateMaintenanceCalories();
+      const targetCalories = calculateTargetCalories();
+      const macroGrams = calculateMacroGrams();
+      
+      // Calculate BMI values
+      const currentBMI = calculateBMI();
+      const startBMI = calculateBMI(startWeight, height);
+      const targetBMI = calculateBMI(targetWeight, height);
+
+      // Update profile with BMI values
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -165,14 +233,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           target_weight: targetWeight ? parseFloat(targetWeight) : null,
           target_date: targetDate || null,
           preferred_language: language,
+          start_bmi: startBMI,
+          current_bmi: currentBMI,
+          target_bmi: targetBMI,
         });
 
       if (error) throw error;
 
-      // Update daily goals with correct syntax
-      const targetCalories = calculateTargetCalories();
-      const macroGrams = calculateMacroGrams();
-      
+      // Update daily goals with all calculated values
       const { error: goalsError } = await supabase
         .from('daily_goals')
         .upsert({
@@ -185,6 +253,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           protein_percentage: dailyGoals.protein,
           carbs_percentage: dailyGoals.carbs,
           fats_percentage: dailyGoals.fats,
+          bmr: bmr ? Math.round(bmr) : null,
+          tdee: tdee,
         });
 
       if (goalsError) {
@@ -259,53 +329,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   };
 
-  const calculateBMR = () => {
-    if (!weight || !height || !age || !gender) return null;
-    
-    const w = parseFloat(weight);
-    const h = parseInt(height);
-    const a = parseInt(age);
-    
-    // Mifflin-St Jeor Equation
-    if (gender === 'male') {
-      return (10 * w) + (6.25 * h) - (5 * a) + 5;
-    } else {
-      return (10 * w) + (6.25 * h) - (5 * a) - 161;
-    }
-  };
-
-  const calculateMaintenanceCalories = () => {
-    const bmr = calculateBMR();
-    if (!bmr) return null;
-    
-    const activityMultipliers = {
-      sedentary: 1.2,
-      light: 1.375,
-      moderate: 1.55,
-      active: 1.725,
-      very_active: 1.9
-    };
-    
-    return Math.round(bmr * activityMultipliers[activityLevel as keyof typeof activityMultipliers]);
-  };
-
-  const calculateTargetCalories = () => {
-    const maintenance = calculateMaintenanceCalories();
-    if (!maintenance) return 2000;
-    
-    const multiplier = goal === 'lose' ? -1 : goal === 'gain' ? 1 : 0;
-    return maintenance + (multiplier * dailyGoals.calorieDeficit);
-  };
-
-  const calculateMacroGrams = () => {
-    const targetCalories = calculateTargetCalories();
-    return {
-      protein: Math.round((targetCalories * dailyGoals.protein / 100) / 4), // 4 cal/g
-      carbs: Math.round((targetCalories * dailyGoals.carbs / 100) / 4), // 4 cal/g
-      fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9), // 9 cal/g
-    };
-  };
-
   const calculateRequiredCalorieDeficit = () => {
     if (!weight || !targetWeight || !targetDate) return null;
     
@@ -367,13 +390,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     }
   }, [weight, targetWeight, targetDate, goal]);
 
-  const calculateBMI = () => {
-    if (!weight || !height) return null;
-    const heightInMeters = parseInt(height) / 100;
-    const bmi = parseFloat(weight) / (heightInMeters * heightInMeters);
-    return bmi.toFixed(1);
-  };
-
   const getBMICategory = (bmi: number) => {
     if (bmi < 18.5) return { text: 'Underweight', color: 'text-blue-500' };
     if (bmi < 25) return { text: 'Normal', color: 'text-green-500' };
@@ -404,7 +420,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   }
 
   const bmi = calculateBMI();
-  const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
+  const bmiCategory = bmi ? getBMICategory(bmi) : null;
   const weightTrend = getWeightTrend();
 
   return (
