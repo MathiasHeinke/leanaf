@@ -1049,20 +1049,240 @@ const Index = () => {
           dailyGoal={dailyGoal}
           onAddMeal={handleAddMealForDate}
         />
-        {/* Meal input dialog */}
+        {/* Meal input dialog for past dates */}
         <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedDate ? `Mahlzeit hinzufügen für ${new Date(selectedDate).toLocaleDateString('de-DE')}` : 'Neue Mahlzeit'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Meal Type Selection */}
+              <div>
+                <Label htmlFor="meal-type">Mahlzeitentyp</Label>
+                <Select value={selectedMealType} onValueChange={setSelectedMealType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wähle einen Mahlzeitentyp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="breakfast">Frühstück</SelectItem>
+                    <SelectItem value="lunch">Mittagessen</SelectItem>
+                    <SelectItem value="dinner">Abendessen</SelectItem>
+                    <SelectItem value="snack">Snack</SelectItem>
+                    <SelectItem value="other">Sonstiges</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Text Input */}
+              <div>
+                <Label>Beschreibung der Mahlzeit</Label>
+                <Textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Beschreibe deine Mahlzeit hier..."
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowImageUpload(true)}
+                  className="flex-1"
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  Foto
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {/* Voice recording logic */}}
+                  className="flex-1"
+                >
+                  <Mic className="h-4 w-4 mr-2" />
+                  Sprache
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!inputText.trim()) return;
+                    setIsAnalyzing(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke('analyze-meal', {
+                        body: { 
+                          text: inputText,
+                          images: uploadedImages
+                        }
+                      });
+                      if (error) throw error;
+                      setAnalyzedMealData(data);
+                    } catch (error) {
+                      console.error('Error analyzing meal:', error);
+                      toast.error('Fehler bei der Analyse');
+                    } finally {
+                      setIsAnalyzing(false);
+                    }
+                  }}
+                  disabled={!inputText.trim() || isAnalyzing}
+                  className="flex-1"
+                >
+                  {isAnalyzing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Zap className="h-4 w-4 mr-2" />
+                  )}
+                  Analysieren
+                </Button>
+              </div>
+
+              {/* Uploaded Images */}
+              {uploadedImages.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Hochgeladene Bilder</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {uploadedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative">
+                        <img 
+                          src={imageUrl} 
+                          alt={`Uploaded ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 h-6 w-6 p-0"
+                          onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Analysis Results */}
+              {analyzedMealData && (
+                <div className="space-y-4 p-4 bg-accent/20 rounded-lg">
+                  <h3 className="font-semibold">Analyseergebnis</h3>
+                  
+                  {/* Nutritional Info */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Kalorien</Label>
+                      <div className="text-lg font-bold">{Math.round(analyzedMealData.total?.calories || 0)} kcal</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Protein</Label>
+                      <div className="text-lg font-bold text-protein">{Math.round(analyzedMealData.total?.protein || 0)}g</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Kohlenhydrate</Label>
+                      <div className="text-lg font-bold text-carbs">{Math.round(analyzedMealData.total?.carbs || 0)}g</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fette</Label>
+                      <div className="text-lg font-bold text-fats">{Math.round(analyzedMealData.total?.fats || 0)}g</div>
+                    </div>
+                  </div>
+
+                  {/* Chat Interface for Adjustments */}
+                  <div className="space-y-3">
+                    <Label>Chat mit KI-Assistent</Label>
+                    <div className="max-h-32 overflow-y-auto space-y-2 p-2 bg-background/50 rounded">
+                      {chatMessages.map((msg, index) => (
+                        <div key={index} className={`text-sm ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                          <span className={`inline-block p-2 rounded ${
+                            msg.role === 'user' 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted'
+                          }`}>
+                            {msg.content}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder="Frage zur Mahlzeit..."
+                        onKeyPress={(e) => e.key === 'Enter' && handleChatSubmit()}
+                      />
+                      <Button onClick={handleChatSubmit} disabled={isVerifying}>
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowConfirmationDialog(false);
+                    setAnalyzedMealData(null);
+                    setInputText('');
+                    setUploadedImages([]);
+                    setChatMessages([]);
+                    setSelectedDate('');
+                  }}
+                  className="flex-1"
+                >
+                  Abbrechen
+                </Button>
+                <Button 
+                  onClick={handleConfirmMeal}
+                  disabled={!analyzedMealData || isAnalyzing}
+                  className="flex-1"
+                >
+                  Mahlzeit hinzufügen
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Image Upload Dialog */}
+        <Dialog open={showImageUpload} onOpenChange={setShowImageUpload}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Mahlzeit hinzufügen für {selectedDate}</DialogTitle>
+              <DialogTitle>Bild hochladen</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <Textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Beschreibe deine Mahlzeit..."
-                className="min-h-[100px]"
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  for (const file of files) {
+                    try {
+                      const fileName = `${Date.now()}-${file.name}`;
+                      const { data, error } = await supabase.storage
+                        .from('meal-images')
+                        .upload(fileName, file);
+                      
+                      if (error) throw error;
+                      
+                      const { data: { publicUrl } } = supabase.storage
+                        .from('meal-images')
+                        .getPublicUrl(fileName);
+                      
+                      setUploadedImages(prev => [...prev, publicUrl]);
+                    } catch (error) {
+                      console.error('Error uploading image:', error);
+                      toast.error('Fehler beim Hochladen des Bildes');
+                    }
+                  }
+                  setShowImageUpload(false);
+                }}
+                className="w-full"
               />
-              <Button onClick={handleConfirmMeal}>Hinzufügen</Button>
             </div>
           </DialogContent>
         </Dialog>
