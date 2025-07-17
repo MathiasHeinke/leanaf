@@ -49,6 +49,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     calorieDeficit: 300 // Calories below maintenance
   });
   const [autoCalculated, setAutoCalculated] = useState(false);
+  const [profileExists, setProfileExists] = useState(false);
   
   const { user } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -105,6 +106,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       }
 
       if (data) {
+        setProfileExists(true);
         setDisplayName(data.display_name || '');
         setEmail(data.email || '');
         setWeight(data.weight ? data.weight.toString() : '');
@@ -119,6 +121,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
+      } else {
+        setProfileExists(false);
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -247,29 +251,42 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     const startBMI = calculateBMI(startWeight, height);
     const targetBMI = calculateBMI(targetWeight, height);
 
-    // Update profile with BMI values
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        user_id: user.id,
-        display_name: displayName,
-        email: email,
-        weight: weight ? parseFloat(weight) : null,
-        start_weight: startWeight ? parseFloat(startWeight) : null,
-        height: height ? parseInt(height) : null,
-        age: age ? parseInt(age) : null,
-        gender: gender || null,
-        activity_level: activityLevel,
-        goal: goal,
-        target_weight: targetWeight ? parseFloat(targetWeight) : null,
-        target_date: targetDate || null,
-        preferred_language: language,
-        start_bmi: startBMI,
-        current_bmi: currentBMI,
-        target_bmi: targetBMI,
-      });
+    // Prepare profile data
+    const profileData = {
+      user_id: user.id,
+      display_name: displayName,
+      email: email,
+      weight: weight ? parseFloat(weight) : null,
+      start_weight: startWeight ? parseFloat(startWeight) : null,
+      height: height ? parseInt(height) : null,
+      age: age ? parseInt(age) : null,
+      gender: gender || null,
+      activity_level: activityLevel,
+      goal: goal,
+      target_weight: targetWeight ? parseFloat(targetWeight) : null,
+      target_date: targetDate || null,
+      preferred_language: language,
+      start_bmi: startBMI,
+      current_bmi: currentBMI,
+      target_bmi: targetBMI,
+    };
 
-    if (error) throw error;
+    // Handle profile creation/update separately
+    if (profileExists) {
+      const { error } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('profiles')
+        .insert(profileData);
+
+      if (error) throw error;
+      setProfileExists(true);
+    }
 
     // Update daily goals with all calculated values
     const { error: goalsError } = await supabase
