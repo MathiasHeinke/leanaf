@@ -165,13 +165,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           target_weight: targetWeight ? parseFloat(targetWeight) : null,
           target_date: targetDate || null,
           preferred_language: language,
-        }, {
-          onConflict: 'user_id'
         });
 
       if (error) throw error;
 
-      // Update daily goals  
+      // Update daily goals with correct onConflict syntax
       const targetCalories = calculateTargetCalories();
       const macroGrams = calculateMacroGrams();
       
@@ -187,8 +185,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           protein_percentage: dailyGoals.protein,
           carbs_percentage: dailyGoals.carbs,
           fats_percentage: dailyGoals.fats,
-        }, {
-          onConflict: 'user_id'
         });
 
       if (goalsError) {
