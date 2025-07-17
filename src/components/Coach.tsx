@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -63,7 +62,7 @@ const Coach = ({ onClose }: CoachProps) => {
   const [loading, setLoading] = useState(false);
   const [historyData, setHistoryData] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'coach' | 'history'>('coach');
+  const [botMessage, setBotMessage] = useState<string>('');
   const [dailyGoals, setDailyGoals] = useState<DailyGoal | null>(null);
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const { user } = useAuth();
@@ -231,214 +230,164 @@ const Coach = ({ onClose }: CoachProps) => {
     { calories: 0, protein: 0, carbs: 0, fats: 0 }
   );
 
+  // Calculate averages based on filled days only
+  const calculateAverages = () => {
+    const daysWithData = historyData.filter(entry => entry.meals.length > 0);
+    if (daysWithData.length === 0) return { calories: 0, protein: 0, carbs: 0, fats: 0 };
+    
+    const totals = daysWithData.reduce(
+      (sum, entry) => ({
+        calories: sum.calories + entry.totals.calories,
+        protein: sum.protein + entry.totals.protein,
+        carbs: sum.carbs + entry.totals.carbs,
+        fats: sum.fats + entry.totals.fats,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+    
+    return {
+      calories: Math.round(totals.calories / daysWithData.length),
+      protein: Math.round(totals.protein / daysWithData.length),
+      carbs: Math.round(totals.carbs / daysWithData.length),
+      fats: Math.round(totals.fats / daysWithData.length),
+    };
+  };
+
+  const averages = calculateAverages();
+
+  // Generate coaching bot message
+  const generateBotMessage = () => {
+    const calorieGoal = dailyGoals?.calories || 2000;
+    const calorieAverage = averages.calories;
+    const progress = calorieAverage > 0 ? ((calorieAverage / calorieGoal) * 100).toFixed(0) : 0;
+    
+    const messages = [
+      `🎯 Hallo! Dein Kalorienziel liegt bei ${calorieGoal} kcal täglich. Du erreichst derzeit ${progress}% davon mit durchschnittlich ${calorieAverage} kcal.`,
+      calorieAverage < calorieGoal * 0.8 ? 
+        "📊 Deine Kalorienaufnahme ist etwas niedrig. Möchtest du wissen, wie du gesund mehr Kalorien zu dir nehmen kannst?" :
+        calorieAverage > calorieGoal * 1.2 ? 
+        "⚡ Du liegst über deinem Kalorienziel. Lass uns schauen, wie wir das optimieren können!" :
+        "✅ Deine Kalorienaufnahme ist gut im Zielbereich! Wie fühlst du dich dabei?",
+      "💪 Hast du Fragen zu deiner Ernährung oder brauchst du Unterstützung?"
+    ];
+    
+    return messages.join('\n\n');
+  };
+
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'coach' | 'history')}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="coach" className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" />
-            Coach
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <HistoryIcon className="h-4 w-4" />
-            Verlauf
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="coach" className="space-y-6">
-          {/* Personal Session Request Button */}
-          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Persönliche Beratung</h3>
-                  <p className="text-muted-foreground">
-                    Möchtest du eine individuelle Ernährungsberatung? 
-                    Vereinbare ein persönliches Gespräch mit unserem Expertenteam.
-                  </p>
-                </div>
-                <Button 
-                  onClick={requestPersonalSession}
-                  className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-                >
-                  <Phone className="h-4 w-4" />
-                  Gespräch anfordern
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Live Data Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Deine aktuellen Daten
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-accent/10 rounded-lg">
-                  <div className="text-sm font-medium text-muted-foreground">Tagesziel Kalorien</div>
-                  <div className="text-2xl font-bold text-primary">{dailyGoals?.calories || 2000} kcal</div>
-                </div>
-                <div className="p-4 bg-accent/10 rounded-lg">
-                  <div className="text-sm font-medium text-muted-foreground">Ø Kalorien (7 Tage)</div>
-                  <div className="text-2xl font-bold text-blue-600">{Math.round(todaysTotals.calories / 7) || 289} kcal</div>
-                </div>
-                <div className="p-4 bg-accent/10 rounded-lg">
-                  <div className="text-sm font-medium text-muted-foreground">Mahlzeiten diese Woche</div>
-                  <div className="text-2xl font-bold text-green-600">{todaysMeals.length}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AI Recommendations */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5" />
-                Personalisierte Empfehlungen
-              </CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={generateRecommendations}
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
-                Neu generieren
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-2">Erstelle personalisierte Empfehlungen...</span>
-                </div>
-              ) : recommendations ? (
-                <div className="prose prose-sm max-w-none">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {recommendations}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ChefHat className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Klicke auf "Neu generieren" um personalisierte Empfehlungen zu erhalten</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground text-center">
-              💡 Die Empfehlungen basieren auf deinen Profildaten, Zielen und aktuellen Essgewohnheiten.
-              Für detaillierte Beratung nutze den "Persönliches Gespräch" Button.
-            </p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-6">
-          {historyLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Lade Verlauf...</span>
-            </div>
-          ) : historyData.length === 0 ? (
-            <Card className="p-8 text-center border-dashed border-2 border-muted">
-              <HistoryIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="font-semibold mb-2">Kein Verlauf vorhanden</h3>
-              <p className="text-muted-foreground text-sm">
-                Füge Mahlzeiten hinzu, um deinen Verlauf zu sehen
+      {/* Smaller Personal Session Request Button */}
+      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold mb-1">Persönliche Beratung</h3>
+              <p className="text-sm text-muted-foreground">
+                Erreiche deine Ziele definitiv!
               </p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {historyData.map((entry) => (
-                <Collapsible key={entry.date}>
-                  <Card className="overflow-hidden">
-                    <CollapsibleTrigger className="w-full">
-                      <CardHeader className="hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Calendar className="h-5 w-5 text-primary" />
-                            <div className="text-left">
-                              <CardTitle className="text-lg">
-                                {new Date(entry.date).toLocaleDateString('de-DE', { 
-                                  weekday: 'long', 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric' 
-                                })}
-                              </CardTitle>
-                              <p className="text-sm text-muted-foreground">
-                                {entry.meals.length} {entry.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="text-lg font-bold text-primary">
-                                {entry.totals.calories} kcal
-                              </div>
-                              <div className="text-xs text-muted-foreground flex gap-2">
-                                <span>P: {entry.totals.protein}g</span>
-                                <span>C: {entry.totals.carbs}g</span>
-                                <span>F: {entry.totals.fats}g</span>
-                              </div>
-                            </div>
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </div>
-                      </CardHeader>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <CardContent className="pt-0">
-                        <div className="space-y-3">
-                          {entry.meals.map((meal) => (
-                            <div key={meal.id} className="flex items-center justify-between p-3 bg-accent/30 rounded-lg">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  {meal.meal_type && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {meal.meal_type}
-                                    </Badge>
-                                  )}
-                                  <span className="text-xs text-muted-foreground">
-                                    {meal.timestamp.toLocaleTimeString([], { 
-                                      hour: '2-digit', 
-                                      minute: '2-digit' 
-                                    })}
-                                  </span>
-                                </div>
-                                <p className="text-sm font-medium mb-1">{meal.text}</p>
-                                <div className="flex gap-3 text-xs text-muted-foreground">
-                                  <span className="text-protein">P: {meal.protein}g</span>
-                                  <span className="text-carbs">C: {meal.carbs}g</span>
-                                  <span className="text-fats">F: {meal.fats}g</span>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-sm font-bold text-primary">
-                                  {meal.calories} kcal
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
             </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            <Button 
+              onClick={requestPersonalSession}
+              className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+              size="sm"
+            >
+              <Phone className="h-4 w-4" />
+              Gespräch anfordern
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Goals and Current Status Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Ziele und aktueller Stand
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 bg-accent/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Tagesziel</div>
+              <div className="text-xl font-bold text-primary">{dailyGoals?.calories || 2000} kcal</div>
+            </div>
+            <div className="p-4 bg-accent/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Ø Kalorien</div>
+              <div className="text-xl font-bold text-blue-600">{averages.calories} kcal</div>
+              <div className="text-xs text-muted-foreground">
+                {historyData.filter(entry => entry.meals.length > 0).length} ausgefüllte Tage
+              </div>
+            </div>
+            <div className="p-4 bg-accent/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Zielerreichung</div>
+              <div className="text-xl font-bold text-green-600">
+                {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 2000)) * 100) : 0}%
+              </div>
+            </div>
+            <div className="p-4 bg-accent/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Heute</div>
+              <div className="text-xl font-bold text-orange-600">{todaysTotals.calories} kcal</div>
+            </div>
+          </div>
+          
+          {/* Macro Summary */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-protein/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Protein Ø</div>
+              <div className="text-lg font-bold text-protein">{averages.protein}g</div>
+              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.protein || 150}g</div>
+            </div>
+            <div className="text-center p-3 bg-carbs/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Kohlenhydrate Ø</div>
+              <div className="text-lg font-bold text-carbs">{averages.carbs}g</div>
+              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.carbs || 250}g</div>
+            </div>
+            <div className="text-center p-3 bg-fats/10 rounded-lg">
+              <div className="text-sm font-medium text-muted-foreground">Fette Ø</div>
+              <div className="text-lg font-bold text-fats">{averages.fats}g</div>
+              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.fats || 65}g</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Coaching Bot */}
+      <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <div className="text-2xl">🤖</div>
+            Coaching Bot
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+              {generateBotMessage()}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => toast.info("Chat-Feature kommt bald!")}
+            >
+              💬 Frage stellen
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={generateRecommendations}
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              🔄 Neue Analyse
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
