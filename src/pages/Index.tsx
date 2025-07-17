@@ -1121,21 +1121,41 @@ const Index = () => {
                 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-1 pb-2">
-                  {/* Image Upload */}
+                  {/* Camera Upload */}
                   <div className="relative">
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 hover:bg-primary/10"
-                      onClick={() => document.getElementById('image-upload')?.click()}
+                      onClick={() => document.getElementById('camera-upload')?.click()}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                    <input
+                      id="camera-upload"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      multiple
+                    />
+                  </div>
+                  
+                  {/* Gallery Upload */}
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                      onClick={() => document.getElementById('gallery-upload')?.click()}
                     >
                       <ImagePlus className="h-4 w-4" />
                     </Button>
                     <input
-                      id="image-upload"
+                      id="gallery-upload"
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       className="hidden"
                       onChange={handlePhotoUpload}
                       multiple
