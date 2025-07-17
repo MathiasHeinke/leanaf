@@ -215,17 +215,8 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
   return (
     <div className="space-y-6">
       <Card className="p-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-primary to-primary-glow p-2 rounded-lg">
-              <HistoryIcon className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <h2 className="text-xl font-bold">{t('history.title')}</h2>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück
-          </Button>
+        <div className="mb-6">
+          {/* Removed header and back button as requested */}
         </div>
 
         {/* Zeitraum-Auswahl */}

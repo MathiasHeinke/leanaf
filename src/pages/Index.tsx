@@ -115,6 +115,9 @@ const Index = () => {
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [analyzedMealData, setAnalyzedMealData] = useState<any>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('');
+  const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -774,6 +777,65 @@ const Index = () => {
     }
   };
 
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim() || !analyzedMealData || isVerifying) return;
+    
+    setIsVerifying(true);
+    
+    try {
+      const userMessage = { role: 'user', content: chatInput };
+      const newMessages = [...chatMessages, userMessage];
+      setChatMessages(newMessages);
+      setChatInput('');
+      
+      const { data, error } = await supabase.functions.invoke('verify-meal', {
+        body: { 
+          message: chatInput,
+          mealData: {
+            calories: analyzedMealData.total.calories,
+            protein: analyzedMealData.total.protein,
+            carbs: analyzedMealData.total.carbs,
+            fats: analyzedMealData.total.fats,
+            description: inputText
+          },
+          conversationHistory: chatMessages
+        }
+      });
+      
+      if (error) throw error;
+      
+      const assistantMessage = { role: 'assistant', content: data.message };
+      setChatMessages(prev => [...prev, assistantMessage]);
+      
+      // Apply adjustments if needed
+      if (data.needsAdjustment && data.adjustments) {
+        const updatedMealData = { ...analyzedMealData };
+        
+        if (data.adjustments.calories !== null) {
+          updatedMealData.total.calories = data.adjustments.calories;
+        }
+        if (data.adjustments.protein !== null) {
+          updatedMealData.total.protein = data.adjustments.protein;
+        }
+        if (data.adjustments.carbs !== null) {
+          updatedMealData.total.carbs = data.adjustments.carbs;
+        }
+        if (data.adjustments.fats !== null) {
+          updatedMealData.total.fats = data.adjustments.fats;
+        }
+        
+        setAnalyzedMealData(updatedMealData);
+        toast.success('Nährwerte wurden angepasst!');
+      }
+      
+    } catch (error: any) {
+      console.error('Error in chat verification:', error);
+      toast.error('Fehler beim Chatten mit dem Assistenten');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleConfirmMeal = async () => {
     if (!inputText.trim() || !analyzedMealData) return;
     
@@ -833,6 +895,7 @@ const Index = () => {
       setShowConfirmationDialog(false);
       setAnalyzedMealData(null);
       setUploadedImages([]);
+      setChatMessages([]);
       
       toast.success('Mahlzeit erfolgreich hinzugefügt!');
       
@@ -1306,7 +1369,7 @@ const Index = () => {
       
       {/* Confirmation Dialog for Image Analysis */}
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Mahlzeit bestätigen</DialogTitle>
           </DialogHeader>
@@ -1314,15 +1377,15 @@ const Index = () => {
             {/* Display analyzed data */}
             {analyzedMealData && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-2 gap-2 text-sm bg-muted/50 p-3 rounded-lg">
                   <div className="font-medium">Kalorien:</div>
-                  <div>{analyzedMealData.total.calories} kcal</div>
+                  <div>{Math.round(analyzedMealData.total.calories)} kcal</div>
                   <div className="font-medium">Protein:</div>
-                  <div>{analyzedMealData.total.protein}g</div>
+                  <div>{Math.round(analyzedMealData.total.protein)}g</div>
                   <div className="font-medium">Kohlenhydrate:</div>
-                  <div>{analyzedMealData.total.carbs}g</div>
+                  <div>{Math.round(analyzedMealData.total.carbs)}g</div>
                   <div className="font-medium">Fett:</div>
-                  <div>{analyzedMealData.total.fats}g</div>
+                  <div>{Math.round(analyzedMealData.total.fats)}g</div>
                 </div>
                 
                 {/* Display uploaded images */}
@@ -1341,6 +1404,61 @@ const Index = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* Chat with AI Assistant */}
+                <div className="space-y-3">
+                  <div className="font-medium text-sm flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Chat mit KI-Assistent
+                  </div>
+                  
+                  {/* Chat Messages */}
+                  <div className="max-h-32 overflow-y-auto space-y-2 bg-muted/30 p-2 rounded-lg">
+                    {chatMessages.length === 0 ? (
+                      <div className="text-sm text-muted-foreground text-center py-2">
+                        Frage mich nach Details zu deiner Mahlzeit!<br />
+                        z.B. "Das waren nur 100g Reis" oder "Mit extra Olivenöl"
+                      </div>
+                    ) : (
+                      chatMessages.map((msg, index) => (
+                        <div key={index} className={`text-sm p-2 rounded ${
+                          msg.role === 'user' 
+                            ? 'bg-primary text-primary-foreground ml-4' 
+                            : 'bg-background mr-4'
+                        }`}>
+                          {msg.content}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Chat Input */}
+                  <div className="flex gap-2">
+                    <Input
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Frage nach Details zur Mahlzeit..."
+                      className="flex-1"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleChatSubmit();
+                        }
+                      }}
+                    />
+                    <Button
+                      onClick={handleChatSubmit}
+                      disabled={!chatInput.trim() || isVerifying}
+                      size="sm"
+                    >
+                      {isVerifying ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
                 
                 {/* Editable text field */}
                 <div className="space-y-2">
@@ -1390,6 +1508,8 @@ const Index = () => {
                   setAnalyzedMealData(null);
                   setUploadedImages([]);
                   setSelectedMealType('');
+                  setChatMessages([]);
+                  setChatInput('');
                 }}
                 className="flex-1"
               >
