@@ -227,6 +227,30 @@ export type Database = {
         }
         Relationships: []
       }
+      women_quotes: {
+        Row: {
+          author: string | null
+          created_at: string
+          id: string
+          quote_text: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          quote_text: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          quote_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

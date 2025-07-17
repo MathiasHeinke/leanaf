@@ -18,22 +18,25 @@ export const RandomQuote = ({ userGender, fallbackText = "Willkommen bei KaloTra
 
   useEffect(() => {
     loadRandomQuote();
-  }, []);
+  }, [userGender]);
 
   const loadRandomQuote = async () => {
     try {
       setLoading(true);
       
-      // Only load quotes for male users
-      if (userGender !== 'male') {
+      // Only load quotes for male and female users
+      if (userGender !== 'male' && userGender !== 'female') {
         setQuote(null);
         setLoading(false);
         return;
       }
 
+      // Select the appropriate table based on gender
+      const tableName = userGender === 'male' ? 'men_quotes' : 'women_quotes';
+
       // Get random quote from database
       const { data, error } = await supabase
-        .from('men_quotes')
+        .from(tableName)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -63,8 +66,8 @@ export const RandomQuote = ({ userGender, fallbackText = "Willkommen bei KaloTra
     return <span className="text-muted-foreground text-sm animate-pulse">{fallbackText}</span>;
   }
 
-  // If no quote or not male user, show fallback
-  if (!quote || userGender !== 'male') {
+  // If no quote or not male/female user, show fallback
+  if (!quote || (userGender !== 'male' && userGender !== 'female')) {
     return <span className="text-muted-foreground text-sm">{fallbackText}</span>;
   }
 
