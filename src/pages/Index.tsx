@@ -859,8 +859,9 @@ const Index = () => {
   };
 
   const handleAddMealForDate = (date: string) => {
+    console.log('Opening meal dialog for date:', date);
     setSelectedDate(date);
-    // Don't change currentView here - stay in history
+    setShowImageUpload(false);
     setShowConfirmationDialog(true);
     setAnalyzedMealData({
       total: { calories: 0, protein: 0, carbs: 0, fats: 0 }
@@ -1039,14 +1040,33 @@ const Index = () => {
   // Render different views
   if (currentView === 'history') {
     return (
-      <History 
-        onClose={() => {
-          setCurrentView('main');
-          loadUserData(true);
-        }} 
-        dailyGoal={dailyGoal}
-        onAddMeal={handleAddMealForDate}
-      />
+      <>
+        <History 
+          onClose={() => {
+            setCurrentView('main');
+            loadUserData(true);
+          }} 
+          dailyGoal={dailyGoal}
+          onAddMeal={handleAddMealForDate}
+        />
+        {/* Meal input dialog */}
+        <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Mahlzeit hinzufügen für {selectedDate}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Beschreibe deine Mahlzeit..."
+                className="min-h-[100px]"
+              />
+              <Button onClick={handleConfirmMeal}>Hinzufügen</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
