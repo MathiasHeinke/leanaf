@@ -668,7 +668,7 @@ const Index = () => {
             className="flex-1"
           >
             <MessageCircle className="h-4 w-4 mr-2" />
-            Dein Ernährungs-Coach
+            Keto Coach
           </Button>
           <Button 
             variant="outline" 
