@@ -1126,7 +1126,7 @@ const Index = () => {
                       setIsAnalyzing(false);
                     }
                   }}
-                  disabled={!inputText.trim() || isAnalyzing}
+                  disabled={isAnalyzing}
                   className="flex-1"
                 >
                   {isAnalyzing ? (

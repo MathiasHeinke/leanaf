@@ -23,7 +23,12 @@ serve(async (req) => {
       throw new Error('Weder Text noch Bild bereitgestellt');
     }
 
-    let prompt = `Analysiere diese Mahlzeit und gib die Nährwerte zurück. Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
+let prompt = `Analysiere diese Mahlzeit und gib die Nährwerte zurück. 
+Wenn Bilder vorhanden sind, beschreibe die erkannten Lebensmittel und schätze deren Mengen.
+Wenn Text vorhanden ist, berücksichtige diese zusätzlichen Informationen.
+Sei möglichst präzise bei den Nährwertangaben.
+
+Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
 {
   "items": [
@@ -44,7 +49,7 @@ serve(async (req) => {
   }
 }
 
-Mahlzeit: ${text}`;
+${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
 
     // Build user content with text and images
     let userContent = [{ type: 'text', text: prompt }];
@@ -79,7 +84,7 @@ Mahlzeit: ${text}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages,
         max_tokens: 1000,
         temperature: 0.3,
