@@ -14,9 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import Settings from "@/components/Settings";
-import History from "@/components/History";
 import Coach from "@/components/Coach";
+import History from "@/components/History";
 import Profile from "@/pages/Profile";
 import Subscription from "@/pages/Subscription";
 import { 
@@ -68,7 +67,7 @@ const Index = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
-  const [currentView, setCurrentView] = useState<'main' | 'settings' | 'history' | 'coach' | 'profile' | 'subscription'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'coach' | 'history' | 'profile' | 'subscription'>('main');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -432,16 +431,6 @@ const Index = () => {
   }
 
   // Render different views
-  if (currentView === 'settings') {
-    return (
-      <Settings 
-        dailyGoal={dailyGoal} 
-        onGoalChange={setDailyGoal} 
-        onClose={() => setCurrentView('main')} 
-      />
-    );
-  }
-
   if (currentView === 'history') {
     return (
       <History 
@@ -456,12 +445,7 @@ const Index = () => {
 
   if (currentView === 'coach') {
     return (
-      <Coach 
-        onClose={() => setCurrentView('main')} 
-        dailyTotals={dailyTotals}
-        dailyGoal={dailyGoal}
-        mealsCount={dailyMeals.length}
-      />
+      <Coach onClose={() => setCurrentView('main')} />
     );
   }
 
@@ -587,11 +571,11 @@ const Index = () => {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setCurrentView('settings')}
+            onClick={() => setCurrentView('profile')}
             className="flex-1"
           >
-            <SettingsIcon className="h-4 w-4 mr-2" />
-            {t('nav.settings')}
+            <User className="h-4 w-4 mr-2" />
+            Profil
           </Button>
         </div>
 
