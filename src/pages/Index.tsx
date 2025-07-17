@@ -530,22 +530,19 @@ const Index = () => {
   }, [calorieProgress, showMotivation]);
 
   const handleSubmitMeal = async () => {
-    if (!inputText.trim()) {
-      toast.error(t('app.error'));
+    if (!inputText.trim() && uploadedImages.length === 0) {
+      toast.error('Bitte gib eine Beschreibung ein oder lade Bilder hoch');
       return;
     }
 
     setIsAnalyzing(true);
-    console.log('Starting meal analysis for:', inputText);
+    console.log('Starting meal analysis for:', inputText, 'with images:', uploadedImages);
     
     try {
-      // Check if there are uploaded images to include in analysis
-      const hasImages = uploadedImages.length > 0;
-      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
-          text: inputText,
-          images: hasImages ? uploadedImages : undefined
+          text: inputText || 'Analysiere diese Mahlzeit',
+          images: uploadedImages.length > 0 ? uploadedImages : undefined
         },
       });
 
@@ -560,54 +557,10 @@ const Index = () => {
         throw new Error('Invalid response format from analysis service');
       }
 
-      // If images were included, show confirmation dialog instead of directly saving
-      if (hasImages) {
-        setAnalyzedMealData(data);
-        setSelectedMealType(getCurrentMealType());
-        setShowConfirmationDialog(true);
-      } else {
-        // Direct save for text-only meals
-        const newMeal = {
-          user_id: user?.id,
-          text: inputText,
-          calories: Math.round(data.total.calories),
-          protein: Math.round(data.total.protein),
-          carbs: Math.round(data.total.carbs),
-          fats: Math.round(data.total.fats),
-          meal_type: getCurrentMealType()
-        };
-
-        console.log('Inserting meal:', newMeal);
-
-        const { data: insertedMeal, error: insertError } = await supabase
-          .from('meals')
-          .insert([newMeal])
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error('Database insert error:', insertError);
-          throw insertError;
-        }
-
-        console.log('Successfully inserted meal:', insertedMeal);
-
-        const formattedMeal: MealData = {
-          id: insertedMeal.id,
-          text: insertedMeal.text,
-          calories: Number(insertedMeal.calories),
-          protein: Number(insertedMeal.protein),
-          carbs: Number(insertedMeal.carbs),
-          fats: Number(insertedMeal.fats),
-          timestamp: new Date(insertedMeal.created_at),
-          meal_type: insertedMeal.meal_type,
-        };
-
-        setDailyMeals(prev => [formattedMeal, ...prev]);
-        setInputText("");
-        
-        toast.success(t('app.mealAdded'));
-      }
+      // Always show confirmation dialog for review and editing
+      setAnalyzedMealData(data);
+      setSelectedMealType(getCurrentMealType());
+      setShowConfirmationDialog(true);
     } catch (error: any) {
       console.error('Error analyzing meal:', error);
       toast.error(error.message || t('app.error'));
@@ -761,30 +714,7 @@ const Index = () => {
       
       console.log('All uploads completed, URLs:', uploadedUrls);
       setUploadedImages(uploadedUrls);
-      
-      // Analyze the images
-      console.log('Starting image analysis...');
-      const { data, error } = await supabase.functions.invoke('analyze-meal', {
-        body: { 
-          text: inputText || 'Analysiere diese Mahlzeit',
-          images: uploadedUrls
-        },
-      });
-      
-      console.log('Analysis result:', { data, error });
-      
-      if (error) {
-        console.error('Analysis error:', error);
-        throw new Error(`Analyse fehlgeschlagen: ${error.message}`);
-      }
-      
-      if (!data || !data.total) {
-        throw new Error('Ungültige Antwort vom Analysedienst');
-      }
-      
-      setAnalyzedMealData(data);
-      setSelectedMealType(getCurrentMealType());
-      setShowConfirmationDialog(true);
+      toast.success('Bilder erfolgreich hochgeladen');
       
     } catch (error: any) {
       console.error('Error in photo upload process:', error);
