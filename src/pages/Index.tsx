@@ -43,7 +43,11 @@ import {
   Edit2,
   Trash2,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  AlertTriangle,
+  Trophy,
+  Star,
+  Sparkles
 } from "lucide-react";
 
 interface MealData {
@@ -62,6 +66,8 @@ interface DailyGoal {
   protein: number;
   carbs: number;
   fats: number;
+  bmr?: number;
+  tdee?: number;
 }
 
 interface ProfileData {
@@ -92,6 +98,7 @@ const Index = () => {
   const [isPulling, setIsPulling] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
+  const [showMotivation, setShowMotivation] = useState(false);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -110,79 +117,6 @@ const Index = () => {
       loadUserData();
     }
   }, [user]);
-
-  const calculateDailyGoals = (profile: ProfileData): DailyGoal => {
-    const { weight, height, age, gender, activity_level, goal, target_weight, target_date } = profile;
-
-    // BMR calculation using Mifflin-St Jeor equation
-    let bmr;
-    if (gender === 'male') {
-      bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
-    } else {
-      bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
-    }
-
-    // Activity factor
-    const activityFactors = {
-      sedentary: 1.2,
-      light: 1.375,
-      moderate: 1.55,
-      active: 1.725,
-      very_active: 1.9
-    };
-
-    const tdee = bmr * (activityFactors[activity_level as keyof typeof activityFactors] || 1.55);
-
-    // Calculate based on target weight and target date if available
-    let calories = tdee;
-    
-    if (target_date && target_weight && goal !== 'maintain') {
-      const today = new Date();
-      const targetDate = new Date(target_date);
-      const daysToTarget = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (daysToTarget > 0) {
-        const weightDifference = target_weight - weight; // negative for weight loss, positive for gain
-        const totalCaloriesNeeded = weightDifference * 7700; // 7700 kcal per kg
-        const dailyCalorieAdjustment = totalCaloriesNeeded / daysToTarget;
-        
-        calories = tdee + dailyCalorieAdjustment;
-        
-        // Safety limits: don't go below 1200 kcal or above 4000 kcal
-        calories = Math.max(1200, Math.min(4000, calories));
-      } else {
-        // Fallback to standard calculation if target date is in the past
-        if (goal === 'lose') {
-          calories = tdee - 500;
-        } else if (goal === 'gain') {
-          calories = tdee + 300;
-        }
-      }
-    } else {
-      // Standard calculation without target date
-      if (goal === 'lose') {
-        calories = tdee - 500;
-      } else if (goal === 'gain') {
-        calories = tdee + 300;
-      }
-    }
-
-    // Macro calculations (default ratios)
-    const proteinRatio = 0.30; // 30% protein
-    const carbsRatio = 0.40;   // 40% carbs
-    const fatsRatio = 0.30;    // 30% fats
-
-    const protein = Math.round((calories * proteinRatio) / 4); // 4 cal per gram
-    const carbs = Math.round((calories * carbsRatio) / 4);     // 4 cal per gram
-    const fats = Math.round((calories * fatsRatio) / 9);       // 9 cal per gram
-
-    return {
-      calories: Math.round(calories),
-      protein,
-      carbs,
-      fats
-    };
-  };
 
   const loadUserData = async (showRefreshIndicator = false) => {
     try {
@@ -220,12 +154,30 @@ const Index = () => {
 
         setProfileData(profile);
 
-        // Calculate daily goals based on profile with target date consideration
-        const calculatedGoals = calculateDailyGoals(profile);
-        console.log('Calculated goals with target date:', calculatedGoals);
-        
-        // Set the calculated goals immediately
-        setDailyGoal(calculatedGoals);
+        // Load daily goals from database instead of calculating
+        const { data: dailyGoalsData, error: dailyGoalsError } = await supabase
+          .from('daily_goals')
+          .select('*')
+          .eq('user_id', user?.id)
+          .single();
+
+        if (dailyGoalsError) {
+          console.error('Daily goals error:', dailyGoalsError);
+          // Fallback to default values if no goals found
+          setDailyGoal({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
+        } else if (dailyGoalsData) {
+          const goals: DailyGoal = {
+            calories: Number(dailyGoalsData.calories) || 2000,
+            protein: Number(dailyGoalsData.protein) || 150,
+            carbs: Number(dailyGoalsData.carbs) || 250,
+            fats: Number(dailyGoalsData.fats) || 65,
+            bmr: Number(dailyGoalsData.bmr) || undefined,
+            tdee: Number(dailyGoalsData.tdee) || undefined,
+          };
+          
+          console.log('Daily goals loaded from database:', goals);
+          setDailyGoal(goals);
+        }
       }
 
       // Load today's meals
@@ -319,6 +271,40 @@ const Index = () => {
   const remainingProtein = dailyGoal.protein - dailyTotals.protein;
   const remainingCarbs = dailyGoal.carbs - dailyTotals.carbs;
   const remainingFats = dailyGoal.fats - dailyTotals.fats;
+
+  // Check if any values are exceeded
+  const caloriesExceeded = dailyTotals.calories > dailyGoal.calories;
+  const proteinExceeded = dailyTotals.protein > dailyGoal.protein;
+  const carbsExceeded = dailyTotals.carbs > dailyGoal.carbs;
+  const fatsExceeded = dailyTotals.fats > dailyGoal.fats;
+
+  // Motivational messages
+  const getMotivationalMessage = () => {
+    const progress = calorieProgress;
+    const timeOfDay = new Date().getHours();
+    
+    if (progress <= 25) {
+      return "Perfekter Start! 🌟 Du bist auf dem richtigen Weg!";
+    } else if (progress <= 50) {
+      return "Großartig! 💪 Die Hälfte ist geschafft!";
+    } else if (progress <= 75) {
+      return "Super Disziplin! 🎯 Bleib dran, du schaffst das!";
+    } else if (progress <= 95) {
+      return "Fast geschafft! 🏆 Nur noch ein kleiner Schritt!";
+    } else if (progress <= 100) {
+      return "Perfekt! 🎉 Ziel erreicht - du bist fantastisch!";
+    } else {
+      return "Nicht schlimm! 😊 Morgen ist ein neuer Tag!";
+    }
+  };
+
+  // Show motivation animation when goals are nearly reached
+  useEffect(() => {
+    if (calorieProgress >= 90 && calorieProgress <= 100 && !showMotivation) {
+      setShowMotivation(true);
+      setTimeout(() => setShowMotivation(false), 3000);
+    }
+  }, [calorieProgress, showMotivation]);
 
   const handleSubmitMeal = async () => {
     if (!inputText.trim()) {
@@ -551,7 +537,7 @@ const Index = () => {
       <History 
         onClose={() => {
           setCurrentView('main');
-          loadUserData(true); // Refresh data when returning from history
+          loadUserData(true);
         }} 
         dailyGoal={dailyGoal}
       />
@@ -568,7 +554,7 @@ const Index = () => {
     return (
       <Profile onClose={() => {
         setCurrentView('main');
-        loadUserData(true); // Refresh data when returning from profile
+        loadUserData(true);
       }} />
     );
   }
@@ -582,25 +568,21 @@ const Index = () => {
   return (
     <div 
       className="min-h-screen bg-gradient-to-br from-background to-accent/20"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
-      {/* Pull to refresh indicator */}
-      {isPulling && pullDistance > 0 && (
-        <div 
-          className="fixed top-0 left-0 right-0 bg-primary/10 flex items-center justify-center transition-all duration-200 z-50"
-          style={{ height: `${pullDistance}px` }}
-        >
-          <RefreshCw className={`h-5 w-5 text-primary ${pullDistance > 50 ? 'animate-spin' : ''}`} />
-          <span className="ml-2 text-sm text-primary">
-            {pullDistance > 50 ? 'Loslassen zum Aktualisieren' : 'Ziehen zum Aktualisieren'}
-          </span>
+      {/* Motivation Animation */}
+      {showMotivation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="animate-bounce">
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-3 rounded-full shadow-lg text-lg font-bold flex items-center gap-2">
+              <Trophy className="h-6 w-6" />
+              Fast geschafft! 🎯
+              <Sparkles className="h-6 w-6" />
+            </div>
+          </div>
         </div>
       )}
       
-      <div className="container mx-auto px-4 py-6 max-w-md"
-           style={{ transform: `translateY(${pullDistance}px)` }}>
+      <div className="container mx-auto px-4 py-6 max-w-md">
         
         {/* Header */}
         <div className="text-center mb-8">
@@ -610,7 +592,7 @@ const Index = () => {
                 <Activity className="h-6 w-6 text-primary-foreground" />
               </div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                {t('app.title')}
+                KaloTracker
               </h1>
             </div>
             
@@ -619,7 +601,7 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleManualRefresh}
+                onClick={() => loadUserData(true)}
                 disabled={isRefreshing}
                 className="flex items-center gap-2"
               >
@@ -647,22 +629,22 @@ const Index = () => {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setCurrentView('profile')}>
                     <User className="h-4 w-4 mr-2" />
-                    {t('nav.profile')}
+                    Profil
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setCurrentView('subscription')}>
                     <CreditCard className="h-4 w-4 mr-2" />
-                    {t('nav.subscription')}
+                    Abonnement
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="h-4 w-4 mr-2" />
-                    {t('nav.logout')}
+                    Abmelden
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
           <p className="text-muted-foreground text-sm">
-            {t('app.welcome')}
+            Willkommen bei KaloTracker
           </p>
         </div>
 
@@ -675,7 +657,7 @@ const Index = () => {
             className="flex-1"
           >
             <HistoryIcon className="h-4 w-4 mr-2" />
-            {t('nav.history')}
+            Verlauf
           </Button>
           <Button 
             variant="outline" 
@@ -684,7 +666,7 @@ const Index = () => {
             className="flex-1"
           >
             <MessageCircle className="h-4 w-4 mr-2" />
-            {t('coach.title')}
+            Dein Ernährungs-Coach
           </Button>
           <Button 
             variant="outline" 
@@ -709,13 +691,23 @@ const Index = () => {
               {new Date().toLocaleDateString()}
             </div>
           </div>
+
+          {/* Warning for exceeded calories */}
+          {caloriesExceeded && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span className="text-red-700 text-sm font-medium">
+                Achtung: Du hast dein Kalorienziel um {Math.abs(remainingCalories)} kcal überschritten!
+              </span>
+            </div>
+          )}
           
           {/* Calorie Progress with enhanced visualization */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium">Kalorien</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+                <span className={`text-sm ${caloriesExceeded ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
                   {dailyTotals.calories}/{dailyGoal.calories} kcal
                 </span>
                 {remainingCalories > 0 ? (
@@ -725,7 +717,10 @@ const Index = () => {
                 )}
               </div>
             </div>
-            <Progress value={Math.min(calorieProgress, 100)} className="h-3 mb-2" />
+            <Progress 
+              value={Math.min(calorieProgress, 100)} 
+              className={`h-3 mb-2 ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
+            />
             <div className="flex items-center gap-1 text-xs">
               <Flame className="h-3 w-3" />
               <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
@@ -737,31 +732,48 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Enhanced Macro Overview with progress */}
+          {/* Enhanced Macro Overview with progress and red indicators */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-3 rounded-xl bg-protein-light border border-protein/20">
-              <div className="text-xs text-protein font-medium mb-1">Protein</div>
-              <div className="font-bold text-protein mb-2">{dailyTotals.protein}g</div>
-              <Progress value={Math.min(proteinProgress, 100)} className="h-1 mb-1" />
-              <div className="text-xs text-protein/70">
+            <div className={`text-center p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
+              <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>Protein</div>
+              <div className={`font-bold mb-2 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{dailyTotals.protein}g</div>
+              <Progress 
+                value={Math.min(proteinProgress, 100)} 
+                className={`h-1 mb-1 ${proteinExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              />
+              <div className={`text-xs ${proteinExceeded ? 'text-red-600 font-bold' : 'text-protein/70'}`}>
                 {remainingProtein > 0 ? `+${remainingProtein}g` : `${Math.abs(remainingProtein)}g über`}
               </div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-carbs-light border border-carbs/20">
-              <div className="text-xs text-carbs font-medium mb-1">Kohlenhydrate</div>
-              <div className="font-bold text-carbs mb-2">{dailyTotals.carbs}g</div>
-              <Progress value={Math.min(carbsProgress, 100)} className="h-1 mb-1" />
-              <div className="text-xs text-carbs/70">
+            <div className={`text-center p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
+              <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>Kohlenhydrate</div>
+              <div className={`font-bold mb-2 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{dailyTotals.carbs}g</div>
+              <Progress 
+                value={Math.min(carbsProgress, 100)} 
+                className={`h-1 mb-1 ${carbsExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              />
+              <div className={`text-xs ${carbsExceeded ? 'text-red-600 font-bold' : 'text-carbs/70'}`}>
                 {remainingCarbs > 0 ? `+${remainingCarbs}g` : `${Math.abs(remainingCarbs)}g über`}
               </div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-fats-light border border-fats/20">
-              <div className="text-xs text-fats font-medium mb-1">Fette</div>
-              <div className="font-bold text-fats mb-2">{dailyTotals.fats}g</div>
-              <Progress value={Math.min(fatsProgress, 100)} className="h-1 mb-1" />
-              <div className="text-xs text-fats/70">
+            <div className={`text-center p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
+              <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>Fette</div>
+              <div className={`font-bold mb-2 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{dailyTotals.fats}g</div>
+              <Progress 
+                value={Math.min(fatsProgress, 100)} 
+                className={`h-1 mb-1 ${fatsExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              />
+              <div className={`text-xs ${fatsExceeded ? 'text-red-600 font-bold' : 'text-fats/70'}`}>
                 {remainingFats > 0 ? `+${remainingFats}g` : `${Math.abs(remainingFats)}g über`}
               </div>
+            </div>
+          </div>
+
+          {/* Motivational message */}
+          <div className="mt-4 p-3 bg-gradient-to-r from-primary/10 to-primary-glow/10 rounded-lg border border-primary/20">
+            <div className="flex items-center gap-2 text-sm text-primary font-medium">
+              <Star className="h-4 w-4" />
+              {getMotivationalMessage()}
             </div>
           </div>
 
@@ -774,6 +786,24 @@ const Index = () => {
                   bis {new Date(profileData.target_date).toLocaleDateString()}
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Additional info from database */}
+          {(dailyGoal.bmr || dailyGoal.tdee) && (
+            <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+              {dailyGoal.bmr && (
+                <div className="text-center p-2 bg-muted/30 rounded">
+                  <div className="text-muted-foreground">Grundumsatz</div>
+                  <div className="font-semibold">{dailyGoal.bmr} kcal</div>
+                </div>
+              )}
+              {dailyGoal.tdee && (
+                <div className="text-center p-2 bg-muted/30 rounded">
+                  <div className="text-muted-foreground">Gesamtumsatz</div>
+                  <div className="font-semibold">{dailyGoal.tdee} kcal</div>
+                </div>
+              )}
             </div>
           )}
         </Card>
