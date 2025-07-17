@@ -10,15 +10,16 @@ interface Quote {
 interface RandomQuoteProps {
   userGender?: string;
   fallbackText?: string;
+  refreshTrigger?: number;
 }
 
-export const RandomQuote = ({ userGender, fallbackText = "Willkommen bei KaloTracker" }: RandomQuoteProps) => {
+export const RandomQuote = ({ userGender, fallbackText = "Willkommen bei KaloTracker", refreshTrigger }: RandomQuoteProps) => {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadRandomQuote();
-  }, [userGender]);
+  }, [userGender, refreshTrigger]);
 
   const loadRandomQuote = async () => {
     try {

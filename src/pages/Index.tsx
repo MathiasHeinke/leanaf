@@ -101,6 +101,7 @@ const Index = () => {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const [showMotivation, setShowMotivation] = useState(false);
+  const [quoteRefreshTrigger, setQuoteRefreshTrigger] = useState(0);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -622,7 +623,10 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => loadUserData(true)}
+                onClick={() => {
+                  loadUserData(true);
+                  setQuoteRefreshTrigger(prev => prev + 1);
+                }}
                 disabled={isRefreshing}
                 className="flex items-center gap-2"
               >
@@ -812,6 +816,7 @@ const Index = () => {
             <RandomQuote 
               userGender={profileData?.gender} 
               fallbackText=""
+              refreshTrigger={quoteRefreshTrigger}
             />
           </div>
         </Card>
