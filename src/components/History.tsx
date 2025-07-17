@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   LineChart, 
   Line, 
@@ -68,6 +73,7 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
   const [historyData, setHistoryData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -150,6 +156,38 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
     } catch (error) {
       console.error('Error deleting meal:', error);
       toast.error('Fehler beim Löschen der Mahlzeit');
+    }
+  };
+
+  const updateMeal = async (mealId: string, updates: Partial<MealData>) => {
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .update(updates)
+        .eq('id', mealId);
+
+      if (error) throw error;
+
+      toast.success('Mahlzeit aktualisiert');
+      await loadHistoryData();
+      setEditingMeal(null);
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      toast.error('Fehler beim Aktualisieren der Mahlzeit');
+    }
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingMeal) {
+      updateMeal(editingMeal.id, {
+        text: editingMeal.text,
+        calories: editingMeal.calories,
+        protein: editingMeal.protein,
+        carbs: editingMeal.carbs,
+        fats: editingMeal.fats,
+        meal_type: editingMeal.meal_type,
+      });
     }
   };
 
@@ -332,16 +370,118 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
                                       })}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteMeal(meal.id)}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
+                                   <div className="flex items-center gap-1">
+                                     <Dialog>
+                                       <DialogTrigger asChild>
+                                         <Button
+                                           variant="ghost"
+                                           size="sm"
+                                           onClick={() => setEditingMeal(meal)}
+                                           className="h-8 w-8 p-0"
+                                         >
+                                           <Edit2 className="h-3 w-3" />
+                                         </Button>
+                                       </DialogTrigger>
+                                       <DialogContent>
+                                         <DialogHeader>
+                                           <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
+                                         </DialogHeader>
+                                         {editingMeal && (
+                                           <form onSubmit={handleEditSubmit} className="space-y-4">
+                                             <div>
+                                               <Label htmlFor="text">Was gegessen</Label>
+                                               <Textarea
+                                                 id="text"
+                                                 value={editingMeal.text}
+                                                 onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
+                                                 className="mt-1"
+                                               />
+                                             </div>
+                                             <div className="grid grid-cols-2 gap-4">
+                                               <div>
+                                                 <Label htmlFor="calories">Kalorien</Label>
+                                                 <Input
+                                                   id="calories"
+                                                   type="number"
+                                                   value={editingMeal.calories}
+                                                   onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                                                   className="mt-1"
+                                                 />
+                                               </div>
+                                               <div>
+                                                 <Label htmlFor="protein">Protein (g)</Label>
+                                                 <Input
+                                                   id="protein"
+                                                   type="number"
+                                                   value={editingMeal.protein}
+                                                   onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                                                   className="mt-1"
+                                                 />
+                                               </div>
+                                               <div>
+                                                 <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
+                                                 <Input
+                                                   id="carbs"
+                                                   type="number"
+                                                   value={editingMeal.carbs}
+                                                   onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                                                   className="mt-1"
+                                                 />
+                                               </div>
+                                               <div>
+                                                 <Label htmlFor="fats">Fette (g)</Label>
+                                                 <Input
+                                                   id="fats"
+                                                   type="number"
+                                                   value={editingMeal.fats}
+                                                   onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                                                   className="mt-1"
+                                                 />
+                                               </div>
+                                             </div>
+                                             <div>
+                                               <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
+                                               <Select 
+                                                 value={editingMeal.meal_type} 
+                                                 onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
+                                               >
+                                                 <SelectTrigger className="mt-1">
+                                                   <SelectValue />
+                                                 </SelectTrigger>
+                                                 <SelectContent>
+                                                   <SelectItem value="breakfast">Frühstück</SelectItem>
+                                                   <SelectItem value="lunch">Mittagessen</SelectItem>
+                                                   <SelectItem value="dinner">Abendessen</SelectItem>
+                                                   <SelectItem value="snack">Snack</SelectItem>
+                                                 </SelectContent>
+                                               </Select>
+                                             </div>
+                                             <div className="flex gap-2">
+                                               <Button type="submit" className="flex-1">
+                                                 Speichern
+                                               </Button>
+                                               <Button 
+                                                 type="button" 
+                                                 variant="outline" 
+                                                 onClick={() => setEditingMeal(null)}
+                                                 className="flex-1"
+                                               >
+                                                 Abbrechen
+                                               </Button>
+                                             </div>
+                                           </form>
+                                         )}
+                                       </DialogContent>
+                                     </Dialog>
+                                     <Button
+                                       variant="ghost"
+                                       size="sm"
+                                       onClick={() => deleteMeal(meal.id)}
+                                       className="h-8 w-8 p-0"
+                                     >
+                                       <Trash2 className="h-3 w-3" />
+                                     </Button>
+                                   </div>
                                 </div>
                               ))}
                             </div>
