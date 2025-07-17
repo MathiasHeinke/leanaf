@@ -1034,163 +1034,8 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Today's Meals */}
+        {/* Quick Weight Input */}
         <div className="pb-24">
-          {dailyMeals.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
-              
-              {dailyMeals.map((meal) => (
-                <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      {meal.meal_type && (
-                        <Badge variant="secondary">{meal.meal_type}</Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {meal.timestamp.toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 text-sm font-semibold text-primary">
-                        <Zap className="h-4 w-4" />
-                        {meal.calories} kcal
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
-                          if (!open) setEditingMeal(null);
-                        }}>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingMeal(meal)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
-                            </DialogHeader>
-                            {editingMeal && (
-                              <form onSubmit={handleEditSubmit} className="space-y-4">
-                                <div>
-                                  <Label htmlFor="text">Was gegessen</Label>
-                                  <Textarea
-                                    id="text"
-                                    value={editingMeal.text}
-                                    onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
-                                    className="mt-1"
-                                  />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <Label htmlFor="calories">Kalorien</Label>
-                                    <Input
-                                      id="calories"
-                                      type="number"
-                                      value={editingMeal.calories}
-                                      onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
-                                      className="mt-1"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="protein">Protein (g)</Label>
-                                    <Input
-                                      id="protein"
-                                      type="number"
-                                      value={editingMeal.protein}
-                                      onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
-                                      className="mt-1"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
-                                    <Input
-                                      id="carbs"
-                                      type="number"
-                                      value={editingMeal.carbs}
-                                      onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
-                                      className="mt-1"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="fats">Fette (g)</Label>
-                                    <Input
-                                      id="fats"
-                                      type="number"
-                                      value={editingMeal.fats}
-                                      onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
-                                      className="mt-1"
-                                    />
-                                  </div>
-                                </div>
-                                <div>
-                                  <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
-                                  <Select 
-                                    value={editingMeal.meal_type} 
-                                    onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
-                                  >
-                                    <SelectTrigger className="mt-1">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="breakfast">Frühstück</SelectItem>
-                                      <SelectItem value="lunch">Mittagessen</SelectItem>
-                                      <SelectItem value="dinner">Abendessen</SelectItem>
-                                      <SelectItem value="snack">Snack</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button type="submit" className="flex-1">
-                                    Speichern
-                                  </Button>
-                                  <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    onClick={() => setEditingMeal(null)}
-                                    className="flex-1"
-                                  >
-                                    Abbrechen
-                                  </Button>
-                                </div>
-                              </form>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMeal(meal.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                    {meal.text}
-                  </p>
-                  
-                  <div className="flex justify-between text-xs">
-                    <span className="text-protein">P: {meal.protein}g</span>
-                    <span className="text-carbs">C: {meal.carbs}g</span>
-                    <span className="text-fats">F: {meal.fats}g</span>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* Quick Weight Input */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -1231,16 +1076,6 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          {/* BMI Progress */}
-          {profileData && (
-            <BMIProgress 
-              startWeight={profileData.start_weight || profileData.weight}
-              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
-              targetWeight={profileData.target_weight}
-              height={profileData.height}
-            />
-          )}
-
           {/* Weight History Card */}
           <Card className="mb-6">
             <CardHeader>
@@ -1275,43 +1110,6 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          {/* BMI Progress Card */}
-          {bmiProgress && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  BMI Fortschritt
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center mb-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{bmiProgress.start}</div>
-                    <div className="text-sm text-muted-foreground">Start BMI</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{bmiProgress.current}</div>
-                    <div className="text-sm text-muted-foreground">Aktuell BMI</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{bmiProgress.target}</div>
-                    <div className="text-sm text-muted-foreground">Ziel BMI</div>
-                  </div>
-                </div>
-                <div className="bg-muted rounded-full h-2 mb-2">
-                  <div 
-                    className="bg-primary rounded-full h-2 transition-all duration-300"
-                    style={{ width: `${Math.min(Math.max(bmiProgress.progress, 0), 100)}%` }}
-                  />
-                </div>
-                <div className="text-center text-sm text-muted-foreground">
-                  {bmiProgress.progress}% erreicht
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Weight Input Modal */}
           <Dialog open={showWeightInput} onOpenChange={setShowWeightInput}>
             <DialogContent>
@@ -1341,17 +1139,6 @@ const Index = () => {
               </div>
             </DialogContent>
           </Dialog>
-
-          {/* Empty State */}
-          {dailyMeals.length === 0 && (
-            <Card className="p-8 text-center border-dashed border-2 border-muted">
-              <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
-              <p className="text-muted-foreground text-sm">
-                Füge deine erste Mahlzeit hinzu
-              </p>
-            </Card>
-          )}
         </div>
       </div>
     );
