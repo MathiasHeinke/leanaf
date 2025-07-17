@@ -659,7 +659,7 @@ const Index = () => {
             className="flex-1"
           >
             <HistoryIcon className="h-4 w-4 mr-2" />
-            Verlauf
+            {t('nav.history')}
           </Button>
           <Button 
             variant="outline" 
@@ -668,7 +668,7 @@ const Index = () => {
             className="flex-1"
           >
             <MessageCircle className="h-4 w-4 mr-2" />
-            Keto Coach
+            {t('ui.ketoCoach')}
           </Button>
           <Button 
             variant="outline" 
@@ -677,7 +677,7 @@ const Index = () => {
             className="flex-1"
           >
             <User className="h-4 w-4 mr-2" />
-            Profil
+            {t('nav.profile')}
           </Button>
         </div>
 
@@ -686,7 +686,7 @@ const Index = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Täglicher Fortschritt</span>
+              <span className="font-semibold">{t('app.dailyProgress')}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
@@ -725,12 +725,12 @@ const Index = () => {
             />
             <div className="flex items-center gap-1 text-xs">
               <Flame className="h-3 w-3" />
-              <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
-                {remainingCalories > 0 
-                  ? `${remainingCalories} kcal verbleibend`
-                  : `${Math.abs(remainingCalories)} kcal über dem Ziel`
-                }
-              </span>
+               <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
+                 {remainingCalories > 0 
+                   ? `${remainingCalories} ${t('ui.kcal')} ${t('ui.remaining')}`
+                   : `${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('ui.overGoal')}`
+                 }
+               </span>
             </div>
           </div>
 
@@ -796,13 +796,13 @@ const Index = () => {
             <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
               {dailyGoal.bmr && (
                 <div className="text-center p-2 bg-muted/30 rounded">
-                  <div className="text-muted-foreground">Grundumsatz</div>
+                  <div className="text-muted-foreground">{t('ui.bmr')}</div>
                   <div className="font-semibold">{dailyGoal.bmr} kcal</div>
                 </div>
               )}
               {dailyGoal.tdee && (
                 <div className="text-center p-2 bg-muted/30 rounded">
-                  <div className="text-muted-foreground">Gesamtumsatz</div>
+                  <div className="text-muted-foreground">{t('ui.tdee')}</div>
                   <div className="font-semibold">{dailyGoal.tdee} kcal</div>
                 </div>
               )}
@@ -909,7 +909,7 @@ const Index = () => {
         <div className="pb-24">
           {dailyMeals.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Heutige Mahlzeiten</h3>
+              <h3 className="text-lg font-semibold">{t('app.todaysMeals')}</h3>
               
               {dailyMeals.map((meal) => (
                 <Card key={meal.id} className="p-4 shadow-sm border-l-4 border-l-primary">

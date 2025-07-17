@@ -152,6 +152,16 @@ const translations = {
     'common.success': 'Erfolgreich',
     'common.yes': 'Ja',
     'common.no': 'Nein',
+    
+    // Specific UI elements
+    'ui.remaining': 'verbleibend',
+    'ui.overGoal': 'über dem Ziel',
+    'ui.bmr': 'Grundumsatz',
+    'ui.tdee': 'Gesamtumsatz',
+    'ui.ketoCoach': 'Keto Coach',
+    'ui.kcal': 'kcal',
+    'ui.gram': 'g',
+    'ui.overBy': 'über',
   },
   en: {
     // Navigation
@@ -288,6 +298,16 @@ const translations = {
     'common.success': 'Success',
     'common.yes': 'Yes',
     'common.no': 'No',
+    
+    // Specific UI elements
+    'ui.remaining': 'remaining',
+    'ui.overGoal': 'over goal',
+    'ui.bmr': 'BMR',
+    'ui.tdee': 'TDEE',
+    'ui.ketoCoach': 'Keto Coach',
+    'ui.kcal': 'kcal',
+    'ui.gram': 'g',
+    'ui.overBy': 'over',
   },
 };
 

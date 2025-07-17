@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "sonner";
 
 interface DailyGoal {
@@ -75,6 +76,7 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (user) {
@@ -218,7 +220,7 @@ const History = ({ onClose, dailyGoal }: HistoryProps) => {
             <div className="bg-gradient-to-r from-primary to-primary-glow p-2 rounded-lg">
               <HistoryIcon className="h-5 w-5 text-primary-foreground" />
             </div>
-            <h2 className="text-xl font-bold">Verlauf</h2>
+            <h2 className="text-xl font-bold">{t('history.title')}</h2>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <ArrowLeft className="h-4 w-4 mr-2" />
