@@ -202,7 +202,7 @@ const Index = () => {
     if (!currentWeight) return null;
     
     const heightInMeters = profileData.height / 100;
-    const startBMI = profileData.weight / (heightInMeters * heightInMeters);
+    const startBMI = (profileData.start_weight || profileData.weight) / (heightInMeters * heightInMeters);
     const currentBMI = currentWeight / (heightInMeters * heightInMeters);
     const targetBMI = profileData.target_weight / (heightInMeters * heightInMeters);
     

@@ -50,6 +50,7 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">Start BMI</div>
           <div className="text-lg font-bold text-blue-600">{startBMI.toFixed(1)}</div>
+          <div className="text-xs text-muted-foreground">{startWeight}kg</div>
           <Badge variant="secondary" className={`text-xs ${startCategory.color} text-white`}>
             {startCategory.text}
           </Badge>
@@ -58,6 +59,7 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">Aktuell BMI</div>
           <div className="text-xl font-bold text-primary">{currentBMI.toFixed(1)}</div>
+          <div className="text-xs text-muted-foreground">{currentWeight}kg</div>
           <Badge variant="secondary" className={`text-xs ${currentCategory.color} text-white`}>
             {currentCategory.text}
           </Badge>
@@ -66,6 +68,7 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">Ziel BMI</div>
           <div className="text-lg font-bold text-green-600">{targetBMI.toFixed(1)}</div>
+          <div className="text-xs text-muted-foreground">{targetWeight}kg</div>
           <Badge variant="secondary" className={`text-xs ${targetCategory.color} text-white`}>
             {targetCategory.text}
           </Badge>
@@ -74,10 +77,10 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
       
       {/* Progress Bar */}
       <div className="space-y-2">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Start ({startBMI.toFixed(1)})</span>
+      <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Start</span>
           <span>{progressPercentage.toFixed(0)}% erreicht</span>
-          <span>Ziel ({targetBMI.toFixed(1)})</span>
+          <span>Ziel</span>
         </div>
         
         <Progress 
