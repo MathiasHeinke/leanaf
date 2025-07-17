@@ -12,13 +12,14 @@ import {
   CreditCard, 
   User as UserIcon, 
   MessageCircle, 
-  LayoutDashboard 
+  LayoutDashboard,
+  TrendingUp 
 } from "lucide-react";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
-  onViewChange?: (view: 'main' | 'coach' | 'profile' | 'subscription') => void;
+  onViewChange?: (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => void;
   currentView?: string;
 }
 
@@ -34,7 +35,7 @@ export const GlobalHeader = ({
   const location = useLocation();
   const { language, setLanguage } = useTranslation();
 
-  // Listen for coach navigation events
+  // Listen for navigation events
   useEffect(() => {
     const handleCoachNavigation = () => {
       setCurrentActiveView('coach');
@@ -44,17 +45,23 @@ export const GlobalHeader = ({
       setCurrentActiveView('main');
     };
 
+    const handleHistoryNavigation = () => {
+      setCurrentActiveView('history');
+    };
+
     window.addEventListener('navigate-coach', handleCoachNavigation);
     window.addEventListener('navigate-main', handleMainNavigation);
+    window.addEventListener('navigate-history', handleHistoryNavigation);
 
     return () => {
       window.removeEventListener('navigate-coach', handleCoachNavigation);
       window.removeEventListener('navigate-main', handleMainNavigation);
+      window.removeEventListener('navigate-history', handleHistoryNavigation);
     };
   }, []);
 
   // Handle navigation to different views
-  const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription') => {
+  const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => {
     if (onViewChange) {
       onViewChange(view);
       setCurrentActiveView(view);
@@ -68,6 +75,10 @@ export const GlobalHeader = ({
         case 'coach':
           navigate('/');
           window.dispatchEvent(new CustomEvent('navigate-coach'));
+          break;
+        case 'history':
+          navigate('/');
+          window.dispatchEvent(new CustomEvent('navigate-history'));
           break;
         case 'profile':
           navigate('/profile');
@@ -178,33 +189,42 @@ export const GlobalHeader = ({
       </div>
 
       {/* Global Navigation Tabs */}
-      <div className="flex justify-center gap-2 mb-6">
+      <div className="flex justify-center gap-1 mb-6">
         <Button 
           variant={activeTab === 'main' ? 'default' : 'outline'}
           size="sm" 
           onClick={() => handleNavigation('main')}
-          className="flex-1"
+          className="flex-1 px-2"
         >
-          <LayoutDashboard className="h-4 w-4 mr-2" />
-          Dashboard
+          <LayoutDashboard className="h-4 w-4 mr-1" />
+          <span className="text-xs">Basis</span>
         </Button>
         <Button 
           variant={activeTab === 'coach' ? 'default' : 'outline'}
           size="sm" 
           onClick={() => handleNavigation('coach')}
-          className="flex-1"
+          className="flex-1 px-2"
         >
-          <MessageCircle className="h-4 w-4 mr-2" />
-          Kalo Coach
+          <MessageCircle className="h-4 w-4 mr-1" />
+          <span className="text-xs">Coach</span>
+        </Button>
+        <Button 
+          variant={activeTab === 'history' ? 'default' : 'outline'}
+          size="sm" 
+          onClick={() => handleNavigation('history')}
+          className="flex-1 px-2"
+        >
+          <TrendingUp className="h-4 w-4 mr-1" />
+          <span className="text-xs">Verlauf</span>
         </Button>
         <Button 
           variant={activeTab === 'profile' ? 'default' : 'outline'}
           size="sm" 
           onClick={() => handleNavigation('profile')}
-          className="flex-1"
+          className="flex-1 px-2"
         >
-          <UserIcon className="h-4 w-4 mr-2" />
-          Profil
+          <UserIcon className="h-4 w-4 mr-1" />
+          <span className="text-xs">Profil</span>
         </Button>
       </div>
     </div>

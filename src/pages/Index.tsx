@@ -133,12 +133,18 @@ const Index = () => {
       setCurrentView('main');
     };
 
+    const handleHistoryNavigation = () => {
+      setCurrentView('history');
+    };
+
     window.addEventListener('navigate-coach', handleCoachNavigation);
     window.addEventListener('navigate-main', handleMainNavigation);
+    window.addEventListener('navigate-history', handleHistoryNavigation);
 
     return () => {
       window.removeEventListener('navigate-coach', handleCoachNavigation);
       window.removeEventListener('navigate-main', handleMainNavigation);
+      window.removeEventListener('navigate-history', handleHistoryNavigation);
     };
   }, []);
 
