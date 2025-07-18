@@ -134,7 +134,7 @@ export const GlobalHeader = ({
             onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
             className="flex items-center gap-2 text-sm"
           >
-            <span className="text-xs">🇩🇪</span>
+            <span className="text-xs">{language === 'de' ? '🇩🇪' : '🇬🇧'}</span>
             {language.toUpperCase()}
           </Button>
           
