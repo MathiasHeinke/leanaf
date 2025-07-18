@@ -1047,13 +1047,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             ) : (
               <>
                 <div className="h-2 w-2 bg-gray-400 rounded-full" />
-                Änderungen werden automatisch gespeichert
+                {t('profile.autoSaveNote')}
               </>
             )}
           </div>
           <Button onClick={handleSave} disabled={loading} variant="outline" size="sm">
             <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Speichere...' : 'Manuell speichern'}
+            {loading ? t('profile.autoSaving') : t('profile.manualSave')}
           </Button>
         </div>
           </div>
