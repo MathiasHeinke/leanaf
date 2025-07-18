@@ -239,8 +239,9 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   };
 
   const currentData = historyData;
-  const averageCalories = currentData.length > 0 ? Math.round(
-    currentData.reduce((sum, day) => sum + day.calories, 0) / currentData.length
+  const daysWithMeals = currentData.filter(day => day.meals.length > 0);
+  const averageCalories = daysWithMeals.length > 0 ? Math.round(
+    daysWithMeals.reduce((sum, day) => sum + day.calories, 0) / daysWithMeals.length
   ) : 0;
 
   const goalsAchieved = currentData.filter(day => 
