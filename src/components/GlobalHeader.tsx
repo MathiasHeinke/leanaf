@@ -13,8 +13,11 @@ import {
   User as UserIcon, 
   MessageCircle, 
   LayoutDashboard,
-  TrendingUp 
+  TrendingUp,
+  Sun,
+  Moon
 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -34,6 +37,7 @@ export const GlobalHeader = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { language, setLanguage } = useTranslation();
+  const { theme, setTheme } = useTheme();
 
 
   // Handle navigation to different views
@@ -125,6 +129,20 @@ export const GlobalHeader = ({
             className="flex items-center gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          
+          {/* Dark Mode Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="flex items-center gap-2"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
           </Button>
           
           {/* Language Toggle */}
