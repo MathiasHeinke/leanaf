@@ -206,66 +206,49 @@ export const MealConfirmationDialog = ({
             </CardContent>
           </Card>
 
-          {/* Original Items Display */}
-          {analyzedMealData?.items && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Erkannte Lebensmittel</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {analyzedMealData.items.map((item: any, index: number) => (
-                    <div key={index} className="text-sm text-muted-foreground">
-                      {item.name} - {item.amount} ({item.calories} kcal)
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Meal Type and Date Selection - Side by Side */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Mahlzeit-Typ</Label>
+              <Select value={selectedMealType} onValueChange={onMealTypeChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Wählen Sie einen Mahlzeit-Typ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="breakfast">Frühstück</SelectItem>
+                  <SelectItem value="lunch">Mittagessen</SelectItem>
+                  <SelectItem value="dinner">Abendessen</SelectItem>
+                  <SelectItem value="snack">Snack</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Meal Type Selection */}
-          <div className="space-y-2">
-            <Label>Mahlzeit-Typ</Label>
-            <Select value={selectedMealType} onValueChange={onMealTypeChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Wählen Sie einen Mahlzeit-Typ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="breakfast">Frühstück</SelectItem>
-                <SelectItem value="lunch">Mittagessen</SelectItem>
-                <SelectItem value="dinner">Abendessen</SelectItem>
-                <SelectItem value="snack">Snack</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Date Selection */}
-          <div className="space-y-2">
-            <Label>Datum der Mahlzeit</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !mealDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {mealDate ? format(mealDate, "PPP", { locale: de }) : "Datum wählen"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={mealDate}
-                  onSelect={(date) => date && setMealDate(date)}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="space-y-2">
+              <Label>Datum der Mahlzeit</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !mealDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {mealDate ? format(mealDate, "dd.MM.yyyy", { locale: de }) : "Datum"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={mealDate}
+                    onSelect={(date) => date && setMealDate(date)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
         
