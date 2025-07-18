@@ -54,6 +54,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Redirect authenticated users to main page
+        if (event === 'SIGNED_IN' && session?.user) {
+          window.location.href = '/';
+        }
       }
     );
 

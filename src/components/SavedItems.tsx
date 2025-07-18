@@ -44,8 +44,23 @@ export const SavedItems = () => {
     
     setLoading(true);
     try {
-      // Temporarily using dummy data until types are updated
-      setSavedItems([]);
+      const { data, error } = await supabase
+        .from('saved_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      // Map DB data to our interface 
+      const mappedItems = (data || []).map(item => ({
+        id: item.id,
+        type: item.type as 'recipe' | 'quote' | 'tip',
+        title: item.title,
+        content: item.content,
+        metadata: item.metadata,
+        created_at: item.created_at
+      }));
+      setSavedItems(mappedItems);
     } catch (error: any) {
       console.error('Error loading saved items:', error);
       toast.error('Fehler beim Laden der gespeicherten Inhalte');
@@ -56,7 +71,14 @@ export const SavedItems = () => {
 
   const removeItem = async (itemId: string) => {
     try {
-      // Temporarily disabled until types are updated
+      const { error } = await supabase
+        .from('saved_items')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', user?.id);
+      
+      if (error) throw error;
+      
       setSavedItems(prev => prev.filter(item => item.id !== itemId));
       toast.success('Element entfernt');
     } catch (error: any) {
