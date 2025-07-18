@@ -72,7 +72,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
             </div>
             <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white/50 dark:bg-black/20 px-3 py-1.5 rounded-full">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background/50 dark:bg-muted/20 px-3 py-1.5 rounded-full border border-border/20">
             <Calendar className="h-4 w-4" />
             {new Date().toLocaleDateString()}
           </div>

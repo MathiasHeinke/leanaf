@@ -22,11 +22,11 @@ interface MealListProps {
 
 const getMealTypeDisplay = (mealType?: string) => {
   switch (mealType) {
-    case 'breakfast': return { label: 'Frühstück', color: 'bg-orange-100 text-orange-800' };
-    case 'lunch': return { label: 'Mittagessen', color: 'bg-green-100 text-green-800' };
-    case 'dinner': return { label: 'Abendessen', color: 'bg-blue-100 text-blue-800' };
-    case 'snack': return { label: 'Snack', color: 'bg-purple-100 text-purple-800' };
-    default: return { label: 'Sonstiges', color: 'bg-gray-100 text-gray-800' };
+    case 'breakfast': return { label: 'Frühstück', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200' };
+    case 'lunch': return { label: 'Mittagessen', color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' };
+    case 'dinner': return { label: 'Abendessen', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' };
+    case 'snack': return { label: 'Snack', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200' };
+    default: return { label: 'Sonstiges', color: 'bg-muted/50 text-muted-foreground' };
   }
 };
 
@@ -87,21 +87,21 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal }: MealListProps
             
             {/* Compact nutritional info */}
             <div className="grid grid-cols-4 gap-2 text-xs">
-              <div className="text-center p-2 bg-orange-50 rounded">
-                <div className="font-semibold text-orange-600">{meal.calories}</div>
-                <div className="text-orange-500">kcal</div>
+              <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
+                <div className="font-semibold text-orange-600 dark:text-orange-400">{meal.calories}</div>
+                <div className="text-orange-500 dark:text-orange-300">kcal</div>
               </div>
-              <div className="text-center p-2 bg-blue-50 rounded">
-                <div className="font-semibold text-blue-600">{meal.protein}g</div>
-                <div className="text-blue-500">Protein</div>
+              <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                <div className="font-semibold text-blue-600 dark:text-blue-400">{meal.protein}g</div>
+                <div className="text-blue-500 dark:text-blue-300">Protein</div>
               </div>
-              <div className="text-center p-2 bg-green-50 rounded">
-                <div className="font-semibold text-green-600">{meal.carbs}g</div>
-                <div className="text-green-500">Carbs</div>
+              <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                <div className="font-semibold text-green-600 dark:text-green-400">{meal.carbs}g</div>
+                <div className="text-green-500 dark:text-green-300">Carbs</div>
               </div>
-              <div className="text-center p-2 bg-purple-50 rounded">
-                <div className="font-semibold text-purple-600">{meal.fats}g</div>
-                <div className="text-purple-500">Fette</div>
+              <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
+                <div className="font-semibold text-purple-600 dark:text-purple-400">{meal.fats}g</div>
+                <div className="text-purple-500 dark:text-purple-300">Fette</div>
               </div>
             </div>
           </Card>

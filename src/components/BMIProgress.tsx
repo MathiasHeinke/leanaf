@@ -96,7 +96,7 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
       </div>
       
       {/* Motivation Message */}
-      <div className="mt-4 p-3 bg-white/50 rounded-lg">
+      <div className="mt-4 p-3 bg-background/50 dark:bg-muted/20 rounded-lg border border-border/20">
         <div className="text-sm text-center">
           {progressPercentage >= 75 ? (
             <span className="text-green-600 font-medium">🎉 Fantastisch! Du bist fast am Ziel!</span>
