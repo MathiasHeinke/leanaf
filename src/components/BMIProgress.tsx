@@ -37,10 +37,10 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
   const progressDirection = isLosingWeight ? 'Abnehmen' : 'Zunehmen';
   
   return (
-    <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
+    <div className="glass-card shadow-xl p-4">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="font-medium text-blue-800">BMI Fortschritt</h4>
-        <Badge variant="outline" className="text-blue-700">
+        <h4 className="font-medium text-foreground">BMI Fortschritt</h4>
+        <Badge variant="outline" className="text-primary border-primary/20">
           {progressDirection}
         </Badge>
       </div>
@@ -49,9 +49,9 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">Start BMI</div>
-          <div className="text-lg font-bold text-blue-600">{startBMI.toFixed(1)}</div>
+          <div className="text-lg font-bold text-blue-500 dark:text-blue-400">{startBMI.toFixed(1)}</div>
           <div className="text-xs text-muted-foreground">{startWeight}kg</div>
-          <Badge variant="secondary" className={`text-xs ${startCategory.color} text-white`}>
+          <Badge variant="secondary" className={`text-xs ${startCategory.color} text-white mt-1`}>
             {startCategory.text}
           </Badge>
         </div>
@@ -60,16 +60,16 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
           <div className="text-xs text-muted-foreground mb-1">Aktuell BMI</div>
           <div className="text-xl font-bold text-primary">{currentBMI.toFixed(1)}</div>
           <div className="text-xs text-muted-foreground">{currentWeight}kg</div>
-          <Badge variant="secondary" className={`text-xs ${currentCategory.color} text-white`}>
+          <Badge variant="secondary" className={`text-xs ${currentCategory.color} text-white mt-1`}>
             {currentCategory.text}
           </Badge>
         </div>
         
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">Ziel BMI</div>
-          <div className="text-lg font-bold text-green-600">{targetBMI.toFixed(1)}</div>
+          <div className="text-lg font-bold text-green-500 dark:text-green-400">{targetBMI.toFixed(1)}</div>
           <div className="text-xs text-muted-foreground">{targetWeight}kg</div>
-          <Badge variant="secondary" className={`text-xs ${targetCategory.color} text-white`}>
+          <Badge variant="secondary" className={`text-xs ${targetCategory.color} text-white mt-1`}>
             {targetCategory.text}
           </Badge>
         </div>
@@ -96,16 +96,16 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
       </div>
       
       {/* Motivation Message */}
-      <div className="mt-4 p-3 bg-background/50 dark:bg-muted/20 rounded-lg border border-border/20">
+      <div className="mt-4 p-3 bg-muted/30 dark:bg-muted/10 rounded-lg border border-border/20">
         <div className="text-sm text-center">
           {progressPercentage >= 75 ? (
-            <span className="text-green-600 font-medium">🎉 Fantastisch! Du bist fast am Ziel!</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">🎉 Fantastisch! Du bist fast am Ziel!</span>
           ) : progressPercentage >= 50 ? (
-            <span className="text-blue-600 font-medium">💪 Großartig! Du bist auf dem halben Weg!</span>
+            <span className="text-blue-600 dark:text-blue-400 font-medium">💪 Großartig! Du bist auf dem halben Weg!</span>
           ) : progressPercentage >= 25 ? (
-            <span className="text-orange-600 font-medium">🚀 Super Start! Weiter so!</span>
+            <span className="text-orange-600 dark:text-orange-400 font-medium">🚀 Super Start! Weiter so!</span>
           ) : (
-            <span className="text-purple-600 font-medium">🌟 Los geht's! Jeder Schritt zählt!</span>
+            <span className="text-purple-600 dark:text-purple-400 font-medium">🌟 Los geht's! Jeder Schritt zählt!</span>
           )}
         </div>
       </div>

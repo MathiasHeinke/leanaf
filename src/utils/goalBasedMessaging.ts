@@ -25,7 +25,7 @@ export const getGoalStatus = (
           status: 'success',
           message: 'Perfekt! Du bleibst unter deinem Ziel',
           color: 'text-green-600',
-          bgColor: 'bg-green-50',
+          bgColor: 'bg-green-50 dark:bg-green-900/20',
           borderColor: 'border-green-200',
           icon: '🎯',
           motivationalMessage: 'Fantastisch! Du bist auf dem besten Weg dein Ziel zu erreichen!'
@@ -58,7 +58,7 @@ export const getGoalStatus = (
           status: 'success',
           message: 'Perfekt! Du erreichst dein Ziel',
           color: 'text-green-600',
-          bgColor: 'bg-green-50',
+          bgColor: 'bg-green-50 dark:bg-green-900/20',
           borderColor: 'border-green-200',
           icon: '🎯',
           motivationalMessage: 'Fantastisch! Du schaffst es deine Kalorienziele zu erreichen!'
@@ -91,7 +91,7 @@ export const getGoalStatus = (
           status: 'success',
           message: 'Perfekt! Du hältst dein Gewicht',
           color: 'text-green-600',
-          bgColor: 'bg-green-50',
+          bgColor: 'bg-green-50 dark:bg-green-900/20',
           borderColor: 'border-green-200',
           icon: '🎯',
           motivationalMessage: 'Fantastisch! Du hältst dein Gewicht perfekt stabil.'

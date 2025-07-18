@@ -513,7 +513,7 @@ const Coach = ({ onClose }: CoachProps) => {
 
   const getMessageColor = (type: string) => {
     switch (type) {
-      case 'motivation': return 'text-green-600 bg-green-50 border-green-200';
+      case 'motivation': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/30';
       case 'tip': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'warning': return 'text-orange-600 bg-orange-50 border-orange-200';
       case 'analysis': return 'text-purple-600 bg-purple-50 border-purple-200';
