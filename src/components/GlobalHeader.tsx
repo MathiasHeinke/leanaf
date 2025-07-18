@@ -159,92 +159,53 @@ export const GlobalHeader = ({
         </div>
       </div>
 
-      {/* Floating Bottom Navigation - wird unten gerendert */}
-    </div>
-  );
-};
-
-// Neue Floating Bottom Navigation Komponente
-export const FloatingBottomNav = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
-  const getActiveTab = () => {
-    switch (location.pathname) {
-      case '/':
-        return 'main';
-      case '/coach':
-        return 'coach';
-      case '/history':
-        return 'history';
-      case '/profile':
-        return 'profile';
-      default:
-        return 'main';
-    }
-  };
-
-  const activeTab = getActiveTab();
-
-  return (
-    <div className="fixed bottom-20 left-4 right-4 z-50 animate-slide-up">
-      <div className="max-w-sm mx-auto">
-        <div className="glass-card dark:glass-card-dark rounded-3xl p-3 shadow-2xl border border-white/20 dark:border-gray-700/20 backdrop-blur-xl">
-          <div className="flex items-center justify-around">
-            {/* Dashboard/Main */}
+      {/* Modern Segmented Control Navigation */}
+      <div className="flex justify-center mb-6">
+        <div className="bg-muted/50 backdrop-blur-sm p-1.5 rounded-2xl border border-border/50 shadow-sm">
+          <div className="flex gap-1">
             <button 
-              onClick={() => handleNavigation('/')}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+              onClick={() => handleNavigation('main')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 activeTab === 'main' 
-                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
-                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                  ? 'bg-background text-foreground shadow-md border border-border/20' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
               }`}
             >
-              <LayoutDashboard className="h-5 w-5" />
-              <span className="text-xs font-medium">Basis</span>
+              <LayoutDashboard className="h-4 w-4 mr-2 inline" />
+              Basis
             </button>
-
-            {/* Coach */}
             <button 
-              onClick={() => handleNavigation('/coach')}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+              onClick={() => handleNavigation('coach')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 activeTab === 'coach' 
-                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
-                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                  ? 'bg-background text-foreground shadow-md border border-border/20' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
               }`}
             >
-              <MessageCircle className="h-5 w-5" />
-              <span className="text-xs font-medium">Coach</span>
+              <MessageCircle className="h-4 w-4 mr-2 inline" />
+              Coach
             </button>
-
-            {/* History */}
             <button 
-              onClick={() => handleNavigation('/history')}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+              onClick={() => handleNavigation('history')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 activeTab === 'history' 
-                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
-                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                  ? 'bg-background text-foreground shadow-md border border-border/20' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
               }`}
             >
-              <TrendingUp className="h-5 w-5" />
-              <span className="text-xs font-medium">Verlauf</span>
+              <TrendingUp className="h-4 w-4 mr-2 inline" />
+              Verlauf
             </button>
-
-            {/* Profile */}
             <button 
-              onClick={() => handleNavigation('/profile')}
-              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+              onClick={() => handleNavigation('profile')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 activeTab === 'profile' 
-                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
-                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                  ? 'bg-background text-foreground shadow-md border border-border/20' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
               }`}
             >
-              <UserIcon className="h-5 w-5" />
-              <span className="text-xs font-medium">Profil</span>
+              <UserIcon className="h-4 w-4 mr-2 inline" />
+              Profil
             </button>
           </div>
         </div>
@@ -252,3 +213,6 @@ export const FloatingBottomNav = () => {
     </div>
   );
 };
+
+// Entferne die FloatingBottomNav
+export const FloatingBottomNav = () => null;
