@@ -344,7 +344,7 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen bg-background pb-32 relative"
+      className="min-h-screen bg-gradient-to-br from-background to-muted/50 pb-32 relative overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -359,45 +359,17 @@ const Index = () => {
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-md mx-auto px-4 space-y-8 pt-4">
-        {/* Hero Section with Stats */}
-        <div className="bg-background rounded-3xl p-6 shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] dark:shadow-[20px_20px_60px_#0a0a0a,-20px_-20px_60px_#2a2a2a]">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              {t('common.welcome')}
-            </h1>
-            <p className="text-muted-foreground">
-              {selectedDate ? new Date(selectedDate).toLocaleDateString('de-DE') : new Date().toLocaleDateString('de-DE')}
-            </p>
-          </div>
-          
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-background rounded-2xl p-4 shadow-[inset_8px_8px_16px_#bebebe,inset_-8px_-8px_16px_#ffffff] dark:shadow-[inset_8px_8px_16px_#0a0a0a,inset_-8px_-8px_16px_#2a2a2a] text-center">
-              <div className="text-2xl font-bold text-primary">{Math.round(dailyTotals.calories)}</div>
-              <div className="text-sm text-muted-foreground">{t('common.calories')}</div>
-              <div className="text-xs text-muted-foreground">/ {dailyGoal.calories}</div>
-            </div>
-            <div className="bg-background rounded-2xl p-4 shadow-[inset_8px_8px_16px_#bebebe,inset_-8px_-8px_16px_#ffffff] dark:shadow-[inset_8px_8px_16px_#0a0a0a,inset_-8px_-8px_16px_#2a2a2a] text-center">
-              <div className="text-2xl font-bold text-accent">{Math.round(dailyTotals.protein)}g</div>
-              <div className="text-sm text-muted-foreground">{t('common.protein')}</div>
-              <div className="text-xs text-muted-foreground">/ {dailyGoal.protein}g</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Ring */}
-        <div className="bg-background rounded-3xl p-6 shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] dark:shadow-[20px_20px_60px_#0a0a0a,-20px_-20px_60px_#2a2a2a]">
-          <DailyProgress 
-            dailyTotals={dailyTotals}
-            dailyGoal={dailyGoal}
-            userGoal={userGoal}
-          />
-        </div>
+      {/* Main Content - ohne doppelten Container */}
+      <div className="space-y-6">
+        {/* Daily Progress Overview */}
+        <DailyProgress 
+          dailyTotals={dailyTotals}
+          dailyGoal={dailyGoal}
+          userGoal={userGoal}
+        />
 
         {/* Motivational Quote */}
-        <div className="bg-background rounded-3xl p-6 shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] dark:shadow-[20px_20px_60px_#0a0a0a,-20px_-20px_60px_#2a2a2a]">
+        <div className="px-4">
           <RandomQuote 
             userGender={profileData?.gender} 
             refreshTrigger={quoteRefreshTrigger}
@@ -406,35 +378,24 @@ const Index = () => {
         </div>
 
         {/* BMI Progress */}
-        <div className="bg-background rounded-3xl p-6 shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] dark:shadow-[20px_20px_60px_#0a0a0a,-20px_-20px_60px_#2a2a2a]">
-          <BMIProgress 
-            startWeight={profileData?.start_weight || profileData?.weight || 70}
-            currentWeight={profileData?.weight || 70}
-            targetWeight={profileData?.target_weight || 70}
-            height={profileData?.height || 170}
-          />
-        </div>
+        <BMIProgress 
+          startWeight={profileData?.start_weight || profileData?.weight || 70}
+          currentWeight={profileData?.weight || 70}
+          targetWeight={profileData?.target_weight || 70}
+          height={profileData?.height || 170}
+        />
 
         {/* Weight Tracker */}
-        <div className="bg-background rounded-3xl p-6 shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] dark:shadow-[20px_20px_60px_#0a0a0a,-20px_-20px_60px_#2a2a2a]">
-          <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
-        </div>
+        <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
 
-        {/* Today's Meals */}
-        <div className="bg-background rounded-3xl p-6 shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] dark:shadow-[20px_20px_60px_#0a0a0a,-20px_-20px_60px_#2a2a2a]">
-          <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
-              <span className="text-primary text-sm">🍽️</span>
-            </div>
-            {t('meals.todaysMeals')}
-          </h2>
-          <MealList 
-            dailyMeals={dailyMeals}
-            onEditMeal={() => {}}
-            onDeleteMeal={() => loadUserData()}
-          />
-        </div>
+        {/* Meals List */}
+        <MealList 
+          dailyMeals={dailyMeals}
+          onEditMeal={() => {}}
+          onDeleteMeal={() => loadUserData()}
+        />
       </div>
+
     </div>
   );
 };
