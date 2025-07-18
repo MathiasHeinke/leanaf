@@ -291,8 +291,14 @@ const Coach = ({ onClose }: CoachProps) => {
       // Parse meal suggestions from the response
       if (data.recommendations) {
         try {
-          const suggestions = JSON.parse(data.recommendations);
-          setMealSuggestions(suggestions.meals || []);
+          // Check if recommendations is already an object or string
+          let suggestions;
+          if (typeof data.recommendations === 'string') {
+            suggestions = JSON.parse(data.recommendations);
+          } else {
+            suggestions = data.recommendations;
+          }
+          setMealSuggestions(suggestions.meals || suggestions || []);
         } catch (parseError) {
           console.error('Error parsing meal suggestions:', parseError);
           // If parsing fails, assume the response is not JSON and handle gracefully
