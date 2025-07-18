@@ -8,7 +8,6 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Target, Save, Check, Bot, Settings, Zap, Users, Brain, Activity, Dumbbell, Heart } from 'lucide-react';
-import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -1031,9 +1030,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </CardContent>
           </Card>
         )}
-
-        {/* Theme Switcher */}
-        <ThemeSwitcher />
 
         {/* Auto-save Status */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">

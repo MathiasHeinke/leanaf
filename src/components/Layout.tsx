@@ -13,16 +13,15 @@ export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
   
-  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-  const mealInputProps = useGlobalMealInput();
-  
-  // Don't show header on auth page - early return AFTER hook calls
+  // Don't show header on auth page - early return BEFORE hook calls
   if (location.pathname === '/auth' || !user) {
     return <>{children}</>;
   }
   
   // Pages where floating meal input should be shown (exclude coach page)
   const showMealInput = ['/', '/history'].includes(location.pathname);
+  
+  const mealInputProps = useGlobalMealInput();
 
   const handleMealSaveSuccess = () => {
     // Reset the form after successful save
