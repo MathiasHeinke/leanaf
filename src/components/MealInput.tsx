@@ -34,21 +34,21 @@ export const MealInput = ({
   
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50">
+    <div className="fixed bottom-4 left-4 right-4 z-50 animate-slide-up">
       <div className="max-w-sm mx-auto">
-        {/* Image Thumbnails */}
+        {/* Image Thumbnails - Modern Grid */}
         {uploadedImages && uploadedImages.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap gap-3">
             {uploadedImages.map((imageUrl, index) => (
-              <div key={index} className="relative group">
+              <div key={index} className="relative group animate-scale-in">
                 <img
                   src={imageUrl}
                   alt={`Uploaded ${index + 1}`}
-                  className="w-16 h-16 object-cover rounded-lg border-2 border-primary/20"
+                  className="w-18 h-18 object-cover rounded-2xl border-2 border-white/20 shadow-lg hover:scale-105 transition-transform duration-200"
                 />
                 <button
                   onClick={() => onRemoveImage(index)}
-                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -57,15 +57,16 @@ export const MealInput = ({
           </div>
         )}
         
-        <Card className="p-3 shadow-xl border-2 border-primary/20 bg-background/95 backdrop-blur">
-          <div className="flex items-end gap-2">
-            {/* Text Input */}
+        {/* Modern Glass Card with Better Styling */}
+        <div className="glass-card dark:glass-card-dark rounded-3xl p-4 shadow-2xl border border-white/20 dark:border-gray-700/20 modern-shadow backdrop-blur-xl">
+          <div className="flex items-end gap-3">
+            {/* Text Input - Enhanced */}
             <div className="flex-1">
               <Textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={t('input.placeholder')}
-                className="min-h-[40px] max-h-[100px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm"
+                className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm placeholder:text-muted-foreground/60 rounded-2xl px-4 py-3"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -77,17 +78,17 @@ export const MealInput = ({
               />
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1 pb-1">
+            {/* Action Buttons - Modern Design */}
+            <div className="flex items-center gap-2">
               {/* Camera Upload */}
               <div className="relative">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-primary/10"
+                  className="h-11 w-11 p-0 rounded-2xl hover:bg-primary/10 transition-all duration-200 hover:scale-105 border border-transparent hover:border-primary/20"
                   onClick={() => document.getElementById('camera-upload')?.click()}
                 >
-                  <Camera className="h-4 w-4" />
+                  <Camera className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                 </Button>
                 <input
                   id="camera-upload"
@@ -105,10 +106,10 @@ export const MealInput = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-primary/10"
+                  className="h-11 w-11 p-0 rounded-2xl hover:bg-primary/10 transition-all duration-200 hover:scale-105 border border-transparent hover:border-primary/20"
                   onClick={() => document.getElementById('gallery-upload')?.click()}
                 >
-                  <ImagePlus className="h-4 w-4" />
+                  <ImagePlus className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                 </Button>
                 <input
                   id="gallery-upload"
@@ -120,55 +121,59 @@ export const MealInput = ({
                 />
               </div>
               
-              {/* Voice Recording */}
+              {/* Voice Recording - Enhanced States */}
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-8 w-8 p-0 transition-all duration-200 ${
+                className={`h-11 w-11 p-0 rounded-2xl transition-all duration-200 hover:scale-105 border ${
                   isRecording || isProcessing
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
-                    : 'hover:bg-primary/10'
+                    ? 'bg-red-500 hover:bg-red-600 text-white border-red-300 animate-glow shadow-lg' 
+                    : 'border-transparent hover:border-primary/20 hover:bg-primary/10'
                 }`}
                 onClick={onVoiceRecord}
                 disabled={isAnalyzing || isProcessing}
               >
                 {isRecording ? (
-                  <StopCircle className="h-4 w-4" />
+                  <StopCircle className="h-5 w-5" />
                 ) : isProcessing ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Mic className="h-4 w-4" />
+                  <Mic className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
                 )}
               </Button>
               
-              {/* Send Button */}
+              {/* Send Button - Modern Gradient */}
               <Button
                 size="sm"
-                className="h-8 w-8 p-0"
+                className={`h-11 w-11 p-0 rounded-2xl transition-all duration-200 hover:scale-105 shadow-lg ${
+                  (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-primary to-primary-glow hover:shadow-xl'
+                }`}
                 onClick={onSubmitMeal}
                 disabled={(!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing}
               >
                 {isAnalyzing ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 )}
               </Button>
             </div>
           </div>
           
-          {/* Recording Indicator */}
+          {/* Recording Indicator - Enhanced Design */}
           {(isRecording || isProcessing) && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-red-500">
+            <div className="mt-4 flex items-center gap-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 px-4 py-3 rounded-2xl border border-red-200 dark:border-red-800/50 animate-fade-in">
               <div className="flex gap-1">
-                <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
-                <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full"></div>
+                <div className="w-1 h-5 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }}></div>
               </div>
-              <span>{isRecording ? t('input.recording') : 'Verarbeitung...'}</span>
+              <span className="font-medium">{isRecording ? t('input.recording') : 'Verarbeitung...'}</span>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

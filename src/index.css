@@ -2,157 +2,152 @@
 @tailwind components;
 @tailwind utilities;
 
-/* kaloAI Design System - Warme, gesunde Farben für Food Tracking */
+/* Modern Clean Design System - Minimalist & Professional */
 
 @layer base {
   :root {
-    /* Hintergrund - Cremiges Weiß */
-    --background: 35 25% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Background - Pure & Clean */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    /* Karten - Sanftes Weiß */
+    /* Cards - Subtle Glass Effect */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 10% 3.9%;
 
-    /* Primary - Gesundes Grün */
-    --primary: 142 76% 36%;
+    /* Primary - Modern Blue-Gray */
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 142 70% 50%;
+    --primary-glow: 221 83% 65%;
 
-    /* Secondary - Warmes Orange für Energie */
-    --secondary: 25 95% 90%;
-    --secondary-foreground: 25 85% 25%;
+    /* Secondary - Soft Neutral */
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    /* Muted - Sanfte Grautöne */
-    --muted: 35 20% 95%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - Ultra Clean Grays */
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    /* Accent - Lebendiges Orange */
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 98%;
+    /* Accent - Subtle Blue */
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 35 20% 90%;
-    --input: 35 20% 95%;
-    --ring: 142 76% 36%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 221 83% 53%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Protein - Blau */
-    --protein: 210 100% 60%;
-    --protein-light: 210 100% 95%;
+    /* Protein - Clean Blue */
+    --protein: 221 83% 53%;
+    --protein-light: 221 83% 97%;
     
-    /* Kohlenhydrate - Orange */
-    --carbs: 25 95% 53%;
-    --carbs-light: 25 95% 95%;
+    /* Carbs - Warm Amber */
+    --carbs: 43 96% 56%;
+    --carbs-light: 43 96% 95%;
     
-    /* Fette - Violett */
-    --fats: 270 95% 60%;
-    --fats-light: 270 95% 95%;
+    /* Fats - Elegant Purple */
+    --fats: 262 83% 58%;
+    --fats-light: 262 83% 97%;
 
-    /* Gradienten */
+    /* Modern Gradients - Subtle & Clean */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-warm: linear-gradient(135deg, hsl(var(--accent)), hsl(25 95% 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(35 25% 96%));
+    --gradient-glass: linear-gradient(135deg, hsla(0, 0%, 100%, 0.25), hsla(0, 0%, 100%, 0.1));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(240 4.8% 98%));
 
-    /* Schatten */
-    --shadow-soft: 0 4px 20px -2px hsl(var(--primary) / 0.1);
-    --shadow-warm: 0 8px 30px -8px hsl(var(--accent) / 0.3);
-    --shadow-card: 0 2px 20px -4px hsl(0 0% 0% / 0.1);
+    /* Modern Shadows - Clean & Floating */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
-    /* Animationen */
+    /* Smooth Animations */
+    --transition-all: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 221 83% 53%;
   }
 
   .dark {
-    /* Dunkler Hintergrund */
-    --background: 220 20% 8%;
-    --foreground: 35 25% 95%;
+    /* Dark Mode - Modern & Clean */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    /* Dunkle Karten */
-    --card: 220 15% 12%;
-    --card-foreground: 35 25% 95%;
+    /* Dark Cards */
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 220 15% 12%;
-    --popover-foreground: 35 25% 95%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Primary - Helleres Grün für Dark Mode */
-    --primary: 142 70% 50%;
-    --primary-foreground: 220 20% 8%;
-    --primary-glow: 142 60% 60%;
+    /* Primary - Bright Blue for Dark Mode */
+    --primary: 221 83% 65%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-glow: 221 83% 75%;
 
-    /* Secondary - Gedämpftes Orange */
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 25 85% 70%;
+    /* Secondary - Dark Neutral */
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
 
-    /* Muted - Dunkle Grautöne */
-    --muted: 220 15% 15%;
-    --muted-foreground: 220 10% 60%;
+    /* Muted - Dark Grays */
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
 
-    /* Accent - Warmes Orange für Dark Mode */
-    --accent: 25 85% 55%;
-    --accent-foreground: 220 20% 8%;
+    /* Accent - Dark Blue */
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 15%;
-    --ring: 142 70% 50%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 221 83% 65%;
 
-    /* Protein - Helleres Blau */
-    --protein: 210 90% 65%;
-    --protein-light: 210 50% 15%;
+    /* Protein - Bright Blue */
+    --protein: 221 83% 65%;
+    --protein-light: 221 83% 10%;
     
-    /* Kohlenhydrate - Gedämpftes Orange */
-    --carbs: 25 85% 60%;
-    --carbs-light: 25 40% 15%;
+    /* Carbs - Warm Amber */
+    --carbs: 43 96% 65%;
+    --carbs-light: 43 96% 10%;
     
-    /* Fette - Helleres Violett */
-    --fats: 270 80% 70%;
-    --fats-light: 270 40% 15%;
+    /* Fats - Elegant Purple */
+    --fats: 262 83% 68%;
+    --fats-light: 262 83% 10%;
 
-    /* Gradienten für Dark Mode */
+    /* Dark Mode Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-warm: linear-gradient(135deg, hsl(var(--accent)), hsl(25 85% 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(220 20% 10%));
+    --gradient-glass: linear-gradient(135deg, hsla(0, 0%, 100%, 0.1), hsla(0, 0%, 100%, 0.05));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(240 10% 6%));
 
-    /* Schatten für Dark Mode */
-    --shadow-soft: 0 4px 20px -2px hsl(0 0% 0% / 0.3);
-    --shadow-warm: 0 8px 30px -8px hsl(var(--accent) / 0.2);
-    --shadow-card: 0 2px 20px -4px hsl(0 0% 0% / 0.3);
+    /* Dark Mode Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.8);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.8), 0 2px 4px -2px rgb(0 0 0 / 0.8);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.8), 0 4px 6px -4px rgb(0 0 0 / 0.8);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.8), 0 8px 10px -6px rgb(0 0 0 / 0.8);
 
     /* Sidebar Dark Mode */
-    --sidebar-background: 220 20% 10%;
-    --sidebar-foreground: 35 25% 90%;
-    --sidebar-primary: 142 70% 50%;
-    --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 35 25% 90%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 142 70% 50%;
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 221 83% 65%;
+    --sidebar-primary-foreground: 240 10% 3.9%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 221 83% 65%;
   }
 }
 
@@ -162,6 +157,41 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Modern Component Styles */
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20;
+  }
+  
+  .glass-card-dark {
+    @apply bg-gray-900/70 backdrop-blur-md border border-gray-700/20;
+  }
+  
+  .modern-shadow {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-200 hover:scale-[1.02] hover:shadow-xl;
+  }
+  
+  .smooth-transition {
+    transition: var(--transition-smooth);
+  }
+}
+
+/* Modern Typography */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-pretty {
+    text-wrap: pretty;
   }
 }

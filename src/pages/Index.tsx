@@ -345,7 +345,7 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-background to-muted/50 pb-32 relative overflow-hidden"
+      className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 pb-32 relative overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -353,48 +353,58 @@ const Index = () => {
       {/* Pull to refresh indicator */}
       {isPulling && pullDistance > 0 && (
         <div 
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm transition-all duration-200"
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-primary/5 backdrop-blur-xl border-b border-white/10 transition-all duration-200"
           style={{ height: pullDistance }}
         >
           <RefreshCw className={`h-6 w-6 text-primary ${pullDistance > 50 ? 'animate-spin' : ''}`} />
         </div>
       )}
 
-      {/* Main Content - ohne doppelten Container */}
-      <div className="space-y-6">
-        {/* Daily Progress Overview */}
-        <DailyProgress 
-          dailyTotals={dailyTotals}
-          dailyGoal={dailyGoal}
-          userGoal={userGoal}
-        />
-
-        {/* Motivational Quote */}
+      {/* Main Content - Modern Spacing */}
+      <div className="space-y-8 animate-fade-in">
+        {/* Daily Progress Overview - Modern Card */}
         <div className="px-4">
-          <RandomQuote 
-            userGender={profileData?.gender} 
-            refreshTrigger={quoteRefreshTrigger}
-            fallbackText={t('motivation.fallback')}
+          <DailyProgress 
+            dailyTotals={dailyTotals}
+            dailyGoal={dailyGoal}
+            userGoal={userGoal}
           />
         </div>
 
-        {/* BMI Progress */}
-        <BMIProgress 
-          startWeight={profileData?.start_weight || profileData?.weight || 70}
-          currentWeight={profileData?.weight || 70}
-          targetWeight={profileData?.target_weight || 70}
-          height={profileData?.height || 170}
-        />
+        {/* Motivational Quote - Floating Card */}
+        <div className="px-4">
+          <div className="glass-card dark:glass-card-dark rounded-2xl p-6 modern-shadow hover-lift">
+            <RandomQuote 
+              userGender={profileData?.gender} 
+              refreshTrigger={quoteRefreshTrigger}
+              fallbackText={t('motivation.fallback')}
+            />
+          </div>
+        </div>
 
-        {/* Weight Tracker */}
-        <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
+        {/* BMI Progress - Clean Design */}
+        <div className="px-4">
+          <BMIProgress 
+            startWeight={profileData?.start_weight || profileData?.weight || 70}
+            currentWeight={profileData?.weight || 70}
+            targetWeight={profileData?.target_weight || 70}
+            height={profileData?.height || 170}
+          />
+        </div>
 
-        {/* Meals List */}
-        <MealList 
-          dailyMeals={dailyMeals}
-          onEditMeal={() => {}}
-          onDeleteMeal={() => loadUserData()}
-        />
+        {/* Weight Tracker - Modern Style */}
+        <div className="px-4">
+          <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
+        </div>
+
+        {/* Meals List - Clean Cards */}
+        <div className="px-4">
+          <MealList 
+            dailyMeals={dailyMeals}
+            onEditMeal={() => {}}
+            onDeleteMeal={() => loadUserData()}
+          />
+        </div>
       </div>
 
     </div>
