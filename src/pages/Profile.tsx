@@ -400,345 +400,396 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const bmiCategory = bmi ? getBMICategory(bmi) : null;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto pb-20">
+      <div className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-5 w-5 bg-primary rounded-full flex items-center justify-center">
+                <div className="h-2 w-2 bg-white rounded-full" />
+              </div>
+              {t('profile.title')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="displayName">{t('profile.displayName')}</Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder={t('profile.displayName')}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">{t('profile.email')}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('profile.email')}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="language">{t('profile.language')}</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="de">{t('settings.german')}</SelectItem>
+                  <SelectItem value="en">{t('settings.english')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('profile.title')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">{t('profile.displayName')}</Label>
-                  <Input
-                    id="displayName"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder={t('profile.displayName')}
-                  />
-                </div>
+        {/* Body Metrics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="h-2 w-2 bg-white rounded-full" />
+              </div>
+              Körperdaten
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startWeight">Startgewicht (kg)</Label>
+                <Input
+                  id="startWeight"
+                  type="number"
+                  value={startWeight}
+                  onChange={(e) => setStartWeight(e.target.value)}
+                  placeholder="75"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="weight">Aktuelles Gewicht (kg)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="75"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="height">Größe (cm)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="175"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="age">Alter</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="25"
+                />
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">{t('profile.email')}</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t('profile.email')}
-                  />
+            {/* BMI Display */}
+            {bmi && (
+              <div className="p-3 bg-accent/10 rounded-lg border border-accent/20">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">BMI</span>
+                  <div className="text-right">
+                    <span className="text-lg font-bold">{bmi}</span>
+                    <span className={`text-xs ml-2 ${bmiCategory?.color}`}>
+                      {bmiCategory?.text}
+                    </span>
+                  </div>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
 
+        {/* Activity & Goals */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-green-500" />
+              Aktivität & Ziele
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="language">{t('profile.language')}</Label>
-                <Select value={language} onValueChange={setLanguage}>
+                <Label htmlFor="gender">Geschlecht</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Wählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Männlich</SelectItem>
+                    <SelectItem value="female">Weiblich</SelectItem>
+                    <SelectItem value="other">Andere</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="activityLevel">Aktivitätslevel</Label>
+                <Select value={activityLevel} onValueChange={setActivityLevel}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="de">{t('settings.german')}</SelectItem>
-                    <SelectItem value="en">{t('settings.english')}</SelectItem>
+                    <SelectItem value="sedentary">Wenig aktiv</SelectItem>
+                    <SelectItem value="light">Leicht aktiv</SelectItem>
+                    <SelectItem value="moderate">Mäßig aktiv</SelectItem>
+                    <SelectItem value="active">Sehr aktiv</SelectItem>
+                    <SelectItem value="very_active">Extrem aktiv</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <Label htmlFor="goal">Ziel</Label>
+                <Select value={goal} onValueChange={setGoal}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lose">Abnehmen</SelectItem>
+                    <SelectItem value="maintain">Halten</SelectItem>
+                    <SelectItem value="gain">Zunehmen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-          {/* Personal Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="targetWeight">Zielgewicht (kg)</Label>
+                <Input
+                  id="targetWeight"
+                  type="number"
+                  value={targetWeight}
+                  onChange={(e) => setTargetWeight(e.target.value)}
+                  placeholder="65"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="targetDate">Zieldatum</Label>
+                <Input
+                  id="targetDate"
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Calorie Calculation */}
+        {calculateMaintenanceCalories() && (
           <Card>
             <CardHeader>
-              <CardTitle>{t('profile.personalInfo')}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center">
+                  <div className="h-2 w-2 bg-white rounded-full" />
+                </div>
+                Kalorienberechnung
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startWeight">Startgewicht</Label>
-                  <Input
-                    id="startWeight"
-                    type="number"
-                    value={startWeight}
-                    onChange={(e) => setStartWeight(e.target.value)}
-                    placeholder="75 kg"
-                  />
+                <div className="p-4 bg-blue-50 rounded-lg text-center">
+                  <div className="text-sm font-medium text-blue-700">Grundumsatz</div>
+                  <div className="text-xl font-bold text-blue-800">{calculateBMR()?.toFixed(0)} kcal</div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="height">{t('profile.height')}</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
-                    placeholder="175"
-                  />
+                <div className="p-4 bg-green-50 rounded-lg text-center">
+                  <div className="text-sm font-medium text-green-700">Gesamtumsatz</div>
+                  <div className="text-xl font-bold text-green-800">{calculateMaintenanceCalories()} kcal</div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="age">{t('profile.age')}</Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="25"
-                  />
+                <div className="p-4 bg-primary/10 rounded-lg text-center">
+                  <div className="text-sm font-medium text-primary">Zielkalorien</div>
+                  <div className="text-xl font-bold text-primary">{calculateTargetCalories()} kcal</div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="gender">{t('profile.gender')}</Label>
-                  <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">{t('profile.gender.male')}</SelectItem>
-                      <SelectItem value="female">{t('profile.gender.female')}</SelectItem>
-                      <SelectItem value="other">{t('profile.gender.other')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="activityLevel">{t('profile.activityLevel')}</Label>
-                  <Select value={activityLevel} onValueChange={setActivityLevel}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sedentary">{t('profile.activity.sedentary')}</SelectItem>
-                      <SelectItem value="light">{t('profile.activity.light')}</SelectItem>
-                      <SelectItem value="moderate">{t('profile.activity.moderate')}</SelectItem>
-                      <SelectItem value="active">{t('profile.activity.active')}</SelectItem>
-                      <SelectItem value="very_active">{t('profile.activity.very_active')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="goal">{t('profile.goal')}</Label>
-                  <Select value={goal} onValueChange={setGoal}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lose">{t('profile.goal.lose')}</SelectItem>
-                      <SelectItem value="maintain">{t('profile.goal.maintain')}</SelectItem>
-                      <SelectItem value="gain">{t('profile.goal.gain')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Weight Goal Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="targetWeight">Zielgewicht (kg)</Label>
+                  <Label htmlFor="calorieDeficit">
+                    {goal === 'lose' ? 'Kaloriendefizit' : goal === 'gain' ? 'Kalorienüberschuss' : 'Kalorienanpassung'}
+                  </Label>
                   <Input
-                    id="targetWeight"
+                    id="calorieDeficit"
                     type="number"
-                    value={targetWeight}
-                    onChange={(e) => setTargetWeight(e.target.value)}
-                    placeholder="65"
+                    value={dailyGoals.calorieDeficit}
+                    onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: Number(e.target.value)})}
+                    placeholder="300"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {goal === 'lose' ? 'Kalorien unter Gesamtumsatz' : goal === 'gain' ? 'Kalorien über Gesamtumsatz' : 'Kalorienanpassung'}
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="targetDate">Zieldatum</Label>
-                  <Input
-                    id="targetDate"
-                    type="date"
-                    value={targetDate}
-                    onChange={(e) => setTargetDate(e.target.value)}
-                  />
-                </div>
-              </div>
-
-
-              {/* Calorie Goals Section */}
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-4 flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Kalorienberechnung
-                </h4>
-                
-                {/* Maintenance Calories Display */}
-                {calculateMaintenanceCalories() && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div className="p-3 bg-blue-50 rounded-lg text-center">
-                      <div className="text-sm font-medium text-blue-700">Grundumsatz (BMR)</div>
-                      <div className="text-lg font-bold text-blue-800">{calculateBMR()?.toFixed(0)} kcal</div>
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">Makronährstoff-Verteilung (%)</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="proteinPercent" className="text-xs">Protein</Label>
+                      <Input
+                        id="proteinPercent"
+                        type="number"
+                        value={dailyGoals.protein}
+                        onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
+                        min="10"
+                        max="50"
+                      />
+                      <p className="text-xs text-muted-foreground">{calculateMacroGrams().protein}g</p>
                     </div>
-                    <div className="p-3 bg-green-50 rounded-lg text-center">
-                      <div className="text-sm font-medium text-green-700">Gesamtumsatz</div>
-                      <div className="text-lg font-bold text-green-800">{calculateMaintenanceCalories()} kcal</div>
+                    <div className="space-y-2">
+                      <Label htmlFor="carbsPercent" className="text-xs">Kohlenhydrate</Label>
+                      <Input
+                        id="carbsPercent"
+                        type="number"
+                        value={dailyGoals.carbs}
+                        onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
+                        min="20"
+                        max="70"
+                      />
+                      <p className="text-xs text-muted-foreground">{calculateMacroGrams().carbs}g</p>
                     </div>
-                    <div className="p-3 bg-primary/10 rounded-lg text-center">
-                      <div className="text-sm font-medium text-primary">Zielkalorien</div>
-                      <div className="text-lg font-bold text-primary">{calculateTargetCalories()} kcal</div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fatsPercent" className="text-xs">Fette</Label>
+                      <Input
+                        id="fatsPercent"
+                        type="number"
+                        value={dailyGoals.fats}
+                        onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
+                        min="15"
+                        max="50"
+                      />
+                      <p className="text-xs text-muted-foreground">{calculateMacroGrams().fats}g</p>
                     </div>
                   </div>
-                )}
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="calorieDeficit">
-                      {goal === 'lose' ? 'Kaloriendefizit' : goal === 'gain' ? 'Kalorienüberschuss' : 'Kalorienanpassung'}
-                    </Label>
-                    <Input
-                      id="calorieDeficit"
-                      type="number"
-                      value={dailyGoals.calorieDeficit}
-                      onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: Number(e.target.value)})}
-                      placeholder="300"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {goal === 'lose' ? 'Kalorien unter Gesamtumsatz' : goal === 'gain' ? 'Kalorien über Gesamtumsatz' : 'Kalorienanpassung'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium mb-3 block">Makronährstoff-Verteilung (%)</Label>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="proteinPercent" className="text-xs">Protein</Label>
-                        <Input
-                          id="proteinPercent"
-                          type="number"
-                          value={dailyGoals.protein}
-                          onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
-                          placeholder="30"
-                          min="10"
-                          max="50"
-                        />
-                        <p className="text-xs text-muted-foreground">{calculateMacroGrams().protein}g</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="carbsPercent" className="text-xs">Kohlenhydrate</Label>
-                        <Input
-                          id="carbsPercent"
-                          type="number"
-                          value={dailyGoals.carbs}
-                          onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
-                          placeholder="40"
-                          min="20"
-                          max="70"
-                        />
-                        <p className="text-xs text-muted-foreground">{calculateMacroGrams().carbs}g</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="fatsPercent" className="text-xs">Fette</Label>
-                        <Input
-                          id="fatsPercent"
-                          type="number"
-                          value={dailyGoals.fats}
-                          onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
-                          placeholder="30"
-                          min="15"
-                          max="50"
-                        />
-                        <p className="text-xs text-muted-foreground">{calculateMacroGrams().fats}g</p>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Gesamt: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}% 
-                      {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats !== 100 && (
-                        <span className="text-red-500 ml-1">(sollte 100% sein)</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Weight Goal Estimation */}
-              {weight && targetWeight && targetDate && (
-                <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">Gewichtsziel-Schätzung</h4>
-                    {autoCalculated && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => autoCalculateGoals()}
-                        className="text-xs"
-                      >
-                        Neu berechnen
-                      </Button>
+                  <div className="mt-2 text-xs text-center">
+                    Gesamt: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}% 
+                    {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats !== 100 && (
+                      <span className="text-red-500 ml-1">(sollte 100% sein)</span>
                     )}
                   </div>
-                  
-                  <div className="text-sm space-y-2">
-                    {(() => {
-                      const currentWeight = parseFloat(weight);
-                      const goalWeight = parseFloat(targetWeight);
-                      const weightDiff = Math.abs(currentWeight - goalWeight);
-                      const targetDateObj = new Date(targetDate);
-                      const today = new Date();
-                      const timeDiff = Math.max(0, (targetDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                      const weeksLeft = Math.floor(timeDiff / 7);
-                      const requiredDeficit = calculateRequiredCalorieDeficit();
-                      
-                      if (timeDiff <= 0) {
-                        return <span className="text-amber-600">Zieldatum ist bereits erreicht oder überschritten</span>;
-                      }
-                      
-                      // Safe weekly weight loss/gain: 0.5-1kg per week
-                      const weeklyTarget = weightDiff / weeksLeft;
-                      const isHealthy = weeklyTarget <= 1;
-                      
-                      return (
-                        <div className="space-y-2">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <p><span className="font-medium">Gewichtsdifferenz:</span> {weightDiff.toFixed(1)} kg</p>
-                              <p><span className="font-medium">Zeit bis zum Ziel:</span> {weeksLeft} Wochen</p>
-                              <p><span className="font-medium">Benötigter Fortschritt:</span> {weeklyTarget.toFixed(1)} kg/Woche</p>
-                            </div>
-                            
-                            {requiredDeficit && (
-                              <div className="bg-white/50 p-3 rounded-lg">
-                                <p className="font-medium mb-1">Benötigtes Kaloriendefizit:</p>
-                                <p className="text-xs"><span className="font-medium">Täglich:</span> {requiredDeficit.daily} kcal</p>
-                                <p className="text-xs"><span className="font-medium">Wöchentlich:</span> {requiredDeficit.weekly} kcal</p>
-                                <p className="text-xs text-muted-foreground">Gesamt: {requiredDeficit.total.toLocaleString()} kcal</p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className={`p-2 rounded ${isHealthy ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                            {isHealthy 
-                              ? '✓ Realistisches und gesundes Ziel' 
-                              : '⚠ Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche'
-                            }
-                          </div>
-                          
-                          {autoCalculated && (
-                            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                              💡 Die Kaloriendefizit- und Makrowerte wurden automatisch basierend auf deinem Ziel berechnet
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
+        )}
 
+        {/* Weight Goal Estimation */}
+        {weight && targetWeight && targetDate && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-5 w-5 bg-purple-500 rounded-full flex items-center justify-center">
+                  <div className="h-2 w-2 bg-white rounded-full" />
+                </div>
+                Gewichtsziel-Analyse
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const currentWeight = parseFloat(weight);
+                const goalWeight = parseFloat(targetWeight);
+                const weightDiff = Math.abs(currentWeight - goalWeight);
+                const targetDateObj = new Date(targetDate);
+                const today = new Date();
+                const timeDiff = Math.max(0, (targetDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                const weeksLeft = Math.floor(timeDiff / 7);
+                const requiredDeficit = calculateRequiredCalorieDeficit();
+                
+                if (timeDiff <= 0) {
+                  return (
+                    <div className="text-center p-4 bg-amber-50 rounded-lg">
+                      <span className="text-amber-600 font-medium">Zieldatum ist bereits erreicht oder überschritten</span>
+                    </div>
+                  );
+                }
+                
+                const weeklyTarget = weightDiff / weeksLeft;
+                const isHealthy = weeklyTarget <= 1;
+                
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 bg-accent/10 rounded-lg">
+                        <p><span className="font-medium">Gewichtsdifferenz:</span> {weightDiff.toFixed(1)} kg</p>
+                        <p><span className="font-medium">Zeit bis zum Ziel:</span> {weeksLeft} Wochen</p>
+                        <p><span className="font-medium">Benötigter Fortschritt:</span> {weeklyTarget.toFixed(1)} kg/Woche</p>
+                      </div>
+                      
+                      {requiredDeficit && (
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                          <p className="font-medium mb-2">Benötigtes Kaloriendefizit:</p>
+                          <p className="text-sm"><span className="font-medium">Täglich:</span> {requiredDeficit.daily} kcal</p>
+                          <p className="text-sm"><span className="font-medium">Wöchentlich:</span> {requiredDeficit.weekly} kcal</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className={`p-3 rounded-lg text-center ${isHealthy ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      {isHealthy 
+                        ? '✓ Realistisches und gesundes Ziel' 
+                        : '⚠ Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche'
+                      }
+                    </div>
+                    
+                    {autoCalculated && (
+                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg text-center">
+                        💡 Die Werte wurden automatisch basierend auf deinem Ziel berechnet
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Manual Save Button - now optional */}
-           <Button onClick={handleSave} disabled={loading} className="w-full" variant="outline">
-             <Save className="h-4 w-4 mr-2" />
-             {loading ? t('common.loading') : 'Manuell speichern'}
-           </Button>
-         </div>
-       </div>
+        {/* Auto-save Status */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            {autoSaving ? (
+              <>
+                <div className="h-2 w-2 bg-yellow-500 rounded-full animate-pulse" />
+                Speichere...
+              </>
+            ) : lastSaved ? (
+              <>
+                <Check className="h-4 w-4 text-green-500" />
+                Zuletzt gespeichert: {lastSaved.toLocaleTimeString()}
+              </>
+            ) : (
+              <>
+                <div className="h-2 w-2 bg-gray-400 rounded-full" />
+                Änderungen werden automatisch gespeichert
+              </>
+            )}
+          </div>
+          <Button onClick={handleSave} disabled={loading} variant="outline" size="sm">
+            <Save className="h-4 w-4 mr-2" />
+            {loading ? 'Speichere...' : 'Manuell speichern'}
+          </Button>
+        </div>
+      </div>
+    </div>
      );
    };
 
