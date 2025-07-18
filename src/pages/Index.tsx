@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -14,22 +13,14 @@ import BMIProgress from "@/components/BMIProgress";
 import { RandomQuote } from "@/components/RandomQuote";
 import { DailyProgress } from "@/components/DailyProgress";
 import { WeightTracker } from "@/components/WeightTracker";
-import { MealInput } from "@/components/MealInput";
 import { MealList } from "@/components/MealList";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { populateQuotes } from "@/utils/populateQuotes";
 import { 
-  Menu,
-  User,
-  CreditCard,
-  LogOut,
   RefreshCw,
   Target,
   TrendingUp,
-  TrendingDown,
-  Settings as SettingsIcon,
-  History as HistoryIcon,
-  MessageCircle
+  TrendingDown
 } from "lucide-react";
 
 interface WeightEntry {
@@ -365,66 +356,6 @@ const Index = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border/50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Language Toggle */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-                className="h-9 w-9 p-0"
-              >
-                {language === 'de' ? '🇩🇪' : '🇺🇸'}
-              </Button>
-
-              {/* User Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    {t('navigation.profile')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/history')}>
-                    <HistoryIcon className="mr-2 h-4 w-4" />
-                    {t('navigation.history')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/coach')}>
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Coach
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/subscription')}>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {t('navigation.subscription')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    {t('navigation.settings')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    {t('auth.signOut')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Quote Section */}
@@ -534,21 +465,6 @@ const Index = () => {
         />
       </div>
 
-      {/* Floating Input Components */}
-      <div className="fixed bottom-20 left-4 right-4 z-40">
-        <div className="max-w-sm mx-auto">
-          <MealInput
-            inputText={mealInputHook.inputText}
-            setInputText={mealInputHook.setInputText}
-            onSubmitMeal={mealInputHook.handleSubmitMeal}
-            onPhotoUpload={mealInputHook.handlePhotoUpload}
-            onVoiceRecord={mealInputHook.handleVoiceRecord}
-            isAnalyzing={mealInputHook.isAnalyzing}
-            isRecording={mealInputHook.isRecording}
-            isProcessing={mealInputHook.isProcessing}
-          />
-        </div>
-      </div>
     </div>
   );
 };
