@@ -998,6 +998,30 @@ const Coach = ({ onClose }: CoachProps) => {
         </CardContent>
       </Card>
 
+      {/* Floating Chat Button - only on Coach page */}
+      <div className="fixed bottom-20 right-4 z-40">
+        <Button
+          size="lg"
+          className="rounded-full h-14 w-14 shadow-lg animate-pulse bg-gradient-to-r from-primary to-primary-glow hover:scale-110 transition-all duration-300"
+          onClick={() => {
+            // Scroll to Voice tab or open chat
+            const voiceTab = document.querySelector('[data-state="active"][value="voice"]');
+            if (!voiceTab) {
+              // Switch to Voice tab if not already active
+              const voiceTabTrigger = document.querySelector('[value="voice"]') as HTMLElement;
+              voiceTabTrigger?.click();
+            }
+            // Scroll to voice section
+            setTimeout(() => {
+              const voiceSection = document.getElementById('voice-section');
+              voiceSection?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }}
+        >
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+      </div>
+
     </div>
   );
 };
