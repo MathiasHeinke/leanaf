@@ -240,305 +240,393 @@ const History = ({ onClose, dailyGoal, onAddMeal }: HistoryProps) => {
   ).length;
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
-        <div className="mb-6">
-          {/* Removed header and back button as requested */}
-        </div>
-
-        {/* Zeitraum-Auswahl */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={timeRange === 'week' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setTimeRange('week')}
-          >
-            7 Tage
-          </Button>
-          <Button
-            variant={timeRange === 'month' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setTimeRange('month')}
-          >
-            30 Tage
-          </Button>
-        </div>
-
-        {/* Statistiken */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="text-center p-4 bg-primary/5 rounded-xl">
+    <div className="space-y-4 pb-20">
+      {/* Header Stats */}
+      <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="text-center">
             <div className="text-2xl font-bold text-primary">{averageCalories}</div>
             <div className="text-sm text-muted-foreground">Ø Kalorien/Tag</div>
           </div>
-          <div className="text-center p-4 bg-success/5 rounded-xl">
-            <div className="text-2xl font-bold text-success">{goalsAchieved}</div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">{goalsAchieved}</div>
             <div className="text-sm text-muted-foreground">Ziele erreicht</div>
           </div>
         </div>
       </Card>
 
+      {/* Zeitraum-Auswahl */}
+      <div className="flex gap-2">
+        <Button
+          variant={timeRange === 'week' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTimeRange('week')}
+          className="flex-1"
+        >
+          7 Tage
+        </Button>
+        <Button
+          variant={timeRange === 'month' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTimeRange('month')}
+          className="flex-1"
+        >
+          30 Tage
+        </Button>
+      </div>
+
       {/* Charts und Tabelle */}
-      <Tabs defaultValue="chart" className="w-full">
+      <Tabs defaultValue="table" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="table">Verlauf</TabsTrigger>
           <TabsTrigger value="chart">Grafik</TabsTrigger>
-          <TabsTrigger value="table">Tabelle</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="chart" className="space-y-4">
+        <TabsContent value="table" className="space-y-3 mt-4">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Lade Daten...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {currentData.map((day, index) => (
+                <Collapsible 
+                  key={day.date} 
+                  open={expandedDays.has(day.date)}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <Card className="overflow-hidden hover:shadow-md transition-all duration-200">
+                    <CollapsibleTrigger asChild>
+                      <div 
+                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors duration-200"
+                        onClick={() => toggleExpanded(day.date)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <Calendar className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-semibold">{day.displayDate}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {day.meals.length} {day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="font-bold text-lg">{day.calories}</div>
+                            <div className="text-xs text-muted-foreground">kcal</div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-1">
+                            {day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1 ? (
+                              <Badge variant="default" className="text-xs">Ziel erreicht</Badge>
+                            ) : day.calories > dailyGoal.calories * 1.1 ? (
+                              <Badge variant="destructive" className="text-xs">Über Ziel</Badge>
+                            ) : day.calories < dailyGoal.calories * 0.5 ? (
+                              <Badge variant="secondary" className="text-xs">Unter Ziel</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">Nahe Ziel</Badge>
+                            )}
+                          </div>
+                          
+                          <div className="transition-transform duration-200">
+                            {expandedDays.has(day.date) ? (
+                              <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent className="transition-all duration-300 ease-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                      <div className="px-4 pb-4 bg-muted/30">
+                        {/* Macro Summary */}
+                        <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-background/50 rounded-lg">
+                          <div className="text-center">
+                            <div className="text-sm font-medium text-blue-600">{day.protein}g</div>
+                            <div className="text-xs text-muted-foreground">Protein</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm font-medium text-orange-600">{day.carbs}g</div>
+                            <div className="text-xs text-muted-foreground">Kohlenhydrate</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm font-medium text-yellow-600">{day.fats}g</div>
+                            <div className="text-xs text-muted-foreground">Fette</div>
+                          </div>
+                        </div>
+
+                        {/* Meals */}
+                        {day.meals.length === 0 ? (
+                          <div className="text-center py-8">
+                            <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                              <Calendar className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                            <p className="text-muted-foreground text-sm">
+                              Keine Mahlzeiten an diesem Tag
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {day.meals.map((meal, mealIndex) => (
+                              <div 
+                                key={meal.id} 
+                                className="bg-background rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 animate-scale-in"
+                                style={{ animationDelay: `${mealIndex * 100}ms` }}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge variant="outline" className="text-xs">
+                                        {meal.meal_type === 'breakfast' ? '🌅 Frühstück' :
+                                         meal.meal_type === 'lunch' ? '🌞 Mittagessen' :
+                                         meal.meal_type === 'dinner' ? '🌙 Abendessen' : '🍎 Snack'}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
+                                          hour: '2-digit', 
+                                          minute: '2-digit' 
+                                        })}
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="font-medium text-sm mb-2 line-clamp-2">
+                                      {meal.text}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                      <span className="font-medium">{meal.calories} kcal</span>
+                                      <span>P: {meal.protein}g</span>
+                                      <span>K: {meal.carbs}g</span>
+                                      <span>F: {meal.fats}g</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-1">
+                                    <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
+                                      if (!open) setEditingMeal(null);
+                                    }}>
+                                      <DialogTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setEditingMeal(meal)}
+                                          className="h-8 w-8 p-0 hover:bg-primary/10"
+                                        >
+                                          <Edit2 className="h-3 w-3" />
+                                        </Button>
+                                      </DialogTrigger>
+                                      <DialogContent className="max-w-md">
+                                        <DialogHeader>
+                                          <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
+                                        </DialogHeader>
+                                        {editingMeal && (
+                                          <form onSubmit={handleEditSubmit} className="space-y-4">
+                                            <div>
+                                              <Label htmlFor="text">Was gegessen</Label>
+                                              <Textarea
+                                                id="text"
+                                                value={editingMeal.text}
+                                                onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
+                                                className="mt-1"
+                                                rows={3}
+                                              />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                              <div>
+                                                <Label htmlFor="calories">Kalorien</Label>
+                                                <Input
+                                                  id="calories"
+                                                  type="number"
+                                                  value={editingMeal.calories}
+                                                  onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                                                  className="mt-1"
+                                                />
+                                              </div>
+                                              <div>
+                                                <Label htmlFor="protein">Protein (g)</Label>
+                                                <Input
+                                                  id="protein"
+                                                  type="number"
+                                                  value={editingMeal.protein}
+                                                  onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                                                  className="mt-1"
+                                                />
+                                              </div>
+                                              <div>
+                                                <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
+                                                <Input
+                                                  id="carbs"
+                                                  type="number"
+                                                  value={editingMeal.carbs}
+                                                  onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                                                  className="mt-1"
+                                                />
+                                              </div>
+                                              <div>
+                                                <Label htmlFor="fats">Fette (g)</Label>
+                                                <Input
+                                                  id="fats"
+                                                  type="number"
+                                                  value={editingMeal.fats}
+                                                  onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                                                  className="mt-1"
+                                                />
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
+                                              <Select 
+                                                value={editingMeal.meal_type} 
+                                                onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
+                                              >
+                                                <SelectTrigger className="mt-1">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="breakfast">Frühstück</SelectItem>
+                                                  <SelectItem value="lunch">Mittagessen</SelectItem>
+                                                  <SelectItem value="dinner">Abendessen</SelectItem>
+                                                  <SelectItem value="snack">Snack</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button type="submit" className="flex-1">
+                                                Speichern
+                                              </Button>
+                                              <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                onClick={() => setEditingMeal(null)}
+                                                className="flex-1"
+                                              >
+                                                Abbrechen
+                                              </Button>
+                                            </div>
+                                          </form>
+                                        )}
+                                      </DialogContent>
+                                    </Dialog>
+                                    
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteMeal(meal.id)}
+                                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Meal Images */}
+                                {meal.images && meal.images.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-border/50">
+                                    <div className="text-xs text-muted-foreground mb-2">Bilder:</div>
+                                    <div className="flex gap-2 overflow-x-auto">
+                                      {meal.images.map((imageUrl, index) => (
+                                        <img
+                                          key={index}
+                                          src={imageUrl}
+                                          alt={`Mahlzeit ${index + 1}`}
+                                          className="w-20 h-20 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0 hover-scale"
+                                          onClick={() => window.open(imageUrl, '_blank')}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="chart" className="space-y-4 mt-4">
           <Card className="p-4">
-            <h3 className="font-semibold mb-4">Kalorien-Verlauf</h3>
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Kalorien-Verlauf
+            </h3>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={currentData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="displayDate" />
-                <YAxis />
-                <Tooltip />
+              <LineChart data={currentData.slice().reverse()}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="displayDate" 
+                  tick={{ fontSize: 12 }}
+                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
                 <Line 
                   type="monotone" 
                   dataKey="calories" 
                   stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
+                  strokeWidth={3}
+                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </Card>
 
           <Card className="p-4">
-            <h3 className="font-semibold mb-4">Makronährstoffe</h3>
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Makronährstoffe (letzte 7 Tage)
+            </h3>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={currentData.slice(-7)}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="displayDate" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="protein" fill="hsl(var(--protein))" />
-                <Bar dataKey="carbs" fill="hsl(var(--carbs))" />
-                <Bar dataKey="fats" fill="hsl(var(--fats))" />
+              <BarChart data={currentData.slice(-7).reverse()}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis 
+                  dataKey="displayDate" 
+                  tick={{ fontSize: 12 }}
+                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--background))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Bar dataKey="protein" fill="#3b82f6" name="Protein" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="carbs" fill="#f97316" name="Kohlenhydrate" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="fats" fill="#eab308" name="Fette" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
         </TabsContent>
-
-        <TabsContent value="table">
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4">Detaillierte Übersicht</h3>
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p>Lade Daten...</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {currentData.map((day) => (
-                  <Collapsible key={day.date} open={expandedDays.has(day.date)}>
-                    <div className="border rounded-lg overflow-hidden">
-                      <CollapsibleTrigger asChild>
-                        <div 
-                          className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 cursor-pointer"
-                          onClick={() => toggleExpanded(day.date)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">{day.displayDate}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {day.meals.length} Mahlzeiten
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold">{day.calories} kcal</div>
-                            <div className="text-xs text-muted-foreground">
-                              P: {day.protein}g • K: {day.carbs}g • F: {day.fats}g
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1 ? (
-                              <Badge variant="default">Ziel erreicht</Badge>
-                            ) : day.calories > dailyGoal.calories * 1.1 ? (
-                              <Badge variant="destructive">Über Ziel</Badge>
-                            ) : (
-                              <Badge variant="secondary">Unter Ziel</Badge>
-                            )}
-                            {expandedDays.has(day.date) ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </div>
-                        </div>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <div className="p-3 bg-background/50 border-t">
-                          {day.meals.length === 0 ? (
-                            <p className="text-center text-muted-foreground text-sm py-4">
-                              Keine Mahlzeiten an diesem Tag
-                            </p>
-                           ) : (
-                             <div className="space-y-2">
-                               {day.meals.map((meal) => (
-                                 <div key={meal.id} className="space-y-2">
-                                   <div className="flex items-center justify-between p-2 bg-muted/20 rounded">
-                                     <div className="flex-1">
-                                       <div className="font-medium text-sm">{meal.text}</div>
-                                       <div className="text-xs text-muted-foreground">
-                                         {meal.calories} kcal • P: {meal.protein}g • K: {meal.carbs}g • F: {meal.fats}g
-                                       </div>
-                                       <div className="text-xs text-muted-foreground">
-                                         {meal.meal_type} • {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
-                                           hour: '2-digit', 
-                                           minute: '2-digit' 
-                                         })}
-                                       </div>
-                                     </div>
-                                     <div className="flex items-center gap-1">
-                                     <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
-                                       if (!open) setEditingMeal(null);
-                                     }}>
-                                       <DialogTrigger asChild>
-                                         <Button
-                                           variant="ghost"
-                                           size="sm"
-                                           onClick={() => setEditingMeal(meal)}
-                                           className="h-8 w-8 p-0"
-                                         >
-                                           <Edit2 className="h-3 w-3" />
-                                         </Button>
-                                       </DialogTrigger>
-                                       <DialogContent>
-                                         <DialogHeader>
-                                           <DialogTitle>Mahlzeit bearbeiten</DialogTitle>
-                                         </DialogHeader>
-                                         {editingMeal && (
-                                           <form onSubmit={handleEditSubmit} className="space-y-4">
-                                             <div>
-                                               <Label htmlFor="text">Was gegessen</Label>
-                                               <Textarea
-                                                 id="text"
-                                                 value={editingMeal.text}
-                                                 onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
-                                                 className="mt-1"
-                                               />
-                                             </div>
-                                             <div className="grid grid-cols-2 gap-4">
-                                               <div>
-                                                 <Label htmlFor="calories">Kalorien</Label>
-                                                 <Input
-                                                   id="calories"
-                                                   type="number"
-                                                   value={editingMeal.calories}
-                                                   onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
-                                                   className="mt-1"
-                                                 />
-                                               </div>
-                                               <div>
-                                                 <Label htmlFor="protein">Protein (g)</Label>
-                                                 <Input
-                                                   id="protein"
-                                                   type="number"
-                                                   value={editingMeal.protein}
-                                                   onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
-                                                   className="mt-1"
-                                                 />
-                                               </div>
-                                               <div>
-                                                 <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
-                                                 <Input
-                                                   id="carbs"
-                                                   type="number"
-                                                   value={editingMeal.carbs}
-                                                   onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
-                                                   className="mt-1"
-                                                 />
-                                               </div>
-                                               <div>
-                                                 <Label htmlFor="fats">Fette (g)</Label>
-                                                 <Input
-                                                   id="fats"
-                                                   type="number"
-                                                   value={editingMeal.fats}
-                                                   onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
-                                                   className="mt-1"
-                                                 />
-                                               </div>
-                                             </div>
-                                             <div>
-                                               <Label htmlFor="meal_type">Mahlzeit-Typ</Label>
-                                               <Select 
-                                                 value={editingMeal.meal_type} 
-                                                 onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
-                                               >
-                                                 <SelectTrigger className="mt-1">
-                                                   <SelectValue />
-                                                 </SelectTrigger>
-                                                 <SelectContent>
-                                                   <SelectItem value="breakfast">Frühstück</SelectItem>
-                                                   <SelectItem value="lunch">Mittagessen</SelectItem>
-                                                   <SelectItem value="dinner">Abendessen</SelectItem>
-                                                   <SelectItem value="snack">Snack</SelectItem>
-                                                 </SelectContent>
-                                               </Select>
-                                             </div>
-                                             <div className="flex gap-2">
-                                               <Button type="submit" className="flex-1">
-                                                 Speichern
-                                               </Button>
-                                               <Button 
-                                                 type="button" 
-                                                 variant="outline" 
-                                                 onClick={() => setEditingMeal(null)}
-                                                 className="flex-1"
-                                               >
-                                                 Abbrechen
-                                               </Button>
-                                             </div>
-                                           </form>
-                                         )}
-                                       </DialogContent>
-                                     </Dialog>
-                                     <Button
-                                       variant="ghost"
-                                       size="sm"
-                                       onClick={() => deleteMeal(meal.id)}
-                                       className="h-8 w-8 p-0"
-                                     >
-                                       <Trash2 className="h-3 w-3" />
-                                     </Button>
-                                    </div>
-                                   </div>
-                                   {/* Display meal images */}
-                                   {meal.images && meal.images.length > 0 && (
-                                     <div className="pl-2">
-                                       <div className="text-xs text-muted-foreground mb-1">Bilder:</div>
-                                       <div className="flex gap-2">
-                                         {meal.images.map((imageUrl, index) => (
-                                           <img
-                                             key={index}
-                                             src={imageUrl}
-                                             alt={`Mahlzeit ${index + 1}`}
-                                             className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                                             onClick={() => window.open(imageUrl, '_blank')}
-                                           />
-                                         ))}
-                                       </div>
-                                     </div>
-                                   )}
-                                 </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </CollapsibleContent>
-                      </div>
-                    </Collapsible>
-                   ))}
-                 </div>
-               )}
-             </Card>
-           </TabsContent>
-         </Tabs>
-       </div>
-     );
+      </Tabs>
+    </div>
+  );
   };
   
   export default History;
