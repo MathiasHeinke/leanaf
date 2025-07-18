@@ -175,58 +175,58 @@ export const GlobalHeader = ({
           <div className="flex relative z-10">
             <button 
               onClick={() => handleNavigation('main')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                 activeTab === 'main' 
                   ? 'text-foreground scale-105 font-semibold' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               style={{ width: '25%' }}
             >
-              <LayoutDashboard className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+              <LayoutDashboard className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'main' ? 'animate-pulse text-primary' : ''
-              }`} />
+              }`} style={{ animationDuration: activeTab === 'main' ? '2s' : undefined }} />
               Basis
             </button>
             <button 
               onClick={() => handleNavigation('coach')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                 activeTab === 'coach' 
                   ? 'text-foreground scale-105 font-semibold' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               style={{ width: '25%' }}
             >
-              <MessageCircle className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+              <MessageCircle className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'coach' ? 'animate-pulse text-primary' : ''
-              }`} />
+              }`} style={{ animationDuration: activeTab === 'coach' ? '2s' : undefined }} />
               Coach
             </button>
             <button 
               onClick={() => handleNavigation('history')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                 activeTab === 'history' 
                   ? 'text-foreground scale-105 font-semibold' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               style={{ width: '25%' }}
             >
-              <TrendingUp className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+              <TrendingUp className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'history' ? 'animate-pulse text-primary' : ''
-              }`} />
+              }`} style={{ animationDuration: activeTab === 'history' ? '2s' : undefined }} />
               Verlauf
             </button>
             <button 
               onClick={() => handleNavigation('profile')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                 activeTab === 'profile' 
                   ? 'text-foreground scale-105 font-semibold' 
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               style={{ width: '25%' }}
             >
-              <UserIcon className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+              <UserIcon className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'profile' ? 'animate-pulse text-primary' : ''
-              }`} />
+              }`} style={{ animationDuration: activeTab === 'profile' ? '2s' : undefined }} />
               Profil
             </button>
           </div>
