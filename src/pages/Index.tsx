@@ -1539,7 +1539,43 @@ const Index = () => {
             <div className="flex items-center gap-2 text-sm text-primary font-medium">
               <Star className="h-4 w-4" />
               {getMotivationalMessage()}
-            </div>
+          </div>
+
+          {/* Quick Weight Input */}
+          <div className="mt-4">
+            <Card className="p-4 border-primary/20">
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddWeight();
+                    }
+                  }}
+                  placeholder="Aktuelles Gewicht"
+                  className="flex-1"
+                />
+                <Button onClick={handleAddWeight} disabled={!newWeight}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Eintragen
+                </Button>
+              </div>
+              {(() => {
+                const trend = getWeightTrend();
+                if (!trend) return null;
+                const IconComponent = trend.icon;
+                return (
+                  <div className={`flex items-center gap-1 ${trend.color} text-sm mt-2`}>
+                    <IconComponent className="h-4 w-4" />
+                    <span>{trend.text}</span>
+                  </div>
+                );
+              })()}
+            </Card>
+          </div>
           </div>
 
 
