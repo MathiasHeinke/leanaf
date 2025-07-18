@@ -28,9 +28,12 @@ Wenn Bilder vorhanden sind, beschreibe die erkannten Lebensmittel und schätze d
 Wenn Text vorhanden ist, berücksichtige diese zusätzlichen Informationen.
 Sei möglichst präzise bei den Nährwertangaben.
 
+Zusätzlich erstelle automatisch einen passenden Titel/Name für diese Mahlzeit.
+
 Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
 {
+  "title": "Passender Mahlzeittitel",
   "items": [
     {
       "name": "Lebensmittel Name",
@@ -55,11 +58,15 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
     let userContent = [{ type: 'text', text: prompt }];
     
     if (images && images.length > 0) {
+      console.log('Adding images to request:', images.length);
       // Add each image to the content array
       images.forEach((imageUrl: string) => {
         userContent.push({
           type: 'image_url',
-          image_url: { url: imageUrl }
+          image_url: { 
+            url: imageUrl,
+            detail: 'high'
+          }
         });
       });
     }
@@ -88,6 +95,7 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
         messages,
         max_tokens: 1000,
         temperature: 0.3,
+        response_format: { type: 'json' },
       }),
     });
 
@@ -99,41 +107,26 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
       throw new Error(data.error?.message || 'OpenAI API Fehler');
     }
 
-    const content = data.choices[0].message.content;
-    console.log('OpenAI raw response:', content);
+    // Remove any possible markdown formatting
+    const content = data.choices[0].message.content.replace(/```json\n?|\n?```/g, '').trim();
+    console.log('Cleaned OpenAI response:', content);
     
     try {
       const parsed = JSON.parse(content);
+      
+      // Validate if we got actual nutrition data and not just fallback values
+      if (parsed.total.calories === 300 && parsed.total.protein === 15) {
+        throw new Error('Ungültige Analyse erhalten');
+      }
+      
       console.log('Parsed nutrition data:', parsed);
       
       return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Content:', content);
-      
-      // Fallback response if JSON parsing fails
-      const fallbackResponse = {
-        items: [{
-          name: text || 'Unbekannte Mahlzeit',
-          amount: '1 Portion',
-          calories: 300,
-          protein: 15,
-          carbs: 30,
-          fats: 10
-        }],
-        total: {
-          calories: 300,
-          protein: 15,
-          carbs: 30,
-          fats: 10
-        }
-      };
-      
-      return new Response(JSON.stringify(fallbackResponse), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.error('Error parsing OpenAI response. Content:', content);
+      throw new Error('Fehler beim Analysieren der Mahlzeit. Bitte versuchen Sie es erneut.');
     }
 
   } catch (error) {

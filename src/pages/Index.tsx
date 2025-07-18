@@ -533,22 +533,23 @@ const Index = () => {
   }, [calorieProgress, showMotivation]);
 
   const handleSubmitMeal = async () => {
-    if (!inputText.trim()) {
-      toast.error(t('app.error'));
+    if (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) {
+      toast.error('Bitte gib Text ein oder lade ein Bild hoch');
       return;
     }
 
     setIsAnalyzing(true);
-    console.log('Starting meal analysis for:', inputText);
+    console.log('Starting meal analysis for:', inputText || 'image only');
     
     try {
       // Check if there are uploaded images to include in analysis
-      const hasImages = uploadedImages.length > 0;
+      const hasImages = (uploadedImages?.length || 0) > 0;
       
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
-          text: inputText,
-          images: hasImages ? uploadedImages : undefined
+          text: inputText || '',
+          images: hasImages ? uploadedImages : [],
+          hasImages: hasImages
         },
       });
 
@@ -570,9 +571,10 @@ const Index = () => {
         setShowConfirmationDialog(true);
       } else {
         // Direct save for text-only meals
+        const mealText = data.title || inputText || "Analysierte Mahlzeit";
         const newMeal = {
           user_id: user?.id,
-          text: inputText,
+          text: mealText,
           calories: Math.round(data.total.calories),
           protein: Math.round(data.total.protein),
           carbs: Math.round(data.total.carbs),
@@ -873,16 +875,17 @@ const Index = () => {
   };
 
   const handleConfirmMeal = async () => {
-    if (!inputText.trim() || !analyzedMealData) return;
+    if (!analyzedMealData) return;
     
     setIsAnalyzing(true);
     
     try {
       // Save the meal to the database
+      const mealText = analyzedMealData.title || inputText || "Analysierte Mahlzeit";
       const mealDate = selectedDate || new Date().toISOString();
       const newMeal = {
         user_id: user?.id,
-        text: inputText,
+        text: mealText,
         calories: Math.round(analyzedMealData.total.calories),
         protein: Math.round(analyzedMealData.total.protein),
         carbs: Math.round(analyzedMealData.total.carbs),
@@ -1539,41 +1542,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Quick Weight Input */}
-          <div className="mt-4">
-            <Card className="p-4 border-primary/20">
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={newWeight}
-                  onChange={(e) => setNewWeight(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddWeight();
-                    }
-                  }}
-                  placeholder="Aktuelles Gewicht"
-                  className="flex-1"
-                />
-                <Button onClick={handleAddWeight} disabled={!newWeight}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Eintragen
-                </Button>
-              </div>
-              {(() => {
-                const trend = getWeightTrend();
-                if (!trend) return null;
-                const IconComponent = trend.icon;
-                return (
-                  <div className={`flex items-center gap-1 ${trend.color} text-sm mt-2`}>
-                    <IconComponent className="h-4 w-4" />
-                    <span>{trend.text}</span>
-                  </div>
-                );
-              })()}
-            </Card>
-          </div>
 
           {/* Quote Section */}
           <div className="mt-4">
@@ -1675,7 +1643,7 @@ const Index = () => {
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={handleSubmitMeal}
-                    disabled={!inputText.trim() || isAnalyzing}
+                    disabled={(!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing}
                   >
                     {isAnalyzing ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
@@ -1932,7 +1900,7 @@ const Index = () => {
             <div className="flex gap-2">
               <Button
                 onClick={handleConfirmMeal}
-                disabled={!inputText.trim() || (analyzedMealData?.total.calories === 0 && !selectedDate)}
+                disabled={!analyzedMealData || (analyzedMealData?.total.calories === 0 && !selectedDate)}
                 className="flex-1"
               >
                 {isAnalyzing ? (
