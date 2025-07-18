@@ -18,7 +18,7 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/20">
       <GlobalHeader />
-      <main className="container mx-auto px-4 pb-6 max-w-md">
+      <main className="container mx-auto px-2 pb-6 max-w-md">
         {children}
       </main>
     </div>
