@@ -81,10 +81,17 @@ export const useGlobalMealInput = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     
+    if (!user?.id) {
+      toast.error('Benutzer nicht authentifiziert');
+      return;
+    }
+    
     if (uploadedImages.length + files.length > 5) {
       toast.error('Maximal 5 Bilder erlaubt');
       return;
     }
+    
+    console.log('Starting upload for user:', user.id);
     
     setIsAnalyzing(true);
     toast.info('Lade Bilder hoch...');
@@ -93,6 +100,8 @@ export const useGlobalMealInput = () => {
       const uploadedUrls: string[] = [];
       
       for (const file of files) {
+        console.log('Processing file:', file.name, 'Size:', file.size, 'Type:', file.type);
+        
         if (file.size > 10 * 1024 * 1024) {
           throw new Error(`Datei ${file.name} ist zu groß (max. 10MB)`);
         }
@@ -102,7 +111,9 @@ export const useGlobalMealInput = () => {
         }
         
         const fileExt = file.name.split('.').pop()?.toLowerCase();
-        const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        
+        console.log('Uploading to:', fileName);
         
         const { data, error } = await supabase.storage
           .from('meal-images')
@@ -111,12 +122,18 @@ export const useGlobalMealInput = () => {
             upsert: false
           });
         
-        if (error) throw new Error(`Upload fehlgeschlagen: ${error.message}`);
+        if (error) {
+          console.error('Storage upload error:', error);
+          throw new Error(`Upload fehlgeschlagen: ${error.message}`);
+        }
+        
+        console.log('Upload successful:', data);
         
         const { data: urlData } = supabase.storage
           .from('meal-images')
           .getPublicUrl(fileName);
         
+        console.log('Public URL:', urlData.publicUrl);
         uploadedUrls.push(urlData.publicUrl);
       }
       
@@ -125,6 +142,11 @@ export const useGlobalMealInput = () => {
       
     } catch (error: any) {
       console.error('Error in photo upload:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       toast.error(error.message || 'Fehler beim Hochladen');
     } finally {
       setIsAnalyzing(false);
