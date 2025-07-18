@@ -1833,6 +1833,35 @@ const Index = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Date and Meal type selection - moved to top */}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-2">
+                <Label htmlFor="mealDate" className="font-medium text-sm">Datum:</Label>
+                <Input
+                  id="mealDate"
+                  type="date"
+                  value={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString())}
+                  className="w-full h-9"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="mealType" className="font-medium text-sm">Mahlzeit-Typ:</Label>
+                <Select value={selectedMealType} onValueChange={setSelectedMealType}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Wähle einen Typ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="breakfast">Frühstück</SelectItem>
+                    <SelectItem value="lunch">Mittagessen</SelectItem>
+                    <SelectItem value="dinner">Abendessen</SelectItem>
+                    <SelectItem value="snack">Snack</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Display analyzed data */}
             {analyzedMealData && (
               <div className="space-y-3">
@@ -1852,11 +1881,11 @@ const Index = () => {
                   </div>
                 )}
                 
-                {/* Editable nutritional data */}
+                {/* Nutritional data in compact 4-column grid */}
                 {analyzedMealData.total.calories > 0 && (
-                  <div className="grid grid-cols-2 gap-3 p-4 bg-muted/50 rounded-lg">
+                  <div className="grid grid-cols-4 gap-2 p-3 bg-muted/50 rounded-lg">
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Kalorien:</label>
+                      <label className="text-xs font-medium text-muted-foreground">Kalorien</label>
                       <Input
                         type="number"
                         value={Math.round(analyzedMealData.total.calories)}
@@ -1867,11 +1896,11 @@ const Index = () => {
                             total: { ...analyzedMealData.total, calories }
                           });
                         }}
-                        className="h-8"
+                        className="h-8 text-sm font-bold text-calories"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Protein:</label>
+                      <label className="text-xs font-medium text-muted-foreground">Protein (g)</label>
                       <Input
                         type="number"
                         value={Math.round(analyzedMealData.total.protein)}
@@ -1882,11 +1911,11 @@ const Index = () => {
                             total: { ...analyzedMealData.total, protein }
                           });
                         }}
-                        className="h-8"
+                        className="h-8 text-sm font-bold text-protein"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Kohlenhydrate:</label>
+                      <label className="text-xs font-medium text-muted-foreground">Carbs (g)</label>
                       <Input
                         type="number"
                         value={Math.round(analyzedMealData.total.carbs)}
@@ -1897,11 +1926,11 @@ const Index = () => {
                             total: { ...analyzedMealData.total, carbs }
                           });
                         }}
-                        className="h-8"
+                        className="h-8 text-sm font-bold text-carbs"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Fett:</label>
+                      <label className="text-xs font-medium text-muted-foreground">Fett (g)</label>
                       <Input
                         type="number"
                         value={Math.round(analyzedMealData.total.fats)}
@@ -1912,23 +1941,23 @@ const Index = () => {
                             total: { ...analyzedMealData.total, fats }
                           });
                         }}
-                        className="h-8"
+                        className="h-8 text-sm font-bold text-fats"
                       />
                     </div>
                   </div>
                 )}
                 
-                {/* Display uploaded images */}
+                {/* Display uploaded images in compact grid */}
                 {uploadedImages.length > 0 && (
                   <div className="space-y-2">
                     <div className="font-medium text-sm">Hochgeladene Bilder:</div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       {uploadedImages.map((imageUrl, index) => (
                         <img
                           key={index}
                           src={imageUrl}
                           alt={`Mahlzeit ${index + 1}`}
-                          className="w-full h-20 object-cover rounded border"
+                          className="w-full h-16 object-cover rounded border"
                         />
                       ))}
                     </div>
@@ -1958,11 +1987,11 @@ const Index = () => {
                   
                   {/* Chat Input with icons */}
                   <div className="flex gap-2">
-                    <Input
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Mahlzeit eingeben..."
-                      className="flex-1"
+                     <Input
+                       value={chatInput}
+                       onChange={(e) => setChatInput(e.target.value)}
+                       placeholder="Mahlzeit eingeben..."
+                       className="flex-1 h-9"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1970,18 +1999,20 @@ const Index = () => {
                         }
                       }}
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setShowImageUpload(true);
-                      }}
-                    >
-                      <ImagePlus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       className="px-3"
+                       onClick={() => {
+                         setShowImageUpload(true);
+                       }}
+                     >
+                       <ImagePlus className="h-4 w-4" />
+                     </Button>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       className="px-3"
                       onClick={isRecording ? stopRecording : startRecording}
                       disabled={isProcessing}
                     >
@@ -1993,10 +2024,11 @@ const Index = () => {
                         <Mic className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button
-                      onClick={handleChatSubmit}
-                      disabled={!chatInput.trim() || isVerifying}
-                      size="sm"
+                     <Button
+                       onClick={handleChatSubmit}
+                       disabled={!chatInput.trim() || isVerifying}
+                       size="sm"
+                       className="px-3"
                     >
                       {isVerifying ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
@@ -2004,35 +2036,6 @@ const Index = () => {
                         <Send className="h-4 w-4" />
                       )}
                     </Button>
-                  </div>
-                </div>
-                
-                {/* Date and Meal type selection - side by side */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="mealDate">Datum:</Label>
-                    <Input
-                      id="mealDate"
-                      type="date"
-                      value={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString())}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
-                    <Select value={selectedMealType} onValueChange={setSelectedMealType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Wähle einen Typ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="breakfast">Frühstück</SelectItem>
-                        <SelectItem value="lunch">Mittagessen</SelectItem>
-                        <SelectItem value="dinner">Abendessen</SelectItem>
-                        <SelectItem value="snack">Snack</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </div>
