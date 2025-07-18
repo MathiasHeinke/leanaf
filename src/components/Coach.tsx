@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { SavedItems } from "@/components/SavedItems";
+import { FloatingCoachChat } from "@/components/FloatingCoachChat";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
@@ -141,6 +143,9 @@ const Coach = ({ onClose }: CoachProps) => {
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const { user } = useAuth();
   const { t } = useTranslation();
+  
+  // Use global coach chat hook
+  const coachChatHook = useGlobalCoachChat();
 
   useEffect(() => {
     if (user) {
@@ -928,7 +933,18 @@ const Coach = ({ onClose }: CoachProps) => {
         </CardContent>
       </Card>
 
-
+      {/* FloatingCoachChat - nur auf Coach Seite */}
+      <FloatingCoachChat
+        inputText={coachChatHook.inputText}
+        setInputText={coachChatHook.setInputText}
+        onSubmitMessage={coachChatHook.handleSubmitMessage}
+        onVoiceRecord={coachChatHook.handleVoiceRecord}
+        isThinking={coachChatHook.isThinking}
+        isRecording={coachChatHook.isRecording}
+        isProcessing={coachChatHook.isProcessing}
+        chatHistory={coachChatHook.chatHistory}
+        onClearChat={coachChatHook.clearChat}
+      />
     </div>
   );
 };

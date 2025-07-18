@@ -16,9 +16,7 @@ import { DailyProgress } from "@/components/DailyProgress";
 import { WeightTracker } from "@/components/WeightTracker";
 import { MealInput } from "@/components/MealInput";
 import { MealList } from "@/components/MealList";
-import { FloatingCoachChat } from "@/components/FloatingCoachChat";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
-import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
 import { populateQuotes } from "@/utils/populateQuotes";
 import { 
   Menu,
@@ -89,9 +87,8 @@ const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
   
-  // Initialize meal input and coach chat hooks
+  // Initialize meal input hook
   const mealInputHook = useGlobalMealInput();
-  const coachChatHook = useGlobalCoachChat();
   
   const navigate = useNavigate();
 
@@ -374,7 +371,7 @@ const Index = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-                {t('dashboard.title')}
+                KaloTracker
               </h1>
               <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -541,29 +538,20 @@ const Index = () => {
       </div>
 
       {/* Floating Input Components */}
-      <MealInput 
-        inputText={mealInputHook.inputText}
-        setInputText={mealInputHook.setInputText}
-        onSubmitMeal={mealInputHook.handleSubmitMeal}
-        onPhotoUpload={mealInputHook.handlePhotoUpload}
-        onVoiceRecord={mealInputHook.handleVoiceRecord}
-        isAnalyzing={mealInputHook.isAnalyzing}
-        isRecording={mealInputHook.isRecording}
-        isProcessing={mealInputHook.isProcessing}
-      />
-
-      {/* Floating Coach Chat */}
-      <FloatingCoachChat
-        inputText={coachChatHook.inputText}
-        setInputText={coachChatHook.setInputText}
-        onSubmitMessage={coachChatHook.handleSubmitMessage}
-        onVoiceRecord={coachChatHook.handleVoiceRecord}
-        isThinking={coachChatHook.isThinking}
-        isRecording={coachChatHook.isRecording}
-        isProcessing={coachChatHook.isProcessing}
-        chatHistory={coachChatHook.chatHistory}
-        onClearChat={coachChatHook.clearChat}
-      />
+      <div className="fixed bottom-20 left-4 right-4 z-40">
+        <div className="max-w-sm mx-auto">
+          <MealInput
+            inputText={mealInputHook.inputText}
+            setInputText={mealInputHook.setInputText}
+            onSubmitMeal={mealInputHook.handleSubmitMeal}
+            onPhotoUpload={mealInputHook.handlePhotoUpload}
+            onVoiceRecord={mealInputHook.handleVoiceRecord}
+            isAnalyzing={mealInputHook.isAnalyzing}
+            isRecording={mealInputHook.isRecording}
+            isProcessing={mealInputHook.isProcessing}
+          />
+        </div>
+      </div>
     </div>
   );
 };
