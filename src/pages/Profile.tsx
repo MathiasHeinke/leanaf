@@ -440,7 +440,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       <div className="max-w-2xl mx-auto pb-20">
           <div className="space-y-6">
             {/* Basic Information */}
-        <Card>
+        <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="h-5 w-5 bg-primary rounded-full flex items-center justify-center">
@@ -487,7 +487,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </Card>
 
         {/* Body Metrics */}
-        <Card>
+        <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center">
@@ -558,7 +558,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </Card>
 
         {/* Coach-Einstellungen */}
-        <Card>
+        <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-purple-500" />
@@ -658,7 +658,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </Card>
 
         {/* Erweiterte Makro-Strategien */}
-        <Card>
+        <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-amber-500" />
@@ -789,7 +789,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </Card>
 
         {/* Activity & Goals */}
-        <Card>
+        <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-green-500" />
@@ -867,7 +867,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
         {/* Calorie Calculation */}
         {calculateMaintenanceCalories() && (
-          <Card>
+          <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center">
@@ -963,7 +963,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
         {/* Weight Goal Estimation */}
         {weight && targetWeight && targetDate && (
-          <Card>
+          <Card className="glass-card border-white/20 shadow-lg backdrop-blur-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="h-5 w-5 bg-purple-500 rounded-full flex items-center justify-center">
