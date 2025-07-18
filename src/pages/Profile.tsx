@@ -436,8 +436,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const bmiCategory = bmi ? getBMICategory(bmi) : null;
 
   return (
-    <div className="max-w-2xl mx-auto pb-20">
-      <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/50 p-4">
+      <div className="max-w-2xl mx-auto pb-20">
+        <div className="space-y-6">
         {/* Basic Information */}
         <Card>
           <CardHeader>
@@ -508,7 +509,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="weight">Aktuelles Gewicht (kg)</Label>
+                <Label htmlFor="weight">{t('profile.weight')}</Label>
                 <Input
                   id="weight"
                   type="number"
@@ -518,7 +519,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="height">Größe (cm)</Label>
+                <Label htmlFor="height">{t('profile.height')}</Label>
                 <Input
                   id="height"
                   type="number"
@@ -798,14 +799,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="gender">Geschlecht</Label>
+                <Label htmlFor="gender">{t('profile.gender')}</Label>
                 <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger>
                     <SelectValue placeholder="Wählen..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Männlich</SelectItem>
-                    <SelectItem value="female">Weiblich</SelectItem>
+                  <SelectItem value="male">{t('profile.gender.male')}</SelectItem>
+                  <SelectItem value="female">{t('profile.gender.female')}</SelectItem>
                     <SelectItem value="other">Andere</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1057,7 +1058,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </div>
       </div>
     </div>
-     );
-   };
+  );
+};
 
-   export default Profile;
+export default Profile;
