@@ -275,117 +275,226 @@ const Coach = ({ onClose }: CoachProps) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Smaller Personal Session Request Button */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <CardContent className="p-4">
+    <div className="space-y-6 animate-fade-in">
+      {/* Hero Section - Personal Coaching */}
+      <Card className="border-0 bg-gradient-to-br from-primary via-primary/80 to-primary/60 text-white overflow-hidden relative">
+        <div className="absolute inset-0 bg-pattern opacity-20"></div>
+        <CardContent className="p-6 relative">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold mb-1">Persönliche Beratung</h3>
-              <p className="text-sm text-muted-foreground">
-                Erreiche deine Ziele definitiv!
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                <ChefHat className="h-8 w-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Dein persönlicher Coach 🏆</h2>
+                <p className="text-white/90 text-lg">
+                  Erreiche deine Ziele mit professioneller Unterstützung
+                </p>
+              </div>
             </div>
             <Button 
               onClick={requestPersonalSession}
-              className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
-              size="sm"
+              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white shadow-lg"
+              size="lg"
             >
-              <Phone className="h-4 w-4" />
-              Gespräch anfordern
+              <Phone className="h-5 w-5 mr-2" />
+              Beratung buchen
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Goals and Current Status Summary */}
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="hover-scale">
+          <CardContent className="p-4 text-center">
+            <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Target className="h-6 w-6 text-primary" />
+            </div>
+            <div className="text-2xl font-bold text-primary mb-1">{dailyGoals?.calories || 1323}</div>
+            <div className="text-sm text-muted-foreground">kcal Tagesziel</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover-scale">
+          <CardContent className="p-4 text-center">
+            <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <TrendingUp className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="text-2xl font-bold text-blue-600 mb-1">{averages.calories}</div>
+            <div className="text-sm text-muted-foreground">kcal Durchschnitt</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover-scale">
+          <CardContent className="p-4 text-center">
+            <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <div className="text-xl">🎯</div>
+            </div>
+            <div className="text-2xl font-bold text-green-600 mb-1">
+              {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
+            </div>
+            <div className="text-sm text-muted-foreground">Zielerreichung</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="hover-scale">
+          <CardContent className="p-4 text-center">
+            <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Calendar className="h-6 w-6 text-orange-600" />
+            </div>
+            <div className="text-2xl font-bold text-orange-600 mb-1">{todaysTotals.calories}</div>
+            <div className="text-sm text-muted-foreground">kcal heute</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Makronährstoffe */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Ziele und aktueller Stand
+            <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center">
+              <div className="text-lg">📊</div>
+            </div>
+            Makronährstoffe Übersicht
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 bg-accent/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Tagesziel</div>
-              <div className="text-xl font-bold text-primary">{dailyGoals?.calories || 1323} kcal</div>
-            </div>
-            <div className="p-4 bg-accent/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Ø Kalorien</div>
-              <div className="text-xl font-bold text-blue-600">{averages.calories} kcal</div>
-              <div className="text-xs text-muted-foreground">
-                {historyData.filter(entry => entry.meals.length > 0).length} ausgefüllte Tage
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="relative p-6 bg-gradient-to-br from-protein/10 to-protein/20 rounded-xl border border-protein/20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-10 w-10 bg-protein/20 rounded-lg flex items-center justify-center">
+                  <div className="text-lg">🥩</div>
+                </div>
+                <Badge variant="outline" className="border-protein text-protein">
+                  {averages.protein > 0 ? Math.round((averages.protein / (dailyGoals?.protein || 116)) * 100) : 0}%
+                </Badge>
+              </div>
+              <h3 className="font-semibold text-protein mb-2">Protein</h3>
+              <div className="text-2xl font-bold text-protein mb-1">{averages.protein}g</div>
+              <div className="text-sm text-muted-foreground">Ziel: {dailyGoals?.protein || 116}g</div>
+              <div className="w-full bg-protein/20 rounded-full h-2 mt-3">
+                <div 
+                  className="bg-protein h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, (averages.protein / (dailyGoals?.protein || 116)) * 100)}%` }}
+                ></div>
               </div>
             </div>
-            <div className="p-4 bg-accent/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Zielerreichung</div>
-              <div className="text-xl font-bold text-green-600">
-                {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
+            
+            <div className="relative p-6 bg-gradient-to-br from-carbs/10 to-carbs/20 rounded-xl border border-carbs/20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-10 w-10 bg-carbs/20 rounded-lg flex items-center justify-center">
+                  <div className="text-lg">🍞</div>
+                </div>
+                <Badge variant="outline" className="border-carbs text-carbs">
+                  {averages.carbs > 0 ? Math.round((averages.carbs / (dailyGoals?.carbs || 99)) * 100) : 0}%
+                </Badge>
+              </div>
+              <h3 className="font-semibold text-carbs mb-2">Kohlenhydrate</h3>
+              <div className="text-2xl font-bold text-carbs mb-1">{averages.carbs}g</div>
+              <div className="text-sm text-muted-foreground">Ziel: {dailyGoals?.carbs || 99}g</div>
+              <div className="w-full bg-carbs/20 rounded-full h-2 mt-3">
+                <div 
+                  className="bg-carbs h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, (averages.carbs / (dailyGoals?.carbs || 99)) * 100)}%` }}
+                ></div>
               </div>
             </div>
-            <div className="p-4 bg-accent/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Heute</div>
-              <div className="text-xl font-bold text-orange-600">{todaysTotals.calories} kcal</div>
-            </div>
-          </div>
-          
-          {/* Macro Summary */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-protein/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Protein Ø</div>
-              <div className="text-lg font-bold text-protein">{averages.protein}g</div>
-              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.protein || 116}g</div>
-            </div>
-            <div className="text-center p-3 bg-carbs/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Kohlenhydrate Ø</div>
-              <div className="text-lg font-bold text-carbs">{averages.carbs}g</div>
-              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.carbs || 99}g</div>
-            </div>
-            <div className="text-center p-3 bg-fats/10 rounded-lg">
-              <div className="text-sm font-medium text-muted-foreground">Fette Ø</div>
-              <div className="text-lg font-bold text-fats">{averages.fats}g</div>
-              <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.fats || 51}g</div>
+            
+            <div className="relative p-6 bg-gradient-to-br from-fats/10 to-fats/20 rounded-xl border border-fats/20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-10 w-10 bg-fats/20 rounded-lg flex items-center justify-center">
+                  <div className="text-lg">🥑</div>
+                </div>
+                <Badge variant="outline" className="border-fats text-fats">
+                  {averages.fats > 0 ? Math.round((averages.fats / (dailyGoals?.fats || 51)) * 100) : 0}%
+                </Badge>
+              </div>
+              <h3 className="font-semibold text-fats mb-2">Fette</h3>
+              <div className="text-2xl font-bold text-fats mb-1">{averages.fats}g</div>
+              <div className="text-sm text-muted-foreground">Ziel: {dailyGoals?.fats || 51}g</div>
+              <div className="w-full bg-fats/20 rounded-full h-2 mt-3">
+                <div 
+                  className="bg-fats h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, (averages.fats / (dailyGoals?.fats || 51)) * 100)}%` }}
+                ></div>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Coaching Bot */}
-      <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+      {/* AI Coaching Assistant */}
+      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-background to-primary/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <div className="text-2xl">🤖</div>
-            Coaching Bot
+          <CardTitle className="flex items-center gap-3">
+            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+              <MessageCircle className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <div className="text-xl font-bold">AI Coach Assistant</div>
+              <div className="text-sm text-muted-foreground font-normal">Dein intelligenter Ernährungsberater</div>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4">
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
-              {generateBotMessage()}
+          <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 mb-6 border border-border/50">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="text-lg">🤖</div>
+              </div>
+              <div className="flex-1">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                  {generateBotMessage()}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          
+          <div className="flex flex-wrap gap-3">
             <Button 
               variant="outline" 
-              size="sm" 
-              onClick={() => toast.info("Chat-Feature kommt bald!")}
+              className="flex-1 min-w-0"
+              onClick={() => toast.info("Chat-Feature kommt bald! 💬")}
             >
-              💬 Frage stellen
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Chat starten
             </Button>
             <Button 
-              variant="outline" 
-              size="sm" 
+              variant="outline"
+              className="flex-1 min-w-0"
               onClick={generateRecommendations}
               disabled={loading}
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              🔄 Neue Analyse
+              ) : (
+                <Lightbulb className="h-4 w-4 mr-2" />
+              )}
+              Neue Empfehlungen
             </Button>
           </div>
+          
+          {recommendations && (
+            <Collapsible className="mt-6">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-4 h-auto bg-primary/5 hover:bg-primary/10">
+                  <div className="flex items-center gap-2">
+                    <ChefHat className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Personalisierte Rezeptempfehlungen anzeigen</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {recommendations}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </CardContent>
       </Card>
     </div>
