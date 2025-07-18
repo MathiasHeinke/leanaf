@@ -147,55 +147,79 @@ export default {
 					}
 				},
 				'float-1': {
-					'0%, 100%': {
-						transform: 'translate(0, 0) scale(1)'
-					},
-					'33%': {
-						transform: 'translate(20px, -15px) scale(1.1)'
-					},
-					'66%': {
-						transform: 'translate(-15px, 10px) scale(0.9)'
-					}
-				},
-				'float-2': {
-					'0%, 100%': {
+					'0%': {
 						transform: 'translate(0, 0) scale(1)'
 					},
 					'25%': {
-						transform: 'translate(-25px, 20px) scale(1.2)'
+						transform: 'translate(80vw, 20vh) scale(1.2)'
+					},
+					'50%': {
+						transform: 'translate(60vw, 80vh) scale(0.8)'
 					},
 					'75%': {
-						transform: 'translate(30px, -10px) scale(0.8)'
+						transform: 'translate(-20vw, 60vh) scale(1.1)'
+					},
+					'100%': {
+						transform: 'translate(0, 0) scale(1)'
+					}
+				},
+				'float-2': {
+					'0%': {
+						transform: 'translate(0, 0) scale(1)'
+					},
+					'33%': {
+						transform: 'translate(-30vw, 70vh) scale(1.3)'
+					},
+					'66%': {
+						transform: 'translate(70vw, 30vh) scale(0.7)'
+					},
+					'100%': {
+						transform: 'translate(0, 0) scale(1)'
 					}
 				},
 				'float-3': {
-					'0%, 100%': {
+					'0%': {
 						transform: 'translate(0, 0) scale(1)'
 					},
-					'40%': {
-						transform: 'translate(15px, 25px) scale(0.85)'
+					'20%': {
+						transform: 'translate(50vw, -10vh) scale(0.9)'
+					},
+					'60%': {
+						transform: 'translate(-40vw, 50vh) scale(1.4)'
 					},
 					'80%': {
-						transform: 'translate(-20px, -15px) scale(1.15)'
+						transform: 'translate(30vw, 90vh) scale(0.6)'
+					},
+					'100%': {
+						transform: 'translate(0, 0) scale(1)'
 					}
 				},
 				'float-4': {
-					'0%, 100%': {
-						transform: 'translate(0, 0) scale(1)'
+					'0%': {
+						transform: 'translate(0, 0) scale(1) rotate(0deg)'
 					},
-					'30%': {
-						transform: 'translate(-10px, -20px) scale(1.05)'
+					'40%': {
+						transform: 'translate(-50vw, 40vh) scale(1.1) rotate(180deg)'
 					},
-					'70%': {
-						transform: 'translate(25px, 15px) scale(0.95)'
+					'80%': {
+						transform: 'translate(90vw, 70vh) scale(0.8) rotate(360deg)'
+					},
+					'100%': {
+						transform: 'translate(0, 0) scale(1) rotate(0deg)'
 					}
 				},
 				'float-5': {
-					'0%, 100%': {
+					'0%': {
 						transform: 'translate(0, 0) scale(1) rotate(0deg)'
 					},
-					'50%': {
-						transform: 'translate(10px, -30px) scale(1.1) rotate(180deg)'
+					'30%': {
+						transform: 'translate(40vw, 80vh) scale(1.2) rotate(120deg)'
+					},
+					'70%': {
+						transform: 'translate(-60vw, 20vh) scale(0.9) rotate(240deg)'
+					},
+					'100%': {
+						transform: 'translate(0, 0) scale(1) rotate(360deg)'
 					}
 				}
 			},
