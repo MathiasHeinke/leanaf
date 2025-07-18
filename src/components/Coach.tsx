@@ -253,7 +253,8 @@ const Coach = ({ onClose }: CoachProps) => {
           userData: { 
             averages,
             historyDays: historyData.length
-          }
+          },
+          userId: user.id
         }
       });
 
@@ -352,7 +353,8 @@ const Coach = ({ onClose }: CoachProps) => {
       const response = await supabase.functions.invoke('coach-analysis', {
         body: {
           voiceMessage: message,
-          context: { todaysTotals, dailyGoals, averages }
+          context: { todaysTotals, dailyGoals, averages },
+          userId: user.id
         }
       });
       
@@ -382,13 +384,15 @@ const Coach = ({ onClose }: CoachProps) => {
     setChatLoading(true);
     
     try {
-      const response = await supabase.functions.invoke('coach-analysis', {
+      const response = await supabase.functions.invoke('coach-chat', {
         body: {
-          chatMessage: userMessage,
-          context: { todaysTotals, dailyGoals, averages },
-          history: chatHistory
+          message: userMessage,
+          userId: user.id,
+          chatHistory: chatHistory
         }
       });
+      
+      if (response.error) throw response.error;
       
       if (response.data?.reply) {
         setChatHistory(prev => [...prev, { role: 'assistant', content: response.data.reply }]);
@@ -793,7 +797,7 @@ const Coach = ({ onClose }: CoachProps) => {
             </TabsContent>
 
             {/* Voice Coaching Tab */}
-            <TabsContent value="voice" className="space-y-4">
+            <TabsContent value="voice" className="space-y-4" id="voice-section">
               <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
                 <h3 className="text-lg font-semibold mb-4">Voice Coaching</h3>
                 

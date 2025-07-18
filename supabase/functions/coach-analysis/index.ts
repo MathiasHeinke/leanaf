@@ -1,7 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +18,7 @@ serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { 
       dailyTotals, 
       dailyGoal, 
@@ -23,15 +27,50 @@ serve(async (req) => {
       voiceMessage,
       chatMessage,
       context,
-      history
+      history,
+      userId
     } = await req.json();
+
+    // Get user personality if userId provided
+    let personality = 'motivierend';
+    let muscleMaintenancePriority = false;
+    
+    if (userId) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('coach_personality, muscle_maintenance_priority')
+          .eq('user_id', userId)
+          .single();
+        
+        if (profile) {
+          personality = profile.coach_personality || 'motivierend';
+          muscleMaintenancePriority = profile.muscle_maintenance_priority || false;
+        }
+      } catch (error) {
+        console.log('Could not load personality, using default');
+      }
+    }
+
+    // Personality-based prompts
+    const personalityPrompts = {
+      hart: "Du bist ein direkter, kompromissloser Fitness-Coach. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert.",
+      soft: "Du bist ein einfühlsamer, verständnisvoller Coach. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten.",
+      lustig: "Du bist ein humorvoller Coach mit guter Laune. Du motivierst mit Witzen, lockeren Sprüchen und bringst die Leute zum Lächeln.",
+      ironisch: "Du bist ein ironischer Coach mit sarkastischem Humor. Du nutzt Ironie und Augenzwinkern, aber immer konstruktiv.",
+      motivierend: "Du bist ein begeisternder, positiver Coach. Du feuerst an, motivierst mit Energie und siehst immer das Positive."
+    };
+
+    const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts] || personalityPrompts.motivierend;
+    const muscleString = muscleMaintenancePriority ? " Fokussiere besonders auf Muskelerhalt und Protein-optimierte Tipps." : "";
 
     let prompt = '';
     let systemMessage = '';
 
     if (voiceMessage) {
-      // Voice coaching
-      systemMessage = 'Du bist ein freundlicher, motivierender Ernährungscoach. Antworte kurz und ermutigend auf Sprachnachrichten.';
+      // Voice coaching with personality
+      systemMessage = `${personalityPrompt} Antworte kurz und ermutigend auf Sprachnachrichten im ${personality} Stil.${muscleString}`;
+      
       prompt = `Benutzer sagte: "${voiceMessage}"
       
 Kontext:
@@ -39,7 +78,7 @@ Kontext:
 - Tagesziel: ${context.dailyGoals?.calories || 1323}
 - Durchschnitt: ${context.averages?.calories || 0}
 
-Gib eine kurze, motivierende Antwort (max 50 Wörter) auf Deutsch.`;
+Gib eine kurze, ${personality}e Antwort (max 50 Wörter) auf Deutsch.`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -66,8 +105,8 @@ Gib eine kurze, motivierende Antwort (max 50 Wörter) auf Deutsch.`;
       });
 
     } else if (chatMessage) {
-      // Text chat
-      systemMessage = 'Du bist ein Ernährungscoach. Beantworte Fragen zu Ernährung, Kalorien und Gesundheit hilfreich und motivierend.';
+      // Text chat with personality
+      systemMessage = `${personalityPrompt} Beantworte Fragen zu Ernährung, Kalorien und Gesundheit im ${personality} Stil.${muscleString}`;
       
       const contextStr = `Aktueller Kontext:
 - Heutige Kalorien: ${context.todaysTotals?.calories || 0}

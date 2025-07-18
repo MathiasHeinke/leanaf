@@ -112,6 +112,9 @@ Benutzerdaten:
 - Geschlecht: ${profile?.gender || 'nicht angegeben'}
 - Ziel: ${profile?.goal || 'nicht angegeben'}
 - Aktivitätslevel: ${profile?.activity_level || 'nicht angegeben'}
+- Coach-Persönlichkeit: ${profile?.coach_personality || 'motivierend'}
+- Muskelerhalt-Priorität: ${profile?.muscle_maintenance_priority ? 'Ja' : 'Nein'}
+- Makro-Strategie: ${profile?.macro_strategy || 'standard'}
 
 Erstelle 3 personalisierte Rezeptempfehlungen im folgenden JSON-Format:
 
@@ -119,13 +122,13 @@ Erstelle 3 personalisierte Rezeptempfehlungen im folgenden JSON-Format:
   "meals": [
     {
       "name": "Rezeptname",
-      "description": "Kurze Beschreibung (1 Satz)",
+      "description": "Kurze Beschreibung (1 Satz) im ${profile?.coach_personality || 'motivierend'}en Stil",
       "calories": Kalorien,
       "protein": Protein in g,
       "carbs": Kohlenhydrate in g,
       "fats": Fette in g,
       "ingredients": ["Zutat 1", "Zutat 2", "Zutat 3"],
-      "preparation": "Kurze Zubereitungsanleitung (2-3 Sätze)",
+      "preparation": "Kurze Zubereitungsanleitung (2-3 Sätze) im ${profile?.coach_personality || 'motivierend'}en Stil",
       "mealType": "Frühstück|Mittagessen|Abendessen|Snack"
     }
   ]
@@ -136,7 +139,10 @@ Berücksichtige:
 - Abwechslungsreiche Mahlzeitentypen
 - Realistische Portionsgrößen
 - Einfache Zubereitung
-- Deutsche Küche und verfügbare Zutaten`;
+- Deutsche Küche und verfügbare Zutaten
+- Coach-Persönlichkeit: ${profile?.coach_personality || 'motivierend'} (Beschreibungen und Anleitungen in diesem Stil)
+${profile?.muscle_maintenance_priority ? '- WICHTIG: Höhere Protein-Priorität für Muskelerhalt (min. 1.8g/kg Körpergewicht)' : ''}
+- Makro-Strategie: ${profile?.macro_strategy || 'standard'} beachten`;
 
     console.log('Sending request to OpenAI...');
 
