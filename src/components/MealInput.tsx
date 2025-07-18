@@ -36,7 +36,7 @@ export const MealInput = ({
     <div className="fixed bottom-4 left-4 right-4 z-50">
       <div className="max-w-sm mx-auto">
         {/* Image Thumbnails */}
-        {uploadedImages.length > 0 && (
+        {uploadedImages && uploadedImages.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {uploadedImages.map((imageUrl, index) => (
               <div key={index} className="relative group">
@@ -145,7 +145,7 @@ export const MealInput = ({
                 size="sm"
                 className="h-8 w-8 p-0"
                 onClick={onSubmitMeal}
-                disabled={(!inputText.trim() && uploadedImages.length === 0) || isAnalyzing}
+                disabled={(!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing}
               >
                 {isAnalyzing ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
