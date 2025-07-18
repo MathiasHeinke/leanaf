@@ -104,60 +104,58 @@ export const GlobalHeader = ({
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-primary to-primary-glow p-3 rounded-2xl">
-              <Activity className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-              KaloTracker
-            </h1>
+      {/* Header - Kompakt ohne unnötige Wrapper */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-r from-primary to-primary-glow p-3 rounded-2xl">
+            <Activity className="h-6 w-6 text-primary-foreground" />
           </div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+            KaloTracker
+          </h1>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {/* Refresh Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
           
-          <div className="flex items-center gap-2">
-            {/* Refresh Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            
-            {/* Language Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-              className="flex items-center gap-2 text-sm"
-            >
-              <span className="text-xs">🇩🇪</span>
-              {language.toUpperCase()}
-            </Button>
-            
-            {/* Menu Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Abonnement
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Abmelden
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          {/* Language Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
+            className="flex items-center gap-2 text-sm"
+          >
+            <span className="text-xs">🇩🇪</span>
+            {language.toUpperCase()}
+          </Button>
+          
+          {/* Menu Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Abonnement
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Abmelden
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
