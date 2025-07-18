@@ -32,13 +32,6 @@ export const MealInput = ({
 }: MealInputProps) => {
   const { t } = useTranslation();
   
-  // Debug logging
-  console.log('MealInput render state:', {
-    inputText: inputText.length,
-    uploadedImages: uploadedImages?.length || 0,
-    isAnalyzing,
-    buttonDisabled: (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing
-  });
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50">
