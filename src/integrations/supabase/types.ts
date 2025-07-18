@@ -162,6 +162,7 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
+          coach_personality: string | null
           created_at: string
           current_bmi: number | null
           current_period_end: string | null
@@ -171,6 +172,8 @@ export type Database = {
           goal: string | null
           height: number | null
           id: string
+          macro_strategy: string | null
+          muscle_maintenance_priority: boolean | null
           preferred_language: string | null
           start_bmi: number | null
           start_weight: number | null
@@ -186,6 +189,7 @@ export type Database = {
         Insert: {
           activity_level?: string | null
           age?: number | null
+          coach_personality?: string | null
           created_at?: string
           current_bmi?: number | null
           current_period_end?: string | null
@@ -195,6 +199,8 @@ export type Database = {
           goal?: string | null
           height?: number | null
           id?: string
+          macro_strategy?: string | null
+          muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
           start_bmi?: number | null
           start_weight?: number | null
@@ -210,6 +216,7 @@ export type Database = {
         Update: {
           activity_level?: string | null
           age?: number | null
+          coach_personality?: string | null
           created_at?: string
           current_bmi?: number | null
           current_period_end?: string | null
@@ -219,6 +226,8 @@ export type Database = {
           goal?: string | null
           height?: number | null
           id?: string
+          macro_strategy?: string | null
+          muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
           start_bmi?: number | null
           start_weight?: number | null

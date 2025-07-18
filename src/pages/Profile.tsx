@@ -4,9 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Target, Save, Check } from 'lucide-react';
+import { ArrowLeft, Target, Save, Check, Bot, Settings, Zap, Users, Brain, Activity, Dumbbell, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +45,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   });
   const [autoCalculated, setAutoCalculated] = useState(false);
   const [profileExists, setProfileExists] = useState(false);
+  
+  // New Coach Settings State
+  const [coachPersonality, setCoachPersonality] = useState('motivierend');
+  const [muscleMaintenancePriority, setMuscleMaintenancePriority] = useState(false);
+  const [macroStrategy, setMacroStrategy] = useState('standard');
   
   const { user } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -85,7 +91,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     displayName, email, weight, startWeight, height, age, gender, 
     activityLevel, goal, targetWeight, targetDate, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
-    dailyGoals.fats, dailyGoals.calorieDeficit
+    dailyGoals.fats, dailyGoals.calorieDeficit,
+    coachPersonality, muscleMaintenancePriority, macroStrategy
   ]);
 
   useEffect(() => {
@@ -120,6 +127,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setGoal(data.goal || 'maintain');
         setTargetWeight(data.target_weight ? data.target_weight.toString() : '');
         setTargetDate(data.target_date || '');
+        setCoachPersonality(data.coach_personality || 'motivierend');
+        setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
+        setMacroStrategy(data.macro_strategy || 'standard');
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
@@ -249,6 +259,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       start_bmi: startBMI,
       current_bmi: currentBMI,
       target_bmi: targetBMI,
+      coach_personality: coachPersonality,
+      muscle_maintenance_priority: muscleMaintenancePriority,
+      macro_strategy: macroStrategy,
     };
 
     // Handle profile creation/update separately
@@ -368,6 +381,27 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     });
     
     setAutoCalculated(true);
+  };
+
+  // Apply macro strategy templates
+  const applyMacroStrategy = (strategy: string) => {
+    const strategies = {
+      standard: { protein: 30, carbs: 40, fats: 30 },
+      high_protein: { protein: 40, carbs: 30, fats: 30 },
+      balanced: { protein: 25, carbs: 45, fats: 30 },
+      low_carb: { protein: 35, carbs: 20, fats: 45 },
+      athletic: { protein: 30, carbs: 50, fats: 20 }
+    };
+    
+    const macros = strategies[strategy as keyof typeof strategies];
+    if (macros) {
+      setDailyGoals({
+        ...dailyGoals,
+        protein: macros.protein,
+        carbs: macros.carbs,  
+        fats: macros.fats
+      });
+    }
   };
 
   // Auto-calculate when target weight, date, or goal changes
@@ -514,6 +548,237 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       {bmiCategory?.text}
                     </span>
                   </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Coach-Einstellungen */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-purple-500" />
+              Coach-Einstellungen
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Coach Persönlichkeit */}
+            <div className="space-y-3">
+              <Label htmlFor="coachPersonality">Coach-Persönlichkeit</Label>
+              <Select value={coachPersonality} onValueChange={setCoachPersonality}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hart">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-red-500" />
+                      <div>
+                        <div className="font-medium">Hart & Direkt</div>
+                        <div className="text-xs text-muted-foreground">Keine Kompromisse, klare Ansagen</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="soft">
+                    <div className="flex items-center gap-2">
+                      <Heart className="h-4 w-4 text-pink-500" />
+                      <div>
+                        <div className="font-medium">Sanft & Verständnisvoll</div>
+                        <div className="text-xs text-muted-foreground">Einfühlsam und unterstützend</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="lustig">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-yellow-500" />
+                      <div>
+                        <div className="font-medium">Lustig & Locker</div>
+                        <div className="text-xs text-muted-foreground">Mit Humor und guter Laune</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="ironisch">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-purple-500" />
+                      <div>
+                        <div className="font-medium">Ironisch & Sarkastisch</div>
+                        <div className="text-xs text-muted-foreground">Mit einem Augenzwinkern</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="motivierend">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-green-500" />
+                      <div>
+                        <div className="font-medium">Motivierend & Positiv</div>
+                        <div className="text-xs text-muted-foreground">Immer aufbauend und ermutigend</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="p-3 bg-accent/10 rounded-lg text-sm">
+                <div className="font-medium mb-1">Vorschau:</div>
+                <div className="text-muted-foreground italic">
+                  {coachPersonality === 'hart' && "\"Du hast dein Ziel heute nicht erreicht? Dann streng dich morgen mehr an!\""}
+                  {coachPersonality === 'soft' && "\"Hab Geduld mit dir. Jeder Schritt zählt und du machst das großartig.\""}
+                  {coachPersonality === 'lustig' && "\"Deine Makros waren heute wie ein schlechter Witz - aber hey, morgen wird besser! 😄\""}
+                  {coachPersonality === 'ironisch' && "\"Interessante Makro-Verteilung heute... als ob Schokolade ein Gemüse wäre.\""}
+                  {coachPersonality === 'motivierend' && "\"Du rockst das! Jeder Tag bringt dich näher zu deinem Ziel! 💪\""}
+                </div>
+              </div>
+            </div>
+
+            {/* Muskelerhalt Priorität */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Dumbbell className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <Label htmlFor="muscleMaintenancePriority" className="text-base font-medium">
+                    Muskelerhalt priorisieren
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Höhere Protein-Empfehlungen und kraftsport-optimierte Tipps
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="muscleMaintenancePriority"
+                checked={muscleMaintenancePriority}
+                onCheckedChange={setMuscleMaintenancePriority}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Erweiterte Makro-Strategien */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-amber-500" />
+              Makro-Strategien
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <Label htmlFor="macroStrategy">Makronährstoff-Strategie wählen</Label>
+              <Select value={macroStrategy} onValueChange={(value) => {
+                setMacroStrategy(value);
+                if (value !== 'custom') {
+                  applyMacroStrategy(value);
+                }
+              }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">
+                    <div>
+                      <div className="font-medium">Standard (30/40/30)</div>
+                      <div className="text-xs text-muted-foreground">Ausgewogene Verteilung für allgemeine Fitness</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="high_protein">
+                    <div>
+                      <div className="font-medium">High Protein (40/30/30)</div>
+                      <div className="text-xs text-muted-foreground">Für Muskelaufbau und -erhalt</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="balanced">
+                    <div>
+                      <div className="font-medium">Balanced (25/45/30)</div>
+                      <div className="text-xs text-muted-foreground">Mehr Kohlenhydrate für Ausdauersport</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="low_carb">
+                    <div>
+                      <div className="font-medium">Low Carb (35/20/45)</div>
+                      <div className="text-xs text-muted-foreground">Weniger Kohlenhydrate, mehr Fette</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="athletic">
+                    <div>
+                      <div className="font-medium">Athletic (30/50/20)</div>
+                      <div className="text-xs text-muted-foreground">Für intensive Trainingseinheiten</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="custom">
+                    <div>
+                      <div className="font-medium">Custom</div>
+                      <div className="text-xs text-muted-foreground">Individuelle Anpassung</div>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Makro-Vorschau */}
+            <div className="grid grid-cols-3 gap-3 p-4 bg-gradient-to-r from-accent/10 to-primary/10 rounded-lg border">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-protein">{dailyGoals.protein}%</div>
+                <div className="text-sm text-muted-foreground">Protein</div>
+                <div className="text-xs text-protein font-medium">{calculateMacroGrams().protein}g</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-carbs">{dailyGoals.carbs}%</div>
+                <div className="text-sm text-muted-foreground">Carbs</div>
+                <div className="text-xs text-carbs font-medium">{calculateMacroGrams().carbs}g</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-fats">{dailyGoals.fats}%</div>
+                <div className="text-sm text-muted-foreground">Fette</div>
+                <div className="text-xs text-fats font-medium">{calculateMacroGrams().fats}g</div>
+              </div>
+            </div>
+
+            {macroStrategy === 'custom' && (
+              <div className="space-y-4 p-4 border border-dashed border-muted-foreground/30 rounded-lg">
+                <div className="text-sm font-medium text-center text-muted-foreground">
+                  Individuelle Anpassung
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="proteinPercent" className="text-xs">Protein (%)</Label>
+                    <Input
+                      id="proteinPercent"
+                      type="number"
+                      value={dailyGoals.protein}
+                      onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
+                      min="10"
+                      max="50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="carbsPercent" className="text-xs">Kohlenhydrate (%)</Label>
+                    <Input
+                      id="carbsPercent"
+                      type="number"
+                      value={dailyGoals.carbs}
+                      onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
+                      min="20"
+                      max="70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fatsPercent" className="text-xs">Fette (%)</Label>
+                    <Input
+                      id="fatsPercent"
+                      type="number"
+                      value={dailyGoals.fats}
+                      onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
+                      min="15"
+                      max="50"
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-center">
+                  Gesamt: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}% 
+                  {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats !== 100 && (
+                    <span className="text-red-500 ml-1">(sollte 100% sein)</span>
+                  )}
                 </div>
               </div>
             )}
