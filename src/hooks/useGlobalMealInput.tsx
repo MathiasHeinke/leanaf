@@ -147,19 +147,51 @@ export const useGlobalMealInput = () => {
         
         console.log('Uploading to:', fileName);
         
-        const { data, error } = await supabase.storage
-          .from('meal-images')
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-        
-        if (error) {
-          console.error('Storage upload error:', error);
-          throw new Error(`Upload fehlgeschlagen: ${error.message}`);
+        let data;
+        try {
+          const uploadResult = await supabase.storage
+            .from('meal-images')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadResult.error) {
+            console.error('Storage upload error:', uploadResult.error);
+            throw new Error(`Upload fehlgeschlagen: ${uploadResult.error.message}`);
+          }
+          
+          data = uploadResult.data;
+          console.log('Upload successful:', data);
+        } catch (uploadError: any) {
+          console.error('Upload attempt failed:', uploadError);
+          
+          // Check auth state
+          const { data: authUser } = await supabase.auth.getUser();
+          console.log('Current auth state:', authUser.user ? 'Authenticated' : 'Not authenticated');
+          
+          // Try with different settings as fallback
+          console.log('Retrying upload with different settings...');
+          try {
+            const retryResult = await supabase.storage
+              .from('meal-images')
+              .upload(fileName, file, {
+                cacheControl: '0',
+                upsert: true
+              });
+              
+            if (retryResult.error) {
+              console.error('Retry upload also failed:', retryResult.error);
+              throw new Error(`Upload fehlgeschlagen (auch bei Wiederholung): ${retryResult.error.message}`);
+            }
+            
+            data = retryResult.data;
+            console.log('Retry upload successful:', data);
+          } catch (retryError: any) {
+            console.error('Both upload attempts failed:', retryError);
+            throw new Error(`Upload komplett fehlgeschlagen: ${uploadError.message || 'Netzwerkfehler'}`);
+          }
         }
-        
-        console.log('Upload successful:', data);
         
         const { data: urlData } = supabase.storage
           .from('meal-images')
