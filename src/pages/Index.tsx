@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,6 +77,11 @@ const Index = () => {
   const [showMotivation, setShowMotivation] = useState(false);
   const [quoteRefreshTrigger, setQuoteRefreshTrigger] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [scrollY, setScrollY] = useState(0);
+  
+  const heroRef = useRef<HTMLDivElement>(null);
+  const macroRef = useRef<HTMLDivElement>(null);
+  const quoteRef = useRef<HTMLDivElement>(null);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -85,6 +90,16 @@ const Index = () => {
   const mealInputHook = useGlobalMealInput();
   
   const navigate = useNavigate();
+
+  // Parallax scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Check authentication
   useEffect(() => {
@@ -350,11 +365,24 @@ const Index = () => {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Premium Background Elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-60 right-10 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-40 left-1/2 w-80 h-80 bg-purple-500/4 rounded-full blur-3xl animate-pulse delay-2000"></div>
+      {/* Enhanced Premium Background Elements with Parallax */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div 
+          className="absolute top-20 -left-20 w-96 h-96 bg-primary/8 rounded-full blur-3xl float-animation"
+          style={{ transform: `translateY(${scrollY * 0.1}px) translateX(${scrollY * 0.05}px)` }}
+        ></div>
+        <div 
+          className="absolute top-40 -right-20 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-3xl float-animation-delayed"
+          style={{ transform: `translateY(${scrollY * -0.15}px) translateX(${scrollY * -0.08}px)` }}
+        ></div>
+        <div 
+          className="absolute bottom-20 left-1/3 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl float-animation-slow"
+          style={{ transform: `translateY(${scrollY * 0.12}px) translateX(${scrollY * -0.03}px)` }}
+        ></div>
+        <div 
+          className="absolute top-1/2 right-1/4 w-60 h-60 bg-green-500/4 rounded-full blur-3xl float-animation"
+          style={{ transform: `translateY(${scrollY * -0.08}px) translateX(${scrollY * 0.06}px)` }}
+        ></div>
       </div>
 
       {/* Pull to refresh indicator */}
@@ -368,42 +396,48 @@ const Index = () => {
       )}
 
       {/* Main Content */}
-      <div className="space-y-8 relative z-10">
+      <div className="space-y-12 relative z-10 max-w-7xl mx-auto">
         {/* Hero Calorie Section - Premium Glass Card */}
-        <div className="px-6 pt-8">
-          <div className="glass-hero rounded-3xl p-8 hover-float hover-glow">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-primary/10 backdrop-blur-sm">
-                  <Target className="h-6 w-6 text-primary" />
+        <div 
+          className="px-4 pt-8"
+          ref={heroRef}
+          style={{ transform: `translateY(${scrollY * 0.02}px)` }}
+        >
+          <div className="glass-hero rounded-3xl p-8 hover-float hover-glow pulse-glow">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="p-4 rounded-2xl bg-primary/10 backdrop-blur-sm shadow-lg">
+                  <Target className="h-7 w-7 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-foreground">{t('app.dailyProgress')}</h1>
-                  <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</p>
+                  <h1 className="text-2xl font-bold text-foreground">{t('app.dailyProgress')}</h1>
+                  <p className="text-base text-muted-foreground">{new Date().toLocaleDateString()}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-white/30 px-4 py-2 rounded-xl backdrop-blur-sm">
-                <Flame className="h-4 w-4" />
-                {userGoal === 'lose' && remainingCalories > 0 ? 
-                  `${remainingCalories} kcal verbleibend` :
-                  userGoal === 'lose' && remainingCalories < 0 ?
-                  `${Math.abs(remainingCalories)} kcal über Ziel` :
-                  `Ziel erreicht`
-                }
+              <div className="flex items-center gap-3 text-base text-muted-foreground bg-white/30 px-6 py-3 rounded-2xl backdrop-blur-sm shadow-sm">
+                <Flame className="h-5 w-5" />
+                <span className="font-medium">
+                  {userGoal === 'lose' && remainingCalories > 0 ? 
+                    `${remainingCalories} kcal verbleibend` :
+                    userGoal === 'lose' && remainingCalories < 0 ?
+                    `${Math.abs(remainingCalories)} kcal über Ziel` :
+                    `Ziel erreicht`
+                  }
+                </span>
               </div>
             </div>
             
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-6">
               <div className="relative">
-                <div className="text-5xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+                <div className="text-7xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
                   {dailyTotals.calories}
                 </div>
-                <div className="text-xl text-muted-foreground">/{dailyGoal.calories} kcal</div>
+                <div className="text-2xl text-muted-foreground mt-2">/{dailyGoal.calories} kcal</div>
               </div>
               
-              <div className="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm">
+              <div className="w-full bg-white/20 rounded-full h-4 backdrop-blur-sm shadow-inner">
                 <div 
-                  className="h-3 rounded-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-700 ease-out shadow-[0_0_20px_rgba(59,130,246,0.4)]"
+                  className="h-4 rounded-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-1000 ease-out shadow-[0_0_25px_rgba(59,130,246,0.5)]"
                   style={{ width: `${Math.min(calorieProgress, 100)}%` }}
                 ></div>
               </div>
@@ -412,26 +446,30 @@ const Index = () => {
         </div>
 
         {/* Macro Cards - Premium Glass Grid */}
-        <div className="px-6">
-          <div className="grid grid-cols-3 gap-4">
+        <div 
+          className="px-4"
+          ref={macroRef}
+          style={{ transform: `translateY(${scrollY * -0.03}px)` }}
+        >
+          <div className="grid grid-cols-3 gap-6">
             {/* Protein */}
-            <div className="glass-card rounded-2xl p-4 hover-lift group">
-              <div className="text-center space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-green-400/20 to-green-600/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <div className="text-lg">💪</div>
+            <div className="glass-card rounded-3xl p-6 hover-lift group">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-green-400/20 to-green-600/20 flex items-center justify-center group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 shadow-lg">
+                  <div className="text-2xl">💪</div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-green-600 mb-1">Protein</div>
-                  <div className="text-2xl font-bold text-green-700">
-                    {dailyTotals.protein}<span className="text-sm text-muted-foreground">g</span>
+                  <div className="text-sm font-semibold text-green-600 mb-2">Protein</div>
+                  <div className="text-3xl font-bold text-green-700">
+                    {dailyTotals.protein}<span className="text-lg text-muted-foreground">g</span>
                   </div>
-                  <div className="w-full bg-green-100 rounded-full h-1.5 mt-2">
+                  <div className="w-full bg-green-100 rounded-full h-2 mt-3 shadow-inner">
                     <div 
-                      className="h-1.5 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500"
+                      className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-700 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                       style={{ width: `${Math.min(proteinProgress, 100)}%` }}
                     ></div>
                   </div>
-                  <div className="text-xs text-green-600/70 mt-1">
+                  <div className="text-sm text-green-600/70 mt-2 font-medium">
                     {remainingProtein > 0 ? `+${Math.round(remainingProtein)}g` : `${Math.round(Math.abs(remainingProtein))}g über`}
                   </div>
                 </div>
@@ -439,23 +477,23 @@ const Index = () => {
             </div>
 
             {/* Carbs */}
-            <div className="glass-card rounded-2xl p-4 hover-lift group">
-              <div className="text-center space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-orange-400/20 to-orange-600/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <div className="text-lg">🌾</div>
+            <div className="glass-card rounded-3xl p-6 hover-lift group">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-orange-400/20 to-orange-600/20 flex items-center justify-center group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 shadow-lg">
+                  <div className="text-2xl">🌾</div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-orange-600 mb-1">Carbs</div>
-                  <div className="text-2xl font-bold text-orange-700">
-                    {dailyTotals.carbs}<span className="text-sm text-muted-foreground">g</span>
+                  <div className="text-sm font-semibold text-orange-600 mb-2">Carbs</div>
+                  <div className="text-3xl font-bold text-orange-700">
+                    {dailyTotals.carbs}<span className="text-lg text-muted-foreground">g</span>
                   </div>
-                  <div className="w-full bg-orange-100 rounded-full h-1.5 mt-2">
+                  <div className="w-full bg-orange-100 rounded-full h-2 mt-3 shadow-inner">
                     <div 
-                      className="h-1.5 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-500"
+                      className="h-2 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700 shadow-[0_0_15px_rgba(249,115,22,0.4)]"
                       style={{ width: `${Math.min(carbsProgress, 100)}%` }}
                     ></div>
                   </div>
-                  <div className="text-xs text-orange-600/70 mt-1">
+                  <div className="text-sm text-orange-600/70 mt-2 font-medium">
                     {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}g` : `${Math.round(Math.abs(remainingCarbs))}g über`}
                   </div>
                 </div>
@@ -463,23 +501,23 @@ const Index = () => {
             </div>
 
             {/* Fats */}
-            <div className="glass-card rounded-2xl p-4 hover-lift group">
-              <div className="text-center space-y-3">
-                <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-400/20 to-red-600/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <div className="text-lg">🥑</div>
+            <div className="glass-card rounded-3xl p-6 hover-lift group">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-red-400/20 to-red-600/20 flex items-center justify-center group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 shadow-lg">
+                  <div className="text-2xl">🥑</div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-red-600 mb-1">Fats</div>
-                  <div className="text-2xl font-bold text-red-700">
-                    {dailyTotals.fats}<span className="text-sm text-muted-foreground">g</span>
+                  <div className="text-sm font-semibold text-red-600 mb-2">Fats</div>
+                  <div className="text-3xl font-bold text-red-700">
+                    {dailyTotals.fats}<span className="text-lg text-muted-foreground">g</span>
                   </div>
-                  <div className="w-full bg-red-100 rounded-full h-1.5 mt-2">
+                  <div className="w-full bg-red-100 rounded-full h-2 mt-3 shadow-inner">
                     <div 
-                      className="h-1.5 rounded-full bg-gradient-to-r from-red-400 to-red-600 transition-all duration-500"
+                      className="h-2 rounded-full bg-gradient-to-r from-red-400 to-red-600 transition-all duration-700 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
                       style={{ width: `${Math.min(fatsProgress, 100)}%` }}
                     ></div>
                   </div>
-                  <div className="text-xs text-red-600/70 mt-1">
+                  <div className="text-sm text-red-600/70 mt-2 font-medium">
                     {remainingFats > 0 ? `+${Math.round(remainingFats)}g` : `${Math.round(Math.abs(remainingFats))}g über`}
                   </div>
                 </div>
@@ -489,8 +527,12 @@ const Index = () => {
         </div>
 
         {/* Motivational Quote - Floating Glass Bubble */}
-        <div className="px-6">
-          <div className="glass-card-secondary rounded-3xl p-6 hover-float">
+        <div 
+          className="px-4"
+          ref={quoteRef}
+          style={{ transform: `translateY(${scrollY * 0.05}px) translateX(${Math.sin(scrollY * 0.01) * 5}px)` }}
+        >
+          <div className="glass-card-secondary rounded-3xl p-8 hover-float">
             <RandomQuote 
               userGender={profileData?.gender} 
               refreshTrigger={quoteRefreshTrigger}
@@ -500,8 +542,11 @@ const Index = () => {
         </div>
 
         {/* BMI Progress - Premium Glass Panel */}
-        <div className="px-6">
-          <div className="glass-card rounded-3xl p-6 hover-float">
+        <div 
+          className="px-4"
+          style={{ transform: `translateY(${scrollY * -0.02}px)` }}
+        >
+          <div className="glass-card rounded-3xl p-8 hover-float">
             <BMIProgress 
               startWeight={profileData?.start_weight || profileData?.weight || 70}
               currentWeight={profileData?.weight || 70}
@@ -512,15 +557,21 @@ const Index = () => {
         </div>
 
         {/* Weight Tracker */}
-        <div className="px-6">
-          <div className="glass-card rounded-3xl p-6 hover-float">
+        <div 
+          className="px-4"
+          style={{ transform: `translateY(${scrollY * 0.03}px)` }}
+        >
+          <div className="glass-card rounded-3xl p-8 hover-float">
             <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
           </div>
         </div>
 
         {/* Meals List */}
-        <div className="px-6">
-          <div className="glass-card rounded-3xl p-6 hover-float">
+        <div 
+          className="px-4"
+          style={{ transform: `translateY(${scrollY * -0.01}px)` }}
+        >
+          <div className="glass-card rounded-3xl p-8 hover-float">
             <MealList 
               dailyMeals={dailyMeals}
               onEditMeal={() => {}}
