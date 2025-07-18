@@ -516,8 +516,8 @@ const Coach = ({ onClose }: CoachProps) => {
       case 'motivation': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/30';
       case 'tip': return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'warning': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'analysis': return 'text-purple-600 bg-purple-50 border-purple-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'analysis': return 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700/30';
+      default: return 'text-muted-foreground bg-muted/50 border-border';
     }
   };
 
@@ -591,7 +591,7 @@ const Coach = ({ onClose }: CoachProps) => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Enhanced AI Coach Tabs */}
-      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-background to-primary/5">
+      <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
@@ -855,9 +855,9 @@ const Coach = ({ onClose }: CoachProps) => {
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="hover-scale">
+        <Card className="glass-card hover-scale">
           <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <div className="h-12 w-12 bg-primary/20 dark:bg-primary/30 rounded-xl flex items-center justify-center mx-auto mb-3">
               <Target className="h-6 w-6 text-primary" />
             </div>
             <div className="text-2xl font-bold text-primary mb-1">{dailyGoals?.calories || 1323}</div>
@@ -865,44 +865,44 @@ const Coach = ({ onClose }: CoachProps) => {
           </CardContent>
         </Card>
         
-        <Card className="hover-scale">
+        <Card className="glass-card hover-scale">
           <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <TrendingUp className="h-6 w-6 text-blue-600" />
+            <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="text-2xl font-bold text-blue-600 mb-1">{averages.calories}</div>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">{averages.calories}</div>
             <div className="text-sm text-muted-foreground">kcal Durchschnitt</div>
           </CardContent>
         </Card>
         
-        <Card className="hover-scale">
+        <Card className="glass-card hover-scale">
           <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+            <div className="h-12 w-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
               <div className="text-xl">🎯</div>
             </div>
-            <div className="text-2xl font-bold text-green-600 mb-1">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">
               {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
             </div>
             <div className="text-sm text-muted-foreground">Zielerreichung</div>
           </CardContent>
         </Card>
         
-        <Card className="hover-scale">
+        <Card className="glass-card hover-scale">
           <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Calendar className="h-6 w-6 text-orange-600" />
+            <div className="h-12 w-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
-            <div className="text-2xl font-bold text-orange-600 mb-1">{todaysTotals.calories}</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400 mb-1">{todaysTotals.calories}</div>
             <div className="text-sm text-muted-foreground">kcal heute</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Makronährstoffe */}
-      <Card>
+      <Card className="glass-card shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center">
+            <div className="h-8 w-8 bg-primary/20 dark:bg-primary/30 rounded-lg flex items-center justify-center">
               <div className="text-lg">📊</div>
             </div>
             Makronährstoffe Übersicht

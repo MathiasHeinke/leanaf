@@ -42,10 +42,10 @@ export const FloatingCoachChat = ({
   const lastCoachMessage = getLastCoachMessage();
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-40">
+    <div className="fixed bottom-6 left-4 right-4 z-50">
       <div className="max-w-sm mx-auto">
         {/* Main Chat Input */}
-        <Card className="p-3 shadow-xl border-2 border-accent/20 bg-background/95 backdrop-blur">
+        <Card className="glass-card shadow-xl border-2 border-accent/20">
           <div className="flex items-end gap-2">
             {/* Coach Icon & Expand Button */}
             <Button
@@ -141,7 +141,7 @@ export const FloatingCoachChat = ({
 
         {/* Expanded Chat History */}
         {isExpanded && chatHistory.length > 0 && (
-          <Card className="mt-2 p-3 shadow-xl border-2 border-accent/20 bg-background/95 backdrop-blur max-h-64 overflow-y-auto">
+          <Card className="glass-card mt-2 shadow-xl border-2 border-accent/20 max-h-64 overflow-y-auto">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-accent" />
