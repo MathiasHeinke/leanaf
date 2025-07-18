@@ -42,7 +42,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
         .from('profiles')
         .select('subscription_status')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;

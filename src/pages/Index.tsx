@@ -361,7 +361,7 @@ const Index = () => {
         .from('profiles')
         .select('*')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('Profile error:', profileError);

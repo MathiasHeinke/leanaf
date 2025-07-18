@@ -85,7 +85,7 @@ const Coach = ({ onClose }: CoachProps) => {
         .from('daily_goals')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       
