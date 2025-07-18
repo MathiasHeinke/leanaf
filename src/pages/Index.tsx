@@ -22,6 +22,10 @@ import History from "@/components/History";
 import Profile from "@/pages/Profile";
 import Subscription from "@/pages/Subscription";
 import { RandomQuote } from "@/components/RandomQuote";
+import { DailyProgress } from "@/components/DailyProgress";
+import { WeightTracker } from "@/components/WeightTracker";
+import { MealInput } from "@/components/MealInput";
+import { MealList } from "@/components/MealList";
 import { populateQuotes } from "@/utils/populateQuotes";
 import { 
   Camera, 
@@ -1489,7 +1493,7 @@ const Index = () => {
 
   // Always use the global header, but pass specific props for the main view
   return (
-    <div className="max-w-sm mx-auto px-4">
+    <div className="max-w-sm mx-auto">
       {/* Motivation Animation */}
       {showMotivation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -1503,326 +1507,89 @@ const Index = () => {
         </div>
       )}
       
-        <Card className="p-4 mb-4 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              <span className="font-semibold">{t('app.dailyProgress')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              {new Date().toLocaleDateString()}
-            </div>
-          </div>
+      {/* Improved Layout with new components */}
+      <div className="space-y-4">
+        {/* Daily Progress Hero Section */}
+        <DailyProgress 
+          dailyTotals={dailyTotals}
+          dailyGoal={dailyGoal}
+        />
 
-          {/* Warning for exceeded calories */}
-          {caloriesExceeded && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span className="text-red-700 text-sm font-medium">
-                {language === 'de' 
-                  ? `Achtung: Du hast dein Kalorienziel um ${Math.abs(remainingCalories)} kcal überschritten!`
-                  : `Warning: You have exceeded your calorie goal by ${Math.abs(remainingCalories)} kcal!`
-                }
-              </span>
-            </div>
-          )}
-          
-          {/* Calorie Progress with enhanced visualization */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">{t('app.calories')}</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm ${caloriesExceeded ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
-                  {dailyTotals.calories}/{dailyGoal.calories} kcal
-                </span>
-                {remainingCalories > 0 ? (
-                  <TrendingUp className="h-4 w-4 text-green-500" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500" />
-                )}
-              </div>
-            </div>
-            <Progress 
-              value={Math.min(calorieProgress, 100)} 
-              className={`h-3 mb-2 ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
-            />
-            <div className="flex items-center gap-1 text-xs">
-              <Flame className="h-3 w-3" />
-               <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
-                 {remainingCalories > 0 
-                   ? `${remainingCalories} ${t('ui.kcal')} ${t('ui.remaining')}`
-                   : `${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('ui.overGoal')}`
-                 }
-               </span>
-            </div>
-          </div>
+        {/* Weight Tracker */}
+        <WeightTracker 
+          weightHistory={weightHistory}
+          onWeightAdded={loadWeightHistory}
+        />
 
-          {/* Enhanced Macro Overview with progress and red indicators */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className={`text-center p-2 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
-              <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{t('app.protein')}</div>
-              <div className={`font-bold mb-2 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{dailyTotals.protein}{t('ui.gram')}</div>
-              <Progress 
-                value={Math.min(proteinProgress, 100)} 
-                className={`h-1 mb-1 ${proteinExceeded ? '[&>div]:bg-red-500' : ''}`} 
-              />
-              <div className={`text-xs ${proteinExceeded ? 'text-red-600 font-bold' : 'text-protein/70'}`}>
-                {remainingProtein > 0 ? `+${remainingProtein}${t('ui.gram')}` : `${Math.abs(remainingProtein)}${t('ui.gram')} ${t('ui.overBy')}`}
-              </div>
-            </div>
-            <div className={`text-center p-2 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
-              <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{t('app.carbs')}</div>
-              <div className={`font-bold mb-2 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{dailyTotals.carbs}{t('ui.gram')}</div>
-              <Progress 
-                value={Math.min(carbsProgress, 100)} 
-                className={`h-1 mb-1 ${carbsExceeded ? '[&>div]:bg-red-500' : ''}`} 
-              />
-              <div className={`text-xs ${carbsExceeded ? 'text-red-600 font-bold' : 'text-carbs/70'}`}>
-                {remainingCarbs > 0 ? `+${remainingCarbs}${t('ui.gram')}` : `${Math.abs(remainingCarbs)}${t('ui.gram')} ${t('ui.overBy')}`}
-              </div>
-            </div>
-            <div className={`text-center p-2 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
-              <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{t('app.fats')}</div>
-              <div className={`font-bold mb-2 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{dailyTotals.fats}{t('ui.gram')}</div>
-              <Progress 
-                value={Math.min(fatsProgress, 100)} 
-                className={`h-1 mb-1 ${fatsExceeded ? '[&>div]:bg-red-500' : ''}`} 
-              />
-              <div className={`text-xs ${fatsExceeded ? 'text-red-600 font-bold' : 'text-fats/70'}`}>
-                {remainingFats > 0 ? `+${remainingFats}${t('ui.gram')}` : `${Math.abs(remainingFats)}${t('ui.gram')} ${t('ui.overBy')}`}
-              </div>
-            </div>
-          </div>
-
-          {/* Motivational message */}
-          <div className="mt-4 p-3 bg-gradient-to-r from-primary/10 to-primary-glow/10 rounded-lg border border-primary/20">
-            <div className="flex items-center gap-2 text-sm text-primary font-medium">
-              <Star className="h-4 w-4" />
-              {getMotivationalMessage()}
-            </div>
-          </div>
-
-          {/* Quick Weight Input */}
-          <div className="mt-4">
-            <Card className="p-4 border-primary/20">
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={newWeight}
-                  onChange={(e) => setNewWeight(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddWeight();
-                    }
-                  }}
-                  placeholder="Aktuelles Gewicht"
-                  className="flex-1"
-                />
-                <Button onClick={handleAddWeight} disabled={!newWeight}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Eintragen
-                </Button>
-              </div>
-              {(() => {
-                const trend = getWeightTrend();
-                if (!trend) return null;
-                const IconComponent = trend.icon;
-                return (
-                  <div className={`flex items-center gap-1 ${trend.color} text-sm mt-2`}>
-                    <IconComponent className="h-4 w-4" />
-                    <span>{trend.text}</span>
-                  </div>
-                );
-              })()}
-            </Card>
-          </div>
-
-          {/* Quote Section */}
-          <div className="mt-4">
-            <RandomQuote 
-              userGender={profileData?.gender} 
-              fallbackText=""
-              refreshTrigger={quoteRefreshTrigger}
-            />
-          </div>
-        </Card>
-
-        {/* ChatGPT-style Input */}
-        <div className="fixed bottom-4 left-4 right-4 z-50">
-          <div className="max-w-sm mx-auto">
-            <Card className="p-3 shadow-lg border-2 border-primary/20 bg-background/95 backdrop-blur">
-              <div className="flex items-end gap-2">
-                {/* Text Input */}
-                <div className="flex-1">
-                  <Textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder={t('input.placeholder')}
-                    className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (inputText.trim()) {
-                          handleSubmitMeal();
-                        }
-                      }
-                    }}
-                  />
-                </div>
-                
-                {/* Action Buttons */}
-                <div className="flex items-center gap-1 pb-2">
-                  {/* Camera Upload */}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      onClick={() => document.getElementById('camera-upload')?.click()}
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                    <input
-                      id="camera-upload"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      multiple
-                    />
-                  </div>
-                  
-                  {/* Gallery Upload */}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      onClick={() => document.getElementById('gallery-upload')?.click()}
-                    >
-                      <ImagePlus className="h-4 w-4" />
-                    </Button>
-                    <input
-                      id="gallery-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      multiple
-                    />
-                  </div>
-                  
-                  {/* Voice Recording */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-8 w-8 p-0 transition-all duration-200 ${
-                      isRecording || isProcessing
-                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
-                        : 'hover:bg-primary/10'
-                    }`}
-                    onClick={handleVoiceRecord}
-                    disabled={isAnalyzing || isProcessing}
-                  >
-                    {isRecording ? (
-                      <StopCircle className="h-4 w-4" />
-                    ) : isProcessing ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                  </Button>
-                  
-                  {/* Send Button */}
-                  <Button
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={handleSubmitMeal}
-                    disabled={!inputText.trim() || isAnalyzing}
-                  >
-                    {isAnalyzing ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Recording Indicator */}
-              {(isRecording || isProcessing) && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-red-500">
-                  <div className="flex gap-1">
-                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
-                    <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                  <span>{isRecording ? t('input.recording') : 'Verarbeitung...'}</span>
-                </div>
-              )}
-            </Card>
-          </div>
+        {/* Quote Section */}
+        <div className="px-1">
+          <RandomQuote 
+            userGender={profileData?.gender} 
+            fallbackText=""
+            refreshTrigger={quoteRefreshTrigger}
+          />
         </div>
 
+        {/* BMI Progress */}
+        {profileData && (
+          <BMIProgress 
+            startWeight={profileData.start_weight || profileData.weight}
+            currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
+            targetWeight={profileData.target_weight}
+            height={profileData.height}
+          />
+        )}
+
+        {/* Meal List */}
         <div className="pb-24">
-
-
-          {/* BMI Progress */}
-          {profileData && (
-            <BMIProgress 
-              startWeight={profileData.start_weight || profileData.weight}
-              currentWeight={weightHistory.length > 0 ? weightHistory[0].weight : profileData.weight}
-              targetWeight={profileData.target_weight}
-              height={profileData.height}
-            />
-          )}
-
-
-
-          {/* Weight Input Modal */}
-          <Dialog open={showWeightInput} onOpenChange={setShowWeightInput}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Gewicht heute eintragen</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="weightInput">Gewicht (kg)</Label>
-                  <Input
-                    id="weightInput"
-                    type="number"
-                    value={weightInput}
-                    onChange={(e) => setWeightInput(e.target.value)}
-                    placeholder="70.5"
-                    step="0.1"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={saveWeightEntry} disabled={!weightInput} className="flex-1">
-                    Speichern
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowWeightInput(false)} className="flex-1">
-                    Abbrechen
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Empty State */}
-          {dailyMeals.length === 0 && (
-            <Card className="p-8 text-center border-dashed border-2 border-muted">
-              <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
-              <p className="text-muted-foreground text-sm">
-                Füge deine erste Mahlzeit hinzu
-              </p>
-            </Card>
-          )}
+          <MealList 
+            dailyMeals={dailyMeals}
+            onEditMeal={setEditingMeal}
+            onDeleteMeal={deleteMeal}
+          />
         </div>
+      </div>
+
+      {/* Streamlined Input Component */}
+      <MealInput 
+        inputText={inputText}
+        setInputText={setInputText}
+        onSubmitMeal={handleSubmitMeal}
+        onPhotoUpload={handlePhotoUpload}
+        onVoiceRecord={handleVoiceRecord}
+        isAnalyzing={isAnalyzing}
+        isRecording={isRecording}
+        isProcessing={isProcessing}
+      />
+      {/* Weight Input Modal */}
+      <Dialog open={showWeightInput} onOpenChange={setShowWeightInput}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gewicht heute eintragen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="weightInput">Gewicht (kg)</Label>
+              <Input
+                id="weightInput"
+                type="number"
+                value={weightInput}
+                onChange={(e) => setWeightInput(e.target.value)}
+                placeholder="70.5"
+                step="0.1"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={saveWeightEntry} disabled={!weightInput} className="flex-1">
+                Speichern
+              </Button>
+              <Button variant="outline" onClick={() => setShowWeightInput(false)} className="flex-1">
+                Abbrechen
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* Confirmation Dialog for Image Analysis */}
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
