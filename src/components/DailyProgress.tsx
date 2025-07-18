@@ -59,19 +59,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
   };
 
   return (
-    <Card className="p-4 shadow-lg border-0 bg-gradient-to-br from-card to-card/50">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-primary" />
-          <span className="font-semibold">{t('app.dailyProgress')}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          {new Date().toLocaleDateString()}
-        </div>
-      </div>
-
+    <div>
       {/* Warning for exceeded calories */}
       {caloriesExceeded && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
@@ -87,6 +75,16 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
       
       {/* Hero Calorie Section */}
       <div className="mb-6 p-4 bg-gradient-to-r from-primary/5 to-primary-glow/5 rounded-xl border border-primary/10">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <span className="font-semibold">{t('app.dailyProgress')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            {new Date().toLocaleDateString()}
+          </div>
+        </div>
         <div className="text-center space-y-2">
           <div className="text-3xl font-bold text-primary">
             {dailyTotals.calories}
@@ -114,11 +112,11 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
         </div>
       </div>
 
-      {/* Compact 2x2 Macro Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      {/* 3er-Reihe Makros (ohne Verbleibend) */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
         {/* Protein */}
         <div className={`p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
-          <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>{t('app.protein')}</div>
+          <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>Protein</div>
           <div className={`text-xl font-bold mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>
             {dailyTotals.protein}<span className="text-sm">g</span>
           </div>
@@ -127,13 +125,13 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
             className={`h-1 mb-1 ${proteinExceeded ? '[&>div]:bg-red-500' : ''}`} 
           />
           <div className={`text-xs ${proteinExceeded ? 'text-red-600' : 'text-protein/70'}`}>
-            {remainingProtein > 0 ? `+${remainingProtein}g` : `${Math.abs(remainingProtein)}g über`}
+            {remainingProtein > 0 ? `+${Math.round(remainingProtein)}g` : `${Math.round(Math.abs(remainingProtein))}g über`}
           </div>
         </div>
 
         {/* Carbs */}
         <div className={`p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
-          <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>{t('app.carbs')}</div>
+          <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>Kohlenhydrate</div>
           <div className={`text-xl font-bold mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>
             {dailyTotals.carbs}<span className="text-sm">g</span>
           </div>
@@ -142,13 +140,13 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
             className={`h-1 mb-1 ${carbsExceeded ? '[&>div]:bg-red-500' : ''}`} 
           />
           <div className={`text-xs ${carbsExceeded ? 'text-red-600' : 'text-carbs/70'}`}>
-            {remainingCarbs > 0 ? `+${remainingCarbs}g` : `${Math.abs(remainingCarbs)}g über`}
+            {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}g` : `${Math.round(Math.abs(remainingCarbs))}g über`}
           </div>
         </div>
 
         {/* Fats */}
         <div className={`p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
-          <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>{t('app.fats')}</div>
+          <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>Fette</div>
           <div className={`text-xl font-bold mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>
             {dailyTotals.fats}<span className="text-sm">g</span>
           </div>
@@ -157,19 +155,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
             className={`h-1 mb-1 ${fatsExceeded ? '[&>div]:bg-red-500' : ''}`} 
           />
           <div className={`text-xs ${fatsExceeded ? 'text-red-600' : 'text-fats/70'}`}>
-            {remainingFats > 0 ? `+${remainingFats}g` : `${Math.abs(remainingFats)}g über`}
-          </div>
-        </div>
-
-        {/* Remaining Calories as 4th tile */}
-        <div className="p-3 rounded-xl border bg-gradient-to-br from-accent/10 to-accent-light/10 border-accent/20">
-          <div className="text-xs font-medium mb-1 text-accent">Verbleibend</div>
-          <div className={`text-xl font-bold mb-1 ${remainingCalories > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {Math.abs(remainingCalories)}<span className="text-sm">kcal</span>
-          </div>
-          <div className="h-1 mb-1" /> {/* Spacer to align with others */}
-          <div className="text-xs text-accent/70">
-            {remainingCalories > 0 ? 'noch essen' : 'überschritten'}
+            {remainingFats > 0 ? `+${Math.round(remainingFats)}g` : `${Math.round(Math.abs(remainingFats))}g über`}
           </div>
         </div>
       </div>
@@ -181,6 +167,6 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
           {getMotivationalMessage()}
         </div>
       </div>
-    </Card>
+    </div>
   );
 };

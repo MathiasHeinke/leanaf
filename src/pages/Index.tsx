@@ -358,12 +358,6 @@ const Index = () => {
 
       {/* Main Content - ohne doppelten Container */}
       <div className="space-y-6">
-        {/* Quote Section - mit userGender */}
-        <RandomQuote 
-          key={quoteRefreshTrigger} 
-          userGender={profileData?.gender}
-        />
-
         {/* Daily Progress Overview */}
         <DailyProgress 
           dailyTotals={dailyTotals}
