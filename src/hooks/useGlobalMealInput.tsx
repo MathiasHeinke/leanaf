@@ -98,7 +98,6 @@ export const useGlobalMealInput = () => {
       const transcribedText = await stopRecording();
       if (transcribedText) {
         setInputText(prev => prev ? prev + ' ' + transcribedText : transcribedText);
-        toast.success('Spracheingabe hinzugefügt');
       }
     } else {
       try {
@@ -126,7 +125,6 @@ export const useGlobalMealInput = () => {
     console.log('Starting upload for user:', user.id);
     
     setIsAnalyzing(true);
-    toast.info('Lade Bilder hoch...');
     
     try {
       const uploadedUrls: string[] = [];
@@ -202,7 +200,6 @@ export const useGlobalMealInput = () => {
       }
       
       setUploadedImages(prev => [...prev, ...uploadedUrls]);
-      toast.success(`${uploadedUrls.length} Bild(er) hochgeladen`);
       
     } catch (error: any) {
       console.error('Error in photo upload:', error);
