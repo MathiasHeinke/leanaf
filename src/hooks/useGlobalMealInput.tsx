@@ -46,6 +46,12 @@ export const useGlobalMealInput = () => {
     try {
       const hasImages = uploadedImages.length > 0;
       
+      console.log('📡 Calling analyze-meal with:', {
+        text: inputText || 'Analysiere diese Mahlzeit',
+        images: hasImages ? uploadedImages : undefined,
+        imageCount: hasImages ? uploadedImages.length : 0
+      });
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
           text: inputText || 'Analysiere diese Mahlzeit',
@@ -53,18 +59,36 @@ export const useGlobalMealInput = () => {
         },
       });
 
-      if (error) throw error;
-      if (!data || !data.total) throw new Error('Ungültige Antwort');
+      console.log('📡 analyze-meal response:', { data, error });
 
+      if (error) {
+        console.error('❌ Supabase function error:', error);
+        throw new Error(`Analyse fehlgeschlagen: ${error.message}`);
+      }
+      
+      if (!data || !data.total) {
+        console.error('❌ Invalid response data:', data);
+        throw new Error('Ungültige Antwort vom Analysedienst');
+      }
+
+      console.log('✅ Analysis successful, showing confirmation dialog');
+      
       // Always show confirmation dialog for review
       setAnalyzedMealData(data);
       setSelectedMealType(getCurrentMealType());
       setShowConfirmationDialog(true);
       
     } catch (error: any) {
-      console.error('Error analyzing meal:', error);
+      console.error('❌ Error analyzing meal:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        cause: error.cause
+      });
       toast.error(error.message || 'Fehler beim Analysieren');
     } finally {
+      console.log('🏁 Analysis finished, setting isAnalyzing to false');
       setIsAnalyzing(false);
     }
   };
