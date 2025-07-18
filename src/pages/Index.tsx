@@ -1821,6 +1821,18 @@ const Index = () => {
                   </div>
                 </div>
                 
+                {/* Date selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="mealDate">Datum:</Label>
+                  <Input
+                    id="mealDate"
+                    type="date"
+                    value={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString())}
+                    className="w-full"
+                  />
+                </div>
+                
                 {/* Meal type selection */}
                 <div className="space-y-2">
                   <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
@@ -1842,7 +1854,7 @@ const Index = () => {
             <div className="flex gap-2">
               <Button
                 onClick={handleConfirmMeal}
-                disabled={!inputText.trim() || (analyzedMealData?.total.calories === 0 && !selectedDate)}
+                disabled={!analyzedMealData || analyzedMealData.total.calories === 0}
                 className="flex-1"
               >
                 {isAnalyzing ? (
