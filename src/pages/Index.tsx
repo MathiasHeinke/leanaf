@@ -1877,8 +1877,7 @@ const Index = () => {
                   <div className="max-h-32 overflow-y-auto space-y-2 bg-muted/30 p-2 rounded-lg">
                     {chatMessages.length === 0 ? (
                       <div className="text-sm text-muted-foreground text-center py-2">
-                        Frage mich nach Details zu deiner Mahlzeit!<br />
-                        z.B. "Das waren nur 100g Reis" oder "Mit extra Olivenöl"
+                        Weitere Details verfügbar...
                       </div>
                     ) : (
                       chatMessages.map((msg, index) => (
@@ -1893,12 +1892,12 @@ const Index = () => {
                     )}
                   </div>
                   
-                  {/* Chat Input */}
+                  {/* Chat Input with icons */}
                   <div className="flex gap-2">
                     <Input
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Frage nach Details zur Mahlzeit..."
+                      placeholder="weitere Mahlzeit oder Änderungen?"
                       className="flex-1"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
@@ -1907,6 +1906,29 @@ const Index = () => {
                         }
                       }}
                     />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowImageUpload(true);
+                      }}
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isProcessing}
+                    >
+                      {isRecording ? (
+                        <StopCircle className="h-4 w-4 text-red-500" />
+                      ) : isProcessing ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </Button>
                     <Button
                       onClick={handleChatSubmit}
                       disabled={!chatInput.trim() || isVerifying}
