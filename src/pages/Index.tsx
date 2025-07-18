@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +21,7 @@ import {
   RefreshCw,
   Target,
   TrendingUp,
-  TrendingDown,
-  Flame
+  TrendingDown
 } from "lucide-react";
 
 interface WeightEntry {
@@ -77,11 +76,6 @@ const Index = () => {
   const [showMotivation, setShowMotivation] = useState(false);
   const [quoteRefreshTrigger, setQuoteRefreshTrigger] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [scrollY, setScrollY] = useState(0);
-  
-  const heroRef = useRef<HTMLDivElement>(null);
-  const macroRef = useRef<HTMLDivElement>(null);
-  const quoteRef = useRef<HTMLDivElement>(null);
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
@@ -90,16 +84,6 @@ const Index = () => {
   const mealInputHook = useGlobalMealInput();
   
   const navigate = useNavigate();
-
-  // Parallax scroll effect
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Check authentication
   useEffect(() => {
@@ -360,225 +344,56 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen bg-premium-gradient pb-32 relative overflow-hidden"
+      className="min-h-screen bg-gradient-to-br from-background to-muted/50 pb-32 relative overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Enhanced Premium Background Elements with Parallax */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div 
-          className="absolute top-20 -left-20 w-96 h-96 bg-primary/8 rounded-full blur-3xl float-animation"
-          style={{ transform: `translateY(${scrollY * 0.1}px) translateX(${scrollY * 0.05}px)` }}
-        ></div>
-        <div 
-          className="absolute top-40 -right-20 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-3xl float-animation-delayed"
-          style={{ transform: `translateY(${scrollY * -0.15}px) translateX(${scrollY * -0.08}px)` }}
-        ></div>
-        <div 
-          className="absolute bottom-20 left-1/3 w-80 h-80 bg-purple-500/6 rounded-full blur-3xl float-animation-slow"
-          style={{ transform: `translateY(${scrollY * 0.12}px) translateX(${scrollY * -0.03}px)` }}
-        ></div>
-        <div 
-          className="absolute top-1/2 right-1/4 w-60 h-60 bg-green-500/4 rounded-full blur-3xl float-animation"
-          style={{ transform: `translateY(${scrollY * -0.08}px) translateX(${scrollY * 0.06}px)` }}
-        ></div>
-      </div>
-
       {/* Pull to refresh indicator */}
       {isPulling && pullDistance > 0 && (
         <div 
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center glass-card-secondary transition-all duration-200"
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm transition-all duration-200"
           style={{ height: pullDistance }}
         >
           <RefreshCw className={`h-6 w-6 text-primary ${pullDistance > 50 ? 'animate-spin' : ''}`} />
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="space-y-12 relative z-10 max-w-7xl mx-auto">
-        {/* Hero Calorie Section - Premium Glass Card */}
-        <div 
-          className="px-4 pt-8"
-          ref={heroRef}
-          style={{ transform: `translateY(${scrollY * 0.02}px)` }}
-        >
-          <div className="glass-hero rounded-3xl p-8 hover-float hover-glow pulse-glow">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <div className="p-4 rounded-2xl bg-primary/10 backdrop-blur-sm shadow-lg">
-                  <Target className="h-7 w-7 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">{t('app.dailyProgress')}</h1>
-                  <p className="text-base text-muted-foreground">{new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-base text-muted-foreground bg-white/30 px-6 py-3 rounded-2xl backdrop-blur-sm shadow-sm">
-                <Flame className="h-5 w-5" />
-                <span className="font-medium">
-                  {userGoal === 'lose' && remainingCalories > 0 ? 
-                    `${remainingCalories} kcal verbleibend` :
-                    userGoal === 'lose' && remainingCalories < 0 ?
-                    `${Math.abs(remainingCalories)} kcal über Ziel` :
-                    `Ziel erreicht`
-                  }
-                </span>
-              </div>
-            </div>
-            
-            <div className="text-center space-y-6">
-              <div className="relative">
-                <div className="text-7xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                  {dailyTotals.calories}
-                </div>
-                <div className="text-2xl text-muted-foreground mt-2">/{dailyGoal.calories} kcal</div>
-              </div>
-              
-              <div className="w-full bg-white/20 rounded-full h-4 backdrop-blur-sm shadow-inner">
-                <div 
-                  className="h-4 rounded-full bg-gradient-to-r from-primary to-primary-glow transition-all duration-1000 ease-out shadow-[0_0_25px_rgba(59,130,246,0.5)]"
-                  style={{ width: `${Math.min(calorieProgress, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
+      {/* Main Content - ohne doppelten Container */}
+      <div className="space-y-6">
+        {/* Daily Progress Overview */}
+        <DailyProgress 
+          dailyTotals={dailyTotals}
+          dailyGoal={dailyGoal}
+          userGoal={userGoal}
+        />
+
+        {/* Motivational Quote */}
+        <div className="px-4">
+          <RandomQuote 
+            userGender={profileData?.gender} 
+            refreshTrigger={quoteRefreshTrigger}
+            fallbackText={t('motivation.fallback')}
+          />
         </div>
 
-        {/* Macro Cards - Premium Glass Grid */}
-        <div 
-          className="px-4"
-          ref={macroRef}
-          style={{ transform: `translateY(${scrollY * -0.03}px)` }}
-        >
-          <div className="grid grid-cols-3 gap-6">
-            {/* Protein */}
-            <div className="glass-card rounded-3xl p-6 hover-lift group">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-green-400/20 to-green-600/20 flex items-center justify-center group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 shadow-lg">
-                  <div className="text-2xl">💪</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-green-600 mb-2">Protein</div>
-                  <div className="text-3xl font-bold text-green-700">
-                    {dailyTotals.protein}<span className="text-lg text-muted-foreground">g</span>
-                  </div>
-                  <div className="w-full bg-green-100 rounded-full h-2 mt-3 shadow-inner">
-                    <div 
-                      className="h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-700 shadow-[0_0_15px_rgba(34,197,94,0.4)]"
-                      style={{ width: `${Math.min(proteinProgress, 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-sm text-green-600/70 mt-2 font-medium">
-                    {remainingProtein > 0 ? `+${Math.round(remainingProtein)}g` : `${Math.round(Math.abs(remainingProtein))}g über`}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Carbs */}
-            <div className="glass-card rounded-3xl p-6 hover-lift group">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-orange-400/20 to-orange-600/20 flex items-center justify-center group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 shadow-lg">
-                  <div className="text-2xl">🌾</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-orange-600 mb-2">Carbs</div>
-                  <div className="text-3xl font-bold text-orange-700">
-                    {dailyTotals.carbs}<span className="text-lg text-muted-foreground">g</span>
-                  </div>
-                  <div className="w-full bg-orange-100 rounded-full h-2 mt-3 shadow-inner">
-                    <div 
-                      className="h-2 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700 shadow-[0_0_15px_rgba(249,115,22,0.4)]"
-                      style={{ width: `${Math.min(carbsProgress, 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-sm text-orange-600/70 mt-2 font-medium">
-                    {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}g` : `${Math.round(Math.abs(remainingCarbs))}g über`}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Fats */}
-            <div className="glass-card rounded-3xl p-6 hover-lift group">
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-red-400/20 to-red-600/20 flex items-center justify-center group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 shadow-lg">
-                  <div className="text-2xl">🥑</div>
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-red-600 mb-2">Fats</div>
-                  <div className="text-3xl font-bold text-red-700">
-                    {dailyTotals.fats}<span className="text-lg text-muted-foreground">g</span>
-                  </div>
-                  <div className="w-full bg-red-100 rounded-full h-2 mt-3 shadow-inner">
-                    <div 
-                      className="h-2 rounded-full bg-gradient-to-r from-red-400 to-red-600 transition-all duration-700 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
-                      style={{ width: `${Math.min(fatsProgress, 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="text-sm text-red-600/70 mt-2 font-medium">
-                    {remainingFats > 0 ? `+${Math.round(remainingFats)}g` : `${Math.round(Math.abs(remainingFats))}g über`}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Motivational Quote - Floating Glass Bubble */}
-        <div 
-          className="px-4"
-          ref={quoteRef}
-          style={{ transform: `translateY(${scrollY * 0.05}px) translateX(${Math.sin(scrollY * 0.01) * 5}px)` }}
-        >
-          <div className="glass-card-secondary rounded-3xl p-8 hover-float">
-            <RandomQuote 
-              userGender={profileData?.gender} 
-              refreshTrigger={quoteRefreshTrigger}
-              fallbackText={t('motivation.fallback')}
-            />
-          </div>
-        </div>
-
-        {/* BMI Progress - Premium Glass Panel */}
-        <div 
-          className="px-4"
-          style={{ transform: `translateY(${scrollY * -0.02}px)` }}
-        >
-          <div className="glass-card rounded-3xl p-8 hover-float">
-            <BMIProgress 
-              startWeight={profileData?.start_weight || profileData?.weight || 70}
-              currentWeight={profileData?.weight || 70}
-              targetWeight={profileData?.target_weight || 70}
-              height={profileData?.height || 170}
-            />
-          </div>
-        </div>
+        {/* BMI Progress */}
+        <BMIProgress 
+          startWeight={profileData?.start_weight || profileData?.weight || 70}
+          currentWeight={profileData?.weight || 70}
+          targetWeight={profileData?.target_weight || 70}
+          height={profileData?.height || 170}
+        />
 
         {/* Weight Tracker */}
-        <div 
-          className="px-4"
-          style={{ transform: `translateY(${scrollY * 0.03}px)` }}
-        >
-          <div className="glass-card rounded-3xl p-8 hover-float">
-            <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
-          </div>
-        </div>
+        <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
 
         {/* Meals List */}
-        <div 
-          className="px-4"
-          style={{ transform: `translateY(${scrollY * -0.01}px)` }}
-        >
-          <div className="glass-card rounded-3xl p-8 hover-float">
-            <MealList 
-              dailyMeals={dailyMeals}
-              onEditMeal={() => {}}
-              onDeleteMeal={() => loadUserData()}
-            />
-          </div>
-        </div>
+        <MealList 
+          dailyMeals={dailyMeals}
+          onEditMeal={() => {}}
+          onDeleteMeal={() => loadUserData()}
+        />
       </div>
 
     </div>
