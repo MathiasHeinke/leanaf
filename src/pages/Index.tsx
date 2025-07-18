@@ -1719,10 +1719,10 @@ const Index = () => {
             {/* Display analyzed data */}
             {analyzedMealData && (
               <div className="space-y-3">
-                {/* Meal Title */}
+                {/* Meal Title - editable with options */}
                 {analyzedMealData.title && (
-                  <div className="space-y-2">
-                    <Label htmlFor="mealTitle">Mahlzeit-Titel:</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="mealTitle">Mahlzeit-Beschreibung:</Label>
                     <Input
                       id="mealTitle"
                       value={analyzedMealData.title}
@@ -1731,7 +1731,33 @@ const Index = () => {
                         title: e.target.value
                       })}
                       className="font-medium"
+                      placeholder="Beschreibung der Mahlzeit..."
                     />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setAnalyzedMealData(null);
+                          setUploadedImages([]);
+                          setChatMessages([]);
+                          setShowConfirmationDialog(false);
+                        }}
+                        className="text-xs"
+                      >
+                        📸 Nochmal Bild hochladen
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          toast.info("Voice-Eingabe wird bald verfügbar sein");
+                        }}
+                        className="text-xs"
+                      >
+                        🎤 Voice nutzen
+                      </Button>
+                    </div>
                   </div>
                 )}
                 
