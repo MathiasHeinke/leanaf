@@ -31,6 +31,7 @@ Sei möglichst präzise bei den Nährwertangaben.
 Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
 {
+  "title": "Kurze, prägnante Überschrift für die Mahlzeit (z.B. 'Hähnchenbrust mit Reis und Gemüse')",
   "items": [
     {
       "name": "Lebensmittel Name",
@@ -116,6 +117,7 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
       
       // Fallback response if JSON parsing fails
       const fallbackResponse = {
+        title: text || 'Unbekannte Mahlzeit',
         items: [{
           name: text || 'Unbekannte Mahlzeit',
           amount: '1 Portion',

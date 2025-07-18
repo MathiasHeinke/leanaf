@@ -825,9 +825,11 @@ const Index = () => {
     try {
       // Save the meal to the database
       const mealDate = selectedDate || new Date().toISOString();
+      const mealTitle = analyzedMealData.title || inputText || 'Unbekannte Mahlzeit';
+      
       const newMeal = {
         user_id: user?.id,
-        text: inputText,
+        text: mealTitle,
         calories: Math.round(analyzedMealData.total.calories),
         protein: Math.round(analyzedMealData.total.protein),
         carbs: Math.round(analyzedMealData.total.carbs),
@@ -1717,6 +1719,22 @@ const Index = () => {
             {/* Display analyzed data */}
             {analyzedMealData && (
               <div className="space-y-3">
+                {/* Meal Title */}
+                {analyzedMealData.title && (
+                  <div className="space-y-2">
+                    <Label htmlFor="mealTitle">Mahlzeit-Titel:</Label>
+                    <Input
+                      id="mealTitle"
+                      value={analyzedMealData.title}
+                      onChange={(e) => setAnalyzedMealData({
+                        ...analyzedMealData,
+                        title: e.target.value
+                      })}
+                      className="font-medium"
+                    />
+                  </div>
+                )}
+                
                 {/* Only show nutritional data if we have valid data */}
                 {analyzedMealData.total.calories > 0 && (
                   <div className="grid grid-cols-2 gap-2 text-sm bg-muted/50 p-3 rounded-lg">
@@ -1799,61 +1817,6 @@ const Index = () => {
                       ) : (
                         <Send className="h-4 w-4" />
                       )}
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Editable text field */}
-                <div className="space-y-2">
-                  <Label htmlFor="mealDescription">Beschreibung:</Label>
-                  <Textarea
-                    id="mealDescription"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Beschreibe deine Mahlzeit..."
-                    className="min-h-[80px]"
-                  />
-                </div>
-                
-                {/* Image upload options */}
-                <div className="space-y-2">
-                  <Label>Bilder hinzufügen:</Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handlePhotoUpload}
-                      multiple
-                      className="hidden"
-                      id="camera-input"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => document.getElementById('camera-input')?.click()}
-                      className="flex-1"
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Kamera
-                    </Button>
-                    
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoUpload}
-                      multiple
-                      className="hidden"
-                      id="gallery-input"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => document.getElementById('gallery-input')?.click()}
-                      className="flex-1"
-                    >
-                      <ImagePlus className="h-4 w-4 mr-2" />
-                      Galerie
                     </Button>
                   </div>
                 </div>
