@@ -329,7 +329,7 @@ const Index = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+      <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
           <h2 className="text-2xl font-semibold text-foreground">{t('common.loading')}</h2>
@@ -345,7 +345,7 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 pb-32 relative overflow-hidden"
+      className="pb-32 relative overflow-hidden"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
