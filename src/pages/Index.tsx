@@ -437,7 +437,10 @@ const Index = () => {
         <RandomQuote key={quoteRefreshTrigger} />
 
         {/* Daily Progress Overview */}
-        <DailyProgress />
+        <DailyProgress 
+          dailyTotals={dailyTotals}
+          dailyGoal={dailyGoal}
+        />
 
         {/* Stats Cards Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -519,13 +522,22 @@ const Index = () => {
         </div>
 
         {/* BMI Progress */}
-        <BMIProgress />
+        <BMIProgress 
+          startWeight={profileData?.start_weight || profileData?.weight || 70}
+          currentWeight={profileData?.weight || 70}
+          targetWeight={profileData?.target_weight || 70}
+          height={profileData?.height || 170}
+        />
 
         {/* Weight Tracker */}
         <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
 
         {/* Meals List */}
-        <MealList />
+        <MealList 
+          dailyMeals={dailyMeals}
+          onEditMeal={() => {}}
+          onDeleteMeal={() => loadUserData()}
+        />
       </div>
 
       {/* Floating Input Components */}
