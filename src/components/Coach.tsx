@@ -294,13 +294,26 @@ const Coach = ({ onClose }: CoachProps) => {
           // Check if recommendations is already an object or string
           let suggestions;
           if (typeof data.recommendations === 'string') {
-            suggestions = JSON.parse(data.recommendations);
+            // Clean the response from markdown formatting and extract JSON
+            let cleanResponse = data.recommendations.trim();
+            
+            // Remove markdown code blocks if present
+            cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            
+            // Try to find JSON object in the response
+            const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              cleanResponse = jsonMatch[0];
+            }
+            
+            suggestions = JSON.parse(cleanResponse);
           } else {
             suggestions = data.recommendations;
           }
           setMealSuggestions(suggestions.meals || suggestions || []);
         } catch (parseError) {
           console.error('Error parsing meal suggestions:', parseError);
+          console.log('Raw response:', data.recommendations);
           // If parsing fails, assume the response is not JSON and handle gracefully
           setMealSuggestions([]);
         }
