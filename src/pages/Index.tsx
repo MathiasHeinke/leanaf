@@ -2066,25 +2066,6 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
-      
-      {/* Debug Console - nur im Development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4 p-4 bg-black/80 text-white text-xs rounded-lg max-w-sm overflow-auto max-h-40 z-50">
-          <div className="font-bold mb-2">🐛 Debug Status</div>
-          <div>User: {user ? '✅' : '❌'}</div>
-          <div>Loading: {loading ? '⏳' : '✅'}</div>
-          <div>IsAnalyzing: {isAnalyzing ? '🔄' : '❌'}</div>
-          <div>InputText: "{inputText}"</div>
-          <div>AnalyzedData: {analyzedMealData ? '✅' : '❌'}</div>
-          <div>Calories: {analyzedMealData?.total?.calories || 0}</div>
-          <div>Images: {uploadedImages.length}</div>
-          <div>ShowDialog: {showConfirmationDialog ? '✅' : '❌'}</div>
-          <div>SelectedType: {selectedMealType}</div>
-          <div>ChatMessages: {chatMessages.length}</div>
-          <div>IsRecording: {isRecording ? '🎤' : '❌'}</div>
-          <div>IsProcessing: {isProcessing ? '⏳' : '❌'}</div>
-        </div>
-      )}
     </div>
   );
 };
