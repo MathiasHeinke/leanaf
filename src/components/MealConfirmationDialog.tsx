@@ -121,7 +121,7 @@ export const MealConfirmationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Mahlzeit bestätigen & bearbeiten</AlertDialogTitle>
           <AlertDialogDescription>
-            Überprüfen und korrigieren Sie die analysierten Nährwerte bei Bedarf.
+            💪 Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher. Schau dir die Nährwerte an und passe sie bei Bedarf an.
           </AlertDialogDescription>
         </AlertDialogHeader>
         
