@@ -1855,7 +1855,7 @@ const Index = () => {
             <div className="flex gap-2">
               <Button
                 onClick={handleConfirmMeal}
-                disabled={!analyzedMealData || analyzedMealData.total.calories === 0}
+                disabled={!analyzedMealData || isAnalyzing}
                 className="flex-1"
               >
                 {isAnalyzing ? (
