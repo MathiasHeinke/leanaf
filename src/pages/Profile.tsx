@@ -438,8 +438,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/50 p-4">
       <div className="max-w-2xl mx-auto pb-20">
-        <div className="space-y-6">
-        {/* Basic Information */}
+          <div className="space-y-6">
+            {/* Basic Information */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -1056,9 +1056,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             {loading ? 'Speichere...' : 'Manuell speichern'}
           </Button>
         </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
 };
 
 export default Profile;
