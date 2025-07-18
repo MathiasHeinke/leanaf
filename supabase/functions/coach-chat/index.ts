@@ -112,9 +112,10 @@ HEUTIGER FORTSCHRITT:
 HEUTIGE MAHLZEITEN:
 ${todaysMeals?.length ? todaysMeals.map(meal => `- ${meal.meal_type}: ${meal.text} (${meal.calories}kcal)`).join('\n') : '- Noch keine Mahlzeiten eingetragen'}
 
-Antworte auf Deutsch und berücksichtige die Persönlichkeit ${personality}. 
-${profile?.muscle_maintenance_priority ? 'Fokussiere auf Muskelerhalt und Krafttraining-optimierte Tipps.' : ''}
-Halte deine Antworten prägnant und hilfreich (max. 200 Wörter).`;
+WICHTIGE ANWEISUNG: Halte deine Antworten SEHR KURZ und prägnant (max. 1-2 kurze Sätze). 
+Dies ist ein Chat-Interface für schnelle Unterstützung, keine ausführlichen Beratungen.
+Antworte auf Deutsch und sei ${personality}. 
+${profile?.muscle_maintenance_priority ? 'Fokussiere auf Muskelerhalt und Protein.' : ''}`;
 
     // Prepare messages for OpenAI
     const messages = [
@@ -139,7 +140,7 @@ Halte deine Antworten prägnant und hilfreich (max. 200 Wörter).`;
         model: 'gpt-4.1-2025-04-14',
         messages: messages,
         temperature: personality === 'lustig' ? 0.9 : personality === 'hart' ? 0.4 : 0.7,
-        max_tokens: 300,
+        max_tokens: 80, // Limit for very short responses
         frequency_penalty: 0.3,
         presence_penalty: 0.1,
       }),

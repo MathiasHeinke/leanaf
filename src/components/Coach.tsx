@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { SavedItems } from "@/components/SavedItems";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
@@ -572,9 +573,9 @@ const Coach = ({ onClose }: CoachProps) => {
                 <TrendingUp className="h-4 w-4" />
                 Trends
               </TabsTrigger>
-              <TabsTrigger value="voice" className="flex items-center gap-2">
-                <Mic className="h-4 w-4" />
-                Voice
+              <TabsTrigger value="saved" className="flex items-center gap-2">
+                <Heart className="h-4 w-4" />
+                Merken
               </TabsTrigger>
             </TabsList>
 
@@ -796,86 +797,11 @@ const Coach = ({ onClose }: CoachProps) => {
               </div>
             </TabsContent>
 
-            {/* Voice Coaching Tab */}
-            <TabsContent value="voice" className="space-y-4" id="voice-section">
+            {/* Saved Items Tab */}
+            <TabsContent value="saved" className="space-y-4">
               <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                <h3 className="text-lg font-semibold mb-4">Voice Coaching</h3>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-center">
-                    <Button
-                      size="lg"
-                      variant={isListening ? "destructive" : "default"}
-                      onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
-                      className="h-20 w-20 rounded-full"
-                      disabled={!('webkitSpeechRecognition' in window)}
-                    >
-                      {isListening ? (
-                        <MicOff className="h-8 w-8" />
-                      ) : (
-                        <Mic className="h-8 w-8" />
-                      )}
-                    </Button>
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {isListening ? 'Höre zu...' : 'Klicke um zu sprechen'}
-                    </p>
-                  </div>
-                  
-                  {speechText && (
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <h4 className="font-medium text-sm mb-2">Du hast gesagt:</h4>
-                      <p className="text-sm">{speechText}</p>
-                    </div>
-                  )}
-                  
-                  {voiceResponse && (
-                    <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
-                      <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                        <div className="text-lg">🤖</div>
-                        Coach Antwort:
-                      </h4>
-                      <p className="text-sm">{voiceResponse}</p>
-                    </div>
-                  )}
-                  
-                  {/* Text Chat as fallback */}
-                  <Separator />
-                  
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-sm">Text Chat</h4>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {chatHistory.map((message, index) => (
-                        <div key={index} className={`p-3 rounded-lg ${
-                          message.role === 'user' ? 'bg-primary/10 ml-4' : 'bg-muted/50 mr-4'
-                        }`}>
-                          <p className="text-sm">{message.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Textarea
-                        placeholder="Stelle eine Frage zum Coach..."
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        className="flex-1"
-                        rows={2}
-                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendChatMessage())}
-                      />
-                      <Button 
-                        onClick={sendChatMessage} 
-                        disabled={!chatMessage.trim() || chatLoading}
-                        size="icon"
-                        className="h-auto"
-                      >
-                        {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                <h3 className="text-lg font-semibold mb-4">Gespeicherte Inhalte</h3>
+                <SavedItems />
               </div>
             </TabsContent>
           </Tabs>
@@ -1002,29 +928,6 @@ const Coach = ({ onClose }: CoachProps) => {
         </CardContent>
       </Card>
 
-      {/* Floating Chat Button - only on Coach page */}
-      <div className="fixed bottom-20 right-4 z-40">
-        <Button
-          size="lg"
-          className="rounded-full h-14 w-14 shadow-lg animate-pulse bg-gradient-to-r from-primary to-primary-glow hover:scale-110 transition-all duration-300"
-          onClick={() => {
-            // Scroll to Voice tab or open chat
-            const voiceTab = document.querySelector('[data-state="active"][value="voice"]');
-            if (!voiceTab) {
-              // Switch to Voice tab if not already active
-              const voiceTabTrigger = document.querySelector('[value="voice"]') as HTMLElement;
-              voiceTabTrigger?.click();
-            }
-            // Scroll to voice section
-            setTimeout(() => {
-              const voiceSection = document.getElementById('voice-section');
-              voiceSection?.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      </div>
 
     </div>
   );
