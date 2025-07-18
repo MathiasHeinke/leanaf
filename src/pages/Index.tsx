@@ -1116,23 +1116,71 @@ const Index = () => {
                 <div className="space-y-4 p-4 bg-accent/20 rounded-lg">
                   <h3 className="font-semibold">Analyseergebnis</h3>
                   
-                  {/* Nutritional Info */}
+                  {/* Editable Nutritional Info */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Kalorien</Label>
-                      <div className="text-lg font-bold">{Math.round(analyzedMealData.total?.calories || 0)} kcal</div>
+                      <Label htmlFor="calories">Kalorien</Label>
+                      <Input
+                        id="calories"
+                        type="number"
+                        value={Math.round(analyzedMealData.total?.calories || 0)}
+                        onChange={(e) => {
+                          const calories = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, calories }
+                          });
+                        }}
+                        className="text-lg font-bold"
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Protein</Label>
-                      <div className="text-lg font-bold text-protein">{Math.round(analyzedMealData.total?.protein || 0)}g</div>
+                      <Label htmlFor="protein">Protein (g)</Label>
+                      <Input
+                        id="protein"
+                        type="number"
+                        value={Math.round(analyzedMealData.total?.protein || 0)}
+                        onChange={(e) => {
+                          const protein = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, protein }
+                          });
+                        }}
+                        className="text-lg font-bold text-protein"
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Kohlenhydrate</Label>
-                      <div className="text-lg font-bold text-carbs">{Math.round(analyzedMealData.total?.carbs || 0)}g</div>
+                      <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
+                      <Input
+                        id="carbs"
+                        type="number"
+                        value={Math.round(analyzedMealData.total?.carbs || 0)}
+                        onChange={(e) => {
+                          const carbs = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, carbs }
+                          });
+                        }}
+                        className="text-lg font-bold text-carbs"
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label>Fette</Label>
-                      <div className="text-lg font-bold text-fats">{Math.round(analyzedMealData.total?.fats || 0)}g</div>
+                      <Label htmlFor="fats">Fette (g)</Label>
+                      <Input
+                        id="fats"
+                        type="number"
+                        value={Math.round(analyzedMealData.total?.fats || 0)}
+                        onChange={(e) => {
+                          const fats = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, fats }
+                          });
+                        }}
+                        className="text-lg font-bold text-fats"
+                      />
                     </div>
                   </div>
 
