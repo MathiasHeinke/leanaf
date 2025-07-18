@@ -104,35 +104,39 @@ serve(async (req) => {
     const avgCalories = totalMeals > 0 ? (recentMeals?.reduce((sum, meal) => sum + Number(meal.calories || 0), 0) || 0) / totalMeals : 0;
     const avgProtein = totalMeals > 0 ? (recentMeals?.reduce((sum, meal) => sum + Number(meal.protein || 0), 0) || 0) / totalMeals : 0;
 
-    const systemPrompt = `Du bist ein professioneller Ernährungscoach. Analysiere die Benutzerdaten und gib personalisierte Empfehlungen.
+    const systemPrompt = `Du bist ein erfahrener Ernährungscoach und Kochexperte. Erstelle personalisierte Rezeptempfehlungen basierend auf den Benutzerdaten.
 
-Benutzerprofil:
-- Gewicht: ${profile?.weight || 'unbekannt'} kg
-- Größe: ${profile?.height || 'unbekannt'} cm  
-- Alter: ${profile?.age || 'unbekannt'} Jahre
-- Geschlecht: ${profile?.gender || 'unbekannt'}
-- Aktivitätslevel: ${profile?.activity_level || 'moderat'}
-- Ziel: ${profile?.goal === 'lose' ? 'Abnehmen' : profile?.goal === 'gain' ? 'Zunehmen' : 'Gewicht halten'}
-- Zielgewicht: ${profile?.target_weight || 'nicht festgelegt'} kg
-- Zieldatum: ${profile?.target_date || 'nicht festgelegt'}
+Benutzerdaten:
+- Tagesziele: ${userContext.goals.calories} kcal, ${userContext.goals.protein}g Protein, ${userContext.goals.carbs}g Carbs, ${userContext.goals.fats}g Fette
+- Durchschnitt letzte 7 Tage: ${Math.round(avgCalories)} kcal, ${Math.round(avgProtein)}g Protein
+- Geschlecht: ${profile?.gender || 'nicht angegeben'}
+- Ziel: ${profile?.goal || 'nicht angegeben'}
+- Aktivitätslevel: ${profile?.activity_level || 'nicht angegeben'}
 
-Tagesziele:
-- Kalorien: ${userContext.goals.calories} kcal
-- Protein: ${userContext.goals.protein} g
-- Kohlenhydrate: ${userContext.goals.carbs} g
-- Fette: ${userContext.goals.fats} g
+Erstelle 3 personalisierte Rezeptempfehlungen im folgenden JSON-Format:
 
-Aktuelle Durchschnittswerte (letzte 7 Tage):
-- Durchschnittliche Kalorien: ${Math.round(avgCalories)} kcal
-- Durchschnittliches Protein: ${Math.round(avgProtein)} g
-- Anzahl Mahlzeiten: ${totalMeals}
+{
+  "meals": [
+    {
+      "name": "Rezeptname",
+      "description": "Kurze Beschreibung (1 Satz)",
+      "calories": Kalorien,
+      "protein": Protein in g,
+      "carbs": Kohlenhydrate in g,
+      "fats": Fette in g,
+      "ingredients": ["Zutat 1", "Zutat 2", "Zutat 3"],
+      "preparation": "Kurze Zubereitungsanleitung (2-3 Sätze)",
+      "mealType": "Frühstück|Mittagessen|Abendessen|Snack"
+    }
+  ]
+}
 
-Gib 2-3 konkrete, umsetzbare Empfehlungen auf Deutsch. Fokussiere dich auf:
-1. Spezifische Rezeptvorschläge die zu den Zielen passen
-2. Praktische Ernährungstipps
-3. Anpassungen basierend auf den aktuellen Essgewohnheiten
-
-Halte dich kurz und praktisch. Antworte in einem freundlichen, motivierenden Ton.`;
+Berücksichtige:
+- Die Rezepte sollen zu den Zielen des Benutzers passen
+- Abwechslungsreiche Mahlzeitentypen
+- Realistische Portionsgrößen
+- Einfache Zubereitung
+- Deutsche Küche und verfügbare Zutaten`;
 
     console.log('Sending request to OpenAI...');
 
@@ -146,7 +150,7 @@ Halte dich kurz und praktisch. Antworte in einem freundlichen, motivierenden Ton
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Gib mir personalisierte Ernährungsempfehlungen und Rezeptvorschläge basierend auf meinen Daten.' }
+          { role: 'user', content: 'Erstelle 3 personalisierte Rezeptempfehlungen für mich.' }
         ],
         max_tokens: 1000,
         temperature: 0.7,

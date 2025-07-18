@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +21,20 @@ import {
   Calendar,
   Target,
   ChevronDown,
-  TrendingUp
+  TrendingUp,
+  Mic,
+  MicOff,
+  Send,
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  Zap,
+  Brain,
+  Heart,
+  Clock,
+  TrendingDown,
+  Award,
+  BarChart3
 } from "lucide-react";
 
 interface CoachProps {
@@ -56,7 +72,64 @@ interface HistoryEntry {
   };
 }
 
+interface CoachMessage {
+  type: 'motivation' | 'tip' | 'warning' | 'analysis';
+  title: string;
+  message: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+interface AIAnalysis {
+  messages: CoachMessage[];
+  dailyScore: number;
+  summary: string;
+}
+
+interface MealSuggestion {
+  name: string;
+  description: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  ingredients: string[];
+  preparation: string;
+  mealType: string;
+}
+
+interface TrendData {
+  weeklyAverage: number;
+  monthlyAverage: number;
+  trend: 'up' | 'down' | 'stable';
+  improvement: string;
+  weeklyGoalReach: number;
+}
+
 const Coach = ({ onClose }: CoachProps) => {
+  // AI Analysis State
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  
+  // Meal Suggestions State
+  const [mealSuggestions, setMealSuggestions] = useState<MealSuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  
+  // Trend Analysis State
+  const [trendData, setTrendData] = useState<TrendData | null>(null);
+  const [trendsLoading, setTrendsLoading] = useState(false);
+  
+  // Voice Coaching State
+  const [isListening, setIsListening] = useState(false);
+  const [speechText, setSpeechText] = useState('');
+  const [voiceResponse, setVoiceResponse] = useState('');
+  const recognitionRef = useRef<any>(null);
+  
+  // Chat State
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  
+  // Data State
   const [recommendations, setRecommendations] = useState<string>('');
   const [userContext, setUserContext] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -70,12 +143,46 @@ const Coach = ({ onClose }: CoachProps) => {
 
   useEffect(() => {
     if (user) {
-      generateRecommendations();
-      loadHistoryData();
       loadDailyGoals();
       loadTodaysMeals();
+      loadHistoryData();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0) {
+      generateAIAnalysis();
+      generateMealSuggestions();
+      calculateTrends();
+    }
+  }, [user, dailyGoals, todaysMeals, historyData]);
+
+  useEffect(() => {
+    // Initialize speech recognition if available
+    if ('webkitSpeechRecognition' in window) {
+      const recognition = new (window as any).webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'de-DE';
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setSpeechText(transcript);
+        handleVoiceMessage(transcript);
+      };
+      
+      recognition.onerror = () => {
+        setIsListening(false);
+        toast.error('Spracherkennung fehlgeschlagen');
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognitionRef.current = recognition;
+    }
+  }, []);
 
   const loadDailyGoals = async () => {
     if (!user) return;
@@ -133,10 +240,37 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   };
 
-  const generateRecommendations = async () => {
+  const generateAIAnalysis = async () => {
+    if (!user || !dailyGoals) return;
+    
+    setAnalysisLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('coach-analysis', {
+        body: {
+          dailyTotals: todaysTotals,
+          dailyGoal: dailyGoals.calories,
+          mealsCount: todaysMeals.length,
+          userData: { 
+            averages,
+            historyDays: historyData.length
+          }
+        }
+      });
+
+      if (error) throw error;
+      setAiAnalysis(data);
+    } catch (error: any) {
+      console.error('Error generating AI analysis:', error);
+      toast.error('Fehler bei der AI-Analyse');
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  const generateMealSuggestions = async () => {
     if (!user) return;
     
-    setLoading(true);
+    setSuggestionsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('coach-recipes', {
         headers: {
@@ -146,14 +280,124 @@ const Coach = ({ onClose }: CoachProps) => {
 
       if (error) throw error;
 
-      setRecommendations(data.recommendations);
-      setUserContext(data.userContext);
+      // Parse meal suggestions from the response
+      const suggestions = JSON.parse(data.recommendations || '[]');
+      setMealSuggestions(suggestions.meals || []);
       
     } catch (error: any) {
-      console.error('Error generating recommendations:', error);
-      toast.error('Fehler beim Erstellen der Empfehlungen');
+      console.error('Error generating meal suggestions:', error);
+      toast.error('Fehler bei Meal-Empfehlungen');
     } finally {
-      setLoading(false);
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const calculateTrends = () => {
+    if (historyData.length < 7) return;
+    
+    setTrendsLoading(true);
+    try {
+      const last7Days = historyData.slice(0, 7);
+      const last30Days = historyData.slice(0, 30);
+      
+      const weeklyAvg = last7Days.reduce((sum, day) => sum + day.totals.calories, 0) / 7;
+      const monthlyAvg = last30Days.reduce((sum, day) => sum + day.totals.calories, 0) / Math.min(30, last30Days.length);
+      
+      const goalReaches = last7Days.filter(day => day.totals.calories >= (dailyGoals?.calories || 1323) * 0.9).length;
+      const weeklyGoalReach = (goalReaches / 7) * 100;
+      
+      let trend: 'up' | 'down' | 'stable' = 'stable';
+      if (weeklyAvg > monthlyAvg * 1.05) trend = 'up';
+      else if (weeklyAvg < monthlyAvg * 0.95) trend = 'down';
+      
+      const improvement = trend === 'up' ? 
+        'Deine Kalorienzufuhr steigt - achte auf deine Ziele!' :
+        trend === 'down' ? 
+        'Du isst weniger - stelle sicher, dass du genug Energie bekommst!' :
+        'Deine Ernährung ist stabil - gut so!';
+      
+      setTrendData({
+        weeklyAverage: Math.round(weeklyAvg),
+        monthlyAverage: Math.round(monthlyAvg),
+        trend,
+        improvement,
+        weeklyGoalReach: Math.round(weeklyGoalReach)
+      });
+    } catch (error) {
+      console.error('Error calculating trends:', error);
+    } finally {
+      setTrendsLoading(false);
+    }
+  };
+
+  const startVoiceRecognition = () => {
+    if (recognitionRef.current && !isListening) {
+      setIsListening(true);
+      setSpeechText('');
+      recognitionRef.current.start();
+    }
+  };
+
+  const stopVoiceRecognition = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const handleVoiceMessage = async (message: string) => {
+    setChatLoading(true);
+    try {
+      // Process voice message with AI
+      const response = await supabase.functions.invoke('coach-analysis', {
+        body: {
+          voiceMessage: message,
+          context: { todaysTotals, dailyGoals, averages }
+        }
+      });
+      
+      if (response.data?.voiceResponse) {
+        setVoiceResponse(response.data.voiceResponse);
+        // Speak the response if speech synthesis is available
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(response.data.voiceResponse);
+          utterance.lang = 'de-DE';
+          speechSynthesis.speak(utterance);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing voice message:', error);
+      toast.error('Fehler bei Sprachverarbeitung');
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatMessage.trim()) return;
+    
+    const userMessage = chatMessage;
+    setChatMessage('');
+    setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatLoading(true);
+    
+    try {
+      const response = await supabase.functions.invoke('coach-analysis', {
+        body: {
+          chatMessage: userMessage,
+          context: { todaysTotals, dailyGoals, averages },
+          history: chatHistory
+        }
+      });
+      
+      if (response.data?.reply) {
+        setChatHistory(prev => [...prev, { role: 'assistant', content: response.data.reply }]);
+      }
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      toast.error('Fehler beim Senden der Nachricht');
+    } finally {
+      setChatLoading(false);
     }
   };
 
@@ -219,6 +463,26 @@ const Coach = ({ onClose }: CoachProps) => {
     toast.success('Anfrage für persönliches Gespräch wurde gesendet! 📞');
   };
 
+  const getMessageIcon = (type: string) => {
+    switch (type) {
+      case 'motivation': return <Heart className="h-4 w-4" />;
+      case 'tip': return <Lightbulb className="h-4 w-4" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4" />;
+      case 'analysis': return <Brain className="h-4 w-4" />;
+      default: return <Info className="h-4 w-4" />;
+    }
+  };
+
+  const getMessageColor = (type: string) => {
+    switch (type) {
+      case 'motivation': return 'text-green-600 bg-green-50 border-green-200';
+      case 'tip': return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'warning': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'analysis': return 'text-purple-600 bg-purple-50 border-purple-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
   // Calculate today's totals
   const todaysTotals = todaysMeals.reduce(
     (sum, meal) => ({
@@ -276,51 +540,341 @@ const Coach = ({ onClose }: CoachProps) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* AI Coaching Assistant - moved to top */}
+      {/* Enhanced AI Coach Tabs */}
       <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-background to-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-              <MessageCircle className="h-6 w-6 text-white" />
+              <Brain className="h-6 w-6 text-white" />
             </div>
             <div>
-              <div className="text-xl font-bold">AI Coach Assistant</div>
+              <div className="text-xl font-bold">Kalo Coach AI</div>
               <div className="text-sm text-muted-foreground font-normal">Dein intelligenter Ernährungsberater</div>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 mb-6 border border-border/50">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                <div className="text-lg">🤖</div>
+          <Tabs defaultValue="analysis" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="analysis" className="flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Analyse
+              </TabsTrigger>
+              <TabsTrigger value="suggestions" className="flex items-center gap-2">
+                <ChefHat className="h-4 w-4" />
+                Rezepte
+              </TabsTrigger>
+              <TabsTrigger value="trends" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Trends
+              </TabsTrigger>
+              <TabsTrigger value="voice" className="flex items-center gap-2">
+                <Mic className="h-4 w-4" />
+                Voice
+              </TabsTrigger>
+            </TabsList>
+
+            {/* AI Analysis Tab */}
+            <TabsContent value="analysis" className="space-y-4">
+              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+                {analysisLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-3">AI analysiert deine Daten...</span>
+                  </div>
+                ) : aiAnalysis ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Tägliche Analyse</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Score:</span>
+                        <Badge variant={aiAnalysis.dailyScore >= 8 ? "default" : aiAnalysis.dailyScore >= 6 ? "secondary" : "destructive"}>
+                          {aiAnalysis.dailyScore}/10
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-muted-foreground font-medium">{aiAnalysis.summary}</p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {aiAnalysis.messages.map((message, index) => (
+                        <div key={index} className={`p-4 rounded-lg border ${getMessageColor(message.type)}`}>
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {getMessageIcon(message.type)}
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm mb-1">{message.title}</h4>
+                              <p className="text-sm opacity-80">{message.message}</p>
+                            </div>
+                            <Badge variant="outline">
+                              {message.priority}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-8">
+                    <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Noch keine AI-Analyse verfügbar</p>
+                    <Button onClick={generateAIAnalysis} className="mt-4">
+                      Analyse starten
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="flex-1">
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                  {generateBotMessage()}
+            </TabsContent>
+
+            {/* Meal Suggestions Tab */}
+            <TabsContent value="suggestions" className="space-y-4">
+              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+                {suggestionsLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-3">Meal-Empfehlungen werden erstellt...</span>
+                  </div>
+                ) : mealSuggestions.length > 0 ? (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold mb-4">Personalisierte Rezept-Empfehlungen</h3>
+                    <div className="grid gap-4">
+                      {mealSuggestions.slice(0, 3).map((meal, index) => (
+                        <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-medium text-lg">{meal.name}</h4>
+                            <Badge variant="outline">{meal.mealType}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3">{meal.description}</p>
+                          
+                          <div className="grid grid-cols-4 gap-2 mb-3 text-sm">
+                            <div className="text-center p-2 bg-primary/5 rounded">
+                              <div className="font-bold">{meal.calories}</div>
+                              <div className="text-xs text-muted-foreground">kcal</div>
+                            </div>
+                            <div className="text-center p-2 bg-protein/10 rounded">
+                              <div className="font-bold">{meal.protein}g</div>
+                              <div className="text-xs text-muted-foreground">Protein</div>
+                            </div>
+                            <div className="text-center p-2 bg-carbs/10 rounded">
+                              <div className="font-bold">{meal.carbs}g</div>
+                              <div className="text-xs text-muted-foreground">Carbs</div>
+                            </div>
+                            <div className="text-center p-2 bg-fats/10 rounded">
+                              <div className="font-bold">{meal.fats}g</div>
+                              <div className="text-xs text-muted-foreground">Fette</div>
+                            </div>
+                          </div>
+                          
+                          <Collapsible>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="sm" className="w-full">
+                                Details anzeigen <ChevronDown className="h-4 w-4 ml-2" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-3 space-y-3">
+                              <div>
+                                <h5 className="font-medium text-sm mb-2">Zutaten:</h5>
+                                <ul className="text-sm text-muted-foreground space-y-1">
+                                  {meal.ingredients.map((ingredient, i) => (
+                                    <li key={i}>• {ingredient}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <h5 className="font-medium text-sm mb-2">Zubereitung:</h5>
+                                <p className="text-sm text-muted-foreground">{meal.preparation}</p>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-8">
+                    <ChefHat className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Noch keine Rezept-Empfehlungen verfügbar</p>
+                    <Button onClick={generateMealSuggestions} className="mt-4">
+                      Rezepte generieren
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Trends Tab */}
+            <TabsContent value="trends" className="space-y-4">
+              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+                {trendsLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-3">Trends werden berechnet...</span>
+                  </div>
+                ) : trendData ? (
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold">Ernährungs-Trends</h3>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Calendar className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold text-blue-600">{trendData.weeklyAverage}</div>
+                            <div className="text-sm text-muted-foreground">kcal Wochendurchschnitt</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <BarChart3 className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold text-purple-600">{trendData.monthlyAverage}</div>
+                            <div className="text-sm text-muted-foreground">kcal Monatsdurchschnitt</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                            trendData.trend === 'up' ? 'bg-green-100' : 
+                            trendData.trend === 'down' ? 'bg-red-100' : 'bg-gray-100'
+                          }`}>
+                            {trendData.trend === 'up' ? (
+                              <TrendingUp className="h-5 w-5 text-green-600" />
+                            ) : trendData.trend === 'down' ? (
+                              <TrendingDown className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <Target className="h-5 w-5 text-gray-600" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">Trend: {trendData.trend === 'up' ? 'Steigend' : trendData.trend === 'down' ? 'Fallend' : 'Stabil'}</div>
+                            <div className="text-xs text-muted-foreground">Letzte 7 vs 30 Tage</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <Award className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <div className="text-2xl font-bold text-orange-600">{trendData.weeklyGoalReach}%</div>
+                            <div className="text-sm text-muted-foreground">Zielerreichung (7 Tage)</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4" />
+                        Empfehlung
+                      </h4>
+                      <p className="text-sm text-muted-foreground">{trendData.improvement}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-8">
+                    <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Mindestens 7 Tage Daten für Trend-Analyse benötigt</p>
+                    <Button onClick={calculateTrends} className="mt-4" disabled={historyData.length < 7}>
+                      Trends berechnen
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Voice Coaching Tab */}
+            <TabsContent value="voice" className="space-y-4">
+              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+                <h3 className="text-lg font-semibold mb-4">Voice Coaching</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center">
+                    <Button
+                      size="lg"
+                      variant={isListening ? "destructive" : "default"}
+                      onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+                      className="h-20 w-20 rounded-full"
+                      disabled={!('webkitSpeechRecognition' in window)}
+                    >
+                      {isListening ? (
+                        <MicOff className="h-8 w-8" />
+                      ) : (
+                        <Mic className="h-8 w-8" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {isListening ? 'Höre zu...' : 'Klicke um zu sprechen'}
+                    </p>
+                  </div>
+                  
+                  {speechText && (
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <h4 className="font-medium text-sm mb-2">Du hast gesagt:</h4>
+                      <p className="text-sm">{speechText}</p>
+                    </div>
+                  )}
+                  
+                  {voiceResponse && (
+                    <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+                      <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                        <div className="text-lg">🤖</div>
+                        Coach Antwort:
+                      </h4>
+                      <p className="text-sm">{voiceResponse}</p>
+                    </div>
+                  )}
+                  
+                  {/* Text Chat as fallback */}
+                  <Separator />
+                  
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Text Chat</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {chatHistory.map((message, index) => (
+                        <div key={index} className={`p-3 rounded-lg ${
+                          message.role === 'user' ? 'bg-primary/10 ml-4' : 'bg-muted/50 mr-4'
+                        }`}>
+                          <p className="text-sm">{message.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Textarea
+                        placeholder="Stelle eine Frage zum Coach..."
+                        value={chatMessage}
+                        onChange={(e) => setChatMessage(e.target.value)}
+                        className="flex-1"
+                        rows={2}
+                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendChatMessage())}
+                      />
+                      <Button 
+                        onClick={sendChatMessage} 
+                        disabled={!chatMessage.trim() || chatLoading}
+                        size="icon"
+                        className="h-auto"
+                      >
+                        {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              variant="outline" 
-              className="flex-1 min-w-0"
-              onClick={() => toast.info("Chat-Funktion kommt bald! 💬")}
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Chat starten
-            </Button>
-            <Button 
-              variant="outline"
-              className="flex-1 min-w-0"
-              onClick={() => toast.info("Sprachfunktion kommt bald! 🎙️")}
-            >
-              <div className="text-lg mr-2">🎙️</div>
-              Sprechen
-            </Button>
-          </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
