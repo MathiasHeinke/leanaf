@@ -35,30 +35,6 @@ export const GlobalHeader = ({
   const location = useLocation();
   const { language, setLanguage } = useTranslation();
 
-  // Listen for navigation events
-  useEffect(() => {
-    const handleCoachNavigation = () => {
-      setCurrentActiveView('coach');
-    };
-    
-    const handleMainNavigation = () => {
-      setCurrentActiveView('main');
-    };
-
-    const handleHistoryNavigation = () => {
-      setCurrentActiveView('history');
-    };
-
-    window.addEventListener('navigate-coach', handleCoachNavigation);
-    window.addEventListener('navigate-main', handleMainNavigation);
-    window.addEventListener('navigate-history', handleHistoryNavigation);
-
-    return () => {
-      window.removeEventListener('navigate-coach', handleCoachNavigation);
-      window.removeEventListener('navigate-main', handleMainNavigation);
-      window.removeEventListener('navigate-history', handleHistoryNavigation);
-    };
-  }, []);
 
   // Handle navigation to different views
   const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => {
@@ -70,16 +46,12 @@ export const GlobalHeader = ({
       switch (view) {
         case 'main':
           navigate('/');
-          window.dispatchEvent(new CustomEvent('navigate-main'));
           break;
         case 'coach':
-          navigate('/');
-          window.dispatchEvent(new CustomEvent('navigate-coach'));
+          navigate('/coach');
           break;
         case 'history':
-          // Dispatch event first, then navigate to avoid race condition
-          window.dispatchEvent(new CustomEvent('navigate-history'));
-          navigate('/');
+          navigate('/history');
           break;
         case 'profile':
           navigate('/profile');
@@ -112,13 +84,13 @@ export const GlobalHeader = ({
 
   // Determine current active tab
   const getActiveTab = () => {
-    // If we're on the main page, use the internal state
-    if (location.pathname === '/') {
-      return currentActiveView;
-    }
-    
-    // For other routes, use the pathname
     switch (location.pathname) {
+      case '/':
+        return 'main';
+      case '/coach':
+        return 'coach';
+      case '/history':
+        return 'history';
       case '/profile':
         return 'profile';
       case '/subscription':

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 interface CoachProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 interface DailyGoal {

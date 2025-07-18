@@ -67,12 +67,12 @@ interface DailyData {
 }
 
 interface HistoryProps {
-  onClose: () => void;
-  dailyGoal: DailyGoal;
+  onClose?: () => void;
+  dailyGoal?: DailyGoal;
   onAddMeal?: (selectedDate: string) => void;
 }
 
-const History = ({ onClose, dailyGoal, onAddMeal }: HistoryProps) => {
+const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 250, fats: 65 }, onAddMeal }: HistoryProps) => {
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
   const [historyData, setHistoryData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
