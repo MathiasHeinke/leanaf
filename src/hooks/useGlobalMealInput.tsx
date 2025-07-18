@@ -28,8 +28,8 @@ export const useGlobalMealInput = () => {
   };
 
   const handleSubmitMeal = async () => {
-    if (!inputText.trim()) {
-      toast.error('Bitte Text eingeben');
+    if (!inputText.trim() && uploadedImages.length === 0) {
+      toast.error('Bitte Text eingeben oder Bilder hochladen');
       return;
     }
 
@@ -40,7 +40,7 @@ export const useGlobalMealInput = () => {
       
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
-          text: inputText,
+          text: inputText || 'Analysiere diese Mahlzeit',
           images: hasImages ? uploadedImages : undefined
         },
       });
@@ -48,34 +48,11 @@ export const useGlobalMealInput = () => {
       if (error) throw error;
       if (!data || !data.total) throw new Error('Ungültige Antwort');
 
-      if (hasImages) {
-        setAnalyzedMealData(data);
-        setSelectedMealType(getCurrentMealType());
-        setShowConfirmationDialog(true);
-      } else {
-        // Direct save for text-only
-        const newMeal = {
-          user_id: user?.id,
-          text: inputText,
-          calories: Math.round(data.total.calories),
-          protein: Math.round(data.total.protein),
-          carbs: Math.round(data.total.carbs),
-          fats: Math.round(data.total.fats),
-          meal_type: getCurrentMealType()
-        };
-
-        const { error: insertError } = await supabase
-          .from('meals')
-          .insert([newMeal]);
-
-        if (insertError) throw insertError;
-
-        setInputText("");
-        toast.success('Mahlzeit hinzugefügt!');
-        
-        // Trigger refresh event
-        window.dispatchEvent(new CustomEvent('meal-added'));
-      }
+      // Always show confirmation dialog for review
+      setAnalyzedMealData(data);
+      setSelectedMealType(getCurrentMealType());
+      setShowConfirmationDialog(true);
+      
     } catch (error: any) {
       console.error('Error analyzing meal:', error);
       toast.error(error.message || 'Fehler beim Analysieren');
@@ -104,7 +81,7 @@ export const useGlobalMealInput = () => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
     
-    if (files.length > 5) {
+    if (uploadedImages.length + files.length > 5) {
       toast.error('Maximal 5 Bilder erlaubt');
       return;
     }
@@ -143,21 +120,8 @@ export const useGlobalMealInput = () => {
         uploadedUrls.push(urlData.publicUrl);
       }
       
-      setUploadedImages(uploadedUrls);
-      
-      const { data, error } = await supabase.functions.invoke('analyze-meal', {
-        body: { 
-          text: inputText || 'Analysiere diese Mahlzeit',
-          images: uploadedUrls
-        },
-      });
-      
-      if (error) throw new Error(`Analyse fehlgeschlagen: ${error.message}`);
-      if (!data || !data.total) throw new Error('Ungültige Antwort vom Analysedienst');
-      
-      setAnalyzedMealData(data);
-      setSelectedMealType(getCurrentMealType());
-      setShowConfirmationDialog(true);
+      setUploadedImages(prev => [...prev, ...uploadedUrls]);
+      toast.success(`${uploadedUrls.length} Bild(er) hochgeladen`);
       
     } catch (error: any) {
       console.error('Error in photo upload:', error);
@@ -166,6 +130,10 @@ export const useGlobalMealInput = () => {
       setIsAnalyzing(false);
       event.target.value = '';
     }
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   return {
@@ -184,6 +152,7 @@ export const useGlobalMealInput = () => {
     setSelectedMealType,
     uploadedImages,
     setUploadedImages,
-    setAnalyzedMealData
+    setAnalyzedMealData,
+    removeImage
   };
 };

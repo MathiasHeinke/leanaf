@@ -40,6 +40,8 @@ export const Layout = ({ children }: LayoutProps) => {
           isAnalyzing={mealInputProps.isAnalyzing}
           isRecording={mealInputProps.isRecording}
           isProcessing={mealInputProps.isProcessing}
+          uploadedImages={mealInputProps.uploadedImages}
+          onRemoveImage={mealInputProps.removeImage}
         />
       )}
     </div>

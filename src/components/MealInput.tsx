@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Camera, Mic, Send, StopCircle, ImagePlus } from "lucide-react";
+import { Camera, Mic, Send, StopCircle, ImagePlus, X } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
 interface MealInputProps {
@@ -14,6 +14,8 @@ interface MealInputProps {
   isAnalyzing: boolean;
   isRecording: boolean;
   isProcessing: boolean;
+  uploadedImages: string[];
+  onRemoveImage: (index: number) => void;
 }
 
 export const MealInput = ({
@@ -24,13 +26,36 @@ export const MealInput = ({
   onVoiceRecord,
   isAnalyzing,
   isRecording,
-  isProcessing
+  isProcessing,
+  uploadedImages,
+  onRemoveImage
 }: MealInputProps) => {
   const { t } = useTranslation();
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50">
       <div className="max-w-sm mx-auto">
+        {/* Image Thumbnails */}
+        {uploadedImages.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {uploadedImages.map((imageUrl, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={imageUrl}
+                  alt={`Uploaded ${index + 1}`}
+                  className="w-16 h-16 object-cover rounded-lg border-2 border-primary/20"
+                />
+                <button
+                  onClick={() => onRemoveImage(index)}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
         <Card className="p-3 shadow-xl border-2 border-primary/20 bg-background/95 backdrop-blur">
           <div className="flex items-end gap-2">
             {/* Text Input */}
@@ -120,7 +145,7 @@ export const MealInput = ({
                 size="sm"
                 className="h-8 w-8 p-0"
                 onClick={onSubmitMeal}
-                disabled={!inputText.trim() || isAnalyzing}
+                disabled={(!inputText.trim() && uploadedImages.length === 0) || isAnalyzing}
               >
                 {isAnalyzing ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
