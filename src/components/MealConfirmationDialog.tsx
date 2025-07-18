@@ -52,6 +52,37 @@ export const MealConfirmationDialog = ({
 
   // State for meal date
   const [mealDate, setMealDate] = useState<Date>(new Date());
+  
+  // State for coach personality
+  const [coachPersonality, setCoachPersonality] = useState<string>('motivierend');
+
+  // Fetch user's coach personality
+  useEffect(() => {
+    const fetchCoachPersonality = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('coach_personality')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching coach personality:', error);
+          return;
+        }
+        
+        if (data?.coach_personality) {
+          setCoachPersonality(data.coach_personality);
+        }
+      } catch (error) {
+        console.error('Error fetching coach personality:', error);
+      }
+    };
+
+    fetchCoachPersonality();
+  }, [user?.id]);
 
   // Initialize editable values when dialog opens
   useEffect(() => {
@@ -66,6 +97,25 @@ export const MealConfirmationDialog = ({
       setMealDate(new Date());
     }
   }, [analyzedMealData, isOpen]);
+
+  // Generate coach comment based on personality
+  const getCoachComment = () => {
+    const mealTitle = analyzedMealData?.title || 'diese Mahlzeit';
+    
+    switch (coachPersonality) {
+      case 'hart':
+        return `💪 ${mealTitle}? Solide Wahl! Prüf die Nährwerte und dann ran an die Arbeit - deine Ziele warten nicht!`;
+      case 'soft':
+        return `🌟 ${mealTitle} sieht wunderbar aus! Schau dir die Nährwerte in Ruhe an - du machst das großartig.`;
+      case 'lustig':
+        return `😄 ${mealTitle}! Nicht schlecht für einen Anfänger! 😉 Check die Nährwerte und lass uns weitermachen!`;
+      case 'ironisch':
+        return `🤔 ${mealTitle}... interessante Wahl. Schau dir mal die Nährwerte an - vielleicht überrascht es dich.`;
+      case 'motivierend':
+      default:
+        return `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher. Schau dir die Nährwerte an und passe sie bei Bedarf an.`;
+    }
+  };
 
   const handleValueChange = (field: string, value: string) => {
     const numValue = parseFloat(value) || 0;
@@ -121,7 +171,7 @@ export const MealConfirmationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Mahlzeit bestätigen & bearbeiten</AlertDialogTitle>
           <AlertDialogDescription>
-            💪 Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher. Schau dir die Nährwerte an und passe sie bei Bedarf an.
+            {getCoachComment()}
           </AlertDialogDescription>
         </AlertDialogHeader>
         
