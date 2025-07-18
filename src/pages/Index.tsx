@@ -257,7 +257,7 @@ const Index = () => {
       }
       
       if (showRefreshIndicator) {
-        toast.success('Daten aktualisiert');
+        toast.success(t('common.dataUpdated'));
       }
     } catch (error: any) {
       console.error('Error loading user data:', error);
@@ -373,7 +373,7 @@ const Index = () => {
           <RandomQuote 
             userGender={profileData?.gender} 
             refreshTrigger={quoteRefreshTrigger}
-            fallbackText="Bleib motiviert! 💪"
+            fallbackText={t('motivation.fallback')}
           />
         </div>
 

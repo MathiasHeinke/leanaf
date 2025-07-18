@@ -174,6 +174,10 @@ const translations = {
     'common.success': 'Erfolgreich',
     'common.yes': 'Ja',
     'common.no': 'Nein',
+    'common.dataUpdated': 'Daten aktualisiert',
+    
+    // Loading messages
+    'loading.userData': 'Lade Benutzerdaten...',
     
     // Specific UI elements
     'ui.remaining': 'verbleibend',
@@ -195,6 +199,7 @@ const translations = {
     'motivation.perfect': 'Perfekt! 🎉 Ziel erreicht - du bist fantastisch!',
     'motivation.over': 'Nicht schlimm! 😊 Morgen ist ein neuer Tag!',
     'motivation.discipline': 'Super Disziplin! 🎯 Bleib dran, du schaffst das!',
+    'motivation.fallback': 'Bleib motiviert! 💪'
   },
   en: {
     // Navigation
@@ -353,6 +358,10 @@ const translations = {
     'common.success': 'Success',
     'common.yes': 'Yes',
     'common.no': 'No',
+    'common.dataUpdated': 'Data updated',
+    
+    // Loading messages
+    'loading.userData': 'Loading user data...',
     
     // Specific UI elements
     'ui.remaining': 'remaining',
@@ -374,6 +383,7 @@ const translations = {
     'motivation.perfect': 'Perfect! 🎉 Goal achieved - you\'re fantastic!',
     'motivation.over': 'No worries! 😊 Tomorrow is a new day!',
     'motivation.discipline': 'Super discipline! 🎯 Stay strong, you can do it!',
+    'motivation.fallback': 'Stay motivated! 💪'
   },
 };
 
