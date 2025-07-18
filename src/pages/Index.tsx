@@ -1821,32 +1821,33 @@ const Index = () => {
                   </div>
                 </div>
                 
-                {/* Date selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="mealDate">Datum:</Label>
-                  <Input
-                    id="mealDate"
-                    type="date"
-                    value={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString())}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Meal type selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
-                  <Select value={selectedMealType} onValueChange={setSelectedMealType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Wähle einen Typ" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="breakfast">Frühstück</SelectItem>
-                      <SelectItem value="lunch">Mittagessen</SelectItem>
-                      <SelectItem value="dinner">Abendessen</SelectItem>
-                      <SelectItem value="snack">Snack</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {/* Date and Meal type selection - side by side */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="mealDate">Datum:</Label>
+                    <Input
+                      id="mealDate"
+                      type="date"
+                      value={selectedDate ? new Date(selectedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setSelectedDate(e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString())}
+                      className="w-full"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="mealType">Mahlzeit-Typ:</Label>
+                    <Select value={selectedMealType} onValueChange={setSelectedMealType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Wähle einen Typ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="breakfast">Frühstück</SelectItem>
+                        <SelectItem value="lunch">Mittagessen</SelectItem>
+                        <SelectItem value="dinner">Abendessen</SelectItem>
+                        <SelectItem value="snack">Snack</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             )}
