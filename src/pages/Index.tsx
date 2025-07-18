@@ -409,17 +409,24 @@ const Index = () => {
         }
       }
 
-      // Load today's meals - use user's local timezone
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      // Load meals for the selected date or today
+      const targetDate = selectedDate ? new Date(selectedDate) : new Date();
+      const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      const startOfNextDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+      
+      console.log('Loading meals for date:', {
+        selectedDate,
+        targetDate: targetDate.toISOString(),
+        startOfDay: startOfDay.toISOString(),
+        startOfNextDay: startOfNextDay.toISOString()
+      });
       
       const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
         .select('*')
         .eq('user_id', user?.id)
-        .gte('created_at', startOfToday.toISOString())
-        .lt('created_at', startOfTomorrow.toISOString())
+        .gte('created_at', startOfDay.toISOString())
+        .lt('created_at', startOfNextDay.toISOString())
         .order('created_at', { ascending: false });
 
       if (mealsError) {
