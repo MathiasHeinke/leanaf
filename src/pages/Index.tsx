@@ -1783,17 +1783,69 @@ const Index = () => {
                   </div>
                 )}
                 
-                {/* Only show nutritional data if we have valid data */}
+                {/* Editable nutritional data */}
                 {analyzedMealData.total.calories > 0 && (
-                  <div className="grid grid-cols-2 gap-2 text-sm bg-muted/50 p-3 rounded-lg">
-                    <div className="font-medium">Kalorien:</div>
-                    <div>{Math.round(analyzedMealData.total.calories)} kcal</div>
-                    <div className="font-medium">Protein:</div>
-                    <div>{Math.round(analyzedMealData.total.protein)}g</div>
-                    <div className="font-medium">Kohlenhydrate:</div>
-                    <div>{Math.round(analyzedMealData.total.carbs)}g</div>
-                    <div className="font-medium">Fett:</div>
-                    <div>{Math.round(analyzedMealData.total.fats)}g</div>
+                  <div className="grid grid-cols-2 gap-3 p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Kalorien:</label>
+                      <Input
+                        type="number"
+                        value={Math.round(analyzedMealData.total.calories)}
+                        onChange={(e) => {
+                          const calories = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, calories }
+                          });
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Protein:</label>
+                      <Input
+                        type="number"
+                        value={Math.round(analyzedMealData.total.protein)}
+                        onChange={(e) => {
+                          const protein = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, protein }
+                          });
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Kohlenhydrate:</label>
+                      <Input
+                        type="number"
+                        value={Math.round(analyzedMealData.total.carbs)}
+                        onChange={(e) => {
+                          const carbs = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, carbs }
+                          });
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Fett:</label>
+                      <Input
+                        type="number"
+                        value={Math.round(analyzedMealData.total.fats)}
+                        onChange={(e) => {
+                          const fats = parseInt(e.target.value) || 0;
+                          setAnalyzedMealData({
+                            ...analyzedMealData,
+                            total: { ...analyzedMealData.total, fats }
+                          });
+                        }}
+                        className="h-8"
+                      />
+                    </div>
                   </div>
                 )}
                 
