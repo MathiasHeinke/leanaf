@@ -1826,7 +1826,7 @@ const Index = () => {
       
       {/* Confirmation Dialog for Image Analysis */}
       <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedDate ? `Mahlzeit für ${new Date(selectedDate).toLocaleDateString('de-DE')} hinzufügen` : 'Mahlzeit bestätigen'}
@@ -1965,7 +1965,7 @@ const Index = () => {
                 )}
                 
                 {/* Chat Input */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="font-medium text-sm">
                     Weitere Mahlzeit oder Änderungen?
                   </div>
