@@ -1937,17 +1937,13 @@ const Index = () => {
                 
                 {/* Chat Input */}
                 <div className="space-y-3">
-                  <div className="text-sm text-muted-foreground">
-                    weitere Mahlzeit oder Änderungen?
+                  <div className="font-medium text-sm">
+                    Weitere Mahlzeit oder Änderungen?
                   </div>
                   
                   {/* Chat Messages */}
                   <div className="max-h-32 overflow-y-auto space-y-2 bg-muted/30 p-2 rounded-lg">
-                    {chatMessages.length === 0 ? (
-                      <div className="text-sm text-muted-foreground text-center py-2">
-                        Weitere Details verfügbar...
-                      </div>
-                    ) : (
+                    {chatMessages.length > 0 && (
                       chatMessages.map((msg, index) => (
                         <div key={index} className={`text-sm p-2 rounded ${
                           msg.role === 'user' 
