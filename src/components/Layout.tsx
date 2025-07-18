@@ -13,7 +13,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   
   // Pages where floating meal input should be shown
-  const showMealInput = ['/', '/history', '/coach'].includes(location.pathname);
+  const showMealInput = ['/', '/history'].includes(location.pathname);
   
   const mealInputProps = useGlobalMealInput();
 
