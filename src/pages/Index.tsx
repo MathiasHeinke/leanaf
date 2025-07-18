@@ -1935,11 +1935,10 @@ const Index = () => {
                   </div>
                 )}
                 
-                {/* Chat with AI Assistant */}
+                {/* Chat Input */}
                 <div className="space-y-3">
-                  <div className="font-medium text-sm flex items-center gap-2">
-                    <MessageCircle className="h-4 w-4" />
-                    Chat mit KI-Assistent
+                  <div className="text-sm text-muted-foreground">
+                    weitere Mahlzeit oder Änderungen?
                   </div>
                   
                   {/* Chat Messages */}
@@ -1966,7 +1965,7 @@ const Index = () => {
                     <Input
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="weitere Mahlzeit oder Änderungen?"
+                      placeholder="Mahlzeit eingeben..."
                       className="flex-1"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
