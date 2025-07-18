@@ -25,6 +25,11 @@ export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
   
+  // Don't show header on auth page - early return BEFORE hook calls
+  if (location.pathname === '/auth' || !user) {
+    return <>{children}</>;
+  }
+  
   // Pages where floating meal input should be shown (exclude coach page)
   const showMealInput = ['/', '/history'].includes(location.pathname);
   
@@ -65,11 +70,6 @@ export const Layout = ({ children }: LayoutProps) => {
       toast.error('Fehler beim Speichern der Mahlzeit');
     }
   };
-
-  // Don't show header on auth page
-  if (location.pathname === '/auth' || !user) {
-    return <>{children}</>;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/20">
