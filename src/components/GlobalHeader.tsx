@@ -111,7 +111,7 @@ export const GlobalHeader = ({
             <Activity className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            KaloTracker
+            kaloAI
           </h1>
         </div>
         

@@ -27,8 +27,8 @@ const translations = {
     'nav.logout': 'Abmelden',
     
     // Main App
-    'app.title': 'KaloTracker',
-    'app.welcome': 'Willkommen bei KaloTracker',
+    'app.title': 'kaloAI',
+    'app.welcome': 'Willkommen bei kaloAI',
     'app.dailyProgress': 'Täglicher Fortschritt',
     'app.calories': 'Kalorien',
     'app.protein': 'Protein',
@@ -184,8 +184,8 @@ const translations = {
     'nav.logout': 'Logout',
     
     // Main App
-    'app.title': 'KaloTracker',
-    'app.welcome': 'Welcome to KaloTracker',
+    'app.title': 'kaloAI',
+    'app.welcome': 'Welcome to kaloAI',
     'app.dailyProgress': 'Daily Progress',
     'app.calories': 'Calories',
     'app.protein': 'Protein',
