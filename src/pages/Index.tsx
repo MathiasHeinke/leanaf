@@ -168,7 +168,8 @@ const Index = () => {
 
       if (profileError) {
         console.error('Profile error:', profileError);
-        throw profileError;
+        toast.error('Fehler beim Laden des Profils');
+        return;
       }
 
       console.log('Profile data loaded:', profileData);
