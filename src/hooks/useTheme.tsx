@@ -24,7 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("preferred_theme, gender")
+            .select("*")
             .eq("user_id", user.id)
             .single();
 
@@ -62,7 +62,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       try {
         await supabase
           .from("profiles")
-          .update({ preferred_theme: newTheme })
+          .update({ preferred_theme: newTheme } as any)
           .eq("user_id", user.id);
       } catch (error) {
         console.error("Error saving theme:", error);
