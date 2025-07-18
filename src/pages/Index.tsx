@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Coach from "@/components/Coach";
@@ -94,14 +95,11 @@ interface ProfileData {
 
 const Index = () => {
   const [inputText, setInputText] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [currentView, setCurrentView] = useState<'main' | 'coach' | 'history' | 'profile' | 'subscription'>('main');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -122,6 +120,7 @@ const Index = () => {
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
+  const { isRecording, isProcessing, startRecording, stopRecording } = useVoiceRecording();
   const navigate = useNavigate();
 
   // Check authentication
@@ -628,80 +627,19 @@ const Index = () => {
   };
 
   const handleVoiceRecord = async () => {
-    if (!isRecording) {
-      try {
-        console.log('Starting voice recording...');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
-        const chunks: Blob[] = [];
-
-        recorder.ondataavailable = (event) => {
-          chunks.push(event.data);
-        };
-
-        recorder.onstop = async () => {
-          const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-          await processAudioRecording(audioBlob);
-          stream.getTracks().forEach(track => track.stop());
-        };
-
-        recorder.start();
-        setMediaRecorder(recorder);
-        setAudioChunks(chunks);
-        setIsRecording(true);
-        toast.info(t('input.recording'));
-      } catch (error) {
-        console.error('Error starting recording:', error);
-        toast.error('Mikrofonzugriff verweigert');
+    if (isRecording) {
+      console.log('Stopping voice recording...');
+      const transcribedText = await stopRecording();
+      if (transcribedText) {
+        setInputText(prev => prev ? prev + ' ' + transcribedText : transcribedText);
+        console.log('Transcribed text added to input:', transcribedText);
       }
     } else {
-      console.log('Stopping voice recording...');
-      if (mediaRecorder) {
-        mediaRecorder.stop();
-        setMediaRecorder(null);
-        setIsRecording(false);
-      }
+      console.log('Starting voice recording...');
+      await startRecording();
     }
   };
 
-  const processAudioRecording = async (audioBlob: Blob) => {
-    try {
-      console.log('Processing audio recording...');
-      toast.info('Verarbeite Spracheingabe...');
-      
-      // Convert to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        
-        try {
-          const { data, error } = await supabase.functions.invoke('voice-to-text', {
-            body: { audio: base64 },
-          });
-
-          if (error) {
-            console.error('Voice-to-text error:', error);
-            throw error;
-          }
-
-          if (data.text) {
-            setInputText(data.text);
-            toast.success('Sprache erkannt: ' + data.text);
-          } else {
-            toast.error('Keine Sprache erkannt');
-          }
-        } catch (error) {
-          console.error('Error processing voice:', error);
-          toast.error('Fehler bei der Spracherkennung');
-        }
-      };
-      
-      reader.readAsDataURL(audioBlob);
-    } catch (error) {
-      console.error('Error processing audio:', error);
-      toast.error('Fehler bei der Audioverarbeitung');
-    }
-  };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -1656,15 +1594,17 @@ const Index = () => {
                     variant="ghost"
                     size="sm"
                     className={`h-8 w-8 p-0 transition-all duration-200 ${
-                      isRecording 
+                      isRecording || isProcessing
                         ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
                         : 'hover:bg-primary/10'
                     }`}
                     onClick={handleVoiceRecord}
-                    disabled={isAnalyzing}
+                    disabled={isAnalyzing || isProcessing}
                   >
                     {isRecording ? (
                       <StopCircle className="h-4 w-4" />
+                    ) : isProcessing ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                     ) : (
                       <Mic className="h-4 w-4" />
                     )}
@@ -1687,14 +1627,14 @@ const Index = () => {
               </div>
               
               {/* Recording Indicator */}
-              {isRecording && (
+              {(isRecording || isProcessing) && (
                 <div className="mt-2 flex items-center gap-2 text-sm text-red-500">
                   <div className="flex gap-1">
                     <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
                     <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
                     <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
                   </div>
-                  <span>{t('input.recording')}</span>
+                  <span>{isRecording ? t('input.recording') : 'Verarbeitung...'}</span>
                 </div>
               )}
             </Card>

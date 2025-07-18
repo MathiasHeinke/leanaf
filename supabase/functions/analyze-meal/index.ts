@@ -88,6 +88,7 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
         messages,
         max_tokens: 1000,
         temperature: 0.3,
+        response_format: { type: "json_object" }
       }),
     });
 
