@@ -296,6 +296,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         fats_percentage: dailyGoals.fats,
         bmr: bmr ? Math.round(bmr) : null,
         tdee: tdee,
+      }, {
+        onConflict: 'user_id'
       });
 
     if (goalsError) {
@@ -490,13 +492,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <div className="h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center">
                 <div className="h-2 w-2 bg-white rounded-full" />
               </div>
-              Körperdaten
+              {t('profile.bodyMetrics')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="startWeight">Startgewicht (kg)</Label>
+                <Label htmlFor="startWeight">{t('profile.startWeight')}</Label>
                 <Input
                   id="startWeight"
                   type="number"
@@ -559,13 +561,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-purple-500" />
-              Coach-Einstellungen
+              {t('profile.coachSettings')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Coach Persönlichkeit */}
             <div className="space-y-3">
-              <Label htmlFor="coachPersonality">Coach-Persönlichkeit</Label>
+              <Label htmlFor="coachPersonality">{t('profile.coachPersonality')}</Label>
               <Select value={coachPersonality} onValueChange={setCoachPersonality}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -659,7 +661,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-amber-500" />
-              Makro-Strategien
+              {t('profile.macroStrategies')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -870,21 +872,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <div className="h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center">
                   <div className="h-2 w-2 bg-white rounded-full" />
                 </div>
-                Kalorienberechnung
+                {t('profile.calorieCalculation')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-blue-50 rounded-lg text-center">
-                  <div className="text-sm font-medium text-blue-700">Grundumsatz</div>
+                  <div className="text-sm font-medium text-blue-700">{t('profile.bmr')}</div>
                   <div className="text-xl font-bold text-blue-800">{calculateBMR()?.toFixed(0)} kcal</div>
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg text-center">
-                  <div className="text-sm font-medium text-green-700">Gesamtumsatz</div>
+                  <div className="text-sm font-medium text-green-700">{t('profile.tdee')}</div>
                   <div className="text-xl font-bold text-green-800">{calculateMaintenanceCalories()} kcal</div>
                 </div>
                 <div className="p-4 bg-primary/10 rounded-lg text-center">
-                  <div className="text-sm font-medium text-primary">Zielkalorien</div>
+                  <div className="text-sm font-medium text-primary">{t('profile.targetCalories')}</div>
                   <div className="text-xl font-bold text-primary">{calculateTargetCalories()} kcal</div>
                 </div>
               </div>
@@ -902,12 +904,12 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     placeholder="300"
                   />
                   <p className="text-xs text-muted-foreground">
-                    {goal === 'lose' ? 'Kalorien unter Gesamtumsatz' : goal === 'gain' ? 'Kalorien über Gesamtumsatz' : 'Kalorienanpassung'}
+                    {goal === 'lose' ? t('profile.calorieDeficit') : goal === 'gain' ? t('profile.calorieOverage') : t('profile.calorieAdjustment')}
                   </p>
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium mb-3 block">Makronährstoff-Verteilung (%)</Label>
+                  <Label className="text-sm font-medium mb-3 block">{t('profile.macroDistribution')}</Label>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="proteinPercent" className="text-xs">Protein</Label>
