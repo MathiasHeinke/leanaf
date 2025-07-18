@@ -120,7 +120,14 @@ const Index = () => {
   
   const { user, loading: authLoading, signOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
-  const { isRecording, isProcessing, startRecording, stopRecording } = useVoiceRecording();
+  
+  // Safe voice recording hook usage
+  const voiceHook = useVoiceRecording();
+  const isRecording = voiceHook?.isRecording || false;
+  const isProcessing = voiceHook?.isProcessing || false;
+  const startRecording = voiceHook?.startRecording || (() => Promise.resolve());
+  const stopRecording = voiceHook?.stopRecording || (() => Promise.resolve(null));
+  
   const navigate = useNavigate();
 
   // Check authentication
