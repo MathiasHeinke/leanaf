@@ -159,52 +159,74 @@ export const GlobalHeader = ({
         </div>
       </div>
 
-      {/* Modern Segmented Control Navigation */}
+      {/* Enhanced Segmented Control Navigation with Smooth Sliding Background */}
       <div className="flex justify-center mb-6">
-        <div className="bg-muted/50 backdrop-blur-sm p-1.5 rounded-2xl border border-border/50 shadow-sm">
-          <div className="flex gap-1">
+        <div className="relative bg-muted/60 backdrop-blur-xl p-1.5 rounded-2xl border border-border/30 shadow-lg">
+          {/* Sliding background indicator */}
+          <div 
+            className={`absolute top-1.5 h-[calc(100%-12px)] bg-gradient-to-r from-background to-background/95 rounded-xl shadow-md border border-border/20 transition-all duration-300 ease-out transform ${
+              activeTab === 'main' ? 'left-1.5 w-[calc(25%-3px)]' :
+              activeTab === 'coach' ? 'left-[calc(25%+3px)] w-[calc(25%-3px)]' :
+              activeTab === 'history' ? 'left-[calc(50%+3px)] w-[calc(25%-3px)]' :
+              'left-[calc(75%+3px)] w-[calc(25%-3px)]'
+            }`}
+          />
+          
+          <div className="flex relative z-10">
             <button 
               onClick={() => handleNavigation('main')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
                 activeTab === 'main' 
-                  ? 'bg-background text-foreground shadow-md border border-border/20' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  ? 'text-foreground scale-105 font-semibold' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
+              style={{ width: '25%' }}
             >
-              <LayoutDashboard className="h-4 w-4 mr-2 inline" />
+              <LayoutDashboard className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+                activeTab === 'main' ? 'animate-pulse text-primary' : ''
+              }`} />
               Basis
             </button>
             <button 
               onClick={() => handleNavigation('coach')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
                 activeTab === 'coach' 
-                  ? 'bg-background text-foreground shadow-md border border-border/20' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  ? 'text-foreground scale-105 font-semibold' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
+              style={{ width: '25%' }}
             >
-              <MessageCircle className="h-4 w-4 mr-2 inline" />
+              <MessageCircle className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+                activeTab === 'coach' ? 'animate-pulse text-primary' : ''
+              }`} />
               Coach
             </button>
             <button 
               onClick={() => handleNavigation('history')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
                 activeTab === 'history' 
-                  ? 'bg-background text-foreground shadow-md border border-border/20' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  ? 'text-foreground scale-105 font-semibold' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
+              style={{ width: '25%' }}
             >
-              <TrendingUp className="h-4 w-4 mr-2 inline" />
+              <TrendingUp className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+                activeTab === 'history' ? 'animate-pulse text-primary' : ''
+              }`} />
               Verlauf
             </button>
             <button 
               onClick={() => handleNavigation('profile')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${
                 activeTab === 'profile' 
-                  ? 'bg-background text-foreground shadow-md border border-border/20' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  ? 'text-foreground scale-105 font-semibold' 
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
+              style={{ width: '25%' }}
             >
-              <UserIcon className="h-4 w-4 mr-2 inline" />
+              <UserIcon className={`h-4 w-4 mr-2 inline transition-all duration-300 ${
+                activeTab === 'profile' ? 'animate-pulse text-primary' : ''
+              }`} />
               Profil
             </button>
           </div>
