@@ -364,6 +364,15 @@ const Index = () => {
           dailyGoal={dailyGoal}
         />
 
+        {/* Motivational Quote */}
+        <div className="px-4">
+          <RandomQuote 
+            userGender={profileData?.gender} 
+            refreshTrigger={quoteRefreshTrigger}
+            fallbackText="Bleib motiviert! 💪"
+          />
+        </div>
+
         {/* BMI Progress */}
         <BMIProgress 
           startWeight={profileData?.start_weight || profileData?.weight || 70}
