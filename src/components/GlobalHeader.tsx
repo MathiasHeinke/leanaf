@@ -159,44 +159,95 @@ export const GlobalHeader = ({
         </div>
       </div>
 
-      {/* Global Navigation Tabs */}
-      <div className="flex justify-center gap-1 mb-6">
-        <Button 
-          variant={activeTab === 'main' ? 'default' : 'outline'}
-          size="sm" 
-          onClick={() => handleNavigation('main')}
-          className="flex-1 px-2"
-        >
-          <LayoutDashboard className="h-4 w-4 mr-1" />
-          <span className="text-xs">Basis</span>
-        </Button>
-        <Button 
-          variant={activeTab === 'coach' ? 'default' : 'outline'}
-          size="sm" 
-          onClick={() => handleNavigation('coach')}
-          className="flex-1 px-2"
-        >
-          <MessageCircle className="h-4 w-4 mr-1" />
-          <span className="text-xs">Coach</span>
-        </Button>
-        <Button 
-          variant={activeTab === 'history' ? 'default' : 'outline'}
-          size="sm" 
-          onClick={() => handleNavigation('history')}
-          className="flex-1 px-2"
-        >
-          <TrendingUp className="h-4 w-4 mr-1" />
-          <span className="text-xs">Verlauf</span>
-        </Button>
-        <Button 
-          variant={activeTab === 'profile' ? 'default' : 'outline'}
-          size="sm" 
-          onClick={() => handleNavigation('profile')}
-          className="flex-1 px-2"
-        >
-          <UserIcon className="h-4 w-4 mr-1" />
-          <span className="text-xs">Profil</span>
-        </Button>
+      {/* Floating Bottom Navigation - wird unten gerendert */}
+    </div>
+  );
+};
+
+// Neue Floating Bottom Navigation Komponente
+export const FloatingBottomNav = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
+  const getActiveTab = () => {
+    switch (location.pathname) {
+      case '/':
+        return 'main';
+      case '/coach':
+        return 'coach';
+      case '/history':
+        return 'history';
+      case '/profile':
+        return 'profile';
+      default:
+        return 'main';
+    }
+  };
+
+  const activeTab = getActiveTab();
+
+  return (
+    <div className="fixed bottom-6 left-4 right-4 z-40 animate-slide-up">
+      <div className="max-w-sm mx-auto">
+        <div className="glass-card dark:glass-card-dark rounded-3xl p-3 shadow-2xl border border-white/20 dark:border-gray-700/20 backdrop-blur-xl">
+          <div className="flex items-center justify-around">
+            {/* Dashboard/Main */}
+            <button 
+              onClick={() => handleNavigation('/')}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+                activeTab === 'main' 
+                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <LayoutDashboard className="h-5 w-5" />
+              <span className="text-xs font-medium">Basis</span>
+            </button>
+
+            {/* Coach */}
+            <button 
+              onClick={() => handleNavigation('/coach')}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+                activeTab === 'coach' 
+                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <MessageCircle className="h-5 w-5" />
+              <span className="text-xs font-medium">Coach</span>
+            </button>
+
+            {/* History */}
+            <button 
+              onClick={() => handleNavigation('/history')}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+                activeTab === 'history' 
+                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <TrendingUp className="h-5 w-5" />
+              <span className="text-xs font-medium">Verlauf</span>
+            </button>
+
+            {/* Profile */}
+            <button 
+              onClick={() => handleNavigation('/profile')}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all duration-200 ${
+                activeTab === 'profile' 
+                  ? 'bg-primary text-primary-foreground shadow-lg scale-105' 
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <UserIcon className="h-5 w-5" />
+              <span className="text-xs font-medium">Profil</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

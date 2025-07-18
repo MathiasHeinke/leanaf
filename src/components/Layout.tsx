@@ -1,4 +1,4 @@
-import { GlobalHeader } from "@/components/GlobalHeader";
+import { GlobalHeader, FloatingBottomNav } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { MealInput } from "@/components/MealInput";
@@ -63,6 +63,9 @@ export const Layout = ({ children }: LayoutProps) => {
         onMealTypeChange={mealInputProps.setSelectedMealType}
         onSuccess={handleMealSaveSuccess}
       />
+      
+      {/* Floating Bottom Navigation */}
+      <FloatingBottomNav />
     </div>
   );
 };
