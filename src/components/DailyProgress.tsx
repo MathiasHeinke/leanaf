@@ -111,7 +111,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
       {/* 3er-Reihe Makros (ohne Verbleibend) */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         {/* Protein */}
-        <div className={`p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-protein-light border-protein/20'}`}>
+        <div className={`p-3 rounded-xl border ${proteinExceeded ? 'bg-red-50 border-red-200' : 'bg-transparent border-protein/20'}`}>
           <div className={`text-xs font-medium mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>Protein</div>
           <div className={`text-xl font-bold mb-1 ${proteinExceeded ? 'text-red-600' : 'text-protein'}`}>
             {dailyTotals.protein}<span className="text-sm">g</span>
@@ -126,7 +126,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
         </div>
 
         {/* Carbs */}
-        <div className={`p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-carbs-light border-carbs/20'}`}>
+        <div className={`p-3 rounded-xl border ${carbsExceeded ? 'bg-red-50 border-red-200' : 'bg-transparent border-carbs/20'}`}>
           <div className={`text-xs font-medium mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>Kohlenhydrate</div>
           <div className={`text-xl font-bold mb-1 ${carbsExceeded ? 'text-red-600' : 'text-carbs'}`}>
             {dailyTotals.carbs}<span className="text-sm">g</span>
@@ -141,7 +141,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
         </div>
 
         {/* Fats */}
-        <div className={`p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-fats-light border-fats/20'}`}>
+        <div className={`p-3 rounded-xl border ${fatsExceeded ? 'bg-red-50 border-red-200' : 'bg-transparent border-fats/20'}`}>
           <div className={`text-xs font-medium mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>Fette</div>
           <div className={`text-xl font-bold mb-1 ${fatsExceeded ? 'text-red-600' : 'text-fats'}`}>
             {dailyTotals.fats}<span className="text-sm">g</span>
