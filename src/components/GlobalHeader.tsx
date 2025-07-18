@@ -191,7 +191,7 @@ export const FloatingBottomNav = () => {
   const activeTab = getActiveTab();
 
   return (
-    <div className="fixed bottom-6 left-4 right-4 z-40 animate-slide-up">
+    <div className="fixed bottom-20 left-4 right-4 z-50 animate-slide-up">
       <div className="max-w-sm mx-auto">
         <div className="glass-card dark:glass-card-dark rounded-3xl p-3 shadow-2xl border border-white/20 dark:border-gray-700/20 backdrop-blur-xl">
           <div className="flex items-center justify-around">
