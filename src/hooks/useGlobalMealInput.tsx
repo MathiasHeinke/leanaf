@@ -28,11 +28,19 @@ export const useGlobalMealInput = () => {
   };
 
   const handleSubmitMeal = async () => {
+    console.log('🚀 handleSubmitMeal called with:', {
+      inputText: inputText.trim(),
+      uploadedImages: uploadedImages.length,
+      userAuthenticated: !!user?.id
+    });
+    
     if (!inputText.trim() && uploadedImages.length === 0) {
+      console.log('❌ Submit blocked: No text and no images');
       toast.error('Bitte Text eingeben oder Bilder hochladen');
       return;
     }
 
+    console.log('✅ Submit validation passed, starting analysis...');
     setIsAnalyzing(true);
     
     try {
