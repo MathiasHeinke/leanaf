@@ -634,16 +634,32 @@ const Index = () => {
   };
 
   const handleVoiceRecord = async () => {
+    console.log('🎤 Voice record triggered', { isRecording, isProcessing });
+    
     if (isRecording) {
-      console.log('Stopping voice recording...');
+      console.log('🛑 Stopping voice recording...');
       const transcribedText = await stopRecording();
       if (transcribedText) {
-        setInputText(prev => prev ? prev + ' ' + transcribedText : transcribedText);
+        console.log('📝 Voice transcription result:', transcribedText);
+        setInputText(prev => {
+          const newText = prev ? prev + ' ' + transcribedText : transcribedText;
+          console.log('📝 Updated input text:', newText);
+          return newText;
+        });
+        toast.success('Spracheingabe hinzugefügt');
         console.log('Transcribed text added to input:', transcribedText);
+      } else {
+        console.log('❌ No transcription result received');
       }
     } else {
-      console.log('Starting voice recording...');
-      await startRecording();
+      console.log('🎤 Starting voice recording...');
+      try {
+        await startRecording();
+        console.log('✅ Voice recording started successfully');
+      } catch (error) {
+        console.error('❌ Error starting voice recording:', error);
+        toast.error('Fehler bei der Sprachaufnahme');
+      }
     }
   };
 
@@ -707,11 +723,16 @@ const Index = () => {
         uploadedUrls.push(urlData.publicUrl);
       }
       
-      console.log('All uploads completed, URLs:', uploadedUrls);
+      console.log('📤 All uploads completed, URLs:', uploadedUrls);
       setUploadedImages(uploadedUrls);
       
       // Analyze the images
-      console.log('Starting image analysis...');
+      console.log('🔍 Starting image analysis with data:', {
+        text: inputText || 'Analysiere diese Mahlzeit',
+        imageCount: uploadedUrls.length,
+        urls: uploadedUrls
+      });
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
           text: inputText || 'Analysiere diese Mahlzeit',
@@ -719,17 +740,19 @@ const Index = () => {
         },
       });
       
-      console.log('Analysis result:', { data, error });
+      console.log('🔍 Analysis result:', { data, error });
       
       if (error) {
-        console.error('Analysis error:', error);
+        console.error('❌ Analysis error:', error);
         throw new Error(`Analyse fehlgeschlagen: ${error.message}`);
       }
       
       if (!data || !data.total) {
+        console.error('❌ Invalid analysis response:', data);
         throw new Error('Ungültige Antwort vom Analysedienst');
       }
       
+      console.log('✅ Setting analyzed data:', data);
       setAnalyzedMealData(data);
       setSelectedMealType(getCurrentMealType());
       setShowConfirmationDialog(true);
@@ -745,11 +768,21 @@ const Index = () => {
   };
 
   const handleChatSubmit = async () => {
-    if (!chatInput.trim() || !analyzedMealData || isVerifying) return;
+    console.log('💬 Chat submit triggered', { 
+      chatInput: chatInput?.trim(), 
+      analyzedMealData: !!analyzedMealData,
+      isVerifying 
+    });
+    
+    if (!chatInput.trim() || !analyzedMealData || isVerifying) {
+      console.log('❌ Chat submit blocked - missing requirements');
+      return;
+    }
     
     setIsVerifying(true);
     
     try {
+      console.log('💬 Sending chat message:', chatInput);
       const userMessage = { role: 'user', content: chatInput };
       const newMessages = [...chatMessages, userMessage];
       setChatMessages(newMessages);
@@ -818,14 +851,39 @@ const Index = () => {
   };
 
   const handleConfirmMeal = async () => {
-    if (!inputText.trim() || !analyzedMealData) return;
+    console.log('🔄 handleConfirmMeal called', { 
+      inputText: inputText?.trim(), 
+      analyzedMealData: analyzedMealData,
+      hasAnalyzedData: !!analyzedMealData,
+      hasCalories: analyzedMealData?.total?.calories > 0
+    });
+    
+    // Must have analyzed data and either text or valid calorie data
+    if (!analyzedMealData || (!inputText.trim() && !analyzedMealData.total?.calories)) {
+      console.log('❌ Missing required data for meal confirmation');
+      toast.error('Bitte fügen Sie Text hinzu oder laden Sie ein Bild hoch');
+      return;
+    }
     
     setIsAnalyzing(true);
     
     try {
+      console.log('💾 Starting meal save process...');
+      
       // Save the meal to the database
       const mealDate = selectedDate || new Date().toISOString();
-      const mealTitle = analyzedMealData.title || inputText || 'Unbekannte Mahlzeit';
+      const mealTitle = analyzedMealData.title || inputText || 'Mahlzeit vom Bild';
+      
+      console.log('📝 Meal data to save:', {
+        mealTitle,
+        calories: analyzedMealData.total.calories,
+        protein: analyzedMealData.total.protein,
+        carbs: analyzedMealData.total.carbs,
+        fats: analyzedMealData.total.fats,
+        mealType: selectedMealType,
+        mealDate,
+        imageCount: uploadedImages.length
+      });
       
       const newMeal = {
         user_id: user?.id,
@@ -875,6 +933,8 @@ const Index = () => {
         meal_type: insertedMeal.meal_type,
       };
 
+      
+      console.log('✅ Meal saved successfully:', formattedMeal);
       setDailyMeals(prev => [formattedMeal, ...prev]);
       setInputText("");
       setShowConfirmationDialog(false);
@@ -882,14 +942,16 @@ const Index = () => {
       setUploadedImages([]);
       setChatMessages([]);
       setSelectedDate('');
+      setSelectedMealType('');
       
       toast.success('Mahlzeit erfolgreich hinzugefügt!');
       
     } catch (error: any) {
-      console.error('Error saving meal:', error);
+      console.error('❌ Error saving meal:', error);
       toast.error(error.message || 'Fehler beim Speichern der Mahlzeit');
     } finally {
       setIsAnalyzing(false);
+      console.log('🔄 Meal save process completed');
     }
   };
 
@@ -2004,6 +2066,25 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Debug Console - nur im Development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 p-4 bg-black/80 text-white text-xs rounded-lg max-w-sm overflow-auto max-h-40 z-50">
+          <div className="font-bold mb-2">🐛 Debug Status</div>
+          <div>User: {user ? '✅' : '❌'}</div>
+          <div>Loading: {loading ? '⏳' : '✅'}</div>
+          <div>IsAnalyzing: {isAnalyzing ? '🔄' : '❌'}</div>
+          <div>InputText: "{inputText}"</div>
+          <div>AnalyzedData: {analyzedMealData ? '✅' : '❌'}</div>
+          <div>Calories: {analyzedMealData?.total?.calories || 0}</div>
+          <div>Images: {uploadedImages.length}</div>
+          <div>ShowDialog: {showConfirmationDialog ? '✅' : '❌'}</div>
+          <div>SelectedType: {selectedMealType}</div>
+          <div>ChatMessages: {chatMessages.length}</div>
+          <div>IsRecording: {isRecording ? '🎤' : '❌'}</div>
+          <div>IsProcessing: {isProcessing ? '⏳' : '❌'}</div>
+        </div>
+      )}
     </div>
   );
 };
