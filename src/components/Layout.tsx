@@ -1,6 +1,8 @@
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
+import { MealInput } from "@/components/MealInput";
+import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +11,11 @@ interface LayoutProps {
 export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
+  
+  // Pages where floating meal input should be shown
+  const showMealInput = ['/', '/history', '/coach'].includes(location.pathname);
+  
+  const mealInputProps = useGlobalMealInput();
 
   // Don't show header on auth page
   if (location.pathname === '/auth' || !user) {
@@ -21,6 +28,20 @@ export const Layout = ({ children }: LayoutProps) => {
       <main className="container mx-auto px-4 pb-6 max-w-md">
         {children}
       </main>
+      
+      {/* Global floating meal input - only on specific pages */}
+      {showMealInput && user && (
+        <MealInput 
+          inputText={mealInputProps.inputText}
+          setInputText={mealInputProps.setInputText}
+          onSubmitMeal={mealInputProps.handleSubmitMeal}
+          onPhotoUpload={mealInputProps.handlePhotoUpload}
+          onVoiceRecord={mealInputProps.handleVoiceRecord}
+          isAnalyzing={mealInputProps.isAnalyzing}
+          isRecording={mealInputProps.isRecording}
+          isProcessing={mealInputProps.isProcessing}
+        />
+      )}
     </div>
   );
 };
