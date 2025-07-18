@@ -14,7 +14,7 @@ interface RandomQuoteProps {
   refreshTrigger?: number;
 }
 
-export const RandomQuote = ({ userGender, fallbackText = "", refreshTrigger }: RandomQuoteProps) => {
+export const RandomQuote = ({ userGender, fallbackText = "Bleib motiviert! 💪", refreshTrigger }: RandomQuoteProps) => {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const { language } = useTranslation();

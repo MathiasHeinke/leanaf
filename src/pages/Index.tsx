@@ -356,10 +356,13 @@ const Index = () => {
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Quote Section */}
-        <RandomQuote key={quoteRefreshTrigger} />
+      {/* Main Content - ohne doppelten Container */}
+      <div className="space-y-6">
+        {/* Quote Section - mit userGender */}
+        <RandomQuote 
+          key={quoteRefreshTrigger} 
+          userGender={profileData?.gender}
+        />
 
         {/* Daily Progress Overview */}
         <DailyProgress 
