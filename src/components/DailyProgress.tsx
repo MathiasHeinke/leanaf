@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { getGoalStatus, getGoalBasedProgressMessage, UserGoal } from "@/utils/goalBasedMessaging";
 
 interface DailyTotals {
   calories: number;
@@ -20,9 +21,10 @@ interface DailyGoal {
 interface DailyProgressProps {
   dailyTotals: DailyTotals;
   dailyGoal: DailyGoal;
+  userGoal?: UserGoal;
 }
 
-export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) => {
+export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }: DailyProgressProps) => {
   const { t, language } = useTranslation();
 
   const calorieProgress = (dailyTotals.calories / dailyGoal.calories) * 100;
@@ -40,34 +42,22 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
   const carbsExceeded = dailyTotals.carbs > dailyGoal.carbs;
   const fatsExceeded = dailyTotals.fats > dailyGoal.fats;
 
-  const getMotivationalMessage = () => {
-    const progress = calorieProgress;
-    
-    if (progress <= 25) {
-      return t('motivation.start');
-    } else if (progress <= 50) {
-      return t('motivation.half');
-    } else if (progress <= 75) {
-      return t('motivation.progress');
-    } else if (progress <= 95) {
-      return t('motivation.almost');
-    } else if (progress <= 100) {
-      return t('motivation.perfect');
-    } else {
-      return t('motivation.over');
-    }
-  };
+  const goalStatus = getGoalStatus(dailyTotals.calories, dailyGoal.calories, userGoal);
+  const motivationalMessage = getGoalBasedProgressMessage(dailyTotals.calories, dailyGoal.calories, userGoal);
 
   return (
     <div>
-      {/* Warning for exceeded calories */}
-      {caloriesExceeded && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-red-600" />
-          <span className="text-red-700 text-sm font-medium">
-            {language === 'de' 
-              ? `Achtung: Du hast dein Kalorienziel um ${Math.abs(remainingCalories)} kcal überschritten!`
-              : `Warning: You have exceeded your calorie goal by ${Math.abs(remainingCalories)} kcal!`
+      {/* Goal-based status message */}
+      {goalStatus.status !== 'success' && (
+        <div className={`mb-4 p-3 rounded-lg border flex items-center gap-2 ${goalStatus.bgColor} ${goalStatus.borderColor}`}>
+          <span className="text-lg">{goalStatus.icon}</span>
+          <span className={`text-sm font-medium ${goalStatus.color}`}>
+            {goalStatus.message}
+            {goalStatus.status === 'danger' && userGoal === 'lose' && remainingCalories < 0 &&
+              ` (${Math.abs(remainingCalories)} kcal über dem Ziel)`
+            }
+            {goalStatus.status === 'danger' && userGoal === 'gain' && remainingCalories > 0 &&
+              ` (${remainingCalories} kcal fehlen noch)`
             }
           </span>
         </div>
@@ -97,13 +87,19 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
           />
           <div className="flex items-center justify-center gap-1 text-sm">
             <Flame className="h-4 w-4" />
-            <span className={remainingCalories > 0 ? "text-green-600" : "text-red-600"}>
-              {remainingCalories > 0 
-                ? `${remainingCalories} kcal verbleibend`
-                : `${Math.abs(remainingCalories)} kcal überschritten`
+            <span className={goalStatus.color}>
+              {userGoal === 'lose' && remainingCalories > 0 ? 
+                `${remainingCalories} kcal verbleibend` :
+                userGoal === 'lose' && remainingCalories < 0 ?
+                `${Math.abs(remainingCalories)} kcal über Ziel` :
+                userGoal === 'gain' && remainingCalories > 0 ?
+                `${remainingCalories} kcal fehlen noch` :
+                userGoal === 'gain' && remainingCalories < 0 ?
+                `Ziel erreicht! ${Math.abs(remainingCalories)} kcal über Ziel` :
+                remainingCalories > 0 ? `${remainingCalories} kcal verbleibend` : `${Math.abs(remainingCalories)} kcal überschritten`
               }
             </span>
-            {remainingCalories > 0 ? (
+            {goalStatus.status === 'success' ? (
               <TrendingUp className="h-4 w-4 text-green-500" />
             ) : (
               <TrendingDown className="h-4 w-4 text-red-500" />
@@ -160,11 +156,11 @@ export const DailyProgress = ({ dailyTotals, dailyGoal }: DailyProgressProps) =>
         </div>
       </div>
 
-      {/* Motivational message */}
-      <div className="p-3 bg-gradient-to-r from-primary/10 to-primary-glow/10 rounded-lg border border-primary/20">
-        <div className="flex items-center gap-2 text-sm text-primary font-medium">
-          <Star className="h-4 w-4" />
-          {getMotivationalMessage()}
+      {/* Goal-based motivational message */}
+      <div className={`p-3 rounded-lg border ${goalStatus.bgColor} ${goalStatus.borderColor}`}>
+        <div className={`flex items-center gap-2 text-sm font-medium ${goalStatus.color}`}>
+          <span className="text-lg">{goalStatus.icon}</span>
+          {goalStatus.motivationalMessage}
         </div>
       </div>
     </div>

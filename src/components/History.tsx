@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "sonner";
+import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 
 interface DailyGoal {
   calories: number;
@@ -86,12 +87,14 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     carbs: 0,
     fats: 0
   });
+  const [userGoal, setUserGoal] = useState<UserGoal>('maintain');
   const { user } = useAuth();
   const { t } = useTranslation();
 
   useEffect(() => {
     if (user) {
       loadHistoryData();
+      loadUserGoal();
     }
   }, [user, timeRange]);
 
@@ -179,6 +182,26 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     }
   };
 
+  const loadUserGoal = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('goal')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      
+      if (profileData?.goal) {
+        setUserGoal(profileData.goal as UserGoal);
+      }
+    } catch (error: any) {
+      console.error('Error loading user goal:', error);
+    }
+  };
+
   const deleteMeal = async (mealId: string) => {
     try {
       const { error } = await supabase
@@ -244,9 +267,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     daysWithMeals.reduce((sum, day) => sum + day.calories, 0) / daysWithMeals.length
   ) : 0;
 
-  const goalsAchieved = currentData.filter(day => 
-    day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1
-  ).length;
+  const goalsAchieved = currentData.filter(day => {
+    const goalStatus = getGoalStatus(day.calories, dailyGoal.calories, userGoal);
+    return goalStatus.status === 'success';
+  }).length;
 
   return (
     <div className="space-y-4 pb-20">
@@ -331,15 +355,21 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                           </div>
                           
                           <div className="flex flex-col gap-1">
-                            {day.calories >= dailyGoal.calories * 0.9 && day.calories <= dailyGoal.calories * 1.1 ? (
-                              <Badge variant="default" className="text-xs">Ziel erreicht</Badge>
-                            ) : day.calories > dailyGoal.calories * 1.1 ? (
-                              <Badge variant="destructive" className="text-xs">Über Ziel</Badge>
-                            ) : day.calories < dailyGoal.calories * 0.5 ? (
-                              <Badge variant="secondary" className="text-xs">Unter Ziel</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs">Nahe Ziel</Badge>
-                            )}
+                            {(() => {
+                              const goalStatus = getGoalStatus(day.calories, dailyGoal.calories, userGoal);
+                              return (
+                                <Badge 
+                                  variant={goalStatus.status === 'success' ? 'default' : 
+                                          goalStatus.status === 'warning' ? 'secondary' : 'destructive'} 
+                                  className="text-xs"
+                                >
+                                  {goalStatus.status === 'success' ? '🎯 Ziel erreicht' :
+                                   goalStatus.status === 'warning' ? '⚡ Nahe Ziel' :
+                                   userGoal === 'lose' ? '⚠️ Über Ziel' :
+                                   userGoal === 'gain' ? '⚠️ Zu wenig' : '⚠️ Nicht optimal'}
+                                </Badge>
+                              );
+                            })()}
                           </div>
                           
                           <div className="transition-transform duration-200">

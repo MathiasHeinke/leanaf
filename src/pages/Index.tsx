@@ -16,6 +16,7 @@ import { WeightTracker } from "@/components/WeightTracker";
 import { MealList } from "@/components/MealList";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { populateQuotes } from "@/utils/populateQuotes";
+import { UserGoal } from "@/utils/goalBasedMessaging";
 import { 
   RefreshCw,
   Target,
@@ -65,6 +66,7 @@ const Index = () => {
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [userGoal, setUserGoal] = useState<UserGoal>('maintain');
   
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -185,6 +187,7 @@ const Index = () => {
         };
 
         setProfileData(profile);
+        setUserGoal(profile.goal as UserGoal);
 
         // Load daily goals from database
         const { data: dailyGoalsData, error: dailyGoalsError } = await supabase
@@ -362,6 +365,7 @@ const Index = () => {
         <DailyProgress 
           dailyTotals={dailyTotals}
           dailyGoal={dailyGoal}
+          userGoal={userGoal}
         />
 
         {/* Motivational Quote */}

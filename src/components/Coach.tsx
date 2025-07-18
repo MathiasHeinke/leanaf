@@ -39,6 +39,7 @@ import {
   Award,
   BarChart3
 } from "lucide-react";
+import { UserGoal } from "@/utils/goalBasedMessaging";
 
 interface CoachProps {
   onClose?: () => void;
@@ -288,8 +289,16 @@ const Coach = ({ onClose }: CoachProps) => {
       if (error) throw error;
 
       // Parse meal suggestions from the response
-      const suggestions = JSON.parse(data.recommendations || '[]');
-      setMealSuggestions(suggestions.meals || []);
+      if (data.recommendations) {
+        try {
+          const suggestions = JSON.parse(data.recommendations);
+          setMealSuggestions(suggestions.meals || []);
+        } catch (parseError) {
+          console.error('Error parsing meal suggestions:', parseError);
+          // If parsing fails, assume the response is not JSON and handle gracefully
+          setMealSuggestions([]);
+        }
+      }
       
     } catch (error: any) {
       console.error('Error generating meal suggestions:', error);
@@ -529,19 +538,31 @@ const Coach = ({ onClose }: CoachProps) => {
 
   const averages = calculateAverages();
 
-  // Generate coaching bot message
+  // Generate coaching bot message with goal-based messaging
   const generateBotMessage = () => {
     const calorieGoal = dailyGoals?.calories || 1323;
     const calorieAverage = averages.calories;
     const progress = calorieAverage > 0 ? ((calorieAverage / calorieGoal) * 100).toFixed(0) : 0;
     
+    // TODO: Get user goal from profile - for now using 'maintain' as default
+    // This will be updated when we add user goal fetching
+    let userGoal: UserGoal = 'maintain'; // This should come from user profile
+    
+    const getGoalBasedMessage = () => {
+      // For now, we'll use maintain goal logic until we load user profile
+      // TODO: Load user goal from profile and use switch statement
+      if (calorieAverage >= calorieGoal * 0.9 && calorieAverage <= calorieGoal * 1.1) {
+        return "✅ Perfekt! Du hältst dein Gewicht stabil im Zielbereich.";
+      } else if (calorieAverage < calorieGoal * 0.9) {
+        return "⚠️ Du solltest mehr Kalorien zu dir nehmen für eine stabile Gewichtserhaltung.";
+      } else {
+        return "⚠️ Du liegst über deinem Kalorienziel. Achte auf deine Kalorienbilanz.";
+      }
+    };
+    
     const messages = [
       `🎯 Hallo! Dein Kalorienziel liegt bei ${calorieGoal} kcal täglich. Du erreichst derzeit ${progress}% davon mit durchschnittlich ${calorieAverage} kcal.`,
-      calorieAverage < calorieGoal * 0.8 ? 
-        "📊 Deine Kalorienaufnahme ist etwas niedrig. Möchtest du wissen, wie du gesund mehr Kalorien zu dir nehmen kannst?" :
-        calorieAverage > calorieGoal * 1.2 ? 
-        "⚡ Du liegst über deinem Kalorienziel. Lass uns schauen, wie wir das optimieren können!" :
-        "✅ Deine Kalorienaufnahme ist gut im Zielbereich! Wie fühlst du dich dabei?",
+      getGoalBasedMessage(),
       "💪 Hast du Fragen zu deiner Ernährung oder brauchst du Unterstützung?"
     ];
     
