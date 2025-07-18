@@ -231,11 +231,11 @@ export default {
 				'scale-in': 'scale-in 0.2s ease-out',
 				'slide-up': 'slide-up 0.3s ease-out',
 				'glow': 'glow 2s ease-in-out infinite',
-				'float-1': 'float-1 8s ease-in-out infinite',
-				'float-2': 'float-2 12s ease-in-out infinite',
-				'float-3': 'float-3 10s ease-in-out infinite',
-				'float-4': 'float-4 14s ease-in-out infinite',
-				'float-5': 'float-5 16s ease-in-out infinite'
+				'float-1': 'float-1 25s ease-in-out infinite',
+				'float-2': 'float-2 30s ease-in-out infinite',
+				'float-3': 'float-3 35s ease-in-out infinite',
+				'float-4': 'float-4 40s ease-in-out infinite',
+				'float-5': 'float-5 45s ease-in-out infinite'
 			}
 		}
 	},
