@@ -12,7 +12,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
   
-  // Pages where floating meal input should be shown
+  // Pages where floating meal input should be shown (exclude coach page)
   const showMealInput = ['/', '/history'].includes(location.pathname);
   
   const mealInputProps = useGlobalMealInput();

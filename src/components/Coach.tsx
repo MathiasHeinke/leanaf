@@ -276,29 +276,49 @@ const Coach = ({ onClose }: CoachProps) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Hero Section - Personal Coaching */}
-      <Card className="border-0 bg-gradient-to-br from-primary via-primary/80 to-primary/60 text-white overflow-hidden relative">
-        <div className="absolute inset-0 bg-pattern opacity-20"></div>
-        <CardContent className="p-6 relative">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <ChefHat className="h-8 w-8 text-white" />
+      {/* AI Coaching Assistant - moved to top */}
+      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-background to-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3">
+            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+              <MessageCircle className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <div className="text-xl font-bold">AI Coach Assistant</div>
+              <div className="text-sm text-muted-foreground font-normal">Dein intelligenter Ernährungsberater</div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 mb-6 border border-border/50">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="text-lg">🤖</div>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold mb-2">Dein persönlicher Coach 🏆</h2>
-                <p className="text-white/90 text-lg">
-                  Erreiche deine Ziele mit professioneller Unterstützung
-                </p>
+              <div className="flex-1">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                  {generateBotMessage()}
+                </div>
               </div>
             </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
             <Button 
-              onClick={requestPersonalSession}
-              className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white shadow-lg"
-              size="lg"
+              variant="outline" 
+              className="flex-1 min-w-0"
+              onClick={() => toast.info("Chat-Funktion kommt bald! 💬")}
             >
-              <Phone className="h-5 w-5 mr-2" />
-              Beratung buchen
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Chat starten
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1 min-w-0"
+              onClick={() => toast.info("Sprachfunktion kommt bald! 🎙️")}
+            >
+              <div className="text-lg mr-2">🎙️</div>
+              Sprechen
             </Button>
           </div>
         </CardContent>
@@ -424,79 +444,6 @@ const Coach = ({ onClose }: CoachProps) => {
         </CardContent>
       </Card>
 
-      {/* AI Coaching Assistant */}
-      <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-background to-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-              <MessageCircle className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-bold">AI Coach Assistant</div>
-              <div className="text-sm text-muted-foreground font-normal">Dein intelligenter Ernährungsberater</div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 mb-6 border border-border/50">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                <div className="text-lg">🤖</div>
-              </div>
-              <div className="flex-1">
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                  {generateBotMessage()}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              variant="outline" 
-              className="flex-1 min-w-0"
-              onClick={() => toast.info("Chat-Feature kommt bald! 💬")}
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Chat starten
-            </Button>
-            <Button 
-              variant="outline"
-              className="flex-1 min-w-0"
-              onClick={generateRecommendations}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Lightbulb className="h-4 w-4 mr-2" />
-              )}
-              Neue Empfehlungen
-            </Button>
-          </div>
-          
-          {recommendations && (
-            <Collapsible className="mt-6">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-4 h-auto bg-primary/5 hover:bg-primary/10">
-                  <div className="flex items-center gap-2">
-                    <ChefHat className="h-5 w-5 text-primary" />
-                    <span className="font-medium">Personalisierte Rezeptempfehlungen anzeigen</span>
-                  </div>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {recommendations}
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };
