@@ -2,72 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-/* kaloAI Design System - Warme, gesunde Farben für Food Tracking */
+/* kaloAI Design System - Modernes Glasmorphism Design */
 
 @layer base {
   :root {
-    /* Hintergrund - Cremiges Weiß */
-    --background: 35 25% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Gradient Background - Inspired by modern UI */
+    --background: 320 25% 96%;
+    --foreground: 320 15% 15%;
 
-    /* Karten - Sanftes Weiß */
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Glass Cards - Translucent with blur */
+    --card: 320 20% 98%;
+    --card-foreground: 320 15% 20%;
+    --glass: 320 30% 95%;
+    --glass-border: 320 20% 85%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 320 20% 98%;
+    --popover-foreground: 320 15% 20%;
 
-    /* Primary - Gesundes Grün */
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 98%;
-    --primary-glow: 142 70% 50%;
+    /* Primary - Modern Purple/Pink Gradient */
+    --primary: 320 65% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 320 55% 75%;
+    --primary-glow: 320 70% 70%;
 
-    /* Secondary - Warmes Orange für Energie */
-    --secondary: 25 95% 90%;
-    --secondary-foreground: 25 85% 25%;
+    /* Secondary - Soft Pink */
+    --secondary: 340 60% 92%;
+    --secondary-foreground: 320 25% 25%;
 
-    /* Muted - Sanfte Grautöne */
-    --muted: 35 20% 95%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - Elegant Grays */
+    --muted: 320 15% 92%;
+    --muted-foreground: 320 10% 55%;
 
-    /* Accent - Lebendiges Orange */
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 98%;
+    /* Accent - Vibrant Purple */
+    --accent: 280 75% 70%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 35 20% 90%;
-    --input: 35 20% 95%;
-    --ring: 142 76% 36%;
+    --border: 320 20% 85%;
+    --input: 320 15% 95%;
+    --ring: 320 65% 65%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    /* Protein - Blau */
-    --protein: 210 100% 60%;
-    --protein-light: 210 100% 95%;
+    /* Nutrition Colors - Modern Palette */
+    --protein: 210 85% 65%;
+    --protein-light: 210 60% 95%;
     
-    /* Kohlenhydrate - Orange */
-    --carbs: 25 95% 53%;
-    --carbs-light: 25 95% 95%;
+    --carbs: 35 85% 65%;
+    --carbs-light: 35 60% 95%;
     
-    /* Fette - Violett */
-    --fats: 270 95% 60%;
-    --fats-light: 270 95% 95%;
+    --fats: 270 75% 70%;
+    --fats-light: 270 50% 95%;
 
-    /* Gradienten */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-warm: linear-gradient(135deg, hsl(var(--accent)), hsl(25 95% 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(35 25% 96%));
+    /* Modern Gradients */
+    --gradient-main: linear-gradient(135deg, hsl(320 65% 75%) 0%, hsl(280 70% 70%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(320 30% 98%) 0%, hsl(320 25% 95%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(280 75% 70%) 0%, hsl(320 65% 65%) 100%);
+    --gradient-background: radial-gradient(ellipse at top, hsl(320 35% 95%) 0%, hsl(320 25% 96%) 100%);
 
-    /* Schatten */
-    --shadow-soft: 0 4px 20px -2px hsl(var(--primary) / 0.1);
-    --shadow-warm: 0 8px 30px -8px hsl(var(--accent) / 0.3);
-    --shadow-card: 0 2px 20px -4px hsl(0 0% 0% / 0.1);
+    /* Glassmorphism Effects */
+    --glass-bg: hsla(320, 30%, 98%, 0.8);
+    --glass-border: hsla(320, 20%, 85%, 0.3);
+    --glass-shadow: 0 8px 32px hsla(320, 15%, 25%, 0.08);
+    --glass-backdrop: blur(12px);
 
-    /* Animationen */
+    /* Advanced Shadows */
+    --shadow-soft: 0 4px 20px hsla(320, 15%, 25%, 0.06);
+    --shadow-medium: 0 8px 30px hsla(320, 15%, 25%, 0.12);
+    --shadow-strong: 0 20px 40px hsla(320, 15%, 25%, 0.15);
+    --shadow-glow: 0 0 40px hsla(320, 65%, 65%, 0.15);
+
+    /* Smooth Animations */
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     --sidebar-background: 0 0% 98%;
 
@@ -87,72 +98,81 @@
   }
 
   .dark {
-    /* Dunkler Hintergrund */
-    --background: 220 20% 8%;
-    --foreground: 35 25% 95%;
+    /* Dark Mode - Modern Purple Theme */
+    --background: 320 15% 8%;
+    --foreground: 320 5% 95%;
 
-    /* Dunkle Karten */
-    --card: 220 15% 12%;
-    --card-foreground: 35 25% 95%;
+    /* Dark Glass Cards */
+    --card: 320 12% 12%;
+    --card-foreground: 320 5% 95%;
+    --glass: 320 15% 15%;
+    --glass-border: 320 10% 25%;
 
-    --popover: 220 15% 12%;
-    --popover-foreground: 35 25% 95%;
+    --popover: 320 12% 12%;
+    --popover-foreground: 320 5% 95%;
 
-    /* Primary - Helleres Grün für Dark Mode */
-    --primary: 142 70% 50%;
-    --primary-foreground: 220 20% 8%;
-    --primary-glow: 142 60% 60%;
+    /* Dark Primary - Brighter Purple */
+    --primary: 320 70% 70%;
+    --primary-foreground: 320 15% 8%;
+    --primary-light: 320 60% 80%;
+    --primary-glow: 320 75% 75%;
 
-    /* Secondary - Gedämpftes Orange */
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 25 85% 70%;
+    /* Dark Secondary */
+    --secondary: 320 15% 18%;
+    --secondary-foreground: 320 5% 85%;
 
-    /* Muted - Dunkle Grautöne */
-    --muted: 220 15% 15%;
-    --muted-foreground: 220 10% 60%;
+    /* Dark Muted */
+    --muted: 320 10% 15%;
+    --muted-foreground: 320 5% 65%;
 
-    /* Accent - Warmes Orange für Dark Mode */
-    --accent: 25 85% 55%;
-    --accent-foreground: 220 20% 8%;
+    /* Dark Accent */
+    --accent: 280 80% 75%;
+    --accent-foreground: 320 15% 8%;
 
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 15%;
-    --ring: 142 70% 50%;
+    --border: 320 10% 20%;
+    --input: 320 10% 15%;
+    --ring: 320 70% 70%;
 
-    /* Protein - Helleres Blau */
-    --protein: 210 90% 65%;
-    --protein-light: 210 50% 15%;
+    /* Dark Nutrition Colors */
+    --protein: 210 80% 70%;
+    --protein-light: 210 40% 15%;
     
-    /* Kohlenhydrate - Gedämpftes Orange */
-    --carbs: 25 85% 60%;
-    --carbs-light: 25 40% 15%;
+    --carbs: 35 80% 65%;
+    --carbs-light: 35 30% 15%;
     
-    /* Fette - Helleres Violett */
-    --fats: 270 80% 70%;
-    --fats-light: 270 40% 15%;
+    --fats: 270 75% 75%;
+    --fats-light: 270 35% 15%;
 
-    /* Gradienten für Dark Mode */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-warm: linear-gradient(135deg, hsl(var(--accent)), hsl(25 85% 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(220 20% 10%));
+    /* Dark Gradients */
+    --gradient-main: linear-gradient(135deg, hsl(320 70% 70%) 0%, hsl(280 75% 75%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(320 12% 14%) 0%, hsl(320 10% 12%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(280 80% 75%) 0%, hsl(320 70% 70%) 100%);
+    --gradient-background: radial-gradient(ellipse at top, hsl(320 15% 10%) 0%, hsl(320 15% 8%) 100%);
 
-    /* Schatten für Dark Mode */
-    --shadow-soft: 0 4px 20px -2px hsl(0 0% 0% / 0.3);
-    --shadow-warm: 0 8px 30px -8px hsl(var(--accent) / 0.2);
-    --shadow-card: 0 2px 20px -4px hsl(0 0% 0% / 0.3);
+    /* Dark Glassmorphism */
+    --glass-bg: hsla(320, 15%, 15%, 0.8);
+    --glass-border: hsla(320, 10%, 25%, 0.3);
+    --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.3);
+    --glass-backdrop: blur(12px);
+
+    /* Dark Shadows */
+    --shadow-soft: 0 4px 20px hsla(0, 0%, 0%, 0.3);
+    --shadow-medium: 0 8px 30px hsla(0, 0%, 0%, 0.4);
+    --shadow-strong: 0 20px 40px hsla(0, 0%, 0%, 0.5);
+    --shadow-glow: 0 0 40px hsla(320, 70%, 70%, 0.2);
 
     /* Sidebar Dark Mode */
-    --sidebar-background: 220 20% 10%;
-    --sidebar-foreground: 35 25% 90%;
-    --sidebar-primary: 142 70% 50%;
-    --sidebar-primary-foreground: 220 20% 8%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 35 25% 90%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 142 70% 50%;
+    --sidebar-background: 320 15% 10%;
+    --sidebar-foreground: 320 5% 90%;
+    --sidebar-primary: 320 70% 70%;
+    --sidebar-primary-foreground: 320 15% 8%;
+    --sidebar-accent: 320 10% 15%;
+    --sidebar-accent-foreground: 320 5% 90%;
+    --sidebar-border: 320 10% 18%;
+    --sidebar-ring: 320 70% 70%;
   }
 }
 
@@ -163,5 +183,128 @@
 
   body {
     @apply bg-background text-foreground;
+    background: var(--gradient-background);
+  }
+}
+
+@layer components {
+  /* Glassmorphism Components */
+  .glass-card {
+    @apply relative backdrop-blur-xl rounded-[1.25rem] border;
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-card-floating {
+    @apply glass-card;
+    transform: translateZ(0);
+    transition: var(--transition-smooth);
+  }
+
+  .glass-card-floating:hover {
+    transform: translateY(-2px) translateZ(0);
+    box-shadow: var(--shadow-medium);
+  }
+
+  .glass-button {
+    @apply relative backdrop-blur-lg rounded-full border px-6 py-3 font-medium transition-all;
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass-button:hover {
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-medium);
+    transform: translateY(-1px);
+  }
+
+  /* Floating Action Button */
+  .fab {
+    @apply fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg;
+    background: var(--gradient-accent);
+    box-shadow: var(--shadow-glow);
+    transition: var(--transition-spring);
+  }
+
+  .fab:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-strong), var(--shadow-glow);
+  }
+
+  /* Progress Circle */
+  .progress-circle {
+    @apply relative w-20 h-20 rounded-full flex items-center justify-center;
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Macro Grid */
+  .macro-grid {
+    @apply grid grid-cols-3 gap-4;
+  }
+
+  .macro-card {
+    @apply glass-card-floating p-4 text-center min-h-[120px] flex flex-col items-center justify-center;
+  }
+
+  /* Animated Gradient Text */
+  .gradient-text {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Floating Background Orbs */
+  .bg-orb {
+    @apply absolute rounded-full blur-3xl opacity-20 animate-pulse;
+    background: var(--gradient-accent);
+  }
+
+  .bg-orb-1 {
+    @apply w-96 h-96 -top-48 -left-48;
+    animation: float 20s ease-in-out infinite;
+  }
+
+  .bg-orb-2 {
+    @apply w-80 h-80 -bottom-40 -right-40;
+    animation: float 25s ease-in-out infinite reverse;
+  }
+
+  .bg-orb-3 {
+    @apply w-64 h-64 top-1/3 -right-32;
+    animation: float 30s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  /* Animation Keyframes */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    33% {
+      transform: translateY(-30px) rotate(120deg);
+    }
+    66% {
+      transform: translateY(-20px) rotate(240deg);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
   }
 }

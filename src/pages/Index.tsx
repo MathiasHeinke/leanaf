@@ -21,7 +21,11 @@ import {
   RefreshCw,
   Target,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Flame,
+  Zap,
+  Droplet,
+  Plus
 } from "lucide-react";
 
 interface WeightEntry {
@@ -344,32 +348,160 @@ const Index = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-background to-muted/50 pb-32 relative overflow-hidden"
+      className="min-h-screen relative overflow-hidden pb-32"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Animated Background Orbs */}
+      <div className="bg-orb bg-orb-1" />
+      <div className="bg-orb bg-orb-2" />
+      <div className="bg-orb bg-orb-3" />
+
       {/* Pull to refresh indicator */}
       {isPulling && pullDistance > 0 && (
         <div 
-          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm transition-all duration-200"
-          style={{ height: pullDistance }}
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center backdrop-blur-lg transition-all duration-200"
+          style={{ 
+            height: pullDistance,
+            background: 'var(--glass-bg)',
+            borderBottom: '1px solid var(--glass-border)'
+          }}
         >
           <RefreshCw className={`h-6 w-6 text-primary ${pullDistance > 50 ? 'animate-spin' : ''}`} />
         </div>
       )}
 
-      {/* Main Content - ohne doppelten Container */}
-      <div className="space-y-6">
-        {/* Daily Progress Overview */}
-        <DailyProgress 
-          dailyTotals={dailyTotals}
-          dailyGoal={dailyGoal}
-          userGoal={userGoal}
-        />
+      {/* Main Content Container */}
+      <div className="relative z-10 px-4 py-8 space-y-8 max-w-md mx-auto">
+        
+        {/* Header with Greeting */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold gradient-text">Guten Tag!</h1>
+          <p className="text-muted-foreground">Dein Fortschritt heute</p>
+        </div>
 
-        {/* Motivational Quote */}
-        <div className="px-4">
+        {/* Main Calorie Card */}
+        <div className="glass-card-floating p-8 text-center space-y-6">
+          <div className="space-y-2">
+            <div className="text-4xl font-bold gradient-text">
+              {dailyTotals.calories.toLocaleString()}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              von {dailyGoal.calories.toLocaleString()} kcal
+            </div>
+          </div>
+          
+          <div className="relative w-32 h-32 mx-auto">
+            <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 36 36">
+              <path
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="hsl(var(--muted))"
+                strokeWidth="2"
+              />
+              <path
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                fill="none"
+                stroke="url(#progressGradient)"
+                strokeWidth="2"
+                strokeDasharray={`${calorieProgress}, 100`}
+                strokeLinecap="round"
+              />
+              <defs>
+                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="hsl(var(--primary))" />
+                  <stop offset="100%" stopColor="hsl(var(--accent))" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Flame className="w-8 h-8 text-primary" />
+            </div>
+          </div>
+
+          <div className="text-sm">
+            <span className="text-muted-foreground">Verbleibend: </span>
+            <span className="font-semibold text-foreground">
+              {Math.max(0, remainingCalories)} kcal
+            </span>
+          </div>
+        </div>
+
+        {/* Macro Grid */}
+        <div className="macro-grid">
+          {/* Protein */}
+          <div className="macro-card">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" 
+                 style={{ background: 'hsl(var(--protein-light))' }}>
+              <Zap className="w-6 h-6" style={{ color: 'hsl(var(--protein))' }} />
+            </div>
+            <div className="space-y-1">
+              <div className="text-lg font-bold" style={{ color: 'hsl(var(--protein))' }}>
+                {Math.round(dailyTotals.protein)}g
+              </div>
+              <div className="text-xs text-muted-foreground">Protein</div>
+              <div className="w-full bg-muted rounded-full h-1.5">
+                <div 
+                  className="h-1.5 rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${Math.min(proteinProgress, 100)}%`,
+                    background: 'hsl(var(--protein))'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Carbs */}
+          <div className="macro-card">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" 
+                 style={{ background: 'hsl(var(--carbs-light))' }}>
+              <Target className="w-6 h-6" style={{ color: 'hsl(var(--carbs))' }} />
+            </div>
+            <div className="space-y-1">
+              <div className="text-lg font-bold" style={{ color: 'hsl(var(--carbs))' }}>
+                {Math.round(dailyTotals.carbs)}g
+              </div>
+              <div className="text-xs text-muted-foreground">Kohlenhydrate</div>
+              <div className="w-full bg-muted rounded-full h-1.5">
+                <div 
+                  className="h-1.5 rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${Math.min(carbsProgress, 100)}%`,
+                    background: 'hsl(var(--carbs))'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Fats */}
+          <div className="macro-card">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" 
+                 style={{ background: 'hsl(var(--fats-light))' }}>
+              <Droplet className="w-6 h-6" style={{ color: 'hsl(var(--fats))' }} />
+            </div>
+            <div className="space-y-1">
+              <div className="text-lg font-bold" style={{ color: 'hsl(var(--fats))' }}>
+                {Math.round(dailyTotals.fats)}g
+              </div>
+              <div className="text-xs text-muted-foreground">Fette</div>
+              <div className="w-full bg-muted rounded-full h-1.5">
+                <div 
+                  className="h-1.5 rounded-full transition-all duration-300"
+                  style={{ 
+                    width: `${Math.min(fatsProgress, 100)}%`,
+                    background: 'hsl(var(--fats))'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Motivational Quote Card */}
+        <div className="glass-card p-6">
           <RandomQuote 
             userGender={profileData?.gender} 
             refreshTrigger={quoteRefreshTrigger}
@@ -377,25 +509,46 @@ const Index = () => {
           />
         </div>
 
-        {/* BMI Progress */}
-        <BMIProgress 
-          startWeight={profileData?.start_weight || profileData?.weight || 70}
-          currentWeight={profileData?.weight || 70}
-          targetWeight={profileData?.target_weight || 70}
-          height={profileData?.height || 170}
-        />
+        {/* Stats Cards Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* BMI Card */}
+          <div className="glass-card p-4">
+            <BMIProgress 
+              startWeight={profileData?.start_weight || profileData?.weight || 70}
+              currentWeight={profileData?.weight || 70}
+              targetWeight={profileData?.target_weight || 70}
+              height={profileData?.height || 170}
+            />
+          </div>
 
-        {/* Weight Tracker */}
-        <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
+          {/* Weight Trend Card */}
+          <div className="glass-card p-4">
+            <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
+          </div>
+        </div>
 
-        {/* Meals List */}
-        <MealList 
-          dailyMeals={dailyMeals}
-          onEditMeal={() => {}}
-          onDeleteMeal={() => loadUserData()}
-        />
+        {/* Recent Meals */}
+        <div className="glass-card p-6">
+          <h3 className="text-lg font-semibold mb-4">Heutige Mahlzeiten</h3>
+          <MealList 
+            dailyMeals={dailyMeals.slice(0, 3)}
+            onEditMeal={() => {}}
+            onDeleteMeal={() => loadUserData()}
+          />
+          {dailyMeals.length > 3 && (
+            <div className="mt-4 text-center">
+              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                Alle anzeigen ({dailyMeals.length})
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Floating Action Button */}
+      <button className="fab">
+        <Plus className="w-6 h-6 text-white" />
+      </button>
     </div>
   );
 };
