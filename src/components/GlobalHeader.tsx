@@ -239,7 +239,7 @@ export const GlobalHeader = ({
             </button>
             <button 
               onClick={() => handleNavigation('profile')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center profile-button ${
                 activeTab === 'profile' 
                   ? 'text-foreground scale-105 font-semibold' 
                   : 'text-muted-foreground hover:text-foreground'

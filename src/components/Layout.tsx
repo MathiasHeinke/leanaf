@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { MealInput } from "@/components/MealInput";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
+import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,18 +50,20 @@ export const Layout = ({ children }: LayoutProps) => {
       
       {/* Global floating meal input - only on specific pages */}
       {showMealInput && user && (
-        <MealInput 
-          inputText={mealInputProps.inputText}
-          setInputText={mealInputProps.setInputText}
-          onSubmitMeal={mealInputProps.handleSubmitMeal}
-          onPhotoUpload={mealInputProps.handlePhotoUpload}
-          onVoiceRecord={mealInputProps.handleVoiceRecord}
-          isAnalyzing={mealInputProps.isAnalyzing}
-          isRecording={mealInputProps.isRecording}
-          isProcessing={mealInputProps.isProcessing}
-          uploadedImages={mealInputProps.uploadedImages}
-          onRemoveImage={mealInputProps.removeImage}
-        />
+        <div className="meal-input-container">
+          <MealInput 
+            inputText={mealInputProps.inputText}
+            setInputText={mealInputProps.setInputText}
+            onSubmitMeal={mealInputProps.handleSubmitMeal}
+            onPhotoUpload={mealInputProps.handlePhotoUpload}
+            onVoiceRecord={mealInputProps.handleVoiceRecord}
+            isAnalyzing={mealInputProps.isAnalyzing}
+            isRecording={mealInputProps.isRecording}
+            isProcessing={mealInputProps.isProcessing}
+            uploadedImages={mealInputProps.uploadedImages}
+            onRemoveImage={mealInputProps.removeImage}
+          />
+        </div>
       )}
       
       {/* Meal Confirmation Dialog */}
@@ -72,6 +75,9 @@ export const Layout = ({ children }: LayoutProps) => {
         onMealTypeChange={mealInputProps.setSelectedMealType}
         onSuccess={handleMealSaveSuccess}
       />
+      
+      {/* Onboarding Overlay */}
+      <OnboardingOverlay />
       
       {/* Floating Bottom Navigation */}
       <FloatingBottomNav />

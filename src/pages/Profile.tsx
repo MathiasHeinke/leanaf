@@ -344,7 +344,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-xl font-bold">Persönliche Daten</h2>
           </div>
 
-          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm">Startgewicht (kg)</Label>
@@ -409,7 +409,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </div>
 
-            <div>
+            <div className="profile-activity-level">
               <Label className="text-sm">Aktivitätslevel</Label>
               <Select value={activityLevel} onValueChange={setActivityLevel}>
                 <SelectTrigger className="mt-1">
@@ -436,7 +436,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-xl font-bold">Ziele definieren</h2>
           </div>
 
-          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
             <div>
               <Label className="text-sm">Hauptziel</Label>
               <Select value={goal} onValueChange={setGoal}>
@@ -792,7 +792,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               onClick={handleSave} 
               disabled={loading || autoSaving}
               size="sm"
-              className="ml-2"
+              className="ml-2 profile-save-button"
             >
               <Save className="h-4 w-4 mr-1" />
               Speichern
