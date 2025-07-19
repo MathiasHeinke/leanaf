@@ -498,7 +498,7 @@ const Index = () => {
       </div>
 
       {/* Floating Meal Input - Always Visible */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border/50">
+      <div className="fixed bottom-0 left-0 right-0 z-50">
         <div className="max-w-md mx-auto px-4 pb-3 pt-2">
           <MealInput 
             inputText={mealInputHook.inputText}
