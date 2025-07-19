@@ -362,18 +362,9 @@ const Index = () => {
 
       {/* Main Content - Modern Spacing */}
       <div className="space-y-8 animate-fade-in">
-        {/* Daily Progress Overview - Modern Card */}
-        <div className="px-4">
-          <DailyProgress 
-            dailyTotals={dailyTotals}
-            dailyGoal={dailyGoal}
-            userGoal={userGoal}
-          />
-        </div>
-
         {/* Quick Coach Greeting */}
         <div className="px-4">
-          <div className="text-center text-sm text-muted-foreground mb-1">
+          <div className="text-center text-sm text-muted-foreground">
             {(() => {
               const hour = new Date().getHours();
               const greetings = {
@@ -386,6 +377,15 @@ const Index = () => {
               return timeGreetings[Math.floor(Math.random() * timeGreetings.length)];
             })()}
           </div>
+        </div>
+
+        {/* Daily Progress Overview - Modern Card */}
+        <div className="px-4">
+          <DailyProgress 
+            dailyTotals={dailyTotals}
+            dailyGoal={dailyGoal}
+            userGoal={userGoal}
+          />
         </div>
 
         {/* Motivational Quote - Floating Card */}
