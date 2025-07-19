@@ -51,19 +51,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Redirect authenticated users to main page
-        if (event === 'SIGNED_IN' && session?.user) {
-          window.location.replace('/');
+        // Handle auth events more carefully
+        if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 100);
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          if (window.location.pathname !== '/auth') {
+            window.location.href = '/auth';
+          }
         }
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

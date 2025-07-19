@@ -49,9 +49,9 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
     <div className="space-y-6">
       {/* Goal-based status message */}
       {goalStatus.status !== 'success' && (
-        <div className={`p-4 rounded-2xl border flex items-center gap-3 ${goalStatus.bgColor} ${goalStatus.borderColor} backdrop-blur-sm`}>
+        <div className={`p-4 rounded-2xl border flex items-center gap-3 ${goalStatus.bgColor.includes('yellow') ? 'bg-amber-50 dark:bg-amber-950/20' : goalStatus.bgColor} ${goalStatus.borderColor.includes('yellow') ? 'border-amber-200 dark:border-amber-800/50' : goalStatus.borderColor} backdrop-blur-sm`}>
           <span className="text-xl">{goalStatus.icon}</span>
-          <span className={`text-sm font-medium ${goalStatus.color}`}>
+          <span className={`text-sm font-medium ${goalStatus.color.includes('yellow') ? 'text-amber-600 dark:text-amber-400' : goalStatus.color}`}>
             {goalStatus.message}
             {goalStatus.status === 'danger' && userGoal === 'lose' && remainingCalories < 0 &&
               ` (${Math.abs(remainingCalories)} kcal über dem Ziel)`
@@ -117,7 +117,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
             </div>
             
             {/* Integrated motivational message - better styled */}
-            <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${goalStatus.bgColor.replace('bg-', 'bg-').replace('/5', '/10')} ${goalStatus.color}`}>
+            <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${goalStatus.bgColor.includes('yellow') ? 'bg-amber-50/20 dark:bg-amber-950/30' : goalStatus.bgColor.replace('bg-', 'bg-').replace('/5', '/10')} ${goalStatus.color.includes('yellow') ? 'text-amber-600 dark:text-amber-400' : goalStatus.color}`}>
               <span className="text-base">{goalStatus.icon}</span>
               <span className="text-center leading-relaxed">{goalStatus.motivationalMessage}</span>
             </div>
