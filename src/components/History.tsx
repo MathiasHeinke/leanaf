@@ -99,6 +99,11 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   }, [user, timeRange]);
 
   const loadHistoryData = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const daysToLoad = timeRange === 'week' ? 7 : 30;
@@ -108,7 +113,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       const { data: mealsData, error } = await supabase
         .from('meals')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false });
 
