@@ -329,10 +329,8 @@ const Index = () => {
       // Reload data to reflect changes
       loadUserData();
       
-      toast.success('Mahlzeit erfolgreich aktualisiert');
     } catch (error) {
       console.error('Error updating meal:', error);
-      toast.error('Fehler beim Aktualisieren der Mahlzeit');
     }
   };
 
