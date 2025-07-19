@@ -16,6 +16,8 @@ interface MealInputProps {
   isProcessing: boolean;
   uploadedImages: string[];
   onRemoveImage: (index: number) => void;
+  isEditing?: boolean;
+  onCancelEdit?: () => void;
 }
 
 export const MealInput = ({
@@ -28,7 +30,9 @@ export const MealInput = ({
   isRecording,
   isProcessing,
   uploadedImages,
-  onRemoveImage
+  onRemoveImage,
+  isEditing = false,
+  onCancelEdit
 }: MealInputProps) => {
   const { t } = useTranslation();
   

@@ -14,6 +14,7 @@ import { RandomQuote } from "@/components/RandomQuote";
 import { DailyProgress } from "@/components/DailyProgress";
 import { WeightTracker } from "@/components/WeightTracker";
 import { MealList } from "@/components/MealList";
+import { MealInput } from "@/components/MealInput";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { populateQuotes } from "@/utils/populateQuotes";
 import { UserGoal } from "@/utils/goalBasedMessaging";
@@ -70,6 +71,7 @@ const Index = () => {
   
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [startY, setStartY] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
@@ -306,6 +308,35 @@ const Index = () => {
     setPullDistance(0);
   };
 
+  // Handle meal editing
+  const handleEditMeal = (meal: MealData) => {
+    setEditingMeal(meal);
+    mealInputHook.setInputText(meal.text);
+  };
+
+  // Handle meal update
+  const handleUpdateMeal = async () => {
+    if (!editingMeal || !user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .update({ text: mealInputHook.inputText, updated_at: new Date().toISOString() })
+        .eq('id', editingMeal.id);
+
+      if (error) throw error;
+
+      // Reset edit state
+      setEditingMeal(null);
+      mealInputHook.setInputText('');
+      
+      // Reload data
+      loadUserData();
+    } catch (error) {
+      console.error('Error updating meal:', error);
+    }
+  };
+
   // Calculate daily totals
   const dailyTotals = dailyMeals.reduce(
     (totals, meal) => ({
@@ -434,11 +465,30 @@ const Index = () => {
         <div className="px-4">
           <MealList 
             dailyMeals={dailyMeals}
-            onEditMeal={() => {}}
+            onEditMeal={handleEditMeal}
             onDeleteMeal={() => loadUserData()}
           />
         </div>
       </div>
+
+      {/* Meal Input Component */}
+      <MealInput
+        inputText={mealInputHook.inputText}
+        setInputText={mealInputHook.setInputText}
+        onSubmitMeal={editingMeal ? handleUpdateMeal : mealInputHook.handleSubmitMeal}
+        onPhotoUpload={mealInputHook.handlePhotoUpload}
+        onVoiceRecord={mealInputHook.handleVoiceRecord}
+        isAnalyzing={mealInputHook.isAnalyzing}
+        isRecording={mealInputHook.isRecording}
+        isProcessing={mealInputHook.isProcessing}
+        uploadedImages={mealInputHook.uploadedImages}
+        onRemoveImage={mealInputHook.removeImage}
+        isEditing={!!editingMeal}
+        onCancelEdit={() => {
+          setEditingMeal(null);
+          mealInputHook.setInputText('');
+        }}
+      />
 
     </div>
   );
