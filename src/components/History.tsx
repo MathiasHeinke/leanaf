@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "sonner";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
+import { useDataRefresh } from "@/hooks/useDataRefresh";
 
 interface DailyGoal {
   calories: number;
@@ -100,13 +101,20 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  useEffect(() => {
+  const refreshData = useCallback(() => {
     if (user) {
       loadHistoryData();
       loadUserGoal();
       loadWeightHistory();
     }
-  }, [user, timeRange]);
+  }, [user]);
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData, timeRange]);
+
+  // Subscribe to data refresh events
+  useDataRefresh(refreshData);
 
   const loadHistoryData = async () => {
     if (!user) {

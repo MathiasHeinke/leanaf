@@ -21,6 +21,7 @@ import { de } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 
 interface MealConfirmationDialogProps {
   isOpen: boolean;
@@ -156,6 +157,7 @@ export const MealConfirmationDialog = ({
       }
 
       toast.success('Mahlzeit erfolgreich gespeichert');
+      triggerDataRefresh(); // Trigger data refresh across all components
       onSuccess();
       onClose();
       
