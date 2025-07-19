@@ -598,7 +598,7 @@ const Coach = ({ onClose }: CoachProps) => {
               <Brain className="h-6 w-6 text-white" />
             </div>
             <div>
-              <div className="text-xl font-bold">Kalo Coach AI</div>
+              <div className="text-xl font-bold">kaloAI Coach</div>
               <div className="text-sm text-muted-foreground font-normal">Dein intelligenter Ernährungsberater</div>
             </div>
           </CardTitle>
