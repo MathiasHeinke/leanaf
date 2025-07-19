@@ -1,5 +1,4 @@
 
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,7 +81,7 @@ export const MealInput = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={t('input.placeholder')}
-              className="min-h-[80px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 py-4"
+              className="min-h-[56px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 py-3"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -94,7 +93,7 @@ export const MealInput = ({
             />
             
             {/* Left Action Button - Single attachment button like ChatGPT */}
-            <div className="absolute left-3 bottom-4 flex items-center">
+            <div className="absolute left-3 bottom-3 flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
@@ -123,7 +122,7 @@ export const MealInput = ({
             </div>
             
             {/* Right Action Buttons - Voice + Send */}
-            <div className="absolute right-3 bottom-4 flex items-center gap-1">
+            <div className="absolute right-3 bottom-3 flex items-center gap-1">
               {/* Voice Recording */}
               <Button
                 variant="ghost"
@@ -169,4 +168,3 @@ export const MealInput = ({
     </div>
   );
 };
-
