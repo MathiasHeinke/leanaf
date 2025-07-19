@@ -1204,15 +1204,15 @@ const Coach = ({ onClose }: CoachProps) => {
                 )}
               </div>
 
-              {/* Weight Progress Tracker - New Glass Card */}
-              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50 hover:border-accent/30 transition-all duration-300">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-12 w-12 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center">
-                    <Scale className="h-6 w-6 text-emerald-600" />
+              {/* Redesigned Weight Tracker Integration */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center">
+                    <Scale className="h-5 w-5 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">Gewichtsprognose</h3>
-                    <p className="text-sm text-muted-foreground">Dein Weg zum Zielgewicht</p>
+                    <h3 className="text-lg font-semibold text-foreground">Gewichts-Management</h3>
+                    <p className="text-sm text-muted-foreground">Verfolge deinen Fortschritt zum Zielgewicht</p>
                   </div>
                 </div>
                 
