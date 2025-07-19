@@ -167,43 +167,106 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       // Group meals by date
       const groupedData = new Map<string, DailyData>();
       
-      // Initialize empty days
-      for (let i = 0; i < daysToLoad; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        groupedData.set(dateStr, {
-          date: dateStr,
-          displayDate: date.toLocaleDateString('de-DE', { 
-            day: '2-digit', 
-            month: '2-digit' 
-          }),
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fats: 0,
-          meals: []
-        });
-      }
-
-      // Add meals to their respective days
-      mealsData?.forEach(meal => {
-        const date = new Date(meal.created_at).toISOString().split('T')[0];
-        const day = groupedData.get(date);
-        if (day) {
-          const mealWithImages = {
-            ...meal,
-            images: imagesByMealId.get(meal.id) || []
-          };
-          day.meals.push(mealWithImages);
-          day.calories += Number(meal.calories);
-          day.protein += Number(meal.protein);
-          day.carbs += Number(meal.carbs);
-          day.fats += Number(meal.fats);
+      if (timeRange === 'month') {
+        // Für 30-Tage-Ansicht: Gruppiere nach Wochen
+        const weeklyData = new Map<string, DailyData>();
+        
+        // Initialize weeks for the last 4-5 weeks
+        for (let i = 0; i < 5; i++) {
+          const weekStart = new Date();
+          weekStart.setDate(weekStart.getDate() - (weekStart.getDay() - 1) - (i * 7)); // Montag als Wochenstart
+          const weekKey = weekStart.toISOString().split('T')[0];
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          
+          weeklyData.set(weekKey, {
+            date: weekKey,
+            displayDate: `${weekStart.toLocaleDateString('de-DE', { 
+              day: '2-digit', 
+              month: '2-digit' 
+            })} - ${weekEnd.toLocaleDateString('de-DE', { 
+              day: '2-digit', 
+              month: '2-digit' 
+            })}`,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fats: 0,
+            meals: []
+          });
         }
-      });
 
-      setHistoryData(Array.from(groupedData.values()).sort((a, b) => b.date.localeCompare(a.date)));
+        // Add meals to their respective weeks
+        mealsData?.forEach(meal => {
+          const mealDate = new Date(meal.created_at);
+          const weekStart = new Date(mealDate);
+          weekStart.setDate(mealDate.getDate() - mealDate.getDay() + 1); // Montag als Wochenstart
+          const weekKey = weekStart.toISOString().split('T')[0];
+          
+          const week = weeklyData.get(weekKey);
+          if (week) {
+            const mealWithImages = {
+              ...meal,
+              images: imagesByMealId.get(meal.id) || []
+            };
+            week.meals.push(mealWithImages);
+            week.calories += Number(meal.calories);
+            week.protein += Number(meal.protein);
+            week.carbs += Number(meal.carbs);
+            week.fats += Number(meal.fats);
+          }
+        });
+
+        // Convert to array and calculate weekly averages per day
+        const weeklyArray = Array.from(weeklyData.values()).map(week => ({
+          ...week,
+          calories: Math.round(week.calories / 7), // Durchschnitt pro Tag
+          protein: Math.round(week.protein / 7),
+          carbs: Math.round(week.carbs / 7),
+          fats: Math.round(week.fats / 7)
+        }));
+
+        setHistoryData(weeklyArray.sort((a, b) => b.date.localeCompare(a.date)));
+      } else {
+        // Für Tag- und Jahresansicht: Gruppiere nach Tagen
+        // Initialize empty days
+        for (let i = 0; i < daysToLoad; i++) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toISOString().split('T')[0];
+          groupedData.set(dateStr, {
+            date: dateStr,
+            displayDate: date.toLocaleDateString('de-DE', { 
+              day: '2-digit', 
+              month: '2-digit' 
+            }),
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fats: 0,
+            meals: []
+          });
+        }
+
+        // Add meals to their respective days
+        mealsData?.forEach(meal => {
+          const date = new Date(meal.created_at).toISOString().split('T')[0];
+          const day = groupedData.get(date);
+          if (day) {
+            const mealWithImages = {
+              ...meal,
+              images: imagesByMealId.get(meal.id) || []
+            };
+            day.meals.push(mealWithImages);
+            day.calories += Number(meal.calories);
+            day.protein += Number(meal.protein);
+            day.carbs += Number(meal.carbs);
+            day.fats += Number(meal.fats);
+          }
+        });
+
+        setHistoryData(Array.from(groupedData.values()).sort((a, b) => b.date.localeCompare(a.date)));
+      }
     } catch (error) {
       console.error('Error loading history:', error);
       toast.error('Fehler beim Laden der Verlaufsdaten');
@@ -928,7 +991,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
             <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 200}>
               <BarChart data={
                 timeRange === 'week' ? currentData.slice(-7).reverse() :
-                timeRange === 'month' ? currentData.slice(-14).reverse() : // Zeige nur jeden 2. Tag bei 30 Tagen
+                timeRange === 'month' ? currentData.slice().reverse() : // Zeige Wochen-Daten für 30 Tage
                 currentData.filter((_, index) => index % 15 === 0).slice(-24).reverse() // Zeige nur jeden 15. Tag bei 365 Tagen
               }>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
