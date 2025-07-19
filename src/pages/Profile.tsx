@@ -489,7 +489,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   type="date"
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
-                  className="mt-1"
+                  className="mt-1 w-full"
                 />
               </div>
             </div>
@@ -506,6 +506,22 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <div className="text-xs text-muted-foreground mt-1">
                 Positiv für Gewichtsverlust, negativ für Gewichtszunahme
               </div>
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Dumbbell className="h-4 w-4" />
+                  Muskelmasse erhalten
+                </Label>
+                <div className="text-xs text-muted-foreground">
+                  Priorität auf Muskelerhaltung während Diät
+                </div>
+              </div>
+              <Switch 
+                checked={muscleMaintenancePriority} 
+                onCheckedChange={setMuscleMaintenancePriority}
+              />
             </div>
           </div>
         </div>
@@ -558,22 +574,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   {coachPersonality === 'soft' && "\"Das ist völlig in Ordnung, morgen ist ein neuer Tag für einen Neuanfang.\""}
                   {coachPersonality === 'motivierend' && "\"Du schaffst das! Ich glaube an dich und deine Ziele!\""}
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between py-2">
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Dumbbell className="h-4 w-4" />
-                    Muskelmasse erhalten
-                  </Label>
-                  <div className="text-xs text-muted-foreground">
-                    Priorität auf Muskelerhaltung während Diät
-                  </div>
-                </div>
-                <Switch 
-                  checked={muscleMaintenancePriority} 
-                  onCheckedChange={setMuscleMaintenancePriority}
-                />
               </div>
             </div>
           </div>
