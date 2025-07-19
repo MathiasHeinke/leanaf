@@ -888,13 +888,14 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
               <TrendingUp className="h-4 w-4" />
               Kalorien-Verlauf
             </h3>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 200}>
               <LineChart data={currentData.slice().reverse()}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
                   dataKey="displayDate" 
                   tick={{ fontSize: 12 }}
                   tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                  interval={timeRange === 'year' ? 'preserveStartEnd' : 0}
                 />
                 <YAxis 
                   tick={{ fontSize: 12 }}
@@ -922,15 +923,20 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           <Card className="p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Makronährstoffe (letzte 7 Tage)
+              Makronährstoffe ({timeRange === 'week' ? 'letzte 7 Tage' : timeRange === 'month' ? 'letzte 30 Tage' : 'letztes Jahr'})
             </h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={currentData.slice(-7).reverse()}>
+            <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 200}>
+              <BarChart data={
+                timeRange === 'week' ? currentData.slice(-7).reverse() :
+                timeRange === 'month' ? currentData.slice(-14).reverse() : // Zeige nur jeden 2. Tag bei 30 Tagen
+                currentData.filter((_, index) => index % 15 === 0).slice(-24).reverse() // Zeige nur jeden 15. Tag bei 365 Tagen
+              }>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
                   dataKey="displayDate" 
                   tick={{ fontSize: 12 }}
                   tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                  interval={0}
                 />
                 <YAxis 
                   tick={{ fontSize: 12 }}
@@ -964,13 +970,14 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                   <TrendingUp className="h-4 w-4" />
                   Gewichtsverlauf
                 </h3>
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 250}>
                   <LineChart data={weightHistory.slice().reverse()}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                     <XAxis 
                       dataKey="displayDate" 
                       tick={{ fontSize: 12 }}
                       tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                      interval={timeRange === 'year' ? 'preserveStartEnd' : 0}
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
