@@ -69,6 +69,7 @@ const Index = () => {
   const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [userGoal, setUserGoal] = useState<UserGoal>('maintain');
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -218,6 +219,25 @@ const Index = () => {
           console.log('Daily goals loaded from database:', goals);
           setDailyGoal(goals);
         }
+      }
+
+      // Load weight history
+      const { data: weightData, error: weightError } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      if (weightError) {
+        console.error('Weight history error:', weightError);
+      } else if (weightData) {
+        const formattedWeights = weightData.map(entry => ({
+          id: entry.id,
+          weight: Number(entry.weight),
+          date: entry.date,
+        }));
+        setWeightHistory(formattedWeights);
       }
 
       // Load meals for the selected date or today
@@ -482,7 +502,10 @@ const Index = () => {
 
         {/* Weight Tracker - Modern Style */}
         <div className="px-4">
-          <WeightTracker weightHistory={[]} onWeightAdded={() => {}} />
+          <WeightTracker 
+            weightHistory={weightHistory} 
+            onWeightAdded={() => loadUserData()} 
+          />
         </div>
 
         {/* Meals List - Clean Cards */}
