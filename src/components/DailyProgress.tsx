@@ -115,6 +115,12 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
                 <TrendingDown className="h-4 w-4 text-red-500" />
               )}
             </div>
+            
+            {/* Integrated motivational message */}
+            <div className={`flex items-center justify-center gap-3 text-sm font-medium ${goalStatus.color} mt-3 pt-3 border-t border-border/20`}>
+              <span className="text-lg">{goalStatus.icon}</span>
+              <span>{goalStatus.motivationalMessage}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -185,13 +191,6 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
         </div>
       </div>
 
-      {/* Goal-based motivational message */}
-      <div className={`p-4 rounded-2xl border ${goalStatus.bgColor} ${goalStatus.borderColor} backdrop-blur-sm`}>
-        <div className={`flex items-center gap-3 text-sm font-medium ${goalStatus.color}`}>
-          <span className="text-xl">{goalStatus.icon}</span>
-          <span>{goalStatus.motivationalMessage}</span>
-        </div>
-      </div>
     </div>
   );
 };
