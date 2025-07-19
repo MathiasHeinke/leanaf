@@ -81,7 +81,7 @@ export const MealInput = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={t('input.placeholder')}
-              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-14 pr-24 py-4 leading-relaxed"
+              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 py-4 leading-relaxed"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -97,10 +97,10 @@ export const MealInput = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 w-9 p-0 rounded-xl hover:bg-muted/70 transition-all duration-200 hover:scale-105"
+                className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/70 transition-all duration-200 hover:scale-105 ${inputText ? 'opacity-30' : 'opacity-100'}`}
                 onClick={() => document.getElementById('gallery-upload')?.click()}
               >
-                <Paperclip className="h-4 w-4 text-muted-foreground/70 group-focus-within:text-muted-foreground transition-colors" />
+                <Paperclip className="h-5 w-5 text-muted-foreground/70 group-focus-within:text-muted-foreground transition-colors" />
               </Button>
               <input
                 id="gallery-upload"
@@ -136,11 +136,11 @@ export const MealInput = ({
                 disabled={isAnalyzing || isProcessing}
               >
                 {isRecording ? (
-                  <StopCircle className="h-4 w-4" />
+                  <StopCircle className="h-5 w-5" />
                 ) : isProcessing ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Mic className="h-4 w-4 text-muted-foreground/70 group-focus-within:text-muted-foreground transition-colors" />
+                  <Mic className="h-5 w-5 text-muted-foreground/70 group-focus-within:text-muted-foreground transition-colors" />
                 )}
               </Button>
               
@@ -156,9 +156,9 @@ export const MealInput = ({
                 disabled={(!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing}
               >
                 {isAnalyzing ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 )}
               </Button>
             </div>
