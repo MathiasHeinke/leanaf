@@ -85,35 +85,6 @@ const Index = () => {
   // Initialize meal input hook
   const mealInputHook = useGlobalMealInput();
   
-  // Check for duplicated meal from localStorage
-  useEffect(() => {
-    const duplicatedMeal = localStorage.getItem('duplicatedMeal');
-    if (duplicatedMeal) {
-      try {
-        const meal = JSON.parse(duplicatedMeal);
-        console.log('🔄 Loading duplicated meal from localStorage:', meal);
-        mealInputHook.setInputText(meal.text);
-        mealInputHook.setSelectedMealType(meal.meal_type);
-        if (meal.images && meal.images.length > 0) {
-          mealInputHook.setUploadedImages(meal.images);
-        }
-        localStorage.removeItem('duplicatedMeal'); // Clean up
-        toast.success("Mahlzeit dupliziert - Du kannst sie jetzt anpassen");
-        
-        // Scroll to bottom to show meal input
-        setTimeout(() => {
-          window.scrollTo({
-            top: document.body.scrollHeight,
-            behavior: 'smooth'
-          });
-        }, 500);
-      } catch (error) {
-        console.error('Error loading duplicated meal:', error);
-        localStorage.removeItem('duplicatedMeal');
-      }
-    }
-  }, []);
-  
   const navigate = useNavigate();
 
   // Check authentication

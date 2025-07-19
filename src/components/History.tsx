@@ -109,7 +109,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const [editingMealDate, setEditingMealDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { duplicateMeal } = useGlobalMealInput();
 
   const refreshData = useCallback(() => {
     if (user) {
@@ -390,6 +389,54 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     } catch (error) {
       console.error('Error updating meal:', error);
       toast.error('Fehler beim Aktualisieren der Mahlzeit');
+    }
+  };
+
+  const duplicateMeal = async (meal: MealData) => {
+    if (!user) return;
+    
+    try {
+      // Create a new meal with the same data but new timestamp
+      const { data, error } = await supabase
+        .from('meals')
+        .insert({
+          user_id: user.id,
+          text: meal.text,
+          calories: meal.calories,
+          protein: meal.protein,
+          carbs: meal.carbs,
+          fats: meal.fats,
+          meal_type: meal.meal_type,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // If the original meal had images, duplicate them too
+      if (meal.images && meal.images.length > 0) {
+        const imageInserts = meal.images.map(imageUrl => ({
+          user_id: user.id,
+          meal_id: data.id,
+          image_url: imageUrl
+        }));
+
+        const { error: imageError } = await supabase
+          .from('meal_images')
+          .insert(imageInserts);
+
+        if (imageError) {
+          console.error('Error duplicating images:', imageError);
+          // Don't fail the whole operation for image errors
+        }
+      }
+
+      toast.success('Mahlzeit erfolgreich dupliziert');
+      await loadHistoryData(); // Refresh the data
+    } catch (error) {
+      console.error('Error duplicating meal:', error);
+      toast.error('Fehler beim Duplizieren der Mahlzeit');
     }
   };
 
@@ -944,12 +991,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => {
-                                        console.log('🔄 Duplicate button clicked for meal:', meal);
-                                        // Direct navigation to home with duplicated data
-                                        localStorage.setItem('duplicatedMeal', JSON.stringify(meal));
-                                        window.location.href = '/';
-                                      }}
+                                      onClick={() => duplicateMeal(meal)}
                                       className="h-8 w-8 p-0 hover:bg-primary/10"
                                       title="Mahlzeit duplizieren"
                                     >
