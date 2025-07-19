@@ -514,8 +514,8 @@ const Coach = ({ onClose }: CoachProps) => {
   const getMessageColor = (type: string) => {
     switch (type) {
       case 'motivation': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/30';
-      case 'tip': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'warning': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'tip': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/30';
+      case 'warning': return 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/30';
       case 'analysis': return 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700/30';
       default: return 'text-muted-foreground bg-muted/50 border-border';
     }
