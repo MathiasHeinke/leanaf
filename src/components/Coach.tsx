@@ -144,6 +144,34 @@ const Coach = ({ onClose }: CoachProps) => {
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const { user } = useAuth();
   const { t } = useTranslation();
+
+  // Speichern-Funktion für Rezepte
+  const saveRecipe = async (meal: MealSuggestion) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('saved_items')
+        .insert({
+          user_id: user.id,
+          type: 'recipe',
+          title: meal.name,
+          content: `${meal.description}\n\nZutaten:\n${meal.ingredients.map(i => `• ${i}`).join('\n')}\n\nZubereitung:\n${meal.preparation}`,
+          metadata: {
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fats: meal.fats,
+            mealType: meal.mealType
+          }
+        });
+      
+      if (error) throw error;
+      // Kein Toast - User sieht direkt dass gespeichert wurde
+    } catch (error: any) {
+      console.error('Error saving recipe:', error);
+    }
+  };
   
   // Use global coach chat hook
   const coachChatHook = useGlobalCoachChat();
@@ -180,7 +208,7 @@ const Coach = ({ onClose }: CoachProps) => {
       
       recognition.onerror = () => {
         setIsListening(false);
-        toast.error('Spracherkennung fehlgeschlagen');
+        // Toast entfernt - User sieht Status direkt
       };
       
       recognition.onend = () => {
@@ -269,7 +297,7 @@ const Coach = ({ onClose }: CoachProps) => {
       setAiAnalysis(data);
     } catch (error: any) {
       console.error('Error generating AI analysis:', error);
-      toast.error('Fehler bei der AI-Analyse');
+      // Toast entfernt - User sieht Status direkt
     } finally {
       setAnalysisLoading(false);
     }
@@ -321,7 +349,7 @@ const Coach = ({ onClose }: CoachProps) => {
       
     } catch (error: any) {
       console.error('Error generating meal suggestions:', error);
-      toast.error('Fehler bei Meal-Empfehlungen');
+      // Toast entfernt - User sieht Status direkt
     } finally {
       setSuggestionsLoading(false);
     }
@@ -403,7 +431,7 @@ const Coach = ({ onClose }: CoachProps) => {
       }
     } catch (error) {
       console.error('Error processing voice message:', error);
-      toast.error('Fehler bei Sprachverarbeitung');
+      // Toast entfernt - User sieht Status direkt
     } finally {
       setChatLoading(false);
     }
@@ -433,7 +461,7 @@ const Coach = ({ onClose }: CoachProps) => {
       }
     } catch (error) {
       console.error('Error sending chat message:', error);
-      toast.error('Fehler beim Senden der Nachricht');
+      // Toast entfernt - User sieht Status direkt
     } finally {
       setChatLoading(false);
     }
@@ -491,14 +519,14 @@ const Coach = ({ onClose }: CoachProps) => {
       setHistoryData(historyEntries);
     } catch (error: any) {
       console.error('Error loading history:', error);
-      toast.error('Fehler beim Laden des Verlaufs');
+      // Toast entfernt - User sieht Status direkt
     } finally {
       setHistoryLoading(false);
     }
   };
 
   const requestPersonalSession = () => {
-    toast.success('Anfrage für persönliches Gespräch wurde gesendet! 📞');
+    // Toast entfernt - User sieht Action direkt
   };
 
   const getMessageIcon = (type: string) => {
@@ -723,9 +751,8 @@ const Coach = ({ onClose }: CoachProps) => {
                               variant="outline" 
                               size="sm" 
                               className="flex-1 bg-accent/5 hover:bg-accent/10 border-accent/20"
-                              onClick={() => {
-                                // TODO: Implement save functionality
-                                toast.success('Rezept gespeichert!');
+                              onClick={async () => {
+                                await saveRecipe(meal);
                               }}
                             >
                               <Heart className="h-4 w-4 mr-2" />

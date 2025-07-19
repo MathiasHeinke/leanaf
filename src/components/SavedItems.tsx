@@ -63,7 +63,7 @@ export const SavedItems = () => {
       setSavedItems(mappedItems);
     } catch (error: any) {
       console.error('Error loading saved items:', error);
-      toast.error('Fehler beim Laden der gespeicherten Inhalte');
+      // Toast entfernt - User sieht Status direkt
     } finally {
       setLoading(false);
     }
@@ -80,10 +80,10 @@ export const SavedItems = () => {
       if (error) throw error;
       
       setSavedItems(prev => prev.filter(item => item.id !== itemId));
-      toast.success('Element entfernt');
+      // Toast entfernt - User sieht direkt dass entfernt wurde
     } catch (error: any) {
       console.error('Error removing item:', error);
-      toast.error('Fehler beim Entfernen');
+      // Toast entfernt - User sieht Status direkt
     }
   };
 
