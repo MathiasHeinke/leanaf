@@ -113,13 +113,13 @@ export const GlobalHeader = ({
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl overflow-hidden">
             <img 
-              src="/src/assets/kaloai-logo.png" 
-              alt="kaloAI Logo" 
+              src="/src/assets/kai-logo.png" 
+              alt="kAI Logo" 
               className="w-full h-full object-cover"
             />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            kaloAI
+            kAI
           </h1>
         </div>
         
