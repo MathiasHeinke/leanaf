@@ -80,7 +80,7 @@ export const MealInput = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={t('input.placeholder')}
-              className="min-h-[56px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 px-14 py-4 pr-20"
+              className="min-h-[56px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-2 pr-20 py-3"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
