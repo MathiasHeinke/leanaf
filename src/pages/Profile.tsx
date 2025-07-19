@@ -16,6 +16,8 @@ interface ProfilePageProps {
 }
 
 const Profile = ({ onClose }: ProfilePageProps) => {
+  const { t } = useTranslation();
+  
   const [weight, setWeight] = useState('');
   const [startWeight, setStartWeight] = useState('');
   const [height, setHeight] = useState('');
@@ -44,7 +46,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [macroStrategy, setMacroStrategy] = useState('standard');
   
   const { user } = useAuth();
-  const { t, language, setLanguage } = useTranslation();
+  const { language, setLanguage } = useTranslation();
   const navigate = useNavigate();
 
   // Auto-save function
@@ -310,11 +312,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     setLoading(true);
     try {
       await performSave();
-      toast.success('Profil gespeichert');
+      toast.success(t('toast.success.profileSaved'));
       setLastSaved(new Date());
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error('Fehler beim Speichern');
+      toast.error(t('toast.error.savingProfile'));
     } finally {
       setLoading(false);
     }
@@ -325,7 +327,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Lade Profil...</p>
+          <p>{t('profile.loading')}</p>
         </div>
       </div>
     );
@@ -335,19 +337,19 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     <div className="p-4 max-w-lg mx-auto">
       <div className="space-y-6 pb-20">
         
-        {/* 1. Persönliche Daten */}
+        {/* 1. Personal Data */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Settings className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Persönliche Daten</h2>
+            <h2 className="text-xl font-bold">{t('profile.personalData')}</h2>
           </div>
 
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm">Startgewicht (kg)</Label>
+                <Label className="text-sm">{t('profile.startWeight')}</Label>
                 <Input
                   type="number"
                   value={startWeight}
@@ -357,7 +359,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">Aktuelles Gewicht</Label>
+                <Label className="text-sm">{t('profile.currentWeightLabel')}</Label>
                 <div className="mt-1 flex items-center justify-between h-10 px-3 py-2">
                   <span className="text-lg font-bold">{weight || '-'} kg</span>
                   {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
@@ -376,7 +378,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label className="text-sm">Größe (cm)</Label>
+                <Label className="text-sm">{t('profile.height')}</Label>
                 <Input
                   type="number"
                   value={height}
@@ -386,7 +388,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">Alter</Label>
+                <Label className="text-sm">{t('profile.age')}</Label>
                 <Input
                   type="number"
                   value={age}
@@ -396,64 +398,64 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">Geschlecht</Label>
+                <Label className="text-sm">{t('profile.gender')}</Label>
                 <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Wählen" />
+                    <SelectValue placeholder={t('common.select')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Männlich</SelectItem>
-                    <SelectItem value="female">Weiblich</SelectItem>
+                    <SelectItem value="male">{t('profile.gender.male')}</SelectItem>
+                    <SelectItem value="female">{t('profile.gender.female')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="profile-activity-level">
-              <Label className="text-sm">Aktivitätslevel</Label>
+              <Label className="text-sm">{t('profile.activityLevel')}</Label>
               <Select value={activityLevel} onValueChange={setActivityLevel}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sedentary">Wenig aktiv (Bürojob)</SelectItem>
-                  <SelectItem value="light">Leicht aktiv (1-3x Sport/Woche)</SelectItem>
-                  <SelectItem value="moderate">Mäßig aktiv (3-5x Sport/Woche)</SelectItem>
-                  <SelectItem value="active">Sehr aktiv (6-7x Sport/Woche)</SelectItem>
-                  <SelectItem value="very_active">Extrem aktiv (2x täglich)</SelectItem>
+                  <SelectItem value="sedentary">{t('profile.activityLevels.sedentary')}</SelectItem>
+                  <SelectItem value="light">{t('profile.activityLevels.light')}</SelectItem>
+                  <SelectItem value="moderate">{t('profile.activityLevels.moderate')}</SelectItem>
+                  <SelectItem value="active">{t('profile.activityLevels.active')}</SelectItem>
+                  <SelectItem value="very_active">{t('profile.activityLevels.very_active')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
 
-        {/* 2. Ziele definieren */}
+        {/* 2. Define Goals */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
               <Target className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Ziele definieren</h2>
+            <h2 className="text-xl font-bold">{t('profile.defineGoals')}</h2>
           </div>
 
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
             <div>
-              <Label className="text-sm">Hauptziel</Label>
+              <Label className="text-sm">{t('profile.goal')}</Label>
               <Select value={goal} onValueChange={setGoal}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lose">Gewicht verlieren</SelectItem>
-                  <SelectItem value="maintain">Gewicht halten</SelectItem>
-                  <SelectItem value="gain">Gewicht zunehmen</SelectItem>
+                  <SelectItem value="lose">{t('profile.goals.lose')}</SelectItem>
+                  <SelectItem value="maintain">{t('profile.goals.maintain')}</SelectItem>
+                  <SelectItem value="gain">{t('profile.goals.gain')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm">Zielgewicht (kg)</Label>
+                <Label className="text-sm">{t('profile.targetWeight')}</Label>
                 <Input
                   type="number"
                   value={targetWeight}
@@ -463,7 +465,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">Zieldatum</Label>
+                <Label className="text-sm">{t('profile.targetDate')}</Label>
                 <Input
                   type="date"
                   value={targetDate}
@@ -474,7 +476,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
 
             <div>
-              <Label className="text-sm">Kaloriendefizit/-überschuss pro Tag</Label>
+              <Label className="text-sm">{t('profile.calorieDeficit')}</Label>
               <Input
                 type="number"
                 value={dailyGoals.calorieDeficit}
@@ -483,7 +485,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 placeholder="300"
               />
               <div className="text-xs text-muted-foreground mt-1">
-                Positiv für Gewichtsverlust, negativ für Gewichtszunahme
+                {t('profile.calorieAdjustment')}
               </div>
             </div>
 
@@ -491,10 +493,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <div className="space-y-1">
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <Dumbbell className="h-4 w-4" />
-                  Muskelmasse erhalten
+                  {t('profile.muscleMaintenancePriority')}
                 </Label>
                 <div className="text-xs text-muted-foreground">
-                  Priorität auf Muskelerhaltung während Diät
+                  {t('profile.muscleMaintenancePriority')}
                 </div>
               </div>
               <Switch 
@@ -505,20 +507,20 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-        {/* 3. Präferenzen */}
+        {/* 3. Preferences */}
         <div className="space-y-6">
-          {/* Coach-Einstellungen */}
+          {/* Coach Settings */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold">Coach-Einstellungen</h2>
+              <h2 className="text-xl font-bold">{t('profile.coachSettings')}</h2>
             </div>
 
             <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
               <div>
-                <Label className="text-sm font-medium">Coach-Persönlichkeit</Label>
+                <Label className="text-sm font-medium">{t('profile.coachPersonality')}</Label>
                 <Select value={coachPersonality} onValueChange={setCoachPersonality}>
                   <SelectTrigger className="mt-2">
                     <SelectValue />
@@ -527,19 +529,19 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     <SelectItem value="hart">
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-red-500" />
-                        <span>Hart & Direkt</span>
+                        <span>{t('profile.coachPersonalities.hart')}</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="soft">
                       <div className="flex items-center gap-2">
                         <Heart className="h-4 w-4 text-pink-500" />
-                        <span>Sanft & Verständnisvoll</span>
+                        <span>{t('profile.coachPersonalities.soft')}</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="motivierend">
                       <div className="flex items-center gap-2">
                         <Activity className="h-4 w-4 text-green-500" />
-                        <span>Motivierend & Positiv</span>
+                        <span>{t('profile.coachPersonalities.motivierend')}</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -557,23 +559,23 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
           </div>
 
-          {/* Makro-Strategien */}
+          {/* Macro Strategies */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold">Makro-Strategien</h2>
+              <h2 className="text-xl font-bold">{t('profile.macroStrategies')}</h2>
             </div>
 
             <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
               <div className="space-y-3">
                 {[
-                  { key: 'standard', label: 'Standard', desc: 'Ausgewogene Verteilung', macros: '30/40/30' },
-                  { key: 'high_protein', label: 'High Protein', desc: 'Mehr Protein für Muskelaufbau', macros: '40/30/30' },
-                  { key: 'balanced', label: 'Balanced', desc: 'Moderate Protein-Verteilung', macros: '25/45/30' },
-                  { key: 'low_carb', label: 'Low Carb', desc: 'Weniger Kohlenhydrate', macros: '35/20/45' },
-                  { key: 'athletic', label: 'Athletic', desc: 'Für aktive Sportler', macros: '30/50/20' }
+                  { key: 'standard', label: t('profile.macroStrategy.standard'), desc: t('profile.macroStrategyDesc.standard'), macros: '30/40/30' },
+                  { key: 'high_protein', label: t('profile.macroStrategy.high_protein'), desc: t('profile.macroStrategyDesc.high_protein'), macros: '40/30/30' },
+                  { key: 'balanced', label: t('profile.macroStrategy.balanced'), desc: t('profile.macroStrategyDesc.balanced'), macros: '25/45/30' },
+                  { key: 'low_carb', label: t('profile.macroStrategy.low_carb'), desc: t('profile.macroStrategyDesc.low_carb'), macros: '35/20/45' },
+                  { key: 'athletic', label: t('profile.macroStrategy.athletic'), desc: t('profile.macroStrategyDesc.athletic'), macros: '30/50/20' }
                 ].map((strategy) => (
                   <div 
                     key={strategy.key}
@@ -602,7 +604,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-xs">Protein %</Label>
+                  <Label className="text-xs">{t('macros.protein')} %</Label>
                   <Input
                     type="number"
                     value={dailyGoals.protein}
@@ -611,7 +613,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Carbs %</Label>
+                  <Label className="text-xs">{t('macros.carbs')} %</Label>
                   <Input
                     type="number"
                     value={dailyGoals.carbs}
@@ -620,7 +622,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Fats %</Label>
+                  <Label className="text-xs">{t('macros.fats')} %</Label>
                   <Input
                     type="number"
                     value={dailyGoals.fats}
@@ -630,95 +632,95 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 </div>
               </div>
               <div className="text-center text-xs text-muted-foreground">
-                Gesamt: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
+                {t('profile.totalPercentage', { total: dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats })}
               </div>
             </div>
           </div>
         </div>
 
-        {/* 4. Berechnete Ergebnisse */}
+        {/* 4. Calculated Results */}
         <div className="space-y-6">
-          {/* Makronährstoff-Anzeige */}
+          {/* Your Macros */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
                 <Activity className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold">Deine Makros</h2>
+              <h2 className="text-xl font-bold">{t('profile.yourMacros')}</h2>
             </div>
 
             <div className="bg-background rounded-xl p-4 shadow-sm border">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold">{calculateMacroGrams().protein}g</div>
-                  <div className="text-sm text-muted-foreground">Protein</div>
+                  <div className="text-sm text-muted-foreground">{t('macros.protein')}</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
-                  <div className="text-sm text-muted-foreground">Carbs</div>
+                  <div className="text-sm text-muted-foreground">{t('macros.carbs')}</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{calculateMacroGrams().fats}g</div>
-                  <div className="text-sm text-muted-foreground">Fats</div>
+                  <div className="text-sm text-muted-foreground">{t('macros.fats')}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Kalorienberechnung */}
+          {/* Calorie Calculation */}
           <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
                 <Zap className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold">Kalorienberechnung</h2>
+              <h2 className="text-xl font-bold">{t('profile.calorieCalculation')}</h2>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
                 <div className="text-lg font-bold">{calculateBMR() ? Math.round(calculateBMR()!) : '-'}</div>
-                <div className="text-xs text-muted-foreground">BMR</div>
+                <div className="text-xs text-muted-foreground">{t('profile.bmr')}</div>
               </div>
               <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
                 <div className="text-lg font-bold">{calculateMaintenanceCalories() || '-'}</div>
-                <div className="text-xs text-muted-foreground">TDEE</div>
+                <div className="text-xs text-muted-foreground">{t('profile.tdee')}</div>
               </div>
               <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
                 <div className="text-lg font-bold">{calculateTargetCalories()}</div>
-                <div className="text-xs text-muted-foreground">Ziel</div>
+                <div className="text-xs text-muted-foreground">{t('ui.goal')}</div>
               </div>
             </div>
           </div>
 
-          {/* Gewichtsziel-Analyse */}
+          {/* Weight Goal Analysis */}
           {weight && targetWeight && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
                   <Target className="h-5 w-5 text-white" />
                 </div>
-                <h2 className="text-xl font-bold">Gewichtsziel-Analyse</h2>
+                <h2 className="text-xl font-bold">{t('profile.weightGoalAnalysisTitle')}</h2>
               </div>
 
               <div className="bg-background rounded-xl p-4 shadow-sm border">
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Gewichtsdifferenz:</span>
+                    <span className="text-muted-foreground">{t('profile.weightDifference')}</span>
                     <span className="font-bold">{Math.abs(parseFloat(weight) - parseFloat(targetWeight || "0")).toFixed(1)} kg</span>
                   </div>
                   {targetDate && (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Zeit bis zum Ziel:</span>
+                        <span className="text-muted-foreground">{t('profile.timeToGoal')}</span>
                         <span className="font-bold">
-                          {Math.max(0, Math.floor((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))} Wochen
+                          {Math.max(0, Math.floor((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))} {t('profile.weeks')}
                         </span>
                       </div>
                       {calculateRequiredCalorieDeficit() && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Benötigter Fortschritt:</span>
+                          <span className="text-muted-foreground">{t('profile.requiredProgress')}</span>
                           <span className="font-bold">
-                            {(Math.abs(parseFloat(weight) - parseFloat(targetWeight || "0")) / Math.max(1, Math.floor((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(1)} kg/Woche
+                            {(Math.abs(parseFloat(weight) - parseFloat(targetWeight || "0")) / Math.max(1, Math.floor((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(1)} {t('profile.kgPerWeek')}
                           </span>
                         </div>
                       )}
@@ -729,14 +731,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
               {calculateRequiredCalorieDeficit() && (
                 <div className="bg-background rounded-xl p-4 shadow-sm border">
-                  <div className="text-sm font-medium mb-3">Benötigtes Kaloriendefizit:</div>
+                  <div className="text-sm font-medium mb-3">{t('profile.requiredCalorieDeficit')}</div>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Täglich:</span>
+                      <span className="text-muted-foreground">{t('profile.daily')}</span>
                       <span className="font-bold">{calculateRequiredCalorieDeficit()?.daily} kcal</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Wöchentlich:</span>
+                      <span className="text-muted-foreground">{t('profile.weekly')}</span>
                       <span className="font-bold">{calculateRequiredCalorieDeficit()?.weekly} kcal</span>
                     </div>
                   </div>
@@ -749,7 +751,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     <div className="text-red-500 mt-0.5">⚠️</div>
                     <div>
                       <div className="text-red-700 dark:text-red-400 font-medium text-sm">
-                        Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche
+                        {t('profile.ambitiousGoalWarning')}
                       </div>
                     </div>
                   </div>
@@ -760,7 +762,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <div className="flex items-start gap-3">
                   <div className="text-blue-500 mt-0.5">💡</div>
                   <div className="text-blue-700 dark:text-blue-400 text-sm">
-                    Die Werte wurden automatisch basierend auf deinem Ziel berechnet
+                    {t('profile.calculationNote')}
                   </div>
                 </div>
               </div>
@@ -775,17 +777,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               {autoSaving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span>Speichere...</span>
+                  <span>{t('profile.autoSaving')}</span>
                 </>
               ) : lastSaved ? (
                 <>
                   <Check className="h-4 w-4 text-green-500" />
                   <span className="text-muted-foreground">
-                    Gespeichert {lastSaved.toLocaleTimeString()}
+                    {t('profile.saveStatus', { time: lastSaved.toLocaleTimeString() })}
                   </span>
                 </>
               ) : (
-                <span className="text-muted-foreground">Nicht gespeichert</span>
+                <span className="text-muted-foreground">{t('profile.notSaved')}</span>
               )}
             </div>
             <Button 
@@ -795,7 +797,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               className="ml-2 profile-save-button"
             >
               <Save className="h-4 w-4 mr-1" />
-              Speichern
+              {t('common.save')}
             </Button>
           </div>
         </div>

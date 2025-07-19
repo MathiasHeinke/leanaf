@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Edit2, Trash2, Heart, Check, X } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface MealData {
   id: string;
@@ -24,28 +26,50 @@ interface MealListProps {
   onUpdateMeal: (mealId: string, updates: Partial<MealData>) => void;
 }
 
-const getMealTypeDisplay = (mealType?: string) => {
-  switch (mealType) {
-    case 'breakfast': return { label: 'Frühstück', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200' };
-    case 'lunch': return { label: 'Mittagessen', color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' };
-    case 'dinner': return { label: 'Abendessen', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' };
-    case 'snack': return { label: 'Snack', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200' };
-    default: return { label: 'Sonstiges', color: 'bg-muted/50 text-muted-foreground' };
-  }
-};
-
 export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }: MealListProps) => {
+  const { t } = useTranslation();
   const [editingField, setEditingField] = useState<{mealId: string, field: string} | null>(null);
   const [editingAllFields, setEditingAllFields] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{[key: string]: string}>({});
   const [editValue, setEditValue] = useState<string>('');
+
+  const getMealTypeDisplay = (mealType?: string) => {
+    switch (mealType) {
+      case 'breakfast': 
+        return { 
+          label: t('mealTypes.breakfast'), 
+          color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200' 
+        };
+      case 'lunch': 
+        return { 
+          label: t('mealTypes.lunch'), 
+          color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
+        };
+      case 'dinner': 
+        return { 
+          label: t('mealTypes.dinner'), 
+          color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' 
+        };
+      case 'snack': 
+        return { 
+          label: t('mealTypes.snack'), 
+          color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200' 
+        };
+      default: 
+        return { 
+          label: t('mealTypes.other'), 
+          color: 'bg-muted/50 text-muted-foreground' 
+        };
+    }
+  };
+
   if (dailyMeals.length === 0) {
     return (
       <Card className="p-8 text-center border-dashed border-2 border-muted">
         <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-        <h3 className="font-semibold mb-2">Noch keine Mahlzeiten heute</h3>
+        <h3 className="font-semibold mb-2">{t('meal.noMealsToday')}</h3>
         <p className="text-muted-foreground text-sm">
-          Füge deine erste Mahlzeit hinzu
+          {t('meal.addFirstMeal')}
         </p>
       </Card>
     );
@@ -118,9 +142,10 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
   const isEditingAll = (mealId: string) => {
     return editingAllFields === mealId;
   };
+
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-lg mb-3">Heutige Mahlzeiten</h3>
+      <h3 className="font-semibold text-lg mb-3">{t('meal.todaysMeals')}</h3>
       {dailyMeals.map((meal) => {
         const mealDisplay = getMealTypeDisplay(meal.meal_type);
         return (
@@ -135,10 +160,10 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="breakfast">Frühstück</SelectItem>
-                        <SelectItem value="lunch">Mittagessen</SelectItem>
-                        <SelectItem value="dinner">Abendessen</SelectItem>
-                        <SelectItem value="snack">Snack</SelectItem>
+                        <SelectItem value="breakfast">{t('mealTypes.breakfast')}</SelectItem>
+                        <SelectItem value="lunch">{t('mealTypes.lunch')}</SelectItem>
+                        <SelectItem value="dinner">{t('mealTypes.dinner')}</SelectItem>
+                        <SelectItem value="snack">{t('mealTypes.snack')}</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : isEditing(meal.id, 'meal_type') ? (
@@ -148,10 +173,10 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="breakfast">Frühstück</SelectItem>
-                          <SelectItem value="lunch">Mittagessen</SelectItem>
-                          <SelectItem value="dinner">Abendessen</SelectItem>
-                          <SelectItem value="snack">Snack</SelectItem>
+                          <SelectItem value="breakfast">{t('mealTypes.breakfast')}</SelectItem>
+                          <SelectItem value="lunch">{t('mealTypes.lunch')}</SelectItem>
+                          <SelectItem value="dinner">{t('mealTypes.dinner')}</SelectItem>
+                          <SelectItem value="snack">{t('mealTypes.snack')}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => saveEdit(meal.id, 'meal_type')}>
@@ -268,7 +293,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                       onChange={(e) => setEditValues(prev => ({...prev, calories: e.target.value}))}
                       className="h-6 text-xs text-center"
                     />
-                    <div className="text-orange-500 dark:text-orange-300">kcal</div>
+                    <div className="text-orange-500 dark:text-orange-300">{t('ui.kcal')}</div>
                   </div>
                 ) : isEditing(meal.id, 'calories') ? (
                   <div className="space-y-1">
@@ -299,7 +324,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                     >
                       {meal.calories}
                     </div>
-                    <div className="text-orange-500 dark:text-orange-300">kcal</div>
+                    <div className="text-orange-500 dark:text-orange-300">{t('ui.kcal')}</div>
                   </>
                 )}
               </div>
@@ -313,7 +338,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                       onChange={(e) => setEditValues(prev => ({...prev, protein: e.target.value}))}
                       className="h-6 text-xs text-center"
                     />
-                    <div className="text-blue-500 dark:text-blue-300">Protein</div>
+                    <div className="text-blue-500 dark:text-blue-300">{t('macros.protein')}</div>
                   </div>
                 ) : isEditing(meal.id, 'protein') ? (
                   <div className="space-y-1">
@@ -344,7 +369,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                     >
                       {meal.protein}g
                     </div>
-                    <div className="text-blue-500 dark:text-blue-300">Protein</div>
+                    <div className="text-blue-500 dark:text-blue-300">{t('macros.protein')}</div>
                   </>
                 )}
               </div>
@@ -358,7 +383,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                       onChange={(e) => setEditValues(prev => ({...prev, carbs: e.target.value}))}
                       className="h-6 text-xs text-center"
                     />
-                    <div className="text-green-500 dark:text-green-300">Carbs</div>
+                    <div className="text-green-500 dark:text-green-300">{t('macros.carbs')}</div>
                   </div>
                 ) : isEditing(meal.id, 'carbs') ? (
                   <div className="space-y-1">
@@ -389,7 +414,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                     >
                       {meal.carbs}g
                     </div>
-                    <div className="text-green-500 dark:text-green-300">Carbs</div>
+                    <div className="text-green-500 dark:text-green-300">{t('macros.carbs')}</div>
                   </>
                 )}
               </div>
@@ -403,7 +428,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                       onChange={(e) => setEditValues(prev => ({...prev, fats: e.target.value}))}
                       className="h-6 text-xs text-center"
                     />
-                    <div className="text-purple-500 dark:text-purple-300">Fette</div>
+                    <div className="text-purple-500 dark:text-purple-300">{t('macros.fats')}</div>
                   </div>
                 ) : isEditing(meal.id, 'fats') ? (
                   <div className="space-y-1">
@@ -434,7 +459,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                     >
                       {meal.fats}g
                     </div>
-                    <div className="text-purple-500 dark:text-purple-300">Fette</div>
+                    <div className="text-purple-500 dark:text-purple-300">{t('macros.fats')}</div>
                   </>
                 )}
               </div>
