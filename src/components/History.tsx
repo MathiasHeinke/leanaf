@@ -228,7 +228,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
         setHistoryData(weeklyArray.sort((a, b) => b.date.localeCompare(a.date)));
       } else {
-        // Für Tag- und Jahresansicht: Gruppiere nach Tagen
+        // Für 7-Tage und Jahresansicht: Gruppiere nach Tagen
         // Initialize empty days
         for (let i = 0; i < daysToLoad; i++) {
           const date = new Date();
