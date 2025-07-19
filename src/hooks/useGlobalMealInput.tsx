@@ -219,6 +219,26 @@ export const useGlobalMealInput = () => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const duplicateMeal = (meal: any) => {
+    setInputText(meal.text);
+    setSelectedMealType(meal.meal_type);
+    // Note: For duplicated meals, we use the existing image URLs
+    if (meal.images && meal.images.length > 0) {
+      setUploadedImages(meal.images);
+    } else {
+      setUploadedImages([]);
+    }
+    toast.success("Mahlzeit dupliziert - Du kannst sie jetzt anpassen");
+  };
+
+  const resetForm = () => {
+    setInputText("");
+    setUploadedImages([]);
+    setSelectedMealType("");
+    setShowConfirmationDialog(false);
+    setAnalyzedMealData(null);
+  };
+
   return {
     inputText,
     setInputText,
@@ -236,6 +256,8 @@ export const useGlobalMealInput = () => {
     uploadedImages,
     setUploadedImages,
     setAnalyzedMealData,
-    removeImage
+    removeImage,
+    duplicateMeal,
+    resetForm
   };
 };

@@ -34,7 +34,8 @@ import {
   Trash2,
   Plus,
   Scale,
-  CalendarIcon
+  CalendarIcon,
+  Copy
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +43,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "sonner";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
+import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -107,6 +109,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const [editingMealDate, setEditingMealDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { duplicateMeal } = useGlobalMealInput();
 
   const refreshData = useCallback(() => {
     if (user) {
@@ -937,6 +940,16 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                         )}
                                       </DialogContent>
                                     </Dialog>
+                                    
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => duplicateMeal(meal)}
+                                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                                      title="Mahlzeit duplizieren"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
                                     
                                     <Button
                                       variant="ghost"
