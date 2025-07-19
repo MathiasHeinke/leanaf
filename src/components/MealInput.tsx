@@ -10,7 +10,7 @@ interface MealInputProps {
   inputText: string;
   setInputText: (text: string) => void;
   onSubmitMeal: () => void;
-  onPhotoUpload: (event: React.ChangeEvent<HTMLInputEvent>) => void;
+  onPhotoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onVoiceRecord: () => void;
   isAnalyzing: boolean;
   isRecording: boolean;
