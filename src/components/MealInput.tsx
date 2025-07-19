@@ -38,7 +38,7 @@ export const MealInput = ({
   const { t } = useTranslation();
   
   return (
-    <div className="relative w-full">
+    <div className="w-full">
       <div className="w-full">
         {/* Image Thumbnails - Above input */}
         {uploadedImages && uploadedImages.length > 0 && (
