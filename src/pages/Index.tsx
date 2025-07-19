@@ -316,7 +316,7 @@ const Index = () => {
 
   // Handle meal update
   const handleUpdateMeal = async () => {
-    if (!editingMeal || !user) return;
+    if (!editingMeal || !user || !mealInputHook.inputText.trim()) return;
     
     try {
       const { error } = await supabase
@@ -332,8 +332,11 @@ const Index = () => {
       
       // Reload data
       loadUserData();
+      
+      toast.success('Mahlzeit erfolgreich aktualisiert');
     } catch (error) {
       console.error('Error updating meal:', error);
+      toast.error('Fehler beim Aktualisieren der Mahlzeit');
     }
   };
 
@@ -471,24 +474,6 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Meal Input Component */}
-      <MealInput
-        inputText={mealInputHook.inputText}
-        setInputText={mealInputHook.setInputText}
-        onSubmitMeal={editingMeal ? handleUpdateMeal : mealInputHook.handleSubmitMeal}
-        onPhotoUpload={mealInputHook.handlePhotoUpload}
-        onVoiceRecord={mealInputHook.handleVoiceRecord}
-        isAnalyzing={mealInputHook.isAnalyzing}
-        isRecording={mealInputHook.isRecording}
-        isProcessing={mealInputHook.isProcessing}
-        uploadedImages={mealInputHook.uploadedImages}
-        onRemoveImage={mealInputHook.removeImage}
-        isEditing={!!editingMeal}
-        onCancelEdit={() => {
-          setEditingMeal(null);
-          mealInputHook.setInputText('');
-        }}
-      />
 
     </div>
   );
