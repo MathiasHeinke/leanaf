@@ -358,23 +358,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
               <div>
                 <Label className="text-sm">Aktuelles Gewicht</Label>
-                <div className="mt-1 relative">
-                  <Input
-                    type="number"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                    placeholder="75"
-                    className="pr-16"
-                  />
+                <div className="mt-1 flex items-center justify-between h-10 px-3 py-2">
+                  <span className="text-lg font-bold">{weight || '-'} kg</span>
                   {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs">
+                    <span className="text-xs">
                       {parseFloat(weight) < parseFloat(startWeight) && (
-                        <span className="text-green-500">-{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)}</span>
+                        <span className="text-green-500">↓ -{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)} kg</span>
                       )}
                       {parseFloat(weight) > parseFloat(startWeight) && (
-                        <span className="text-red-500">+{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)}</span>
+                        <span className="text-red-500">↑ +{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)} kg</span>
                       )}
-                    </div>
+                    </span>
                   )}
                 </div>
               </div>
