@@ -40,7 +40,7 @@ export const useGlobalCoachChat = () => {
       
       if (data?.reply) {
         setChatHistory(prev => [...prev, { role: 'assistant', content: data.reply }]);
-        toast.success('Coach-Antwort erhalten!');
+        // Toast entfernt - User sieht Antwort direkt im Chat
         
         // Trigger refresh event for coach updates
         window.dispatchEvent(new CustomEvent('coach-message-sent'));
