@@ -28,7 +28,9 @@ serve(async (req) => {
       chatMessage,
       context,
       history,
-      userId
+      userId,
+      timeBasedGreeting,
+      timeOfDay
     } = await req.json();
 
     // Get user personality if userId provided
@@ -67,7 +69,57 @@ serve(async (req) => {
     let prompt = '';
     let systemMessage = '';
 
-    if (voiceMessage) {
+    if (timeBasedGreeting) {
+      // Time-based greeting with personalized recommendations
+      const timeGreeting = timeOfDay === 'morning' ? 'Guten Morgen' : timeOfDay === 'noon' ? 'Hallo' : 'Guten Abend';
+      systemMessage = `${personalityPrompt} Du begrüßt den User zeitbasiert und gibst passende Empfehlungen basierend auf aktuellen Fortschritt, Gewichtsverlauf und Persönlichkeitseinstellung. Sei motivierend aber realistisch. Erwähne konkrete Tipps zu Sport, Ernährung oder Gewichtsveränderungen wenn relevant.${muscleString}`;
+      
+      prompt = `${timeGreeting}! Erstelle eine personalisierte Begrüßung für den User.
+
+Aktuelle Daten:
+- Kalorien heute: ${dailyTotals?.calories || 0}
+- Tagesziel: ${dailyGoal || 1323}
+- Mahlzeiten heute: ${mealsCount || 0}
+
+User Verlaufsdaten:
+- Durchschnittliche Kalorien: ${userData?.averages?.calories || 0}
+- Tage mit Daten: ${userData?.historyDays || 0}
+- Gewichtsverlauf: ${JSON.stringify(userData?.weightHistory || [])}
+- Aktuelle Trends: ${JSON.stringify(userData?.recentProgress || {})}
+
+Gib eine personalisierte, ${personality}e Begrüßung mit konkreten Empfehlungen (max 100 Wörter) basierend auf:
+1. Tageszeit
+2. Bisherigen Fortschritt heute
+3. Gewichtsentwicklung (falls vorhanden)
+4. Trends und Verbesserungsvorschläge
+
+Antworte nur mit der Begrüßungsnachricht, kein JSON.`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 250,
+          temperature: 0.8,
+        }),
+      });
+
+      const data = await response.json();
+      const greeting = data.choices[0].message.content;
+
+      return new Response(JSON.stringify({ greeting }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+    } else if (voiceMessage) {
       // Voice coaching with personality
       systemMessage = `${personalityPrompt} Antworte kurz und ermutigend auf Sprachnachrichten im ${personality} Stil.${muscleString}`;
       

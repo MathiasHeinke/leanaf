@@ -30,7 +30,8 @@ import {
   ChevronUp,
   Edit2,
   Trash2,
-  Plus
+  Plus,
+  Scale
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,6 +68,12 @@ interface DailyData {
   meals: MealData[];
 }
 
+interface WeightEntry {
+  date: string;
+  weight: number;
+  displayDate: string;
+}
+
 interface HistoryProps {
   onClose?: () => void;
   dailyGoal?: DailyGoal;
@@ -88,6 +95,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     fats: 0
   });
   const [userGoal, setUserGoal] = useState<UserGoal>('maintain');
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [weightLoading, setWeightLoading] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -95,6 +104,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     if (user) {
       loadHistoryData();
       loadUserGoal();
+      loadWeightHistory();
     }
   }, [user, timeRange]);
 
@@ -207,6 +217,41 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     }
   };
 
+  const loadWeightHistory = async () => {
+    if (!user) return;
+    
+    setWeightLoading(true);
+    try {
+      const daysToLoad = timeRange === 'week' ? 7 : 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysToLoad);
+
+      const { data: weightData, error } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', startDate.toISOString().split('T')[0])
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      
+      const formattedWeights = weightData?.map(entry => ({
+        date: entry.date,
+        weight: Number(entry.weight),
+        displayDate: new Date(entry.date).toLocaleDateString('de-DE', { 
+          day: '2-digit', 
+          month: '2-digit' 
+        })
+      })) || [];
+      
+      setWeightHistory(formattedWeights);
+    } catch (error: any) {
+      console.error('Error loading weight history:', error);
+    } finally {
+      setWeightLoading(false);
+    }
+  };
+
   const deleteMeal = async (mealId: string) => {
     try {
       const { error } = await supabase
@@ -315,9 +360,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       {/* Charts und Tabelle */}
       <Tabs defaultValue="table" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="table">Verlauf</TabsTrigger>
           <TabsTrigger value="chart">Grafik</TabsTrigger>
+          <TabsTrigger value="weight">Gewicht</TabsTrigger>
         </TabsList>
         
         <TabsContent value="table" className="space-y-3 mt-4">
@@ -842,6 +888,106 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
               </BarChart>
             </ResponsiveContainer>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="weight" className="space-y-4 mt-4">
+          {weightLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Lade Gewichtsdaten...</p>
+            </div>
+          ) : weightHistory.length > 0 ? (
+            <>
+              <Card className="p-4">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Gewichtsverlauf
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={weightHistory.slice().reverse()}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis 
+                      dataKey="displayDate" 
+                      tick={{ fontSize: 12 }}
+                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
+                      domain={['dataMin - 2', 'dataMax + 2']}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--background))', 
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px'
+                      }}
+                      formatter={(value) => [`${value} kg`, 'Gewicht']}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="weight" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3}
+                      dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 5 }}
+                      activeDot={{ r: 7, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+
+              {/* Weight Statistics */}
+              <Card className="p-4">
+                <h3 className="font-semibold mb-4">Gewichtsstatistiken</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-muted/50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-primary">
+                      {Math.min(...weightHistory.map(w => w.weight)).toFixed(1)} kg
+                    </div>
+                    <div className="text-xs text-muted-foreground">Minimum</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-primary">
+                      {Math.max(...weightHistory.map(w => w.weight)).toFixed(1)} kg
+                    </div>
+                    <div className="text-xs text-muted-foreground">Maximum</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-center">
+                    <div className="text-lg font-bold text-primary">
+                      {(weightHistory.reduce((sum, w) => sum + w.weight, 0) / weightHistory.length).toFixed(1)} kg
+                    </div>
+                    <div className="text-xs text-muted-foreground">Durchschnitt</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-center">
+                    <div className={`text-lg font-bold ${
+                      weightHistory.length >= 2 
+                        ? (weightHistory[0].weight - weightHistory[weightHistory.length - 1].weight) > 0 
+                          ? 'text-red-600' 
+                          : 'text-green-600'
+                        : 'text-muted-foreground'
+                    }`}>
+                      {weightHistory.length >= 2 
+                        ? `${(weightHistory[0].weight - weightHistory[weightHistory.length - 1].weight) > 0 ? '-' : '+'}${Math.abs(weightHistory[0].weight - weightHistory[weightHistory.length - 1].weight).toFixed(1)} kg`
+                        : '—'
+                      }
+                    </div>
+                    <div className="text-xs text-muted-foreground">Veränderung</div>
+                  </div>
+                </div>
+              </Card>
+            </>
+          ) : (
+            <Card className="p-8 text-center">
+              <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Keine Gewichtsdaten</h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                Du hast noch keine Gewichtseinträge für diesen Zeitraum.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Gehe zu deinem Profil, um Gewichtseinträge hinzuzufügen.
+              </p>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

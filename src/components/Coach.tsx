@@ -122,6 +122,17 @@ const Coach = ({ onClose }: CoachProps) => {
   const [savedRecipeNames, setSavedRecipeNames] = useState<Set<string>>(new Set());
   const [savingRecipes, setSavingRecipes] = useState<Set<string>>(new Set());
   
+  // Coach Tips State
+  const [savedTips, setSavedTips] = useState<Set<string>>(new Set());
+  const [savingTips, setSavingTips] = useState<Set<string>>(new Set());
+  
+  // Greeting State
+  const [coachGreeting, setCoachGreeting] = useState<string>('');
+  const [greetingLoading, setGreetingLoading] = useState(false);
+  
+  // Weight History State
+  const [weightHistory, setWeightHistory] = useState<Array<{date: string, weight: number}>>([]);
+  
   // Trend Analysis State
   const [trendData, setTrendData] = useState<TrendData | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
@@ -166,6 +177,51 @@ const Coach = ({ onClose }: CoachProps) => {
       setSavedRecipeNames(names);
     } catch (error: any) {
       console.error('Error loading saved recipe names:', error);
+    }
+  };
+
+  // Laden der bereits gespeicherten Tips
+  const loadSavedTips = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('saved_items')
+        .select('title')
+        .eq('user_id', user.id)
+        .eq('type', 'tip');
+      
+      if (error) throw error;
+      
+      const tips = new Set(data?.map(item => item.title) || []);
+      setSavedTips(tips);
+    } catch (error: any) {
+      console.error('Error loading saved tips:', error);
+    }
+  };
+
+  // Laden der Gewichtsverlauf
+  const loadWeightHistory = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(30);
+      
+      if (error) throw error;
+      
+      const history = data?.map(entry => ({
+        date: entry.date,
+        weight: Number(entry.weight)
+      })) || [];
+      
+      setWeightHistory(history);
+    } catch (error: any) {
+      console.error('Error loading weight history:', error);
     }
   };
 
@@ -215,6 +271,53 @@ const Coach = ({ onClose }: CoachProps) => {
       });
     }
   };
+
+  // Speichern-Funktion für Coach-Tips
+  const saveTip = async (tip: CoachMessage) => {
+    if (!user || savedTips.has(tip.title)) return;
+    
+    setSavingTips(prev => new Set([...prev, tip.title]));
+    
+    try {
+      const { error } = await supabase
+        .from('saved_items')
+        .insert({
+          user_id: user.id,
+          type: 'tip',
+          title: tip.title,
+          content: tip.message,
+          metadata: {
+            priority: tip.priority,
+            tipType: tip.type
+          }
+        });
+      
+      if (error) throw error;
+      
+      // Füge zur Liste der gespeicherten Tips hinzu
+      setSavedTips(prev => new Set([...prev, tip.title]));
+      
+      toast.success('Tipp gespeichert');
+      
+      // Kurze Verzögerung für visuelles Feedback
+      setTimeout(() => {
+        setSavingTips(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(tip.title);
+          return newSet;
+        });
+      }, 2000);
+      
+    } catch (error: any) {
+      console.error('Error saving tip:', error);
+      toast.error('Fehler beim Speichern des Tipps');
+      setSavingTips(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(tip.title);
+        return newSet;
+      });
+    }
+  };
   
   // Use global coach chat hook
   const coachChatHook = useGlobalCoachChat();
@@ -225,13 +328,15 @@ const Coach = ({ onClose }: CoachProps) => {
       loadTodaysMeals();
       loadHistoryData();
       loadSavedRecipeNames();
+      loadSavedTips();
+      loadWeightHistory();
     }
   }, [user]);
 
+  // Initial greeting when user enters coach
   useEffect(() => {
     if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0) {
-      generateAIAnalysis();
-      generateMealSuggestions();
+      generateTimeBasedGreeting();
       calculateTrends();
     }
   }, [user, dailyGoals, todaysMeals, historyData]);
@@ -319,6 +424,7 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   };
 
+  // Manual AI Analysis - now triggered by button press
   const generateAIAnalysis = async () => {
     if (!user || !dailyGoals) return;
     
@@ -331,7 +437,8 @@ const Coach = ({ onClose }: CoachProps) => {
           mealsCount: todaysMeals.length,
           userData: { 
             averages,
-            historyDays: historyData.length
+            historyDays: historyData.length,
+            weightHistory
           },
           userId: user.id
         }
@@ -339,11 +446,51 @@ const Coach = ({ onClose }: CoachProps) => {
 
       if (error) throw error;
       setAiAnalysis(data);
+      toast.success('Analyse aktualisiert');
     } catch (error: any) {
       console.error('Error generating AI analysis:', error);
-      // Toast entfernt - User sieht Status direkt
+      toast.error('Fehler bei der Analyse');
     } finally {
       setAnalysisLoading(false);
+    }
+  };
+
+  // Time-based greeting when entering coach
+  const generateTimeBasedGreeting = async () => {
+    if (!user || greetingLoading) return;
+    
+    setGreetingLoading(true);
+    try {
+      const hour = new Date().getHours();
+      let timeOfDay = 'day';
+      if (hour < 11) timeOfDay = 'morning';
+      else if (hour < 17) timeOfDay = 'noon';
+      else timeOfDay = 'evening';
+
+      const { data, error } = await supabase.functions.invoke('coach-analysis', {
+        body: {
+          timeBasedGreeting: true,
+          timeOfDay,
+          dailyTotals: todaysTotals,
+          dailyGoal: dailyGoals.calories,
+          userData: { 
+            averages,
+            historyDays: historyData.length,
+            weightHistory,
+            recentProgress: trendData
+          },
+          userId: user.id
+        }
+      });
+
+      if (error) throw error;
+      if (data?.greeting) {
+        setCoachGreeting(data.greeting);
+      }
+    } catch (error: any) {
+      console.error('Error generating greeting:', error);
+    } finally {
+      setGreetingLoading(false);
     }
   };
 
@@ -662,6 +809,29 @@ const Coach = ({ onClose }: CoachProps) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Coach Greeting */}
+      {coachGreeting && (
+        <Card className="glass-card shadow-lg border border-primary/20">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
+                <Brain className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  {new Date().getHours() < 11 ? 'Guten Morgen!' : new Date().getHours() < 17 ? 'Hallo!' : 'Guten Abend!'}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">{coachGreeting}</p>
+              </div>
+              {greetingLoading && (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Enhanced AI Coach Tabs */}
       <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
         <CardHeader>
@@ -699,6 +869,23 @@ const Coach = ({ onClose }: CoachProps) => {
             {/* AI Analysis Tab */}
             <TabsContent value="analysis" className="space-y-4">
               <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Detailanalyse</h3>
+                  <Button 
+                    onClick={generateAIAnalysis} 
+                    disabled={analysisLoading}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    {analysisLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
+                    {analysisLoading ? 'Analysiert...' : 'Aktualisieren'}
+                  </Button>
+                </div>
+                
                 {analysisLoading ? (
                   <div className="flex items-center justify-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -707,7 +894,7 @@ const Coach = ({ onClose }: CoachProps) => {
                 ) : aiAnalysis ? (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">Tägliche Analyse</h3>
+                      <h4 className="text-md font-medium">Bewertung</h4>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Score:</span>
                         <Badge variant={aiAnalysis.dailyScore >= 8 ? "default" : aiAnalysis.dailyScore >= 6 ? "secondary" : "destructive"}>
@@ -731,9 +918,32 @@ const Coach = ({ onClose }: CoachProps) => {
                               <h4 className="font-medium text-sm mb-1">{message.title}</h4>
                               <p className="text-sm opacity-80">{message.message}</p>
                             </div>
-                            <Badge variant="outline">
-                              {message.priority}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">
+                                {message.priority}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => saveTip(message)}
+                                disabled={savedTips.has(message.title) || savingTips.has(message.title)}
+                                className={`h-8 w-8 p-0 transition-all duration-300 ${
+                                  savedTips.has(message.title) 
+                                    ? 'text-green-600 bg-green-50 hover:bg-green-100' 
+                                    : savingTips.has(message.title)
+                                    ? 'text-green-600 bg-green-50'
+                                    : 'text-muted-foreground hover:text-primary'
+                                }`}
+                              >
+                                <Heart 
+                                  className={`h-4 w-4 ${
+                                    savedTips.has(message.title) || savingTips.has(message.title) 
+                                      ? 'fill-current' 
+                                      : ''
+                                  }`} 
+                                />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
