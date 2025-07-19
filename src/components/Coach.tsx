@@ -204,12 +204,12 @@ const Coach = ({ onClose }: CoachProps) => {
       if (error) throw error;
       
       setDailyGoals({
-        calories: goalsData.calories || 1323,
-        protein: goalsData.protein || 116,
-        carbs: goalsData.carbs || 99,
-        fats: goalsData.fats || 51,
-        bmr: goalsData.bmr,
-        tdee: goalsData.tdee
+        calories: goalsData?.calories || 1323,
+        protein: goalsData?.protein || 116,
+        carbs: goalsData?.carbs || 99,
+        fats: goalsData?.fats || 51,
+        bmr: goalsData?.bmr,
+        tdee: goalsData?.tdee
       });
     } catch (error: any) {
       console.error('Error loading daily goals:', error);
