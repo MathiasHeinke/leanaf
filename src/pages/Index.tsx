@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +7,6 @@ import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
 import { DailyGreeting } from "@/components/DailyGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
-import { DateNavigation } from "@/components/DateNavigation";
 import { RandomQuote } from "@/components/RandomQuote";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -163,21 +161,9 @@ const Index = () => {
         {/* Random Quote */}
         <RandomQuote />
 
-        {/* Date Navigation - Prominently placed */}
-        <DateNavigation 
-          currentDate={currentDate}
-          onDateChange={handleDateChange}
-        />
-
         <div className="md:flex md:gap-6">
           <div className="md:w-1/3 space-y-4">
-            {/* Quick Weight Input */}
-            <QuickWeightInput 
-              currentWeight={userProfile?.weight}
-              onWeightAdded={handleWeightAdded}
-            />
-
-            {/* Daily Progress with real data */}
+            {/* Daily Progress with integrated date navigation - now first */}
             <DailyProgress 
               dailyTotals={{
                 calories: calorieSummary.consumed,
@@ -192,6 +178,14 @@ const Index = () => {
                 fats: dailyGoals?.fats || 65
               }}
               userGoal={userProfile?.goal || 'maintain'}
+              currentDate={currentDate}
+              onDateChange={handleDateChange}
+            />
+
+            {/* Quick Weight Input - now second, under the macros */}
+            <QuickWeightInput 
+              currentWeight={userProfile?.weight}
+              onWeightAdded={handleWeightAdded}
             />
           </div>
 

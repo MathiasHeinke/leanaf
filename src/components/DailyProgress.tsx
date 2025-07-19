@@ -1,9 +1,11 @@
-
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star } from "lucide-react";
+import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getGoalStatus, getGoalBasedProgressMessage, UserGoal } from "@/utils/goalBasedMessaging";
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface DailyTotals {
   calories: number;
@@ -23,6 +25,8 @@ interface DailyProgressProps {
   dailyTotals: DailyTotals;
   dailyGoal: DailyGoal;
   userGoal?: UserGoal;
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
 }
 
 interface OverallStatus {
@@ -90,8 +94,36 @@ const getOverallStatus = (
   };
 };
 
-export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }: DailyProgressProps) => {
+export const DailyProgress = ({ 
+  dailyTotals, 
+  dailyGoal, 
+  userGoal = 'maintain',
+  currentDate,
+  onDateChange
+}: DailyProgressProps) => {
   const { t, language } = useTranslation();
+
+  const formatDate = (date: Date): string => {
+    return format(date, 'EEEE, d. MMMM', { locale: de });
+  };
+
+  const goToPreviousDay = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 1);
+    onDateChange(newDate);
+  };
+
+  const goToNextDay = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 1);
+    onDateChange(newDate);
+  };
+
+  const goToToday = () => {
+    onDateChange(new Date());
+  };
+
+  const isToday = currentDate.toDateString() === new Date().toDateString();
 
   const calorieProgress = (dailyTotals.calories / dailyGoal.calories) * 100;
   const proteinProgress = (dailyTotals.protein / dailyGoal.protein) * 100;
@@ -113,7 +145,7 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
 
   return (
     <div className="space-y-6">
-      {/* Hero Calorie Section - Modern Clean Design */}
+      {/* Hero Calorie Section with Integrated Date Navigation */}
       <div className="p-6 bg-gradient-to-br from-primary/5 via-primary/3 to-primary-glow/5 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -122,10 +154,29 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
             </div>
             <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            {new Date().toLocaleDateString()}
+          {!isToday && (
+            <Button variant="outline" size="sm" onClick={goToToday}>
+              Heute
+            </Button>
+          )}
+        </div>
+
+        {/* Date Navigation */}
+        <div className="flex items-center justify-between mb-4 p-3 bg-white/50 dark:bg-gray-800/30 rounded-2xl border border-gray-200/30 dark:border-gray-700/30">
+          <Button variant="ghost" size="sm" onClick={goToPreviousDay}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="text-center">
+            <div className="font-semibold text-base">{formatDate(currentDate)}</div>
+            {isToday && (
+              <div className="text-sm text-primary font-medium">Heute</div>
+            )}
           </div>
+          
+          <Button variant="ghost" size="sm" onClick={goToNextDay}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
         
         <div className="text-center space-y-4">
