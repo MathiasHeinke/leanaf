@@ -333,10 +333,9 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   }, [user]);
 
-  // Initial greeting when user enters coach - only once per session
+  // Calculate trends when data is available
   useEffect(() => {
-    if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0 && !coachGreeting) {
-      generateTimeBasedGreeting();
+    if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0) {
       calculateTrends();
     }
   }, [user, dailyGoals, todaysMeals, historyData]);

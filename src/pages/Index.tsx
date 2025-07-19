@@ -371,6 +371,23 @@ const Index = () => {
           />
         </div>
 
+        {/* Quick Coach Greeting */}
+        <div className="px-4">
+          <div className="text-center text-sm text-muted-foreground mb-1">
+            {(() => {
+              const hour = new Date().getHours();
+              const greetings = {
+                morning: ["🌅 Guten Morgen! Lass uns den Tag rocken!", "☀️ Morgen Champion! Bereit für heute?", "🌱 Fresh in den Tag - du schaffst das!"],
+                noon: ["☀️ Mittag! Zeit für Power-Food!", "🥗 Lunch-Time! Was Gesundes heute?", "⚡ Halbzeit! Du läufst super!"],
+                evening: ["🌙 Guten Abend! Wie lief der Tag?", "✨ Abends! Zeit zum Entspannen.", "🌆 Tag fast geschafft - gut gemacht!"]
+              };
+              
+              const timeGreetings = hour < 12 ? greetings.morning : hour < 18 ? greetings.noon : greetings.evening;
+              return timeGreetings[Math.floor(Math.random() * timeGreetings.length)];
+            })()}
+          </div>
+        </div>
+
         {/* Motivational Quote - Floating Card */}
         <div className="px-4">
           <div className="glass-card dark:glass-card-dark rounded-2xl p-6 modern-shadow hover-lift">

@@ -37,7 +37,7 @@ const BMIProgress = ({ startWeight, currentWeight, targetWeight, height }: BMIPr
   const progressDirection = isLosingWeight ? 'Abnehmen' : 'Zunehmen';
   
   return (
-    <div className="glass-card shadow-xl p-4">
+    <div className="glass-card shadow-xl p-4 rounded-3xl border border-border/20">
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-medium text-foreground">BMI Fortschritt</h4>
         <Badge variant="outline" className="text-primary border-primary/20">
