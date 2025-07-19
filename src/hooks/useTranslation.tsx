@@ -227,7 +227,6 @@ const translations = {
     'common.yes': 'Ja',
     'common.no': 'Nein',
     'common.dataUpdated': 'Daten aktualisiert',
-    'common.stop': 'Stop',
     
     // Loading messages
     'loading.userData': 'Lade Benutzerdaten...',
@@ -288,7 +287,6 @@ const translations = {
     'input.recording': 'Recording...',
     'input.photoUpload': 'Upload Photo',
     'input.processing': 'Processing...',
-    'common.stop': 'Stop',
     
     // Weight Input
     'weightInput.title': 'Log Weight',
@@ -464,7 +462,6 @@ const translations = {
     'common.yes': 'Yes',
     'common.no': 'No',
     'common.dataUpdated': 'Data updated',
-    'common.stop': 'Stop',
     
     // Loading messages
     'loading.userData': 'Loading user data...',
