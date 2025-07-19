@@ -1179,28 +1179,32 @@ const Coach = ({ onClose }: CoachProps) => {
 
       {/* Quick Stats Grid */}
       <div className="space-y-4">
-        <Card className="glass-card hover-scale">
-          <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Target className="h-6 w-6 text-blue-500" />
-            </div>
-            <div className="text-2xl font-bold text-blue-500 mb-1">{dailyGoals?.calories || 1323}</div>
-            <div className="text-xs text-muted-foreground">kcal</div>
-            <div className="text-xs text-muted-foreground">Tagesziel</div>
-          </CardContent>
-        </Card>
+        {/* Erste 2 Kacheln nebeneinander */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="glass-card hover-scale">
+            <CardContent className="p-4 text-center">
+              <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Target className="h-6 w-6 text-blue-500" />
+              </div>
+              <div className="text-2xl font-bold text-blue-500 mb-1">{dailyGoals?.calories || 1323}</div>
+              <div className="text-xs text-muted-foreground">kcal</div>
+              <div className="text-xs text-muted-foreground">Tagesziel</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-card hover-scale">
+            <CardContent className="p-4 text-center">
+              <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <TrendingUp className="h-6 w-6 text-blue-500" />
+              </div>
+              <div className="text-2xl font-bold text-blue-500 mb-1">{averages.calories}</div>
+              <div className="text-xs text-muted-foreground">kcal</div>
+              <div className="text-xs text-muted-foreground">Durchschnitt</div>
+            </CardContent>
+          </Card>
+        </div>
         
-        <Card className="glass-card hover-scale">
-          <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <TrendingUp className="h-6 w-6 text-blue-500" />
-            </div>
-            <div className="text-2xl font-bold text-blue-500 mb-1">{averages.calories}</div>
-            <div className="text-xs text-muted-foreground">kcal</div>
-            <div className="text-xs text-muted-foreground">Durchschnitt</div>
-          </CardContent>
-        </Card>
-        
+        {/* Restliche Kacheln untereinander */}
         <Card className="glass-card hover-scale">
           <CardContent className="p-4 text-center">
             <div className="h-12 w-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
