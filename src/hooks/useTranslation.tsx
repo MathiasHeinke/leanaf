@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 interface TranslationContextType {
   language: string;
   setLanguage: (lang: string) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
@@ -745,8 +745,16 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
     localStorage.setItem('language', lang);
   };
 
-  const t = (key: string): string => {
-    return translations[language as keyof typeof translations]?.[key as keyof typeof translations.de] || key;
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    let translation = translations[language as keyof typeof translations]?.[key as keyof typeof translations.de] || key;
+    
+    if (params) {
+      Object.entries(params).forEach(([param, value]) => {
+        translation = translation.replace(`{${param}}`, String(value));
+      });
+    }
+    
+    return translation;
   };
 
   return (
