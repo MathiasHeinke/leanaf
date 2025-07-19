@@ -116,10 +116,10 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
               )}
             </div>
             
-            {/* Integrated motivational message */}
-            <div className={`flex items-center justify-center gap-3 text-sm font-medium ${goalStatus.color} mt-3 pt-3 border-t border-border/20`}>
-              <span className="text-lg">{goalStatus.icon}</span>
-              <span>{goalStatus.motivationalMessage}</span>
+            {/* Integrated motivational message - better styled */}
+            <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${goalStatus.bgColor.replace('bg-', 'bg-').replace('/5', '/10')} ${goalStatus.color}`}>
+              <span className="text-base">{goalStatus.icon}</span>
+              <span className="text-center leading-relaxed">{goalStatus.motivationalMessage}</span>
             </div>
           </div>
         </div>

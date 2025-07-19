@@ -111,8 +111,12 @@ export const GlobalHeader = ({
       {/* Header - Kompakt ohne unnötige Wrapper */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-r from-primary to-primary-glow p-3 rounded-2xl">
-            <Activity className="h-6 w-6 text-primary-foreground" />
+          <div className="w-10 h-10 rounded-2xl overflow-hidden">
+            <img 
+              src="/src/assets/kaloai-logo.png" 
+              alt="kaloAI Logo" 
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
             kaloAI

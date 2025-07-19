@@ -364,18 +364,34 @@ const Index = () => {
       <div className="space-y-8 animate-fade-in">
         {/* Quick Coach Greeting */}
         <div className="px-4">
-          <div className="text-center text-sm text-muted-foreground">
-            {(() => {
-              const hour = new Date().getHours();
-              const greetings = {
-                morning: ["🌅 Guten Morgen! Lass uns den Tag rocken!", "☀️ Morgen Champion! Bereit für heute?", "🌱 Fresh in den Tag - du schaffst das!"],
-                noon: ["☀️ Mittag! Zeit für Power-Food!", "🥗 Lunch-Time! Was Gesundes heute?", "⚡ Halbzeit! Du läufst super!"],
-                evening: ["🌙 Guten Abend! Wie lief der Tag?", "✨ Abends! Zeit zum Entspannen.", "🌆 Tag fast geschafft - gut gemacht!"]
-              };
-              
-              const timeGreetings = hour < 12 ? greetings.morning : hour < 18 ? greetings.noon : greetings.evening;
-              return timeGreetings[Math.floor(Math.random() * timeGreetings.length)];
-            })()}
+          <div className="text-center">
+            <div className="text-base font-medium text-foreground mb-1">
+              {(() => {
+                const hour = new Date().getHours();
+                const name = "Champion"; // Später aus Profil holen
+                
+                if (hour < 12) {
+                  return `☀️ Guten Morgen, ${name}!`;
+                } else if (hour < 18) {
+                  return `🌞 Hallo ${name}!`;
+                } else {
+                  return `🌙 Guten Abend, ${name}!`;
+                }
+              })()}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {(() => {
+                const hour = new Date().getHours();
+                const motivations = {
+                  morning: ["Bereit für einen erfolgreichen Tag?", "Lass uns heute durchstarten!", "Zeit für gesunde Energie!"],
+                  noon: ["Wie läuft dein Tag bisher?", "Bleib dran - du machst das super!", "Zeit für eine gesunde Pause!"],
+                  evening: ["Wie war dein Tag?", "Fast geschafft - gut gemacht!", "Zeit zum Entspannen!"]
+                };
+                
+                const timeMot = hour < 12 ? motivations.morning : hour < 18 ? motivations.noon : motivations.evening;
+                return timeMot[Math.floor(Math.random() * timeMot.length)];
+              })()}
+            </div>
           </div>
         </div>
 
