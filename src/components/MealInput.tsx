@@ -81,7 +81,7 @@ export const MealInput = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={t('input.placeholder')}
-              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 py-4 leading-relaxed"
+              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -93,7 +93,7 @@ export const MealInput = ({
             />
             
             {/* Left Action Button - Enhanced Paperclip */}
-            <div className="absolute left-4 bottom-4 flex items-center">
+            <div className="absolute left-4 bottom-2 flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
@@ -122,7 +122,7 @@ export const MealInput = ({
             </div>
             
             {/* Right Action Buttons - Enhanced Voice + Send */}
-            <div className="absolute right-4 bottom-4 flex items-center gap-2">
+            <div className="absolute right-4 bottom-2 flex items-center gap-2">
               {/* Voice Recording */}
               <Button
                 variant="ghost"
