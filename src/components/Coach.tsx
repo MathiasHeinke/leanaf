@@ -333,9 +333,9 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   }, [user]);
 
-  // Initial greeting when user enters coach
+  // Initial greeting when user enters coach - only once per session
   useEffect(() => {
-    if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0) {
+    if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0 && !coachGreeting) {
       generateTimeBasedGreeting();
       calculateTrends();
     }
@@ -886,10 +886,11 @@ const Coach = ({ onClose }: CoachProps) => {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Detailanalyse</h3>
                   <Button 
-                    onClick={generateAIAnalysis} 
+                    onClick={generateAIAnalysis}
                     disabled={analysisLoading}
+                    variant="ghost"
                     size="sm"
-                    className="flex items-center gap-2"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {analysisLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
