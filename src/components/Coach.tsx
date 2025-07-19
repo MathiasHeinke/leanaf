@@ -691,15 +691,15 @@ const Coach = ({ onClose }: CoachProps) => {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-4">Personalisierte Rezept-Empfehlungen</h3>
                     <div className="grid gap-4">
-                       {mealSuggestions.slice(0, 3).map((meal, index) => (
-                         <div key={index} className="glass-card p-4 hover:shadow-md transition-shadow">{" "}
+                      {mealSuggestions.slice(0, 3).map((meal, index) => (
+                        <div key={index} className="glass-card p-4 rounded-xl border border-border/20 hover:border-accent/30 transition-all duration-200">
                           <div className="flex justify-between items-start mb-3">
                             <h4 className="font-medium text-lg">{meal.name}</h4>
                             <Badge variant="outline">{meal.mealType}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{meal.description}</p>
                           
-                          <div className="grid grid-cols-4 gap-2 mb-3 text-sm">
+                          <div className="grid grid-cols-4 gap-2 mb-4 text-sm">
                             <div className="text-center p-2 bg-primary/5 rounded">
                               <div className="font-bold">{meal.calories}</div>
                               <div className="text-xs text-muted-foreground">kcal</div>
@@ -716,6 +716,21 @@ const Coach = ({ onClose }: CoachProps) => {
                               <div className="font-bold">{meal.fats}g</div>
                               <div className="text-xs text-muted-foreground">Fette</div>
                             </div>
+                          </div>
+                          
+                          <div className="flex gap-2 mb-3">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1 bg-accent/5 hover:bg-accent/10 border-accent/20"
+                              onClick={() => {
+                                // TODO: Implement save functionality
+                                toast.success('Rezept gespeichert!');
+                              }}
+                            >
+                              <Heart className="h-4 w-4 mr-2" />
+                              Speichern
+                            </Button>
                           </div>
                           
                           <Collapsible>

@@ -42,118 +42,115 @@ export const FloatingCoachChat = ({
   const lastCoachMessage = getLastCoachMessage();
 
   return (
-    <div className="fixed bottom-6 left-4 right-4 z-50">
-      <div className="max-w-md mx-auto">
+    <div className="fixed bottom-4 left-4 right-4 z-50">
+      <div className="max-w-sm mx-auto">
         {/* Main Chat Input */}
-        <Card className="glass-card shadow-xl border-2 border-accent/20">
-          <div className="p-3">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-3">
-              <Brain className="h-5 w-5 text-accent" />
-              <span className="text-sm font-medium text-accent">kaloAI Coach</span>
-              <div className="flex-1"></div>
+        <div className="glass-card dark:glass-card-dark rounded-3xl p-4 shadow-2xl border border-white/20 dark:border-gray-700/20 modern-shadow backdrop-blur-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <Brain className="h-5 w-5 text-accent" />
+            <span className="text-sm font-medium text-accent">kaloAI Coach</span>
+            <div className="flex-1"></div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 rounded-xl hover:bg-white/10 dark:hover:bg-gray-700/20 transition-all duration-200"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              <MessageSquare className="h-4 w-4 text-muted-foreground/80" />
+            </Button>
+          </div>
+          
+          {/* Input Area */}
+          <div className="flex items-end gap-3">
+            {/* Text Input */}
+            <div className="flex-1">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Frag deinen Coach..."
+                className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm placeholder:text-muted-foreground/60 rounded-2xl px-4 py-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (inputText.trim()) {
+                      onSubmitMessage();
+                    }
+                  }
+                }}
+              />
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Voice Recording */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                onClick={() => setIsExpanded(!isExpanded)}
+                className={`h-11 w-11 p-0 rounded-2xl transition-all duration-200 hover:scale-105 border ${
+                  isRecording || isProcessing
+                    ? 'bg-red-500 hover:bg-red-600 text-white border-red-300 animate-glow shadow-lg' 
+                    : 'border-transparent hover:border-primary/20 hover:bg-primary/10'
+                }`}
+                onClick={onVoiceRecord}
+                disabled={isThinking || isProcessing}
               >
-                <MessageSquare className="h-3 w-3" />
+                {isRecording ? (
+                  <StopCircle className="h-5 w-5" />
+                ) : isProcessing ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                ) : (
+                  <Mic className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+                )}
               </Button>
-            </div>
-            
-            {/* Input Area */}
-            <div className="flex items-end gap-2">
-              {/* Text Input */}
-              <div className="flex-1">
-                <Textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Frag deinen Coach..."
-                  className="min-h-[44px] max-h-[120px] resize-none border-accent/20 focus-visible:ring-1 focus-visible:ring-accent focus-visible:border-accent text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (inputText.trim()) {
-                        onSubmitMessage();
-                      }
-                    }
-                  }}
-                />
-              </div>
               
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-1">
-                {/* Voice Recording */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`h-9 w-9 p-0 transition-all duration-200 ${
-                    isRecording || isProcessing
-                      ? 'bg-red-500 hover:bg-red-600 text-white border-red-500 animate-pulse' 
-                      : 'border-accent/20 hover:bg-accent/10 hover:border-accent'
-                  }`}
-                  onClick={onVoiceRecord}
-                  disabled={isThinking || isProcessing}
-                >
-                  {isRecording ? (
-                    <StopCircle className="h-4 w-4" />
-                  ) : isProcessing ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                  ) : (
-                    <Mic className="h-4 w-4" />
-                  )}
-                </Button>
-                
-                {/* Send Button */}
-                <Button
-                  size="sm"
-                  className="h-9 w-9 p-0 bg-accent hover:bg-accent/90"
-                  onClick={onSubmitMessage}
-                  disabled={!inputText.trim() || isThinking}
-                >
-                  {isThinking ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+              {/* Send Button */}
+              <Button
+                size="sm"
+                className={`h-11 w-11 p-0 rounded-2xl transition-all duration-200 hover:scale-105 shadow-lg ${
+                  !inputText.trim() || isThinking
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-primary to-primary-glow hover:shadow-xl'
+                }`}
+                onClick={onSubmitMessage}
+                disabled={!inputText.trim() || isThinking}
+              >
+                {isThinking ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
             </div>
           </div>
           
           {/* Recording Indicator */}
           {(isRecording || isProcessing) && (
-            <div className="px-3 pb-3">
-              <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
-                <div className="flex gap-1">
-                  <div className="w-1 h-3 bg-red-500 animate-pulse rounded"></div>
-                  <div className="w-1 h-4 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-1 h-3 bg-red-500 animate-pulse rounded" style={{ animationDelay: '0.2s' }}></div>
-                </div>
-                <span className="font-medium">{isRecording ? 'Aufnahme läuft...' : 'Verarbeitung...'}</span>
+            <div className="mt-4 flex items-center gap-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 px-4 py-3 rounded-2xl border border-red-200 dark:border-red-800/50 animate-fade-in">
+              <div className="flex gap-1">
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full"></div>
+                <div className="w-1 h-5 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }}></div>
               </div>
+              <span className="font-medium">{isRecording ? 'Aufnahme läuft...' : 'Verarbeitung...'}</span>
             </div>
           )}
 
           {/* Last Coach Message Preview */}
           {lastCoachMessage && !isExpanded && (
-            <div className="px-3 pb-3">
-              <div className="p-2 bg-accent/5 rounded-lg border border-accent/10">
-                <div className="flex items-start gap-2">
-                  <Brain className="h-3 w-3 text-accent mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {lastCoachMessage}
-                  </p>
-                </div>
+            <div className="mt-4 p-3 bg-accent/5 rounded-2xl border border-accent/10">
+              <div className="flex items-start gap-2">
+                <Brain className="h-3 w-3 text-accent mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {lastCoachMessage}
+                </p>
               </div>
             </div>
           )}
-        </Card>
+        </div>
 
         {/* Expanded Chat History */}
         {isExpanded && chatHistory.length > 0 && (
-          <Card className="glass-card mt-2 shadow-xl border-2 border-accent/20 max-h-80 overflow-hidden">
+          <div className="glass-card dark:glass-card-dark mt-2 rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/20 max-h-80 overflow-hidden backdrop-blur-xl">
             <div className="p-3">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
@@ -203,7 +200,7 @@ export const FloatingCoachChat = ({
                 ))}
               </div>
             </div>
-          </Card>
+          </div>
         )}
       </div>
     </div>
