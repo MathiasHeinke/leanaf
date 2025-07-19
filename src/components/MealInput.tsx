@@ -74,9 +74,25 @@ export const MealInput = ({
         
         {/* Main Input Container - ChatGPT Style */}
         <div className="relative bg-background dark:bg-background border border-border rounded-2xl shadow-lg focus-within:border-primary/50 focus-within:shadow-xl transition-all duration-200">
-          <div className="flex items-end gap-2 p-3">
-            {/* Left Action Buttons */}
-            <div className="flex items-center gap-1 pb-2">
+          {/* Text Input - Full Width */}
+          <div className="relative">
+            <Textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={t('input.placeholder')}
+              className="min-h-[56px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 px-14 py-4 pr-20"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (inputText.trim()) {
+                    onSubmitMeal();
+                  }
+                }
+              }}
+            />
+            
+            {/* Left Action Buttons - Absolute Positioned */}
+            <div className="absolute left-3 bottom-3 flex items-center gap-1">
               {/* Attachment Menu Button */}
               <Button
                 variant="ghost"
@@ -115,26 +131,8 @@ export const MealInput = ({
               />
             </div>
             
-            {/* Text Input - Flexible */}
-            <div className="flex-1 min-w-0 px-3">
-              <Textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={t('input.placeholder')}
-                className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 px-0 py-3"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (inputText.trim()) {
-                      onSubmitMeal();
-                    }
-                  }
-                }}
-              />
-            </div>
-            
-            {/* Right Action Buttons */}
-            <div className="flex items-center gap-1 pb-2">
+            {/* Right Action Buttons - Absolute Positioned */}
+            <div className="absolute right-3 bottom-3 flex items-center gap-1">
               {/* Voice Recording */}
               <Button
                 variant="ghost"
