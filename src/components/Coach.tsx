@@ -1229,69 +1229,69 @@ const Coach = ({ onClose }: CoachProps) => {
       <Card className="glass-card shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary/20 dark:bg-primary/30 rounded-lg flex items-center justify-center">
-              <div className="text-lg">📊</div>
+            <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
+              <BarChart3 className="h-4 w-4 text-primary" />
             </div>
             Makronährstoffe Durchschnitt
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="relative p-6 bg-gradient-to-br from-protein/10 to-protein/20 rounded-xl border border-protein/20">
+            <div className="relative p-6 bg-gradient-to-br from-blue-500/10 to-blue-500/20 rounded-xl border border-blue-500/20">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-10 w-10 bg-protein/20 rounded-lg flex items-center justify-center">
+                <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                   <div className="text-lg">🥩</div>
                 </div>
-                <Badge variant="outline" className="border-protein text-protein">
+                <Badge variant="outline" className="border-blue-500 text-blue-500 bg-blue-500/10">
                   {averages.protein > 0 ? Math.round((averages.protein / (dailyGoals?.protein || 116)) * 100) : 0}%
                 </Badge>
               </div>
-              <h3 className="font-semibold text-protein mb-2">Protein</h3>
-              <div className="text-2xl font-bold text-protein mb-1">{averages.protein}g</div>
+              <h3 className="font-semibold text-blue-500 mb-2">Protein</h3>
+              <div className="text-2xl font-bold text-blue-500 mb-1">{averages.protein}g</div>
               <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.protein || 116}g</div>
-              <div className="w-full bg-protein/20 rounded-full h-2 mt-3">
+              <div className="w-full bg-blue-500/20 rounded-full h-2 mt-3">
                 <div 
-                  className="bg-protein h-2 rounded-full transition-all duration-300"
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, (averages.protein / (dailyGoals?.protein || 116)) * 100)}%` }}
                 ></div>
               </div>
             </div>
             
-            <div className="relative p-6 bg-gradient-to-br from-carbs/10 to-carbs/20 rounded-xl border border-carbs/20">
+            <div className="relative p-6 bg-gradient-to-br from-orange-500/10 to-orange-500/20 rounded-xl border border-orange-500/20">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-10 w-10 bg-carbs/20 rounded-lg flex items-center justify-center">
+                <div className="h-10 w-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
                   <div className="text-lg">🍞</div>
                 </div>
-                <Badge variant="outline" className="border-carbs text-carbs">
+                <Badge variant="outline" className="border-orange-500 text-orange-500 bg-orange-500/10">
                   {averages.carbs > 0 ? Math.round((averages.carbs / (dailyGoals?.carbs || 99)) * 100) : 0}%
                 </Badge>
               </div>
-              <h3 className="font-semibold text-carbs mb-2">Kohlenhydrate</h3>
-              <div className="text-2xl font-bold text-carbs mb-1">{averages.carbs}g</div>
+              <h3 className="font-semibold text-orange-500 mb-2">Kohlenhydrate</h3>
+              <div className="text-2xl font-bold text-orange-500 mb-1">{averages.carbs}g</div>
               <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.carbs || 99}g</div>
-              <div className="w-full bg-carbs/20 rounded-full h-2 mt-3">
+              <div className="w-full bg-orange-500/20 rounded-full h-2 mt-3">
                 <div 
-                  className="bg-carbs h-2 rounded-full transition-all duration-300"
+                  className="bg-orange-500 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, (averages.carbs / (dailyGoals?.carbs || 99)) * 100)}%` }}
                 ></div>
               </div>
             </div>
             
-            <div className="relative p-6 bg-gradient-to-br from-fats/10 to-fats/20 rounded-xl border border-fats/20">
+            <div className="relative p-6 bg-gradient-to-br from-purple-500/10 to-purple-500/20 rounded-xl border border-purple-500/20">
               <div className="flex items-center justify-between mb-4">
-                <div className="h-10 w-10 bg-fats/20 rounded-lg flex items-center justify-center">
+                <div className="h-10 w-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
                   <div className="text-lg">🥑</div>
                 </div>
-                <Badge variant="outline" className="border-fats text-fats">
+                <Badge variant="outline" className="border-purple-500 text-purple-500 bg-purple-500/10">
                   {averages.fats > 0 ? Math.round((averages.fats / (dailyGoals?.fats || 51)) * 100) : 0}%
                 </Badge>
               </div>
-              <h3 className="font-semibold text-fats mb-2">Fette</h3>
-              <div className="text-2xl font-bold text-fats mb-1">{averages.fats}g</div>
+              <h3 className="font-semibold text-purple-500 mb-2">Fette</h3>
+              <div className="text-2xl font-bold text-purple-500 mb-1">{averages.fats}g</div>
               <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.fats || 51}g</div>
-              <div className="w-full bg-fats/20 rounded-full h-2 mt-3">
+              <div className="w-full bg-purple-500/20 rounded-full h-2 mt-3">
                 <div 
-                  className="bg-fats h-2 rounded-full transition-all duration-300"
+                  className="bg-purple-500 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(100, (averages.fats / (dailyGoals?.fats || 51)) * 100)}%` }}
                 ></div>
               </div>
