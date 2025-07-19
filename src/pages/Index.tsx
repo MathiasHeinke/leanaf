@@ -15,6 +15,7 @@ import { DailyProgress } from "@/components/DailyProgress";
 import { WeightTracker } from "@/components/WeightTracker";
 import { MealList } from "@/components/MealList";
 import { MealInput } from "@/components/MealInput";
+import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { populateQuotes } from "@/utils/populateQuotes";
 import { UserGoal } from "@/utils/goalBasedMessaging";
@@ -493,9 +494,41 @@ const Index = () => {
             onUpdateMeal={handleInlineUpdateMeal}
           />
         </div>
+
+        {/* Meal Input - Direct Integration */}
+        <div className="px-4 pb-8">
+          <MealInput 
+            inputText={mealInputHook.inputText}
+            setInputText={mealInputHook.setInputText}
+            onSubmitMeal={mealInputHook.handleSubmitMeal}
+            onPhotoUpload={mealInputHook.handlePhotoUpload}
+            onVoiceRecord={mealInputHook.handleVoiceRecord}
+            isAnalyzing={mealInputHook.isAnalyzing}
+            isRecording={mealInputHook.isRecording}
+            isProcessing={mealInputHook.isProcessing}
+            uploadedImages={mealInputHook.uploadedImages}
+            onRemoveImage={mealInputHook.removeImage}
+            isEditing={!!editingMeal}
+            onCancelEdit={() => {
+              setEditingMeal(null);
+              mealInputHook.resetForm();
+            }}
+          />
+        </div>
       </div>
 
-
+      {/* Meal Confirmation Dialog */}
+      <MealConfirmationDialog 
+        isOpen={mealInputHook.showConfirmationDialog}
+        onClose={() => mealInputHook.setShowConfirmationDialog(false)}
+        analyzedMealData={mealInputHook.analyzedMealData}
+        selectedMealType={mealInputHook.selectedMealType}
+        onMealTypeChange={mealInputHook.setSelectedMealType}
+        onSuccess={() => {
+          mealInputHook.resetForm();
+          loadUserData();
+        }}
+      />
     </div>
   );
 };

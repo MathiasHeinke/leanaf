@@ -38,8 +38,8 @@ export const MealInput = ({
   const { t } = useTranslation();
   
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50">
-      <div className="max-w-3xl mx-auto px-3 pb-3">
+    <div className="relative w-full">
+      <div className="w-full">
         {/* Image Thumbnails - Above input */}
         {uploadedImages && uploadedImages.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
