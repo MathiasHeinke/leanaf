@@ -167,8 +167,11 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       // Group meals by date
       const groupedData = new Map<string, DailyData>();
       
+      console.log('timeRange:', timeRange, 'mealsData length:', mealsData?.length);
+      
       if (timeRange === 'month') {
         // Für 30-Tage-Ansicht: Gruppiere nach Wochen
+        console.log('Using weekly grouping for month view');
         const weeklyData = new Map<string, DailyData>();
         
         // Initialize weeks for the last 4-5 weeks
@@ -226,8 +229,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           fats: Math.round(week.fats / 7)
         }));
 
+        console.log('Weekly data:', weeklyArray);
         setHistoryData(weeklyArray.sort((a, b) => b.date.localeCompare(a.date)));
       } else {
+        console.log('Using daily grouping for', timeRange, 'view');
         // Für 7-Tage und Jahresansicht: Gruppiere nach Tagen
         // Initialize empty days
         for (let i = 0; i < daysToLoad; i++) {
