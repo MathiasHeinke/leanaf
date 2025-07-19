@@ -341,35 +341,386 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     <div className="p-4 max-w-lg mx-auto">
       <div className="space-y-6 pb-20">
         
-        {/* Makronährstoff-Anzeige oben */}
-        <div className="bg-background rounded-xl p-4 shadow-sm border">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold">{calculateMacroGrams().protein}g</div>
+        {/* 1. Persönliche Daten */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
+              <Settings className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <div className="text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{calculateMacroGrams().fats}g</div>
-            </div>
+            <h2 className="text-xl font-bold">Persönliche Daten</h2>
           </div>
-          <div className="text-center mt-2 text-sm text-muted-foreground">
-            Gesamt: 100%
+
+          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Name</Label>
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Dein Name"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Email</Label>
+                <Input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="deine@email.de"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Aktuelles Gewicht (kg)</Label>
+                <Input
+                  type="number"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="70"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Startgewicht (kg)</Label>
+                <Input
+                  type="number"
+                  value={startWeight}
+                  onChange={(e) => setStartWeight(e.target.value)}
+                  placeholder="75"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-sm">Größe (cm)</Label>
+                <Input
+                  type="number"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="175"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Alter</Label>
+                <Input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="30"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Geschlecht</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Männlich</SelectItem>
+                    <SelectItem value="female">Weiblich</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm">Aktivitätslevel</Label>
+              <Select value={activityLevel} onValueChange={setActivityLevel}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sedentary">Wenig aktiv (Bürojob)</SelectItem>
+                  <SelectItem value="light">Leicht aktiv (1-3x Sport/Woche)</SelectItem>
+                  <SelectItem value="moderate">Mäßig aktiv (3-5x Sport/Woche)</SelectItem>
+                  <SelectItem value="active">Sehr aktiv (6-7x Sport/Woche)</SelectItem>
+                  <SelectItem value="very_active">Extrem aktiv (2x täglich)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
-        {/* Gewichtsziel-Analyse */}
+        {/* 2. Ziele definieren */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
               <Target className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Gewichtsziel-Analyse</h2>
+            <h2 className="text-xl font-bold">Ziele definieren</h2>
           </div>
 
+          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+            <div>
+              <Label className="text-sm">Hauptziel</Label>
+              <Select value={goal} onValueChange={setGoal}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lose">Gewicht verlieren</SelectItem>
+                  <SelectItem value="maintain">Gewicht halten</SelectItem>
+                  <SelectItem value="gain">Gewicht zunehmen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm">Zielgewicht (kg)</Label>
+                <Input
+                  type="number"
+                  value={targetWeight}
+                  onChange={(e) => setTargetWeight(e.target.value)}
+                  placeholder="65"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm">Zieldatum</Label>
+                <Input
+                  type="date"
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm">Kaloriendefizit/-überschuss pro Tag</Label>
+              <Input
+                type="number"
+                value={dailyGoals.calorieDeficit}
+                onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: parseInt(e.target.value) || 0})}
+                className="mt-1"
+                placeholder="300"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                Positiv für Gewichtsverlust, negativ für Gewichtszunahme
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Präferenzen */}
+        <div className="space-y-6">
+          {/* Coach-Einstellungen */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold">Coach-Einstellungen</h2>
+            </div>
+
+            <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Coach-Persönlichkeit</Label>
+                <Select value={coachPersonality} onValueChange={setCoachPersonality}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hart">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-red-500" />
+                        <span>Hart & Direkt</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="soft">
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-pink-500" />
+                        <span>Sanft & Verständnisvoll</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="motivierend">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-green-500" />
+                        <span>Motivierend & Positiv</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="bg-accent/10 rounded-xl p-3">
+                <div className="text-sm font-medium mb-1">Vorschau:</div>
+                <div className="text-muted-foreground italic text-sm">
+                  {coachPersonality === 'hart' && "\"Du hast dein Ziel heute nicht erreicht? Dann streng dich morgen mehr an!\""}
+                  {coachPersonality === 'soft' && "\"Das ist völlig in Ordnung, morgen ist ein neuer Tag für einen Neuanfang.\""}
+                  {coachPersonality === 'motivierend' && "\"Du schaffst das! Ich glaube an dich und deine Ziele!\""}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Dumbbell className="h-4 w-4" />
+                    Muskelmasse erhalten
+                  </Label>
+                  <div className="text-xs text-muted-foreground">
+                    Priorität auf Muskelerhaltung während Diät
+                  </div>
+                </div>
+                <Switch 
+                  checked={muscleMaintenancePriority} 
+                  onCheckedChange={setMuscleMaintenancePriority}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Makro-Strategien */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold">Makro-Strategien</h2>
+            </div>
+
+            <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+              <div className="space-y-3">
+                {[
+                  { key: 'standard', label: 'Standard', desc: 'Ausgewogene Verteilung', macros: '30/40/30' },
+                  { key: 'high_protein', label: 'High Protein', desc: 'Mehr Protein für Muskelaufbau', macros: '40/30/30' },
+                  { key: 'balanced', label: 'Balanced', desc: 'Moderate Protein-Verteilung', macros: '25/45/30' },
+                  { key: 'low_carb', label: 'Low Carb', desc: 'Weniger Kohlenhydrate', macros: '35/20/45' },
+                  { key: 'athletic', label: 'Athletic', desc: 'Für aktive Sportler', macros: '30/50/20' }
+                ].map((strategy) => (
+                  <div 
+                    key={strategy.key}
+                    className={`p-3 rounded-xl border cursor-pointer transition-colors ${
+                      macroStrategy === strategy.key 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => {
+                      setMacroStrategy(strategy.key);
+                      applyMacroStrategy(strategy.key);
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-sm">{strategy.label}</div>
+                        <div className="text-xs text-muted-foreground">{strategy.desc}</div>
+                      </div>
+                      <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                        {strategy.macros}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-xs">Protein %</Label>
+                  <Input
+                    type="number"
+                    value={dailyGoals.protein}
+                    onChange={(e) => setDailyGoals({...dailyGoals, protein: parseInt(e.target.value) || 0})}
+                    className="h-8 text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Carbs %</Label>
+                  <Input
+                    type="number"
+                    value={dailyGoals.carbs}
+                    onChange={(e) => setDailyGoals({...dailyGoals, carbs: parseInt(e.target.value) || 0})}
+                    className="h-8 text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Fats %</Label>
+                  <Input
+                    type="number"
+                    value={dailyGoals.fats}
+                    onChange={(e) => setDailyGoals({...dailyGoals, fats: parseInt(e.target.value) || 0})}
+                    className="h-8 text-sm mt-1"
+                  />
+                </div>
+              </div>
+              <div className="text-center text-xs text-muted-foreground">
+                Gesamt: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Berechnete Ergebnisse */}
+        <div className="space-y-6">
+          {/* Makronährstoff-Anzeige */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold">Deine Makros</h2>
+            </div>
+
+            <div className="bg-background rounded-xl p-4 shadow-sm border">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{calculateMacroGrams().protein}g</div>
+                  <div className="text-sm text-muted-foreground">Protein</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
+                  <div className="text-sm text-muted-foreground">Carbs</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{calculateMacroGrams().fats}g</div>
+                  <div className="text-sm text-muted-foreground">Fats</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Kalorienberechnung */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                <Zap className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold">Kalorienberechnung</h2>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-lg font-bold">{calculateBMR() ? Math.round(calculateBMR()!) : '-'}</div>
+                <div className="text-xs text-muted-foreground">BMR</div>
+              </div>
+              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-lg font-bold">{calculateMaintenanceCalories() || '-'}</div>
+                <div className="text-xs text-muted-foreground">TDEE</div>
+              </div>
+              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-lg font-bold">{calculateTargetCalories()}</div>
+                <div className="text-xs text-muted-foreground">Ziel</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Gewichtsziel-Analyse */}
           {weight && targetWeight && (
-            <>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
+                  <Target className="h-5 w-5 text-white" />
+                </div>
+                <h2 className="text-xl font-bold">Gewichtsziel-Analyse</h2>
+              </div>
+
               <div className="bg-background rounded-xl p-4 shadow-sm border">
                 <div className="space-y-3">
                   <div className="flex justify-between">
@@ -434,321 +785,40 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 
-        {/* Coach-Einstellungen */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
-              <Bot className="h-5 w-5 text-white" />
+        {/* Save Status */}
+        <div className="fixed bottom-4 left-4 right-4 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg">
+          <div className="flex items-center justify-between max-w-lg mx-auto">
+            <div className="flex items-center gap-2 text-sm">
+              {autoSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  <span>Speichere...</span>
+                </>
+              ) : lastSaved ? (
+                <>
+                  <Check className="h-4 w-4 text-green-500" />
+                  <span className="text-muted-foreground">
+                    Gespeichert {lastSaved.toLocaleTimeString()}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Nicht gespeichert</span>
+              )}
             </div>
-            <h2 className="text-xl font-bold">Coach-Einstellungen</h2>
+            <Button 
+              onClick={handleSave} 
+              disabled={loading || autoSaving}
+              size="sm"
+              className="ml-2"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              Speichern
+            </Button>
           </div>
-
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Coach-Persönlichkeit</Label>
-              <Select value={coachPersonality} onValueChange={setCoachPersonality}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hart">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-red-500" />
-                      <span>Hart & Direkt...</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="soft">
-                    <div className="flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-pink-500" />
-                      <span>Sanft & Verständnisvoll...</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="motivierend">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-green-500" />
-                      <span>Motivierend & Positiv...</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="bg-accent/10 rounded-xl p-3">
-              <div className="text-sm font-medium mb-1">Vorschau:</div>
-              <div className="text-muted-foreground italic text-sm">
-                {coachPersonality === 'hart' && "\"Du hast dein Ziel heute nicht erreicht? Dann streng dich morgen mehr an!\""}
-                {coachPersonality === 'soft' && "\"Hab Geduld mit dir. Jeder Schritt zählt und du machst das großartig.\""}
-                {coachPersonality === 'motivierend' && "\"Du rockst das! Jeder Tag bringt dich näher zu deinem Ziel! 💪\""}
-              </div>
-            </div>
-
-            {/* Muskelerhalt priorisieren */}
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                    <Dumbbell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Muskelerhalt priorisieren</div>
-                    <div className="text-sm text-muted-foreground">
-                      Höhere Protein-Empfehlungen und kraftsport-optimierte Tipps
-                    </div>
-                  </div>
-                </div>
-                <Switch
-                  checked={muscleMaintenancePriority}
-                  onCheckedChange={setMuscleMaintenancePriority}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Makro-Strategien */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center">
-              <Settings className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-xl font-bold">Makro-Strategien</h2>
-          </div>
-
-          <div>
-            <Label className="text-sm font-medium">Makronährstoff-Strategie wählen</Label>
-            <Select value={macroStrategy} onValueChange={(value) => {
-              setMacroStrategy(value);
-              if (value !== 'custom') {
-                applyMacroStrategy(value);
-              }
-            }}>
-              <SelectTrigger className="mt-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="high_protein">
-                  <div>
-                    <div className="font-medium">High Protein (40/30/3...</div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="standard">
-                  <div>
-                    <div className="font-medium">Standard (30/40/30)</div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="low_carb">
-                  <div>
-                    <div className="font-medium">Low Carb (35/20/45)</div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Zieldatum */}
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Zieldatum</Label>
-            <Input
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              className="mt-2 text-center text-lg"
-            />
-          </div>
-        </div>
-
-        {/* Kalorienberechnung */}
-        {calculateMaintenanceCalories() && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
-                <div className="h-2 w-2 bg-white rounded-full" />
-              </div>
-              <h2 className="text-xl font-bold">Kalorienberechnung</h2>
-            </div>
-
-            <div className="space-y-3">
-              <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800/50">
-                <div className="text-blue-600 dark:text-blue-400 text-sm font-medium">Grundumsatz</div>
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {Math.round(calculateBMR() || 0)} kcal
-                </div>
-              </div>
-
-              <div className="bg-green-50 dark:bg-green-950/20 rounded-xl p-4 text-center border border-green-200 dark:border-green-800/50">
-                <div className="text-green-600 dark:text-green-400 text-sm font-medium">Gesamtumsatz</div>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {calculateMaintenanceCalories()} kcal
-                </div>
-              </div>
-
-              <div className="bg-primary/10 rounded-xl p-4 text-center border border-primary/20">
-                <div className="text-primary text-sm font-medium">Zielkalorien</div>
-                <div className="text-2xl font-bold text-primary">
-                  {calculateTargetCalories()} kcal
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Kaloriendefizit</Label>
-              <Input
-                type="number"
-                value={dailyGoals.calorieDeficit}
-                onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: Number(e.target.value)})}
-                className="mt-2 text-center"
-              />
-            </div>
-
-            <div>
-              <Label className="text-sm font-medium">Makronährstoff-Verteilung (%)</Label>
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center gap-3">
-                  <span className="w-20 text-sm">Protein:</span>
-                  <Input
-                    type="number"
-                    value={dailyGoals.protein}
-                    onChange={(e) => setDailyGoals({...dailyGoals, protein: Number(e.target.value)})}
-                    className="flex-1"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-20 text-sm">Carbs:</span>
-                  <Input
-                    type="number"
-                    value={dailyGoals.carbs}
-                    onChange={(e) => setDailyGoals({...dailyGoals, carbs: Number(e.target.value)})}
-                    className="flex-1"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-20 text-sm">Fette:</span>
-                  <Input
-                    type="number"
-                    value={dailyGoals.fats}
-                    onChange={(e) => setDailyGoals({...dailyGoals, fats: Number(e.target.value)})}
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Weitere Einstellungen kompakt */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm">Gewicht (kg)</Label>
-              <Input
-                type="number"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Zielgewicht (kg)</Label>
-              <Input
-                type="number"
-                value={targetWeight}
-                onChange={(e) => setTargetWeight(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label className="text-sm">Größe (cm)</Label>
-              <Input
-                type="number"
-                value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Alter</Label>
-              <Input
-                type="number"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Geschlecht</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Männlich</SelectItem>
-                  <SelectItem value="female">Weiblich</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-sm">Aktivitätslevel</Label>
-            <Select value={activityLevel} onValueChange={setActivityLevel}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sedentary">Wenig aktiv</SelectItem>
-                <SelectItem value="light">Leicht aktiv</SelectItem>
-                <SelectItem value="moderate">Mäßig aktiv</SelectItem>
-                <SelectItem value="active">Sehr aktiv</SelectItem>
-                <SelectItem value="very_active">Extrem aktiv</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-sm">Ziel</Label>
-            <Select value={goal} onValueChange={setGoal}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lose">Abnehmen</SelectItem>
-                <SelectItem value="maintain">Halten</SelectItem>
-                <SelectItem value="gain">Zunehmen</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Zuletzt gespeichert Status */}
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Check className="h-4 w-4 text-green-500" />
-            <span>Zuletzt gespeichert:</span>
-            <span>
-              {lastSaved ? lastSaved.toLocaleTimeString('de-DE', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                second: '2-digit'
-              }) : 'Noch nicht gespeichert'}
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSave}
-            disabled={loading}
-          >
-            Manuell speichern
-          </Button>
         </div>
       </div>
     </div>
