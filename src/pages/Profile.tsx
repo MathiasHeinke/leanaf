@@ -634,7 +634,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
 
             {/* Muskelerhalt Priorität */}
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between p-4 glass-card border border-blue-200 dark:border-blue-700/30">{" "}
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
                   <Dumbbell className="h-5 w-5 text-blue-600" />
@@ -878,15 +878,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg text-center">
-                  <div className="text-sm font-medium text-blue-700">{t('profile.bmr')}</div>
-                  <div className="text-xl font-bold text-blue-800">{calculateBMR()?.toFixed(0)} kcal</div>
+                <div className="p-4 glass-card text-center">
+                  <div className="text-sm font-medium text-blue-600 dark:text-blue-400">{t('profile.bmr')}</div>
+                  <div className="text-xl font-bold text-blue-700 dark:text-blue-300">{calculateBMR()?.toFixed(0)} kcal</div>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg text-center">
-                  <div className="text-sm font-medium text-green-700">{t('profile.tdee')}</div>
-                  <div className="text-xl font-bold text-green-800">{calculateMaintenanceCalories()} kcal</div>
+                <div className="p-4 glass-card text-center">
+                  <div className="text-sm font-medium text-green-600 dark:text-green-400">{t('profile.tdee')}</div>
+                  <div className="text-xl font-bold text-green-700 dark:text-green-300">{calculateMaintenanceCalories()} kcal</div>
                 </div>
-                <div className="p-4 bg-primary/10 rounded-lg text-center">
+                <div className="p-4 glass-card text-center">
                   <div className="text-sm font-medium text-primary">{t('profile.targetCalories')}</div>
                   <div className="text-xl font-bold text-primary">{calculateTargetCalories()} kcal</div>
                 </div>
@@ -997,14 +997,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 return (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 bg-accent/10 rounded-lg">
+                      <div className="p-3 glass-card">
                         <p><span className="font-medium">Gewichtsdifferenz:</span> {weightDiff.toFixed(1)} kg</p>
                         <p><span className="font-medium">Zeit bis zum Ziel:</span> {weeksLeft} Wochen</p>
                         <p><span className="font-medium">Benötigter Fortschritt:</span> {weeklyTarget.toFixed(1)} kg/Woche</p>
                       </div>
                       
                       {requiredDeficit && (
-                        <div className="p-3 bg-primary/10 rounded-lg">
+                        <div className="p-3 glass-card">
                           <p className="font-medium mb-2">Benötigtes Kaloriendefizit:</p>
                           <p className="text-sm"><span className="font-medium">Täglich:</span> {requiredDeficit.daily} kcal</p>
                           <p className="text-sm"><span className="font-medium">Wöchentlich:</span> {requiredDeficit.weekly} kcal</p>
