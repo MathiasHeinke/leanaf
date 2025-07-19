@@ -116,12 +116,12 @@ export const MealInput = ({
             </div>
             
             {/* Text Input - Flexible */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 px-3">
               <Textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={t('input.placeholder')}
-                className="min-h-[40px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 px-3 py-1"
+                className="min-h-[44px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 px-0 py-3"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
