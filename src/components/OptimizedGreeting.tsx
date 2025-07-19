@@ -17,8 +17,35 @@ export const OptimizedGreeting = ({ userProfile }: OptimizedGreetingProps) => {
     return "Guten Abend";
   };
 
-  const getUserName = () => {
-    return userProfile?.display_name || user?.email?.split('@')[0] || 'Nutzer';
+  const getUserAddress = () => {
+    // If we have a display name, use only the first name
+    if (userProfile?.display_name) {
+      return userProfile.display_name.split(' ')[0];
+    }
+    
+    // If we have email, use first name from email
+    if (user?.email) {
+      const emailName = user.email.split('@')[0];
+      // If it looks like a name (contains letters), use it
+      if (/^[a-zA-Z]/.test(emailName)) {
+        return emailName.split('.')[0]; // Take first part if email is like "max.mustermann@..."
+      }
+    }
+    
+    // Fallback based on coaching style
+    const coachStyle = userProfile?.coach_personality || 'motivierend';
+    switch (coachStyle) {
+      case 'motivierend':
+        return 'Champion';
+      case 'freundlich':
+        return 'Freund';
+      case 'professionell':
+        return '';
+      case 'entspannt':
+        return 'Kumpel';
+      default:
+        return 'Champion';
+    }
   };
 
   // Only show greeting if we have gender-specific content or it's a new user
@@ -32,7 +59,7 @@ export const OptimizedGreeting = ({ userProfile }: OptimizedGreetingProps) => {
     <div className="mb-4 p-3 bg-gradient-to-r from-primary/5 to-primary-glow/5 rounded-xl border border-primary/10">
       <div className="text-center space-y-2">
         <h2 className="text-lg font-semibold text-primary">
-          {getTimeBasedGreeting()}, {getUserName()}! 👋
+          {getTimeBasedGreeting()}{getUserAddress() ? `, ${getUserAddress()}` : ''}! 👋
         </h2>
         <div className="max-w-sm mx-auto">
           <RandomQuote 
