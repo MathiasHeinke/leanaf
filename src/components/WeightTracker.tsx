@@ -63,47 +63,44 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
   };
 
   return (
-    <Card className="p-4 border-primary/20">
-      <div className="space-y-3">
-        <h3 className="font-medium text-sm">Aktuelles Gewicht</h3>
-        <div className="flex gap-2">
-          <Input
-            type="number"
-            value={newWeight}
-            onChange={(e) => setNewWeight(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddWeight();
-              }
-            }}
-            placeholder="z.B. 72.5"
-            className="flex-1 h-9"
-            step="0.1"
-          />
-          <Button 
-            onClick={handleAddWeight} 
-            disabled={!newWeight}
-            size="sm"
-            className="h-9"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Eintragen
-          </Button>
-        </div>
-        
-        {(() => {
-          const trend = getWeightTrend();
-          if (!trend) return null;
-          const IconComponent = trend.icon;
-          return (
-            <div className={`flex items-center gap-1 ${trend.color} text-sm`}>
-              <IconComponent className="h-4 w-4" />
-              <span>{trend.text}</span>
-            </div>
-          );
-        })()}
+    <div className="space-y-3">
+      <h3 className="font-medium text-sm">Aktuelles Gewicht</h3>
+      <div className="flex gap-2">
+        <Input
+          type="number"
+          value={newWeight}
+          onChange={(e) => setNewWeight(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddWeight();
+            }
+          }}
+          placeholder="z.B. 72.5"
+          className="flex-1"
+          step="0.1"
+        />
+        <Button 
+          onClick={handleAddWeight} 
+          disabled={!newWeight}
+          size="sm"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Eintragen
+        </Button>
       </div>
-    </Card>
+      
+      {(() => {
+        const trend = getWeightTrend();
+        if (!trend) return null;
+        const IconComponent = trend.icon;
+        return (
+          <div className={`flex items-center gap-1 ${trend.color} text-sm`}>
+            <IconComponent className="h-4 w-4" />
+            <span>{trend.text}</span>
+          </div>
+        );
+      })()}
+    </div>
   );
 };
