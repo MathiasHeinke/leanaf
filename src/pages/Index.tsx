@@ -1,8 +1,5 @@
 
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
 
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -12,11 +9,10 @@ import { DailyProgress } from "@/components/DailyProgress";
 import { DailyGreeting } from "@/components/DailyGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { DateNavigation } from "@/components/DateNavigation";
+import { RandomQuote } from "@/components/RandomQuote";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { MealInput } from "@/components/MealInput";
 
 const Index = () => {
@@ -29,7 +25,6 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calorieSummary, setCalorieSummary] = useState<{ consumed: number; burned: number }>({ consumed: 0, burned: 0 });
-  const [weeklyCalorieData, setWeeklyCalorieData] = useState([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -45,7 +40,6 @@ const Index = () => {
   useEffect(() => {
     if (user && dailyGoals) {
       fetchMealsForDate(currentDate);
-      fetchWeeklyCalorieData();
     }
   }, [user, currentDate, dailyGoals]);
 
@@ -129,51 +123,6 @@ const Index = () => {
     }
   };
 
-  const fetchWeeklyCalorieData = async () => {
-    try {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 6);
-
-      const { data, error } = await supabase
-        .from('meals')
-        .select('calories, created_at')
-        .eq('user_id', user?.id)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-      if (error) throw error;
-
-      // Aggregate calories by date
-      const aggregatedData = data?.reduce((acc: any, item: any) => {
-        const date = item.created_at.split('T')[0];
-        if (!acc[date]) {
-          acc[date] = { date: date, calories: 0 };
-        }
-        acc[date].calories += item.calories || 0;
-        return acc;
-      }, {});
-
-      const weeklyData = Object.values(aggregatedData || {});
-
-      // Ensure all dates in the last 7 days are present
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(endDate);
-        date.setDate(endDate.getDate() - i);
-        const dateString = date.toISOString().split('T')[0];
-
-        if (!aggregatedData?.[dateString]) {
-          weeklyData.push({ date: dateString, calories: 0 });
-        }
-      }
-
-      weeklyData.sort((a: any, b: any) => (a.date > b.date ? 1 : -1));
-      setWeeklyCalorieData(weeklyData as any);
-    } catch (error) {
-      console.error('Error fetching weekly calorie data:', error);
-    }
-  };
-
   const updateCalorieSummary = (meals: any[]) => {
     const consumed = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
     setCalorieSummary({ consumed, burned: 0 });
@@ -185,12 +134,10 @@ const Index = () => {
 
   const handleMealDeleted = async () => {
     await fetchMealsForDate(currentDate);
-    await fetchWeeklyCalorieData();
   };
 
   const handleMealUpdated = async () => {
     await fetchMealsForDate(currentDate);
-    await fetchWeeklyCalorieData();
   };
 
   const handleWeightAdded = () => {
@@ -212,6 +159,9 @@ const Index = () => {
       <div className="space-y-6">
         {/* Daily Greeting */}
         <DailyGreeting userProfile={userProfile} />
+
+        {/* Random Quote */}
+        <RandomQuote />
 
         {/* Date Navigation - Prominently placed */}
         <DateNavigation 
@@ -243,22 +193,6 @@ const Index = () => {
               }}
               userGoal={userProfile?.goal || 'maintain'}
             />
-
-            {/* Weekly Chart */}
-            <Card className="glass-card hover-scale">
-              <CardContent className="p-4">
-                <h4 className="font-medium text-foreground mb-4">7-Tage Überblick</h4>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={weeklyCalorieData} margin={{ top: 20, right: 0, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), 'E', { locale: de })} />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="calories" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
           </div>
 
           <div className="md:w-2/3 mt-6 md:mt-0">
