@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect } from 'react';
 
 interface TranslationContextType {
@@ -49,7 +50,58 @@ const translations = {
     'input.record': 'Aufnahme',
     'input.recording': 'Aufnahme läuft...',
     'input.photoUpload': 'Foto hochladen',
+    'input.processing': 'Verarbeitung...',
     'common.stop': 'Stop',
+    
+    // Weight Input
+    'weightInput.title': 'Gewicht eintragen',
+    'weightInput.current': 'Aktuell: {weight} kg',
+    'weightInput.placeholder': 'kg',
+    'weightInput.success': 'Gewicht erfolgreich gespeichert!',
+    'weightInput.error': 'Fehler beim Speichern des Gewichts',
+    
+    // Daily Progress
+    'progress.caloriesConsumed': 'kcal heute verbraucht',
+    'progress.remaining': 'verbleibend',
+    'progress.overGoal': 'über Ziel',
+    'progress.stillNeed': 'fehlen noch',
+    'progress.goalReached': 'Ziel erreicht!',
+    'progress.exceeded': 'überschritten',
+    'progress.over': 'über',
+    
+    // Time
+    'time.today': 'Heute',
+    'time.morning': 'Guten Morgen',
+    'time.afternoon': 'Guten Tag',
+    'time.evening': 'Guten Abend',
+    
+    // Macros
+    'macros.protein': 'Protein',
+    'macros.carbs': 'Kohlenhydrate',
+    'macros.fats': 'Fette',
+    'macros.calories': 'Kalorien',
+    
+    // Meal Types
+    'mealTypes.breakfast': 'Frühstück',
+    'mealTypes.lunch': 'Mittagessen',
+    'mealTypes.dinner': 'Abendessen',
+    'mealTypes.snack': 'Snack',
+    'mealTypes.other': 'Sonstiges',
+    
+    // Date Navigation
+    'date.today': 'Heute',
+    'date.previousDay': 'Vorheriger Tag',
+    'date.nextDay': 'Nächster Tag',
+    
+    // Settings (additional)
+    'settings.close': 'Schließen',
+    'settings.dailyCalorieGoal': 'Tägliches Kalorienziel',
+    'settings.recommended': 'Empfohlen: 1200-2500 kcal je nach Geschlecht und Aktivität',
+    'settings.goalSaved': 'Ziel gespeichert! 🎯',
+    'settings.newDailyGoal': 'Neues Tagesziel: {calories} kcal',
+    'settings.invalidGoal': 'Ungültiges Ziel',
+    'settings.goalRange': 'Das Kalorienziel sollte zwischen 800 und 5000 kcal liegen.',
+    'settings.saveGoal': 'Ziel speichern',
     
     // Authentication
     'auth.signIn': 'Anmelden',
@@ -175,6 +227,7 @@ const translations = {
     'common.yes': 'Ja',
     'common.no': 'Nein',
     'common.dataUpdated': 'Daten aktualisiert',
+    'common.stop': 'Stop',
     
     // Loading messages
     'loading.userData': 'Lade Benutzerdaten...',
@@ -190,6 +243,7 @@ const translations = {
     'ui.overBy': 'über',
     'ui.goal': 'Ziel',
     'ui.until': 'bis',
+    'ui.over': 'über',
     
     // Motivational messages
     'motivation.start': 'Perfekter Start! 🌟 Du bist auf dem richtigen Weg!',
@@ -233,7 +287,58 @@ const translations = {
     'input.record': 'Record',
     'input.recording': 'Recording...',
     'input.photoUpload': 'Upload Photo',
+    'input.processing': 'Processing...',
     'common.stop': 'Stop',
+    
+    // Weight Input
+    'weightInput.title': 'Log Weight',
+    'weightInput.current': 'Current: {weight} kg',
+    'weightInput.placeholder': 'kg',
+    'weightInput.success': 'Weight saved successfully!',
+    'weightInput.error': 'Error saving weight',
+    
+    // Daily Progress
+    'progress.caloriesConsumed': 'kcal consumed today',
+    'progress.remaining': 'remaining',
+    'progress.overGoal': 'over goal',
+    'progress.stillNeed': 'still needed',
+    'progress.goalReached': 'Goal reached!',
+    'progress.exceeded': 'exceeded',
+    'progress.over': 'over',
+    
+    // Time
+    'time.today': 'Today',
+    'time.morning': 'Good Morning',
+    'time.afternoon': 'Good Afternoon',
+    'time.evening': 'Good Evening',
+    
+    // Macros
+    'macros.protein': 'Protein',
+    'macros.carbs': 'Carbs',
+    'macros.fats': 'Fats',
+    'macros.calories': 'Calories',
+    
+    // Meal Types
+    'mealTypes.breakfast': 'Breakfast',
+    'mealTypes.lunch': 'Lunch',
+    'mealTypes.dinner': 'Dinner',
+    'mealTypes.snack': 'Snack',
+    'mealTypes.other': 'Other',
+    
+    // Date Navigation
+    'date.today': 'Today',
+    'date.previousDay': 'Previous Day',
+    'date.nextDay': 'Next Day',
+    
+    // Settings (additional)
+    'settings.close': 'Close',
+    'settings.dailyCalorieGoal': 'Daily Calorie Goal',
+    'settings.recommended': 'Recommended: 1200-2500 kcal depending on gender and activity',
+    'settings.goalSaved': 'Goal saved! 🎯',
+    'settings.newDailyGoal': 'New daily goal: {calories} kcal',
+    'settings.invalidGoal': 'Invalid Goal',
+    'settings.goalRange': 'The calorie goal should be between 800 and 5000 kcal.',
+    'settings.saveGoal': 'Save Goal',
     
     // Authentication
     'auth.signIn': 'Sign In',
@@ -359,6 +464,7 @@ const translations = {
     'common.yes': 'Yes',
     'common.no': 'No',
     'common.dataUpdated': 'Data updated',
+    'common.stop': 'Stop',
     
     // Loading messages
     'loading.userData': 'Loading user data...',
@@ -374,6 +480,7 @@ const translations = {
     'ui.overBy': 'over',
     'ui.goal': 'Goal',
     'ui.until': 'until',
+    'ui.over': 'over',
     
     // Motivational messages
     'motivation.start': 'Perfect start! 🌟 You\'re on the right track!',

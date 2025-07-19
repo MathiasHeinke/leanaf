@@ -69,7 +69,7 @@ export const MealInput = ({
               <div className="w-1.5 h-4 bg-destructive animate-pulse rounded-full" style={{ animationDelay: '0.1s' }}></div>
               <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full" style={{ animationDelay: '0.2s' }}></div>
             </div>
-            <span className="font-medium text-foreground">{isRecording ? t('input.recording') : 'Verarbeitung...'}</span>
+            <span className="font-medium text-foreground">{isRecording ? t('input.recording') : t('input.processing')}</span>
           </div>
         )}
         

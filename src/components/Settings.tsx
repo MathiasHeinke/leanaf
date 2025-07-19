@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
 import { Settings as SettingsIcon, Target, Save } from "lucide-react";
 
@@ -25,6 +27,7 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const [goal, setGoal] = useState(dailyGoal.calories.toString());
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const handleSave = async () => {
     if (!user) return;
@@ -32,8 +35,8 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
     const newGoal = parseInt(goal);
     if (newGoal < 800 || newGoal > 5000) {
       toast({
-        title: "Ungültiges Ziel",
-        description: "Das Kalorienziel sollte zwischen 800 und 5000 kcal liegen.",
+        title: t('settings.invalidGoal'),
+        description: t('settings.goalRange'),
         variant: "destructive"
       });
       return;
@@ -60,15 +63,15 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
       });
       
       toast({
-        title: "Ziel gespeichert! 🎯",
-        description: `Neues Tagesziel: ${newGoal} kcal`
+        title: t('settings.goalSaved'),
+        description: t('settings.newDailyGoal').replace('{calories}', newGoal.toString())
       });
       onClose();
     } catch (error: any) {
       console.error('Error saving goal:', error);
       toast({
-        title: "Fehler",
-        description: "Ziel konnte nicht gespeichert werden.",
+        title: t('common.error'),
+        description: t('profile.error'),
         variant: "destructive"
       });
     }
@@ -81,17 +84,17 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           <div className="bg-gradient-to-r from-primary to-primary-glow p-2 rounded-lg">
             <SettingsIcon className="h-5 w-5 text-primary-foreground" />
           </div>
-          <h2 className="text-xl font-bold">Einstellungen</h2>
+          <h2 className="text-xl font-bold">{t('settings.title')}</h2>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}>
-          Schließen
+          {t('settings.close')}
         </Button>
       </div>
 
       <div className="space-y-6">
         <div>
           <Label htmlFor="daily-goal" className="text-base font-medium">
-            Tägliches Kalorienziel
+            {t('settings.dailyCalorieGoal')}
           </Label>
           <div className="flex items-center gap-3 mt-2">
             <Target className="h-5 w-5 text-primary" />
@@ -104,17 +107,17 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
               max="5000"
               className="flex-1"
             />
-            <span className="text-sm text-muted-foreground">kcal</span>
+            <span className="text-sm text-muted-foreground">{t('ui.kcal')}</span>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Empfohlen: 1200-2500 kcal je nach Geschlecht und Aktivität
+            {t('settings.recommended')}
           </p>
         </div>
 
         <div className="pt-4 border-t">
           <Button variant="hero" onClick={handleSave} className="w-full">
             <Save className="h-4 w-4 mr-2" />
-            Ziel speichern
+            {t('settings.saveGoal')}
           </Button>
         </div>
       </div>

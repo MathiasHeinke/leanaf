@@ -6,6 +6,7 @@ import { Scale, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -16,6 +17,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
   const [weight, setWeight] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,12 +44,12 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
 
       if (profileError) throw profileError;
 
-      toast.success("Gewicht erfolgreich gespeichert!");
+      toast.success(t('weightInput.success'));
       setWeight("");
       onWeightAdded?.();
     } catch (error) {
       console.error('Error saving weight:', error);
-      toast.error("Fehler beim Speichern des Gewichts");
+      toast.error(t('weightInput.error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -60,10 +62,10 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
           <Scale className="h-5 w-5 text-green-600 dark:text-green-400" />
         </div>
         <div>
-          <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eintragen</h3>
+          <h3 className="font-semibold text-green-800 dark:text-green-200">{t('weightInput.title')}</h3>
           {currentWeight && (
             <p className="text-sm text-green-600 dark:text-green-400">
-              Aktuell: {currentWeight} kg
+              {t('weightInput.current').replace('{weight}', currentWeight.toString())}
             </p>
           )}
         </div>
@@ -73,7 +75,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
         <Input
           type="number"
           step="0.1"
-          placeholder="kg"
+          placeholder={t('weightInput.placeholder')}
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           className="flex-1"

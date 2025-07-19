@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star, ChevronLeft, ChevronRight } from "lucide-react";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getGoalStatus, getGoalBasedProgressMessage, UserGoal } from "@/utils/goalBasedMessaging";
 import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
 
 interface DailyTotals {
   calories: number;
@@ -42,7 +43,8 @@ interface OverallStatus {
 const getOverallStatus = (
   dailyTotals: DailyTotals,
   dailyGoal: DailyGoal,
-  userGoal: UserGoal
+  userGoal: UserGoal,
+  t: (key: string) => string
 ): OverallStatus => {
   const proteinPercentage = (dailyTotals.protein / dailyGoal.protein) * 100;
   const carbsPercentage = (dailyTotals.carbs / dailyGoal.carbs) * 100;
@@ -52,13 +54,13 @@ const getOverallStatus = (
   
   // Check for significant macro excesses (>120%)
   if (proteinPercentage > 120) {
-    macroWarnings.push('Protein');
+    macroWarnings.push(t('macros.protein'));
   }
   if (carbsPercentage > 120) {
-    macroWarnings.push('Kohlenhydrate');
+    macroWarnings.push(t('macros.carbs'));
   }
   if (fatsPercentage > 120) {
-    macroWarnings.push('Fette');
+    macroWarnings.push(t('macros.fats'));
   }
   
   const hasMacroWarnings = macroWarnings.length > 0;
@@ -66,12 +68,12 @@ const getOverallStatus = (
   // Priority 1: Critical macro warnings
   if (hasMacroWarnings) {
     const warningText = macroWarnings.length === 1 
-      ? `${macroWarnings[0]} stark überschritten`
-      : `${macroWarnings.join(' und ')} überschritten`;
+      ? `${macroWarnings[0]} ${t('progress.exceeded')}`
+      : `${macroWarnings.join(' und ')} ${t('progress.exceeded')}`;
     
     return {
       status: 'danger',
-      message: `⚠️ Achtung: ${warningText}`,
+      message: `⚠️ ${t('coach.warning')}: ${warningText}`,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50/30 dark:bg-red-950/30',
       icon: '⚠️',
@@ -104,7 +106,8 @@ export const DailyProgress = ({
   const { t, language } = useTranslation();
 
   const formatDate = (date: Date): string => {
-    return format(date, 'EEEE, d. MMMM', { locale: de });
+    const locale = language === 'de' ? de : enUS;
+    return format(date, 'EEEE, d. MMMM', { locale });
   };
 
   const goToPreviousDay = () => {
@@ -141,7 +144,7 @@ export const DailyProgress = ({
   const fatsExceeded = dailyTotals.fats > dailyGoal.fats;
 
   const goalStatus = getGoalStatus(dailyTotals.calories, dailyGoal.calories, userGoal);
-  const overallStatus = getOverallStatus(dailyTotals, dailyGoal, userGoal);
+  const overallStatus = getOverallStatus(dailyTotals, dailyGoal, userGoal, t);
 
   return (
     <div className="space-y-6">
@@ -156,7 +159,7 @@ export const DailyProgress = ({
           </div>
           {!isToday && (
             <Button variant="outline" size="sm" onClick={goToToday}>
-              Heute
+              {t('date.today')}
             </Button>
           )}
         </div>
@@ -170,7 +173,7 @@ export const DailyProgress = ({
           <div className="text-center">
             <div className="font-semibold text-base">{formatDate(currentDate)}</div>
             {isToday && (
-              <div className="text-sm text-primary font-medium">Heute</div>
+              <div className="text-sm text-primary font-medium">{t('date.today')}</div>
             )}
           </div>
           
@@ -185,7 +188,7 @@ export const DailyProgress = ({
               {dailyTotals.calories}
               <span className="text-xl text-muted-foreground font-normal">/{dailyGoal.calories}</span>
             </div>
-            <div className="text-sm text-muted-foreground font-medium">kcal heute verbraucht</div>
+            <div className="text-sm text-muted-foreground font-medium">{t('progress.caloriesConsumed')}</div>
           </div>
           
           <div className="space-y-3">
@@ -200,14 +203,14 @@ export const DailyProgress = ({
               </div>
               <span className={goalStatus.color}>
                 {userGoal === 'lose' && remainingCalories > 0 ? 
-                  `${remainingCalories} kcal verbleibend` :
+                  `${remainingCalories} ${t('ui.kcal')} ${t('progress.remaining')}` :
                   userGoal === 'lose' && remainingCalories < 0 ?
-                  `${Math.abs(remainingCalories)} kcal über Ziel` :
+                  `${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('progress.overGoal')}` :
                   userGoal === 'gain' && remainingCalories > 0 ?
-                  `${remainingCalories} kcal fehlen noch` :
+                  `${remainingCalories} ${t('ui.kcal')} ${t('progress.stillNeed')}` :
                   userGoal === 'gain' && remainingCalories < 0 ?
-                  `Ziel erreicht! ${Math.abs(remainingCalories)} kcal über Ziel` :
-                  remainingCalories > 0 ? `${remainingCalories} kcal verbleibend` : `${Math.abs(remainingCalories)} kcal überschritten`
+                  `${t('progress.goalReached')} ${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('progress.over')} ${t('ui.goal')}` :
+                  remainingCalories > 0 ? `${remainingCalories} ${t('ui.kcal')} ${t('progress.remaining')}` : `${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('progress.exceeded')}`
                 }
               </span>
               {goalStatus.status === 'success' ? (
@@ -222,9 +225,14 @@ export const DailyProgress = ({
               <span className="text-base">{overallStatus.icon}</span>
               <div className="text-center leading-relaxed">
                 <div>{overallStatus.message}</div>
-                {overallStatus.hasMacroWarnings && (
+                {overallStatus.hasMacroWarnings && language === 'de' && (
                   <div className="text-xs mt-1 opacity-80">
                     Morgen auf ausgewogene Balance achten!
+                  </div>
+                )}
+                {overallStatus.hasMacroWarnings && language === 'en' && (
+                  <div className="text-xs mt-1 opacity-80">
+                    Focus on balanced nutrition tomorrow!
                   </div>
                 )}
               </div>
@@ -242,17 +250,17 @@ export const DailyProgress = ({
             : 'bg-protein-light dark:bg-protein-light border-protein/20 dark:border-protein/30'
         }`}>
           <div className={`text-xs font-semibold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein'}`}>
-            Protein
+            {t('macros.protein')}
           </div>
           <div className={`text-2xl font-bold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein'}`}>
-            {dailyTotals.protein}<span className="text-sm font-normal opacity-70">g</span>
+            {dailyTotals.protein}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(proteinProgress, 100)} 
             className={`h-1.5 mb-2 ${proteinExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-protein'}`} 
           />
           <div className={`text-xs font-medium ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein/80'}`}>
-            {remainingProtein > 0 ? `+${Math.round(remainingProtein)}g` : `${Math.round(Math.abs(remainingProtein))}g über`}
+            {remainingProtein > 0 ? `+${Math.round(remainingProtein)}${t('ui.gram')}` : `${Math.round(Math.abs(remainingProtein))}${t('ui.gram')} ${t('ui.over')}`}
           </div>
         </div>
 
@@ -263,17 +271,17 @@ export const DailyProgress = ({
             : 'bg-carbs-light dark:bg-carbs-light border-carbs/20 dark:border-carbs/30'
         }`}>
           <div className={`text-xs font-semibold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs'}`}>
-            Kohlenhydrate
+            {t('macros.carbs')}
           </div>
           <div className={`text-2xl font-bold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs'}`}>
-            {dailyTotals.carbs}<span className="text-sm font-normal opacity-70">g</span>
+            {dailyTotals.carbs}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(carbsProgress, 100)} 
             className={`h-1.5 mb-2 ${carbsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-carbs'}`} 
           />
           <div className={`text-xs font-medium ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs/80'}`}>
-            {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}g` : `${Math.round(Math.abs(remainingCarbs))}g über`}
+            {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}${t('ui.gram')}` : `${Math.round(Math.abs(remainingCarbs))}${t('ui.gram')} ${t('ui.over')}`}
           </div>
         </div>
 
@@ -284,17 +292,17 @@ export const DailyProgress = ({
             : 'bg-fats-light dark:bg-fats-light border-fats/20 dark:border-fats/30'
         }`}>
           <div className={`text-xs font-semibold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats'}`}>
-            Fette
+            {t('macros.fats')}
           </div>
           <div className={`text-2xl font-bold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats'}`}>
-            {dailyTotals.fats}<span className="text-sm font-normal opacity-70">g</span>
+            {dailyTotals.fats}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(fatsProgress, 100)} 
             className={`h-1.5 mb-2 ${fatsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-fats'}`} 
           />
           <div className={`text-xs font-medium ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats/80'}`}>
-            {remainingFats > 0 ? `+${Math.round(remainingFats)}g` : `${Math.round(Math.abs(remainingFats))}g über`}
+            {remainingFats > 0 ? `+${Math.round(remainingFats)}${t('ui.gram')}` : `${Math.round(Math.abs(remainingFats))}${t('ui.gram')} ${t('ui.over')}`}
           </div>
         </div>
       </div>
