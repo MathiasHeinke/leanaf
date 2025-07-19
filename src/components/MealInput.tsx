@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,13 +75,13 @@ export const MealInput = ({
         
         {/* Main Input Container - ChatGPT Style */}
         <div className="relative bg-background dark:bg-background border border-border rounded-2xl shadow-lg focus-within:border-primary/50 focus-within:shadow-xl transition-all duration-200">
-          {/* Text Input - Full Width */}
+          {/* Text Input - Natural left alignment like ChatGPT */}
           <div className="relative">
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={t('input.placeholder')}
-              className="min-h-[56px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-20 pr-20 py-3"
+              className="min-h-[56px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 py-3"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -91,9 +92,8 @@ export const MealInput = ({
               }}
             />
             
-            {/* Left Action Buttons - Absolute Positioned */}
-            <div className="absolute left-3 bottom-3 flex items-center gap-1">
-              {/* Attachment Menu Button */}
+            {/* Left Action Button - Single attachment button like ChatGPT */}
+            <div className="absolute left-3 bottom-3 flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
@@ -110,16 +110,6 @@ export const MealInput = ({
                 onChange={onPhotoUpload}
                 multiple
               />
-              
-              {/* Camera Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-lg hover:bg-muted/80 transition-colors"
-                onClick={() => document.getElementById('camera-upload')?.click()}
-              >
-                <Camera className="h-4 w-4 text-muted-foreground" />
-              </Button>
               <input
                 id="camera-upload"
                 type="file"
@@ -131,7 +121,7 @@ export const MealInput = ({
               />
             </div>
             
-            {/* Right Action Buttons - Absolute Positioned */}
+            {/* Right Action Buttons - Voice + Send */}
             <div className="absolute right-3 bottom-3 flex items-center gap-1">
               {/* Voice Recording */}
               <Button
