@@ -26,6 +26,14 @@ const Index = () => {
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Time-based greeting function
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Guten Morgen";
+    if (hour < 18) return "Guten Tag"; 
+    return "Guten Abend";
+  };
+
   // Load user data
   useEffect(() => {
     if (user) {
@@ -154,6 +162,10 @@ const Index = () => {
   return (
     <>
       <div className="space-y-6">
+        {/* Simple time-based greeting at the very top */}
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-foreground">{getTimeBasedGreeting()}! 👋</h1>
+        </div>
 
         <div className="md:flex md:gap-6">
           <div className="md:w-1/3 space-y-4">
@@ -182,7 +194,7 @@ const Index = () => {
               onWeightAdded={handleWeightAdded}
             />
 
-            {/* Optimized Greeting - after weight input */}
+            {/* Optimized Greeting - after weight input (now only motivational quote) */}
             <OptimizedGreeting userProfile={userProfile} />
           </div>
 

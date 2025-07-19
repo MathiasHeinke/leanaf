@@ -1,5 +1,4 @@
 
-import { useTranslation } from "@/hooks/useTranslation";
 import { RandomQuote } from "@/components/RandomQuote";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -9,13 +8,6 @@ interface OptimizedGreetingProps {
 
 export const OptimizedGreeting = ({ userProfile }: OptimizedGreetingProps) => {
   const { user } = useAuth();
-
-  const getTimeBasedGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Guten Morgen";
-    if (hour < 18) return "Guten Tag"; 
-    return "Guten Abend";
-  };
 
   const getUserAddress = () => {
     // If we have a display name, use only the first name
@@ -58,9 +50,6 @@ export const OptimizedGreeting = ({ userProfile }: OptimizedGreetingProps) => {
   return (
     <div className="mb-4 p-3 bg-gradient-to-r from-primary/5 to-primary-glow/5 rounded-xl border border-primary/10">
       <div className="text-center space-y-2">
-        <h2 className="text-lg font-semibold text-primary">
-          {getTimeBasedGreeting()}{getUserAddress() ? `, ${getUserAddress()}` : ''}! 👋
-        </h2>
         <div className="max-w-sm mx-auto">
           <RandomQuote 
             userGender={userProfile?.gender}
