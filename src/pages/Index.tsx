@@ -5,7 +5,6 @@ import { Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
-import { Layout } from "@/components/Layout";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,88 +137,85 @@ const Index = () => {
   };
 
   return (
-    <div>
-      <Layout>
-        <div className="md:flex md:gap-4">
-          <div className="md:w-1/3 space-y-4">
-            <DailyProgress 
-              dailyTotals={{
-                calories: calorieSummary.consumed,
-                protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-                carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-                fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
-              }}
-              dailyGoal={{
-                calories: 2000,
-                protein: 150,
-                carbs: 200,
-                fats: 70
-              }}
-            />
-            <Card className="glass-card hover-scale">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-8 w-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <h4 className="font-medium text-foreground">Kalender</h4>
-                </div>
-                <div className="flex items-center justify-between">
-                  <button onClick={() => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() - 1); handleDateChange(newDate); }} className="hover:bg-muted p-1 rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" /></svg>
-                  </button>
-                  <span className="font-semibold">{formatDate(currentDate)}</span>
-                  <button onClick={() => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + 1); handleDateChange(newDate); }} className="hover:bg-muted p-1 rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" /></svg>
-                  </button>
-                </div>
-                <Separator className="my-4" />
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={weeklyCalorieData} margin={{ top: 20, right: 0, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), 'E', { locale: de })} />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="calories" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="md:w-2/3">
-            <div className="mb-4">
+    <>
+      <div className="md:flex md:gap-4">
+        <div className="md:w-1/3 space-y-4">
+          <DailyProgress 
+            dailyTotals={{
+              calories: calorieSummary.consumed,
+              protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
+              carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
+              fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
+            }}
+            dailyGoal={{
+              calories: 2000,
+              protein: 150,
+              carbs: 200,
+              fats: 70
+            }}
+          />
+          <Card className="glass-card hover-scale">
+            <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-3">
-                <Badge className="opacity-80">{meals.length}</Badge>
-              </div>
-              {loading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+                <div className="h-8 w-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                  <Calendar className="h-4 w-4 text-blue-600" />
                 </div>
-              ) : (
-                <MealList 
-                  dailyMeals={meals.map((meal: any) => ({
-                    id: meal.id,
-                    text: meal.text,
-                    calories: meal.calories,
-                    protein: meal.protein,
-                    carbs: meal.carbs,
-                    fats: meal.fats,
-                    timestamp: new Date(meal.created_at),
-                    meal_type: meal.meal_type
-                  }))} 
-                  onEditMeal={(meal: any) => {}}
-                  onDeleteMeal={handleMealDeleted}
-                  onUpdateMeal={handleMealUpdated}
-                />
-              )}
-            </div>
-          </div>
+                <h4 className="font-medium text-foreground">Kalender</h4>
+              </div>
+              <div className="flex items-center justify-between">
+                <button onClick={() => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() - 1); handleDateChange(newDate); }} className="hover:bg-muted p-1 rounded-full transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" /></svg>
+                </button>
+                <span className="font-semibold">{formatDate(currentDate)}</span>
+                <button onClick={() => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + 1); handleDateChange(newDate); }} className="hover:bg-muted p-1 rounded-full transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" /></svg>
+                </button>
+              </div>
+              <Separator className="my-4" />
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={weeklyCalorieData} margin={{ top: 20, right: 0, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), 'E', { locale: de })} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="calories" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
 
-      </Layout>
+        <div className="md:w-2/3">
+          <div className="mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <Badge className="opacity-80">{meals.length}</Badge>
+            </div>
+            {loading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : (
+              <MealList 
+                dailyMeals={meals.map((meal: any) => ({
+                  id: meal.id,
+                  text: meal.text,
+                  calories: meal.calories,
+                  protein: meal.protein,
+                  carbs: meal.carbs,
+                  fats: meal.fats,
+                  timestamp: new Date(meal.created_at),
+                  meal_type: meal.meal_type
+                }))} 
+                onEditMeal={(meal: any) => {}}
+                onDeleteMeal={handleMealDeleted}
+                onUpdateMeal={handleMealUpdated}
+              />
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Floating Meal Input - Fully Transparent Background */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent">
@@ -238,7 +234,7 @@ const Index = () => {
           />
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
