@@ -314,6 +314,28 @@ const Index = () => {
     mealInputHook.setInputText(meal.text);
   };
 
+  // Handle inline meal updates
+  const handleInlineUpdateMeal = async (mealId: string, updates: Partial<MealData>) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', mealId);
+
+      if (error) throw error;
+
+      // Reload data to reflect changes
+      loadUserData();
+      
+      toast.success('Mahlzeit erfolgreich aktualisiert');
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      toast.error('Fehler beim Aktualisieren der Mahlzeit');
+    }
+  };
+
   // Handle meal update
   const handleUpdateMeal = async () => {
     if (!editingMeal || !user || !mealInputHook.inputText.trim()) return;
@@ -470,6 +492,7 @@ const Index = () => {
             dailyMeals={dailyMeals}
             onEditMeal={handleEditMeal}
             onDeleteMeal={() => loadUserData()}
+            onUpdateMeal={handleInlineUpdateMeal}
           />
         </div>
       </div>
