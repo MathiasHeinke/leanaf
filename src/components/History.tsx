@@ -114,11 +114,11 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       loadUserGoal();
       loadWeightHistory();
     }
-  }, [user]);
+  }, [user, timeRange]);
 
   useEffect(() => {
     refreshData();
-  }, [refreshData, timeRange]);
+  }, [refreshData]);
 
   // Subscribe to data refresh events
   useDataRefresh(refreshData);
@@ -131,6 +131,9 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     
     try {
       setLoading(true);
+      // Reset expanded days when switching time ranges
+      setExpandedDays(new Set());
+      
       const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToLoad);
@@ -164,27 +167,27 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         imagesByMealId.get(image.meal_id)?.push(image.image_url);
       });
 
-      // Group meals by date
-      const groupedData = new Map<string, DailyData>();
-      
-      console.log('timeRange:', timeRange, 'mealsData length:', mealsData?.length);
-      
+      // Group meals by date or week depending on timeRange
       if (timeRange === 'month') {
-        console.log('Using weekly grouping for month view');
-        // Für 30-Tage-Ansicht: Gruppiere nach Wochen
+        // 30-Tage-Ansicht: Gruppiere nach Wochen
         const weeklyData = new Map<string, DailyData>();
         
-        // Initialize weeks for the last 4-5 weeks
+        // Initialize weeks for the last 5 weeks
         for (let i = 0; i < 5; i++) {
-          const weekStart = new Date();
-          weekStart.setDate(weekStart.getDate() - (weekStart.getDay() - 1) - (i * 7)); // Montag als Wochenstart
-          const weekKey = weekStart.toISOString().split('T')[0];
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
+          const today = new Date();
+          const currentWeekStart = new Date(today);
+          // Get Monday of current week
+          currentWeekStart.setDate(today.getDate() - today.getDay() + 1);
+          // Go back i weeks
+          currentWeekStart.setDate(currentWeekStart.getDate() - (i * 7));
+          
+          const weekKey = currentWeekStart.toISOString().split('T')[0];
+          const weekEnd = new Date(currentWeekStart);
+          weekEnd.setDate(currentWeekStart.getDate() + 6);
           
           weeklyData.set(weekKey, {
             date: weekKey,
-            displayDate: `${weekStart.toLocaleDateString('de-DE', { 
+            displayDate: `${currentWeekStart.toLocaleDateString('de-DE', { 
               day: '2-digit', 
               month: '2-digit' 
             })} - ${weekEnd.toLocaleDateString('de-DE', { 
@@ -202,8 +205,9 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         // Add meals to their respective weeks
         mealsData?.forEach(meal => {
           const mealDate = new Date(meal.created_at);
+          // Get Monday of the week for this meal
           const weekStart = new Date(mealDate);
-          weekStart.setDate(mealDate.getDate() - mealDate.getDay() + 1); // Montag als Wochenstart
+          weekStart.setDate(mealDate.getDate() - mealDate.getDay() + 1);
           const weekKey = weekStart.toISOString().split('T')[0];
           
           const week = weeklyData.get(weekKey);
@@ -213,6 +217,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
               images: imagesByMealId.get(meal.id) || []
             };
             week.meals.push(mealWithImages);
+            // Summiere die Werte (nicht durchschnittlich)
             week.calories += Number(meal.calories);
             week.protein += Number(meal.protein);
             week.carbs += Number(meal.carbs);
@@ -220,20 +225,15 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           }
         });
 
-        // Convert to array and calculate weekly averages per day
-        const weeklyArray = Array.from(weeklyData.values()).map(week => ({
-          ...week,
-          calories: Math.round(week.calories / 7), // Durchschnitt pro Tag
-          protein: Math.round(week.protein / 7),
-          carbs: Math.round(week.carbs / 7),
-          fats: Math.round(week.fats / 7)
-        }));
+        // Convert to array and sort by date
+        const weeklyArray = Array.from(weeklyData.values())
+          .sort((a, b) => b.date.localeCompare(a.date));
 
-        console.log('Weekly data:', weeklyArray);
-        setHistoryData(weeklyArray.sort((a, b) => b.date.localeCompare(a.date)));
+        setHistoryData(weeklyArray);
       } else {
-        console.log('Using daily grouping for', timeRange, 'view');
-        // Für 7-Tage und Jahresansicht: Gruppiere nach Tagen
+        // 7-Tage und Jahresansicht: Gruppiere nach Tagen
+        const groupedData = new Map<string, DailyData>();
+        
         // Initialize empty days
         for (let i = 0; i < daysToLoad; i++) {
           const date = new Date();
@@ -439,10 +439,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         <Button
           variant={timeRange === 'month' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => {
-            console.log('Clicking 30 Tage button, setting timeRange to month');
-            setTimeRange('month');
-          }}
+          onClick={() => setTimeRange('month')}
           className="text-xs"
         >
           30 Tage
@@ -558,7 +555,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                               <Calendar className="h-6 w-6 text-muted-foreground" />
                             </div>
                             <p className="text-muted-foreground text-sm">
-                              Keine Mahlzeiten an diesem Tag
+                              {timeRange === 'month' ? 'Keine Mahlzeiten in dieser Woche' : 'Keine Mahlzeiten an diesem Tag'}
                             </p>
                           </div>
                         ) : (
@@ -578,7 +575,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                          meal.meal_type === 'dinner' ? '🌙 Abendessen' : '🍎 Snack'}
                                       </Badge>
                                       <span className="text-xs text-muted-foreground">
-                                        {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
+                                        {new Date(meal.created_at).toLocaleDateString('de-DE', { 
+                                          day: '2-digit', 
+                                          month: '2-digit' 
+                                        })} {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
                                           hour: '2-digit', 
                                           minute: '2-digit' 
                                         })}
@@ -614,302 +614,302 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                           <Edit2 className="h-3 w-3" />
                                         </Button>
                                       </DialogTrigger>
-                                       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-                                         <DialogHeader className="text-left">
-                                           <DialogTitle className="text-xl font-bold">Mahlzeit bearbeiten</DialogTitle>
-                                         </DialogHeader>
-                                         {editingMeal && (
-                                           <div className="space-y-6">
-                                             {/* Edit Mode Toggle */}
-                                             <div className="flex gap-2 p-1 bg-muted rounded-lg">
-                                               <Button
-                                                 type="button"
-                                                 variant={editMode === 'manual' ? 'default' : 'ghost'}
-                                                 size="sm"
-                                                 onClick={() => {
-                                                   setEditMode('manual');
-                                                   // Reset to current meal values
-                                                   setEditingMeal(editingMeal);
-                                                 }}
-                                                 className="flex-1 text-xs"
-                                               >
-                                                 Manuell
-                                               </Button>
-                                               <Button
-                                                 type="button"
-                                                 variant={editMode === 'portion' ? 'default' : 'ghost'}
-                                                 size="sm"
-                                                 onClick={() => {
-                                                   setEditMode('portion');
-                                                   // Set base nutrition to current per 100g
-                                                   const currentPortion = portionAmount / 100;
-                                                   setBaseNutrition({
-                                                     calories: Math.round(editingMeal.calories / currentPortion),
-                                                     protein: Math.round(editingMeal.protein / currentPortion),
-                                                     carbs: Math.round(editingMeal.carbs / currentPortion),
-                                                     fats: Math.round(editingMeal.fats / currentPortion)
-                                                   });
-                                                 }}
-                                                 className="flex-1 text-xs"
-                                               >
-                                                 Portionen
-                                               </Button>
-                                             </div>
+                                      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                                        <DialogHeader className="text-left">
+                                          <DialogTitle className="text-xl font-bold">Mahlzeit bearbeiten</DialogTitle>
+                                        </DialogHeader>
+                                        {editingMeal && (
+                                          <div className="space-y-6">
+                                            {/* Edit Mode Toggle */}
+                                            <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                                              <Button
+                                                type="button"
+                                                variant={editMode === 'manual' ? 'default' : 'ghost'}
+                                                size="sm"
+                                                onClick={() => {
+                                                  setEditMode('manual');
+                                                  // Reset to current meal values
+                                                  setEditingMeal(editingMeal);
+                                                }}
+                                                className="flex-1 text-xs"
+                                              >
+                                                Manuell
+                                              </Button>
+                                              <Button
+                                                type="button"
+                                                variant={editMode === 'portion' ? 'default' : 'ghost'}
+                                                size="sm"
+                                                onClick={() => {
+                                                  setEditMode('portion');
+                                                  // Set base nutrition to current per 100g
+                                                  const currentPortion = portionAmount / 100;
+                                                  setBaseNutrition({
+                                                    calories: Math.round(editingMeal.calories / currentPortion),
+                                                    protein: Math.round(editingMeal.protein / currentPortion),
+                                                    carbs: Math.round(editingMeal.carbs / currentPortion),
+                                                    fats: Math.round(editingMeal.fats / currentPortion)
+                                                  });
+                                                }}
+                                                className="flex-1 text-xs"
+                                              >
+                                                Portionen
+                                              </Button>
+                                            </div>
 
-                                             <form onSubmit={handleEditSubmit} className="space-y-4">
-                                               {/* Description */}
-                                               <div>
-                                                 <Label htmlFor="text" className="text-sm font-medium">Was gegessen</Label>
-                                                 <Textarea
-                                                   id="text"
-                                                   value={editingMeal.text}
-                                                   onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
-                                                   className="mt-2 resize-none"
-                                                   rows={3}
-                                                   placeholder="Beschreibe deine Mahlzeit..."
-                                                 />
-                                               </div>
+                                            <form onSubmit={handleEditSubmit} className="space-y-4">
+                                              {/* Description */}
+                                              <div>
+                                                <Label htmlFor="text" className="text-sm font-medium">Was gegessen</Label>
+                                                <Textarea
+                                                  id="text"
+                                                  value={editingMeal.text}
+                                                  onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
+                                                  className="mt-2 resize-none"
+                                                  rows={3}
+                                                  placeholder="Beschreibe deine Mahlzeit..."
+                                                />
+                                              </div>
 
-                                               {editMode === 'portion' && (
-                                                 <>
-                                                   {/* Base Nutrition per 100g */}
-                                                   <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                                                     <Label className="text-sm font-medium">Nährwerte pro 100g</Label>
-                                                     <div className="grid grid-cols-2 gap-3">
-                                                       <div>
-                                                         <Label htmlFor="base_calories" className="text-xs">Kalorien</Label>
-                                                         <Input
-                                                           id="base_calories"
-                                                           type="number"
-                                                           value={baseNutrition.calories}
-                                                           onChange={(e) => {
-                                                             const newBase = {...baseNutrition, calories: Number(e.target.value)};
-                                                             setBaseNutrition(newBase);
-                                                             const multiplier = portionAmount / 100;
-                                                             setEditingMeal({
-                                                               ...editingMeal,
-                                                               calories: Math.round(newBase.calories * multiplier)
-                                                             });
-                                                           }}
-                                                           className="mt-1 text-sm"
-                                                         />
-                                                       </div>
-                                                       <div>
-                                                         <Label htmlFor="base_protein" className="text-xs">Protein (g)</Label>
-                                                         <Input
-                                                           id="base_protein"
-                                                           type="number"
-                                                           step="0.1"
-                                                           value={baseNutrition.protein}
-                                                           onChange={(e) => {
-                                                             const newBase = {...baseNutrition, protein: Number(e.target.value)};
-                                                             setBaseNutrition(newBase);
-                                                             const multiplier = portionAmount / 100;
-                                                             setEditingMeal({
-                                                               ...editingMeal,
-                                                               protein: Math.round(newBase.protein * multiplier * 10) / 10
-                                                             });
-                                                           }}
-                                                           className="mt-1 text-sm"
-                                                         />
-                                                       </div>
-                                                       <div>
-                                                         <Label htmlFor="base_carbs" className="text-xs">Kohlenhydrate (g)</Label>
-                                                         <Input
-                                                           id="base_carbs"
-                                                           type="number"
-                                                           step="0.1"
-                                                           value={baseNutrition.carbs}
-                                                           onChange={(e) => {
-                                                             const newBase = {...baseNutrition, carbs: Number(e.target.value)};
-                                                             setBaseNutrition(newBase);
-                                                             const multiplier = portionAmount / 100;
-                                                             setEditingMeal({
-                                                               ...editingMeal,
-                                                               carbs: Math.round(newBase.carbs * multiplier * 10) / 10
-                                                             });
-                                                           }}
-                                                           className="mt-1 text-sm"
-                                                         />
-                                                       </div>
-                                                       <div>
-                                                         <Label htmlFor="base_fats" className="text-xs">Fette (g)</Label>
-                                                         <Input
-                                                           id="base_fats"
-                                                           type="number"
-                                                           step="0.1"
-                                                           value={baseNutrition.fats}
-                                                           onChange={(e) => {
-                                                             const newBase = {...baseNutrition, fats: Number(e.target.value)};
-                                                             setBaseNutrition(newBase);
-                                                             const multiplier = portionAmount / 100;
-                                                             setEditingMeal({
-                                                               ...editingMeal,
-                                                               fats: Math.round(newBase.fats * multiplier * 10) / 10
-                                                             });
-                                                           }}
-                                                           className="mt-1 text-sm"
-                                                         />
-                                                       </div>
-                                                     </div>
-                                                   </div>
-
-                                                   {/* Portion Amount */}
-                                                   <div className="bg-primary/5 rounded-lg p-4">
-                                                     <Label htmlFor="portion" className="text-sm font-medium">Menge in Gramm</Label>
-                                                     <div className="flex items-center gap-3 mt-2">
-                                                       <Input
-                                                         id="portion"
-                                                         type="number"
-                                                         value={portionAmount}
-                                                         onChange={(e) => {
-                                                           const newAmount = Number(e.target.value);
-                                                           setPortionAmount(newAmount);
-                                                           const multiplier = newAmount / 100;
-                                                           setEditingMeal({
-                                                             ...editingMeal,
-                                                             calories: Math.round(baseNutrition.calories * multiplier),
-                                                             protein: Math.round(baseNutrition.protein * multiplier * 10) / 10,
-                                                             carbs: Math.round(baseNutrition.carbs * multiplier * 10) / 10,
-                                                             fats: Math.round(baseNutrition.fats * multiplier * 10) / 10
-                                                           });
-                                                         }}
-                                                         className="flex-1"
-                                                         placeholder="z.B. 150"
-                                                       />
-                                                       <span className="text-sm text-muted-foreground">g</span>
-                                                     </div>
-                                                   </div>
-                                                 </>
-                                               )}
-
-                                               {/* Calculated/Manual Nutrition */}
-                                               <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg p-4 space-y-3">
-                                                 <Label className="text-sm font-medium">
-                                                   {editMode === 'portion' ? 'Berechnete Nährwerte' : 'Nährwerte'}
-                                                 </Label>
-                                                 <div className="grid grid-cols-2 gap-3">
-                                                   <div>
-                                                     <Label htmlFor="calories" className="text-xs">Kalorien</Label>
-                                                     <Input
-                                                       id="calories"
-                                                       type="number"
-                                                       value={editingMeal.calories}
-                                                       onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
-                                                       className="mt-1 text-sm font-medium"
-                                                       readOnly={editMode === 'portion'}
-                                                     />
-                                                   </div>
-                                                   <div>
-                                                     <Label htmlFor="protein" className="text-xs">Protein (g)</Label>
-                                                     <Input
-                                                       id="protein"
-                                                       type="number"
-                                                       step="0.1"
-                                                       value={editingMeal.protein}
-                                                       onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
-                                                       className="mt-1 text-sm"
-                                                       readOnly={editMode === 'portion'}
-                                                     />
-                                                   </div>
-                                                   <div>
-                                                     <Label htmlFor="carbs" className="text-xs">Kohlenhydrate (g)</Label>
-                                                     <Input
-                                                       id="carbs"
-                                                       type="number"
-                                                       step="0.1"
-                                                       value={editingMeal.carbs}
-                                                       onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
-                                                       className="mt-1 text-sm"
-                                                       readOnly={editMode === 'portion'}
-                                                     />
-                                                   </div>
-                                                   <div>
-                                                     <Label htmlFor="fats" className="text-xs">Fette (g)</Label>
-                                                     <Input
-                                                       id="fats"
-                                                       type="number"
-                                                       step="0.1"
-                                                       value={editingMeal.fats}
-                                                       onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
-                                                       className="mt-1 text-sm"
-                                                       readOnly={editMode === 'portion'}
-                                                     />
-                                                   </div>
-                                                 </div>
-                                               </div>
-
-                                                {/* Meal Type and Date Selection - Side by Side */}
-                                                <div className="grid grid-cols-2 gap-4">
-                                                  <div>
-                                                    <Label htmlFor="meal_type" className="text-sm font-medium">Mahlzeit-Typ</Label>
-                                                    <Select 
-                                                      value={editingMeal.meal_type} 
-                                                      onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
-                                                    >
-                                                      <SelectTrigger className="mt-2">
-                                                        <SelectValue />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                        <SelectItem value="breakfast">🌅 Frühstück</SelectItem>
-                                                        <SelectItem value="lunch">🌞 Mittagessen</SelectItem>
-                                                        <SelectItem value="dinner">🌙 Abendessen</SelectItem>
-                                                        <SelectItem value="snack">🍎 Snack</SelectItem>
-                                                      </SelectContent>
-                                                    </Select>
+                                              {editMode === 'portion' && (
+                                                <>
+                                                  {/* Base Nutrition per 100g */}
+                                                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                                                    <Label className="text-sm font-medium">Nährwerte pro 100g</Label>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                      <div>
+                                                        <Label htmlFor="base_calories" className="text-xs">Kalorien</Label>
+                                                        <Input
+                                                          id="base_calories"
+                                                          type="number"
+                                                          value={baseNutrition.calories}
+                                                          onChange={(e) => {
+                                                            const newBase = {...baseNutrition, calories: Number(e.target.value)};
+                                                            setBaseNutrition(newBase);
+                                                            const multiplier = portionAmount / 100;
+                                                            setEditingMeal({
+                                                              ...editingMeal,
+                                                              calories: Math.round(newBase.calories * multiplier)
+                                                            });
+                                                          }}
+                                                          className="mt-1 text-sm"
+                                                        />
+                                                      </div>
+                                                      <div>
+                                                        <Label htmlFor="base_protein" className="text-xs">Protein (g)</Label>
+                                                        <Input
+                                                          id="base_protein"
+                                                          type="number"
+                                                          step="0.1"
+                                                          value={baseNutrition.protein}
+                                                          onChange={(e) => {
+                                                            const newBase = {...baseNutrition, protein: Number(e.target.value)};
+                                                            setBaseNutrition(newBase);
+                                                            const multiplier = portionAmount / 100;
+                                                            setEditingMeal({
+                                                              ...editingMeal,
+                                                              protein: Math.round(newBase.protein * multiplier * 10) / 10
+                                                            });
+                                                          }}
+                                                          className="mt-1 text-sm"
+                                                        />
+                                                      </div>
+                                                      <div>
+                                                        <Label htmlFor="base_carbs" className="text-xs">Kohlenhydrate (g)</Label>
+                                                        <Input
+                                                          id="base_carbs"
+                                                          type="number"
+                                                          step="0.1"
+                                                          value={baseNutrition.carbs}
+                                                          onChange={(e) => {
+                                                            const newBase = {...baseNutrition, carbs: Number(e.target.value)};
+                                                            setBaseNutrition(newBase);
+                                                            const multiplier = portionAmount / 100;
+                                                            setEditingMeal({
+                                                              ...editingMeal,
+                                                              carbs: Math.round(newBase.carbs * multiplier * 10) / 10
+                                                            });
+                                                          }}
+                                                          className="mt-1 text-sm"
+                                                        />
+                                                      </div>
+                                                      <div>
+                                                        <Label htmlFor="base_fats" className="text-xs">Fette (g)</Label>
+                                                        <Input
+                                                          id="base_fats"
+                                                          type="number"
+                                                          step="0.1"
+                                                          value={baseNutrition.fats}
+                                                          onChange={(e) => {
+                                                            const newBase = {...baseNutrition, fats: Number(e.target.value)};
+                                                            setBaseNutrition(newBase);
+                                                            const multiplier = portionAmount / 100;
+                                                            setEditingMeal({
+                                                              ...editingMeal,
+                                                              fats: Math.round(newBase.fats * multiplier * 10) / 10
+                                                            });
+                                                          }}
+                                                          className="mt-1 text-sm"
+                                                        />
+                                                      </div>
+                                                    </div>
                                                   </div>
 
+                                                  {/* Portion Amount */}
+                                                  <div className="bg-primary/5 rounded-lg p-4">
+                                                    <Label htmlFor="portion" className="text-sm font-medium">Menge in Gramm</Label>
+                                                    <div className="flex items-center gap-3 mt-2">
+                                                      <Input
+                                                        id="portion"
+                                                        type="number"
+                                                        value={portionAmount}
+                                                        onChange={(e) => {
+                                                          const newAmount = Number(e.target.value);
+                                                          setPortionAmount(newAmount);
+                                                          const multiplier = newAmount / 100;
+                                                          setEditingMeal({
+                                                            ...editingMeal,
+                                                            calories: Math.round(baseNutrition.calories * multiplier),
+                                                            protein: Math.round(baseNutrition.protein * multiplier * 10) / 10,
+                                                            carbs: Math.round(baseNutrition.carbs * multiplier * 10) / 10,
+                                                            fats: Math.round(baseNutrition.fats * multiplier * 10) / 10
+                                                          });
+                                                        }}
+                                                        className="flex-1"
+                                                        placeholder="z.B. 150"
+                                                      />
+                                                      <span className="text-sm text-muted-foreground">g</span>
+                                                    </div>
+                                                  </div>
+                                                </>
+                                              )}
+
+                                              {/* Calculated/Manual Nutrition */}
+                                              <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg p-4 space-y-3">
+                                                <Label className="text-sm font-medium">
+                                                  {editMode === 'portion' ? 'Berechnete Nährwerte' : 'Nährwerte'}
+                                                </Label>
+                                                <div className="grid grid-cols-2 gap-3">
                                                   <div>
-                                                    <Label className="text-sm font-medium">Datum der Mahlzeit</Label>
-                                                    <Popover>
-                                                      <PopoverTrigger asChild>
-                                                        <Button
-                                                          variant="outline"
-                                                          className={cn(
-                                                            "w-full justify-start text-left font-normal mt-2",
-                                                            !editingMealDate && "text-muted-foreground"
-                                                          )}
-                                                        >
-                                                          <CalendarIcon className="mr-2 h-4 w-4" />
-                                                          {editingMealDate ? format(editingMealDate, "dd.MM.yyyy", { locale: de }) : "Datum"}
-                                                        </Button>
-                                                      </PopoverTrigger>
-                                                      <PopoverContent className="w-auto p-0" align="start">
-                                                        <CalendarComponent
-                                                          mode="single"
-                                                          selected={editingMealDate}
-                                                          onSelect={(date) => date && setEditingMealDate(date)}
-                                                          initialFocus
-                                                          className={cn("p-3 pointer-events-auto")}
-                                                        />
-                                                      </PopoverContent>
-                                                    </Popover>
+                                                    <Label htmlFor="calories" className="text-xs">Kalorien</Label>
+                                                    <Input
+                                                      id="calories"
+                                                      type="number"
+                                                      value={editingMeal.calories}
+                                                      onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                                                      className="mt-1 text-sm font-medium"
+                                                      readOnly={editMode === 'portion'}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <Label htmlFor="protein" className="text-xs">Protein (g)</Label>
+                                                    <Input
+                                                      id="protein"
+                                                      type="number"
+                                                      step="0.1"
+                                                      value={editingMeal.protein}
+                                                      onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                                                      className="mt-1 text-sm"
+                                                      readOnly={editMode === 'portion'}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <Label htmlFor="carbs" className="text-xs">Kohlenhydrate (g)</Label>
+                                                    <Input
+                                                      id="carbs"
+                                                      type="number"
+                                                      step="0.1"
+                                                      value={editingMeal.carbs}
+                                                      onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                                                      className="mt-1 text-sm"
+                                                      readOnly={editMode === 'portion'}
+                                                    />
+                                                  </div>
+                                                  <div>
+                                                    <Label htmlFor="fats" className="text-xs">Fette (g)</Label>
+                                                    <Input
+                                                      id="fats"
+                                                      type="number"
+                                                      step="0.1"
+                                                      value={editingMeal.fats}
+                                                      onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                                                      className="mt-1 text-sm"
+                                                      readOnly={editMode === 'portion'}
+                                                    />
                                                   </div>
                                                 </div>
+                                              </div>
 
-                                               {/* Action Buttons */}
-                                               <div className="flex gap-3 pt-2">
-                                                 <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
-                                                   Speichern
-                                                 </Button>
-                                                  <Button 
-                                                    type="button" 
-                                                    variant="outline" 
-                                                    onClick={() => {
-                                                      setEditingMeal(null);
-                                                      setEditMode('manual');
-                                                      setPortionAmount(100);
-                                                      setEditingMealDate(new Date());
-                                                    }}
-                                                    className="flex-1"
+                                              {/* Meal Type and Date Selection - Side by Side */}
+                                              <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                  <Label htmlFor="meal_type" className="text-sm font-medium">Mahlzeit-Typ</Label>
+                                                  <Select 
+                                                    value={editingMeal.meal_type} 
+                                                    onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
                                                   >
-                                                   Abbrechen
-                                                 </Button>
-                                               </div>
-                                             </form>
-                                           </div>
-                                         )}
-                                       </DialogContent>
+                                                    <SelectTrigger className="mt-2">
+                                                      <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectItem value="breakfast">🌅 Frühstück</SelectItem>
+                                                      <SelectItem value="lunch">🌞 Mittagessen</SelectItem>
+                                                      <SelectItem value="dinner">🌙 Abendessen</SelectItem>
+                                                      <SelectItem value="snack">🍎 Snack</SelectItem>
+                                                    </SelectContent>
+                                                  </Select>
+                                                </div>
+
+                                                <div>
+                                                  <Label className="text-sm font-medium">Datum der Mahlzeit</Label>
+                                                  <Popover>
+                                                    <PopoverTrigger asChild>
+                                                      <Button
+                                                        variant="outline"
+                                                        className={cn(
+                                                          "w-full justify-start text-left font-normal mt-2",
+                                                          !editingMealDate && "text-muted-foreground"
+                                                        )}
+                                                      >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {editingMealDate ? format(editingMealDate, "dd.MM.yyyy", { locale: de }) : "Datum"}
+                                                      </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                      <CalendarComponent
+                                                        mode="single"
+                                                        selected={editingMealDate}
+                                                        onSelect={(date) => date && setEditingMealDate(date)}
+                                                        initialFocus
+                                                        className={cn("p-3 pointer-events-auto")}
+                                                      />
+                                                    </PopoverContent>
+                                                  </Popover>
+                                                </div>
+                                              </div>
+
+                                              {/* Action Buttons */}
+                                              <div className="flex gap-3 pt-2">
+                                                <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
+                                                  Speichern
+                                                </Button>
+                                                <Button 
+                                                  type="button" 
+                                                  variant="outline" 
+                                                  onClick={() => {
+                                                    setEditingMeal(null);
+                                                    setEditMode('manual');
+                                                    setPortionAmount(100);
+                                                    setEditingMealDate(new Date());
+                                                  }}
+                                                  className="flex-1"
+                                                >
+                                                  Abbrechen
+                                                </Button>
+                                              </div>
+                                            </form>
+                                          </div>
+                                        )}
+                                      </DialogContent>
                                     </Dialog>
                                     
                                     <Button
@@ -994,13 +994,13 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           <Card className="p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Makronährstoffe ({timeRange === 'week' ? 'letzte 7 Tage' : timeRange === 'month' ? 'letzte 30 Tage' : 'letztes Jahr'})
+              Makronährstoffe ({timeRange === 'week' ? 'letzte 7 Tage' : timeRange === 'month' ? 'letzte 5 Wochen' : 'letztes Jahr'})
             </h3>
             <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 200}>
               <BarChart data={
                 timeRange === 'week' ? currentData.slice(-7).reverse() :
-                timeRange === 'month' ? currentData.slice().reverse() : // Zeige Wochen-Daten für 30 Tage
-                currentData.filter((_, index) => index % 15 === 0).slice(-24).reverse() // Zeige nur jeden 15. Tag bei 365 Tagen
+                timeRange === 'month' ? currentData.slice().reverse() :
+                currentData.filter((_, index) => index % 15 === 0).slice(-24).reverse()
               }>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis 
