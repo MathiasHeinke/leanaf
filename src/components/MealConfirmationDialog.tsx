@@ -137,6 +137,10 @@ export const MealConfirmationDialog = ({
     if (!user?.id) return;
     
     try {
+      // Create a timestamp that preserves the local date without timezone conversion
+      const localDate = new Date(mealDate);
+      localDate.setHours(12, 0, 0, 0); // Set to midday to avoid timezone issues
+      
       const { error } = await supabase
         .from('meals')
         .insert({
@@ -147,7 +151,7 @@ export const MealConfirmationDialog = ({
           protein: editableValues.protein,
           carbs: editableValues.carbs,
           fats: editableValues.fats,
-          created_at: mealDate.toISOString(),
+          created_at: localDate.toISOString(),
         });
 
       if (error) {
