@@ -484,20 +484,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const mealInputHook = useGlobalMealInput();
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* Meal Input - show at top of history */}
-      <MealInput 
-        inputText={mealInputHook.inputText}
-        setInputText={mealInputHook.setInputText}
-        onSubmitMeal={mealInputHook.handleSubmitMeal}
-        onPhotoUpload={mealInputHook.handlePhotoUpload}
-        onVoiceRecord={mealInputHook.handleVoiceRecord}
-        isAnalyzing={mealInputHook.isAnalyzing}
-        isRecording={mealInputHook.isRecording}
-        isProcessing={mealInputHook.isProcessing}
-        uploadedImages={mealInputHook.uploadedImages}
-        onRemoveImage={mealInputHook.removeImage}
-      />
+    <>
+      <div className="space-y-4 pb-20">
       {/* Header Stats */}
       <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="grid grid-cols-2 gap-6">
@@ -1231,7 +1219,26 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           )}
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+
+      {/* Floating Meal Input */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent">
+        <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
+          <MealInput 
+            inputText={mealInputHook.inputText}
+            setInputText={mealInputHook.setInputText}
+            onSubmitMeal={mealInputHook.handleSubmitMeal}
+            onPhotoUpload={mealInputHook.handlePhotoUpload}
+            onVoiceRecord={mealInputHook.handleVoiceRecord}
+            isAnalyzing={mealInputHook.isAnalyzing}
+            isRecording={mealInputHook.isRecording}
+            isProcessing={mealInputHook.isProcessing}
+            uploadedImages={mealInputHook.uploadedImages}
+            onRemoveImage={mealInputHook.removeImage}
+          />
+        </div>
+      </div>
+    </>
   );
 
   // Effect um Daten zu laden wenn timeRange sich ändert
@@ -1249,6 +1256,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       loadUserGoal();
     }
   }, [user]);
-  };
-  
-  export default History;
+};
+
+export default History;
