@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Mic, Send, StopCircle, Brain, X, MessageSquare } from "lucide-react";
+import { Mic, Send, StopCircle, Brain, X, History } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
 interface FloatingCoachChatProps {
@@ -49,16 +49,6 @@ export const FloatingCoachChat = ({
           
           {/* Input Area */}
           <div className="flex items-end gap-2">
-            {/* Expand Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 w-9 p-0 rounded-xl hover:bg-white/10 dark:hover:bg-gray-700/20 transition-all duration-200 flex-shrink-0"
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </Button>
-            
             {/* Text Input */}
             <div className="flex-1">
               <Textarea
@@ -79,6 +69,24 @@ export const FloatingCoachChat = ({
             
             {/* Action Buttons */}
             <div className="flex items-center gap-1">
+              {/* Chat History Toggle - nur anzeigen wenn Chat-Verlauf vorhanden */}
+              {chatHistory.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 border ${
+                    isExpanded 
+                      ? 'bg-accent/10 border-accent/20 text-accent' 
+                      : 'border-transparent hover:border-primary/20 hover:bg-primary/5'
+                  }`}
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  title={isExpanded ? "Verlauf ausblenden" : "Chat-Verlauf anzeigen"}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              )}
+              
+              {/* Voice Recording */}
               {/* Voice Recording */}
               <Button
                 variant="ghost"
@@ -151,7 +159,7 @@ export const FloatingCoachChat = ({
             <div className="p-3">
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-accent" />
+                  <History className="h-4 w-4 text-accent" />
                   <span className="text-sm font-medium">Chat-Verlauf</span>
                   <Badge variant="secondary" className="text-xs">{chatHistory.length}</Badge>
                 </div>
