@@ -149,7 +149,7 @@ export const MealInput = ({
                 size="sm"
                 className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 ${
                   (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing
-                    ? 'opacity-50 cursor-not-allowed bg-muted/60'
+                    ? 'opacity-75 cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted'
                     : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
                 }`}
                 onClick={onSubmitMeal}
