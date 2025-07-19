@@ -88,7 +88,7 @@ interface HistoryProps {
 }
 
 const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 250, fats: 65 }, onAddMeal }: HistoryProps) => {
-  const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
+  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('week');
   const [historyData, setHistoryData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
@@ -131,7 +131,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     
     try {
       setLoading(true);
-      const daysToLoad = timeRange === 'week' ? 7 : 30;
+      const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToLoad);
 
@@ -237,7 +237,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     
     setWeightLoading(true);
     try {
-      const daysToLoad = timeRange === 'week' ? 7 : 30;
+      const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToLoad);
 
@@ -359,12 +359,12 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       </Card>
 
       {/* Zeitraum-Auswahl */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <Button
           variant={timeRange === 'week' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setTimeRange('week')}
-          className="flex-1"
+          className="text-xs"
         >
           7 Tage
         </Button>
@@ -372,9 +372,17 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           variant={timeRange === 'month' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setTimeRange('month')}
-          className="flex-1"
+          className="text-xs"
         >
           30 Tage
+        </Button>
+        <Button
+          variant={timeRange === 'year' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setTimeRange('year')}
+          className="text-xs"
+        >
+          365 Tage
         </Button>
       </div>
 
