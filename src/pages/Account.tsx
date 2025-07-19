@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CheckCircle, Save, Loader2, Shield, Mail, Key, Smartphone, LogOut, Crown, User } from 'lucide-react';
@@ -24,6 +26,7 @@ const Account = () => {
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const autoSave = async () => {
     if (!user || autoSaving) return;
@@ -108,10 +111,10 @@ const Account = () => {
     try {
       setLoading(true);
       await performSave();
-      toast.success('Profil erfolgreich gespeichert');
+      toast.success(t('account.profileSaved'));
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error('Fehler beim Speichern des Profils');
+      toast.error(t('account.profileError'));
     } finally {
       setLoading(false);
     }
@@ -119,7 +122,7 @@ const Account = () => {
 
   const handlePasswordReset = async () => {
     if (!email) {
-      toast.error('Bitte geben Sie Ihre E-Mail-Adresse ein');
+      toast.error(t('auth.enterEmail'));
       return;
     }
 
@@ -130,10 +133,10 @@ const Account = () => {
       });
       
       if (error) throw error;
-      toast.success('Passwort-Reset-E-Mail wurde gesendet');
+      toast.success(t('account.resetEmailSent'));
     } catch (error: any) {
       console.error('Error sending password reset:', error);
-      toast.error('Fehler beim Senden der Passwort-Reset-E-Mail');
+      toast.error(t('auth.passwordResetError'));
     } finally {
       setPasswordResetLoading(false);
     }
@@ -141,17 +144,17 @@ const Account = () => {
 
   const handlePasswordChange = async () => {
     if (!newPassword || !confirmPassword) {
-      toast.error('Bitte füllen Sie alle Passwort-Felder aus');
+      toast.error(t('account.fillAllFields'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('Die Passwörter stimmen nicht überein');
+      toast.error(t('account.passwordsDontMatch'));
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error('Das Passwort muss mindestens 6 Zeichen lang sein');
+      toast.error(t('account.passwordTooShort'));
       return;
     }
 
@@ -165,10 +168,10 @@ const Account = () => {
       
       setNewPassword('');
       setConfirmPassword('');
-      toast.success('Passwort erfolgreich geändert');
+      toast.success(t('account.passwordChanged'));
     } catch (error: any) {
       console.error('Error changing password:', error);
-      toast.error('Fehler beim Ändern des Passworts');
+      toast.error(t('account.passwordChangeError'));
     } finally {
       setPasswordChangeLoading(false);
     }
@@ -177,10 +180,10 @@ const Account = () => {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
-      toast.success('Erfolgreich abgemeldet');
+      toast.success(t('account.signOutSuccess'));
     } catch (error: any) {
       console.error('Error signing out:', error);
-      toast.error('Fehler beim Abmelden');
+      toast.error(t('account.signOutError'));
     }
   };
 
@@ -196,9 +199,9 @@ const Account = () => {
                 <User className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-xl">Persönliche Daten</CardTitle>
+                <CardTitle className="text-xl">{t('account.personalData')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Verwalten Sie Ihre grundlegenden Informationen
+                  {t('account.personalDataDesc')}
                 </p>
               </div>
             </div>
@@ -212,23 +215,23 @@ const Account = () => {
             ) : (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="displayName">Name</Label>
+                  <Label htmlFor="displayName">{t('account.name')}</Label>
                   <Input
                     id="displayName"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Ihr vollständiger Name"
+                    placeholder={t('account.namePlaceholder')}
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('auth.email')}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ihre.email@beispiel.de"
+                    placeholder={t('account.emailPlaceholder')}
                   />
                 </div>
               </div>
@@ -239,17 +242,19 @@ const Account = () => {
                 {autoSaving && (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Wird gespeichert...</span>
+                    <span className="text-sm text-muted-foreground">{t('account.saving')}</span>
                   </>
                 )}
                 {lastSaved && !autoSaving && (
                   <>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                     <span className="text-sm text-muted-foreground">
-                      Gespeichert {lastSaved.toLocaleTimeString('de-DE', { 
-                        hour: '2-digit', 
-                        minute: '2-digit', 
-                        second: '2-digit' 
+                      {t('account.saved', { 
+                        time: lastSaved.toLocaleTimeString('de-DE', { 
+                          hour: '2-digit', 
+                          minute: '2-digit', 
+                          second: '2-digit' 
+                        })
                       })}
                     </span>
                   </>
@@ -264,12 +269,12 @@ const Account = () => {
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Speichern...
+                    {t('account.saving')}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Speichern
+                    {t('account.save')}
                   </>
                 )}
               </Button>
@@ -285,9 +290,9 @@ const Account = () => {
                 <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <CardTitle className="text-xl">Sicherheit</CardTitle>
+                <CardTitle className="text-xl">{t('account.security')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Passwort und Sicherheitseinstellungen
+                  {t('account.securityDesc')}
                 </p>
               </div>
             </div>
@@ -295,27 +300,27 @@ const Account = () => {
           
           <CardContent className="space-y-6">
             <div className="space-y-4">
-              <h3 className="font-medium">Passwort ändern</h3>
+              <h3 className="font-medium">{t('account.changePassword')}</h3>
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">Neues Passwort</Label>
+                  <Label htmlFor="newPassword">{t('account.newPassword')}</Label>
                   <Input
                     id="newPassword"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mindestens 6 Zeichen"
+                    placeholder={t('account.newPasswordPlaceholder')}
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
+                  <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
                   <Input
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Passwort wiederholen"
+                    placeholder={t('account.confirmPasswordPlaceholder')}
                   />
                 </div>
                 
@@ -327,12 +332,12 @@ const Account = () => {
                   {passwordChangeLoading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Wird geändert...
+                      {t('account.passwordChanging')}
                     </>
                   ) : (
                     <>
                       <Key className="h-4 w-4 mr-2" />
-                      Passwort ändern
+                      {t('account.changePasswordButton')}
                     </>
                   )}
                 </Button>
@@ -342,9 +347,9 @@ const Account = () => {
             <Separator />
 
             <div className="space-y-4">
-              <h3 className="font-medium">Passwort zurücksetzen</h3>
+              <h3 className="font-medium">{t('account.passwordReset')}</h3>
               <p className="text-sm text-muted-foreground">
-                Eine E-Mail mit Anweisungen zum Zurücksetzen wird an Ihre E-Mail-Adresse gesendet.
+                {t('account.passwordResetDesc')}
               </p>
               <Button 
                 onClick={handlePasswordReset}
@@ -354,12 +359,12 @@ const Account = () => {
                 {passwordResetLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Wird gesendet...
+                    {t('account.resetEmailSending')}
                   </>
                 ) : (
                   <>
                     <Mail className="h-4 w-4 mr-2" />
-                    Reset-E-Mail senden
+                    {t('account.sendResetEmail')}
                   </>
                 )}
               </Button>
@@ -376,7 +381,7 @@ const Account = () => {
               className="w-full border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Abmelden
+              {t('account.signOut')}
             </Button>
           </CardContent>
         </Card>

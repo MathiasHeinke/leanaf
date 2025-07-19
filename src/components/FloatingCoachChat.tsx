@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -54,7 +55,7 @@ export const FloatingCoachChat = ({
               <Textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Frag deinen Coach..."
+                placeholder={t('coach.askCoach')}
                 className="min-h-[40px] max-h-[100px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm placeholder:text-muted-foreground/60 rounded-xl px-3 py-2"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -80,13 +81,12 @@ export const FloatingCoachChat = ({
                       : 'border-transparent hover:border-primary/20 hover:bg-primary/5'
                   }`}
                   onClick={() => setIsExpanded(!isExpanded)}
-                  title={isExpanded ? "Verlauf ausblenden" : "Chat-Verlauf anzeigen"}
+                  title={isExpanded ? t('coach.hideHistory') : t('coach.showHistory')}
                 >
                   <History className="h-4 w-4" />
                 </Button>
               )}
               
-              {/* Voice Recording */}
               {/* Voice Recording */}
               <Button
                 variant="ghost"
@@ -136,7 +136,7 @@ export const FloatingCoachChat = ({
                 <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }}></div>
                 <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }}></div>
               </div>
-              <span className="font-medium">{isRecording ? 'Aufnahme läuft...' : 'Verarbeitung...'}</span>
+              <span className="font-medium">{isRecording ? t('coach.recording') : t('coach.processing')}</span>
             </div>
           )}
 
@@ -160,7 +160,7 @@ export const FloatingCoachChat = ({
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2">
                   <History className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-medium">Chat-Verlauf</span>
+                  <span className="text-sm font-medium">{t('coach.chatHistory')}</span>
                   <Badge variant="secondary" className="text-xs">{chatHistory.length}</Badge>
                 </div>
                 <div className="flex gap-1">
@@ -169,7 +169,7 @@ export const FloatingCoachChat = ({
                     size="sm" 
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                     onClick={onClearChat}
-                    title="Chat löschen"
+                    title={t('coach.clearChat')}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -178,7 +178,7 @@ export const FloatingCoachChat = ({
                     size="sm"
                     className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setIsExpanded(false)}
-                    title="Schließen"
+                    title={t('coach.close')}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -196,7 +196,7 @@ export const FloatingCoachChat = ({
                       {message.role === 'assistant' && (
                         <div className="flex items-center gap-1 mb-2">
                           <Brain className="h-3 w-3 text-accent" />
-                          <span className="text-accent font-medium text-xs">kaloAI Coach</span>
+                          <span className="text-accent font-medium text-xs">{t('coach.kaloaiCoach')}</span>
                         </div>
                       )}
                       <p className="leading-relaxed">{message.content}</p>

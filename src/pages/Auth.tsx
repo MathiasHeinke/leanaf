@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,7 @@ const Auth = () => {
     setError('');
     
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError(t('auth.fillAllFields'));
       return false;
     }
     
@@ -104,13 +105,13 @@ const Auth = () => {
             
             if (error) {
               if (error.message.includes('already registered')) {
-                setError('Diese E-Mail ist bereits registriert. Versuchen Sie sich anzumelden.');
+                setError(t('auth.emailAlreadyRegistered'));
                 return;
               }
               throw error;
             }
             
-            toast.success('Konto erfolgreich erstellt! Bitte überprüfen Sie Ihre E-Mail zur Bestätigung.');
+            toast.success(t('auth.accountCreated'));
             setIsSignUp(false); // Switch to login view after successful signup
             break;
           } else {
@@ -121,14 +122,14 @@ const Auth = () => {
             
             if (error) {
               if (error.message.includes('Invalid login credentials')) {
-                setError('Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.');
+                setError(t('auth.invalidCredentials'));
                 return;
               }
               throw error;
             }
             
             if (data.user) {
-              toast.success('Erfolgreich angemeldet!');
+              toast.success(t('auth.signInSuccess'));
               window.location.replace('/');
             }
             break;
@@ -144,9 +145,9 @@ const Auth = () => {
     } catch (error: any) {
       console.error('Auth error:', error);
       if (error.message.includes('Load failed') || error.message.includes('network')) {
-        setError('Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.');
+        setError(t('auth.networkError'));
       } else {
-        setError(error.message || 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+        setError(error.message || t('auth.genericError'));
       }
     } finally {
       setLoading(false);
@@ -155,7 +156,7 @@ const Auth = () => {
 
   const handlePasswordReset = async () => {
     if (!email) {
-      setError('Bitte geben Sie Ihre E-Mail-Adresse ein');
+      setError(t('auth.enterEmail'));
       return;
     }
 
@@ -169,11 +170,11 @@ const Auth = () => {
       
       if (error) throw error;
       
-      toast.success('Passwort-Reset-E-Mail wurde gesendet. Bitte überprüfen Sie Ihr Postfach.');
+      toast.success(t('auth.passwordResetSent'));
       setIsPasswordReset(false);
     } catch (error: any) {
       console.error('Password reset error:', error);
-      setError('Fehler beim Senden der Reset-E-Mail. Bitte versuchen Sie es erneut.');
+      setError(t('auth.passwordResetError'));
     } finally {
       setLoading(false);
     }
@@ -192,7 +193,7 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       console.error('Google auth error:', error);
-      setError('Fehler bei der Google-Anmeldung. Bitte versuchen Sie es erneut.');
+      setError(t('auth.googleError'));
     } finally {
       setLoading(false);
     }
@@ -211,7 +212,7 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       console.error('Apple auth error:', error);
-      setError('Fehler bei der Apple-Anmeldung. Bitte versuchen Sie es erneut.');
+      setError(t('auth.appleError'));
     } finally {
       setLoading(false);
     }
@@ -225,7 +226,7 @@ const Auth = () => {
             {t('app.title')}
           </CardTitle>
           <CardDescription>
-            {isPasswordReset ? 'Passwort zurücksetzen' : (isSignUp ? t('auth.signUp') : t('auth.signIn'))}
+            {isPasswordReset ? t('auth.passwordResetTitle') : (isSignUp ? t('auth.signUp') : t('auth.signIn'))}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -278,7 +279,7 @@ const Auth = () => {
             
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? t('auth.loading') : (
-                isPasswordReset ? 'Reset-E-Mail senden' :
+                isPasswordReset ? t('auth.passwordResetEmail') :
                 (isSignUp ? t('auth.signUp') : t('auth.signIn'))
               )}
             </Button>
@@ -292,7 +293,7 @@ const Auth = () => {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  Oder fortfahren mit
+                  {t('auth.orContinueWith')}
                 </span>
               </div>
             </div>
@@ -322,7 +323,7 @@ const Auth = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Mit Google fortfahren
+              {t('auth.googleSignIn')}
             </Button>
             
             <Button
@@ -335,7 +336,7 @@ const Auth = () => {
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12.017 9.986c3.45 0 6.234-2.784 6.234-6.234S15.467-2.72 12.017-2.72s-6.234 2.784-6.234 6.234 2.784 6.234 6.234 6.234zm6.965 4.284c-.585-.585-1.248-.882-1.985-.882-.975 0-1.755.546-2.34 1.131l-1.326 1.326c-.585.585-1.365 1.131-2.34 1.131s-1.755-.546-2.34-1.131l-1.326-1.326c-.585-.585-1.365-1.131-2.34-1.131-.737 0-1.4.297-1.985.882C2.454 15.856 2 16.831 2 17.895v1.463c0 2.197 1.787 3.984 3.984 3.984h12.032c2.197 0 3.984-1.787 3.984-3.984v-1.463c0-1.064-.454-2.039-1.018-2.625z"/>
               </svg>
-              Mit Apple fortfahren
+              {t('auth.appleSignIn')}
             </Button>
           </div>
           
@@ -346,7 +347,7 @@ const Auth = () => {
                   onClick={() => setIsPasswordReset(false)}
                   className="text-primary hover:underline"
                 >
-                  Zurück zur Anmeldung
+                  {t('auth.backToSignIn')}
                 </button>
               </p>
             ) : isSignUp ? (
@@ -377,7 +378,7 @@ const Auth = () => {
                     onClick={() => setIsPasswordReset(true)}
                     className="text-primary hover:underline"
                   >
-                    Passwort vergessen?
+                    {t('auth.forgotPassword')}
                   </button>
                 </p>
               </>

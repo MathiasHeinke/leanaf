@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { 
   Activity, 
   RefreshCw, 
@@ -15,9 +17,9 @@ import {
   LayoutDashboard,
   TrendingUp,
   Sun,
-  Moon
+  Moon,
+  Clock
 } from "lucide-react";
-import { useTheme } from "next-themes";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -36,9 +38,8 @@ export const GlobalHeader = ({
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { language, setLanguage } = useTranslation();
-  const { theme, setTheme } = useTheme();
-
+  const { language, setLanguage, t } = useTranslation();
+  const { toggleTheme, getThemeStatus, isWithinDarkModeHours } = useAutoDarkMode();
 
   // Handle navigation to different views
   const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => {
@@ -105,6 +106,22 @@ export const GlobalHeader = ({
   };
 
   const activeTab = getActiveTab();
+  const themeStatus = getThemeStatus();
+
+  // Get theme icon and tooltip
+  const themeIcon = () => {
+    if (themeStatus.isAuto && isWithinDarkModeHours) {
+      return <Clock className="h-4 w-4" />;
+    }
+    return themeStatus.current === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />;
+  };
+
+  const themeTooltip = () => {
+    if (themeStatus.isAuto) {
+      return t('settings.darkModeAuto');
+    }
+    return themeStatus.current === 'dark' ? t('settings.darkModeLight') : t('settings.darkModeDark');
+  };
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
@@ -119,10 +136,10 @@ export const GlobalHeader = ({
           {/* Logo text with subtext */}
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-              kaloAI
+              {t('app.title')}
             </h1>
             <p className="text-sm text-gray-600 -mt-1">
-              let's get lean
+              {t('app.letsGetLean')}
             </p>
           </div>
         </div>
@@ -135,6 +152,7 @@ export const GlobalHeader = ({
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="flex items-center gap-2"
+            title={t('app.refresh')}
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
@@ -143,14 +161,11 @@ export const GlobalHeader = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={toggleTheme}
             className="flex items-center gap-2"
+            title={themeTooltip()}
           >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
+            {themeIcon()}
           </Button>
           
           {/* Language Toggle */}
@@ -159,6 +174,7 @@ export const GlobalHeader = ({
             size="sm"
             onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
             className="flex items-center gap-2 text-sm"
+            title={t('settings.language')}
           >
             <span className="text-xs">{language === 'de' ? '🇩🇪' : '🇬🇧'}</span>
             {language.toUpperCase()}
@@ -167,22 +183,22 @@ export const GlobalHeader = ({
           {/* Menu Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" title={t('app.menu')}>
                 <Menu className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => navigate('/account')}>
                 <UserIcon className="h-4 w-4 mr-2" />
-                Account
+                {t('header.account')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
                 <CreditCard className="h-4 w-4 mr-2" />
-                Abonnement
+                {t('header.subscription')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
+                {t('header.logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -215,7 +231,7 @@ export const GlobalHeader = ({
               <LayoutDashboard className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'main' ? 'animate-pulse text-primary' : ''
               }`} style={{ animationDuration: activeTab === 'main' ? '2s' : undefined }} />
-              Basis
+              {t('header.main')}
             </button>
             <button 
               onClick={() => handleNavigation('coach')}
@@ -229,7 +245,7 @@ export const GlobalHeader = ({
               <MessageCircle className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'coach' ? 'animate-pulse text-primary' : ''
               }`} style={{ animationDuration: activeTab === 'coach' ? '2s' : undefined }} />
-              Coach
+              {t('header.coach')}
             </button>
             <button 
               onClick={() => handleNavigation('history')}
@@ -243,7 +259,7 @@ export const GlobalHeader = ({
               <TrendingUp className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'history' ? 'animate-pulse text-primary' : ''
               }`} style={{ animationDuration: activeTab === 'history' ? '2s' : undefined }} />
-              Verlauf
+              {t('header.history')}
             </button>
             <button 
               onClick={() => handleNavigation('profile')}
@@ -257,7 +273,7 @@ export const GlobalHeader = ({
               <UserIcon className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 activeTab === 'profile' ? 'animate-pulse text-primary' : ''
               }`} style={{ animationDuration: activeTab === 'profile' ? '2s' : undefined }} />
-              Profil
+              {t('header.profile')}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 
+
 import { createContext, useContext, useState, useEffect } from 'react';
 
 interface TranslationContextType {
@@ -41,6 +42,9 @@ const translations = {
     'app.analyzing': 'Analysiere...',
     'app.mealAdded': 'Mahlzeit erfolgreich hinzugefügt!',
     'app.error': 'Fehler beim Hinzufügen der Mahlzeit',
+    'app.refresh': 'Aktualisieren',
+    'app.letsGetLean': 'let\'s get lean',
+    'app.menu': 'Menü',
     
     // Input modes
     'input.photo': 'Foto',
@@ -101,6 +105,13 @@ const translations = {
     'settings.invalidGoal': 'Ungültiges Ziel',
     'settings.goalRange': 'Das Kalorienziel sollte zwischen 800 und 5000 kcal liegen.',
     'settings.saveGoal': 'Ziel speichern',
+    'settings.darkMode': 'Dark Mode',
+    'settings.darkModeAuto': 'Automatisch (19:00-7:00)',
+    'settings.darkModeLight': 'Hell',
+    'settings.darkModeDark': 'Dunkel',
+    'settings.darkModeDesc': 'Dark Mode wird automatisch zwischen 19:00 und 7:00 Uhr aktiviert',
+    'settings.appearance': 'Erscheinungsbild',
+    'settings.theme': 'Design',
     
     // Authentication
     'auth.signIn': 'Anmelden',
@@ -118,6 +129,78 @@ const translations = {
     'auth.passwordsNoMatch': 'Passwörter stimmen nicht überein',
     'auth.emailInvalid': 'Ungültige E-Mail-Adresse',
     'auth.passwordTooShort': 'Passwort muss mindestens 6 Zeichen lang sein',
+    'auth.emailAlreadyRegistered': 'Diese E-Mail ist bereits registriert. Versuchen Sie sich anzumelden.',
+    'auth.invalidCredentials': 'Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.',
+    'auth.networkError': 'Netzwerkfehler. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.',
+    'auth.genericError': 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
+    'auth.accountCreated': 'Konto erfolgreich erstellt! Bitte überprüfen Sie Ihre E-Mail zur Bestätigung.',
+    'auth.signInSuccess': 'Erfolgreich angemeldet!',
+    'auth.passwordResetSent': 'Passwort-Reset-E-Mail wurde gesendet. Bitte überprüfen Sie Ihr Postfach.',
+    'auth.passwordResetError': 'Fehler beim Senden der Reset-E-Mail. Bitte versuchen Sie es erneut.',
+    'auth.passwordResetTitle': 'Passwort zurücksetzen',
+    'auth.passwordResetEmail': 'Reset-E-Mail senden',
+    'auth.backToSignIn': 'Zurück zur Anmeldung',
+    'auth.enterEmail': 'Bitte geben Sie Ihre E-Mail-Adresse ein',
+    'auth.googleSignIn': 'Mit Google fortfahren',
+    'auth.appleSignIn': 'Mit Apple fortfahren',
+    'auth.orContinueWith': 'Oder fortfahren mit',
+    'auth.googleError': 'Fehler bei der Google-Anmeldung. Bitte versuchen Sie es erneut.',
+    'auth.appleError': 'Fehler bei der Apple-Anmeldung. Bitte versuchen Sie es erneut.',
+    
+    // Account Management
+    'account.title': 'Konto',
+    'account.personalData': 'Persönliche Daten',
+    'account.personalDataDesc': 'Verwalten Sie Ihre grundlegenden Informationen',
+    'account.security': 'Sicherheit',
+    'account.securityDesc': 'Passwort und Sicherheitseinstellungen',
+    'account.name': 'Name',
+    'account.namePlaceholder': 'Ihr vollständiger Name',
+    'account.emailPlaceholder': 'ihre.email@beispiel.de',
+    'account.saving': 'Wird gespeichert...',
+    'account.saved': 'Gespeichert {time}',
+    'account.save': 'Speichern',
+    'account.profileSaved': 'Profil erfolgreich gespeichert',
+    'account.profileError': 'Fehler beim Speichern des Profils',
+    'account.changePassword': 'Passwort ändern',
+    'account.newPassword': 'Neues Passwort',
+    'account.newPasswordPlaceholder': 'Mindestens 6 Zeichen',
+    'account.confirmPasswordPlaceholder': 'Passwort wiederholen',
+    'account.changePasswordButton': 'Passwort ändern',
+    'account.passwordChanging': 'Wird geändert...',
+    'account.passwordChanged': 'Passwort erfolgreich geändert',
+    'account.passwordChangeError': 'Fehler beim Ändern des Passworts',
+    'account.passwordReset': 'Passwort zurücksetzen',
+    'account.passwordResetDesc': 'Eine E-Mail mit Anweisungen zum Zurücksetzen wird an Ihre E-Mail-Adresse gesendet.',
+    'account.sendResetEmail': 'Reset-E-Mail senden',
+    'account.resetEmailSending': 'Wird gesendet...',
+    'account.resetEmailSent': 'Passwort-Reset-E-Mail wurde gesendet',
+    'account.signOut': 'Abmelden',
+    'account.signOutSuccess': 'Erfolgreich abgemeldet',
+    'account.signOutError': 'Fehler beim Abmelden',
+    'account.fillAllFields': 'Bitte füllen Sie alle Passwort-Felder aus',
+    'account.passwordsDontMatch': 'Die Passwörter stimmen nicht überein',
+    'account.passwordTooShort': 'Das Passwort muss mindestens 6 Zeichen lang sein',
+    'account.loading': 'Lädt...',
+    
+    // Navigation & Header
+    'header.account': 'Konto',
+    'header.subscription': 'Abonnement',
+    'header.logout': 'Abmelden',
+    'header.main': 'Basis',
+    'header.coach': 'Coach',
+    'header.history': 'Verlauf',
+    'header.profile': 'Profil',
+    
+    // Coach & Chat
+    'coach.askCoach': 'Frag deinen Coach...',
+    'coach.chatHistory': 'Chat-Verlauf',
+    'coach.hideHistory': 'Verlauf ausblenden',
+    'coach.showHistory': 'Chat-Verlauf anzeigen',
+    'coach.clearChat': 'Chat löschen',
+    'coach.close': 'Schließen',
+    'coach.recording': 'Aufnahme läuft...',
+    'coach.processing': 'Verarbeitung...',
+    'coach.kaloaiCoach': 'kaloAI Coach',
     
     // Profile
     'profile.title': 'Profil',
@@ -371,7 +454,12 @@ const translations = {
     'motivation.perfect': 'Perfekt! 🎉 Ziel erreicht - du bist fantastisch!',
     'motivation.over': 'Nicht schlimm! 😊 Morgen ist ein neuer Tag!',
     'motivation.discipline': 'Super Disziplin! 🎯 Bleib dran, du schaffst das!',
-    'motivation.fallback': 'Bleib motiviert! 💪'
+    'motivation.fallback': 'Bleib motiviert! 💪',
+    
+    // 404 Page
+    'notFound.title': '404',
+    'notFound.subtitle': 'Oops! Seite nicht gefunden',
+    'notFound.returnHome': 'Zurück zur Startseite',
   },
   en: {
     // Navigation
@@ -396,6 +484,9 @@ const translations = {
     'app.analyzing': 'Analyzing...',
     'app.mealAdded': 'Meal added successfully!',
     'app.error': 'Error adding meal',
+    'app.refresh': 'Refresh',
+    'app.letsGetLean': 'let\'s get lean',
+    'app.menu': 'Menu',
     
     // Input modes
     'input.photo': 'Photo',
@@ -456,6 +547,13 @@ const translations = {
     'settings.invalidGoal': 'Invalid Goal',
     'settings.goalRange': 'The calorie goal should be between 800 and 5000 kcal.',
     'settings.saveGoal': 'Save Goal',
+    'settings.darkMode': 'Dark Mode',
+    'settings.darkModeAuto': 'Auto (7 PM-7 AM)',
+    'settings.darkModeLight': 'Light',
+    'settings.darkModeDark': 'Dark',
+    'settings.darkModeDesc': 'Dark mode is automatically enabled between 7 PM and 7 AM',
+    'settings.appearance': 'Appearance',
+    'settings.theme': 'Theme',
     
     // Authentication
     'auth.signIn': 'Sign In',
@@ -473,6 +571,78 @@ const translations = {
     'auth.passwordsNoMatch': 'Passwords do not match',
     'auth.emailInvalid': 'Invalid email address',
     'auth.passwordTooShort': 'Password must be at least 6 characters',
+    'auth.emailAlreadyRegistered': 'This email is already registered. Try signing in.',
+    'auth.invalidCredentials': 'Invalid login credentials. Please check your email and password.',
+    'auth.networkError': 'Network error. Please check your internet connection and try again.',
+    'auth.genericError': 'An error occurred. Please try again.',
+    'auth.accountCreated': 'Account created successfully! Please check your email for confirmation.',
+    'auth.signInSuccess': 'Successfully signed in!',
+    'auth.passwordResetSent': 'Password reset email sent. Please check your inbox.',
+    'auth.passwordResetError': 'Error sending reset email. Please try again.',
+    'auth.passwordResetTitle': 'Reset Password',
+    'auth.passwordResetEmail': 'Send Reset Email',
+    'auth.backToSignIn': 'Back to Sign In',
+    'auth.enterEmail': 'Please enter your email address',
+    'auth.googleSignIn': 'Continue with Google',
+    'auth.appleSignIn': 'Continue with Apple',
+    'auth.orContinueWith': 'Or continue with',
+    'auth.googleError': 'Error with Google sign-in. Please try again.',
+    'auth.appleError': 'Error with Apple sign-in. Please try again.',
+    
+    // Account Management
+    'account.title': 'Account',
+    'account.personalData': 'Personal Data',
+    'account.personalDataDesc': 'Manage your basic information',
+    'account.security': 'Security',
+    'account.securityDesc': 'Password and security settings',
+    'account.name': 'Name',
+    'account.namePlaceholder': 'Your full name',
+    'account.emailPlaceholder': 'your.email@example.com',
+    'account.saving': 'Saving...',
+    'account.saved': 'Saved {time}',
+    'account.save': 'Save',
+    'account.profileSaved': 'Profile saved successfully',
+    'account.profileError': 'Error saving profile',
+    'account.changePassword': 'Change Password',
+    'account.newPassword': 'New Password',
+    'account.newPasswordPlaceholder': 'At least 6 characters',
+    'account.confirmPasswordPlaceholder': 'Repeat password',
+    'account.changePasswordButton': 'Change Password',
+    'account.passwordChanging': 'Changing...',
+    'account.passwordChanged': 'Password changed successfully',
+    'account.passwordChangeError': 'Error changing password',
+    'account.passwordReset': 'Reset Password',
+    'account.passwordResetDesc': 'An email with reset instructions will be sent to your email address.',
+    'account.sendResetEmail': 'Send Reset Email',
+    'account.resetEmailSending': 'Sending...',
+    'account.resetEmailSent': 'Password reset email sent',
+    'account.signOut': 'Sign Out',
+    'account.signOutSuccess': 'Successfully signed out',
+    'account.signOutError': 'Error signing out',
+    'account.fillAllFields': 'Please fill in all password fields',
+    'account.passwordsDontMatch': 'Passwords do not match',
+    'account.passwordTooShort': 'Password must be at least 6 characters',
+    'account.loading': 'Loading...',
+    
+    // Navigation & Header
+    'header.account': 'Account',
+    'header.subscription': 'Subscription',
+    'header.logout': 'Logout',
+    'header.main': 'Main',
+    'header.coach': 'Coach',
+    'header.history': 'History',
+    'header.profile': 'Profile',
+    
+    // Coach & Chat
+    'coach.askCoach': 'Ask your coach...',
+    'coach.chatHistory': 'Chat History',
+    'coach.hideHistory': 'Hide History',
+    'coach.showHistory': 'Show Chat History',
+    'coach.clearChat': 'Clear Chat',
+    'coach.close': 'Close',
+    'coach.recording': 'Recording...',
+    'coach.processing': 'Processing...',
+    'coach.kaloaiCoach': 'kaloAI Coach',
     
     // Profile
     'profile.title': 'Profile',
@@ -726,7 +896,12 @@ const translations = {
     'motivation.perfect': 'Perfect! 🎉 Goal achieved - you\'re fantastic!',
     'motivation.over': 'No worries! 😊 Tomorrow is a new day!',
     'motivation.discipline': 'Super discipline! 🎯 Stay strong, you can do it!',
-    'motivation.fallback': 'Stay motivated! 💪'
+    'motivation.fallback': 'Stay motivated! 💪',
+    
+    // 404 Page
+    'notFound.title': '404',
+    'notFound.subtitle': 'Oops! Page not found',
+    'notFound.returnHome': 'Return to Home',
   },
 };
 
@@ -763,3 +938,4 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
     </TranslationContext.Provider>
   );
 };
+

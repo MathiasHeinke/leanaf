@@ -1,3 +1,4 @@
+
 import Coach from "@/components/Coach";
 
 const CoachPage = () => {
