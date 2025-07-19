@@ -1128,6 +1128,21 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       </Tabs>
     </div>
   );
+
+  // Effect um Daten zu laden wenn timeRange sich ändert
+  useEffect(() => {
+    if (user) {
+      loadHistoryData();
+      loadWeightHistory();
+    }
+  }, [timeRange, user]);
+
+  // Effect um Benutzer-Goal zu laden
+  useEffect(() => {
+    if (user) {
+      loadUserGoal();
+    }
+  }, [user]);
   };
   
   export default History;
