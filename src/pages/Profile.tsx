@@ -16,8 +16,6 @@ interface ProfilePageProps {
 }
 
 const Profile = ({ onClose }: ProfilePageProps) => {
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
   const [weight, setWeight] = useState('');
   const [startWeight, setStartWeight] = useState('');
   const [height, setHeight] = useState('');
@@ -74,7 +72,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     return () => clearTimeout(timeoutId);
   }, [
-    displayName, email, weight, startWeight, height, age, gender, 
+    weight, startWeight, height, age, gender, 
     activityLevel, goal, targetWeight, targetDate, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
@@ -102,8 +100,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
       if (data) {
         setProfileExists(true);
-        setDisplayName(data.display_name || '');
-        setEmail(data.email || '');
         setWeight(data.weight ? data.weight.toString() : '');
         setStartWeight(data.start_weight ? data.start_weight.toString() : '');
         setHeight(data.height ? data.height.toString() : '');
@@ -254,8 +250,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     const profileData = {
       user_id: user.id,
-      display_name: displayName,
-      email: email,
       weight: weight ? parseFloat(weight) : null,
       start_weight: startWeight ? parseFloat(startWeight) : null,
       height: height ? parseInt(height) : null,
@@ -353,37 +347,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm">Name</Label>
-                <Input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Dein Name"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Email</Label>
-                <Input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="deine@email.de"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Aktuelles Gewicht (kg)</Label>
-                <Input
-                  type="number"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="70"
-                  className="mt-1"
-                />
-              </div>
-              <div>
                 <Label className="text-sm">Startgewicht (kg)</Label>
                 <Input
                   type="number"
@@ -392,6 +355,20 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   placeholder="75"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label className="text-sm">Aktuelles Gewicht</Label>
+                <div className="mt-1 p-3 bg-muted rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold">{weight || '-'} kg</span>
+                    {weight && startWeight && parseFloat(weight) < parseFloat(startWeight) && (
+                      <span className="text-green-500 text-sm">↓ -{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)} kg</span>
+                    )}
+                    {weight && startWeight && parseFloat(weight) > parseFloat(startWeight) && (
+                      <span className="text-red-500 text-sm">↑ +{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)} kg</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -489,7 +466,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   type="date"
                   value={targetDate}
                   onChange={(e) => setTargetDate(e.target.value)}
-                  className="mt-1 w-full"
+                  className="mt-1 text-sm"
                 />
               </div>
             </div>

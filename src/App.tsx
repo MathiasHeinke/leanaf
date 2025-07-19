@@ -7,6 +7,7 @@ import { TranslationProvider } from "@/hooks/useTranslation";
 import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Account from "./pages/Account";
 import Profile from "./pages/Profile";
 import Subscription from "./pages/Subscription";
 import CoachPage from "./pages/Coach";
@@ -31,6 +32,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/account" element={<Account />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/subscription" element={<Subscription />} />
                 <Route path="/coach" element={<CoachPage />} />
