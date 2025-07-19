@@ -636,8 +636,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             {/* Muskelerhalt Priorität */}
             <div className="flex items-center justify-between p-4 glass-card border border-blue-200 dark:border-blue-700/30">{" "}
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Dumbbell className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                  <Dumbbell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                   <Label htmlFor="muscleMaintenancePriority" className="text-base font-medium">
