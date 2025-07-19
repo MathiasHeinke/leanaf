@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, TrendingDown, Target, Clock, Calendar } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Target, Clock, Calendar, Scale, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -199,99 +200,201 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
     const previous = weightHistory[1].weight;
     const diff = latest - previous;
     
-    if (Math.abs(diff) < 0.1) return { icon: Target, color: 'text-gray-500', text: 'Stabil' };
-    if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg` };
-    return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg` };
+    if (Math.abs(diff) < 0.1) return { icon: Target, color: 'text-gray-500', text: 'Stabil', bgColor: 'bg-gray-100' };
+    if (diff > 0) return { icon: TrendingUp, color: 'text-red-500', text: `+${diff.toFixed(1)}kg`, bgColor: 'bg-red-50' };
+    return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg`, bgColor: 'bg-green-50' };
   };
 
   return (
-    <div className="space-y-3">
-      <h3 className="font-medium text-sm">Aktuelles Gewicht</h3>
-      <div className="flex gap-2">
-        <Input
-          type="number"
-          value={newWeight}
-          onChange={(e) => setNewWeight(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleAddWeight();
-            }
-          }}
-          placeholder="z.B. 72.5"
-          className="flex-1"
-          step="0.1"
-        />
-        <Button 
-          onClick={handleAddWeight} 
-          disabled={!newWeight}
-          size="sm"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Eintragen
-        </Button>
+    <div className="space-y-6">
+      {/* Weight Input Section */}
+      <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 border border-primary/10">
+        <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+          <Scale className="h-4 w-4 text-primary" />
+          Gewicht eintragen
+        </h4>
+        <div className="flex gap-3">
+          <Input
+            type="number"
+            value={newWeight}
+            onChange={(e) => setNewWeight(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddWeight();
+              }
+            }}
+            placeholder="z.B. 72.5"
+            className="flex-1 bg-background/60 border-primary/20 focus:border-primary/40"
+            step="0.1"
+          />
+          <Button 
+            onClick={handleAddWeight} 
+            disabled={!newWeight}
+            className="bg-primary/90 hover:bg-primary text-white shadow-lg"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Hinzufügen
+          </Button>
+        </div>
+        
+        {/* Weight Trend Indicator */}
+        {(() => {
+          const trend = getWeightTrend();
+          if (!trend) return null;
+          const IconComponent = trend.icon;
+          return (
+            <div className={`flex items-center gap-2 mt-3 p-2 rounded-lg ${trend.bgColor}`}>
+              <IconComponent className={`h-4 w-4 ${trend.color}`} />
+              <span className={`text-sm font-medium ${trend.color}`}>
+                Letzte Änderung: {trend.text}
+              </span>
+            </div>
+          );
+        })()}
       </div>
-      
-      {(() => {
-        const trend = getWeightTrend();
-        if (!trend) return null;
-        const IconComponent = trend.icon;
-        return (
-          <div className={`flex items-center gap-1 ${trend.color} text-sm`}>
-            <IconComponent className="h-4 w-4" />
-            <span>{trend.text}</span>
-          </div>
-        );
-      })()}
 
-      {/* Weight Prognosis */}
+      {/* Weight Prognosis Section */}
       {(() => {
         const prognosis = calculateWeightPrognosis();
-        if (!prognosis) return null;
+        if (!prognosis) {
+          return (
+            <div className="bg-gradient-to-br from-muted/30 to-muted/50 rounded-xl p-6 border border-border/30">
+              <div className="text-center">
+                <Zap className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <h4 className="font-medium text-muted-foreground mb-2">Prognose wird geladen...</h4>
+                <p className="text-sm text-muted-foreground">
+                  Stelle sicher, dass dein Profil und deine Ziele vollständig ausgefüllt sind.
+                </p>
+              </div>
+            </div>
+          );
+        }
 
         return (
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg border">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <span className="font-medium text-sm">Gewichtsprognose</span>
+          <div className="bg-gradient-to-br from-emerald-50/50 to-blue-50/50 dark:from-emerald-900/10 dark:to-blue-900/10 rounded-xl p-6 border border-emerald-200/30 dark:border-emerald-700/30">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
+                <Clock className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-foreground">Intelligente Gewichtsprognose</h4>
+                <p className="text-sm text-muted-foreground">Basierend auf deinen aktuellen Gewohnheiten</p>
+              </div>
             </div>
             
             {prognosis.type === 'warning' ? (
-              <div className="space-y-2">
-                <div className="text-sm text-orange-600 dark:text-orange-400">
-                  ⚠️ {prognosis.message}
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-lg p-4 border border-orange-200/30">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 bg-orange-500/20 rounded-full flex items-center justify-center mt-0.5">
+                      <span className="text-orange-600 text-sm">⚠️</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-orange-700 dark:text-orange-300 mb-1">
+                        Achtung: Ziel nicht erreichbar
+                      </div>
+                      <div className="text-sm text-orange-600 dark:text-orange-400">
+                        {prognosis.message}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  💡 {prognosis.suggestion}
+                <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-lg p-4 border border-blue-200/30">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 bg-blue-500/20 rounded-full flex items-center justify-center mt-0.5">
+                      <span className="text-blue-600 text-sm">💡</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-blue-700 dark:text-blue-300 mb-1">
+                        Empfehlung
+                      </div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400">
+                        {prognosis.suggestion}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : prognosis.type === 'maintain' ? (
-              <div className="space-y-2">
-                <div className="text-sm text-green-600 dark:text-green-400">
-                  ✅ {prognosis.message}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  💡 {prognosis.suggestion}
+              <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-lg p-4 border border-green-200/30">
+                <div className="flex items-start gap-3">
+                  <div className="h-8 w-8 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-600 text-sm">✅</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-green-700 dark:text-green-300 mb-1">
+                      Ziel erreicht!
+                    </div>
+                    <div className="text-sm text-green-600 dark:text-green-400 mb-2">
+                      {prognosis.message}
+                    </div>
+                    <div className="text-xs text-green-500 dark:text-green-400">
+                      💡 {prognosis.suggestion}
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="text-sm text-foreground">
-                  {prognosis.type === 'loss' ? '📉' : '📈'} 
-                  {` Zielgewicht in ca. `}
-                  {prognosis.monthsToTarget > 1 
-                    ? `${prognosis.monthsToTarget} Monaten` 
-                    : prognosis.weeksToTarget > 1 
-                      ? `${prognosis.weeksToTarget} Wochen`
-                      : `${prognosis.daysToTarget} Tagen`
-                  }
+              <div className="space-y-4">
+                {/* Main Prediction */}
+                <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-lg p-5 border border-indigo-200/30">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg flex items-center justify-center">
+                      {prognosis.type === 'loss' ? (
+                        <TrendingDown className="h-5 w-5 text-indigo-600" />
+                      ) : (
+                        <TrendingUp className="h-5 w-5 text-indigo-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-lg text-indigo-700 dark:text-indigo-300">
+                        {prognosis.type === 'loss' ? '📉 Abnehmen' : '📈 Zunehmen'}
+                      </div>
+                      <div className="text-sm text-indigo-600 dark:text-indigo-400">
+                        Zielgewicht in ca.{' '}
+                        {prognosis.monthsToTarget > 1 
+                          ? `${prognosis.monthsToTarget} Monaten` 
+                          : prognosis.weeksToTarget > 1 
+                            ? `${prognosis.weeksToTarget} Wochen`
+                            : `${prognosis.daysToTarget} Tagen`
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Timeline */}
+                  <div className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 mb-3">
+                    <Calendar className="h-4 w-4" />
+                    <span>Voraussichtlich am {prognosis.targetDate}</span>
+                  </div>
+                  
+                  {/* Stats */}
+                  <div className="text-xs text-indigo-500 dark:text-indigo-400">
+                    📊 Basierend auf deiner aktuellen Kalorienzufuhr von durchschnittlich {Math.round(averageCalorieIntake)} kcal/Tag
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  <span>Voraussichtlich am {prognosis.targetDate}</span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  📊 Basierend auf deiner aktuellen Kalorienzufuhr von durchschnittlich {Math.round(averageCalorieIntake)} kcal/Tag
+                
+                {/* Progress Visualization */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border border-border/30">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary mb-1">
+                        {prognosis.weightDifference.toFixed(1)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">kg verbleibend</div>
+                    </div>
+                  </div>
+                  <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border border-border/30">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-secondary mb-1">
+                        {Math.abs(prognosis.dailyCalorieBalance)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        kcal {prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

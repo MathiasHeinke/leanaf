@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { SavedItems } from "@/components/SavedItems";
 import { FloatingCoachChat } from "@/components/FloatingCoachChat";
+import { WeightTracker } from "@/components/WeightTracker";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
@@ -38,7 +39,8 @@ import {
   Clock,
   TrendingDown,
   Award,
-  BarChart3
+  BarChart3,
+  Scale
 } from "lucide-react";
 import { UserGoal } from "@/utils/goalBasedMessaging";
 
@@ -110,6 +112,12 @@ interface TrendData {
   weeklyGoalReach: number;
 }
 
+interface WeightEntry {
+  id: string;
+  weight: number;
+  date: string;
+}
+
 const Coach = ({ onClose }: CoachProps) => {
   // AI Analysis State
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
@@ -132,7 +140,7 @@ const Coach = ({ onClose }: CoachProps) => {
   const [greetingLoading, setGreetingLoading] = useState(false);
   
   // Weight History State
-  const [weightHistory, setWeightHistory] = useState<Array<{date: string, weight: number}>>([]);
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   
   // Trend Analysis State
   const [trendData, setTrendData] = useState<TrendData | null>(null);
@@ -433,32 +441,6 @@ const Coach = ({ onClose }: CoachProps) => {
     } catch (error: any) {
       console.error('Error loading today\'s meals:', error);
       setTodaysMeals([]); // Set empty array on error
-    }
-  };
-
-  // Laden der Gewichtsverlauf
-  const loadWeightHistoryData = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('weight_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(30);
-      
-      if (error) throw error;
-      
-      const history = data?.map(entry => ({
-        date: entry.date,
-        weight: Number(entry.weight)
-      })) || [];
-      
-      setWeightHistory(history);
-    } catch (error: any) {
-      console.error('Error loading weight history:', error);
-      setWeightHistory([]);
     }
   };
 
@@ -1118,8 +1100,8 @@ const Coach = ({ onClose }: CoachProps) => {
               </div>
             </TabsContent>
 
-            {/* Trends Tab */}
-            <TabsContent value="trends" className="space-y-4">
+            {/* Enhanced Trends Tab with Weight Tracker */}
+            <TabsContent value="trends" className="space-y-6">
               <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
                 {trendsLoading ? (
                   <div className="flex items-center justify-center p-8">
@@ -1202,6 +1184,24 @@ const Coach = ({ onClose }: CoachProps) => {
                     </Button>
                   </div>
                 )}
+              </div>
+
+              {/* Weight Progress Tracker - New Glass Card */}
+              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50 hover:border-accent/30 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-12 w-12 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center">
+                    <Scale className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Gewichtsprognose</h3>
+                    <p className="text-sm text-muted-foreground">Dein Weg zum Zielgewicht</p>
+                  </div>
+                </div>
+                
+                <WeightTracker 
+                  weightHistory={weightHistory} 
+                  onWeightAdded={loadWeightHistoryData} 
+                />
               </div>
             </TabsContent>
 
