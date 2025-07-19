@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { 
   LineChart, 
   Line, 
@@ -31,7 +33,8 @@ import {
   Edit2,
   Trash2,
   Plus,
-  Scale
+  Scale,
+  CalendarIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +42,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "sonner";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface DailyGoal {
   calories: number;
@@ -98,6 +104,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const [userGoal, setUserGoal] = useState<UserGoal>('maintain');
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [weightLoading, setWeightLoading] = useState(false);
+  const [editingMealDate, setEditingMealDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -298,6 +305,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingMeal) {
+      // Create a timestamp that preserves the local date without timezone conversion
+      const localDate = new Date(editingMealDate);
+      localDate.setHours(12, 0, 0, 0); // Set to midday to avoid timezone issues
+      
       updateMeal(editingMeal.id, {
         text: editingMeal.text,
         calories: editingMeal.calories,
@@ -305,6 +316,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         carbs: editingMeal.carbs,
         fats: editingMeal.fats,
         meal_type: editingMeal.meal_type,
+        created_at: localDate.toISOString(),
       });
     }
   };
@@ -514,7 +526,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => setEditingMeal(meal)}
+                                          onClick={() => {
+                                            setEditingMeal(meal);
+                                            setEditingMealDate(new Date(meal.created_at));
+                                          }}
                                           className="h-8 w-8 p-0 hover:bg-primary/10"
                                         >
                                           <Edit2 className="h-3 w-3" />
@@ -762,23 +777,52 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                                      <SelectItem value="snack">🍎 Snack</SelectItem>
                                                    </SelectContent>
                                                  </Select>
-                                               </div>
+                                                </div>
+
+                                                {/* Date Selection */}
+                                                <div>
+                                                  <Label className="text-sm font-medium">Datum der Mahlzeit</Label>
+                                                  <Popover>
+                                                    <PopoverTrigger asChild>
+                                                      <Button
+                                                        variant="outline"
+                                                        className={cn(
+                                                          "w-full justify-start text-left font-normal mt-2",
+                                                          !editingMealDate && "text-muted-foreground"
+                                                        )}
+                                                      >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {editingMealDate ? format(editingMealDate, "dd.MM.yyyy", { locale: de }) : "Datum"}
+                                                      </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                      <CalendarComponent
+                                                        mode="single"
+                                                        selected={editingMealDate}
+                                                        onSelect={(date) => date && setEditingMealDate(date)}
+                                                        initialFocus
+                                                        className={cn("p-3 pointer-events-auto")}
+                                                      />
+                                                    </PopoverContent>
+                                                  </Popover>
+                                                </div>
 
                                                {/* Action Buttons */}
                                                <div className="flex gap-3 pt-2">
                                                  <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
                                                    Speichern
                                                  </Button>
-                                                 <Button 
-                                                   type="button" 
-                                                   variant="outline" 
-                                                   onClick={() => {
-                                                     setEditingMeal(null);
-                                                     setEditMode('manual');
-                                                     setPortionAmount(100);
-                                                   }}
-                                                   className="flex-1"
-                                                 >
+                                                  <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    onClick={() => {
+                                                      setEditingMeal(null);
+                                                      setEditMode('manual');
+                                                      setPortionAmount(100);
+                                                      setEditingMealDate(new Date());
+                                                    }}
+                                                    className="flex-1"
+                                                  >
                                                    Abbrechen
                                                  </Button>
                                                </div>
