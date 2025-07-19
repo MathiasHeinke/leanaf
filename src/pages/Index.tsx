@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
 
@@ -6,7 +7,6 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { Layout } from "@/components/Layout";
 import { MealList } from "@/components/MealList";
-import { WeightTracker } from "@/components/WeightTracker";
 import { DailyProgress } from "@/components/DailyProgress";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,7 +22,6 @@ const Index = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const mealInputHook = useGlobalMealInput();
-  const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [meals, setMeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -31,33 +30,33 @@ const Index = () => {
 
   useEffect(() => {
     if (user) {
-      fetchWeightHistory();
       fetchMealsForDate(currentDate);
       fetchWeeklyCalorieData();
     }
   }, [user, currentDate]);
 
-  const fetchWeightHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('weight_history')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      setWeightHistory(data || []);
-    } catch (error) {
-      console.error('Error fetching weight history:', error);
-    }
-  };
-
   const fetchMealsForDate = async (date: Date) => {
     setLoading(true);
     try {
-      // Simple fallback approach to avoid type issues
-      setMeals([]);
-      updateCalorieSummary([]);
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .gte('created_at', startOfDay.toISOString())
+        .lte('created_at', endOfDay.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      const mealsData = data || [];
+      setMeals(mealsData);
+      updateCalorieSummary(mealsData);
     } catch (error) {
       console.error('Error fetching meals:', error);
       setMeals([]);
@@ -72,44 +71,44 @@ const Index = () => {
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - 6);
-  
+
       const { data, error } = await supabase
         .from('meals')
-        .select('date, calories')
+        .select('calories, created_at')
         .eq('user_id', user?.id)
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0]);
-  
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
       if (error) throw error;
-  
-      // Aggregate calories by date
+
+      // Aggregate calories by date using created_at
       const aggregatedData = data?.reduce((acc: any, item: any) => {
-        const date = item.date;
+        const date = item.created_at.split('T')[0]; // Extract date part
         if (!acc[date]) {
           acc[date] = { date: date, calories: 0 };
         }
-        acc[date].calories += item.calories;
+        acc[date].calories += item.calories || 0;
         return acc;
       }, {});
-  
+
       // Convert aggregated data to array format for Recharts
-      const weeklyData = Object.values(aggregatedData);
-  
+      const weeklyData = Object.values(aggregatedData || {});
+
       // Ensure all dates in the last 7 days are present, even with 0 calories
       for (let i = 6; i >= 0; i--) {
         const date = new Date(endDate);
         date.setDate(endDate.getDate() - i);
         const dateString = date.toISOString().split('T')[0];
-  
-        if (!aggregatedData[dateString]) {
+
+        if (!aggregatedData?.[dateString]) {
           weeklyData.push({ date: dateString, calories: 0 });
         }
       }
-  
+
       // Sort by date
       weeklyData.sort((a: any, b: any) => (a.date > b.date ? 1 : -1));
-  
-      setWeeklyCalorieData(weeklyData);
+
+      setWeeklyCalorieData(weeklyData as any);
     } catch (error) {
       console.error('Error fetching weekly calorie data:', error);
     }
@@ -117,19 +116,25 @@ const Index = () => {
 
   const updateCalorieSummary = (meals: any[]) => {
     const consumed = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
-    setCalorieSummary({ ...calorieSummary, consumed });
+    setCalorieSummary({ consumed, burned: 0 });
   };
 
   const handleDateChange = (date: Date) => {
     setCurrentDate(new Date(date));
   };
 
-  const handleWeightAdded = () => {
-    fetchWeightHistory();
-  };
-
   const formatDate = (date: Date): string => {
     return format(date, 'EEEE, d. MMMM', { locale: de });
+  };
+
+  const handleMealDeleted = async () => {
+    await fetchMealsForDate(currentDate);
+    await fetchWeeklyCalorieData();
+  };
+
+  const handleMealUpdated = async () => {
+    await fetchMealsForDate(currentDate);
+    await fetchWeeklyCalorieData();
   };
 
   return (
@@ -137,13 +142,12 @@ const Index = () => {
       <Layout>
         <div className="md:flex md:gap-4">
           <div className="md:w-1/3 space-y-4">
-            <WeightTracker weightHistory={weightHistory} onWeightAdded={handleWeightAdded} />
             <DailyProgress 
               dailyTotals={{
                 calories: calorieSummary.consumed,
-                protein: 0,
-                carbs: 0,
-                fats: 0
+                protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
+                carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
+                fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
               }}
               dailyGoal={{
                 calories: 2000,
@@ -186,9 +190,6 @@ const Index = () => {
           <div className="md:w-2/3">
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-3">
-                <h2 className="scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0 text-foreground">
-                  {t('meals.title')}
-                </h2>
                 <Badge className="opacity-80">{meals.length}</Badge>
               </div>
               {loading ? (
@@ -210,8 +211,8 @@ const Index = () => {
                     meal_type: meal.meal_type
                   }))} 
                   onEditMeal={(meal: any) => {}}
-                  onDeleteMeal={(mealId: string) => fetchMealsForDate(currentDate)}
-                  onUpdateMeal={(mealId: string, updates: any) => fetchMealsForDate(currentDate)}
+                  onDeleteMeal={handleMealDeleted}
+                  onUpdateMeal={handleMealUpdated}
                 />
               )}
             </div>
