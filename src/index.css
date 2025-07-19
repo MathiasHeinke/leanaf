@@ -1,3 +1,26 @@
+/* iOS Safari Input Zoom Prevention */
+@supports (-webkit-appearance: none) {
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    transform-origin: left top;
+  }
+  
+  /* Prevent zoom on focus for iOS */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    font-size: 16px !important;
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
