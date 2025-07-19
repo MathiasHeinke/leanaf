@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star } from "lucide-react";
@@ -24,6 +25,71 @@ interface DailyProgressProps {
   userGoal?: UserGoal;
 }
 
+interface OverallStatus {
+  status: 'success' | 'warning' | 'danger';
+  message: string;
+  color: string;
+  bgColor: string;
+  icon: string;
+  hasMacroWarnings: boolean;
+  macroWarnings: string[];
+}
+
+const getOverallStatus = (
+  dailyTotals: DailyTotals,
+  dailyGoal: DailyGoal,
+  userGoal: UserGoal
+): OverallStatus => {
+  const proteinPercentage = (dailyTotals.protein / dailyGoal.protein) * 100;
+  const carbsPercentage = (dailyTotals.carbs / dailyGoal.carbs) * 100;
+  const fatsPercentage = (dailyTotals.fats / dailyGoal.fats) * 100;
+  
+  const macroWarnings: string[] = [];
+  
+  // Check for significant macro excesses (>120%)
+  if (proteinPercentage > 120) {
+    macroWarnings.push('Protein');
+  }
+  if (carbsPercentage > 120) {
+    macroWarnings.push('Kohlenhydrate');
+  }
+  if (fatsPercentage > 120) {
+    macroWarnings.push('Fette');
+  }
+  
+  const hasMacroWarnings = macroWarnings.length > 0;
+  
+  // Priority 1: Critical macro warnings
+  if (hasMacroWarnings) {
+    const warningText = macroWarnings.length === 1 
+      ? `${macroWarnings[0]} stark überschritten`
+      : `${macroWarnings.join(' und ')} überschritten`;
+    
+    return {
+      status: 'danger',
+      message: `⚠️ Achtung: ${warningText}`,
+      color: 'text-red-600 dark:text-red-400',
+      bgColor: 'bg-red-50/30 dark:bg-red-950/30',
+      icon: '⚠️',
+      hasMacroWarnings: true,
+      macroWarnings
+    };
+  }
+  
+  // Priority 2: Normal calorie-based status
+  const calorieStatus = getGoalStatus(dailyTotals.calories, dailyGoal.calories, userGoal);
+  
+  return {
+    status: calorieStatus.status,
+    message: calorieStatus.motivationalMessage,
+    color: calorieStatus.color.includes('yellow') ? 'text-amber-600 dark:text-amber-400' : calorieStatus.color,
+    bgColor: calorieStatus.bgColor.includes('yellow') ? 'bg-amber-50/20 dark:bg-amber-950/30' : calorieStatus.bgColor.replace('bg-', 'bg-').replace('/5', '/10'),
+    icon: calorieStatus.icon,
+    hasMacroWarnings: false,
+    macroWarnings: []
+  };
+};
+
 export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }: DailyProgressProps) => {
   const { t, language } = useTranslation();
 
@@ -43,26 +109,10 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
   const fatsExceeded = dailyTotals.fats > dailyGoal.fats;
 
   const goalStatus = getGoalStatus(dailyTotals.calories, dailyGoal.calories, userGoal);
-  const motivationalMessage = getGoalBasedProgressMessage(dailyTotals.calories, dailyGoal.calories, userGoal);
+  const overallStatus = getOverallStatus(dailyTotals, dailyGoal, userGoal);
 
   return (
     <div className="space-y-6">
-      {/* Goal-based status message */}
-      {goalStatus.status !== 'success' && (
-        <div className={`p-4 rounded-2xl border flex items-center gap-3 ${goalStatus.bgColor.includes('yellow') ? 'bg-amber-50 dark:bg-amber-950/20' : goalStatus.bgColor} ${goalStatus.borderColor.includes('yellow') ? 'border-amber-200 dark:border-amber-800/50' : goalStatus.borderColor} backdrop-blur-sm`}>
-          <span className="text-xl">{goalStatus.icon}</span>
-          <span className={`text-sm font-medium ${goalStatus.color.includes('yellow') ? 'text-amber-600 dark:text-amber-400' : goalStatus.color}`}>
-            {goalStatus.message}
-            {goalStatus.status === 'danger' && userGoal === 'lose' && remainingCalories < 0 &&
-              ` (${Math.abs(remainingCalories)} kcal über dem Ziel)`
-            }
-            {goalStatus.status === 'danger' && userGoal === 'gain' && remainingCalories > 0 &&
-              ` (${remainingCalories} kcal fehlen noch)`
-            }
-          </span>
-        </div>
-      )}
-      
       {/* Hero Calorie Section - Modern Clean Design */}
       <div className="p-6 bg-gradient-to-br from-primary/5 via-primary/3 to-primary-glow/5 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
         <div className="flex items-center justify-between mb-4">
@@ -116,10 +166,17 @@ export const DailyProgress = ({ dailyTotals, dailyGoal, userGoal = 'maintain' }:
               )}
             </div>
             
-            {/* Integrated motivational message - better styled */}
-            <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${goalStatus.bgColor.includes('yellow') ? 'bg-amber-50/20 dark:bg-amber-950/30' : goalStatus.bgColor.replace('bg-', 'bg-').replace('/5', '/10')} ${goalStatus.color.includes('yellow') ? 'text-amber-600 dark:text-amber-400' : goalStatus.color}`}>
-              <span className="text-base">{goalStatus.icon}</span>
-              <span className="text-center leading-relaxed">{goalStatus.motivationalMessage}</span>
+            {/* Enhanced motivational message with macro warnings */}
+            <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${overallStatus.bgColor} ${overallStatus.color}`}>
+              <span className="text-base">{overallStatus.icon}</span>
+              <div className="text-center leading-relaxed">
+                <div>{overallStatus.message}</div>
+                {overallStatus.hasMacroWarnings && (
+                  <div className="text-xs mt-1 opacity-80">
+                    Morgen auf ausgewogene Balance achten!
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
