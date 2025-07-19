@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -67,12 +68,12 @@ export const RandomQuote = ({ userGender, fallbackText = "Bleib motiviert! 💪"
   };
 
   if (loading) {
-    return <span className="text-muted-foreground text-sm animate-pulse">{fallbackText}</span>;
+    return fallbackText ? <span className="text-muted-foreground text-sm animate-pulse">{fallbackText}</span> : null;
   }
 
-  // If no quote or not male/female user, show fallback
+  // If no quote or not male/female user, show fallback only if provided
   if (!quote || (userGender !== 'male' && userGender !== 'female')) {
-    return <span className="text-muted-foreground text-sm">{fallbackText}</span>;
+    return fallbackText ? <span className="text-muted-foreground text-sm">{fallbackText}</span> : null;
   }
 
   return (

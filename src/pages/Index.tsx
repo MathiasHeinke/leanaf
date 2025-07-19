@@ -5,9 +5,8 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
-import { DailyGreeting } from "@/components/DailyGreeting";
+import { OptimizedGreeting } from "@/components/OptimizedGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
-import { RandomQuote } from "@/components/RandomQuote";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -155,11 +154,8 @@ const Index = () => {
   return (
     <>
       <div className="space-y-6">
-        {/* Daily Greeting */}
-        <DailyGreeting userProfile={userProfile} />
-
-        {/* Random Quote */}
-        <RandomQuote />
+        {/* Optimized Greeting - only shows when contextually relevant */}
+        <OptimizedGreeting userProfile={userProfile} />
 
         <div className="md:flex md:gap-6">
           <div className="md:w-1/3 space-y-4">
