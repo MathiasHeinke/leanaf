@@ -217,11 +217,31 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
               images: imagesByMealId.get(meal.id) || []
             };
             week.meals.push(mealWithImages);
-            // Summiere die Werte (nicht durchschnittlich)
+            // Summiere die Werte für Durchschnittsberechnung
             week.calories += Number(meal.calories);
             week.protein += Number(meal.protein);
             week.carbs += Number(meal.carbs);
             week.fats += Number(meal.fats);
+          }
+        });
+
+        // Berechne Wochendurchschnitte
+        weeklyData.forEach(week => {
+          if (week.meals.length > 0) {
+            // Zähle einzigartige Tage mit Mahlzeiten in dieser Woche
+            const uniqueDays = new Set();
+            week.meals.forEach(meal => {
+              const mealDate = new Date(meal.created_at).toISOString().split('T')[0];
+              uniqueDays.add(mealDate);
+            });
+            const daysWithMeals = uniqueDays.size;
+            
+            if (daysWithMeals > 0) {
+              week.calories = Math.round(week.calories / daysWithMeals);
+              week.protein = Math.round(week.protein / daysWithMeals);
+              week.carbs = Math.round(week.carbs / daysWithMeals);
+              week.fats = Math.round(week.fats / daysWithMeals);
+            }
           }
         });
 
@@ -490,14 +510,20 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                           <div>
                             <div className="font-semibold">{day.displayDate}</div>
                             <div className="text-sm text-muted-foreground">
-                              {day.meals.length} {day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}
+                              {timeRange === 'month' 
+                                ? `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'} • Ø pro Tag`
+                                : `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}`
+                              }
                             </div>
                           </div>
                         </div>
                         
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <div className="font-bold text-lg">{day.calories}</div>
+                            <div className="font-bold text-lg">
+                              {day.calories}
+                              {timeRange === 'month' && <span className="text-xs text-muted-foreground ml-1">Ø</span>}
+                            </div>
                             <div className="text-xs text-muted-foreground">kcal</div>
                           </div>
                           
