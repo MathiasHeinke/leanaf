@@ -905,7 +905,7 @@ const Coach = ({ onClose }: CoachProps) => {
             <div className="h-8 w-8 bg-primary/20 dark:bg-primary/30 rounded-lg flex items-center justify-center">
               <div className="text-lg">📊</div>
             </div>
-            Makronährstoffe Übersicht
+            Makronährstoffe Durchschnitt
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -921,7 +921,7 @@ const Coach = ({ onClose }: CoachProps) => {
               </div>
               <h3 className="font-semibold text-protein mb-2">Protein</h3>
               <div className="text-2xl font-bold text-protein mb-1">{averages.protein}g</div>
-              <div className="text-sm text-muted-foreground">Ziel: {dailyGoals?.protein || 116}g</div>
+              <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.protein || 116}g</div>
               <div className="w-full bg-protein/20 rounded-full h-2 mt-3">
                 <div 
                   className="bg-protein h-2 rounded-full transition-all duration-300"
@@ -941,7 +941,7 @@ const Coach = ({ onClose }: CoachProps) => {
               </div>
               <h3 className="font-semibold text-carbs mb-2">Kohlenhydrate</h3>
               <div className="text-2xl font-bold text-carbs mb-1">{averages.carbs}g</div>
-              <div className="text-sm text-muted-foreground">Ziel: {dailyGoals?.carbs || 99}g</div>
+              <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.carbs || 99}g</div>
               <div className="w-full bg-carbs/20 rounded-full h-2 mt-3">
                 <div 
                   className="bg-carbs h-2 rounded-full transition-all duration-300"
@@ -961,7 +961,7 @@ const Coach = ({ onClose }: CoachProps) => {
               </div>
               <h3 className="font-semibold text-fats mb-2">Fette</h3>
               <div className="text-2xl font-bold text-fats mb-1">{averages.fats}g</div>
-              <div className="text-sm text-muted-foreground">Ziel: {dailyGoals?.fats || 51}g</div>
+              <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.fats || 51}g</div>
               <div className="w-full bg-fats/20 rounded-full h-2 mt-3">
                 <div 
                   className="bg-fats h-2 rounded-full transition-all duration-300"
