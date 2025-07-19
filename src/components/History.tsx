@@ -439,7 +439,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         <Button
           variant={timeRange === 'month' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setTimeRange('month')}
+          onClick={() => {
+            console.log('Clicking 30 Tage button, setting timeRange to month');
+            setTimeRange('month');
+          }}
           className="text-xs"
         >
           30 Tage
@@ -1131,6 +1134,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
   // Effect um Daten zu laden wenn timeRange sich ändert
   useEffect(() => {
+    console.log('useEffect triggered with timeRange:', timeRange);
     if (user) {
       loadHistoryData();
       loadWeightHistory();
