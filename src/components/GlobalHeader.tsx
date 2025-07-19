@@ -108,15 +108,23 @@ export const GlobalHeader = ({
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
-      {/* Header - Kompakt ohne unnötige Wrapper */}
+      {/* Header - Restructured logo with icon on left */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
+          {/* Icon positioned further left */}
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
             <Activity className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            kaloAI
-          </h1>
+          
+          {/* Logo text with subtext */}
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+              kaloAI
+            </h1>
+            <p className="text-sm text-gray-600 -mt-1">
+              let's get lean
+            </p>
+          </div>
         </div>
         
         <div className="flex items-center gap-2">
