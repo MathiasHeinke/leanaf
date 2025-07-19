@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -69,6 +70,11 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isPasswordReset) {
+      handlePasswordReset();
+      return;
+    }
     
     if (!validateForm()) return;
     
@@ -147,6 +153,32 @@ const Auth = () => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError('Bitte geben Sie Ihre E-Mail-Adresse ein');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Passwort-Reset-E-Mail wurde gesendet. Bitte überprüfen Sie Ihr Postfach.');
+      setIsPasswordReset(false);
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      setError('Fehler beim Senden der Reset-E-Mail. Bitte versuchen Sie es erneut.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleAuth = async () => {
     setLoading(true);
     try {
@@ -193,7 +225,7 @@ const Auth = () => {
             {t('app.title')}
           </CardTitle>
           <CardDescription>
-            {isSignUp ? t('auth.signUp') : t('auth.signIn')}
+            {isPasswordReset ? 'Passwort zurücksetzen' : (isSignUp ? t('auth.signUp') : t('auth.signIn'))}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -216,19 +248,21 @@ const Auth = () => {
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t('auth.password')}
-                required
-              />
-            </div>
+            {!isPasswordReset && (
+              <div className="space-y-2">
+                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t('auth.password')}
+                  required
+                />
+              </div>
+            )}
             
-            {isSignUp && (
+            {isSignUp && !isPasswordReset && (
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
                 <Input
@@ -243,7 +277,10 @@ const Auth = () => {
             )}
             
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? t('auth.loading') : (isSignUp ? t('auth.signUp') : t('auth.signIn'))}
+              {loading ? t('auth.loading') : (
+                isPasswordReset ? 'Reset-E-Mail senden' :
+                (isSignUp ? t('auth.signUp') : t('auth.signIn'))
+              )}
             </Button>
           </form>
           
@@ -302,27 +339,48 @@ const Auth = () => {
             </Button>
           </div>
           
-          <div className="mt-4 text-center text-sm">
-            {isSignUp ? (
+          <div className="mt-4 text-center text-sm space-y-2">
+            {isPasswordReset ? (
               <p>
-                {t('auth.haveAccount')}{' '}
                 <button
-                  onClick={() => setIsSignUp(false)}
+                  onClick={() => setIsPasswordReset(false)}
                   className="text-primary hover:underline"
                 >
-                  {t('auth.signInHere')}
+                  Zurück zur Anmeldung
                 </button>
               </p>
+            ) : isSignUp ? (
+              <>
+                <p>
+                  {t('auth.haveAccount')}{' '}
+                  <button
+                    onClick={() => setIsSignUp(false)}
+                    className="text-primary hover:underline"
+                  >
+                    {t('auth.signInHere')}
+                  </button>
+                </p>
+              </>
             ) : (
-              <p>
-                {t('auth.noAccount')}{' '}
-                <button
-                  onClick={() => setIsSignUp(true)}
-                  className="text-primary hover:underline"
-                >
-                  {t('auth.signUpHere')}
-                </button>
-              </p>
+              <>
+                <p>
+                  {t('auth.noAccount')}{' '}
+                  <button
+                    onClick={() => setIsSignUp(true)}
+                    className="text-primary hover:underline"
+                  >
+                    {t('auth.signUpHere')}
+                  </button>
+                </p>
+                <p>
+                  <button
+                    onClick={() => setIsPasswordReset(true)}
+                    className="text-primary hover:underline"
+                  >
+                    Passwort vergessen?
+                  </button>
+                </p>
+              </>
             )}
           </div>
         </CardContent>

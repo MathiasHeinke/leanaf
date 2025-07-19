@@ -461,7 +461,19 @@ const Coach = ({ onClose }: CoachProps) => {
     
     setGreetingLoading(true);
     try {
-      const hour = new Date().getHours();
+      const now = new Date();
+      const hour = now.getHours();
+      const date = now.toLocaleDateString('de-DE', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      const time = now.toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
       let timeOfDay = 'day';
       if (hour < 11) timeOfDay = 'morning';
       else if (hour < 17) timeOfDay = 'noon';
@@ -471,6 +483,8 @@ const Coach = ({ onClose }: CoachProps) => {
         body: {
           timeBasedGreeting: true,
           timeOfDay,
+          currentDate: date,
+          currentTime: time,
           dailyTotals: todaysTotals,
           dailyGoal: dailyGoals.calories,
           userData: { 
