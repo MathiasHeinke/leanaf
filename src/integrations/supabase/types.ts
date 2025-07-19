@@ -175,6 +175,7 @@ export type Database = {
           macro_strategy: string | null
           muscle_maintenance_priority: boolean | null
           preferred_language: string | null
+          preferred_theme: string | null
           start_bmi: number | null
           start_weight: number | null
           subscription_id: string | null
@@ -202,6 +203,7 @@ export type Database = {
           macro_strategy?: string | null
           muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
+          preferred_theme?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
@@ -229,6 +231,7 @@ export type Database = {
           macro_strategy?: string | null
           muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
+          preferred_theme?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
