@@ -36,6 +36,8 @@ const getMealTypeDisplay = (mealType?: string) => {
 
 export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }: MealListProps) => {
   const [editingField, setEditingField] = useState<{mealId: string, field: string} | null>(null);
+  const [editingAllFields, setEditingAllFields] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{[key: string]: string}>({});
   const [editValue, setEditValue] = useState<string>('');
   if (dailyMeals.length === 0) {
     return (
@@ -49,7 +51,44 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
     );
   }
   
+  const startEditingAll = (meal: MealData) => {
+    setEditingAllFields(meal.id);
+    setEditValues({
+      text: meal.text,
+      meal_type: meal.meal_type || 'other',
+      calories: meal.calories.toString(),
+      protein: meal.protein.toString(),
+      carbs: meal.carbs.toString(),
+      fats: meal.fats.toString()
+    });
+    // Clear single field editing
+    setEditingField(null);
+  };
+
+  const saveAllEdits = (mealId: string) => {
+    const updates: Partial<MealData> = {
+      text: editValues.text,
+      meal_type: editValues.meal_type,
+      calories: parseFloat(editValues.calories) || 0,
+      protein: parseFloat(editValues.protein) || 0,
+      carbs: parseFloat(editValues.carbs) || 0,
+      fats: parseFloat(editValues.fats) || 0
+    };
+    
+    onUpdateMeal(mealId, updates);
+    setEditingAllFields(null);
+    setEditValues({});
+  };
+
+  const cancelAllEdits = () => {
+    setEditingAllFields(null);
+    setEditValues({});
+  };
+
   const startEditing = (mealId: string, field: string, currentValue: string | number) => {
+    // Don't allow single field editing if all fields are being edited
+    if (editingAllFields === mealId) return;
+    
     setEditingField({ mealId, field });
     setEditValue(currentValue.toString());
   };
@@ -75,6 +114,10 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
   const isEditing = (mealId: string, field: string) => {
     return editingField?.mealId === mealId && editingField?.field === field;
   };
+
+  const isEditingAll = (mealId: string) => {
+    return editingAllFields === mealId;
+  };
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-lg mb-3">Heutige Mahlzeiten</h3>
@@ -86,7 +129,19 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   {/* Editable Meal Type */}
-                  {isEditing(meal.id, 'meal_type') ? (
+                  {isEditingAll(meal.id) ? (
+                    <Select value={editValues.meal_type} onValueChange={(value) => setEditValues(prev => ({...prev, meal_type: value}))}>
+                      <SelectTrigger className="w-32 h-7">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="breakfast">Frühstück</SelectItem>
+                        <SelectItem value="lunch">Mittagessen</SelectItem>
+                        <SelectItem value="dinner">Abendessen</SelectItem>
+                        <SelectItem value="snack">Snack</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : isEditing(meal.id, 'meal_type') ? (
                     <div className="flex items-center gap-1">
                       <Select value={editValue} onValueChange={setEditValue}>
                         <SelectTrigger className="w-32 h-7">
@@ -125,7 +180,13 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                 </div>
                 
                 {/* Editable Meal Text */}
-                {isEditing(meal.id, 'text') ? (
+                {isEditingAll(meal.id) ? (
+                  <Input 
+                    value={editValues.text} 
+                    onChange={(e) => setEditValues(prev => ({...prev, text: e.target.value}))}
+                    className="text-sm font-medium mb-2"
+                  />
+                ) : isEditing(meal.id, 'text') ? (
                   <div className="flex items-center gap-1 mb-2">
                     <Input 
                       value={editValue} 
@@ -154,22 +215,45 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                 )}
               </div>
               <div className="flex gap-1 ml-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => onEditMeal(meal)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  onClick={() => onDeleteMeal(meal.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {isEditingAll(meal.id) ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                      onClick={() => saveAllEdits(meal.id)}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                      onClick={cancelAllEdits}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => startEditingAll(meal)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      onClick={() => onDeleteMeal(meal.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             
@@ -177,7 +261,16 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
             <div className="grid grid-cols-4 gap-2 text-xs">
               {/* Calories */}
               <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
-                {isEditing(meal.id, 'calories') ? (
+                {isEditingAll(meal.id) ? (
+                  <div className="space-y-1">
+                    <Input 
+                      value={editValues.calories} 
+                      onChange={(e) => setEditValues(prev => ({...prev, calories: e.target.value}))}
+                      className="h-6 text-xs text-center"
+                    />
+                    <div className="text-orange-500 dark:text-orange-300">kcal</div>
+                  </div>
+                ) : isEditing(meal.id, 'calories') ? (
                   <div className="space-y-1">
                     <Input 
                       value={editValue} 
@@ -213,7 +306,16 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
               
               {/* Protein */}
               <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                {isEditing(meal.id, 'protein') ? (
+                {isEditingAll(meal.id) ? (
+                  <div className="space-y-1">
+                    <Input 
+                      value={editValues.protein} 
+                      onChange={(e) => setEditValues(prev => ({...prev, protein: e.target.value}))}
+                      className="h-6 text-xs text-center"
+                    />
+                    <div className="text-blue-500 dark:text-blue-300">Protein</div>
+                  </div>
+                ) : isEditing(meal.id, 'protein') ? (
                   <div className="space-y-1">
                     <Input 
                       value={editValue} 
@@ -249,7 +351,16 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
               
               {/* Carbs */}
               <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
-                {isEditing(meal.id, 'carbs') ? (
+                {isEditingAll(meal.id) ? (
+                  <div className="space-y-1">
+                    <Input 
+                      value={editValues.carbs} 
+                      onChange={(e) => setEditValues(prev => ({...prev, carbs: e.target.value}))}
+                      className="h-6 text-xs text-center"
+                    />
+                    <div className="text-green-500 dark:text-green-300">Carbs</div>
+                  </div>
+                ) : isEditing(meal.id, 'carbs') ? (
                   <div className="space-y-1">
                     <Input 
                       value={editValue} 
@@ -285,7 +396,16 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
               
               {/* Fats */}
               <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-                {isEditing(meal.id, 'fats') ? (
+                {isEditingAll(meal.id) ? (
+                  <div className="space-y-1">
+                    <Input 
+                      value={editValues.fats} 
+                      onChange={(e) => setEditValues(prev => ({...prev, fats: e.target.value}))}
+                      className="h-6 text-xs text-center"
+                    />
+                    <div className="text-purple-500 dark:text-purple-300">Fette</div>
+                  </div>
+                ) : isEditing(meal.id, 'fats') ? (
                   <div className="space-y-1">
                     <Input 
                       value={editValue} 
