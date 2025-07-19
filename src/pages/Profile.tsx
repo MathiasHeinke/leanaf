@@ -985,8 +985,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 
                 if (timeDiff <= 0) {
                   return (
-                    <div className="text-center p-4 bg-amber-50 rounded-lg">
-                      <span className="text-amber-600 font-medium">Zieldatum ist bereits erreicht oder überschritten</span>
+                    <div className="text-center p-4 glass-card border border-amber-200 dark:border-amber-700/30">
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">Zieldatum ist bereits erreicht oder überschritten</span>
                     </div>
                   );
                 }
@@ -1012,16 +1012,20 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       )}
                     </div>
                     
-                    <div className={`p-3 rounded-lg text-center ${isHealthy ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                      {isHealthy 
-                        ? '✓ Realistisches und gesundes Ziel' 
-                        : '⚠ Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche'
-                      }
+                    <div className={`p-3 glass-card text-center border ${isHealthy ? 'border-green-200 dark:border-green-700/30' : 'border-red-200 dark:border-red-700/30'}`}>
+                      <span className={`font-medium ${isHealthy ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        {isHealthy 
+                          ? '✓ Realistisches und gesundes Ziel' 
+                          : '⚠ Sehr ambitioniertes Ziel - empfohlen: max. 1kg/Woche'
+                        }
+                      </span>
                     </div>
                     
                     {autoCalculated && (
-                      <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg text-center">
-                        💡 Die Werte wurden automatisch basierend auf deinem Ziel berechnet
+                      <div className="glass-card text-center border border-blue-200 dark:border-blue-700/30">
+                        <span className="text-blue-600 dark:text-blue-400 font-medium">
+                          💡 Die Werte wurden automatisch basierend auf deinem Ziel berechnet
+                        </span>
                       </div>
                     )}
                   </div>
