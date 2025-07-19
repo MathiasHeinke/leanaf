@@ -170,8 +170,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       console.log('timeRange:', timeRange, 'mealsData length:', mealsData?.length);
       
       if (timeRange === 'month') {
-        // Für 30-Tage-Ansicht: Gruppiere nach Wochen
         console.log('Using weekly grouping for month view');
+        // Für 30-Tage-Ansicht: Gruppiere nach Wochen
         const weeklyData = new Map<string, DailyData>();
         
         // Initialize weeks for the last 4-5 weeks
