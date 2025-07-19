@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       cleanupAuthState();
       await supabase.auth.signOut({ scope: 'global' });
-      window.location.href = '/auth';
+      window.location.replace('/auth');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Redirect authenticated users to main page
         if (event === 'SIGNED_IN' && session?.user) {
-          window.location.href = '/';
+          window.location.replace('/');
         }
       }
     );

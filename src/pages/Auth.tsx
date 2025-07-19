@@ -123,7 +123,7 @@ const Auth = () => {
             
             if (data.user) {
               toast.success('Erfolgreich angemeldet!');
-              window.location.href = '/';
+              window.location.replace('/');
             }
             break;
           }

@@ -66,7 +66,7 @@ export const MealConfirmationDialog = ({
           .from('profiles')
           .select('coach_personality')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         if (error) {
           console.error('Error fetching coach personality:', error);
