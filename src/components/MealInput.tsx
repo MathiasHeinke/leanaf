@@ -73,8 +73,8 @@ export const MealInput = ({
           </div>
         )}
         
-        {/* Main Input Container - Optimized Glass Design with Better Contrast */}
-        <div className="relative bg-card/90 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/95 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card transition-all duration-300 group">
+        {/* Main Input Container - 70% Transparent Glass Design */}
+        <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group">
           {/* Text Input */}
           <div className="relative">
             <Textarea

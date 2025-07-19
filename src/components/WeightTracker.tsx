@@ -316,14 +316,14 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
                     </div>
                     <div className="text-xs text-muted-foreground">kg verbleibend</div>
                   </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-lg font-bold text-secondary mb-1">
-                      {Math.abs(prognosis.dailyCalorieBalance)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      kcal {prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
-                    </div>
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-lg font-bold text-secondary mb-1">
+                    {prognosis.dailyCalorieBalance > 0 ? '+' : ''}{Math.round(prognosis.dailyCalorieBalance)}
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    kcal {prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
+                  </div>
+                </div>
                 </div>
               </div>
             )}
