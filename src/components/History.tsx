@@ -503,54 +503,54 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                         className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors duration-200"
                         onClick={() => toggleExpanded(day.date)}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                             <Calendar className="h-4 w-4 text-primary" />
                           </div>
-                          <div>
-                            <div className="font-semibold">{day.displayDate}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-base">{day.displayDate}</div>
                             <div className="text-sm text-muted-foreground">
                               {timeRange === 'month' 
-                                ? `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'} • Ø pro Tag`
+                                ? `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'} • Wochendurchschnitt`
                                 : `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}`
                               }
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4 shrink-0">
                           <div className="text-right">
-                            <div className="font-bold text-lg">
-                              {day.calories}
-                              {timeRange === 'month' && <span className="text-xs text-muted-foreground ml-1">Ø</span>}
+                            <div className="flex items-baseline gap-1">
+                              <span className="font-bold text-xl">{day.calories}</span>
+                              {timeRange === 'month' && <span className="text-xs text-muted-foreground">Ø</span>}
                             </div>
                             <div className="text-xs text-muted-foreground">kcal</div>
                           </div>
                           
-                          <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
                             {(() => {
                               const goalStatus = getGoalStatus(day.calories, dailyGoal.calories, userGoal);
                               return (
                                 <Badge 
                                   variant={goalStatus.status === 'success' ? 'default' : 
                                           goalStatus.status === 'warning' ? 'secondary' : 'destructive'} 
-                                  className="text-xs"
+                                  className="text-xs px-2 py-1"
                                 >
-                                  {goalStatus.status === 'success' ? '🎯 Ziel erreicht' :
-                                   goalStatus.status === 'warning' ? '⚡ Nahe Ziel' :
-                                   userGoal === 'lose' ? '⚠️ Über Ziel' :
-                                   userGoal === 'gain' ? '⚠️ Zu wenig' : '⚠️ Nicht optimal'}
+                                  {goalStatus.status === 'success' ? '✓ Ziel erreicht' :
+                                   goalStatus.status === 'warning' ? '~ Nahe Ziel' :
+                                   userGoal === 'lose' ? '! Über Ziel' :
+                                   userGoal === 'gain' ? '! Zu wenig' : '! Abweichung'}
                                 </Badge>
                               );
                             })()}
-                          </div>
-                          
-                          <div className="transition-transform duration-200">
-                            {expandedDays.has(day.date) ? (
-                              <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                            )}
+                            
+                            <div className="transition-transform duration-200">
+                              {expandedDays.has(day.date) ? (
+                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
