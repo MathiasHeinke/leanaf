@@ -5,6 +5,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
+import { OptimizedGreeting } from "@/components/OptimizedGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -180,6 +181,9 @@ const Index = () => {
               currentWeight={userProfile?.weight}
               onWeightAdded={handleWeightAdded}
             />
+
+            {/* Optimized Greeting - after weight input */}
+            <OptimizedGreeting userProfile={userProfile} />
           </div>
 
           <div className="md:w-2/3 mt-6 md:mt-0">
