@@ -691,8 +691,8 @@ const Coach = ({ onClose }: CoachProps) => {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold mb-4">Personalisierte Rezept-Empfehlungen</h3>
                     <div className="grid gap-4">
-                      {mealSuggestions.slice(0, 3).map((meal, index) => (
-                        <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                       {mealSuggestions.slice(0, 3).map((meal, index) => (
+                         <div key={index} className="glass-card p-4 hover:shadow-md transition-shadow">{" "}
                           <div className="flex justify-between items-start mb-3">
                             <h4 className="font-medium text-lg">{meal.name}</h4>
                             <Badge variant="outline">{meal.mealType}</Badge>
