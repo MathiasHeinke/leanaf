@@ -73,15 +73,15 @@ export const MealInput = ({
           </div>
         )}
         
-        {/* Main Input Container - Enhanced Glass Design */}
-        <div className="relative bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl shadow-2xl hover:bg-card/80 focus-within:border-primary/60 focus-within:shadow-xl focus-within:bg-card/90 transition-all duration-300 group">
+        {/* Main Input Container - Optimized Glass Design with Better Contrast */}
+        <div className="relative bg-card/90 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/95 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card transition-all duration-300 group">
           {/* Text Input */}
           <div className="relative">
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={t('input.placeholder')}
-              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/60 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
+              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -92,15 +92,15 @@ export const MealInput = ({
               }}
             />
             
-            {/* Left Action Button - Enhanced Paperclip */}
+            {/* Left Action Button - Enhanced Paperclip with Better Visibility */}
             <div className="absolute left-4 bottom-2 flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/70 transition-all duration-200 hover:scale-105 ${inputText ? 'opacity-30' : 'opacity-100'}`}
+                className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${inputText ? 'opacity-50' : 'opacity-100'}`}
                 onClick={() => document.getElementById('gallery-upload')?.click()}
               >
-                <Paperclip className="h-5 w-5 text-muted-foreground/70 group-focus-within:text-muted-foreground transition-colors" />
+                <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
               </Button>
               <input
                 id="gallery-upload"
@@ -121,16 +121,16 @@ export const MealInput = ({
               />
             </div>
             
-            {/* Right Action Buttons - Enhanced Voice + Send */}
+            {/* Right Action Buttons - Enhanced Voice + Send with Better Contrast */}
             <div className="absolute right-4 bottom-2 flex items-center gap-2">
-              {/* Voice Recording */}
+              {/* Voice Recording Button */}
               <Button
                 variant="ghost"
                 size="sm"
                 className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 ${
                   isRecording || isProcessing
-                    ? 'bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20' 
-                    : 'hover:bg-muted/70 hover:scale-105'
+                    ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30' 
+                    : 'hover:bg-muted/90 hover:scale-105'
                 }`}
                 onClick={onVoiceRecord}
                 disabled={isAnalyzing || isProcessing}
@@ -140,16 +140,16 @@ export const MealInput = ({
                 ) : isProcessing ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Mic className="h-5 w-5 text-muted-foreground/70 group-focus-within:text-muted-foreground transition-colors" />
+                  <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
                 )}
               </Button>
               
-              {/* Send Button */}
+              {/* Send Button - More Prominent */}
               <Button
                 size="sm"
-                className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 ${
+                className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
                   (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing
-                    ? 'opacity-75 cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted'
+                    ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
                     : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
                 }`}
                 onClick={onSubmitMeal}
