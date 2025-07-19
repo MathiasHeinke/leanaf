@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -312,6 +312,24 @@ const Coach = ({ onClose }: CoachProps) => {
   
   // Use global coach chat hook
   const coachChatHook = useGlobalCoachChat();
+
+  const loadWeightHistoryData = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(30);
+      
+      if (error) throw error;
+      setWeightHistory(data || []);
+    } catch (error) {
+      console.error('Error loading weight history:', error);
+    }
+  }, [user?.id]);
 
   // Debounced data loading to prevent excessive requests
   const debouncedLoadData = useRef(
