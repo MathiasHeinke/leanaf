@@ -118,6 +118,10 @@ const Coach = ({ onClose }: CoachProps) => {
   const [mealSuggestions, setMealSuggestions] = useState<MealSuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   
+  // Saved Recipes State
+  const [savedRecipeNames, setSavedRecipeNames] = useState<Set<string>>(new Set());
+  const [savingRecipes, setSavingRecipes] = useState<Set<string>>(new Set());
+  
   // Trend Analysis State
   const [trendData, setTrendData] = useState<TrendData | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
@@ -145,9 +149,31 @@ const Coach = ({ onClose }: CoachProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
 
+  // Laden der bereits gespeicherten Rezeptnamen
+  const loadSavedRecipeNames = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('saved_items')
+        .select('title')
+        .eq('user_id', user.id)
+        .eq('type', 'recipe');
+      
+      if (error) throw error;
+      
+      const names = new Set(data?.map(item => item.title) || []);
+      setSavedRecipeNames(names);
+    } catch (error: any) {
+      console.error('Error loading saved recipe names:', error);
+    }
+  };
+
   // Speichern-Funktion für Rezepte
   const saveRecipe = async (meal: MealSuggestion) => {
-    if (!user) return;
+    if (!user || savedRecipeNames.has(meal.name)) return;
+    
+    setSavingRecipes(prev => new Set([...prev, meal.name]));
     
     try {
       const { error } = await supabase
@@ -167,9 +193,26 @@ const Coach = ({ onClose }: CoachProps) => {
         });
       
       if (error) throw error;
-      // Kein Toast - User sieht direkt dass gespeichert wurde
+      
+      // Füge zur Liste der gespeicherten Rezepte hinzu
+      setSavedRecipeNames(prev => new Set([...prev, meal.name]));
+      
+      // Kurze Verzögerung für visuelles Feedback
+      setTimeout(() => {
+        setSavingRecipes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(meal.name);
+          return newSet;
+        });
+      }, 2000);
+      
     } catch (error: any) {
       console.error('Error saving recipe:', error);
+      setSavingRecipes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(meal.name);
+        return newSet;
+      });
     }
   };
   
@@ -181,6 +224,7 @@ const Coach = ({ onClose }: CoachProps) => {
       loadDailyGoals();
       loadTodaysMeals();
       loadHistoryData();
+      loadSavedRecipeNames();
     }
   }, [user]);
 
@@ -746,19 +790,33 @@ const Coach = ({ onClose }: CoachProps) => {
                             </div>
                           </div>
                           
-                          <div className="flex gap-2 mb-3">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1 bg-accent/5 hover:bg-accent/10 border-accent/20"
-                              onClick={async () => {
-                                await saveRecipe(meal);
-                              }}
-                            >
-                              <Heart className="h-4 w-4 mr-2" />
-                              Speichern
-                            </Button>
-                          </div>
+                           <div className="flex gap-2 mb-3">
+                             <Button 
+                               variant={savedRecipeNames.has(meal.name) || savingRecipes.has(meal.name) ? "default" : "outline"}
+                               size="sm" 
+                               className={`flex-1 transition-all duration-300 ${
+                                 savedRecipeNames.has(meal.name) 
+                                   ? 'bg-green-500 hover:bg-green-600 text-white border-green-400' 
+                                   : savingRecipes.has(meal.name)
+                                   ? 'bg-green-500 hover:bg-green-600 text-white border-green-400'
+                                   : 'bg-accent/5 hover:bg-accent/10 border-accent/20'
+                               }`}
+                               onClick={async () => {
+                                 if (!savedRecipeNames.has(meal.name)) {
+                                   await saveRecipe(meal);
+                                 }
+                               }}
+                               disabled={savedRecipeNames.has(meal.name)}
+                             >
+                               <Heart className="h-4 w-4 mr-2" />
+                               {savedRecipeNames.has(meal.name) 
+                                 ? 'Gespeichert' 
+                                 : savingRecipes.has(meal.name) 
+                                 ? 'Gespeichert'
+                                 : 'Speichern'
+                               }
+                             </Button>
+                           </div>
                           
                           <Collapsible>
                             <CollapsibleTrigger asChild>
