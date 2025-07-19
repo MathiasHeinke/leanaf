@@ -228,7 +228,16 @@ export const useGlobalMealInput = () => {
     } else {
       setUploadedImages([]);
     }
-    toast.success("Mahlzeit dupliziert - Du kannst sie jetzt anpassen");
+    
+    // Scroll to the meal input at the bottom
+    setTimeout(() => {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
+    
+    toast.success("Mahlzeit dupliziert - Scrollen Sie nach unten zum Bearbeiten");
   };
 
   const resetForm = () => {
