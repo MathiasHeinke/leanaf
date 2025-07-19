@@ -1178,7 +1178,7 @@ const Coach = ({ onClose }: CoachProps) => {
       </Card>
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="space-y-4">
         <Card className="glass-card hover-scale">
           <CardContent className="p-4 text-center">
             <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
@@ -1236,7 +1236,7 @@ const Coach = ({ onClose }: CoachProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-6">
             <div className="relative p-6 bg-gradient-to-br from-blue-500/10 to-blue-500/20 rounded-xl border border-blue-500/20">
               <div className="flex items-center justify-between mb-4">
                 <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
