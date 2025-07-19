@@ -1204,29 +1204,31 @@ const Coach = ({ onClose }: CoachProps) => {
           </Card>
         </div>
         
-        {/* Restliche Kacheln untereinander */}
-        <Card className="glass-card hover-scale">
-          <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Target className="h-6 w-6 text-green-500" />
-            </div>
-            <div className="text-2xl font-bold text-green-500 mb-1">
-              {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
-            </div>
-            <div className="text-xs text-muted-foreground">Zielerreichung</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass-card hover-scale">
-          <CardContent className="p-4 text-center">
-            <div className="h-12 w-12 bg-orange-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Calendar className="h-6 w-6 text-orange-500" />
-            </div>
-            <div className="text-2xl font-bold text-orange-500 mb-1">{todaysTotals.calories}</div>
-            <div className="text-xs text-muted-foreground">kcal</div>
-            <div className="text-xs text-muted-foreground">heute</div>
-          </CardContent>
-        </Card>
+        {/* Zweite 2 Kacheln nebeneinander */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="glass-card hover-scale">
+            <CardContent className="p-4 text-center">
+              <div className="h-12 w-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Target className="h-6 w-6 text-green-500" />
+              </div>
+              <div className="text-2xl font-bold text-green-500 mb-1">
+                {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
+              </div>
+              <div className="text-xs text-muted-foreground">Zielerreichung</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-card hover-scale">
+            <CardContent className="p-4 text-center">
+              <div className="h-12 w-12 bg-orange-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Calendar className="h-6 w-6 text-orange-500" />
+              </div>
+              <div className="text-2xl font-bold text-orange-500 mb-1">{todaysTotals.calories}</div>
+              <div className="text-xs text-muted-foreground">kcal</div>
+              <div className="text-xs text-muted-foreground">heute</div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Makronährstoffe */}
