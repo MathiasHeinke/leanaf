@@ -111,15 +111,11 @@ export const GlobalHeader = ({
       {/* Header - Kompakt ohne unnötige Wrapper */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl overflow-hidden">
-            <img 
-              src="/src/assets/kai-logo.png" 
-              alt="kAI Logo" 
-              className="w-full h-full object-cover"
-            />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
+            <Activity className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            kAI
+            kaloAI
           </h1>
         </div>
         
