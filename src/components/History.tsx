@@ -944,7 +944,12 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => duplicateMeal(meal)}
+                                      onClick={() => {
+                                        console.log('🔄 Duplicate button clicked for meal:', meal);
+                                        // Direct navigation to home with duplicated data
+                                        localStorage.setItem('duplicatedMeal', JSON.stringify(meal));
+                                        window.location.href = '/';
+                                      }}
                                       className="h-8 w-8 p-0 hover:bg-primary/10"
                                       title="Mahlzeit duplizieren"
                                     >

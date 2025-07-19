@@ -220,14 +220,17 @@ export const useGlobalMealInput = () => {
   };
 
   const duplicateMeal = (meal: any) => {
+    console.log('🔄 duplicateMeal called with:', meal);
     setInputText(meal.text);
     setSelectedMealType(meal.meal_type);
     // Note: For duplicated meals, we use the existing image URLs
     if (meal.images && meal.images.length > 0) {
       setUploadedImages(meal.images);
+      console.log('📸 Setting images:', meal.images);
     } else {
       setUploadedImages([]);
     }
+    console.log('✅ Meal duplicated - input text set to:', meal.text);
     
     // Scroll to the meal input at the bottom
     setTimeout(() => {
