@@ -44,6 +44,7 @@ import { toast } from "sonner";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
+import { MealInput } from "@/components/MealInput";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -480,8 +481,23 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     return goalStatus.status === 'success';
   }).length;
 
+  const mealInputHook = useGlobalMealInput();
+
   return (
     <div className="space-y-4 pb-20">
+      {/* Meal Input - show at top of history */}
+      <MealInput 
+        inputText={mealInputHook.inputText}
+        setInputText={mealInputHook.setInputText}
+        onSubmitMeal={mealInputHook.handleSubmitMeal}
+        onPhotoUpload={mealInputHook.handlePhotoUpload}
+        onVoiceRecord={mealInputHook.handleVoiceRecord}
+        isAnalyzing={mealInputHook.isAnalyzing}
+        isRecording={mealInputHook.isRecording}
+        isProcessing={mealInputHook.isProcessing}
+        uploadedImages={mealInputHook.uploadedImages}
+        onRemoveImage={mealInputHook.removeImage}
+      />
       {/* Header Stats */}
       <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="grid grid-cols-2 gap-6">

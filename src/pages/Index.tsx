@@ -5,7 +5,6 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
-import { OptimizedGreeting } from "@/components/OptimizedGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,8 +153,6 @@ const Index = () => {
   return (
     <>
       <div className="space-y-6">
-        {/* Optimized Greeting - only shows when contextually relevant */}
-        <OptimizedGreeting userProfile={userProfile} />
 
         <div className="md:flex md:gap-6">
           <div className="md:w-1/3 space-y-4">
