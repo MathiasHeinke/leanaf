@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
 import { supabase } from "@/integrations/supabase/client";
+import { debounce, clearCache } from "@/utils/supabaseHelpers";
 import { toast } from "sonner";
 import { 
   MessageCircle, 
@@ -160,7 +161,7 @@ const Coach = ({ onClose }: CoachProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  // Laden der bereits gespeicherten Rezeptnamen
+  // Laden der bereits gespeicherten Rezeptnamen - mit traditioneller Supabase Query
   const loadSavedRecipeNames = async () => {
     if (!user) return;
     
@@ -180,7 +181,7 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   };
 
-  // Laden der bereits gespeicherten Tips
+  // Laden der bereits gespeicherten Tips - mit traditioneller Supabase Query
   const loadSavedTips = async () => {
     if (!user) return;
     
@@ -200,30 +201,12 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   };
 
-  // Laden der Gewichtsverlauf
-  const loadWeightHistory = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('weight_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(30);
-      
-      if (error) throw error;
-      
-      const history = data?.map(entry => ({
-        date: entry.date,
-        weight: Number(entry.weight)
-      })) || [];
-      
-      setWeightHistory(history);
-    } catch (error: any) {
-      console.error('Error loading weight history:', error);
-    }
-  };
+  // Cleanup function to clear cache and reset connections on unmount
+  useEffect(() => {
+    return () => {
+      clearCache();
+    };
+  }, []);
 
   // Speichern-Funktion für Rezepte
   const saveRecipe = async (meal: MealSuggestion) => {
@@ -322,16 +305,31 @@ const Coach = ({ onClose }: CoachProps) => {
   // Use global coach chat hook
   const coachChatHook = useGlobalCoachChat();
 
+  // Debounced data loading to prevent excessive requests
+  const debouncedLoadData = useRef(
+    debounce(async (userId: string) => {
+      if (!userId) return;
+      
+      try {
+        await Promise.all([
+          loadDailyGoals(),
+          loadTodaysMeals(),
+          loadHistoryData(),
+          loadSavedRecipeNames(),
+          loadSavedTips(),
+          loadWeightHistoryData()
+        ]);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }, 500)
+  ).current;
+
   useEffect(() => {
-    if (user) {
-      loadDailyGoals();
-      loadTodaysMeals();
-      loadHistoryData();
-      loadSavedRecipeNames();
-      loadSavedTips();
-      loadWeightHistory();
+    if (user?.id) {
+      debouncedLoadData(user.id);
     }
-  }, [user]);
+  }, [user?.id, debouncedLoadData]);
 
   // Calculate trends when data is available
   useEffect(() => {
@@ -339,6 +337,13 @@ const Coach = ({ onClose }: CoachProps) => {
       calculateTrends();
     }
   }, [user, dailyGoals, todaysMeals, historyData]);
+
+  // Cleanup function to clear cache and reset connections on unmount
+  useEffect(() => {
+    return () => {
+      clearCache();
+    };
+  }, []);
 
   useEffect(() => {
     // Initialize speech recognition if available
@@ -389,6 +394,13 @@ const Coach = ({ onClose }: CoachProps) => {
       });
     } catch (error: any) {
       console.error('Error loading daily goals:', error);
+      // Set fallback values on error
+      setDailyGoals({
+        calories: 1323,
+        protein: 116,
+        carbs: 99,
+        fats: 51
+      });
     }
   };
 
@@ -420,6 +432,33 @@ const Coach = ({ onClose }: CoachProps) => {
       setTodaysMeals(meals);
     } catch (error: any) {
       console.error('Error loading today\'s meals:', error);
+      setTodaysMeals([]); // Set empty array on error
+    }
+  };
+
+  // Laden der Gewichtsverlauf
+  const loadWeightHistoryData = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(30);
+      
+      if (error) throw error;
+      
+      const history = data?.map(entry => ({
+        date: entry.date,
+        weight: Number(entry.weight)
+      })) || [];
+      
+      setWeightHistory(history);
+    } catch (error: any) {
+      console.error('Error loading weight history:', error);
+      setWeightHistory([]);
     }
   };
 
