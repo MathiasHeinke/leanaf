@@ -39,7 +39,7 @@ export const MealInput = ({
   
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50">
-      <div className="max-w-3xl mx-auto p-3 pb-10">
+      <div className="max-w-3xl mx-auto p-4">
         {/* Image Thumbnails - Above input */}
         {uploadedImages && uploadedImages.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -74,7 +74,7 @@ export const MealInput = ({
         )}
         
         {/* Main Input Container - Glass Design */}
-        <div className="relative bg-background/70 dark:bg-background/70 backdrop-blur-sm border border-border/30 rounded-2xl shadow-xl hover:bg-background/80 hover:dark:bg-background/80 focus-within:border-primary/50 focus-within:shadow-2xl transition-all duration-300">
+        <div className="relative bg-background/40 dark:bg-background/40 backdrop-blur-sm border border-border/30 rounded-2xl shadow-xl hover:bg-background/70 hover:dark:bg-background/70 focus-within:border-primary/50 focus-within:shadow-2xl transition-all duration-300">
           {/* Text Input - Proper spacing from icon */}
           <div className="relative">
             <Textarea
