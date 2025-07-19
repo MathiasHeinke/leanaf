@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -316,14 +315,22 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
                     </div>
                     <div className="text-xs text-muted-foreground">kg verbleibend</div>
                   </div>
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <div className="text-lg font-bold text-secondary mb-1">
-                    {prognosis.dailyCalorieBalance > 0 ? '+' : ''}{Math.round(prognosis.dailyCalorieBalance)}
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <div className={`text-lg font-bold mb-1 ${
+                      prognosis.dailyCalorieBalance < 0 
+                        ? 'text-green-600 dark:text-green-400' 
+                        : 'text-red-500 dark:text-red-400'
+                    }`}>
+                      {prognosis.dailyCalorieBalance > 0 ? '+' : ''}{Math.round(prognosis.dailyCalorieBalance)}
+                    </div>
+                    <div className={`text-xs ${
+                      prognosis.dailyCalorieBalance < 0 
+                        ? 'text-green-600/80 dark:text-green-400/80' 
+                        : 'text-red-500/80 dark:text-red-400/80'
+                    }`}>
+                      kcal {prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    kcal {prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
-                  </div>
-                </div>
                 </div>
               </div>
             )}
