@@ -1134,59 +1134,59 @@ const Coach = ({ onClose }: CoachProps) => {
                   <div className="space-y-6">
                     <h3 className="text-lg font-semibold">Ernährungs-Trends</h3>
                     
-                    <div className="space-y-6">
-                      <div className="space-y-6">
+                    <div className="space-y-8">
+                      <div className="space-y-8">
                         {/* Wochendurchschnitt */}
-                        <div className="flex items-center gap-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <div className="h-16 w-16 bg-blue-100 dark:bg-blue-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center gap-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <div className="h-20 w-20 bg-blue-100 dark:bg-blue-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Calendar className="h-10 w-10 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{trendData.weeklyAverage} kcal</div>
-                            <div className="text-sm text-muted-foreground font-medium">Wochendurchschnitt</div>
-                            <div className="text-xs text-muted-foreground">Durchschnitt der letzten 7 Tage</div>
+                            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-3">{trendData.weeklyAverage} kcal</div>
+                            <div className="text-base text-muted-foreground font-medium mb-1">Wochendurchschnitt</div>
+                            <div className="text-sm text-muted-foreground">Durchschnitt der letzten 7 Tage</div>
                           </div>
-                          <div className="flex items-center gap-4 flex-shrink-0">
-                            <div className={`h-14 w-14 rounded-xl flex items-center justify-center ${
+                          <div className="flex items-center gap-6 flex-shrink-0">
+                            <div className={`h-16 w-16 rounded-xl flex items-center justify-center ${
                               trendData.trend === 'up' ? 'bg-green-100 dark:bg-green-900/20' : 
                               trendData.trend === 'down' ? 'bg-red-100 dark:bg-red-900/20' : 'bg-gray-100 dark:bg-gray-800'
                             }`}>
                               {trendData.trend === 'up' ? (
-                                <TrendingUp className="h-7 w-7 text-green-600 dark:text-green-400" />
+                                <TrendingUp className="h-8 w-8 text-green-600 dark:text-green-400" />
                               ) : trendData.trend === 'down' ? (
-                                <TrendingDown className="h-7 w-7 text-red-600 dark:text-red-400" />
+                                <TrendingDown className="h-8 w-8 text-red-600 dark:text-red-400" />
                               ) : (
-                                <Target className="h-7 w-7 text-gray-600 dark:text-gray-400" />
+                                <Target className="h-8 w-8 text-gray-600 dark:text-gray-400" />
                               )}
                             </div>
                             <div className="text-right">
-                              <div className="text-sm font-medium">Trend: {trendData.trend === 'up' ? 'Steigend' : trendData.trend === 'down' ? 'Fallend' : 'Stabil'}</div>
-                              <div className="text-xs text-muted-foreground">vs. 30-Tage-Schnitt</div>
+                              <div className="text-base font-medium mb-1">Trend: {trendData.trend === 'up' ? 'Steigend' : trendData.trend === 'down' ? 'Fallend' : 'Stabil'}</div>
+                              <div className="text-sm text-muted-foreground">vs. 30-Tage-Schnitt</div>
                             </div>
                           </div>
                         </div>
                         
                         {/* Monatsdurchschnitt */}
-                        <div className="flex items-center gap-6 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                          <div className="h-16 w-16 bg-purple-100 dark:bg-purple-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                        <div className="flex items-center gap-8 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                          <div className="h-20 w-20 bg-purple-100 dark:bg-purple-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <BarChart3 className="h-10 w-10 text-purple-600 dark:text-purple-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">{trendData.monthlyAverage} kcal</div>
-                            <div className="text-sm text-muted-foreground font-medium">Monatsdurchschnitt</div>
-                            <div className="text-xs text-muted-foreground">Durchschnitt der letzten 30 Tage</div>
+                            <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-3">{trendData.monthlyAverage} kcal</div>
+                            <div className="text-base text-muted-foreground font-medium mb-1">Monatsdurchschnitt</div>
+                            <div className="text-sm text-muted-foreground">Durchschnitt der letzten 30 Tage</div>
                           </div>
                         </div>
 
                         {/* Zielerreichung */}
-                        <div className="flex items-center gap-6 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                          <div className="h-16 w-16 bg-orange-100 dark:bg-orange-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Award className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+                        <div className="flex items-center gap-8 p-6 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                          <div className="h-20 w-20 bg-orange-100 dark:bg-orange-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Award className="h-10 w-10 text-orange-600 dark:text-orange-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-2">{trendData.weeklyGoalReach}%</div>
-                            <div className="text-sm text-muted-foreground font-medium">Zielerreichung</div>
-                            <div className="text-xs text-muted-foreground">Erfolgsquote der letzten 7 Tage</div>
+                            <div className="text-4xl font-bold text-orange-600 dark:text-orange-400 mb-3">{trendData.weeklyGoalReach}%</div>
+                            <div className="text-base text-muted-foreground font-medium mb-1">Zielerreichung</div>
+                            <div className="text-sm text-muted-foreground">Erfolgsquote der letzten 7 Tage</div>
                           </div>
                         </div>
                       </div>
