@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SavedItems } from "@/components/SavedItems";
 import { FloatingCoachChat } from "@/components/FloatingCoachChat";
 import { WeightTracker } from "@/components/WeightTracker";
+import { SmartInsights } from "@/components/SmartInsights";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
@@ -40,7 +41,8 @@ import {
   TrendingDown,
   Award,
   BarChart3,
-  Scale
+  Scale,
+  Activity
 } from "lucide-react";
 import { UserGoal } from "@/utils/goalBasedMessaging";
 
@@ -884,6 +886,15 @@ const Coach = ({ onClose }: CoachProps) => {
         </Card>
       )}
 
+      {/* Smart Insights - replaces the old trends section */}
+      <SmartInsights 
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        historyData={historyData}
+        trendData={trendData}
+      />
+
       {/* Enhanced AI Coach Tabs */}
       <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
         <CardHeader>
@@ -908,9 +919,9 @@ const Coach = ({ onClose }: CoachProps) => {
                 <ChefHat className="h-4 w-4" />
                 Rezepte
               </TabsTrigger>
-              <TabsTrigger value="trends" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Trends
+              <TabsTrigger value="weight" className="flex items-center gap-2">
+                <Scale className="h-4 w-4" />
+                Gewicht
               </TabsTrigger>
               <TabsTrigger value="saved" className="flex items-center gap-2">
                 <Heart className="h-4 w-4" />
@@ -1122,104 +1133,12 @@ const Coach = ({ onClose }: CoachProps) => {
               </div>
             </TabsContent>
 
-            {/* Enhanced Trends Tab with Weight Tracker */}
-            <TabsContent value="trends" className="space-y-6">
+            {/* Weight Management Tab - replaces old trends */}
+            <TabsContent value="weight" className="space-y-4">
               <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                {trendsLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-3">Trends werden berechnet...</span>
-                  </div>
-                ) : trendData ? (
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-semibold">Ernährungs-Trends</h3>
-                    
-                    <div className="space-y-8">
-                      <div className="space-y-8">
-                        {/* Wochendurchschnitt */}
-                        <div className="flex items-center gap-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <div className="h-20 w-20 bg-blue-100 dark:bg-blue-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Calendar className="h-10 w-10 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-3">{trendData.weeklyAverage} kcal</div>
-                            <div className="text-base text-muted-foreground font-medium mb-1">Wochendurchschnitt</div>
-                            <div className="text-sm text-muted-foreground">Durchschnitt der letzten 7 Tage</div>
-                          </div>
-                          <div className="flex items-center gap-6 flex-shrink-0">
-                            <div className={`h-16 w-16 rounded-xl flex items-center justify-center ${
-                              trendData.trend === 'up' ? 'bg-green-100 dark:bg-green-900/20' : 
-                              trendData.trend === 'down' ? 'bg-red-100 dark:bg-red-900/20' : 'bg-gray-100 dark:bg-gray-800'
-                            }`}>
-                              {trendData.trend === 'up' ? (
-                                <TrendingUp className="h-8 w-8 text-green-600 dark:text-green-400" />
-                              ) : trendData.trend === 'down' ? (
-                                <TrendingDown className="h-8 w-8 text-red-600 dark:text-red-400" />
-                              ) : (
-                                <Target className="h-8 w-8 text-gray-600 dark:text-gray-400" />
-                              )}
-                            </div>
-                            <div className="text-right">
-                              <div className="text-base font-medium mb-1">Trend: {trendData.trend === 'up' ? 'Steigend' : trendData.trend === 'down' ? 'Fallend' : 'Stabil'}</div>
-                              <div className="text-sm text-muted-foreground">vs. 30-Tage-Schnitt</div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Monatsdurchschnitt */}
-                        <div className="flex items-center gap-8 p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                          <div className="h-20 w-20 bg-purple-100 dark:bg-purple-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <BarChart3 className="h-10 w-10 text-purple-600 dark:text-purple-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-4xl font-bold text-purple-600 dark:text-purple-400 mb-3">{trendData.monthlyAverage} kcal</div>
-                            <div className="text-base text-muted-foreground font-medium mb-1">Monatsdurchschnitt</div>
-                            <div className="text-sm text-muted-foreground">Durchschnitt der letzten 30 Tage</div>
-                          </div>
-                        </div>
-
-                        {/* Zielerreichung */}
-                        <div className="flex items-center gap-8 p-6 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                          <div className="h-20 w-20 bg-orange-100 dark:bg-orange-800/50 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Award className="h-10 w-10 text-orange-600 dark:text-orange-400" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-4xl font-bold text-orange-600 dark:text-orange-400 mb-3">{trendData.weeklyGoalReach}%</div>
-                            <div className="text-base text-muted-foreground font-medium mb-1">Zielerreichung</div>
-                            <div className="text-sm text-muted-foreground">Erfolgsquote der letzten 7 Tage</div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-muted/50 rounded-lg p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <Lightbulb className="h-6 w-6 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold mb-3 text-foreground text-lg">Empfehlung</h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed">{trendData.improvement}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center p-8">
-                    <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Mindestens 7 Tage Daten für Trend-Analyse benötigt</p>
-                    <Button onClick={calculateTrends} className="mt-4" disabled={historyData.length < 7}>
-                      Trends berechnen
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Redesigned Weight Tracker Integration */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3 mb-6">
                   <div className="h-10 w-10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center">
-                    <Scale className="h-5 w-5 text-emerald-600" />
+                    <Scale className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Gewichts-Management</h3>
@@ -1245,130 +1164,98 @@ const Coach = ({ onClose }: CoachProps) => {
         </CardContent>
       </Card>
 
-      {/* Quick Stats Grid */}
-      <div className="space-y-4">
-        {/* Erste 2 Kacheln nebeneinander */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="glass-card hover-scale">
-            <CardContent className="p-4 text-center">
-              <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Target className="h-6 w-6 text-blue-500" />
-              </div>
-              <div className="text-2xl font-bold text-blue-500 mb-1">{dailyGoals?.calories || 1323}</div>
-              <div className="text-xs text-muted-foreground">kcal</div>
-              <div className="text-xs text-muted-foreground">Tagesziel</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card hover-scale">
-            <CardContent className="p-4 text-center">
-              <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <TrendingUp className="h-6 w-6 text-blue-500" />
-              </div>
-              <div className="text-2xl font-bold text-blue-500 mb-1">{averages.calories}</div>
-              <div className="text-xs text-muted-foreground">kcal</div>
-              <div className="text-xs text-muted-foreground">Durchschnitt</div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Simplified Stats - only key metrics */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="glass-card hover-scale">
+          <CardContent className="p-4 text-center">
+            <div className="h-12 w-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Target className="h-6 w-6 text-blue-500" />
+            </div>
+            <div className="text-2xl font-bold text-blue-500 mb-1">{todaysTotals.calories}</div>
+            <div className="text-xs text-muted-foreground">kcal heute</div>
+            <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.calories || 1323}</div>
+          </CardContent>
+        </Card>
         
-        {/* Zweite 2 Kacheln nebeneinander */}
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="glass-card hover-scale">
-            <CardContent className="p-4 text-center">
-              <div className="h-12 w-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Target className="h-6 w-6 text-green-500" />
-              </div>
-              <div className="text-2xl font-bold text-green-500 mb-1">
-                {averages.calories > 0 ? Math.round((averages.calories / (dailyGoals?.calories || 1323)) * 100) : 0}%
-              </div>
-              <div className="text-xs text-muted-foreground">Zielerreichung</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card hover-scale">
-            <CardContent className="p-4 text-center">
-              <div className="h-12 w-12 bg-orange-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Calendar className="h-6 w-6 text-orange-500" />
-              </div>
-              <div className="text-2xl font-bold text-orange-500 mb-1">{todaysTotals.calories}</div>
-              <div className="text-xs text-muted-foreground">kcal</div>
-              <div className="text-xs text-muted-foreground">heute</div>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="glass-card hover-scale">
+          <CardContent className="p-4 text-center">
+            <div className="h-12 w-12 bg-green-500/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+              <Activity className="h-6 w-6 text-green-500" />
+            </div>
+            <div className="text-2xl font-bold text-green-500 mb-1">{todaysTotals.protein}g</div>
+            <div className="text-xs text-muted-foreground">Protein heute</div>
+            <div className="text-xs text-muted-foreground">Ziel: {dailyGoals?.protein || 116}g</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Makronährstoffe */}
+      {/* Makronährstoffe Overview */}
       <Card className="glass-card shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
               <BarChart3 className="h-4 w-4 text-primary" />
             </div>
-            Makronährstoffe Durchschnitt
+            Makronährstoffe Übersicht
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            <div className="relative p-6 bg-gradient-to-br from-blue-500/10 to-blue-500/20 rounded-xl border border-blue-500/20">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-10 w-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+          <div className="space-y-4">
+            {/* Protein */}
+            <div className="relative p-4 bg-gradient-to-br from-blue-500/10 to-blue-500/20 rounded-xl border border-blue-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <div className="text-lg">🥩</div>
+                  <span className="font-semibold text-blue-500">Protein</span>
                 </div>
                 <Badge variant="outline" className="border-blue-500 text-blue-500 bg-blue-500/10">
                   {averages.protein > 0 ? Math.round((averages.protein / (dailyGoals?.protein || 116)) * 100) : 0}%
                 </Badge>
               </div>
-              <h3 className="font-semibold text-blue-500 mb-2">Protein</h3>
-              <div className="text-2xl font-bold text-blue-500 mb-1">{averages.protein}g</div>
-              <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.protein || 116}g</div>
-              <div className="w-full bg-blue-500/20 rounded-full h-2 mt-3">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, (averages.protein / (dailyGoals?.protein || 116)) * 100)}%` }}
-                ></div>
-              </div>
+              <div className="text-xl font-bold text-blue-500 mb-1">{averages.protein}g</div>
+              <div className="text-sm text-muted-foreground mb-3">Ø der letzten Tage • Ziel: {dailyGoals?.protein || 116}g</div>
+              <Progress 
+                value={Math.min(100, (averages.protein / (dailyGoals?.protein || 116)) * 100)}
+                className="h-2 bg-blue-500/20"
+              />
             </div>
             
-            <div className="relative p-6 bg-gradient-to-br from-orange-500/10 to-orange-500/20 rounded-xl border border-orange-500/20">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-10 w-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+            {/* Carbs */}
+            <div className="relative p-4 bg-gradient-to-br from-orange-500/10 to-orange-500/20 rounded-xl border border-orange-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <div className="text-lg">🍞</div>
+                  <span className="font-semibold text-orange-500">Kohlenhydrate</span>
                 </div>
                 <Badge variant="outline" className="border-orange-500 text-orange-500 bg-orange-500/10">
                   {averages.carbs > 0 ? Math.round((averages.carbs / (dailyGoals?.carbs || 99)) * 100) : 0}%
                 </Badge>
               </div>
-              <h3 className="font-semibold text-orange-500 mb-2">Kohlenhydrate</h3>
-              <div className="text-2xl font-bold text-orange-500 mb-1">{averages.carbs}g</div>
-              <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.carbs || 99}g</div>
-              <div className="w-full bg-orange-500/20 rounded-full h-2 mt-3">
-                <div 
-                  className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, (averages.carbs / (dailyGoals?.carbs || 99)) * 100)}%` }}
-                ></div>
-              </div>
+              <div className="text-xl font-bold text-orange-500 mb-1">{averages.carbs}g</div>
+              <div className="text-sm text-muted-foreground mb-3">Ø der letzten Tage • Ziel: {dailyGoals?.carbs || 99}g</div>
+              <Progress 
+                value={Math.min(100, (averages.carbs / (dailyGoals?.carbs || 99)) * 100)}
+                className="h-2 bg-orange-500/20"
+              />
             </div>
             
-            <div className="relative p-6 bg-gradient-to-br from-purple-500/10 to-purple-500/20 rounded-xl border border-purple-500/20">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-10 w-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+            {/* Fats */}
+            <div className="relative p-4 bg-gradient-to-br from-purple-500/10 to-purple-500/20 rounded-xl border border-purple-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <div className="text-lg">🥑</div>
+                  <span className="font-semibold text-purple-500">Fette</span>
                 </div>
                 <Badge variant="outline" className="border-purple-500 text-purple-500 bg-purple-500/10">
                   {averages.fats > 0 ? Math.round((averages.fats / (dailyGoals?.fats || 51)) * 100) : 0}%
                 </Badge>
               </div>
-              <h3 className="font-semibold text-purple-500 mb-2">Fette</h3>
-              <div className="text-2xl font-bold text-purple-500 mb-1">{averages.fats}g</div>
-              <div className="text-sm text-muted-foreground">Ø der letzten Tage • Ziel: {dailyGoals?.fats || 51}g</div>
-              <div className="w-full bg-purple-500/20 rounded-full h-2 mt-3">
-                <div 
-                  className="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, (averages.fats / (dailyGoals?.fats || 51)) * 100)}%` }}
-                ></div>
-              </div>
+              <div className="text-xl font-bold text-purple-500 mb-1">{averages.fats}g</div>
+              <div className="text-sm text-muted-foreground mb-3">Ø der letzten Tage • Ziel: {dailyGoals?.fats || 51}g</div>
+              <Progress 
+                value={Math.min(100, (averages.fats / (dailyGoals?.fats || 51)) * 100)}
+                className="h-2 bg-purple-500/20"
+              />
             </div>
           </div>
         </CardContent>
