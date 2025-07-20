@@ -1,50 +1,19 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
-import { SavedItems } from "@/components/SavedItems";
 import { FloatingCoachChat } from "@/components/FloatingCoachChat";
-import { WeightTracker } from "@/components/WeightTracker";
 import { SmartInsights } from "@/components/SmartInsights";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
 import { supabase } from "@/integrations/supabase/client";
 import { debounce, clearCache } from "@/utils/supabaseHelpers";
-import { toast } from "sonner";
 import { 
-  MessageCircle, 
-  ChefHat, 
-  Lightbulb, 
-  Phone,
   Loader2,
-  History as HistoryIcon,
-  Calendar,
-  Target,
-  ChevronDown,
-  TrendingUp,
-  Mic,
-  MicOff,
-  Send,
-  AlertTriangle,
-  CheckCircle,
-  Info,
-  Zap,
   Brain,
-  Heart,
-  Clock,
-  TrendingDown,
-  Award,
-  BarChart3,
-  Scale,
-  Activity
+  Clock
 } from "lucide-react";
-import { UserGoal } from "@/utils/goalBasedMessaging";
 
 interface CoachProps {
   onClose?: () => void;
@@ -81,29 +50,10 @@ interface HistoryEntry {
   };
 }
 
-interface CoachMessage {
-  type: 'motivation' | 'tip' | 'warning' | 'analysis';
-  title: string;
-  message: string;
-  priority: 'high' | 'medium' | 'low';
-}
-
-interface AIAnalysis {
-  messages: CoachMessage[];
-  dailyScore: number;
-  summary: string;
-}
-
-interface MealSuggestion {
-  name: string;
-  description: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-  ingredients: string[];
-  preparation: string;
-  mealType: string;
+interface WeightEntry {
+  id: string;
+  weight: number;
+  date: string;
 }
 
 interface TrendData {
@@ -114,29 +64,7 @@ interface TrendData {
   weeklyGoalReach: number;
 }
 
-interface WeightEntry {
-  id: string;
-  weight: number;
-  date: string;
-}
-
 const Coach = ({ onClose }: CoachProps) => {
-  // AI Analysis State
-  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  
-  // Meal Suggestions State
-  const [mealSuggestions, setMealSuggestions] = useState<MealSuggestion[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  
-  // Saved Recipes State
-  const [savedRecipeNames, setSavedRecipeNames] = useState<Set<string>>(new Set());
-  const [savingRecipes, setSavingRecipes] = useState<Set<string>>(new Set());
-  
-  // Coach Tips State
-  const [savedTips, setSavedTips] = useState<Set<string>>(new Set());
-  const [savingTips, setSavingTips] = useState<Set<string>>(new Set());
-  
   // Greeting State
   const [coachGreeting, setCoachGreeting] = useState<string>('');
   const [greetingLoading, setGreetingLoading] = useState(false);
@@ -146,172 +74,15 @@ const Coach = ({ onClose }: CoachProps) => {
   
   // Trend Analysis State
   const [trendData, setTrendData] = useState<TrendData | null>(null);
-  const [trendsLoading, setTrendsLoading] = useState(false);
-  
-  // Voice Coaching State
-  const [isListening, setIsListening] = useState(false);
-  const [speechText, setSpeechText] = useState('');
-  const [voiceResponse, setVoiceResponse] = useState('');
-  const recognitionRef = useRef<any>(null);
-  
-  // Chat State
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
-  const [chatLoading, setChatLoading] = useState(false);
   
   // Data State
-  const [recommendations, setRecommendations] = useState<string>('');
-  const [userContext, setUserContext] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
   const [historyData, setHistoryData] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [botMessage, setBotMessage] = useState<string>('');
   const [dailyGoals, setDailyGoals] = useState<DailyGoal | null>(null);
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  // Laden der bereits gespeicherten Rezeptnamen - mit traditioneller Supabase Query
-  const loadSavedRecipeNames = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('saved_items')
-        .select('title')
-        .eq('user_id', user.id)
-        .eq('type', 'recipe');
-      
-      if (error) throw error;
-      
-      const names = new Set(data?.map(item => item.title) || []);
-      setSavedRecipeNames(names);
-    } catch (error: any) {
-      console.error('Error loading saved recipe names:', error);
-    }
-  };
-
-  // Laden der bereits gespeicherten Tips - mit traditioneller Supabase Query
-  const loadSavedTips = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('saved_items')
-        .select('title')
-        .eq('user_id', user.id)
-        .eq('type', 'tip');
-      
-      if (error) throw error;
-      
-      const tips = new Set(data?.map(item => item.title) || []);
-      setSavedTips(tips);
-    } catch (error: any) {
-      console.error('Error loading saved tips:', error);
-    }
-  };
-
-  // Cleanup function to clear cache and reset connections on unmount
-  useEffect(() => {
-    return () => {
-      clearCache();
-    };
-  }, []);
-
-  // Speichern-Funktion für Rezepte
-  const saveRecipe = async (meal: MealSuggestion) => {
-    if (!user || savedRecipeNames.has(meal.name)) return;
-    
-    setSavingRecipes(prev => new Set([...prev, meal.name]));
-    
-    try {
-      const { error } = await supabase
-        .from('saved_items')
-        .insert({
-          user_id: user.id,
-          type: 'recipe',
-          title: meal.name,
-          content: `${meal.description}\n\nZutaten:\n${meal.ingredients.map(i => `• ${i}`).join('\n')}\n\nZubereitung:\n${meal.preparation}`,
-          metadata: {
-            calories: meal.calories,
-            protein: meal.protein,
-            carbs: meal.carbs,
-            fats: meal.fats,
-            mealType: meal.mealType
-          }
-        });
-      
-      if (error) throw error;
-      
-      // Füge zur Liste der gespeicherten Rezepte hinzu
-      setSavedRecipeNames(prev => new Set([...prev, meal.name]));
-      
-      // Kurze Verzögerung für visuelles Feedback
-      setTimeout(() => {
-        setSavingRecipes(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(meal.name);
-          return newSet;
-        });
-      }, 2000);
-      
-    } catch (error: any) {
-      console.error('Error saving recipe:', error);
-      setSavingRecipes(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(meal.name);
-        return newSet;
-      });
-    }
-  };
-
-  // Speichern-Funktion für Coach-Tips
-  const saveTip = async (tip: CoachMessage) => {
-    if (!user || savedTips.has(tip.title)) return;
-    
-    setSavingTips(prev => new Set([...prev, tip.title]));
-    
-    try {
-      const { error } = await supabase
-        .from('saved_items')
-        .insert({
-          user_id: user.id,
-          type: 'tip',
-          title: tip.title,
-          content: tip.message,
-          metadata: {
-            priority: tip.priority,
-            tipType: tip.type
-          }
-        });
-      
-      if (error) throw error;
-      
-      // Füge zur Liste der gespeicherten Tips hinzu
-      setSavedTips(prev => new Set([...prev, tip.title]));
-      
-      toast.success('Tipp gespeichert');
-      
-      // Kurze Verzögerung für visuelles Feedback
-      setTimeout(() => {
-        setSavingTips(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(tip.title);
-          return newSet;
-        });
-      }, 2000);
-      
-    } catch (error: any) {
-      console.error('Error saving tip:', error);
-      toast.error('Fehler beim Speichern des Tipps');
-      setSavingTips(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(tip.title);
-        return newSet;
-      });
-    }
-  };
-  
   // Use global coach chat hook
   const coachChatHook = useGlobalCoachChat();
 
@@ -343,8 +114,6 @@ const Coach = ({ onClose }: CoachProps) => {
           loadDailyGoals(),
           loadTodaysMeals(),
           loadHistoryData(),
-          loadSavedRecipeNames(),
-          loadSavedTips(),
           loadWeightHistoryData()
         ]);
       } catch (error) {
@@ -371,33 +140,6 @@ const Coach = ({ onClose }: CoachProps) => {
     return () => {
       clearCache();
     };
-  }, []);
-
-  useEffect(() => {
-    // Initialize speech recognition if available
-    if ('webkitSpeechRecognition' in window) {
-      const recognition = new (window as any).webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'de-DE';
-      
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setSpeechText(transcript);
-        handleVoiceMessage(transcript);
-      };
-      
-      recognition.onerror = () => {
-        setIsListening(false);
-        // Toast entfernt - User sieht Status direkt
-      };
-      
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-      
-      recognitionRef.current = recognition;
-    }
   }, []);
 
   const loadDailyGoals = async () => {
@@ -464,37 +206,6 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   };
 
-  // Manual AI Analysis - now triggered by button press
-  const generateAIAnalysis = async () => {
-    if (!user || !dailyGoals) return;
-    
-    setAnalysisLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('coach-analysis', {
-        body: {
-          dailyTotals: todaysTotals,
-          dailyGoal: dailyGoals.calories,
-          mealsCount: todaysMeals.length,
-          userData: { 
-            averages,
-            historyDays: historyData.length,
-            weightHistory
-          },
-          userId: user.id
-        }
-      });
-
-      if (error) throw error;
-      setAiAnalysis(data);
-      toast.success('Analyse aktualisiert');
-    } catch (error: any) {
-      console.error('Error generating AI analysis:', error);
-      toast.error('Fehler bei der Analyse');
-    } finally {
-      setAnalysisLoading(false);
-    }
-  };
-
   // Time-based greeting when entering coach
   const generateTimeBasedGreeting = async () => {
     if (!user || greetingLoading) return;
@@ -526,7 +237,7 @@ const Coach = ({ onClose }: CoachProps) => {
           currentDate: date,
           currentTime: time,
           dailyTotals: todaysTotals,
-          dailyGoal: dailyGoals.calories,
+          dailyGoal: dailyGoals?.calories,
           userData: { 
             averages,
             historyDays: historyData.length,
@@ -548,62 +259,9 @@ const Coach = ({ onClose }: CoachProps) => {
     }
   };
 
-  const generateMealSuggestions = async () => {
-    if (!user) return;
-    
-    setSuggestionsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('coach-recipes', {
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        }
-      });
-
-      if (error) throw error;
-
-      // Parse meal suggestions from the response
-      if (data.recommendations) {
-        try {
-          // Check if recommendations is already an object or string
-          let suggestions;
-          if (typeof data.recommendations === 'string') {
-            // Clean the response from markdown formatting and extract JSON
-            let cleanResponse = data.recommendations.trim();
-            
-            // Remove markdown code blocks if present
-            cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            
-            // Try to find JSON object in the response
-            const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              cleanResponse = jsonMatch[0];
-            }
-            
-            suggestions = JSON.parse(cleanResponse);
-          } else {
-            suggestions = data.recommendations;
-          }
-          setMealSuggestions(suggestions.meals || suggestions || []);
-        } catch (parseError) {
-          console.error('Error parsing meal suggestions:', parseError);
-          console.log('Raw response:', data.recommendations);
-          // If parsing fails, assume the response is not JSON and handle gracefully
-          setMealSuggestions([]);
-        }
-      }
-      
-    } catch (error: any) {
-      console.error('Error generating meal suggestions:', error);
-      // Toast entfernt - User sieht Status direkt
-    } finally {
-      setSuggestionsLoading(false);
-    }
-  };
-
   const calculateTrends = () => {
     if (historyData.length < 7) return;
     
-    setTrendsLoading(true);
     try {
       const last7Days = historyData.slice(0, 7);
       const last30Days = historyData.slice(0, 30);
@@ -633,82 +291,6 @@ const Coach = ({ onClose }: CoachProps) => {
       });
     } catch (error) {
       console.error('Error calculating trends:', error);
-    } finally {
-      setTrendsLoading(false);
-    }
-  };
-
-  const startVoiceRecognition = () => {
-    if (recognitionRef.current && !isListening) {
-      setIsListening(true);
-      setSpeechText('');
-      recognitionRef.current.start();
-    }
-  };
-
-  const stopVoiceRecognition = () => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-  };
-
-  const handleVoiceMessage = async (message: string) => {
-    setChatLoading(true);
-    try {
-      // Process voice message with AI
-      const response = await supabase.functions.invoke('coach-analysis', {
-        body: {
-          voiceMessage: message,
-          context: { todaysTotals, dailyGoals, averages },
-          userId: user.id
-        }
-      });
-      
-      if (response.data?.voiceResponse) {
-        setVoiceResponse(response.data.voiceResponse);
-        // Speak the response if speech synthesis is available
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(response.data.voiceResponse);
-          utterance.lang = 'de-DE';
-          speechSynthesis.speak(utterance);
-        }
-      }
-    } catch (error) {
-      console.error('Error processing voice message:', error);
-      // Toast entfernt - User sieht Status direkt
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const sendChatMessage = async () => {
-    if (!chatMessage.trim()) return;
-    
-    const userMessage = chatMessage;
-    setChatMessage('');
-    setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
-    setChatLoading(true);
-    
-    try {
-      const response = await supabase.functions.invoke('coach-chat', {
-        body: {
-          message: userMessage,
-          userId: user.id,
-          chatHistory: chatHistory
-        }
-      });
-      
-      if (response.error) throw response.error;
-      
-      if (response.data?.reply) {
-        setChatHistory(prev => [...prev, { role: 'assistant', content: response.data.reply }]);
-      }
-    } catch (error) {
-      console.error('Error sending chat message:', error);
-      // Toast entfernt - User sieht Status direkt
-    } finally {
-      setChatLoading(false);
     }
   };
 
@@ -764,33 +346,8 @@ const Coach = ({ onClose }: CoachProps) => {
       setHistoryData(historyEntries);
     } catch (error: any) {
       console.error('Error loading history:', error);
-      // Toast entfernt - User sieht Status direkt
     } finally {
       setHistoryLoading(false);
-    }
-  };
-
-  const requestPersonalSession = () => {
-    // Toast entfernt - User sieht Action direkt
-  };
-
-  const getMessageIcon = (type: string) => {
-    switch (type) {
-      case 'motivation': return <Heart className="h-4 w-4" />;
-      case 'tip': return <Lightbulb className="h-4 w-4" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4" />;
-      case 'analysis': return <Brain className="h-4 w-4" />;
-      default: return <Info className="h-4 w-4" />;
-    }
-  };
-
-  const getMessageColor = (type: string) => {
-    switch (type) {
-      case 'motivation': return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/30';
-      case 'tip': return 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/30';
-      case 'warning': return 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/30';
-      case 'analysis': return 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700/30';
-      default: return 'text-muted-foreground bg-muted/50 border-border';
     }
   };
 
@@ -830,37 +387,6 @@ const Coach = ({ onClose }: CoachProps) => {
 
   const averages = calculateAverages();
 
-  // Generate coaching bot message with goal-based messaging
-  const generateBotMessage = () => {
-    const calorieGoal = dailyGoals?.calories || 1323;
-    const calorieAverage = averages.calories;
-    const progress = calorieAverage > 0 ? ((calorieAverage / calorieGoal) * 100).toFixed(0) : 0;
-    
-    // TODO: Get user goal from profile - for now using 'maintain' as default
-    // This will be updated when we add user goal fetching
-    let userGoal: UserGoal = 'maintain'; // This should come from user profile
-    
-    const getGoalBasedMessage = () => {
-      // For now, we'll use maintain goal logic until we load user profile
-      // TODO: Load user goal from profile and use switch statement
-      if (calorieAverage >= calorieGoal * 0.9 && calorieAverage <= calorieGoal * 1.1) {
-        return "✅ Perfekt! Du hältst dein Gewicht stabil im Zielbereich.";
-      } else if (calorieAverage < calorieGoal * 0.9) {
-        return "⚠️ Du solltest mehr Kalorien zu dir nehmen für eine stabile Gewichtserhaltung.";
-      } else {
-        return "⚠️ Du liegst über deinem Kalorienziel. Achte auf deine Kalorienbilanz.";
-      }
-    };
-    
-    const messages = [
-      `🎯 Hallo! Dein Kalorienziel liegt bei ${calorieGoal} kcal täglich. Du erreichst derzeit ${progress}% davon mit durchschnittlich ${calorieAverage} kcal.`,
-      getGoalBasedMessage(),
-      "💪 Hast du Fragen zu deiner Ernährung oder brauchst du Unterstützung?"
-    ];
-    
-    return messages.join('\n\n');
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Coach Greeting */}
@@ -896,251 +422,6 @@ const Coach = ({ onClose }: CoachProps) => {
         weightHistory={weightHistory}
         onWeightAdded={loadWeightHistoryData}
       />
-
-      {/* Enhanced AI Coach Tabs */}
-      <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-              <Brain className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-bold text-foreground">kaloAI Coach</div>
-              <div className="text-sm text-muted-foreground font-normal">Dein intelligenter Ernährungsberater</div>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="analysis" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="analysis" className="flex items-center gap-2">
-                <Brain className="h-4 w-4" />
-                Analyse
-              </TabsTrigger>
-              <TabsTrigger value="suggestions" className="flex items-center gap-2">
-                <ChefHat className="h-4 w-4" />
-                Rezepte
-              </TabsTrigger>
-              <TabsTrigger value="saved" className="flex items-center gap-2">
-                <Heart className="h-4 w-4" />
-                Merken
-              </TabsTrigger>
-            </TabsList>
-
-            {/* AI Analysis Tab */}
-            <TabsContent value="analysis" className="space-y-4">
-              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Detailanalyse</h3>
-                  <Button 
-                    onClick={generateAIAnalysis}
-                    disabled={analysisLoading}
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {analysisLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Zap className="h-4 w-4" />
-                    )}
-                    {analysisLoading ? 'Analysiert...' : 'Aktualisieren'}
-                  </Button>
-                </div>
-                
-                {analysisLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-3">AI analysiert deine Daten...</span>
-                  </div>
-                ) : aiAnalysis ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-md font-medium">Bewertung</h4>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Score:</span>
-                        <Badge variant={aiAnalysis.dailyScore >= 8 ? "default" : aiAnalysis.dailyScore >= 6 ? "secondary" : "destructive"}>
-                          {aiAnalysis.dailyScore}/10
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-muted/50 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-muted-foreground font-medium">{aiAnalysis.summary}</p>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {aiAnalysis.messages.map((message, index) => (
-                        <div key={index} className={`p-4 rounded-lg border ${getMessageColor(message.type)}`}>
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 flex-shrink-0">
-                              {getMessageIcon(message.type)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-3 mb-2">
-                                <h4 className="font-medium text-sm">{message.title}</h4>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  <Badge variant="outline" className="text-xs">
-                                    {message.priority}
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => saveTip(message)}
-                                    disabled={savedTips.has(message.title) || savingTips.has(message.title)}
-                                    className={`h-8 w-8 p-0 transition-all duration-300 ${
-                                      savedTips.has(message.title) 
-                                        ? 'text-green-600 bg-green-50 hover:bg-green-100' 
-                                        : savingTips.has(message.title)
-                                        ? 'text-green-600 bg-green-50'
-                                        : 'text-muted-foreground hover:text-primary'
-                                    }`}
-                                  >
-                                    <Heart 
-                                      className={`h-4 w-4 ${
-                                        savedTips.has(message.title) || savingTips.has(message.title) 
-                                          ? 'fill-current' 
-                                          : ''
-                                      }`} 
-                                    />
-                                  </Button>
-                                </div>
-                              </div>
-                              <p className="text-sm opacity-80 leading-relaxed">{message.message}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center p-8">
-                    <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Noch keine AI-Analyse verfügbar</p>
-                    <Button onClick={generateAIAnalysis} className="mt-4">
-                      Analyse starten
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Meal Suggestions Tab */}
-            <TabsContent value="suggestions" className="space-y-4">
-              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                {suggestionsLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-3">Meal-Empfehlungen werden erstellt...</span>
-                  </div>
-                ) : mealSuggestions.length > 0 ? (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold mb-4">Personalisierte Rezept-Empfehlungen</h3>
-                    <div className="grid gap-4">
-                      {mealSuggestions.slice(0, 3).map((meal, index) => (
-                         <div key={index} className="glass-card p-4 rounded-xl border border-border/20 hover:border-accent/30 transition-all duration-200">
-                           <div className="flex justify-between items-start gap-4 mb-3">
-                             <div className="flex-1 min-w-0">
-                               <h4 className="font-medium text-lg leading-tight mb-1">{meal.name}</h4>
-                               <p className="text-sm text-muted-foreground leading-relaxed">{meal.description}</p>
-                             </div>
-                             <Badge variant="outline" className="flex-shrink-0">{meal.mealType}</Badge>
-                           </div>
-                          
-                          <div className="grid grid-cols-4 gap-2 mb-4 text-sm">
-                            <div className="text-center p-2 bg-primary/5 rounded">
-                              <div className="font-bold">{meal.calories}</div>
-                              <div className="text-xs text-muted-foreground">kcal</div>
-                            </div>
-                            <div className="text-center p-2 bg-protein/10 rounded">
-                              <div className="font-bold">{meal.protein}g</div>
-                              <div className="text-xs text-muted-foreground">Protein</div>
-                            </div>
-                            <div className="text-center p-2 bg-carbs/10 rounded">
-                              <div className="font-bold">{meal.carbs}g</div>
-                              <div className="text-xs text-muted-foreground">Carbs</div>
-                            </div>
-                            <div className="text-center p-2 bg-fats/10 rounded">
-                              <div className="font-bold">{meal.fats}g</div>
-                              <div className="text-xs text-muted-foreground">Fette</div>
-                            </div>
-                          </div>
-                          
-                           <div className="flex gap-2 mb-3">
-                             <Button 
-                               variant={savedRecipeNames.has(meal.name) || savingRecipes.has(meal.name) ? "default" : "outline"}
-                               size="sm" 
-                               className={`flex-1 transition-all duration-300 ${
-                                 savedRecipeNames.has(meal.name) 
-                                   ? 'bg-green-500 hover:bg-green-600 text-white border-green-400' 
-                                   : savingRecipes.has(meal.name)
-                                   ? 'bg-green-500 hover:bg-green-600 text-white border-green-400'
-                                   : 'bg-accent/5 hover:bg-accent/10 border-accent/20'
-                               }`}
-                               onClick={async () => {
-                                 if (!savedRecipeNames.has(meal.name)) {
-                                   await saveRecipe(meal);
-                                 }
-                               }}
-                               disabled={savedRecipeNames.has(meal.name)}
-                             >
-                               <Heart className="h-4 w-4 mr-2" />
-                               {savedRecipeNames.has(meal.name) 
-                                 ? 'Gespeichert' 
-                                 : savingRecipes.has(meal.name) 
-                                 ? 'Gespeichert'
-                                 : 'Speichern'
-                               }
-                             </Button>
-                           </div>
-                          
-                          <Collapsible>
-                            <CollapsibleTrigger asChild>
-                              <Button variant="ghost" size="sm" className="w-full">
-                                Details anzeigen <ChevronDown className="h-4 w-4 ml-2" />
-                              </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="mt-3 space-y-3">
-                              <div>
-                                <h5 className="font-medium text-sm mb-2">Zutaten:</h5>
-                                <ul className="text-sm text-muted-foreground space-y-1">
-                                  {meal.ingredients.map((ingredient, i) => (
-                                    <li key={i}>• {ingredient}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div>
-                                <h5 className="font-medium text-sm mb-2">Zubereitung:</h5>
-                                <p className="text-sm text-muted-foreground">{meal.preparation}</p>
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center p-8">
-                    <ChefHat className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Noch keine Rezept-Empfehlungen verfügbar</p>
-                    <Button onClick={generateMealSuggestions} className="mt-4">
-                      Rezepte generieren
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Saved Items Tab */}
-            <TabsContent value="saved" className="space-y-4">
-              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                <h3 className="text-lg font-semibold mb-4">Gespeicherte Inhalte</h3>
-                <SavedItems />
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
 
       {/* FloatingCoachChat - nur auf Coach Seite */}
       <FloatingCoachChat
