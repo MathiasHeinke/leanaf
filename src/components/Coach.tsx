@@ -1134,67 +1134,67 @@ const Coach = ({ onClose }: CoachProps) => {
                   <div className="space-y-6">
                     <h3 className="text-lg font-semibold">Ernährungs-Trends</h3>
                     
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-6">
                       <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <Calendar className="h-5 w-5 text-blue-600" />
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Calendar className="h-6 w-6 text-blue-600" />
                           </div>
-                          <div>
-                            <div className="text-2xl font-bold text-blue-600">{trendData.weeklyAverage}</div>
-                            <div className="text-sm text-muted-foreground">kcal Wochendurchschnitt</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-2xl font-bold text-blue-600 mb-1">{trendData.weeklyAverage} kcal</div>
+                            <div className="text-sm text-muted-foreground">Wochendurchschnitt</div>
+                          </div>
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
+                              trendData.trend === 'up' ? 'bg-green-100' : 
+                              trendData.trend === 'down' ? 'bg-red-100' : 'bg-gray-100'
+                            }`}>
+                              {trendData.trend === 'up' ? (
+                                <TrendingUp className="h-6 w-6 text-green-600" />
+                              ) : trendData.trend === 'down' ? (
+                                <TrendingDown className="h-6 w-6 text-red-600" />
+                              ) : (
+                                <Target className="h-6 w-6 text-gray-600" />
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-medium">Trend: {trendData.trend === 'up' ? 'Steigend' : trendData.trend === 'down' ? 'Fallend' : 'Stabil'}</div>
+                              <div className="text-xs text-muted-foreground">Letzte 7 vs 30 Tage</div>
+                            </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <BarChart3 className="h-5 w-5 text-purple-600" />
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <BarChart3 className="h-6 w-6 text-purple-600" />
                           </div>
-                          <div>
-                            <div className="text-2xl font-bold text-purple-600">{trendData.monthlyAverage}</div>
-                            <div className="text-sm text-muted-foreground">kcal Monatsdurchschnitt</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-2xl font-bold text-purple-600 mb-1">{trendData.monthlyAverage} kcal</div>
+                            <div className="text-sm text-muted-foreground">Monatsdurchschnitt</div>
+                          </div>
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                              <Award className="h-6 w-6 text-orange-600" />
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-orange-600">{trendData.weeklyGoalReach}%</div>
+                              <div className="text-sm text-muted-foreground">Zielerreichung (7 Tage)</div>
+                            </div>
                           </div>
                         </div>
                       </div>
                       
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                            trendData.trend === 'up' ? 'bg-green-100' : 
-                            trendData.trend === 'down' ? 'bg-red-100' : 'bg-gray-100'
-                          }`}>
-                            {trendData.trend === 'up' ? (
-                              <TrendingUp className="h-5 w-5 text-green-600" />
-                            ) : trendData.trend === 'down' ? (
-                              <TrendingDown className="h-5 w-5 text-red-600" />
-                            ) : (
-                              <Target className="h-5 w-5 text-gray-600" />
-                            )}
+                      <div className="bg-muted/50 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Lightbulb className="h-5 w-5 text-primary" />
                           </div>
-                          <div>
-                            <div className="text-sm font-medium">Trend: {trendData.trend === 'up' ? 'Steigend' : trendData.trend === 'down' ? 'Fallend' : 'Stabil'}</div>
-                            <div className="text-xs text-muted-foreground">Letzte 7 vs 30 Tage</div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <Award className="h-5 w-5 text-orange-600" />
-                          </div>
-                          <div>
-                            <div className="text-2xl font-bold text-orange-600">{trendData.weeklyGoalReach}%</div>
-                            <div className="text-sm text-muted-foreground">Zielerreichung (7 Tage)</div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium mb-2 text-foreground">Empfehlung</h4>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{trendData.improvement}</p>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4" />
-                        Empfehlung
-                      </h4>
-                      <p className="text-sm text-muted-foreground">{trendData.improvement}</p>
                     </div>
                   </div>
                 ) : (
