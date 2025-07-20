@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WeightTracker } from "@/components/WeightTracker";
 import { 
   Brain, 
   TrendingUp, 
@@ -18,7 +19,8 @@ import {
   BarChart3,
   Heart,
   Clock,
-  Activity
+  Activity,
+  Scale
 } from "lucide-react";
 
 interface SmartInsightsProps {
@@ -42,6 +44,8 @@ interface SmartInsightsProps {
   };
   historyData: any[];
   trendData: any;
+  weightHistory: any[];
+  onWeightAdded: () => void;
 }
 
 interface Insight {
@@ -59,14 +63,16 @@ export const SmartInsights = ({
   dailyGoals, 
   averages, 
   historyData,
-  trendData 
+  trendData,
+  weightHistory,
+  onWeightAdded
 }: SmartInsightsProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     generateInsights();
-  }, [todaysTotals, dailyGoals, averages, historyData]);
+  }, [todaysTotals, dailyGoals, averages, historyData, weightHistory]);
 
   const generateInsights = () => {
     const newInsights: Insight[] = [];
@@ -110,6 +116,38 @@ export const SmartInsights = ({
         action: 'Protein-reiche Lebensmittel',
         progress: proteinProgress
       });
+    }
+
+    // Weight-Nutrition Correlation Analysis
+    if (weightHistory && weightHistory.length >= 2) {
+      const recentWeight = weightHistory[0]?.weight;
+      const previousWeight = weightHistory[1]?.weight;
+      
+      if (recentWeight && previousWeight) {
+        const weightChange = recentWeight - previousWeight;
+        const isLosingWeight = weightChange < -0.2;
+        const isGainingWeight = weightChange > 0.2;
+        
+        if (isLosingWeight && avgCalorieProgress > 100) {
+          newInsights.push({
+            id: 'weight-calorie-correlation',
+            type: 'info',
+            priority: 'medium',
+            title: 'Gewichtsverlust trotz hoher Kalorien',
+            description: `Du nimmst ab (-${Math.abs(weightChange).toFixed(1)}kg), obwohl du ${Math.round(avgCalorieProgress)}% deines Kalorienziels erreichst. Das ist ein gutes Zeichen für aktiven Stoffwechsel!`,
+            action: 'Weiter beobachten'
+          });
+        } else if (isGainingWeight && avgCalorieProgress < 90) {
+          newInsights.push({
+            id: 'unexpected-weight-gain',
+            type: 'warning',
+            priority: 'medium',
+            title: 'Gewichtszunahme bei niedrigen Kalorien',
+            description: `Trotz nur ${Math.round(avgCalorieProgress)}% deines Kalorienziels hast du +${weightChange.toFixed(1)}kg zugenommen. Das könnte an Wassereinlagerungen oder anderen Faktoren liegen.`,
+            action: 'Trends beobachten'
+          });
+        }
+      }
     }
 
     // Consistency Analysis
@@ -224,13 +262,13 @@ export const SmartInsights = ({
           </div>
           <div>
             <div className="text-xl font-bold text-foreground">Smart Insights</div>
-            <div className="text-sm text-muted-foreground font-normal">Intelligente Ernährungsanalyse</div>
+            <div className="text-sm text-muted-foreground font-normal">Intelligente Ernährungs- & Gewichtsanalyse</div>
           </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Übersicht
@@ -242,6 +280,10 @@ export const SmartInsights = ({
             <TabsTrigger value="goals" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
               Ziele
+            </TabsTrigger>
+            <TabsTrigger value="weight" className="flex items-center gap-2">
+              <Scale className="h-4 w-4" />
+              Gewicht
             </TabsTrigger>
           </TabsList>
 
@@ -308,6 +350,34 @@ export const SmartInsights = ({
                 </div>
               </div>
             </div>
+
+            {/* Weight Quick View */}
+            {weightHistory && weightHistory.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-primary" />
+                  Gewichtstrend
+                </h4>
+                <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200 dark:border-emerald-700/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Aktuelles Gewicht</div>
+                      <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                        {weightHistory[0]?.weight}kg
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setActiveTab("weight")}
+                      className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:text-emerald-300"
+                    >
+                      Details →
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-4">
@@ -404,6 +474,25 @@ export const SmartInsights = ({
                   </div>
                 </div>
               )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="weight" className="space-y-4">
+            <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-10 w-10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center">
+                  <Scale className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Gewichts-Management</h3>
+                  <p className="text-sm text-muted-foreground">Verfolge deinen Fortschritt zum Zielgewicht</p>
+                </div>
+              </div>
+              
+              <WeightTracker 
+                weightHistory={weightHistory} 
+                onWeightAdded={onWeightAdded} 
+              />
             </div>
           </TabsContent>
         </Tabs>

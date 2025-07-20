@@ -886,13 +886,15 @@ const Coach = ({ onClose }: CoachProps) => {
         </Card>
       )}
 
-      {/* Smart Insights - replaces the old trends section */}
+      {/* Smart Insights - now includes weight management */}
       <SmartInsights 
         todaysTotals={todaysTotals}
         dailyGoals={dailyGoals}
         averages={averages}
         historyData={historyData}
         trendData={trendData}
+        weightHistory={weightHistory}
+        onWeightAdded={loadWeightHistoryData}
       />
 
       {/* Enhanced AI Coach Tabs */}
@@ -910,7 +912,7 @@ const Coach = ({ onClose }: CoachProps) => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="analysis" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="analysis" className="flex items-center gap-2">
                 <Brain className="h-4 w-4" />
                 Analyse
@@ -918,10 +920,6 @@ const Coach = ({ onClose }: CoachProps) => {
               <TabsTrigger value="suggestions" className="flex items-center gap-2">
                 <ChefHat className="h-4 w-4" />
                 Rezepte
-              </TabsTrigger>
-              <TabsTrigger value="weight" className="flex items-center gap-2">
-                <Scale className="h-4 w-4" />
-                Gewicht
               </TabsTrigger>
               <TabsTrigger value="saved" className="flex items-center gap-2">
                 <Heart className="h-4 w-4" />
@@ -1130,26 +1128,6 @@ const Coach = ({ onClose }: CoachProps) => {
                     </Button>
                   </div>
                 )}
-              </div>
-            </TabsContent>
-
-            {/* Weight Management Tab - replaces old trends */}
-            <TabsContent value="weight" className="space-y-4">
-              <div className="bg-background/60 backdrop-blur-sm rounded-xl p-6 border border-border/50">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl flex items-center justify-center">
-                    <Scale className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Gewichts-Management</h3>
-                    <p className="text-sm text-muted-foreground">Verfolge deinen Fortschritt zum Zielgewicht</p>
-                  </div>
-                </div>
-                
-                <WeightTracker 
-                  weightHistory={weightHistory} 
-                  onWeightAdded={loadWeightHistoryData} 
-                />
               </div>
             </TabsContent>
 
