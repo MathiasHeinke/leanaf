@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
@@ -32,6 +33,8 @@ serve(async (req) => {
       timeBasedGreeting,
       timeOfDay
     } = await req.json();
+
+    console.log('🧠 Coach Analysis - Starting analysis with GPT-4.1');
 
     // Get user personality if userId provided
     let personality = 'motivierend';
@@ -95,6 +98,8 @@ Gib eine personalisierte, ${personality}e Begrüßung mit konkreten Empfehlungen
 
 Antworte nur mit der Begrüßungsnachricht, kein JSON.`;
 
+      console.log('📋 Generating time-based greeting with GPT-4.1');
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -102,18 +107,24 @@ Antworte nur mit der Begrüßungsnachricht, kein JSON.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4.1-2025-04-14',
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 250,
-          temperature: 0.8,
+          max_tokens: 400,
+          temperature: 0.75,
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
       const data = await response.json();
       const greeting = data.choices[0].message.content;
+
+      console.log('✅ Time-based greeting generated successfully');
 
       return new Response(JSON.stringify({ greeting }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -132,6 +143,8 @@ Kontext:
 
 Gib eine kurze, ${personality}e Antwort (max 50 Wörter) auf Deutsch.`;
 
+      console.log('🎤 Processing voice message with GPT-4.1');
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -139,18 +152,24 @@ Gib eine kurze, ${personality}e Antwort (max 50 Wörter) auf Deutsch.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4.1-2025-04-14',
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 150,
+          max_tokens: 200,
           temperature: 0.8,
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
       const data = await response.json();
       const voiceResponse = data.choices[0].message.content;
+
+      console.log('✅ Voice response generated successfully');
 
       return new Response(JSON.stringify({ voiceResponse }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -171,10 +190,12 @@ Gib eine kurze, ${personality}e Antwort (max 50 Wörter) auf Deutsch.`;
 
       // Add chat history
       if (history && history.length > 0) {
-        messages.push(...history.slice(-6)); // Last 6 messages for context
+        messages.push(...history.slice(-8)); // More context with GPT-4.1
       }
 
       messages.push({ role: 'user', content: chatMessage });
+
+      console.log('💬 Processing chat message with GPT-4.1');
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -183,25 +204,31 @@ Gib eine kurze, ${personality}e Antwort (max 50 Wörter) auf Deutsch.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4.1-2025-04-14',
           messages,
-          max_tokens: 300,
+          max_tokens: 500,
           temperature: 0.7,
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
       const data = await response.json();
       const reply = data.choices[0].message.content;
+
+      console.log('✅ Chat response generated successfully');
 
       return new Response(JSON.stringify({ reply }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } else {
-      // Daily analysis
-      systemMessage = 'Du bist ein persönlicher Ernährungscoach. Analysiere die Tagesdaten und gib personalisierte Coaching-Tipps.';
+      // Daily analysis with enhanced prompting for GPT-4.1
+      systemMessage = `Du bist ein erfahrener, personalisierter Ernährungscoach mit tiefem Verständnis für Psychologie und Motivation. Analysiere die Tagesdaten und erstelle durchdachte, persönliche Coaching-Tipps im ${personality}en Stil.${muscleString}`;
       
-      prompt = `Analysiere diese Tagesdaten und gib personalisierte Coaching-Tipps:
+      prompt = `Analysiere diese Tagesdaten und erstelle personalisierte, intelligente Coaching-Tipps:
 
 Tagesdaten:
 - Kalorien: ${dailyTotals.calories}/${dailyGoal} (${Math.round((dailyTotals.calories / dailyGoal) * 100)}%)
@@ -210,29 +237,36 @@ Tagesdaten:
 - Fette: ${dailyTotals.fats}g
 - Anzahl Mahlzeiten: ${mealsCount}
 
-Durchschnittswerte:
-- Kalorien: ${userData.averages.calories}
-- Protein: ${userData.averages.protein}g
-- Carbs: ${userData.averages.carbs}g
-- Fette: ${userData.averages.fats}g
+Durchschnittswerte & Verlauf:
+- Durchschnittliche Kalorien: ${userData.averages.calories}
+- Durchschnittliches Protein: ${userData.averages.protein}g
+- Durchschnittliche Carbs: ${userData.averages.carbs}g
+- Durchschnittliche Fette: ${userData.averages.fats}g
 - Verfolgungstage: ${userData.historyDays}
 
-Erstelle 3-5 kurze, motivierende Coaching-Nachrichten auf Deutsch. Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
+Coach-Persönlichkeit: ${personality}
+Muskelerhalt-Priorität: ${muscleMaintenancePriority ? 'Ja (besonderer Fokus auf Protein)' : 'Nein'}
+
+Erstelle intelligente, durchdachte Coaching-Nachrichten mit tieferer Analyse. Berücksichtige Trends, psychologische Aspekte und individuelle Bedürfnisse.
+
+Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
 {
   "messages": [
     {
-      "type": "motivation" | "tip" | "warning" | "analysis",
-      "title": "Kurzer Titel",
-      "message": "Coaching-Nachricht (max 2 Sätze)",
+      "type": "motivation" | "tip" | "warning" | "analysis" | "trend",
+      "title": "Prägnanter Titel",
+      "message": "Durchdachte Coaching-Nachricht (max 3 Sätze, ${personality}er Stil)",
       "priority": "high" | "medium" | "low"
     }
   ],
-  "dailyScore": Bewertung von 1-10,
-  "summary": "Kurze Zusammenfassung des Tages (1 Satz)"
+  "dailyScore": Bewertung von 1-10 mit Begründung,
+  "summary": "Intelligente Zusammenfassung mit Trend-Analyse (max 2 Sätze)"
 }
 
-Sei motivierend, hilfsreich und konkret. Gib praktische Tipps.`;
+Sei ${personality}, analytisch und gib konkrete, umsetzbare Tipps mit psychologischem Verständnis.`;
+
+      console.log('📊 Generating daily analysis with GPT-4.1');
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -241,23 +275,26 @@ Sei motivierend, hilfsreich und konkret. Gib praktische Tipps.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-4.1-2025-04-14',
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
           ],
-          max_tokens: 1000,
+          max_tokens: 1500,
           temperature: 0.7,
         }),
       });
 
-      const data = await response.json();
-      
       if (!response.ok) {
-        throw new Error(data.error?.message || 'OpenAI API Fehler');
+        const errorText = await response.text();
+        console.error('OpenAI API Error:', response.status, errorText);
+        throw new Error(`OpenAI API error: ${response.status}`);
       }
 
+      const data = await response.json();
       const content = data.choices[0].message.content;
+      
+      console.log('✅ Daily analysis generated successfully');
       
       try {
         const parsed = JSON.parse(content);
@@ -272,8 +309,11 @@ Sei motivierend, hilfsreich und konkret. Gib praktische Tipps.`;
     }
 
   } catch (error) {
-    console.error('Error in coach-analysis function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('❌ Error in coach-analysis function:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Fehler bei der Coach-Analyse',
+      details: error.message 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

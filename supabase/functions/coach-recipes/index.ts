@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -40,7 +41,7 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    console.log('Fetching user profile and data for:', user.id);
+    console.log('🍳 Coach Recipes - Generating recommendations with GPT-4.1 for user:', user.id);
 
     // Get user profile
     const { data: profile, error: profileError } = await supabase
@@ -99,52 +100,78 @@ serve(async (req) => {
       weightHistory: weightHistory || []
     };
 
-    // Calculate current nutrition averages
+    // Calculate current nutrition averages and patterns
     const totalMeals = recentMeals?.length || 0;
     const avgCalories = totalMeals > 0 ? (recentMeals?.reduce((sum, meal) => sum + Number(meal.calories || 0), 0) || 0) / totalMeals : 0;
     const avgProtein = totalMeals > 0 ? (recentMeals?.reduce((sum, meal) => sum + Number(meal.protein || 0), 0) || 0) / totalMeals : 0;
+    const avgCarbs = totalMeals > 0 ? (recentMeals?.reduce((sum, meal) => sum + Number(meal.carbs || 0), 0) || 0) / totalMeals : 0;
+    const avgFats = totalMeals > 0 ? (recentMeals?.reduce((sum, meal) => sum + Number(meal.fats || 0), 0) || 0) / totalMeals : 0;
 
-    const systemPrompt = `Du bist ein erfahrener Ernährungscoach und Kochexperte. Erstelle personalisierte Rezeptempfehlungen basierend auf den Benutzerdaten.
+    // Analyze meal patterns for better recommendations
+    const mealTypes = recentMeals?.reduce((acc: any, meal) => {
+      const type = meal.meal_type || 'other';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {}) || {};
 
-Benutzerdaten:
+    const personalityStyle = profile?.coach_personality || 'motivierend';
+    const muscleMaintenancePriority = profile?.muscle_maintenance_priority || false;
+    const macroStrategy = profile?.macro_strategy || 'standard';
+
+    const systemPrompt = `Du bist ein erfahrener Ernährungscoach und kreativer Kochexperte mit tiefem Verständnis für personalisierte Ernährung. Erstelle innovative, maßgeschneiderte Rezeptempfehlungen basierend auf detaillierten Benutzerdaten und Ernährungsmustern.
+
+BENUTZERPROFIL & ZIELE:
 - Tagesziele: ${userContext.goals.calories} kcal, ${userContext.goals.protein}g Protein, ${userContext.goals.carbs}g Carbs, ${userContext.goals.fats}g Fette
-- Durchschnitt letzte 7 Tage: ${Math.round(avgCalories)} kcal, ${Math.round(avgProtein)}g Protein
+- Aktuelle Durchschnitte (7 Tage): ${Math.round(avgCalories)} kcal, ${Math.round(avgProtein)}g Protein, ${Math.round(avgCarbs)}g Carbs, ${Math.round(avgFats)}g Fette
 - Geschlecht: ${profile?.gender || 'nicht angegeben'}
-- Ziel: ${profile?.goal || 'nicht angegeben'}
+- Hauptziel: ${profile?.goal || 'nicht angegeben'}
 - Aktivitätslevel: ${profile?.activity_level || 'nicht angegeben'}
-- Coach-Persönlichkeit: ${profile?.coach_personality || 'motivierend'}
-- Muskelerhalt-Priorität: ${profile?.muscle_maintenance_priority ? 'Ja' : 'Nein'}
-- Makro-Strategie: ${profile?.macro_strategy || 'standard'}
+- Coach-Persönlichkeit: ${personalityStyle}
+- Muskelerhalt-Priorität: ${muscleMaintenancePriority ? 'HOCH - Fokus auf Protein-optimierte Rezepte' : 'Standard'}
+- Makro-Strategie: ${macroStrategy}
 
-Erstelle 3 personalisierte Rezeptempfehlungen im folgenden JSON-Format:
+ERNÄHRUNGSMUSTER ANALYSE:
+- Gesamte Mahlzeiten (7 Tage): ${totalMeals}
+- Häufigste Mahlzeitentypen: ${JSON.stringify(mealTypes)}
+- Gewichtsentwicklung: ${weightHistory?.length > 0 ? 'Verfügbar für Trendanalyse' : 'Keine Daten'}
+
+AUFTRAG:
+Erstelle 3 innovative, personalisierte Rezeptempfehlungen die perfekt zu den Zielen, Präferenzen und Ernährungsmustern passen. Berücksichtige Abwechslung zu den letzten Mahlzeiten und optimiere für die spezifischen Ziele.
+
+Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
 {
   "meals": [
     {
-      "name": "Rezeptname",
-      "description": "Kurze Beschreibung (1 Satz) im ${profile?.coach_personality || 'motivierend'}en Stil",
-      "calories": Kalorien,
+      "name": "Kreativer, ansprechender Rezeptname",
+      "description": "Motivierende Beschreibung (2-3 Sätze) im ${personalityStyle}en Stil - erkläre warum dieses Rezept perfekt zu den Zielen passt",
+      "calories": Exakte Kalorien,
       "protein": Protein in g,
       "carbs": Kohlenhydrate in g,
       "fats": Fette in g,
-      "ingredients": ["Zutat 1", "Zutat 2", "Zutat 3"],
-      "preparation": "Kurze Zubereitungsanleitung (2-3 Sätze) im ${profile?.coach_personality || 'motivierend'}en Stil",
-      "mealType": "Frühstück|Mittagessen|Abendessen|Snack"
+      "ingredients": ["Zutat 1 mit Menge", "Zutat 2 mit Menge", "Zutat 3 mit Menge", "etc"],
+      "preparation": "Detaillierte, aber prägnante Zubereitungsanleitung (3-4 Schritte) im ${personalityStyle}en Stil",
+      "mealType": "Frühstück|Mittagessen|Abendessen|Snack",
+      "cookingTime": "Zubereitungszeit in Minuten",
+      "difficulty": "einfach|mittel|fortgeschritten",
+      "specialFeature": "Warum dieses Rezept besonders gut zu den aktuellen Zielen passt"
     }
-  ]
+  ],
+  "personalizedTip": "Persönlicher Tipp basierend auf den Ernährungsmustern (${personalityStyle}er Stil)",
+  "nutritionFocus": "Aktueller Ernährungsfokus basierend auf der Analyse"
 }
 
-Berücksichtige:
-- Die Rezepte sollen zu den Zielen des Benutzers passen
-- Abwechslungsreiche Mahlzeitentypen
-- Realistische Portionsgrößen
-- Einfache Zubereitung
-- Deutsche Küche und verfügbare Zutaten
-- Coach-Persönlichkeit: ${profile?.coach_personality || 'motivierend'} (Beschreibungen und Anleitungen in diesem Stil)
-${profile?.muscle_maintenance_priority ? '- WICHTIG: Höhere Protein-Priorität für Muskelerhalt (min. 1.8g/kg Körpergewicht)' : ''}
-- Makro-Strategie: ${profile?.macro_strategy || 'standard'} beachten`;
+WICHTIGE ANFORDERUNGEN:
+- Rezepte sollen zu den spezifischen Makro-Zielen passen
+- Berücksichtige die letzten Mahlzeiten für Abwechslung
+- Deutsche Küche mit verfügbaren Zutaten
+- ${personalityStyle}er Coaching-Stil in allen Texten
+${muscleMaintenancePriority ? '- KRITISCH: Mindestens 2 der 3 Rezepte sollen protein-reich sein (min. 25g Protein)' : ''}
+- Realistische Portionsgrößen und Zubereitungszeiten
+- Makro-Strategie "${macroStrategy}" optimal umsetzen
+- Kreative aber praktische Rezepte`;
 
-    console.log('Sending request to OpenAI...');
+    console.log('🤖 Sending advanced recipe request to GPT-4.1...');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -153,24 +180,26 @@ ${profile?.muscle_maintenance_priority ? '- WICHTIG: Höhere Protein-Priorität 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Erstelle 3 personalisierte Rezeptempfehlungen für mich.' }
+          { role: 'user', content: 'Erstelle 3 personalisierte, innovative Rezeptempfehlungen die perfekt zu meinem Profil und meinen aktuellen Ernährungsmustern passen.' }
         ],
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 2000,
+        temperature: 0.8,
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API Error:', response.status, errorText);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
     const recommendations = data.choices[0].message.content;
 
-    console.log('Generated recommendations successfully');
+    console.log('✅ Advanced recipe recommendations generated successfully');
 
     return new Response(JSON.stringify({ 
       recommendations,
@@ -179,16 +208,22 @@ ${profile?.muscle_maintenance_priority ? '- WICHTIG: Höhere Protein-Priorität 
         goals: userContext.goals,
         avgCalories: Math.round(avgCalories),
         avgProtein: Math.round(avgProtein),
-        totalMeals
+        avgCarbs: Math.round(avgCarbs),
+        avgFats: Math.round(avgFats),
+        totalMeals,
+        mealPatterns: mealTypes,
+        personalityStyle,
+        muscleMaintenancePriority,
+        macroStrategy
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in coach-recipes function:', error);
+    console.error('❌ Error in coach-recipes function:', error);
     return new Response(JSON.stringify({ 
-      error: 'Fehler bei der Erstellung der Empfehlungen',
+      error: 'Fehler bei der Erstellung der Rezept-Empfehlungen',
       details: error.message 
     }), {
       status: 500,
