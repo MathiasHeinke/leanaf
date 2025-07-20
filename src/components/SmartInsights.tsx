@@ -353,7 +353,7 @@ export const SmartInsights = ({
             </TabsTrigger>
             <TabsTrigger value="goals" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Ziele
+              Analyse
             </TabsTrigger>
           </TabsList>
 
@@ -488,10 +488,102 @@ export const SmartInsights = ({
             )}
           </TabsContent>
 
-          <TabsContent value="insights" className="space-y-4">
-            {insights.length > 0 ? (
-              <div className="space-y-4">
-                {insights.map((insight) => (
+          <TabsContent value="insights" className="space-y-6">
+            {/* Macronutrient Overview */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Makronährstoffe Übersicht
+              </h4>
+              
+              <div className="space-y-3">
+                {/* Protein Card */}
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🥩</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">Protein</span>
+                    </div>
+                    <Badge variant="outline" className="border-blue-500 text-blue-600 dark:text-blue-400">
+                      {Math.round(proteinProgress)}%
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {todaysTotals.protein}g
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Ø der letzten Tage • Ziel: {dailyGoals.protein}g
+                    </div>
+                    <Progress 
+                      value={Math.min(100, proteinProgress)} 
+                      className="h-2 bg-blue-100 dark:bg-blue-800/50" 
+                    />
+                  </div>
+                </div>
+
+                {/* Carbs Card */}
+                <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🍞</span>
+                      <span className="font-medium text-orange-600 dark:text-orange-400">Kohlenhydrate</span>
+                    </div>
+                    <Badge variant="outline" className="border-orange-500 text-orange-600 dark:text-orange-400">
+                      {Math.round((todaysTotals.carbs / dailyGoals.carbs) * 100)}%
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {todaysTotals.carbs}g
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Ø der letzten Tage • Ziel: {dailyGoals.carbs}g
+                    </div>
+                    <Progress 
+                      value={Math.min(100, (todaysTotals.carbs / dailyGoals.carbs) * 100)} 
+                      className="h-2 bg-orange-100 dark:bg-orange-800/50" 
+                    />
+                  </div>
+                </div>
+
+                {/* Fats Card */}
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🥑</span>
+                      <span className="font-medium text-purple-600 dark:text-purple-400">Fette</span>
+                    </div>
+                    <Badge variant="outline" className="border-purple-500 text-purple-600 dark:text-purple-400">
+                      {Math.round((todaysTotals.fats / dailyGoals.fats) * 100)}%
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                      {todaysTotals.fats}g
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Ø der letzten Tage • Ziel: {dailyGoals.fats}g
+                    </div>
+                    <Progress 
+                      value={Math.min(100, (todaysTotals.fats / dailyGoals.fats) * 100)} 
+                      className="h-2 bg-purple-100 dark:bg-purple-800/50" 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Insights */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-primary" />
+                KI-Empfehlungen
+              </h4>
+              
+              {insights.length > 0 ? (
+                <div className="space-y-4">
+                  {insights.map((insight) => (
                   <div 
                     key={insight.id} 
                     className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
@@ -524,14 +616,15 @@ export const SmartInsights = ({
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center p-8">
-                <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Sammle mehr Daten für personalisierte Insights</p>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-8">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Alles läuft perfekt! Keine besonderen Empfehlungen.</p>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="goals" className="space-y-6">
