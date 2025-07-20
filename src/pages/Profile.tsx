@@ -113,8 +113,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
         setMacroStrategy(data.macro_strategy || 'standard');
-        if (data.preferred_language && (data.preferred_language === 'de' || data.preferred_language === 'en')) {
-          setLanguage(data.preferred_language as 'de' | 'en');
+        if (data.preferred_language) {
+          setLanguage(data.preferred_language);
         }
       } else {
         setProfileExists(false);
