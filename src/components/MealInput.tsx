@@ -16,7 +16,7 @@ interface MealInputProps {
   onVoiceRecord: () => void;
   isAnalyzing: boolean;
   isRecording: boolean;
-  isProcessing: boolean;
+  isVoiceProcessing: boolean; // NEW: separate voice processing state
   uploadedImages: string[];
   onRemoveImage: (index: number) => void;
   isEditing?: boolean;
@@ -33,7 +33,7 @@ export const MealInput = ({
   onVoiceRecord,
   isAnalyzing,
   isRecording,
-  isProcessing,
+  isVoiceProcessing, // NEW: use separate voice processing state
   uploadedImages,
   onRemoveImage,
   isEditing = false,
@@ -46,27 +46,16 @@ export const MealInput = ({
   // Local state for button interaction feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Button disabled states - FIXED: Decoupled button states
-  const isAnyProcessing = isAnalyzing || isUploading || isProcessing;
+  // Button disabled states - FIXED: Clear separation of concerns
   const isSubmitDisabled = (!inputText.trim() && uploadedImages.length === 0) || isAnalyzing || isUploading;
-  const isUploadDisabled = isUploading || isAnalyzing; // Upload disabled during upload or analysis
-  const isVoiceDisabled = isRecording || isProcessing || isUploading; // Voice only disabled when actually needed
-
-  console.log('🔘 [MEAL-INPUT] Button states:', {
-    isAnalyzing,
-    isUploading,
-    isRecording,
-    isProcessing,
-    isSubmitDisabled,
-    isUploadDisabled,
-    isVoiceDisabled
-  });
+  const isUploadDisabled = isUploading || isAnalyzing;
+  const isVoiceDisabled = isVoiceProcessing; // Only disabled when voice is actually processing
 
   // Handle submit with local state management
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
     
-    console.log('🔄 [MEAL-INPUT] Submit button clicked');
+    console.log('🔄 Submit button clicked');
     setIsSubmitting(true);
     
     try {
@@ -78,7 +67,7 @@ export const MealInput = ({
 
   // Handle photo upload with event isolation
   const handlePhotoUploadClick = (event: React.MouseEvent) => {
-    console.log('📷 [MEAL-INPUT] Photo upload button clicked');
+    console.log('📷 Photo upload button clicked');
     event.preventDefault();
     event.stopPropagation();
     
@@ -92,7 +81,7 @@ export const MealInput = ({
 
   // Handle voice recording with event isolation
   const handleVoiceClick = (event: React.MouseEvent) => {
-    console.log('🎙️ [MEAL-INPUT] Voice button clicked');
+    console.log('🎙️ Voice button clicked');
     event.preventDefault();
     event.stopPropagation();
     
@@ -114,7 +103,7 @@ export const MealInput = ({
   return (
     <div className="w-full">
       <div className="w-full">
-        {/* Upload Progress - Above everything - FIXED: Better visibility logic */}
+        {/* Upload Progress - Above everything */}
         <UploadProgress 
           progress={uploadProgress} 
           isVisible={isUploading && uploadProgress.length > 0} 
@@ -133,7 +122,7 @@ export const MealInput = ({
                 <button
                   onClick={() => onRemoveImage(index)}
                   className="absolute -top-2 -right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110 z-10"
-                  disabled={isAnyProcessing}
+                  disabled={isAnalyzing || isUploading}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -142,8 +131,8 @@ export const MealInput = ({
           </div>
         )}
         
-        {/* Recording/Processing Indicator - Above input - FIXED: Better state messaging */}
-        {(isRecording || isProcessing || isAnalyzing) && (
+        {/* Recording/Processing Indicator - Above input - FIXED: Clearer state messaging */}
+        {(isRecording || isVoiceProcessing || isAnalyzing) && (
           <div className="mb-4 flex items-center gap-3 text-sm bg-card/95 backdrop-blur-md px-4 py-3 rounded-xl border border-border/50 shadow-lg animate-fade-in">
             <div className="flex gap-1">
               <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full"></div>
@@ -152,7 +141,7 @@ export const MealInput = ({
             </div>
             <span className="font-medium text-foreground">
               {isRecording ? t('input.recording') : 
-               isProcessing ? t('input.processing') : 
+               isVoiceProcessing ? t('input.processing') : 
                isAnalyzing ? 'Analysiere Mahlzeit...' : 
                'Verarbeitung...'}
             </span>
@@ -169,7 +158,7 @@ export const MealInput = ({
               placeholder={t('input.placeholder')}
               className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
               onKeyDown={handleKeyDown}
-              disabled={isAnyProcessing}
+              disabled={isAnalyzing || isUploading}
             />
             
             {/* Left Action Button - Photo Upload */}
@@ -205,13 +194,13 @@ export const MealInput = ({
             
             {/* Right Action Buttons - Voice + Send */}
             <div className="absolute right-4 bottom-2 flex items-center gap-2">
-              {/* Voice Recording Button - FIXED: Only shows loading when actually recording/processing voice */}
+              {/* Voice Recording Button - FIXED: Only shows loading when voice is processing */}
               <Button
                 variant="ghost"
                 size="sm"
                 type="button"
                 className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 ${
-                  isRecording || isProcessing
+                  isRecording
                     ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30' 
                     : 'hover:bg-muted/90 hover:scale-105'
                 } ${isVoiceDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -220,14 +209,14 @@ export const MealInput = ({
               >
                 {isRecording ? (
                   <StopCircle className="h-5 w-5" />
-                ) : isProcessing ? (
+                ) : isVoiceProcessing ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
                   <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
                 )}
               </Button>
               
-              {/* Send Button - FIXED: Only shows loading when actually analyzing */}
+              {/* Send Button - FIXED: Only shows loading when analyzing */}
               <Button
                 size="sm"
                 type="button"
