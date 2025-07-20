@@ -74,6 +74,8 @@ export const SmartInsights = ({
   const [profileData, setProfileData] = useState<any>(null);
   const [fullDailyGoals, setFullDailyGoals] = useState<any>(null);
   const [averageCalorieIntake, setAverageCalorieIntake] = useState<number>(0);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -138,6 +140,41 @@ export const SmartInsights = ({
       }
     } catch (error) {
       console.error('Error calculating average calorie intake:', error);
+    }
+  };
+
+  const startAiAnalysis = async () => {
+    if (!user || !dailyGoals) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('coach-analysis', {
+        body: {
+          dailyTotals: todaysTotals,
+          dailyGoal: dailyGoals.calories,
+          mealsCount: historyData.length > 0 ? historyData[0]?.mealCount || 0 : 0,
+          userData: {
+            averages,
+            historyDays: historyData.length,
+            weightHistory: weightHistory.slice(0, 5), // Latest 5 entries
+            recentProgress: trendData
+          },
+          userId: user.id,
+          context: {
+            todaysTotals,
+            dailyGoals,
+            averages
+          }
+        }
+      });
+
+      if (error) throw error;
+      
+      setAiAnalysis(data);
+    } catch (error) {
+      console.error('Error starting AI analysis:', error);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -628,34 +665,112 @@ export const SmartInsights = ({
           </TabsContent>
 
           <TabsContent value="goals" className="space-y-6">
-            {/* Detailanalyse Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold flex items-center gap-2">
                   <Brain className="h-5 w-5 text-primary" />
                   Detailanalyse
                 </h4>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={startAiAnalysis}
+                  disabled={isAnalyzing}
+                >
                   <Zap className="h-4 w-4" />
-                  Aktualisieren
+                  {isAnalyzing ? 'Analysiert...' : 'Aktualisieren'}
                 </Button>
               </div>
               
-              <div className="p-12 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30 text-center space-y-6">
-                <div className="mx-auto w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center">
-                  <Brain className="h-10 w-10 text-muted-foreground" />
+              {!aiAnalysis ? (
+                <div className="p-12 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30 text-center space-y-6">
+                  <div className="mx-auto w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center">
+                    <Brain className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h5 className="text-lg font-medium text-muted-foreground">
+                      Noch keine AI-Analyse verfügbar
+                    </h5>
+                  </div>
+                  
+                  <Button 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={startAiAnalysis}
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? 'Analyse läuft...' : 'Analyse starten'}
+                  </Button>
                 </div>
-                
-                <div className="space-y-2">
-                  <h5 className="text-lg font-medium text-muted-foreground">
-                    Noch keine AI-Analyse verfügbar
-                  </h5>
+              ) : (
+                <div className="space-y-6">
+                  {/* AI Analysis Results */}
+                  <div className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                        <Brain className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h5 className="font-semibold text-primary">AI Coach Analyse</h5>
+                        <p className="text-sm text-muted-foreground">Generiert mit GPT-4.1</p>
+                      </div>
+                    </div>
+                    
+                    {aiAnalysis.summary && (
+                      <div className="mb-4 p-3 bg-background/50 rounded-lg">
+                        <p className="text-sm text-foreground">{aiAnalysis.summary}</p>
+                      </div>
+                    )}
+                    
+                    {aiAnalysis.dailyScore && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-medium">Tagesbewertung:</span>
+                          <Badge variant="outline" className="font-bold">
+                            {aiAnalysis.dailyScore}/10
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Messages */}
+                  {aiAnalysis.messages && aiAnalysis.messages.length > 0 && (
+                    <div className="space-y-3">
+                      <h6 className="font-medium text-foreground">Empfehlungen</h6>
+                      {aiAnalysis.messages.map((message: any, index: number) => (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-lg border ${
+                            message.type === 'warning' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/30' :
+                            message.type === 'tip' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/30' :
+                            message.type === 'motivation' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/30' :
+                            'bg-muted/50 border-border'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5">
+                              {message.type === 'warning' && <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />}
+                              {message.type === 'tip' && <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                              {message.type === 'motivation' && <Award className="h-4 w-4 text-green-600 dark:text-green-400" />}
+                              {message.type === 'analysis' && <BarChart3 className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
+                              {message.type === 'trend' && <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                            </div>
+                            <div className="flex-1">
+                              <h6 className="font-medium text-sm mb-1">{message.title}</h6>
+                              <p className="text-sm text-muted-foreground leading-relaxed">{message.message}</p>
+                              {message.priority === 'high' && (
+                                <Badge variant="destructive" className="mt-2 text-xs">Wichtig</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                <Button className="bg-primary hover:bg-primary/90">
-                  Analyse starten
-                </Button>
-              </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
