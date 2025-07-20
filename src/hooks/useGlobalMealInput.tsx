@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -81,14 +82,14 @@ export const useGlobalMealInput = () => {
         throw new Error('Ungültige Antwort vom Analysedienst');
       }
 
-      console.log('✅ Analysis successful, setting dialog state synchronously...');
+      console.log('✅ Analysis successful, setting dialog state...');
       console.log('📋 Analyzed meal data:', JSON.stringify(data, null, 2));
       
       // Get meal type before setting states
       const currentMealType = getCurrentMealType();
       console.log('🍽️ Current meal type:', currentMealType);
       
-      // Set all states synchronously in the correct order
+      // Set all states synchronously
       console.log('📊 Setting analyzedMealData...');
       setAnalyzedMealData(data);
       
@@ -104,8 +105,7 @@ export const useGlobalMealInput = () => {
         showConfirmationDialog: true
       });
       
-      // Success toast
-      toast.success('Mahlzeit erfolgreich analysiert!');
+      // NO SUCCESS TOAST - Dialog opening indicates success
       
     } catch (error: any) {
       console.error('❌ Error analyzing meal:', error);
@@ -127,10 +127,12 @@ export const useGlobalMealInput = () => {
       const transcribedText = await stopRecording();
       if (transcribedText) {
         setInputText(prev => prev ? prev + ' ' + transcribedText : transcribedText);
+        // NO TOAST - Visual feedback is sufficient
       }
     } else {
       try {
         await startRecording();
+        // NO TOAST - Visual indicator shows recording state
       } catch (error) {
         toast.error('Fehler bei der Sprachaufnahme');
       }
@@ -170,20 +172,20 @@ export const useGlobalMealInput = () => {
         setUploadedImages(prev => [...prev, ...result.urls]);
         console.log(`✅ Upload completed: ${result.urls.length} files successful`);
         
+        // SIMPLIFIED TOAST - Only show if there were errors
         if (result.errors.length > 0) {
           console.warn('⚠️ Some uploads failed:', result.errors);
           toast.warning(`${result.urls.length} Bilder hochgeladen, ${result.errors.length} fehlgeschlagen`);
-        } else {
-          toast.success(`${result.urls.length} Bilder erfolgreich hochgeladen`);
         }
+        // NO SUCCESS TOAST - Visual feedback (images appearing) is sufficient
       } else {
         console.error('❌ All uploads failed:', result.errors);
-        toast.error('Upload fehlgeschlagen: ' + result.errors.join(', '));
+        toast.error('Upload fehlgeschlagen');
       }
       
     } catch (error: any) {
       console.error('❌ Critical upload error:', error);
-      toast.error(error.message || 'Kritischer Fehler beim Upload');
+      toast.error('Fehler beim Upload');
     } finally {
       setIsUploading(false);
       // Clear progress after a delay to show final state
@@ -219,7 +221,8 @@ export const useGlobalMealInput = () => {
       });
     }, 100);
     
-    toast.success("Mahlzeit dupliziert - Scrollen Sie nach unten zum Bearbeiten");
+    // SIMPLIFIED TOAST - Much shorter and less intrusive
+    toast.success("Mahlzeit dupliziert");
   };
 
   const resetForm = () => {

@@ -195,9 +195,7 @@ export const MealConfirmationDialog = ({
           setEditableValues(prev => ({ ...prev, fats: data.adjustments.fats }));
         }
         
-        toast.success('Nährwerte wurden angepasst: ' + data.message);
-      } else {
-        toast.info(data.message);
+        // Silent success - no toast needed
       }
 
       setVerificationMessage('');
@@ -210,10 +208,9 @@ export const MealConfirmationDialog = ({
     }
   };
 
-  // Generate coach comment based on personality and confidence
+  // Generate coach comment based on personality
   const getCoachComment = () => {
     const mealTitle = analyzedMealData?.title || t('meal.title').toLowerCase();
-    const confidence = analyzedMealData?.confidence || 'medium';
     
     let baseComment = '';
     switch (coachPersonality) {
@@ -233,11 +230,6 @@ export const MealConfirmationDialog = ({
       default:
         baseComment = `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher.`;
         break;
-    }
-    
-    // Add confidence note
-    if (confidence === 'low') {
-      baseComment += " Ich bin mir bei den Werten nicht ganz sicher - bitte überprüfe sie.";
     }
     
     return baseComment;
@@ -283,23 +275,24 @@ export const MealConfirmationDialog = ({
 
       if (error) {
         console.error('Error saving meal:', error);
-        toast.error(t('meal.saveError'));
+        toast.error('Fehler beim Speichern');
         return;
       }
 
       console.log('✅ Meal saved successfully');
-      toast.success(t('meal.saveSuccess'));
-      triggerDataRefresh(); // Trigger data refresh across all components
+      // Silent success - no toast needed, dialog closing indicates success
+      triggerDataRefresh();
       onSuccess();
       onClose();
       
     } catch (error) {
       console.error('Error saving meal:', error);
-      toast.error(t('meal.saveError'));
+      toast.error('Fehler beim Speichern');
     }
   };
 
   const warnings = getValueWarnings();
+  const confidence = analyzedMealData?.confidence;
 
   // Enhanced logging for render decision
   console.log('🎭 Dialog render decision:', {
@@ -316,25 +309,23 @@ export const MealConfirmationDialog = ({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md border border-border/50 shadow-2xl z-[100]">
+      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md border border-border/50 shadow-2xl z-[9999]">
         <AlertDialogHeader>
           <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
           <AlertDialogDescription>
             {getCoachComment()}
           </AlertDialogDescription>
           
-          {/* Show confidence level */}
-          {analyzedMealData?.confidence && (
-            <div className="mt-2">
-              <Badge variant={analyzedMealData.confidence === 'high' ? 'default' : 
-                             analyzedMealData.confidence === 'medium' ? 'secondary' : 'destructive'}>
-                Vertrauen: {analyzedMealData.confidence === 'high' ? 'Hoch' : 
-                           analyzedMealData.confidence === 'medium' ? 'Mittel' : 'Niedrig'}
-              </Badge>
+          {/* Simple confidence warning - only show if low confidence */}
+          {confidence === 'low' && (
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+              <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                ⚠️ Bitte Nährwerte prüfen
+              </div>
             </div>
           )}
           
-          {/* Show warnings */}
+          {/* Show warnings for unusual values */}
           {warnings.length > 0 && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
               <div className="text-sm text-yellow-800 dark:text-yellow-200">
