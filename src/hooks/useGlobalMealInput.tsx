@@ -35,8 +35,15 @@ export const useGlobalMealInput = () => {
     console.log('🚀 handleSubmitMeal called with:', {
       inputText: inputText.trim(),
       uploadedImages: uploadedImages.length,
-      userAuthenticated: !!user?.id
+      userAuthenticated: !!user?.id,
+      userId: user?.id
     });
+    
+    if (!user?.id) {
+      console.log('❌ Submit blocked: User not authenticated');
+      toast.error('Bitte melden Sie sich zuerst an');
+      return;
+    }
     
     if (!inputText.trim() && uploadedImages.length === 0) {
       console.log('❌ Submit blocked: No text and no images');
@@ -45,6 +52,12 @@ export const useGlobalMealInput = () => {
     }
 
     console.log('✅ Submit validation passed, starting analysis...');
+    console.log('📊 Current state before analysis:', {
+      showConfirmationDialog,
+      analyzedMealData: !!analyzedMealData,
+      isAnalyzing
+    });
+    
     setIsAnalyzing(true);
     
     try {
@@ -75,12 +88,34 @@ export const useGlobalMealInput = () => {
         throw new Error('Ungültige Antwort vom Analysedienst');
       }
 
-      console.log('✅ Analysis successful, showing confirmation dialog');
+      console.log('✅ Analysis successful, setting dialog state...');
+      console.log('📋 Analyzed meal data:', JSON.stringify(data, null, 2));
       
-      // Always show confirmation dialog for review
+      // Set analyzed data first
       setAnalyzedMealData(data);
-      setSelectedMealType(getCurrentMealType());
-      setShowConfirmationDialog(true);
+      console.log('📊 analyzedMealData set to:', data);
+      
+      // Set meal type
+      const currentMealType = getCurrentMealType();
+      setSelectedMealType(currentMealType);
+      console.log('🍽️ selectedMealType set to:', currentMealType);
+      
+      // Small delay to ensure state is set before showing dialog
+      setTimeout(() => {
+        setShowConfirmationDialog(true);
+        console.log('🎯 showConfirmationDialog set to: true');
+        console.log('📊 Final state after analysis:', {
+          showConfirmationDialog: true,
+          analyzedMealData: !!data,
+          selectedMealType: currentMealType
+        });
+        
+        // Fallback toast if dialog doesn't appear
+        setTimeout(() => {
+          console.log('⏰ Fallback check: Dialog should be visible now');
+          toast.success('Mahlzeit erfolgreich analysiert - Dialog sollte jetzt sichtbar sein');
+        }, 500);
+      }, 100);
       
     } catch (error: any) {
       console.error('❌ Error analyzing meal:', error);
@@ -198,6 +233,7 @@ export const useGlobalMealInput = () => {
   };
 
   const resetForm = () => {
+    console.log('🔄 Resetting form and dialog state');
     setInputText("");
     setUploadedImages([]);
     setSelectedMealType("");
@@ -205,6 +241,14 @@ export const useGlobalMealInput = () => {
     setAnalyzedMealData(null);
     setUploadProgress([]);
     setIsUploading(false);
+    console.log('✅ Form reset complete');
+  };
+
+  // Enhanced dialog close handler with logging
+  const handleCloseDialog = () => {
+    console.log('🚪 Closing confirmation dialog');
+    setShowConfirmationDialog(false);
+    setAnalyzedMealData(null);
   };
 
   return {
@@ -217,7 +261,7 @@ export const useGlobalMealInput = () => {
     isRecording,
     isProcessing,
     showConfirmationDialog,
-    setShowConfirmationDialog,
+    setShowConfirmationDialog: handleCloseDialog,
     analyzedMealData,
     selectedMealType,
     setSelectedMealType,

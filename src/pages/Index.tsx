@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +8,7 @@ import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
 import { OptimizedGreeting } from "@/components/OptimizedGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
+import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +35,15 @@ const Index = () => {
     if (hour < 18) return "Guten Tag"; 
     return "Guten Abend";
   };
+
+  // Debug logging for dialog state
+  useEffect(() => {
+    console.log('🎯 Index.tsx - Dialog state changed:', {
+      showConfirmationDialog: mealInputHook.showConfirmationDialog,
+      hasAnalyzedData: !!mealInputHook.analyzedMealData,
+      selectedMealType: mealInputHook.selectedMealType
+    });
+  }, [mealInputHook.showConfirmationDialog, mealInputHook.analyzedMealData, mealInputHook.selectedMealType]);
 
   // Load user data
   useEffect(() => {
@@ -149,6 +160,12 @@ const Index = () => {
     loadUserData(); // Reload user data to get updated weight
   };
 
+  const handleMealSuccess = async () => {
+    console.log('🎉 Meal saved successfully, refreshing data...');
+    await fetchMealsForDate(currentDate);
+    mealInputHook.resetForm();
+  };
+
   if (dataLoading) {
     return (
       <div className="space-y-6">
@@ -250,6 +267,27 @@ const Index = () => {
           />
         </div>
       </div>
+
+      {/* Meal Confirmation Dialog - Enhanced with debug logging */}
+      {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
+        <MealConfirmationDialog
+          isOpen={mealInputHook.showConfirmationDialog}
+          onClose={mealInputHook.setShowConfirmationDialog}
+          analyzedMealData={mealInputHook.analyzedMealData}
+          selectedMealType={mealInputHook.selectedMealType}
+          onMealTypeChange={mealInputHook.setSelectedMealType}
+          onSuccess={handleMealSuccess}
+        />
+      )}
+
+      {/* Debug info in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-4 right-4 bg-black/80 text-white p-2 rounded text-xs z-[60]">
+          Dialog: {mealInputHook.showConfirmationDialog ? 'OPEN' : 'CLOSED'}<br/>
+          Data: {mealInputHook.analyzedMealData ? 'YES' : 'NO'}<br/>
+          Type: {mealInputHook.selectedMealType || 'NONE'}
+        </div>
+      )}
     </>
   );
 };
