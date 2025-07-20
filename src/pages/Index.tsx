@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MealInput } from "@/components/MealInput";
+import { toast } from "sonner";
 
 const Index = () => {
   const { t } = useTranslation();
