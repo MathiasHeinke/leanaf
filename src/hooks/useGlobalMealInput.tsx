@@ -13,12 +13,30 @@ interface MealData {
   meal_type?: string;
 }
 
+interface AnalyzedMealData {
+  title: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  meal_type: string;
+  confidence?: number;
+}
+
 export const useGlobalMealInput = () => {
   const { user } = useAuth();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [inputText, setInputText] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [analyzedMealData, setAnalyzedMealData] = useState<AnalyzedMealData | null>(null);
+  const [selectedMealType, setSelectedMealType] = useState<string>('other');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<any[]>([]);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -154,14 +172,104 @@ export const useGlobalMealInput = () => {
     }
   }, [user]);
 
+  // Handle submit meal
+  const handleSubmitMeal = useCallback(async () => {
+    if (!inputText.trim() && uploadedImages.length === 0) return;
+
+    setIsProcessing(true);
+    try {
+      const mealData = await analyzeMealText(inputText);
+      if (mealData) {
+        setAnalyzedMealData({
+          title: mealData.text,
+          calories: mealData.calories,
+          protein: mealData.protein,
+          carbs: mealData.carbs,
+          fats: mealData.fats,
+          meal_type: mealData.meal_type || 'other',
+          confidence: 0.85 // Default confidence
+        });
+        setSelectedMealType(mealData.meal_type || 'other');
+        setShowConfirmationDialog(true);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [inputText, uploadedImages, analyzeMealText]);
+
+  // Handle photo upload
+  const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const urls = await uploadImages(files);
+    setUploadedImages(prev => [...prev, ...urls]);
+  }, [uploadImages]);
+
+  // Handle voice recording
+  const handleVoiceRecord = useCallback(async () => {
+    if (isRecording) {
+      const transcription = await stopRecording();
+      if (transcription) {
+        setInputText(prev => prev + (prev ? ' ' : '') + transcription);
+      }
+    } else {
+      await startRecording();
+    }
+  }, [isRecording, stopRecording, startRecording]);
+
+  // Remove image
+  const removeImage = useCallback((index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Reset form
+  const resetForm = useCallback(() => {
+    setInputText('');
+    setUploadedImages([]);
+    setShowConfirmationDialog(false);
+    setAnalyzedMealData(null);
+    setSelectedMealType('other');
+    setIsProcessing(false);
+  }, []);
+
+  // Close dialog handler
+  const closeDialog = useCallback(() => {
+    setShowConfirmationDialog(false);
+  }, []);
+
   return {
+    // Core API functions
     analyzeMealText,
     startRecording,
     stopRecording,
     uploadImages,
+    
+    // State
     isAnalyzing,
     isRecording,
     isUploading,
-    recordingTime
+    recordingTime,
+    inputText,
+    setInputText,
+    uploadedImages,
+    showConfirmationDialog,
+    analyzedMealData,
+    selectedMealType,
+    isProcessing,
+    uploadProgress,
+    
+    // Handlers
+    handleSubmitMeal,
+    handlePhotoUpload,
+    handleVoiceRecord,
+    removeImage,
+    resetForm,
+    closeDialog,
+    
+    // Dialog control
+    setShowConfirmationDialog,
+    setAnalyzedMealData,
+    setSelectedMealType
   };
 };

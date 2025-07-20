@@ -319,7 +319,7 @@ const Index = () => {
           return (
             <MealConfirmationDialog
               isOpen={mealInputHook.showConfirmationDialog}
-              onClose={mealInputHook.setShowConfirmationDialog}
+              onClose={mealInputHook.closeDialog}
               analyzedMealData={mealInputHook.analyzedMealData}
               selectedMealType={mealInputHook.selectedMealType}
               onMealTypeChange={mealInputHook.setSelectedMealType}
