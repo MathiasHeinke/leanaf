@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -153,6 +152,7 @@ const Index = () => {
   };
 
   const handleMealUpdated = async () => {
+    console.log('🔄 Meal updated, refreshing data...');
     await fetchMealsForDate(currentDate);
   };
 
@@ -238,8 +238,30 @@ const Index = () => {
                     timestamp: new Date(meal.created_at),
                     meal_type: meal.meal_type
                   }))} 
-                  onEditMeal={(meal: any) => {}}
-                  onDeleteMeal={handleMealDeleted}
+                  onEditMeal={(meal: any) => {
+                    // This is now handled by MealEditForm component
+                    console.log('Edit meal (handled by MealEditForm):', meal);
+                  }}
+                  onDeleteMeal={async (mealId: string) => {
+                    try {
+                      const { error } = await supabase
+                        .from('meals')
+                        .delete()
+                        .eq('id', mealId);
+
+                      if (error) {
+                        console.error('Error deleting meal:', error);
+                        toast.error('Fehler beim Löschen der Mahlzeit');
+                        return;
+                      }
+
+                      toast.success('Mahlzeit gelöscht');
+                      await fetchMealsForDate(currentDate);
+                    } catch (error) {
+                      console.error('Error deleting meal:', error);
+                      toast.error('Fehler beim Löschen der Mahlzeit');
+                    }
+                  }}
                   onUpdateMeal={handleMealUpdated}
                 />
               )}

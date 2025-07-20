@@ -59,6 +59,11 @@ export const MealConfirmationDialog = ({
   // State for coach personality
   const [coachPersonality, setCoachPersonality] = useState<string>('motivierend');
 
+  // New state for verification
+  const [verificationMessage, setVerificationMessage] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+
   // Fetch user's coach personality
   useEffect(() => {
     const fetchCoachPersonality = async () => {
@@ -101,23 +106,105 @@ export const MealConfirmationDialog = ({
     }
   }, [analyzedMealData, isOpen]);
 
-  // Generate coach comment based on personality
+  // Check for unusual values
+  const getValueWarnings = () => {
+    const warnings = [];
+    if (editableValues.calories > 1200) warnings.push("Sehr hohe Kalorienzahl");
+    if (editableValues.calories < 50) warnings.push("Sehr niedrige Kalorienzahl");
+    if (editableValues.protein > 60) warnings.push("Sehr hoher Proteinwert");
+    if (editableValues.carbs > 150) warnings.push("Sehr hohe Kohlenhydrate");
+    if (editableValues.fats > 80) warnings.push("Sehr hohe Fettwerte");
+    return warnings;
+  };
+
+  const handleVerifyWithAI = async () => {
+    if (!verificationMessage.trim()) {
+      toast.error('Bitte geben Sie eine Nachricht ein');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-meal', {
+        body: {
+          message: verificationMessage,
+          mealData: {
+            title: editableValues.title,
+            calories: editableValues.calories,
+            protein: editableValues.protein,
+            carbs: editableValues.carbs,
+            fats: editableValues.fats,
+            description: editableValues.title,
+            confidence: analyzedMealData?.confidence
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.needsAdjustment && data.adjustments) {
+        // Apply suggested adjustments
+        if (data.adjustments.calories !== null) {
+          setEditableValues(prev => ({ ...prev, calories: data.adjustments.calories }));
+        }
+        if (data.adjustments.protein !== null) {
+          setEditableValues(prev => ({ ...prev, protein: data.adjustments.protein }));
+        }
+        if (data.adjustments.carbs !== null) {
+          setEditableValues(prev => ({ ...prev, carbs: data.adjustments.carbs }));
+        }
+        if (data.adjustments.fats !== null) {
+          setEditableValues(prev => ({ ...prev, fats: data.adjustments.fats }));
+        }
+        
+        toast.success('Nährwerte wurden angepasst: ' + data.message);
+      } else {
+        toast.info(data.message);
+      }
+
+      setVerificationMessage('');
+      setShowVerification(false);
+    } catch (error: any) {
+      console.error('Error verifying meal:', error);
+      toast.error('Fehler bei der Überprüfung');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Generate coach comment based on personality and confidence
   const getCoachComment = () => {
     const mealTitle = analyzedMealData?.title || t('meal.title').toLowerCase();
+    const confidence = analyzedMealData?.confidence || 'medium';
     
+    let baseComment = '';
     switch (coachPersonality) {
       case 'hart':
-        return `💪 ${mealTitle}? Solide Wahl! Prüf die Nährwerte und dann ran an die Arbeit - deine Ziele warten nicht!`;
+        baseComment = `💪 ${mealTitle}? Solide Wahl! Prüf die Nährwerte und dann ran an die Arbeit - deine Ziele warten nicht!`;
+        break;
       case 'soft':
-        return `🌟 ${mealTitle} sieht wunderbar aus! Schau dir die Nährwerte in Ruhe an - du machst das großartig.`;
+        baseComment = `🌟 ${mealTitle} sieht wunderbar aus! Schau dir die Nährwerte in Ruhe an - du machst das großartig.`;
+        break;
       case 'lustig':
-        return `😄 ${mealTitle}! Nicht schlecht für einen Anfänger! 😉 Check die Nährwerte und lass uns weitermachen!`;
+        baseComment = `😄 ${mealTitle}! Nicht schlecht für einen Anfänger! 😉 Check die Nährwerte und lass uns weitermachen!`;
+        break;
       case 'ironisch':
-        return `🤔 ${mealTitle}... interessante Wahl. Schau dir mal die Nährwerte an - vielleicht überrascht es dich.`;
+        baseComment = `🤔 ${mealTitle}... interessante Wahl. Schau dir mal die Nährwerte an - vielleicht überrascht es dich.`;
+        break;
       case 'motivierend':
       default:
-        return `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher. Schau dir die Nährwerte an und passe sie bei Bedarf an.`;
+        baseComment = `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher.`;
+        break;
     }
+    
+    // Add confidence note
+    if (confidence === 'low') {
+      baseComment += " Ich bin mir bei den Werten nicht ganz sicher - bitte überprüfe sie.";
+    }
+    
+    return baseComment;
   };
 
   const handleValueChange = (field: string, value: string) => {
@@ -173,6 +260,8 @@ export const MealConfirmationDialog = ({
     }
   };
 
+  const warnings = getValueWarnings();
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -181,6 +270,26 @@ export const MealConfirmationDialog = ({
           <AlertDialogDescription>
             {getCoachComment()}
           </AlertDialogDescription>
+          
+          {/* Show confidence level */}
+          {analyzedMealData?.confidence && (
+            <div className="mt-2">
+              <Badge variant={analyzedMealData.confidence === 'high' ? 'default' : 
+                             analyzedMealData.confidence === 'medium' ? 'secondary' : 'destructive'}>
+                Vertrauen: {analyzedMealData.confidence === 'high' ? 'Hoch' : 
+                           analyzedMealData.confidence === 'medium' ? 'Mittel' : 'Niedrig'}
+              </Badge>
+            </div>
+          )}
+          
+          {/* Show warnings */}
+          {warnings.length > 0 && (
+            <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+              <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                ⚠️ Auffällige Werte: {warnings.join(', ')}
+              </div>
+            </div>
+          )}
         </AlertDialogHeader>
         
         <div className="space-y-4">
@@ -260,6 +369,49 @@ export const MealConfirmationDialog = ({
                     <span className="text-sm text-muted-foreground">g</span>
                   </div>
                 </div>
+              </div>
+              
+              {/* AI Verification Section */}
+              <div className="mt-4 pt-4 border-t">
+                {!showVerification ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowVerification(true)}
+                    className="w-full"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Mit KI überprüfen
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="verification">Nachricht an KI (z.B. "Das war eine kleinere Portion")</Label>
+                    <Textarea
+                      id="verification"
+                      value={verificationMessage}
+                      onChange={(e) => setVerificationMessage(e.target.value)}
+                      placeholder="Beschreiben Sie was angepasst werden soll..."
+                      className="min-h-[60px]"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleVerifyWithAI}
+                        disabled={isVerifying}
+                        className="flex-1"
+                      >
+                        {isVerifying ? 'Überprüfe...' : 'Überprüfen'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowVerification(false)}
+                      >
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

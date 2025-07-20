@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -23,34 +24,49 @@ serve(async (req) => {
       throw new Error('Weder Text noch Bild bereitgestellt');
     }
 
-let prompt = `Analysiere diese Mahlzeit und gib die Nährwerte zurück. 
-Wenn Bilder vorhanden sind, beschreibe die erkannten Lebensmittel und schätze deren Mengen.
-Wenn Text vorhanden ist, berücksichtige diese zusätzlichen Informationen.
-Sei möglichst präzise bei den Nährwertangaben.
+let prompt = `Du bist ein Ernährungsexperte mit Zugang zu präzisen Nährwertdatenbanken (USDA, BLS). 
+
+WICHTIGE ANWEISUNGEN:
+- Schätze realistische Portionsgrößen basierend auf typischen Mahlzeiten
+- Verwende Standard-Nährwertdatenbanken als Referenz
+- Bei Unsicherheiten: wähle konservative, realistische Werte
+- Berücksichtige Zubereitungsarten (gebraten/gekocht beeinflusst Kalorien)
+- Runde auf realistische Werte (keine Kommastellen bei Kalorien)
+
+PORTION SIZE GUIDELINES:
+- Pasta/Reis: 80-100g trocken = 250-300g gekocht
+- Fleisch: 120-150g pro Portion
+- Gemüse: 150-200g pro Portion
+- Brot: 1 Scheibe = 30-40g
+- Öl/Butter: 1 TL = 5ml, 1 EL = 15ml
+
+Analysiere diese Mahlzeit und gib präzise Nährwerte zurück:
+
+${text ? `Beschreibung: ${text}` : "Analysiere die Bilder und schätze die Portionsgrößen"}
 
 Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
 {
-  "title": "Kurze, prägnante Überschrift für die Mahlzeit (z.B. 'Hähnchenbrust mit Reis und Gemüse')",
+  "title": "Prägnante Mahlzeit-Beschreibung",
   "items": [
     {
       "name": "Lebensmittel Name",
-      "amount": "Menge mit Einheit",
-      "calories": Kalorien pro Portion,
-      "protein": Protein in Gramm,
-      "carbs": Kohlenhydrate in Gramm,
-      "fats": Fette in Gramm
+      "amount": "Realistische Menge mit Einheit",
+      "calories": Kalorien_als_Zahl,
+      "protein": Protein_in_Gramm,
+      "carbs": Kohlenhydrate_in_Gramm,
+      "fats": Fette_in_Gramm
     }
   ],
   "total": {
     "calories": Gesamtkalorien,
-    "protein": Gesamt-Protein,
-    "carbs": Gesamt-Kohlenhydrate,
-    "fats": Gesamt-Fette
-  }
-}
-
-${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
+    "protein": Gesamt_Protein,
+    "carbs": Gesamt_Kohlenhydrate,
+    "fats": Gesamt_Fette
+  },
+  "confidence": "high|medium|low",
+  "notes": "Erklärung der Schätzung und Unsicherheiten"
+}`;
 
     // Build user content with text and images
     let userContent = [{ type: 'text', text: prompt }];
@@ -68,7 +84,7 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
     const messages = [
       {
         role: 'system',
-        content: 'Du bist ein Ernährungsexperte, der präzise Nährwerte aus Mahlzeitenbeschreibungen extrahiert. Antworte nur mit dem angeforderten JSON-Format.'
+        content: 'Du bist ein präziser Ernährungsexperte. Nutze Referenz-Nährwertdatenbanken für genaue Angaben. Antworte nur mit dem angeforderten JSON-Format.'
       },
       {
         role: 'user',
@@ -76,7 +92,7 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
       }
     ];
 
-    console.log('Sending request to OpenAI...');
+    console.log('Sending request to OpenAI with improved prompt...');
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -85,10 +101,10 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         messages,
-        max_tokens: 1000,
-        temperature: 0.3,
+        max_tokens: 1500,
+        temperature: 0.1,
         response_format: { type: "json_object" }
       }),
     });
@@ -107,6 +123,17 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
     try {
       const parsed = JSON.parse(content);
       console.log('Parsed nutrition data:', parsed);
+      
+      // Validate and ensure reasonable values
+      if (parsed.total && parsed.total.calories) {
+        // Basic sanity checks
+        if (parsed.total.calories < 10 || parsed.total.calories > 5000) {
+          console.warn('Unusual calorie value detected:', parsed.total.calories);
+        }
+        if (parsed.total.protein < 0 || parsed.total.protein > 200) {
+          console.warn('Unusual protein value detected:', parsed.total.protein);
+        }
+      }
       
       return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -131,7 +158,9 @@ ${text ? `Beschreibung: ${text}` : "Analysiere die Bilder"}`;
           protein: 15,
           carbs: 30,
           fats: 10
-        }
+        },
+        confidence: 'low',
+        notes: 'Automatische Schätzung - bitte überprüfen'
       };
       
       return new Response(JSON.stringify(fallbackResponse), {
