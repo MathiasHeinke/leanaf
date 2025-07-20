@@ -354,7 +354,7 @@ export const SmartInsights = ({
                   Gewichtstrend
                 </h4>
                 <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200 dark:border-emerald-700/30">
-                  <div className="flex items-center justify-between">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Aktuelles Gewicht</div>
                       <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
@@ -369,6 +369,20 @@ export const SmartInsights = ({
                           : '---'
                         }
                       </div>
+                    </div>
+                  </div>
+                  
+                  {/* Weight Prognosis */}
+                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Zielgewicht erreicht am</span>
+                    </div>
+                    <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                      15. März 2025
+                    </div>
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                      In ca. 8 Wochen bei aktuellem Fortschritt
                     </div>
                   </div>
                 </div>
