@@ -3,7 +3,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FloatingCoachChat } from "@/components/FloatingCoachChat";
-import { SmartInsights } from "@/components/SmartInsights";
+import { Overview } from "@/components/Overview";
+import { InsightsAnalysis } from "@/components/InsightsAnalysis";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
@@ -412,8 +413,16 @@ const Coach = ({ onClose }: CoachProps) => {
         </Card>
       )}
 
-      {/* Smart Insights - now includes weight management */}
-      <SmartInsights 
+      {/* Überblick - grundlegende Statistiken */}
+      <Overview 
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        weightHistory={weightHistory}
+      />
+
+      {/* Insights Analysis - tiefere Einsichten */}
+      <InsightsAnalysis 
         todaysTotals={todaysTotals}
         dailyGoals={dailyGoals}
         averages={averages}
