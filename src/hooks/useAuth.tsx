@@ -37,6 +37,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  const checkIfNewUserAndRedirect = async (user: User) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('weight, height, age, gender')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking profile:', error);
+        return;
+      }
+
+      // Check if profile is incomplete (new user)
+      const isIncomplete = !profile || 
+        !profile.weight || 
+        !profile.height || 
+        !profile.age || 
+        !profile.gender;
+
+      if (isIncomplete) {
+        // New user - redirect to profile
+        setTimeout(() => {
+          window.location.href = '/profile';
+        }, 100);
+      } else {
+        // Existing user - redirect to home
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error checking user status:', error);
+      // Fallback to home
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+    }
+  };
+
   const signOut = async () => {
     try {
       cleanupAuthState();
@@ -58,9 +98,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Handle auth events more carefully
         if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 100);
+          // Check if user is new and redirect to profile
+          checkIfNewUserAndRedirect(session.user);
         }
         
         if (event === 'SIGNED_OUT') {

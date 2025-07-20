@@ -353,7 +353,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <Input
                   type="number"
                   value={startWeight}
-                  onChange={(e) => setStartWeight(e.target.value)}
+                  onChange={(e) => {
+                    const newStartWeight = e.target.value;
+                    setStartWeight(newStartWeight);
+                    // Auto-set current weight if it's empty
+                    if (!weight && newStartWeight) {
+                      setWeight(newStartWeight);
+                    }
+                  }}
                   placeholder="75"
                   className="mt-1"
                 />
