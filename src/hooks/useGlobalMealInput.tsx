@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,12 +51,6 @@ export const useGlobalMealInput = () => {
     }
 
     console.log('✅ Submit validation passed, starting analysis...');
-    console.log('📊 Current state before analysis:', {
-      showConfirmationDialog,
-      analyzedMealData: !!analyzedMealData,
-      isAnalyzing
-    });
-    
     setIsAnalyzing(true);
     
     try {
@@ -88,34 +81,31 @@ export const useGlobalMealInput = () => {
         throw new Error('Ungültige Antwort vom Analysedienst');
       }
 
-      console.log('✅ Analysis successful, setting dialog state...');
+      console.log('✅ Analysis successful, setting dialog state synchronously...');
       console.log('📋 Analyzed meal data:', JSON.stringify(data, null, 2));
       
-      // Set analyzed data first
-      setAnalyzedMealData(data);
-      console.log('📊 analyzedMealData set to:', data);
-      
-      // Set meal type
+      // Get meal type before setting states
       const currentMealType = getCurrentMealType();
-      setSelectedMealType(currentMealType);
-      console.log('🍽️ selectedMealType set to:', currentMealType);
+      console.log('🍽️ Current meal type:', currentMealType);
       
-      // Small delay to ensure state is set before showing dialog
-      setTimeout(() => {
-        setShowConfirmationDialog(true);
-        console.log('🎯 showConfirmationDialog set to: true');
-        console.log('📊 Final state after analysis:', {
-          showConfirmationDialog: true,
-          analyzedMealData: !!data,
-          selectedMealType: currentMealType
-        });
-        
-        // Fallback toast if dialog doesn't appear
-        setTimeout(() => {
-          console.log('⏰ Fallback check: Dialog should be visible now');
-          toast.success('Mahlzeit erfolgreich analysiert - Dialog sollte jetzt sichtbar sein');
-        }, 500);
-      }, 100);
+      // Set all states synchronously in the correct order
+      console.log('📊 Setting analyzedMealData...');
+      setAnalyzedMealData(data);
+      
+      console.log('🍽️ Setting selectedMealType...');
+      setSelectedMealType(currentMealType);
+      
+      console.log('🎯 Setting showConfirmationDialog to true...');
+      setShowConfirmationDialog(true);
+      
+      console.log('📊 Final state after analysis:', {
+        analyzedMealDataSet: !!data,
+        selectedMealType: currentMealType,
+        showConfirmationDialog: true
+      });
+      
+      // Success toast
+      toast.success('Mahlzeit erfolgreich analysiert!');
       
     } catch (error: any) {
       console.error('❌ Error analyzing meal:', error);

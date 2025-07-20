@@ -28,6 +28,28 @@ const Index = () => {
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Enhanced debug logging for dialog state
+  useEffect(() => {
+    console.log('🎯 Index.tsx - Dialog state changed:', {
+      showConfirmationDialog: mealInputHook.showConfirmationDialog,
+      hasAnalyzedData: !!mealInputHook.analyzedMealData,
+      selectedMealType: mealInputHook.selectedMealType,
+      analyzedDataTitle: mealInputHook.analyzedMealData?.title,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Additional debugging for dialog visibility
+    if (mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData) {
+      console.log('✅ Dialog SHOULD be visible now with data:', {
+        dialogOpen: mealInputHook.showConfirmationDialog,
+        dataExists: !!mealInputHook.analyzedMealData,
+        dataContent: mealInputHook.analyzedMealData
+      });
+    } else if (mealInputHook.showConfirmationDialog && !mealInputHook.analyzedMealData) {
+      console.log('⚠️ Dialog is open but NO DATA - this might be the problem!');
+    }
+  }, [mealInputHook.showConfirmationDialog, mealInputHook.analyzedMealData, mealInputHook.selectedMealType]);
+
   // Time-based greeting function
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -35,15 +57,6 @@ const Index = () => {
     if (hour < 18) return "Guten Tag"; 
     return "Guten Abend";
   };
-
-  // Debug logging for dialog state
-  useEffect(() => {
-    console.log('🎯 Index.tsx - Dialog state changed:', {
-      showConfirmationDialog: mealInputHook.showConfirmationDialog,
-      hasAnalyzedData: !!mealInputHook.analyzedMealData,
-      selectedMealType: mealInputHook.selectedMealType
-    });
-  }, [mealInputHook.showConfirmationDialog, mealInputHook.analyzedMealData, mealInputHook.selectedMealType]);
 
   // Load user data
   useEffect(() => {
@@ -291,24 +304,43 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Meal Confirmation Dialog - Enhanced with debug logging */}
-      {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
-        <MealConfirmationDialog
-          isOpen={mealInputHook.showConfirmationDialog}
-          onClose={mealInputHook.setShowConfirmationDialog}
-          analyzedMealData={mealInputHook.analyzedMealData}
-          selectedMealType={mealInputHook.selectedMealType}
-          onMealTypeChange={mealInputHook.setSelectedMealType}
-          onSuccess={handleMealSuccess}
-        />
-      )}
+      {/* Enhanced Meal Confirmation Dialog with explicit logging */}
+      {(() => {
+        const shouldRenderDialog = mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData;
+        console.log('🎭 Dialog render check:', {
+          showConfirmationDialog: mealInputHook.showConfirmationDialog,
+          hasAnalyzedData: !!mealInputHook.analyzedMealData,
+          shouldRender: shouldRenderDialog,
+          timestamp: new Date().toISOString()
+        });
+        
+        if (shouldRenderDialog) {
+          console.log('✅ Rendering MealConfirmationDialog');
+          return (
+            <MealConfirmationDialog
+              isOpen={mealInputHook.showConfirmationDialog}
+              onClose={mealInputHook.setShowConfirmationDialog}
+              analyzedMealData={mealInputHook.analyzedMealData}
+              selectedMealType={mealInputHook.selectedMealType}
+              onMealTypeChange={mealInputHook.setSelectedMealType}
+              onSuccess={handleMealSuccess}
+            />
+          );
+        } else {
+          console.log('❌ NOT rendering MealConfirmationDialog');
+          return null;
+        }
+      })()}
 
-      {/* Debug info in development */}
+      {/* Enhanced debug info in development */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-4 right-4 bg-black/80 text-white p-2 rounded text-xs z-[60]">
-          Dialog: {mealInputHook.showConfirmationDialog ? 'OPEN' : 'CLOSED'}<br/>
-          Data: {mealInputHook.analyzedMealData ? 'YES' : 'NO'}<br/>
-          Type: {mealInputHook.selectedMealType || 'NONE'}
+        <div className="fixed top-4 right-4 bg-black/90 text-white p-3 rounded text-xs z-[200] max-w-xs">
+          <div className="font-bold mb-2">🔍 Debug Info</div>
+          <div>Dialog: {mealInputHook.showConfirmationDialog ? '✅ OPEN' : '❌ CLOSED'}</div>
+          <div>Data: {mealInputHook.analyzedMealData ? '✅ YES' : '❌ NO'}</div>
+          <div>Type: {mealInputHook.selectedMealType || 'NONE'}</div>
+          <div>Title: {mealInputHook.analyzedMealData?.title || 'N/A'}</div>
+          <div>Should Render: {(mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData) ? '✅ YES' : '❌ NO'}</div>
         </div>
       )}
     </>

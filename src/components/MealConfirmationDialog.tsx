@@ -1,4 +1,3 @@
-
 import { 
   AlertDialog, 
   AlertDialogContent, 
@@ -47,6 +46,14 @@ export const MealConfirmationDialog = ({
   const { user } = useAuth();
   const { t } = useTranslation();
 
+  // Enhanced debugging logs
+  console.log('🎯 MealConfirmationDialog render:', {
+    isOpen,
+    hasAnalyzedData: !!analyzedMealData,
+    selectedMealType,
+    timestamp: new Date().toISOString()
+  });
+
   // State for editable nutritional values
   const [editableValues, setEditableValues] = useState({
     calories: 0,
@@ -66,6 +73,24 @@ export const MealConfirmationDialog = ({
   const [verificationMessage, setVerificationMessage] = useState('');
   const [showVerification, setShowVerification] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // Debug effect for dialog state changes
+  useEffect(() => {
+    console.log('🔄 Dialog state changed:', {
+      isOpen,
+      hasData: !!analyzedMealData,
+      selectedMealType,
+      editableValues
+    });
+  }, [isOpen, analyzedMealData, selectedMealType, editableValues]);
+
+  // Debug effect for mount/unmount
+  useEffect(() => {
+    console.log('🏗️ MealConfirmationDialog mounted');
+    return () => {
+      console.log('🏗️ MealConfirmationDialog unmounted');
+    };
+  }, []);
 
   // Fetch user's coach personality
   useEffect(() => {
@@ -95,21 +120,29 @@ export const MealConfirmationDialog = ({
     fetchCoachPersonality();
   }, [user?.id]);
 
-  // Initialize editable values when dialog opens
+  // Initialize editable values when dialog opens - with enhanced logging
   useEffect(() => {
+    console.log('🔧 Initializing editable values:', {
+      analyzedMealData,
+      isOpen,
+      hasTotal: !!analyzedMealData?.total
+    });
+    
     if (analyzedMealData && isOpen) {
-      setEditableValues({
+      const newValues = {
         calories: analyzedMealData.total.calories || 0,
         protein: analyzedMealData.total.protein || 0,
         carbs: analyzedMealData.total.carbs || 0,
         fats: analyzedMealData.total.fats || 0,
         title: analyzedMealData.title || ""
-      });
+      };
+      
+      console.log('✅ Setting editable values:', newValues);
+      setEditableValues(newValues);
       setMealDate(new Date());
     }
   }, [analyzedMealData, isOpen]);
 
-  // Check for unusual values
   const getValueWarnings = () => {
     const warnings = [];
     if (editableValues.calories > 1200) warnings.push("Sehr hohe Kalorienzahl");
@@ -228,6 +261,8 @@ export const MealConfirmationDialog = ({
   const handleConfirmMeal = async () => {
     if (!user?.id) return;
     
+    console.log('🍽️ Confirming meal with values:', editableValues);
+    
     try {
       // Create a timestamp that preserves the local date without timezone conversion
       const localDate = new Date(mealDate);
@@ -252,6 +287,7 @@ export const MealConfirmationDialog = ({
         return;
       }
 
+      console.log('✅ Meal saved successfully');
       toast.success(t('meal.saveSuccess'));
       triggerDataRefresh(); // Trigger data refresh across all components
       onSuccess();
@@ -265,9 +301,22 @@ export const MealConfirmationDialog = ({
 
   const warnings = getValueWarnings();
 
+  // Enhanced logging for render decision
+  console.log('🎭 Dialog render decision:', {
+    isOpen,
+    willRender: isOpen && analyzedMealData,
+    analyzedMealDataExists: !!analyzedMealData
+  });
+
+  // Early return with logging if no data
+  if (!analyzedMealData) {
+    console.log('❌ No analyzedMealData, not rendering dialog');
+    return null;
+  }
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md border border-border/50 shadow-2xl z-[100]">
         <AlertDialogHeader>
           <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
           <AlertDialogDescription>
