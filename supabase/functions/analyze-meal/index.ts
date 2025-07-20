@@ -18,13 +18,20 @@ serve(async (req) => {
   try {
     const { text, images } = await req.json();
     
-    console.log('Received request:', { text, hasImages: !!images && images.length > 0 });
+    console.log('📥 Received request:', { 
+      hasText: !!text, 
+      textLength: text?.length || 0,
+      hasImages: !!images && images.length > 0,
+      imageCount: images?.length || 0
+    });
 
+    // Validate input - allow either text OR images OR both
     if (!text && (!images || images.length === 0)) {
-      throw new Error('Weder Text noch Bild bereitgestellt');
+      console.error('❌ No input provided');
+      throw new Error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
     }
 
-let prompt = `Du bist ein Ernährungsexperte mit Zugang zu präzisen Nährwertdatenbanken (USDA, BLS). 
+    let prompt = `Du bist ein Ernährungsexperte mit Zugang zu präzisen Nährwertdatenbanken (USDA, BLS). 
 
 WICHTIGE ANWEISUNGEN:
 - Schätze realistische Portionsgrößen basierend auf typischen Mahlzeiten
@@ -40,9 +47,9 @@ PORTION SIZE GUIDELINES:
 - Brot: 1 Scheibe = 30-40g
 - Öl/Butter: 1 TL = 5ml, 1 EL = 15ml
 
-Analysiere diese Mahlzeit und gib präzise Nährwerte zurück:
+${text ? `Analysiere diese Mahlzeit: "${text}"` : "Analysiere die hochgeladenen Bilder und schätze die Portionsgrößen"}
 
-${text ? `Beschreibung: ${text}` : "Analysiere die Bilder und schätze die Portionsgrößen"}
+${!text && images?.length > 0 ? "HINWEIS: Analysiere NUR die Bilder, da kein Text bereitgestellt wurde." : ""}
 
 Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
@@ -72,8 +79,10 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     let userContent = [{ type: 'text', text: prompt }];
     
     if (images && images.length > 0) {
+      console.log('🖼️ Adding images to analysis');
       // Add each image to the content array
-      images.forEach((imageUrl: string) => {
+      images.forEach((imageUrl: string, index: number) => {
+        console.log(`📸 Adding image ${index + 1}: ${imageUrl.substring(0, 50)}...`);
         userContent.push({
           type: 'image_url',
           image_url: { url: imageUrl }
@@ -92,7 +101,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       }
     ];
 
-    console.log('Sending request to OpenAI with improved prompt...');
+    console.log('🤖 Sending request to OpenAI GPT-4.1...');
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -109,29 +118,30 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       }),
     });
 
-    console.log('OpenAI response status:', response.status);
+    console.log('📡 OpenAI response status:', response.status);
 
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('❌ OpenAI API error:', data);
       throw new Error(data.error?.message || 'OpenAI API Fehler');
     }
 
     const content = data.choices[0].message.content;
-    console.log('OpenAI raw response:', content);
+    console.log('📄 OpenAI raw response:', content);
     
     try {
       const parsed = JSON.parse(content);
-      console.log('Parsed nutrition data:', parsed);
+      console.log('✅ Parsed nutrition data:', JSON.stringify(parsed, null, 2));
       
       // Validate and ensure reasonable values
       if (parsed.total && parsed.total.calories) {
         // Basic sanity checks
         if (parsed.total.calories < 10 || parsed.total.calories > 5000) {
-          console.warn('Unusual calorie value detected:', parsed.total.calories);
+          console.warn('⚠️ Unusual calorie value detected:', parsed.total.calories);
         }
         if (parsed.total.protein < 0 || parsed.total.protein > 200) {
-          console.warn('Unusual protein value detected:', parsed.total.protein);
+          console.warn('⚠️ Unusual protein value detected:', parsed.total.protein);
         }
       }
       
@@ -139,12 +149,12 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      console.error('Content:', content);
+      console.error('❌ JSON Parse Error:', parseError);
+      console.error('📄 Content:', content);
       
       // Fallback response if JSON parsing fails
       const fallbackResponse = {
-        title: text || 'Unbekannte Mahlzeit',
+        title: text || 'Analysierte Mahlzeit',
         items: [{
           name: text || 'Unbekannte Mahlzeit',
           amount: '1 Portion',
@@ -160,8 +170,10 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
           fats: 10
         },
         confidence: 'low',
-        notes: 'Automatische Schätzung - bitte überprüfen'
+        notes: 'Automatische Schätzung - bitte Werte überprüfen. Analyse-Fehler bei der KI-Antwort.'
       };
+      
+      console.log('🔄 Using fallback response:', fallbackResponse);
       
       return new Response(JSON.stringify(fallbackResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -169,8 +181,11 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     }
 
   } catch (error) {
-    console.error('Error in analyze-meal function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('❌ Error in analyze-meal function:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Ein unerwarteter Fehler ist aufgetreten',
+      details: error.stack 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
