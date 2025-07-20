@@ -29,6 +29,17 @@ const Index = () => {
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Debug effect for dialog state changes
+  useEffect(() => {
+    console.log('🎯 [INDEX] Dialog state changed:', {
+      showConfirmationDialog: mealInputHook.showConfirmationDialog,
+      hasAnalyzedData: !!mealInputHook.analyzedMealData,
+      analyzedMealData: mealInputHook.analyzedMealData,
+      selectedMealType: mealInputHook.selectedMealType,
+      timestamp: new Date().toISOString()
+    });
+  }, [mealInputHook.showConfirmationDialog, mealInputHook.analyzedMealData, mealInputHook.selectedMealType]);
+
   // Time-based greeting function
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -153,8 +164,25 @@ const Index = () => {
   };
 
   const handleMealSuccess = async () => {
+    console.log('🎉 [INDEX] handleMealSuccess called');
     await fetchMealsForDate(currentDate);
     mealInputHook.resetForm();
+  };
+
+  // Debug function to manually test dialog
+  const testDialog = () => {
+    console.log('🧪 [INDEX] Testing dialog manually...');
+    mealInputHook.setAnalyzedMealData({
+      title: "Test Mahlzeit",
+      calories: 100,
+      protein: 10,
+      carbs: 15,
+      fats: 5,
+      meal_type: 'other',
+      confidence: 0.9
+    });
+    mealInputHook.setSelectedMealType('other');
+    mealInputHook.setShowConfirmationDialog(true);
   };
 
   if (dataLoading) {
@@ -173,6 +201,13 @@ const Index = () => {
         {/* Simple time-based greeting at the very top */}
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-foreground">{getTimeBasedGreeting()}! 👋</h1>
+          {/* Debug button - remove after testing */}
+          <button 
+            onClick={testDialog}
+            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            🧪 Test Dialog
+          </button>
         </div>
 
         <div className="md:flex md:gap-6">
@@ -280,17 +315,27 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Meal Confirmation Dialog */}
-      {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
-        <MealConfirmationDialog
-          isOpen={mealInputHook.showConfirmationDialog}
-          onClose={mealInputHook.closeDialog}
-          analyzedMealData={mealInputHook.analyzedMealData}
-          selectedMealType={mealInputHook.selectedMealType}
-          onMealTypeChange={mealInputHook.setSelectedMealType}
-          onSuccess={handleMealSuccess}
-        />
-      )}
+      {/* Meal Confirmation Dialog - Enhanced debugging */}
+      {(() => {
+        const shouldRender = mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData;
+        console.log('🔍 [INDEX] Dialog render check:', {
+          showConfirmationDialog: mealInputHook.showConfirmationDialog,
+          hasAnalyzedData: !!mealInputHook.analyzedMealData,
+          shouldRender,
+          analyzedMealData: mealInputHook.analyzedMealData
+        });
+        
+        return shouldRender ? (
+          <MealConfirmationDialog
+            isOpen={mealInputHook.showConfirmationDialog}
+            onClose={mealInputHook.closeDialog}
+            analyzedMealData={mealInputHook.analyzedMealData}
+            selectedMealType={mealInputHook.selectedMealType}
+            onMealTypeChange={mealInputHook.setSelectedMealType}
+            onSuccess={handleMealSuccess}
+          />
+        ) : null;
+      })()}
     </>
   );
 };

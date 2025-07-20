@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -95,7 +96,12 @@ export const useGlobalMealInput = () => {
   const analyzeMealText = useCallback(async (text: string, images: string[] = []): Promise<MealData | null> => {
     if (!user || (!text.trim() && images.length === 0)) return null;
 
-    console.log('🔍 Starting meal analysis...');
+    console.log('🔍 [HOOK] Starting meal analysis...', {
+      hasText: !!text.trim(),
+      textLength: text.trim().length,
+      hasImages: images.length > 0,
+      imageCount: images.length
+    });
     
     setIsAnalyzing(true);
     
@@ -105,12 +111,22 @@ export const useGlobalMealInput = () => {
         images: images.length > 0 ? images : null
       };
       
+      console.log('📤 [HOOK] Sending to analyze-meal function:', requestPayload);
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: requestPayload
       });
 
+      console.log('📥 [HOOK] Response from analyze-meal function:', {
+        data,
+        error,
+        hasData: !!data,
+        hasTotal: !!(data?.total),
+        dataKeys: data ? Object.keys(data) : []
+      });
+
       if (error) {
-        console.error('❌ Meal analysis error:', error);
+        console.error('❌ [HOOK] Meal analysis error:', error);
         throw error;
       }
 
@@ -125,13 +141,13 @@ export const useGlobalMealInput = () => {
           meal_type: 'other'
         };
         
-        console.log('✅ Meal analysis successful');
+        console.log('✅ [HOOK] Meal analysis successful, result:', result);
         return result;
       }
 
       // Fallback for legacy format
       if (data?.meal) {
-        return {
+        const result = {
           text: text.trim() || 'Analysierte Mahlzeit',
           calories: data.meal.calories || 0,
           protein: data.meal.protein || 0,
@@ -139,12 +155,15 @@ export const useGlobalMealInput = () => {
           fats: data.meal.fats || 0,
           meal_type: data.meal.meal_type || 'other'
         };
+        
+        console.log('✅ [HOOK] Meal analysis successful (legacy format), result:', result);
+        return result;
       }
 
-      console.error('❌ Unexpected response format');
+      console.error('❌ [HOOK] Unexpected response format:', data);
       return null;
     } catch (error: any) {
-      console.error('❌ Meal analysis failed:', error);
+      console.error('❌ [HOOK] Meal analysis failed:', error);
       
       if (error.message?.includes('Weder Text noch Bild')) {
         toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
@@ -329,7 +348,7 @@ export const useGlobalMealInput = () => {
 
   // Event handlers - completely decoupled
   const handleSubmitMeal = useCallback(async () => {
-    console.log('🚀 Submitting meal...');
+    console.log('🚀 [HOOK] handleSubmitMeal called');
     
     if (!inputText.trim() && uploadedImages.length === 0) {
       toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
@@ -337,10 +356,20 @@ export const useGlobalMealInput = () => {
     }
 
     try {
+      console.log('📊 [HOOK] About to analyze meal with:', {
+        inputText: inputText.substring(0, 50) + '...',
+        imageCount: uploadedImages.length
+      });
+      
       const mealData = await analyzeMealText(inputText, uploadedImages);
+      
+      console.log('📈 [HOOK] Analysis result:', {
+        hasMealData: !!mealData,
+        mealData
+      });
+      
       if (mealData) {
-        console.log('✅ Analysis completed, showing confirmation dialog');
-        setAnalyzedMealData({
+        const analyzedData = {
           title: mealData.text,
           calories: mealData.calories,
           protein: mealData.protein,
@@ -348,15 +377,24 @@ export const useGlobalMealInput = () => {
           fats: mealData.fats,
           meal_type: mealData.meal_type || 'other',
           confidence: 0.85
-        });
+        };
+        
+        console.log('🎯 [HOOK] Setting analyzed meal data:', analyzedData);
+        setAnalyzedMealData(analyzedData);
+        
+        console.log('🍽️ [HOOK] Setting selected meal type:', mealData.meal_type || 'other');
         setSelectedMealType(mealData.meal_type || 'other');
+        
+        console.log('💫 [HOOK] About to show confirmation dialog...');
         setShowConfirmationDialog(true);
+        
+        console.log('✅ [HOOK] Dialog should now be visible!');
       } else {
-        console.error('❌ No meal data received');
+        console.error('❌ [HOOK] No meal data received from analysis');
         toast.error('Keine Daten von der Analyse erhalten');
       }
     } catch (error) {
-      console.error('❌ Submit meal error:', error);
+      console.error('❌ [HOOK] Submit meal error:', error);
       toast.error('Fehler beim Analysieren der Mahlzeit');
     }
   }, [inputText, uploadedImages, analyzeMealText]);
@@ -404,6 +442,7 @@ export const useGlobalMealInput = () => {
   }, []);
 
   const closeDialog = useCallback(() => {
+    console.log('🚪 [HOOK] Closing dialog...');
     setShowConfirmationDialog(false);
   }, []);
 
