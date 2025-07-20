@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { uploadFilesWithProgress, UploadProgress } from '@/utils/uploadHelpers';
 
 interface MealData {
   text: string;
@@ -25,29 +26,41 @@ interface AnalyzedMealData {
 
 export const useGlobalMealInput = () => {
   const { user } = useAuth();
+  
+  // Core states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [inputText, setInputText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [analyzedMealData, setAnalyzedMealData] = useState<AnalyzedMealData | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('other');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<any[]>([]);
   
+  // Upload states - completely isolated
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  
+  // Recording states - completely isolated
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  
+  // Refs for media recorder
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup function for media recorder
   const cleanupMediaRecorder = useCallback(() => {
+    console.log('🧹 Cleaning up MediaRecorder...');
+    
     if (mediaRecorderRef.current) {
       if (mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       }
-      mediaRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
+      mediaRecorderRef.current.stream?.getTracks().forEach(track => {
+        track.stop();
+        console.log('🔇 Audio track stopped');
+      });
       mediaRecorderRef.current = null;
     }
     
@@ -56,8 +69,10 @@ export const useGlobalMealInput = () => {
       recordingIntervalRef.current = null;
     }
     
+    audioChunksRef.current = [];
     setIsRecording(false);
     setRecordingTime(0);
+    console.log('✅ MediaRecorder cleanup complete');
   }, []);
 
   // Cleanup on unmount
@@ -67,10 +82,13 @@ export const useGlobalMealInput = () => {
     };
   }, [cleanupMediaRecorder]);
 
+  // Meal analysis function
   const analyzeMealText = useCallback(async (text: string, images: string[] = []): Promise<MealData | null> => {
     if (!user || (!text.trim() && images.length === 0)) return null;
 
+    console.log('🔍 Starting meal analysis...', { text: text.substring(0, 50), imageCount: images.length });
     setIsAnalyzing(true);
+    
     try {
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
@@ -80,9 +98,11 @@ export const useGlobalMealInput = () => {
       });
 
       if (error) {
-        console.error('Meal analysis error:', error);
+        console.error('❌ Meal analysis error:', error);
         throw error;
       }
+
+      console.log('✅ Meal analysis successful:', data);
 
       // Handle standardized response format
       if (data?.total) {
@@ -110,6 +130,7 @@ export const useGlobalMealInput = () => {
 
       return null;
     } catch (error: any) {
+      console.error('❌ Meal analysis failed:', error);
       if (error.message?.includes('Weder Text noch Bild')) {
         toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
       } else {
@@ -121,7 +142,10 @@ export const useGlobalMealInput = () => {
     }
   }, [user]);
 
+  // Voice recording functions - completely isolated
   const startRecording = useCallback(async () => {
+    console.log('🎤 Starting voice recording...');
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -129,7 +153,9 @@ export const useGlobalMealInput = () => {
       audioChunksRef.current = [];
       
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.start();
@@ -140,35 +166,75 @@ export const useGlobalMealInput = () => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
 
+      console.log('✅ Voice recording started');
+
     } catch (error) {
-      console.error('Recording error:', error);
+      console.error('❌ Recording error:', error);
       toast.error('Mikrofonzugriff verweigert');
+      cleanupMediaRecorder();
     }
-  }, []);
+  }, [cleanupMediaRecorder]);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
+    console.log('🛑 Stopping voice recording...');
+    
     return new Promise((resolve) => {
       if (!mediaRecorderRef.current || !isRecording) {
+        console.log('❌ No active recording to stop');
         resolve(null);
         return;
       }
 
       mediaRecorderRef.current.onstop = async () => {
+        setIsProcessing(true);
+        
         try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          console.log('🔄 Converting audio to base64...');
           
-          const { data, error } = await supabase.functions.invoke('voice-to-text', {
-            body: { audio: Array.from(new Uint8Array(await audioBlob.arrayBuffer())) }
-          });
+          // Convert to base64 for edge function
+          const reader = new FileReader();
+          reader.onload = async () => {
+            try {
+              const base64Data = reader.result as string;
+              
+              console.log('📤 Sending audio to voice-to-text...');
+              const { data, error } = await supabase.functions.invoke('voice-to-text', {
+                body: { audio: base64Data }
+              });
 
-          if (error) throw error;
-          resolve(data?.text || null);
+              if (error) {
+                console.error('❌ Voice processing error:', error);
+                throw error;
+              }
+
+              console.log('✅ Voice transcription successful:', data?.text);
+              resolve(data?.text || null);
+            } catch (error) {
+              console.error('❌ Voice processing error:', error);
+              toast.error('Spracherkennung fehlgeschlagen');
+              resolve(null);
+            } finally {
+              setIsProcessing(false);
+              cleanupMediaRecorder();
+            }
+          };
+          
+          reader.onerror = () => {
+            console.error('❌ FileReader error');
+            toast.error('Audio-Konvertierung fehlgeschlagen');
+            setIsProcessing(false);
+            cleanupMediaRecorder();
+            resolve(null);
+          };
+          
+          reader.readAsDataURL(audioBlob);
         } catch (error) {
-          console.error('Voice processing error:', error);
-          toast.error('Spracherkennung fehlgeschlagen');
-          resolve(null);
-        } finally {
+          console.error('❌ Audio processing error:', error);
+          toast.error('Audio-Verarbeitung fehlgeschlagen');
+          setIsProcessing(false);
           cleanupMediaRecorder();
+          resolve(null);
         }
       };
 
@@ -176,38 +242,32 @@ export const useGlobalMealInput = () => {
     });
   }, [isRecording, cleanupMediaRecorder]);
 
+  // Upload functions - completely isolated
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!user || files.length === 0) return [];
 
+    console.log('📤 Starting image upload...', { fileCount: files.length });
     setIsUploading(true);
-    const uploadedUrls: string[] = [];
+    setUploadProgress([]);
 
     try {
-      for (const file of files) {
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error(`${file.name} zu groß (max. 10MB)`);
-          continue;
-        }
+      const result = await uploadFilesWithProgress(files, user.id, (progress) => {
+        setUploadProgress(progress);
+      });
 
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('meal-images')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('meal-images')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(publicUrl);
+      if (result.errors.length > 0) {
+        result.errors.forEach(error => {
+          toast.error(error);
+        });
       }
 
-      return uploadedUrls;
+      if (result.success) {
+        toast.success(`${result.urls.length} Bild(er) erfolgreich hochgeladen`);
+      }
+
+      return result.urls;
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
       toast.error('Upload fehlgeschlagen');
       return [];
     } finally {
@@ -215,7 +275,10 @@ export const useGlobalMealInput = () => {
     }
   }, [user]);
 
+  // Event handlers - completely decoupled
   const handleSubmitMeal = useCallback(async () => {
+    console.log('🚀 Submitting meal...', { text: inputText.substring(0, 50), imageCount: uploadedImages.length });
+    
     if (!inputText.trim() && uploadedImages.length === 0) {
       toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
       return;
@@ -243,35 +306,46 @@ export const useGlobalMealInput = () => {
   }, [inputText, uploadedImages, analyzeMealText]);
 
   const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📷 Photo upload triggered');
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
+
+    // Clear the input to allow re-uploading the same file
+    event.target.value = '';
 
     const urls = await uploadImages(files);
     setUploadedImages(prev => [...prev, ...urls]);
   }, [uploadImages]);
 
   const handleVoiceRecord = useCallback(async () => {
+    console.log('🎙️ Voice record button clicked, current state:', { isRecording, isProcessing });
+    
     if (isRecording) {
+      console.log('🛑 Stopping recording...');
       const transcription = await stopRecording();
       if (transcription) {
         setInputText(prev => prev + (prev ? ' ' : '') + transcription);
       }
     } else {
+      console.log('🎤 Starting recording...');
       await startRecording();
     }
-  }, [isRecording, stopRecording, startRecording]);
+  }, [isRecording, isProcessing, stopRecording, startRecording]);
 
   const removeImage = useCallback((index: number) => {
+    console.log('🗑️ Removing image at index:', index);
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const resetForm = useCallback(() => {
+    console.log('🔄 Resetting form...');
     setInputText('');
     setUploadedImages([]);
     setShowConfirmationDialog(false);
     setAnalyzedMealData(null);
     setSelectedMealType('other');
     setIsProcessing(false);
+    setUploadProgress([]);
   }, []);
 
   const closeDialog = useCallback(() => {

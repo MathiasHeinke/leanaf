@@ -59,7 +59,11 @@ export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 102
       }, 'image/jpeg', quality);
     };
     
-    img.onerror = () => resolve(file);
+    img.onerror = () => {
+      console.warn('Image compression failed, using original file');
+      resolve(file);
+    };
+    
     img.src = URL.createObjectURL(file);
   });
 };
@@ -83,9 +87,13 @@ export const uploadFilesWithProgress = async (
     status: 'pending'
   }));
 
+  // Isolated progress update function
   const updateProgress = (index: number, updates: Partial<UploadProgress>) => {
     uploadProgress[index] = { ...uploadProgress[index], ...updates };
-    onProgress?.(uploadProgress);
+    if (onProgress) {
+      // Create a deep copy to prevent reference issues
+      onProgress(JSON.parse(JSON.stringify(uploadProgress)));
+    }
   };
 
   const uploadedUrls: string[] = [];
@@ -100,86 +108,73 @@ export const uploadFilesWithProgress = async (
   }
   console.log('✅ Authentication verified');
 
-  // Process files in parallel (but limit to 3 concurrent uploads)
-  const BATCH_SIZE = 3;
-  for (let i = 0; i < files.length; i += BATCH_SIZE) {
-    const batch = files.slice(i, i + BATCH_SIZE);
-    const batchPromises = batch.map(async (file, batchIndex) => {
-      const fileIndex = i + batchIndex;
-      
-      try {
-        console.log(`📁 Processing file ${fileIndex + 1}/${files.length}: ${file.name}`);
-        updateProgress(fileIndex, { status: 'uploading', progress: 10 });
+  // Process files sequentially to avoid overwhelming the system
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    
+    try {
+      console.log(`📁 Processing file ${i + 1}/${files.length}: ${file.name}`);
+      updateProgress(i, { status: 'uploading', progress: 10 });
 
-        // Validate file
-        if (file.size > 10 * 1024 * 1024) {
-          throw new Error(`Datei ${file.name} ist zu groß (max. 10MB)`);
-        }
-
-        if (!file.type.startsWith('image/')) {
-          throw new Error(`Datei ${file.name} ist kein Bild`);
-        }
-
-        updateProgress(fileIndex, { progress: 20 });
-
-        // Compress image if needed
-        let processedFile = file;
-        if (file.size > 1024 * 1024) { // If larger than 1MB
-          console.log(`🗜️ Compressing ${file.name}...`);
-          processedFile = await compressImage(file);
-          updateProgress(fileIndex, { progress: 40 });
-        }
-
-        const fileExt = processedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        
-        console.log(`⬆️ Uploading to: ${fileName}`);
-        updateProgress(fileIndex, { progress: 60 });
-
-        // Upload with timeout
-        const uploadPromise = supabase.storage
-          .from('meal-images')
-          .upload(fileName, processedFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        // Add timeout
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Upload timeout')), 30000);
-        });
-
-        const uploadResult = await Promise.race([uploadPromise, timeoutPromise]) as any;
-
-        if (uploadResult.error) {
-          console.error(`❌ Upload failed for ${file.name}:`, uploadResult.error);
-          throw new Error(`Upload fehlgeschlagen: ${uploadResult.error.message}`);
-        }
-
-        updateProgress(fileIndex, { progress: 80 });
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('meal-images')
-          .getPublicUrl(fileName);
-
-        console.log(`✅ Upload successful: ${file.name} -> ${urlData.publicUrl}`);
-        uploadedUrls.push(urlData.publicUrl);
-        updateProgress(fileIndex, { progress: 100, status: 'completed' });
-
-      } catch (error: any) {
-        console.error(`❌ Error uploading ${file.name}:`, error);
-        const errorMessage = error.message || 'Unbekannter Fehler beim Upload';
-        errors.push(`${file.name}: ${errorMessage}`);
-        updateProgress(fileIndex, { 
-          status: 'error', 
-          error: errorMessage,
-          progress: 0 
-        });
+      // Validate file
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error(`Datei ist zu groß (max. 10MB)`);
       }
-    });
 
-    await Promise.all(batchPromises);
+      if (!file.type.startsWith('image/')) {
+        throw new Error(`Datei ist kein Bild`);
+      }
+
+      updateProgress(i, { progress: 20 });
+
+      // Compress image if needed
+      let processedFile = file;
+      if (file.size > 1024 * 1024) { // If larger than 1MB
+        console.log(`🗜️ Compressing ${file.name}...`);
+        processedFile = await compressImage(file);
+        updateProgress(i, { progress: 40 });
+      }
+
+      const fileExt = processedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      
+      console.log(`⬆️ Uploading to: ${fileName}`);
+      updateProgress(i, { progress: 60 });
+
+      // Upload with proper error handling
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('meal-images')
+        .upload(fileName, processedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error(`❌ Upload failed for ${file.name}:`, uploadError);
+        throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
+      }
+
+      updateProgress(i, { progress: 80 });
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('meal-images')
+        .getPublicUrl(fileName);
+
+      console.log(`✅ Upload successful: ${file.name} -> ${urlData.publicUrl}`);
+      uploadedUrls.push(urlData.publicUrl);
+      updateProgress(i, { progress: 100, status: 'completed' });
+
+    } catch (error: any) {
+      console.error(`❌ Error uploading ${file.name}:`, error);
+      const errorMessage = error.message || 'Unbekannter Fehler beim Upload';
+      errors.push(`${file.name}: ${errorMessage}`);
+      updateProgress(i, { 
+        status: 'error', 
+        error: errorMessage,
+        progress: 0 
+      });
+    }
   }
 
   const result: UploadResult = {

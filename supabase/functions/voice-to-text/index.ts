@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -6,34 +7,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Process base64 in chunks to prevent memory issues
-function processBase64Chunks(base64String: string, chunkSize = 32768) {
-  const chunks: Uint8Array[] = [];
-  let position = 0;
-  
-  while (position < base64String.length) {
-    const chunk = base64String.slice(position, position + chunkSize);
-    const binaryChunk = atob(chunk);
-    const bytes = new Uint8Array(binaryChunk.length);
+// Convert base64 to binary safely
+function base64ToUint8Array(base64: string): Uint8Array {
+  try {
+    // Remove data URL prefix if present
+    const cleanBase64 = base64.replace(/^data:audio\/[^;]+;base64,/, '');
+    const binaryString = atob(cleanBase64);
+    const bytes = new Uint8Array(binaryString.length);
     
-    for (let i = 0; i < binaryChunk.length; i++) {
-      bytes[i] = binaryChunk.charCodeAt(i);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
     }
     
-    chunks.push(bytes);
-    position += chunkSize;
+    return bytes;
+  } catch (error) {
+    console.error('Base64 conversion error:', error);
+    throw new Error('Invalid base64 audio data');
   }
-
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
 }
 
 serve(async (req) => {
@@ -44,6 +34,8 @@ serve(async (req) => {
   try {
     const { audio } = await req.json();
     
+    console.log('Voice-to-text started, audio data type:', typeof audio);
+    
     if (!audio) {
       throw new Error('No audio data provided');
     }
@@ -53,10 +45,20 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('Processing audio transcription...');
+    // Convert audio data to binary
+    let binaryAudio: Uint8Array;
+    
+    if (typeof audio === 'string') {
+      // Base64 string
+      binaryAudio = base64ToUint8Array(audio);
+    } else if (Array.isArray(audio)) {
+      // Array of bytes (legacy format)
+      binaryAudio = new Uint8Array(audio);
+    } else {
+      throw new Error('Invalid audio data format');
+    }
 
-    // Process audio in chunks
-    const binaryAudio = processBase64Chunks(audio);
+    console.log('Audio data converted, size:', binaryAudio.length, 'bytes');
     
     // Prepare form data
     const formData = new FormData();
@@ -77,11 +79,11 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenAI Whisper API error:', errorText);
-      throw new Error(`OpenAI API error: ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const result = await response.json();
-    console.log('Transcription result:', result);
+    console.log('Transcription successful:', result.text?.substring(0, 100) + '...');
 
     return new Response(
       JSON.stringify({ text: result.text }),
