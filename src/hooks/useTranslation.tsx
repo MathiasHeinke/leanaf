@@ -29,7 +29,7 @@ const translations = {
     'nav.logout': 'Abmelden',
     
     // Main App
-    'app.title': 'kaloAI',
+    'app.title': 'KaloAI',
     'app.welcome': 'Willkommen bei kaloAI',
     'app.dailyProgress': 'Täglicher Fortschritt',
     'app.calories': 'Kalorien',
@@ -50,7 +50,7 @@ const translations = {
     'input.photo': 'Foto',
     'input.voice': 'Sprache',
     'input.text': 'Text',
-    'input.placeholder': 'Mahlzeit eingeben',
+    'input.placeholder': 'Beschreibe deine Mahlzeit...',
     'input.record': 'Aufnahme',
     'input.recording': 'Aufnahme läuft...',
     'input.photoUpload': 'Foto hochladen',
@@ -525,7 +525,7 @@ const translations = {
     'nav.logout': 'Logout',
     
     // Main App
-    'app.title': 'kaloAI',
+    'app.title': 'KaloAI',
     'app.welcome': 'Welcome to kaloAI',
     'app.dailyProgress': 'Daily Progress',
     'app.calories': 'Calories',
@@ -546,7 +546,7 @@ const translations = {
     'input.photo': 'Photo',
     'input.voice': 'Voice',
     'input.text': 'Text',
-    'input.placeholder': 'Enter meal',
+    'input.placeholder': 'Describe your meal...',
     'input.record': 'Record',
     'input.recording': 'Recording...',
     'input.photoUpload': 'Upload Photo',
