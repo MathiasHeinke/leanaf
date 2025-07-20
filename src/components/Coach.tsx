@@ -964,38 +964,40 @@ const Coach = ({ onClose }: CoachProps) => {
                       {aiAnalysis.messages.map((message, index) => (
                         <div key={index} className={`p-4 rounded-lg border ${getMessageColor(message.type)}`}>
                           <div className="flex items-start gap-3">
-                            <div className="mt-0.5">
+                            <div className="mt-0.5 flex-shrink-0">
                               {getMessageIcon(message.type)}
                             </div>
-                            <div className="flex-1">
-                              <h4 className="font-medium text-sm mb-1">{message.title}</h4>
-                              <p className="text-sm opacity-80">{message.message}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">
-                                {message.priority}
-                              </Badge>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => saveTip(message)}
-                                disabled={savedTips.has(message.title) || savingTips.has(message.title)}
-                                className={`h-8 w-8 p-0 transition-all duration-300 ${
-                                  savedTips.has(message.title) 
-                                    ? 'text-green-600 bg-green-50 hover:bg-green-100' 
-                                    : savingTips.has(message.title)
-                                    ? 'text-green-600 bg-green-50'
-                                    : 'text-muted-foreground hover:text-primary'
-                                }`}
-                              >
-                                <Heart 
-                                  className={`h-4 w-4 ${
-                                    savedTips.has(message.title) || savingTips.has(message.title) 
-                                      ? 'fill-current' 
-                                      : ''
-                                  }`} 
-                                />
-                              </Button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <h4 className="font-medium text-sm">{message.title}</h4>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <Badge variant="outline" className="text-xs">
+                                    {message.priority}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => saveTip(message)}
+                                    disabled={savedTips.has(message.title) || savingTips.has(message.title)}
+                                    className={`h-8 w-8 p-0 transition-all duration-300 ${
+                                      savedTips.has(message.title) 
+                                        ? 'text-green-600 bg-green-50 hover:bg-green-100' 
+                                        : savingTips.has(message.title)
+                                        ? 'text-green-600 bg-green-50'
+                                        : 'text-muted-foreground hover:text-primary'
+                                    }`}
+                                  >
+                                    <Heart 
+                                      className={`h-4 w-4 ${
+                                        savedTips.has(message.title) || savingTips.has(message.title) 
+                                          ? 'fill-current' 
+                                          : ''
+                                      }`} 
+                                    />
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className="text-sm opacity-80 leading-relaxed">{message.message}</p>
                             </div>
                           </div>
                         </div>
@@ -1027,12 +1029,14 @@ const Coach = ({ onClose }: CoachProps) => {
                     <h3 className="text-lg font-semibold mb-4">Personalisierte Rezept-Empfehlungen</h3>
                     <div className="grid gap-4">
                       {mealSuggestions.slice(0, 3).map((meal, index) => (
-                        <div key={index} className="glass-card p-4 rounded-xl border border-border/20 hover:border-accent/30 transition-all duration-200">
-                          <div className="flex justify-between items-start mb-3">
-                            <h4 className="font-medium text-lg">{meal.name}</h4>
-                            <Badge variant="outline">{meal.mealType}</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">{meal.description}</p>
+                         <div key={index} className="glass-card p-4 rounded-xl border border-border/20 hover:border-accent/30 transition-all duration-200">
+                           <div className="flex justify-between items-start gap-4 mb-3">
+                             <div className="flex-1 min-w-0">
+                               <h4 className="font-medium text-lg leading-tight mb-1">{meal.name}</h4>
+                               <p className="text-sm text-muted-foreground leading-relaxed">{meal.description}</p>
+                             </div>
+                             <Badge variant="outline" className="flex-shrink-0">{meal.mealType}</Badge>
+                           </div>
                           
                           <div className="grid grid-cols-4 gap-2 mb-4 text-sm">
                             <div className="text-center p-2 bg-primary/5 rounded">
