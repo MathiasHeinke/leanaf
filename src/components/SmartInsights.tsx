@@ -628,53 +628,34 @@ export const SmartInsights = ({
           </TabsContent>
 
           <TabsContent value="goals" className="space-y-6">
+            {/* Detailanalyse Section */}
             <div className="space-y-4">
-              <h4 className="font-semibold flex items-center gap-2">
-                <Award className="h-5 w-5 text-primary" />
-                Ziel-Fortschritt
-              </h4>
-              
-              {/* Goal Progress Cards */}
-              <div className="space-y-4">
-                {[
-                  { label: 'Kalorien', current: todaysTotals.calories, target: dailyGoals.calories, unit: 'kcal', color: 'blue' },
-                  { label: 'Protein', current: todaysTotals.protein, target: dailyGoals.protein, unit: 'g', color: 'green' },
-                  { label: 'Kohlenhydrate', current: todaysTotals.carbs, target: dailyGoals.carbs, unit: 'g', color: 'orange' },
-                  { label: 'Fette', current: todaysTotals.fats, target: dailyGoals.fats, unit: 'g', color: 'purple' }
-                ].map((goal) => {
-                  const progress = (goal.current / goal.target) * 100;
-                  return (
-                    <div key={goal.label} className="p-4 bg-background/60 rounded-lg border border-border/50">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium">{goal.label}</span>
-                        <Badge variant="outline">{Math.round(progress)}%</Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm text-muted-foreground">
-                          {goal.current}{goal.unit} / {goal.target}{goal.unit}
-                        </div>
-                        <Progress value={Math.min(100, progress)} className="h-2" />
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  Detailanalyse
+                </h4>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Aktualisieren
+                </Button>
               </div>
-
-              {/* Weekly Goal Achievement */}
-              {historyData.length > 0 && (
-                <div className="p-4 bg-muted/30 rounded-lg">
-                  <h5 className="font-medium mb-2 flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Wöchentliche Zielerreichung
-                  </h5>
-                  <div className="text-sm text-muted-foreground">
-                    {historyData.filter(day => {
-                      const dayProgress = (day.totals.calories / dailyGoals.calories) * 100;
-                      return dayProgress >= 90 && dayProgress <= 110;
-                    }).length} von {Math.min(historyData.length, 7)} Tagen im Zielbereich
-                  </div>
+              
+              <div className="p-12 bg-muted/30 rounded-lg border border-dashed border-muted-foreground/30 text-center space-y-6">
+                <div className="mx-auto w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center">
+                  <Brain className="h-10 w-10 text-muted-foreground" />
                 </div>
-              )}
+                
+                <div className="space-y-2">
+                  <h5 className="text-lg font-medium text-muted-foreground">
+                    Noch keine AI-Analyse verfügbar
+                  </h5>
+                </div>
+                
+                <Button className="bg-primary hover:bg-primary/90">
+                  Analyse starten
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
