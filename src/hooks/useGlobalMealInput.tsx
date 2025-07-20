@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,27 +85,48 @@ export const useGlobalMealInput = () => {
   const analyzeMealText = useCallback(async (text: string, images: string[] = []): Promise<MealData | null> => {
     if (!user || (!text.trim() && images.length === 0)) return null;
 
-    console.log('🔍 Starting meal analysis...', { text: text.substring(0, 50), imageCount: images.length });
+    const analysisStartTime = Date.now();
+    console.log('🔍 [FRONTEND] Starting meal analysis...', { 
+      textLength: text?.length || 0,
+      textPreview: text ? text.substring(0, 50) + '...' : 'NO TEXT',
+      imageCount: images.length,
+      imageUrls: images.map(url => url.substring(0, 50) + '...')
+    });
+    
     setIsAnalyzing(true);
     
     try {
+      const requestPayload = { 
+        text: text.trim() || null,
+        images: images.length > 0 ? images : null
+      };
+      
+      console.log('📤 [FRONTEND] Sending to analyze-meal function:', requestPayload);
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
-        body: { 
-          text: text.trim() || null,
-          images: images.length > 0 ? images : null
-        }
+        body: requestPayload
       });
 
+      const analysisDuration = Date.now() - analysisStartTime;
+      console.log(`⏱️ [FRONTEND] Analysis completed in ${analysisDuration}ms (${(analysisDuration/1000).toFixed(1)}s)`);
+
       if (error) {
-        console.error('❌ Meal analysis error:', error);
+        console.error('❌ [FRONTEND] Meal analysis error:', error);
         throw error;
       }
 
-      console.log('✅ Meal analysis successful:', data);
+      console.log('✅ [FRONTEND] Meal analysis successful:', {
+        hasTitle: !!data?.title,
+        hasTotal: !!data?.total,
+        totalCalories: data?.total?.calories,
+        itemsCount: data?.items?.length || 0,
+        confidence: data?.confidence,
+        hasNotes: !!data?.notes
+      });
 
       // Handle standardized response format
       if (data?.total) {
-        return {
+        const result = {
           text: data.title || text.trim() || 'Analysierte Mahlzeit',
           calories: data.total.calories || 0,
           protein: data.total.protein || 0,
@@ -114,10 +134,14 @@ export const useGlobalMealInput = () => {
           fats: data.total.fats || 0,
           meal_type: 'other'
         };
+        
+        console.log('📋 [FRONTEND] Returning meal data:', result);
+        return result;
       }
 
       // Fallback for legacy format
       if (data?.meal) {
+        console.log('⚠️ [FRONTEND] Using legacy response format');
         return {
           text: text.trim() || 'Analysierte Mahlzeit',
           calories: data.meal.calories || 0,
@@ -128,13 +152,18 @@ export const useGlobalMealInput = () => {
         };
       }
 
+      console.error('❌ [FRONTEND] Unexpected response format:', data);
       return null;
     } catch (error: any) {
-      console.error('❌ Meal analysis failed:', error);
+      const analysisDuration = Date.now() - analysisStartTime;
+      console.error('❌ [FRONTEND] Meal analysis failed after', `${analysisDuration}ms:`, error);
+      
       if (error.message?.includes('Weder Text noch Bild')) {
         toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
+      } else if (error.message?.includes('timeout')) {
+        toast.error('Analyse dauert zu lange - bitte versuchen Sie es erneut');
       } else {
-        toast.error('Analyse fehlgeschlagen');
+        toast.error('Analyse fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
       }
       return null;
     } finally {
@@ -246,29 +275,41 @@ export const useGlobalMealInput = () => {
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!user || files.length === 0) return [];
 
-    console.log('📤 Starting image upload...', { fileCount: files.length });
+    const uploadStartTime = Date.now();
+    console.log('📤 [FRONTEND] Starting image upload...', { 
+      fileCount: files.length,
+      totalSize: files.reduce((sum, file) => sum + file.size, 0)
+    });
+    
     setIsUploading(true);
     setUploadProgress([]);
 
     try {
       const result = await uploadFilesWithProgress(files, user.id, (progress) => {
+        console.log('📊 [FRONTEND] Upload progress update:', progress);
         setUploadProgress(progress);
       });
 
+      const uploadDuration = Date.now() - uploadStartTime;
+      console.log(`⏱️ [FRONTEND] Upload completed in ${uploadDuration}ms (${(uploadDuration/1000).toFixed(1)}s)`);
+
       if (result.errors.length > 0) {
+        console.error('⚠️ [FRONTEND] Upload errors:', result.errors);
         result.errors.forEach(error => {
           toast.error(error);
         });
       }
 
       if (result.success) {
+        console.log('✅ [FRONTEND] Upload successful:', result.urls);
         toast.success(`${result.urls.length} Bild(er) erfolgreich hochgeladen`);
       }
 
       return result.urls;
     } catch (error: any) {
-      console.error('❌ Upload error:', error);
-      toast.error('Upload fehlgeschlagen');
+      const uploadDuration = Date.now() - uploadStartTime;
+      console.error('❌ [FRONTEND] Upload error after', `${uploadDuration}ms:`, error);
+      toast.error('Upload fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
       return [];
     } finally {
       setIsUploading(false);
@@ -277,7 +318,11 @@ export const useGlobalMealInput = () => {
 
   // Event handlers - completely decoupled
   const handleSubmitMeal = useCallback(async () => {
-    console.log('🚀 Submitting meal...', { text: inputText.substring(0, 50), imageCount: uploadedImages.length });
+    console.log('🚀 [FRONTEND] Submitting meal...', { 
+      textLength: inputText?.length || 0,
+      textPreview: inputText ? inputText.substring(0, 50) + '...' : 'NO TEXT',
+      imageCount: uploadedImages.length 
+    });
     
     if (!inputText.trim() && uploadedImages.length === 0) {
       toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
@@ -288,6 +333,7 @@ export const useGlobalMealInput = () => {
     try {
       const mealData = await analyzeMealText(inputText, uploadedImages);
       if (mealData) {
+        console.log('✅ [FRONTEND] Meal analysis completed, showing confirmation dialog');
         setAnalyzedMealData({
           title: mealData.text,
           calories: mealData.calories,
@@ -299,6 +345,9 @@ export const useGlobalMealInput = () => {
         });
         setSelectedMealType(mealData.meal_type || 'other');
         setShowConfirmationDialog(true);
+      } else {
+        console.error('❌ [FRONTEND] No meal data received');
+        toast.error('Keine Daten von der Analyse erhalten');
       }
     } finally {
       setIsProcessing(false);

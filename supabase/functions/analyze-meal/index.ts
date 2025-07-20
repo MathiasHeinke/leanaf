@@ -10,16 +10,30 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  const requestStartTime = Date.now();
+  console.log('🚀 [ANALYZE-MEAL] Request started at:', new Date().toISOString());
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { text, images } = await req.json();
+    const requestBody = await req.json();
+    const { text, images } = requestBody;
+    
+    console.log('📋 [ANALYZE-MEAL] Request payload:', {
+      hasText: !!text,
+      textLength: text?.length || 0,
+      textPreview: text ? text.substring(0, 100) + '...' : 'NO TEXT',
+      hasImages: !!images,
+      imageCount: images?.length || 0,
+      imageUrls: images ? images.map((url: string) => url.substring(0, 50) + '...') : 'NO IMAGES'
+    });
     
     // Validate input - allow either text OR images OR both
     if (!text && (!images || images.length === 0)) {
+      console.log('❌ [ANALYZE-MEAL] No input provided');
       throw new Error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
     }
 
@@ -71,8 +85,10 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     let userContent = [{ type: 'text', text: prompt }];
     
     if (images && images.length > 0) {
+      console.log('🖼️ [ANALYZE-MEAL] Adding images to request:', images.length);
       // Add each image to the content array
-      images.forEach((imageUrl: string) => {
+      images.forEach((imageUrl: string, index: number) => {
+        console.log(`📷 [ANALYZE-MEAL] Image ${index + 1}:`, imageUrl.substring(0, 80) + '...');
         userContent.push({
           type: 'image_url',
           image_url: { url: imageUrl }
@@ -91,6 +107,9 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       }
     ];
     
+    console.log('📤 [ANALYZE-MEAL] Sending request to OpenAI...');
+    const openAIStartTime = Date.now();
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -106,30 +125,57 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       }),
     });
 
+    const openAIEndTime = Date.now();
+    const openAIDuration = openAIEndTime - openAIStartTime;
+    console.log(`⏱️ [ANALYZE-MEAL] OpenAI API call took: ${openAIDuration}ms (${(openAIDuration/1000).toFixed(1)}s)`);
+
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('❌ [ANALYZE-MEAL] OpenAI API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: data.error
+      });
       throw new Error(data.error?.message || 'OpenAI API Fehler');
     }
 
+    console.log('✅ [ANALYZE-MEAL] OpenAI response received:', {
+      choices: data.choices?.length || 0,
+      usage: data.usage,
+      model: data.model
+    });
+
     const content = data.choices[0].message.content;
+    console.log('📝 [ANALYZE-MEAL] Raw OpenAI content (first 200 chars):', content?.substring(0, 200) + '...');
     
     try {
       const parsed = JSON.parse(content);
+      console.log('✅ [ANALYZE-MEAL] JSON parsing successful:', {
+        hasTitle: !!parsed.title,
+        itemsCount: parsed.items?.length || 0,
+        hasTotal: !!parsed.total,
+        totalCalories: parsed.total?.calories,
+        confidence: parsed.confidence
+      });
       
       // Validate and ensure reasonable values
       if (parsed.total && parsed.total.calories) {
         // Basic sanity checks
         if (parsed.total.calories < 10 || parsed.total.calories > 5000) {
-          console.warn('Unusual calorie value detected:', parsed.total.calories);
+          console.warn('⚠️ [ANALYZE-MEAL] Unusual calorie value detected:', parsed.total.calories);
         }
       }
+      
+      const totalDuration = Date.now() - requestStartTime;
+      console.log(`🎉 [ANALYZE-MEAL] Request completed successfully in ${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
       
       return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
+      console.error('❌ [ANALYZE-MEAL] JSON Parse Error:', parseError);
+      console.error('📄 [ANALYZE-MEAL] Raw content that failed to parse:', content);
       
       // Fallback response if JSON parsing fails
       const fallbackResponse = {
@@ -152,13 +198,18 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         notes: 'Automatische Schätzung - bitte Werte überprüfen. Analyse-Fehler bei der KI-Antwort.'
       };
       
+      console.log('🔄 [ANALYZE-MEAL] Using fallback response:', fallbackResponse);
+      
       return new Response(JSON.stringify(fallbackResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
   } catch (error) {
-    console.error('Error in analyze-meal function:', error);
+    const totalDuration = Date.now() - requestStartTime;
+    console.error('❌ [ANALYZE-MEAL] Error in analyze-meal function:', error);
+    console.error('🕐 [ANALYZE-MEAL] Failed after:', `${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
+    
     return new Response(JSON.stringify({ 
       error: error.message || 'Ein unerwarteter Fehler ist aufgetreten'
     }), {

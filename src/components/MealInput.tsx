@@ -46,17 +46,27 @@ export const MealInput = ({
   // Local state for button interaction feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Button disabled states
+  // Button disabled states - FIXED: Decoupled button states
   const isAnyProcessing = isAnalyzing || isUploading || isProcessing;
-  const isSubmitDisabled = (!inputText.trim() && uploadedImages.length === 0) || isAnyProcessing;
-  const isUploadDisabled = isAnyProcessing;
-  const isVoiceDisabled = isAnalyzing || isUploading;
+  const isSubmitDisabled = (!inputText.trim() && uploadedImages.length === 0) || isAnalyzing || isUploading;
+  const isUploadDisabled = isUploading || isAnalyzing; // Upload disabled during upload or analysis
+  const isVoiceDisabled = isRecording || isProcessing || isUploading; // Voice only disabled when actually needed
+
+  console.log('🔘 [MEAL-INPUT] Button states:', {
+    isAnalyzing,
+    isUploading,
+    isRecording,
+    isProcessing,
+    isSubmitDisabled,
+    isUploadDisabled,
+    isVoiceDisabled
+  });
 
   // Handle submit with local state management
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
     
-    console.log('🔄 MealInput: Submit button clicked');
+    console.log('🔄 [MEAL-INPUT] Submit button clicked');
     setIsSubmitting(true);
     
     try {
@@ -68,7 +78,7 @@ export const MealInput = ({
 
   // Handle photo upload with event isolation
   const handlePhotoUploadClick = (event: React.MouseEvent) => {
-    console.log('📷 MealInput: Photo upload button clicked');
+    console.log('📷 [MEAL-INPUT] Photo upload button clicked');
     event.preventDefault();
     event.stopPropagation();
     
@@ -82,7 +92,7 @@ export const MealInput = ({
 
   // Handle voice recording with event isolation
   const handleVoiceClick = (event: React.MouseEvent) => {
-    console.log('🎙️ MealInput: Voice button clicked');
+    console.log('🎙️ [MEAL-INPUT] Voice button clicked');
     event.preventDefault();
     event.stopPropagation();
     
@@ -104,7 +114,7 @@ export const MealInput = ({
   return (
     <div className="w-full">
       <div className="w-full">
-        {/* Upload Progress - Above everything */}
+        {/* Upload Progress - Above everything - FIXED: Better visibility logic */}
         <UploadProgress 
           progress={uploadProgress} 
           isVisible={isUploading && uploadProgress.length > 0} 
@@ -132,8 +142,8 @@ export const MealInput = ({
           </div>
         )}
         
-        {/* Recording/Processing Indicator - Above input */}
-        {(isRecording || isProcessing) && (
+        {/* Recording/Processing Indicator - Above input - FIXED: Better state messaging */}
+        {(isRecording || isProcessing || isAnalyzing) && (
           <div className="mb-4 flex items-center gap-3 text-sm bg-card/95 backdrop-blur-md px-4 py-3 rounded-xl border border-border/50 shadow-lg animate-fade-in">
             <div className="flex gap-1">
               <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full"></div>
@@ -141,7 +151,10 @@ export const MealInput = ({
               <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full" style={{ animationDelay: '0.2s' }}></div>
             </div>
             <span className="font-medium text-foreground">
-              {isRecording ? t('input.recording') : t('input.processing')}
+              {isRecording ? t('input.recording') : 
+               isProcessing ? t('input.processing') : 
+               isAnalyzing ? 'Analysiere Mahlzeit...' : 
+               'Verarbeitung...'}
             </span>
           </div>
         )}
@@ -171,7 +184,11 @@ export const MealInput = ({
                 onClick={handlePhotoUploadClick}
                 disabled={isUploadDisabled}
               >
-                <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                {isUploading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                ) : (
+                  <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                )}
               </Button>
               
               {/* Hidden file inputs */}
@@ -188,7 +205,7 @@ export const MealInput = ({
             
             {/* Right Action Buttons - Voice + Send */}
             <div className="absolute right-4 bottom-2 flex items-center gap-2">
-              {/* Voice Recording Button */}
+              {/* Voice Recording Button - FIXED: Only shows loading when actually recording/processing voice */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -210,7 +227,7 @@ export const MealInput = ({
                 )}
               </Button>
               
-              {/* Send Button */}
+              {/* Send Button - FIXED: Only shows loading when actually analyzing */}
               <Button
                 size="sm"
                 type="button"
@@ -222,7 +239,7 @@ export const MealInput = ({
                 onClick={handleSubmit}
                 disabled={isSubmitDisabled}
               >
-                {isSubmitting || isAnalyzing ? (
+                {isAnalyzing ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
                   <Send className="h-5 w-5" />
