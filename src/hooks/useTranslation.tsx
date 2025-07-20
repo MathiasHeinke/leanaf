@@ -12,11 +12,61 @@ const TranslationContext = createContext<TranslationContextType | undefined>(und
 
 const translations = {
   de: {
+    // App general
+    'app.title': 'KaloAI',
+    'app.letsGetLean': 'Dein persönlicher Ernährungscoach',
+    'app.dailyProgress': 'Täglicher Fortschritt',
+    
+    // Common terms
     'common.select': 'Auswählen',
     'common.save': 'Speichern',
     'common.error': 'Fehler',
+    'common.loading': 'Laden...',
+    'common.back': 'Zurück',
+    'common.today': 'Heute',
+    
+    // UI elements
     'ui.kcal': 'kcal',
     'ui.goal': 'Ziel',
+    'ui.over': 'über',
+    'ui.gram': 'g',
+    
+    // Progress indicators
+    'progress.remaining': 'verbleibend',
+    'progress.overGoal': 'über dem Ziel',
+    'progress.stillNeed': 'noch benötigt',
+    'progress.goalReached': 'Ziel erreicht',
+    'progress.over': 'über',
+    'progress.exceeded': 'überschritten',
+    
+    // Date
+    'date.today': 'Heute',
+    
+    // Input placeholders
+    'input.placeholder': 'Beschreibe deine Mahlzeit...',
+    'weightInput.placeholder': 'Gewicht in kg',
+    
+    // NotFound page
+    'notFound.title': 'Seite nicht gefunden',
+    'notFound.subtitle': 'Die angeforderte Seite existiert nicht.',
+    'notFound.returnHome': 'Zurück zur Startseite',
+    
+    // Subscription
+    'subscription.title': 'Abonnement',
+    'subscription.currentPlan': 'Aktueller Plan',
+    'subscription.premium': 'Premium',
+    'subscription.free': 'Kostenlos',
+    'subscription.manage': 'Verwalten',
+    'subscription.upgrade': 'Upgraden',
+    'subscription.processing': 'Verarbeitung...',
+    'subscription.monthlyPrice': '9,99€/Monat',
+    'subscription.features': 'Features',
+    'subscription.feature1': 'Unbegrenzte Mahlzeitenerkennung',
+    'subscription.feature2': 'Persönlicher KI-Coach',
+    'subscription.feature3': 'Detaillierte Analysen',
+    'subscription.feature4': 'Keine Werbung',
+    
+    // Settings
     'settings.title': 'Einstellungen',
     'settings.close': 'Schließen',
     'settings.dailyCalorieGoal': 'Tägliches Kalorienziel',
@@ -32,6 +82,8 @@ const translations = {
     'settings.activeTime': 'Aktiv von',
     'settings.toggleTheme': 'Thema wechseln',
     'settings.autoActive': 'Automatisch aktiv',
+    
+    // Profile
     'profile.loading': 'Lade Profil...',
     'profile.personalData': 'Persönliche Daten',
     'profile.startWeight': 'Startgewicht (kg)',
@@ -109,11 +161,61 @@ const translations = {
     'toast.error.savingProfile': 'Fehler beim Speichern des Profils',
   },
   en: {
+    // App general
+    'app.title': 'KaloAI',
+    'app.letsGetLean': 'Your personal nutrition coach',
+    'app.dailyProgress': 'Daily Progress',
+    
+    // Common terms
     'common.select': 'Select',
     'common.save': 'Save',
     'common.error': 'Error',
+    'common.loading': 'Loading...',
+    'common.back': 'Back',
+    'common.today': 'Today',
+    
+    // UI elements
     'ui.kcal': 'kcal',
     'ui.goal': 'Goal',
+    'ui.over': 'over',
+    'ui.gram': 'g',
+    
+    // Progress indicators
+    'progress.remaining': 'remaining',
+    'progress.overGoal': 'over goal',
+    'progress.stillNeed': 'still need',
+    'progress.goalReached': 'goal reached',
+    'progress.over': 'over',
+    'progress.exceeded': 'exceeded',
+    
+    // Date
+    'date.today': 'Today',
+    
+    // Input placeholders
+    'input.placeholder': 'Describe your meal...',
+    'weightInput.placeholder': 'Weight in kg',
+    
+    // NotFound page
+    'notFound.title': 'Page Not Found',
+    'notFound.subtitle': 'The requested page does not exist.',
+    'notFound.returnHome': 'Return to Home',
+    
+    // Subscription
+    'subscription.title': 'Subscription',
+    'subscription.currentPlan': 'Current Plan',
+    'subscription.premium': 'Premium',
+    'subscription.free': 'Free',
+    'subscription.manage': 'Manage',
+    'subscription.upgrade': 'Upgrade',
+    'subscription.processing': 'Processing...',
+    'subscription.monthlyPrice': '$9.99/month',
+    'subscription.features': 'Features',
+    'subscription.feature1': 'Unlimited meal recognition',
+    'subscription.feature2': 'Personal AI coach',
+    'subscription.feature3': 'Detailed analytics',
+    'subscription.feature4': 'No ads',
+    
+    // Settings
     'settings.title': 'Settings',
     'settings.close': 'Close',
     'settings.dailyCalorieGoal': 'Daily Calorie Goal',
@@ -129,6 +231,8 @@ const translations = {
     'settings.activeTime': 'Active from',
     'settings.toggleTheme': 'Toggle Theme',
     'settings.autoActive': 'Automatically active',
+    
+    // Profile
     'profile.loading': 'Loading profile...',
     'profile.personalData': 'Personal Data',
     'profile.startWeight': 'Start Weight (kg)',
