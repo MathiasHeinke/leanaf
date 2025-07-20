@@ -358,48 +358,108 @@ export const SmartInsights = ({
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Today's Progress Overview */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Macronutrients Overview */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Makronährstoffe Übersicht
+              </h4>
+              
+              {/* Protein Card */}
               <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    <span className="font-medium text-blue-600 dark:text-blue-400">Kalorien</span>
+                    <div className="text-2xl">🥩</div>
+                    <span className="font-medium text-blue-600 dark:text-blue-400">Protein</span>
                   </div>
                   <Badge variant="outline" className="border-blue-500 text-blue-600 dark:text-blue-400">
-                    {Math.round(calorieProgress)}%
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {todaysTotals.calories} / {dailyGoals.calories}
-                  </div>
-                  <Progress 
-                    value={Math.min(100, calorieProgress)} 
-                    className="h-2 bg-blue-100 dark:bg-blue-800/50" 
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <span className="font-medium text-green-600 dark:text-green-400">Protein</span>
-                  </div>
-                  <Badge variant="outline" className="border-green-500 text-green-600 dark:text-green-400">
                     {Math.round(proteinProgress)}%
                   </Badge>
                 </div>
                 <div className="space-y-2">
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    {todaysTotals.protein}g / {dailyGoals.protein}g
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {todaysTotals.protein}g
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Ø der letzten Tage • Ziel: {dailyGoals.protein}g
                   </div>
                   <Progress 
                     value={Math.min(100, proteinProgress)} 
-                    className="h-2 bg-green-100 dark:bg-green-800/50" 
+                    className="h-2" 
                   />
                 </div>
+              </div>
+
+              {/* Carbs Card */}
+              <div className="space-y-3 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl">🧈</div>
+                    <span className="font-medium text-orange-600 dark:text-orange-400">Kohlenhydrate</span>
+                  </div>
+                  <Badge variant="outline" className="border-orange-500 text-orange-600 dark:text-orange-400">
+                    {Math.round((todaysTotals.carbs / dailyGoals.carbs) * 100)}%
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {todaysTotals.carbs}g
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Ø der letzten Tage • Ziel: {dailyGoals.carbs}g
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (todaysTotals.carbs / dailyGoals.carbs) * 100)} 
+                    className="h-2" 
+                  />
+                </div>
+              </div>
+
+              {/* Fats Card */}
+              <div className="space-y-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl">🥑</div>
+                    <span className="font-medium text-purple-600 dark:text-purple-400">Fette</span>
+                  </div>
+                  <Badge variant="outline" className="border-purple-500 text-purple-600 dark:text-purple-400">
+                    {Math.round((todaysTotals.fats / dailyGoals.fats) * 100)}%
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {todaysTotals.fats}g
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Ø der letzten Tage • Ziel: {dailyGoals.fats}g
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (todaysTotals.fats / dailyGoals.fats) * 100)} 
+                    className="h-2" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Today's Calorie Progress */}
+            <div className="space-y-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <span className="font-medium text-green-600 dark:text-green-400">Kalorien heute</span>
+                </div>
+                <Badge variant="outline" className="border-green-500 text-green-600 dark:text-green-400">
+                  {Math.round(calorieProgress)}%
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {todaysTotals.calories} / {dailyGoals.calories}
+                </div>
+                <Progress 
+                  value={Math.min(100, calorieProgress)} 
+                  className="h-2 bg-green-100 dark:bg-green-800/50" 
+                />
               </div>
             </div>
 
