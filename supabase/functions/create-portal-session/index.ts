@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -8,7 +9,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -31,16 +31,36 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get user's Stripe customer ID from profile
+    // Get user's profile with subscription info
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('subscription_id')
+      .select('email, subscription_id')
       .eq('user_id', user_id)
       .single();
 
-    if (error || !profile?.subscription_id) {
-      throw new Error('No active subscription found');
+    if (error || !profile?.email) {
+      throw new Error('User profile not found');
     }
+
+    // Find Stripe customer
+    const customersResponse = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(profile.email)}&limit=1`, {
+      headers: {
+        'Authorization': `Bearer ${stripeSecretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    if (!customersResponse.ok) {
+      throw new Error(`Stripe API error: ${await customersResponse.text()}`);
+    }
+
+    const customers = await customersResponse.json();
+    
+    if (customers.data.length === 0) {
+      throw new Error('No Stripe customer found');
+    }
+
+    const customerId = customers.data[0].id;
 
     // Create Stripe portal session
     const response = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
@@ -50,7 +70,7 @@ serve(async (req) => {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        'customer': profile.subscription_id,
+        'customer': customerId,
         'return_url': `${req.headers.get('origin')}/subscription`,
       }),
     });

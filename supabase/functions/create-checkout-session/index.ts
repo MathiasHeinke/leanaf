@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -8,7 +9,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -25,7 +25,24 @@ serve(async (req) => {
       throw new Error('Stripe secret key not configured');
     }
 
-    // Create Stripe checkout session
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Get user profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('user_id', user_id)
+      .single();
+
+    if (profileError || !profile?.email) {
+      throw new Error('User profile not found');
+    }
+
+    // Create Stripe checkout session for KaloAI Premium - 7€/month
     const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
@@ -37,9 +54,15 @@ serve(async (req) => {
         'cancel_url': `${req.headers.get('origin')}/subscription`,
         'mode': 'subscription',
         'client_reference_id': user_id,
-        'line_items[0][price]': 'price_1234567890', // Replace with your actual price ID
+        'customer_email': profile.email,
+        'line_items[0][price_data][currency]': 'eur',
+        'line_items[0][price_data][product_data][name]': 'KaloAI Premium',
+        'line_items[0][price_data][product_data][description]': 'Unbegrenzte Mahlzeit-Analysen, erweiterte Coach-Features und mehr',
+        'line_items[0][price_data][unit_amount]': '700', // 7€ in cents
+        'line_items[0][price_data][recurring][interval]': 'month',
         'line_items[0][quantity]': '1',
         'metadata[user_id]': user_id,
+        'subscription_data[metadata][user_id]': user_id,
       }),
     });
 
