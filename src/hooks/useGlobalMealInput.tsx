@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -415,10 +414,10 @@ export const useGlobalMealInput = () => {
     stopRecording,
     uploadImages,
     
-    // State - separated voice processing from general processing
+    // State - export isVoiceProcessing as isProcessing for compatibility
     isAnalyzing,
     isRecording,
-    isVoiceProcessing, // NEW: separate state for voice processing
+    isProcessing: isVoiceProcessing, // Export as isProcessing to maintain compatibility
     isUploading,
     recordingTime,
     inputText,

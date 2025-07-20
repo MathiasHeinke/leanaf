@@ -16,7 +16,7 @@ interface MealInputProps {
   onVoiceRecord: () => void;
   isAnalyzing: boolean;
   isRecording: boolean;
-  isVoiceProcessing: boolean; // NEW: separate voice processing state
+  isProcessing: boolean;
   uploadedImages: string[];
   onRemoveImage: (index: number) => void;
   isEditing?: boolean;
@@ -33,7 +33,7 @@ export const MealInput = ({
   onVoiceRecord,
   isAnalyzing,
   isRecording,
-  isVoiceProcessing, // NEW: use separate voice processing state
+  isProcessing,
   uploadedImages,
   onRemoveImage,
   isEditing = false,
@@ -46,10 +46,10 @@ export const MealInput = ({
   // Local state for button interaction feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Button disabled states - FIXED: Clear separation of concerns
+  // Button disabled states - Clear separation of concerns
   const isSubmitDisabled = (!inputText.trim() && uploadedImages.length === 0) || isAnalyzing || isUploading;
   const isUploadDisabled = isUploading || isAnalyzing;
-  const isVoiceDisabled = isVoiceProcessing; // Only disabled when voice is actually processing
+  const isVoiceDisabled = isProcessing; // Only disabled when voice is actually processing
 
   // Handle submit with local state management
   const handleSubmit = async () => {
@@ -131,8 +131,8 @@ export const MealInput = ({
           </div>
         )}
         
-        {/* Recording/Processing Indicator - Above input - FIXED: Clearer state messaging */}
-        {(isRecording || isVoiceProcessing || isAnalyzing) && (
+        {/* Recording/Processing Indicator - Above input - Clear state messaging */}
+        {(isRecording || isProcessing || isAnalyzing) && (
           <div className="mb-4 flex items-center gap-3 text-sm bg-card/95 backdrop-blur-md px-4 py-3 rounded-xl border border-border/50 shadow-lg animate-fade-in">
             <div className="flex gap-1">
               <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full"></div>
@@ -141,7 +141,7 @@ export const MealInput = ({
             </div>
             <span className="font-medium text-foreground">
               {isRecording ? t('input.recording') : 
-               isVoiceProcessing ? t('input.processing') : 
+               isProcessing ? t('input.processing') : 
                isAnalyzing ? 'Analysiere Mahlzeit...' : 
                'Verarbeitung...'}
             </span>
@@ -194,7 +194,7 @@ export const MealInput = ({
             
             {/* Right Action Buttons - Voice + Send */}
             <div className="absolute right-4 bottom-2 flex items-center gap-2">
-              {/* Voice Recording Button - FIXED: Only shows loading when voice is processing */}
+              {/* Voice Recording Button - Only shows loading when voice is processing */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -209,14 +209,14 @@ export const MealInput = ({
               >
                 {isRecording ? (
                   <StopCircle className="h-5 w-5" />
-                ) : isVoiceProcessing ? (
+                ) : isProcessing ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
                   <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
                 )}
               </Button>
               
-              {/* Send Button - FIXED: Only shows loading when analyzing */}
+              {/* Send Button - Only shows loading when analyzing */}
               <Button
                 size="sm"
                 type="button"
