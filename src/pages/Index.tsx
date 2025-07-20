@@ -29,17 +29,6 @@ const Index = () => {
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Debug effect for dialog state changes
-  useEffect(() => {
-    console.log('🎯 [INDEX] Dialog state changed:', {
-      showConfirmationDialog: mealInputHook.showConfirmationDialog,
-      hasAnalyzedData: !!mealInputHook.analyzedMealData,
-      analyzedMealData: mealInputHook.analyzedMealData,
-      selectedMealType: mealInputHook.selectedMealType,
-      timestamp: new Date().toISOString()
-    });
-  }, [mealInputHook.showConfirmationDialog, mealInputHook.analyzedMealData, mealInputHook.selectedMealType]);
-
   // Time-based greeting function
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -89,7 +78,6 @@ const Index = () => {
 
       if (goalsError) {
         console.error('Error loading daily goals:', goalsError);
-        // Set default goals if none exist
         setDailyGoals({
           calories: 2000,
           protein: 150,
@@ -160,29 +148,12 @@ const Index = () => {
   };
 
   const handleWeightAdded = () => {
-    loadUserData(); // Reload user data to get updated weight
+    loadUserData();
   };
 
   const handleMealSuccess = async () => {
-    console.log('🎉 [INDEX] handleMealSuccess called');
     await fetchMealsForDate(currentDate);
     mealInputHook.resetForm();
-  };
-
-  // Debug function to manually test dialog
-  const testDialog = () => {
-    console.log('🧪 [INDEX] Testing dialog manually...');
-    mealInputHook.setAnalyzedMealData({
-      title: "Test Mahlzeit",
-      calories: 100,
-      protein: 10,
-      carbs: 15,
-      fats: 5,
-      meal_type: 'other',
-      confidence: 0.9
-    });
-    mealInputHook.setSelectedMealType('other');
-    mealInputHook.setShowConfirmationDialog(true);
   };
 
   if (dataLoading) {
@@ -198,20 +169,11 @@ const Index = () => {
   return (
     <>
       <div className="space-y-6">
-        {/* Simple time-based greeting at the very top */}
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-foreground">{getTimeBasedGreeting()}! 👋</h1>
-          {/* Debug button - remove after testing */}
-          <button 
-            onClick={testDialog}
-            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            🧪 Test Dialog
-          </button>
         </div>
 
         <div className="space-y-6">
-          {/* Daily Progress with integrated date navigation - now first */}
           <DailyProgress 
             dailyTotals={{
               calories: calorieSummary.consumed,
@@ -230,13 +192,11 @@ const Index = () => {
             onDateChange={handleDateChange}
           />
 
-          {/* Quick Weight Input - now second, under the macros */}
           <QuickWeightInput 
             currentWeight={userProfile?.weight}
             onWeightAdded={handleWeightAdded}
           />
 
-          {/* Optimized Greeting - after weight input (now only motivational quote) */}
           <OptimizedGreeting userProfile={userProfile} />
 
           <div>
@@ -263,7 +223,7 @@ const Index = () => {
                     meal_type: meal.meal_type
                   }))} 
                   onEditMeal={(meal: any) => {
-                    // This is now handled by MealEditForm component
+                    // Handled by MealEditForm component
                   }}
                   onDeleteMeal={async (mealId: string) => {
                     try {
@@ -313,27 +273,17 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Meal Confirmation Dialog - Enhanced debugging */}
-      {(() => {
-        const shouldRender = mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData;
-        console.log('🔍 [INDEX] Dialog render check:', {
-          showConfirmationDialog: mealInputHook.showConfirmationDialog,
-          hasAnalyzedData: !!mealInputHook.analyzedMealData,
-          shouldRender,
-          analyzedMealData: mealInputHook.analyzedMealData
-        });
-        
-        return shouldRender ? (
-          <MealConfirmationDialog
-            isOpen={mealInputHook.showConfirmationDialog}
-            onClose={mealInputHook.closeDialog}
-            analyzedMealData={mealInputHook.analyzedMealData}
-            selectedMealType={mealInputHook.selectedMealType}
-            onMealTypeChange={mealInputHook.setSelectedMealType}
-            onSuccess={handleMealSuccess}
-          />
-        ) : null;
-      })()}
+      {/* Meal Confirmation Dialog */}
+      {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
+        <MealConfirmationDialog
+          isOpen={mealInputHook.showConfirmationDialog}
+          onClose={mealInputHook.closeDialog}
+          analyzedMealData={mealInputHook.analyzedMealData}
+          selectedMealType={mealInputHook.selectedMealType}
+          onMealTypeChange={mealInputHook.setSelectedMealType}
+          onSuccess={handleMealSuccess}
+        />
+      )}
     </>
   );
 };

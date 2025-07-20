@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,17 +46,6 @@ export const MealConfirmationDialog = ({
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  // Enhanced debugging logs with more detail
-  console.log('🎯 [DIALOG] MealConfirmationDialog render state:', {
-    isOpen,
-    hasAnalyzedData: !!analyzedMealData,
-    analyzedMealDataKeys: analyzedMealData ? Object.keys(analyzedMealData) : 'NO DATA',
-    analyzedMealData: analyzedMealData,
-    selectedMealType,
-    shouldRender: isOpen && analyzedMealData,
-    timestamp: new Date().toISOString()
-  });
-
   // State for editable nutritional values
   const [editableValues, setEditableValues] = useState({
     calories: 0,
@@ -67,35 +55,11 @@ export const MealConfirmationDialog = ({
     title: ""
   });
 
-  // State for meal date
   const [mealDate, setMealDate] = useState<Date>(new Date());
-  
-  // State for coach personality
   const [coachPersonality, setCoachPersonality] = useState<string>('motivierend');
-
-  // New state for verification
   const [verificationMessage, setVerificationMessage] = useState('');
   const [showVerification, setShowVerification] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-
-  // Debug effect for dialog state changes
-  useEffect(() => {
-    console.log('🔄 [DIALOG] Dialog state changed:', {
-      isOpen,
-      hasData: !!analyzedMealData,
-      selectedMealType,
-      editableValues,
-      renderCheck: isOpen && analyzedMealData
-    });
-  }, [isOpen, analyzedMealData, selectedMealType, editableValues]);
-
-  // Debug effect for mount/unmount
-  useEffect(() => {
-    console.log('🏗️ [DIALOG] MealConfirmationDialog mounted');
-    return () => {
-      console.log('🏗️ [DIALOG] MealConfirmationDialog unmounted');
-    };
-  }, []);
 
   // Fetch user's coach personality
   useEffect(() => {
@@ -109,32 +73,21 @@ export const MealConfirmationDialog = ({
           .eq('user_id', user.id)
           .maybeSingle();
         
-        if (error) {
-          console.error('Error fetching coach personality:', error);
-          return;
-        }
-        
+        if (error) return;
         if (data?.coach_personality) {
           setCoachPersonality(data.coach_personality);
         }
       } catch (error) {
-        console.error('Error fetching coach personality:', error);
+        // Silent fail
       }
     };
 
     fetchCoachPersonality();
   }, [user?.id]);
 
-  // Enhanced initialization with better validation and debugging
+  // Initialize editable values
   useEffect(() => {
-    console.log('🔧 [DIALOG] Initializing editable values with:', {
-      analyzedMealData,
-      isOpen,
-      hasValidData: !!(analyzedMealData && typeof analyzedMealData === 'object')
-    });
-    
     if (analyzedMealData && isOpen && typeof analyzedMealData === 'object') {
-      // Enhanced validation and fallback
       const newValues = {
         calories: Number(analyzedMealData.calories) || 0,
         protein: Number(analyzedMealData.protein) || 0,
@@ -143,7 +96,6 @@ export const MealConfirmationDialog = ({
         title: String(analyzedMealData.title || analyzedMealData.name || "Analysierte Mahlzeit")
       };
       
-      console.log('✅ [DIALOG] Setting editable values:', newValues);
       setEditableValues(newValues);
       setMealDate(new Date());
     }
@@ -182,12 +134,9 @@ export const MealConfirmationDialog = ({
         }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data.needsAdjustment && data.adjustments) {
-        // Apply suggested adjustments
         if (data.adjustments.calories !== null) {
           setEditableValues(prev => ({ ...prev, calories: data.adjustments.calories }));
         }
@@ -200,14 +149,11 @@ export const MealConfirmationDialog = ({
         if (data.adjustments.fats !== null) {
           setEditableValues(prev => ({ ...prev, fats: data.adjustments.fats }));
         }
-        
-        // Silent success - no toast needed
       }
 
       setVerificationMessage('');
       setShowVerification(false);
     } catch (error: any) {
-      console.error('Error verifying meal:', error);
       toast.error('Fehler bei der Überprüfung');
     } finally {
       setIsVerifying(false);
@@ -218,27 +164,19 @@ export const MealConfirmationDialog = ({
   const getCoachComment = () => {
     const mealTitle = analyzedMealData?.title || t('meal.title').toLowerCase();
     
-    let baseComment = '';
     switch (coachPersonality) {
       case 'hart':
-        baseComment = `💪 ${mealTitle}? Solide Wahl! Prüf die Nährwerte und dann ran an die Arbeit - deine Ziele warten nicht!`;
-        break;
+        return `💪 ${mealTitle}? Solide Wahl! Prüf die Nährwerte und dann ran an die Arbeit - deine Ziele warten nicht!`;
       case 'soft':
-        baseComment = `🌟 ${mealTitle} sieht wunderbar aus! Schau dir die Nährwerte in Ruhe an - du machst das großartig.`;
-        break;
+        return `🌟 ${mealTitle} sieht wunderbar aus! Schau dir die Nährwerte in Ruhe an - du machst das großartig.`;
       case 'lustig':
-        baseComment = `😄 ${mealTitle}! Nicht schlecht für einen Anfänger! 😉 Check die Nährwerte und lass uns weitermachen!`;
-        break;
+        return `😄 ${mealTitle}! Nicht schlecht für einen Anfänger! 😉 Check die Nährwerte und lass uns weitermachen!`;
       case 'ironisch':
-        baseComment = `🤔 ${mealTitle}... interessante Wahl. Schau dir mal die Nährwerte an - vielleicht überrascht es dich.`;
-        break;
+        return `🤔 ${mealTitle}... interessante Wahl. Schau dir mal die Nährwerte an - vielleicht überrascht es dich.`;
       case 'motivierend':
       default:
-        baseComment = `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher.`;
-        break;
+        return `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher.`;
     }
-    
-    return baseComment;
   };
 
   const handleValueChange = (field: string, value: string) => {
@@ -259,12 +197,9 @@ export const MealConfirmationDialog = ({
   const handleConfirmMeal = async () => {
     if (!user?.id) return;
     
-    console.log('🍽️ [DIALOG] Confirming meal with values:', editableValues);
-    
     try {
-      // Create a timestamp that preserves the local date without timezone conversion
       const localDate = new Date(mealDate);
-      localDate.setHours(12, 0, 0, 0); // Set to midday to avoid timezone issues
+      localDate.setHours(12, 0, 0, 0);
       
       const { error } = await supabase
         .from('meals')
@@ -280,51 +215,26 @@ export const MealConfirmationDialog = ({
         });
 
       if (error) {
-        console.error('Error saving meal:', error);
         toast.error('Fehler beim Speichern');
         return;
       }
 
-      console.log('✅ [DIALOG] Meal saved successfully');
-      // Silent success - no toast needed, dialog closing indicates success
       triggerDataRefresh();
       onSuccess();
       onClose();
       
     } catch (error) {
-      console.error('Error saving meal:', error);
       toast.error('Fehler beim Speichern');
     }
   };
 
   const warnings = getValueWarnings();
   const confidence = analyzedMealData?.confidence;
-
-  // Enhanced logging for render decision
   const shouldRender = isOpen && analyzedMealData;
-  console.log('🎭 [DIALOG] Dialog render decision:', {
-    isOpen,
-    hasAnalyzedData: !!analyzedMealData,
-    shouldRender,
-    analyzedMealDataType: typeof analyzedMealData,
-    analyzedMealDataContent: analyzedMealData
-  });
 
-  // Early return with enhanced logging if no data
   if (!shouldRender) {
-    console.log('❌ [DIALOG] Not rendering dialog - missing requirements:', {
-      isOpen,
-      hasAnalyzedData: !!analyzedMealData,
-      shouldRender
-    });
     return null;
   }
-
-  console.log('✅ [DIALOG] Rendering dialog with data:', {
-    editableValues,
-    selectedMealType,
-    confidence
-  });
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
@@ -335,7 +245,6 @@ export const MealConfirmationDialog = ({
             {getCoachComment()}
           </AlertDialogDescription>
           
-          {/* Simple confidence warning - only show if low confidence */}
           {confidence === 'low' && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
               <div className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -344,7 +253,6 @@ export const MealConfirmationDialog = ({
             </div>
           )}
           
-          {/* Show warnings for unusual values */}
           {warnings.length > 0 && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
               <div className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -355,7 +263,6 @@ export const MealConfirmationDialog = ({
         </AlertDialogHeader>
         
         <div className="space-y-4">
-          {/* Editable Title */}
           <div className="space-y-2">
             <Label htmlFor="title">{t('meal.title')}</Label>
             <Input
@@ -366,7 +273,6 @@ export const MealConfirmationDialog = ({
             />
           </div>
 
-          {/* Editable Nutritional Values */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">{t('meal.nutrition')}</CardTitle>
@@ -433,7 +339,6 @@ export const MealConfirmationDialog = ({
                 </div>
               </div>
               
-              {/* AI Verification Section */}
               <div className="mt-4 pt-4 border-t">
                 {!showVerification ? (
                   <Button
@@ -478,7 +383,6 @@ export const MealConfirmationDialog = ({
             </CardContent>
           </Card>
 
-          {/* Meal Type and Date Selection - Side by Side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{t('meal.type')}</Label>

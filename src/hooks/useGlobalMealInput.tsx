@@ -24,6 +24,19 @@ interface AnalyzedMealData {
   confidence?: number;
 }
 
+const ERROR_MESSAGES = {
+  NO_INPUT: 'Bitte geben Sie Text ein oder laden Sie ein Bild hoch',
+  TIMEOUT: 'Analyse dauert zu lange - bitte versuchen Sie erneut',
+  ANALYSIS_FAILED: 'Analyse fehlgeschlagen',
+  MICROPHONE_DENIED: 'Mikrofonzugriff verweigert',
+  VOICE_FAILED: 'Spracherkennung fehlgeschlagen',
+  UPLOAD_FAILED: 'Upload fehlgeschlagen',
+  RECORDING_TIMEOUT: 'Aufnahme-Timeout - bitte erneut versuchen',
+  AUDIO_CONVERSION_FAILED: 'Audio-Konvertierung fehlgeschlagen',
+  AUDIO_PROCESSING_FAILED: 'Audio-Verarbeitung fehlgeschlagen',
+  RECORDING_STOP_FAILED: 'Fehler beim Stoppen der Aufnahme'
+};
+
 export const useGlobalMealInput = () => {
   const { user } = useAuth();
   
@@ -35,11 +48,11 @@ export const useGlobalMealInput = () => {
   const [analyzedMealData, setAnalyzedMealData] = useState<AnalyzedMealData | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('other');
   
-  // Upload states - completely isolated
+  // Upload states
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   
-  // Recording states - completely isolated with separate voice processing
+  // Recording states
   const [isRecording, setIsRecording] = useState(false);
   const [isVoiceProcessing, setIsVoiceProcessing] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -50,19 +63,11 @@ export const useGlobalMealInput = () => {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Enhanced data parsing function with extensive debugging
+  // Streamlined data parsing function
   const parseAnalyzeResponse = useCallback((data: any) => {
-    console.log('🔍 [PARSE] Raw response data:', JSON.stringify(data, null, 2));
-    console.log('🔍 [PARSE] Data type:', typeof data);
-    console.log('🔍 [PARSE] Data keys:', data ? Object.keys(data) : 'NO KEYS');
-    
-    // Try to detect the data format and parse accordingly
-    let parsedData = null;
-    
-    // Format 1: Nested structure with 'total' object (expected format)
+    // Format 1: Nested structure with 'total' object
     if (data?.total && typeof data.total === 'object') {
-      console.log('✅ [PARSE] Found nested format with total object');
-      parsedData = {
+      return {
         text: data.title || 'Analysierte Mahlzeit',
         calories: data.total.calories || 0,
         protein: data.total.protein || 0,
@@ -71,10 +76,10 @@ export const useGlobalMealInput = () => {
         meal_type: 'other'
       };
     }
-    // Format 2: Flattened structure (backup format)
-    else if (data?.calories !== undefined) {
-      console.log('✅ [PARSE] Found flattened format');
-      parsedData = {
+    
+    // Format 2: Flattened structure
+    if (data?.calories !== undefined) {
+      return {
         text: data.title || 'Analysierte Mahlzeit',
         calories: data.calories || 0,
         protein: data.protein || 0,
@@ -83,50 +88,12 @@ export const useGlobalMealInput = () => {
         meal_type: 'other'
       };
     }
-    // Format 3: Legacy format with 'meal' object
-    else if (data?.meal && typeof data.meal === 'object') {
-      console.log('✅ [PARSE] Found legacy format with meal object');
-      parsedData = {
-        text: data.title || 'Analysierte Mahlzeit',
-        calories: data.meal.calories || 0,
-        protein: data.meal.protein || 0,
-        carbs: data.meal.carbs || 0,
-        fats: data.meal.fats || 0,
-        meal_type: data.meal.meal_type || 'other'
-      };
-    }
-    // Format 4: Try to extract from any numeric fields found
-    else {
-      console.log('⚠️ [PARSE] Unknown format, attempting field extraction');
-      console.log('🔍 [PARSE] Available numeric fields:', Object.keys(data || {}).filter(key => typeof data[key] === 'number'));
-      
-      // Last resort: try to find any numeric nutrition data
-      const calories = data?.calories || data?.Calories || data?.kcal || 0;
-      const protein = data?.protein || data?.Protein || data?.eiweiß || 0;
-      const carbs = data?.carbs || data?.Carbs || data?.kohlenhydrate || 0;
-      const fats = data?.fats || data?.Fats || data?.fett || 0;
-      
-      if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
-        console.log('✅ [PARSE] Extracted nutrition data from unknown format');
-        parsedData = {
-          text: data.title || data.name || 'Analysierte Mahlzeit',
-          calories,
-          protein,
-          carbs,
-          fats,
-          meal_type: 'other'
-        };
-      }
-    }
     
-    console.log('🎯 [PARSE] Final parsed data:', parsedData);
-    return parsedData;
+    return null;
   }, []);
 
   // Cleanup function for media recorder
   const cleanupMediaRecorder = useCallback(() => {
-    console.log('🧹 Cleaning up MediaRecorder...');
-    
     if (mediaRecorderRef.current) {
       if (mediaRecorderRef.current.state !== 'inactive') {
         try {
@@ -135,9 +102,7 @@ export const useGlobalMealInput = () => {
           console.warn('Error stopping MediaRecorder:', error);
         }
       }
-      mediaRecorderRef.current.stream?.getTracks().forEach(track => {
-        track.stop();
-      });
+      mediaRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
       mediaRecorderRef.current = null;
     }
     
@@ -155,76 +120,39 @@ export const useGlobalMealInput = () => {
     setIsRecording(false);
     setIsVoiceProcessing(false);
     setRecordingTime(0);
-    console.log('✅ MediaRecorder cleanup complete');
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       cleanupMediaRecorder();
     };
   }, [cleanupMediaRecorder]);
 
-  // Enhanced meal analysis function with comprehensive debugging
+  // Meal analysis function
   const analyzeMealText = useCallback(async (text: string, images: string[] = []): Promise<MealData | null> => {
     if (!user || (!text.trim() && images.length === 0)) return null;
-
-    console.log('🔍 [HOOK] Starting meal analysis...', {
-      hasText: !!text.trim(),
-      textLength: text.trim().length,
-      hasImages: images.length > 0,
-      imageCount: images.length
-    });
     
     setIsAnalyzing(true);
     
     try {
-      const requestPayload = { 
-        text: text.trim() || null,
-        images: images.length > 0 ? images : null
-      };
-      
-      console.log('📤 [HOOK] Sending to analyze-meal function:', requestPayload);
-      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
-        body: requestPayload
+        body: { 
+          text: text.trim() || null,
+          images: images.length > 0 ? images : null
+        }
       });
 
-      console.log('📥 [HOOK] RAW Response from analyze-meal function:', {
-        rawData: data,
-        dataType: typeof data,
-        dataKeys: data ? Object.keys(data) : 'NO KEYS',
-        dataString: JSON.stringify(data),
-        error,
-        hasData: !!data,
-        hasTotal: !!(data?.total),
-        hasMeal: !!(data?.meal)
-      });
+      if (error) throw error;
 
-      if (error) {
-        console.error('❌ [HOOK] Meal analysis error:', error);
-        throw error;
-      }
-
-      // Use the enhanced parsing function
       const parsedMealData = parseAnalyzeResponse(data);
-      
-      if (parsedMealData) {
-        console.log('✅ [HOOK] Meal analysis successful, parsed result:', parsedMealData);
-        return parsedMealData;
-      }
-
-      console.error('❌ [HOOK] Could not parse response data:', data);
-      return null;
+      return parsedMealData;
     } catch (error: any) {
-      console.error('❌ [HOOK] Meal analysis failed:', error);
-      
       if (error.message?.includes('Weder Text noch Bild')) {
-        toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
+        toast.error(ERROR_MESSAGES.NO_INPUT);
       } else if (error.message?.includes('timeout')) {
-        toast.error('Analyse dauert zu lange - bitte versuchen Sie es erneut');
+        toast.error(ERROR_MESSAGES.TIMEOUT);
       } else {
-        toast.error('Analyse fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
+        toast.error(ERROR_MESSAGES.ANALYSIS_FAILED + ': ' + (error.message || 'Unbekannter Fehler'));
       }
       return null;
     } finally {
@@ -232,10 +160,8 @@ export const useGlobalMealInput = () => {
     }
   }, [user, parseAnalyzeResponse]);
 
-  // Voice recording functions - completely isolated
+  // Voice recording functions
   const startRecording = useCallback(async () => {
-    console.log('🎤 Starting voice recording...');
-    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -256,23 +182,16 @@ export const useGlobalMealInput = () => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
 
-      console.log('✅ Voice recording started');
-
     } catch (error) {
-      console.error('❌ Recording error:', error);
-      toast.error('Mikrofonzugriff verweigert');
+      toast.error(ERROR_MESSAGES.MICROPHONE_DENIED);
       cleanupMediaRecorder();
     }
   }, [cleanupMediaRecorder]);
 
   const stopRecording = useCallback(async (): Promise<string | null> => {
-    console.log('🛑 Stopping voice recording...');
-    
-    // Immediately update states to prevent stuck UI
     setIsRecording(false);
     setIsVoiceProcessing(true);
 
-    // Clear recording interval immediately
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
       recordingIntervalRef.current = null;
@@ -280,23 +199,19 @@ export const useGlobalMealInput = () => {
     
     return new Promise((resolve) => {
       if (!mediaRecorderRef.current) {
-        console.log('❌ No active recording to stop');
         setIsVoiceProcessing(false);
         resolve(null);
         return;
       }
 
-      // Set timeout fallback in case onstop never fires
       stopTimeoutRef.current = setTimeout(() => {
-        console.warn('⚠️ Recording stop timeout, forcing cleanup');
         cleanupMediaRecorder();
-        toast.error('Aufnahme-Timeout - bitte erneut versuchen');
+        toast.error(ERROR_MESSAGES.RECORDING_TIMEOUT);
         resolve(null);
       }, 5000);
 
       try {
         mediaRecorderRef.current.onstop = async () => {
-          // Clear timeout since onstop fired
           if (stopTimeoutRef.current) {
             clearTimeout(stopTimeoutRef.current);
             stopTimeoutRef.current = null;
@@ -304,9 +219,7 @@ export const useGlobalMealInput = () => {
           
           try {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-            console.log('🔄 Converting audio...');
             
-            // Convert to base64 for edge function
             const reader = new FileReader();
             reader.onload = async () => {
               try {
@@ -316,16 +229,10 @@ export const useGlobalMealInput = () => {
                   body: { audio: base64Data }
                 });
 
-                if (error) {
-                  console.error('❌ Voice processing error:', error);
-                  throw error;
-                }
-
-                console.log('✅ Voice transcription successful');
+                if (error) throw error;
                 resolve(data?.text || null);
               } catch (error) {
-                console.error('❌ Voice processing error:', error);
-                toast.error('Spracherkennung fehlgeschlagen');
+                toast.error(ERROR_MESSAGES.VOICE_FAILED);
                 resolve(null);
               } finally {
                 cleanupMediaRecorder();
@@ -333,43 +240,36 @@ export const useGlobalMealInput = () => {
             };
             
             reader.onerror = () => {
-              console.error('❌ FileReader error');
-              toast.error('Audio-Konvertierung fehlgeschlagen');
+              toast.error(ERROR_MESSAGES.AUDIO_CONVERSION_FAILED);
               cleanupMediaRecorder();
               resolve(null);
             };
             
             reader.readAsDataURL(audioBlob);
           } catch (error) {
-            console.error('❌ Audio processing error:', error);
-            toast.error('Audio-Verarbeitung fehlgeschlagen');
+            toast.error(ERROR_MESSAGES.AUDIO_PROCESSING_FAILED);
             cleanupMediaRecorder();
             resolve(null);
           }
         };
 
-        // Attempt to stop the recorder
         if (mediaRecorderRef.current.state !== 'inactive') {
           mediaRecorderRef.current.stop();
         } else {
-          // Already stopped, trigger cleanup
           cleanupMediaRecorder();
           resolve(null);
         }
       } catch (error) {
-        console.error('❌ Error stopping recorder:', error);
         cleanupMediaRecorder();
-        toast.error('Fehler beim Stoppen der Aufnahme');
+        toast.error(ERROR_MESSAGES.RECORDING_STOP_FAILED);
         resolve(null);
       }
     });
   }, [cleanupMediaRecorder]);
 
-  // Upload functions - completely isolated
+  // Upload function
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!user || files.length === 0) return [];
-
-    console.log('📤 Starting image upload...');
     
     setIsUploading(true);
     setUploadProgress([]);
@@ -380,66 +280,38 @@ export const useGlobalMealInput = () => {
       });
 
       if (result.errors.length > 0) {
-        result.errors.forEach(error => {
-          toast.error(error);
-        });
+        result.errors.forEach(error => toast.error(error));
       }
 
       if (result.success) {
-        console.log('✅ Upload successful');
         toast.success(`${result.urls.length} Bild(er) erfolgreich hochgeladen`);
       }
 
       return result.urls;
     } catch (error: any) {
-      console.error('❌ Upload error:', error);
-      toast.error('Upload fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
+      toast.error(ERROR_MESSAGES.UPLOAD_FAILED + ': ' + (error.message || 'Unbekannter Fehler'));
       return [];
     } finally {
       setIsUploading(false);
     }
   }, [user]);
 
-  // Fixed state update function to prevent race conditions
+  // Simplified state update function
   const updateDialogState = useCallback((mealData: AnalyzedMealData, mealType: string) => {
-    console.log('🔄 [HOOK] Updating dialog state with:', { mealData, mealType });
-    
-    // Use a single state update to prevent race conditions
-    const updateStates = () => {
-      setAnalyzedMealData(mealData);
-      setSelectedMealType(mealType);
-      
-      // Small delay to ensure state is set before showing dialog
-      setTimeout(() => {
-        console.log('💫 [HOOK] Showing confirmation dialog');
-        setShowConfirmationDialog(true);
-      }, 50);
-    };
-    
-    updateStates();
+    setAnalyzedMealData(mealData);
+    setSelectedMealType(mealType);
+    setTimeout(() => setShowConfirmationDialog(true), 50);
   }, []);
 
-  // Enhanced event handlers with better error handling and debugging
+  // Event handlers
   const handleSubmitMeal = useCallback(async () => {
-    console.log('🚀 [HOOK] handleSubmitMeal called');
-    
     if (!inputText.trim() && uploadedImages.length === 0) {
-      toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
+      toast.error(ERROR_MESSAGES.NO_INPUT);
       return;
     }
 
     try {
-      console.log('📊 [HOOK] About to analyze meal with:', {
-        inputText: inputText.substring(0, 50) + '...',
-        imageCount: uploadedImages.length
-      });
-      
       const mealData = await analyzeMealText(inputText, uploadedImages);
-      
-      console.log('📈 [HOOK] Analysis result:', {
-        hasMealData: !!mealData,
-        mealData
-      });
       
       if (mealData) {
         const analyzedData = {
@@ -452,56 +324,40 @@ export const useGlobalMealInput = () => {
           confidence: 0.85
         };
         
-        console.log('🎯 [HOOK] Prepared analyzed meal data:', analyzedData);
-        
-        // Use the fixed state update function
         updateDialogState(analyzedData, mealData.meal_type || 'other');
-        
-        console.log('✅ [HOOK] Dialog state update initiated!');
       } else {
-        console.error('❌ [HOOK] No meal data received from analysis');
         toast.error('Keine Daten von der Analyse erhalten');
       }
     } catch (error) {
-      console.error('❌ [HOOK] Submit meal error:', error);
       toast.error('Fehler beim Analysieren der Mahlzeit');
     }
   }, [inputText, uploadedImages, analyzeMealText, updateDialogState]);
 
   const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('📷 Photo upload triggered');
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    // Clear the input to allow re-uploading the same file
     event.target.value = '';
-
     const urls = await uploadImages(files);
     setUploadedImages(prev => [...prev, ...urls]);
   }, [uploadImages]);
 
   const handleVoiceRecord = useCallback(async () => {
-    console.log('🎙️ Voice button clicked, state:', { isRecording, isVoiceProcessing });
-    
     if (isRecording) {
-      console.log('🛑 Stopping recording...');
       const transcription = await stopRecording();
       if (transcription) {
         setInputText(prev => prev + (prev ? ' ' : '') + transcription);
       }
     } else {
-      console.log('🎤 Starting recording...');
       await startRecording();
     }
-  }, [isRecording, isVoiceProcessing, stopRecording, startRecording]);
+  }, [isRecording, stopRecording, startRecording]);
 
   const removeImage = useCallback((index: number) => {
-    console.log('🗑️ Removing image at index:', index);
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const resetForm = useCallback(() => {
-    console.log('🔄 Resetting form...');
     setInputText('');
     setUploadedImages([]);
     setShowConfirmationDialog(false);
@@ -511,7 +367,6 @@ export const useGlobalMealInput = () => {
   }, []);
 
   const closeDialog = useCallback(() => {
-    console.log('🚪 [HOOK] Closing dialog...');
     setShowConfirmationDialog(false);
   }, []);
 
@@ -522,10 +377,10 @@ export const useGlobalMealInput = () => {
     stopRecording,
     uploadImages,
     
-    // State - export isVoiceProcessing as isProcessing for compatibility
+    // State
     isAnalyzing,
     isRecording,
-    isProcessing: isVoiceProcessing, // Export as isProcessing to maintain compatibility
+    isProcessing: isVoiceProcessing,
     isUploading,
     recordingTime,
     inputText,
