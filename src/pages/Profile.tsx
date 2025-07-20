@@ -549,11 +549,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
 
               <div className="bg-accent/10 rounded-xl p-3">
-                <div className="text-sm font-medium mb-1">Vorschau:</div>
+                <div className="text-sm font-medium mb-1">{t('coach.preview')}:</div>
                 <div className="text-muted-foreground italic text-sm">
-                  {coachPersonality === 'hart' && "\"Du hast dein Ziel heute nicht erreicht? Dann streng dich morgen mehr an!\""}
-                  {coachPersonality === 'soft' && "\"Das ist völlig in Ordnung, morgen ist ein neuer Tag für einen Neuanfang.\""}
-                  {coachPersonality === 'motivierend' && "\"Du schaffst das! Ich glaube an dich und deine Ziele!\""}
+                  {coachPersonality === 'hart' && t('coach.preview.tough')}
+                  {coachPersonality === 'soft' && t('coach.preview.soft')}
+                  {coachPersonality === 'motivierend' && t('coach.preview.motivating')}
                 </div>
               </div>
             </div>

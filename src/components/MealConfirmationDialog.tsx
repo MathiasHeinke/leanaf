@@ -16,6 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "@/hooks/useTranslation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -41,6 +42,7 @@ export const MealConfirmationDialog = ({
   onSuccess
 }: MealConfirmationDialogProps) => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   // State for editable nutritional values
   const [editableValues, setEditableValues] = useState({
@@ -101,7 +103,7 @@ export const MealConfirmationDialog = ({
 
   // Generate coach comment based on personality
   const getCoachComment = () => {
-    const mealTitle = analyzedMealData?.title || 'diese Mahlzeit';
+    const mealTitle = analyzedMealData?.title || t('meal.title').toLowerCase();
     
     switch (coachPersonality) {
       case 'hart':
@@ -156,18 +158,18 @@ export const MealConfirmationDialog = ({
 
       if (error) {
         console.error('Error saving meal:', error);
-        toast.error('Fehler beim Speichern der Mahlzeit');
+        toast.error(t('meal.saveError'));
         return;
       }
 
-      toast.success('Mahlzeit erfolgreich gespeichert');
+      toast.success(t('meal.saveSuccess'));
       triggerDataRefresh(); // Trigger data refresh across all components
       onSuccess();
       onClose();
       
     } catch (error) {
       console.error('Error saving meal:', error);
-      toast.error('Fehler beim Speichern der Mahlzeit');
+      toast.error(t('meal.saveError'));
     }
   };
 
@@ -175,7 +177,7 @@ export const MealConfirmationDialog = ({
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
-          <AlertDialogTitle>Mahlzeit bestätigen & bearbeiten</AlertDialogTitle>
+          <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
           <AlertDialogDescription>
             {getCoachComment()}
           </AlertDialogDescription>
@@ -184,24 +186,24 @@ export const MealConfirmationDialog = ({
         <div className="space-y-4">
           {/* Editable Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Mahlzeit-Titel</Label>
+            <Label htmlFor="title">{t('meal.title')}</Label>
             <Input
               id="title"
               value={editableValues.title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="Mahlzeit-Titel"
+              placeholder={t('meal.title')}
             />
           </div>
 
           {/* Editable Nutritional Values */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Nährwerte (bearbeitbar)</CardTitle>
+              <CardTitle className="text-lg">{t('meal.nutrition')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="calories">Kalorien</Label>
+                  <Label htmlFor="calories">{t('meal.calories')}</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="calories"
@@ -215,7 +217,7 @@ export const MealConfirmationDialog = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="protein">Protein</Label>
+                  <Label htmlFor="protein">{t('meal.protein')}</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="protein"
@@ -230,7 +232,7 @@ export const MealConfirmationDialog = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="carbs">Kohlenhydrate</Label>
+                  <Label htmlFor="carbs">{t('meal.carbs')}</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="carbs"
@@ -245,7 +247,7 @@ export const MealConfirmationDialog = ({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="fats">Fette</Label>
+                  <Label htmlFor="fats">{t('meal.fats')}</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="fats"
@@ -265,22 +267,22 @@ export const MealConfirmationDialog = ({
           {/* Meal Type and Date Selection - Side by Side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Mahlzeit-Typ</Label>
+              <Label>{t('meal.type')}</Label>
               <Select value={selectedMealType} onValueChange={onMealTypeChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Wählen Sie einen Mahlzeit-Typ" />
+                  <SelectValue placeholder={t('meal.selectType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="breakfast">Frühstück</SelectItem>
-                  <SelectItem value="lunch">Mittagessen</SelectItem>
-                  <SelectItem value="dinner">Abendessen</SelectItem>
-                  <SelectItem value="snack">Snack</SelectItem>
+                  <SelectItem value="breakfast">{t('meal.breakfast')}</SelectItem>
+                  <SelectItem value="lunch">{t('meal.lunch')}</SelectItem>
+                  <SelectItem value="dinner">{t('meal.dinner')}</SelectItem>
+                  <SelectItem value="snack">{t('meal.snack')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Datum der Mahlzeit</Label>
+              <Label>{t('meal.date')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -310,10 +312,10 @@ export const MealConfirmationDialog = ({
         
         <AlertDialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Abbrechen
+            {t('meal.cancel')}
           </Button>
           <Button onClick={handleConfirmMeal}>
-            Mahlzeit speichern
+            {t('meal.save')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
