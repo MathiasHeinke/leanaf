@@ -4,11 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, Target, Save } from "lucide-react";
+import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock } from "lucide-react";
 
 interface DailyGoal {
   calories: number;
@@ -28,6 +30,7 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { autoSettings, saveSettings, toggleTheme, getThemeStatus, isWithinDarkModeHours } = useAutoDarkMode();
 
   const handleSave = async () => {
     if (!user) return;
@@ -71,7 +74,7 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
       console.error('Error saving goal:', error);
       toast({
         title: t('common.error'),
-        description: t('profile.error'),
+        description: t('settings.saveError'),
         variant: "destructive"
       });
     }
@@ -112,6 +115,56 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           <p className="text-sm text-muted-foreground mt-1">
             {t('settings.recommended')}
           </p>
+        </div>
+
+        {/* Dark Mode Settings */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-500 p-2 rounded-lg">
+                <Moon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <Label className="text-base font-medium">{t('settings.darkMode')}</Label>
+                <p className="text-sm text-muted-foreground">{t('settings.darkModeDesc')}</p>
+              </div>
+            </div>
+            <Switch
+              checked={autoSettings.enabled}
+              onCheckedChange={(enabled) => saveSettings({ ...autoSettings, enabled })}
+            />
+          </div>
+          
+          {autoSettings.enabled && (
+            <div className="ml-12 space-y-3 p-4 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4 text-primary" />
+                <span>{t('settings.activeTime')}: {autoSettings.startTime} - {autoSettings.endTime}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={toggleTheme}
+                  className="flex items-center gap-2"
+                >
+                  {getThemeStatus().current === 'dark' ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                  {t('settings.toggleTheme')}
+                </Button>
+                
+                {isWithinDarkModeHours && (
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    {t('settings.autoActive')}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="pt-4 border-t">

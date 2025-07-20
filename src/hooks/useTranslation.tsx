@@ -112,6 +112,10 @@ const translations = {
     'settings.darkModeDesc': 'Dark Mode wird automatisch zwischen 19:00 und 7:00 Uhr aktiviert',
     'settings.appearance': 'Erscheinungsbild',
     'settings.theme': 'Design',
+    'settings.activeTime': 'Aktive Zeit',
+    'settings.toggleTheme': 'Theme umschalten',
+    'settings.autoActive': 'Auto aktiv',
+    'settings.saveError': 'Fehler beim Speichern der Einstellungen',
     
     // Authentication
     'auth.signIn': 'Anmelden',
@@ -554,6 +558,10 @@ const translations = {
     'settings.darkModeDesc': 'Dark mode is automatically enabled between 7 PM and 7 AM',
     'settings.appearance': 'Appearance',
     'settings.theme': 'Theme',
+    'settings.activeTime': 'Active time',
+    'settings.toggleTheme': 'Toggle theme',
+    'settings.autoActive': 'Auto active',
+    'settings.saveError': 'Error saving settings',
     
     // Authentication
     'auth.signIn': 'Sign In',
