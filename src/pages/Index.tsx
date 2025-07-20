@@ -245,6 +245,8 @@ const Index = () => {
             isProcessing={mealInputHook.isProcessing}
             uploadedImages={mealInputHook.uploadedImages}
             onRemoveImage={mealInputHook.removeImage}
+            uploadProgress={mealInputHook.uploadProgress}
+            isUploading={mealInputHook.isUploading}
           />
         </div>
       </div>

@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { uploadFilesWithProgress, UploadProgress } from "@/utils/uploadHelpers";
 
 export const useGlobalMealInput = () => {
   const [inputText, setInputText] = useState("");
@@ -11,6 +13,8 @@ export const useGlobalMealInput = () => {
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [analyzedMealData, setAnalyzedMealData] = useState<any>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('');
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   const { user } = useAuth();
   const voiceHook = useVoiceRecording();
@@ -122,95 +126,45 @@ export const useGlobalMealInput = () => {
       return;
     }
     
-    console.log('Starting upload for user:', user.id);
+    console.log(`🚀 Starting enhanced upload for ${files.length} files, user: ${user.id}`);
     
-    setIsAnalyzing(true);
+    setIsUploading(true);
+    setUploadProgress([]);
     
     try {
-      const uploadedUrls: string[] = [];
-      
-      for (const file of files) {
-        console.log('Processing file:', file.name, 'Size:', file.size, 'Type:', file.type);
-        
-        if (file.size > 10 * 1024 * 1024) {
-          throw new Error(`Datei ${file.name} ist zu groß (max. 10MB)`);
+      const result = await uploadFilesWithProgress(
+        files,
+        user.id,
+        (progress) => {
+          console.log('📊 Upload progress update:', progress);
+          setUploadProgress([...progress]);
         }
+      );
+
+      if (result.success && result.urls.length > 0) {
+        setUploadedImages(prev => [...prev, ...result.urls]);
+        console.log(`✅ Upload completed: ${result.urls.length} files successful`);
         
-        if (!file.type.startsWith('image/')) {
-          throw new Error(`Datei ${file.name} ist kein Bild`);
+        if (result.errors.length > 0) {
+          console.warn('⚠️ Some uploads failed:', result.errors);
+          toast.warning(`${result.urls.length} Bilder hochgeladen, ${result.errors.length} fehlgeschlagen`);
+        } else {
+          toast.success(`${result.urls.length} Bilder erfolgreich hochgeladen`);
         }
-        
-        const fileExt = file.name.split('.').pop()?.toLowerCase();
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        
-        console.log('Uploading to:', fileName);
-        
-        let data;
-        try {
-          const uploadResult = await supabase.storage
-            .from('meal-images')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
-          
-          if (uploadResult.error) {
-            console.error('Storage upload error:', uploadResult.error);
-            throw new Error(`Upload fehlgeschlagen: ${uploadResult.error.message}`);
-          }
-          
-          data = uploadResult.data;
-          console.log('Upload successful:', data);
-        } catch (uploadError: any) {
-          console.error('Upload attempt failed:', uploadError);
-          
-          // Check auth state
-          const { data: authUser } = await supabase.auth.getUser();
-          console.log('Current auth state:', authUser.user ? 'Authenticated' : 'Not authenticated');
-          
-          // Try with different settings as fallback
-          console.log('Retrying upload with different settings...');
-          try {
-            const retryResult = await supabase.storage
-              .from('meal-images')
-              .upload(fileName, file, {
-                cacheControl: '0',
-                upsert: true
-              });
-              
-            if (retryResult.error) {
-              console.error('Retry upload also failed:', retryResult.error);
-              throw new Error(`Upload fehlgeschlagen (auch bei Wiederholung): ${retryResult.error.message}`);
-            }
-            
-            data = retryResult.data;
-            console.log('Retry upload successful:', data);
-          } catch (retryError: any) {
-            console.error('Both upload attempts failed:', retryError);
-            throw new Error(`Upload komplett fehlgeschlagen: ${uploadError.message || 'Netzwerkfehler'}`);
-          }
-        }
-        
-        const { data: urlData } = supabase.storage
-          .from('meal-images')
-          .getPublicUrl(fileName);
-        
-        console.log('Public URL:', urlData.publicUrl);
-        uploadedUrls.push(urlData.publicUrl);
+      } else {
+        console.error('❌ All uploads failed:', result.errors);
+        toast.error('Upload fehlgeschlagen: ' + result.errors.join(', '));
       }
       
-      setUploadedImages(prev => [...prev, ...uploadedUrls]);
-      
     } catch (error: any) {
-      console.error('Error in photo upload:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      toast.error(error.message || 'Fehler beim Hochladen');
+      console.error('❌ Critical upload error:', error);
+      toast.error(error.message || 'Kritischer Fehler beim Upload');
     } finally {
-      setIsAnalyzing(false);
+      setIsUploading(false);
+      // Clear progress after a delay to show final state
+      setTimeout(() => {
+        setUploadProgress([]);
+      }, 3000);
       event.target.value = '';
     }
   };
@@ -249,6 +203,8 @@ export const useGlobalMealInput = () => {
     setSelectedMealType("");
     setShowConfirmationDialog(false);
     setAnalyzedMealData(null);
+    setUploadProgress([]);
+    setIsUploading(false);
   };
 
   return {
@@ -270,6 +226,8 @@ export const useGlobalMealInput = () => {
     setAnalyzedMealData,
     removeImage,
     duplicateMeal,
-    resetForm
+    resetForm,
+    uploadProgress,
+    isUploading
   };
 };

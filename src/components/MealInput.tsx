@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Camera, Mic, Send, StopCircle, ImagePlus, X, Paperclip } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { UploadProgress } from "@/components/UploadProgress";
+import { UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 
 interface MealInputProps {
   inputText: string;
@@ -19,6 +21,8 @@ interface MealInputProps {
   onRemoveImage: (index: number) => void;
   isEditing?: boolean;
   onCancelEdit?: () => void;
+  uploadProgress?: UploadProgressType[];
+  isUploading?: boolean;
 }
 
 export const MealInput = ({
@@ -33,13 +37,21 @@ export const MealInput = ({
   uploadedImages,
   onRemoveImage,
   isEditing = false,
-  onCancelEdit
+  onCancelEdit,
+  uploadProgress = [],
+  isUploading = false
 }: MealInputProps) => {
   const { t } = useTranslation();
   
   return (
     <div className="w-full">
       <div className="w-full">
+        {/* Upload Progress - Above everything */}
+        <UploadProgress 
+          progress={uploadProgress} 
+          isVisible={isUploading} 
+        />
+
         {/* Image Thumbnails - Above input */}
         {uploadedImages && uploadedImages.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
@@ -53,6 +65,7 @@ export const MealInput = ({
                 <button
                   onClick={() => onRemoveImage(index)}
                   className="absolute -top-2 -right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110 z-10"
+                  disabled={isUploading}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -90,6 +103,7 @@ export const MealInput = ({
                   }
                 }
               }}
+              disabled={isUploading}
             />
             
             {/* Left Action Button - Enhanced Paperclip with Better Visibility */}
@@ -99,6 +113,7 @@ export const MealInput = ({
                 size="sm"
                 className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${inputText ? 'opacity-50' : 'opacity-100'}`}
                 onClick={() => document.getElementById('gallery-upload')?.click()}
+                disabled={isUploading || isAnalyzing}
               >
                 <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
               </Button>
@@ -109,6 +124,7 @@ export const MealInput = ({
                 className="hidden"
                 onChange={onPhotoUpload}
                 multiple
+                disabled={isUploading || isAnalyzing}
               />
               <input
                 id="camera-upload"
@@ -118,6 +134,7 @@ export const MealInput = ({
                 className="hidden"
                 onChange={onPhotoUpload}
                 multiple
+                disabled={isUploading || isAnalyzing}
               />
             </div>
             
@@ -133,7 +150,7 @@ export const MealInput = ({
                     : 'hover:bg-muted/90 hover:scale-105'
                 }`}
                 onClick={onVoiceRecord}
-                disabled={isAnalyzing || isProcessing}
+                disabled={isAnalyzing || isProcessing || isUploading}
               >
                 {isRecording ? (
                   <StopCircle className="h-5 w-5" />
@@ -148,14 +165,14 @@ export const MealInput = ({
               <Button
                 size="sm"
                 className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
-                  (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing
+                  (!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing || isUploading
                     ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
                     : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
                 }`}
                 onClick={onSubmitMeal}
-                disabled={(!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing}
+                disabled={(!inputText.trim() && (!uploadedImages || uploadedImages.length === 0)) || isAnalyzing || isUploading}
               >
-                {isAnalyzing ? (
+                {isAnalyzing || isUploading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                 ) : (
                   <Send className="h-5 w-5" />
