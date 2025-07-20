@@ -1,3 +1,4 @@
+
 import { 
   AlertDialog, 
   AlertDialogContent, 
@@ -46,11 +47,14 @@ export const MealConfirmationDialog = ({
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  // Enhanced debugging logs
-  console.log('🎯 MealConfirmationDialog render:', {
+  // Enhanced debugging logs with more detail
+  console.log('🎯 [DIALOG] MealConfirmationDialog render state:', {
     isOpen,
     hasAnalyzedData: !!analyzedMealData,
+    analyzedMealDataKeys: analyzedMealData ? Object.keys(analyzedMealData) : 'NO DATA',
+    analyzedMealData: analyzedMealData,
     selectedMealType,
+    shouldRender: isOpen && analyzedMealData,
     timestamp: new Date().toISOString()
   });
 
@@ -76,19 +80,20 @@ export const MealConfirmationDialog = ({
 
   // Debug effect for dialog state changes
   useEffect(() => {
-    console.log('🔄 Dialog state changed:', {
+    console.log('🔄 [DIALOG] Dialog state changed:', {
       isOpen,
       hasData: !!analyzedMealData,
       selectedMealType,
-      editableValues
+      editableValues,
+      renderCheck: isOpen && analyzedMealData
     });
   }, [isOpen, analyzedMealData, selectedMealType, editableValues]);
 
   // Debug effect for mount/unmount
   useEffect(() => {
-    console.log('🏗️ MealConfirmationDialog mounted');
+    console.log('🏗️ [DIALOG] MealConfirmationDialog mounted');
     return () => {
-      console.log('🏗️ MealConfirmationDialog unmounted');
+      console.log('🏗️ [DIALOG] MealConfirmationDialog unmounted');
     };
   }, []);
 
@@ -120,24 +125,25 @@ export const MealConfirmationDialog = ({
     fetchCoachPersonality();
   }, [user?.id]);
 
-  // Initialize editable values when dialog opens - with enhanced logging
+  // Enhanced initialization with better validation and debugging
   useEffect(() => {
-    console.log('🔧 Initializing editable values:', {
+    console.log('🔧 [DIALOG] Initializing editable values with:', {
       analyzedMealData,
       isOpen,
-      hasTotal: !!analyzedMealData?.total
+      hasValidData: !!(analyzedMealData && typeof analyzedMealData === 'object')
     });
     
-    if (analyzedMealData && isOpen) {
+    if (analyzedMealData && isOpen && typeof analyzedMealData === 'object') {
+      // Enhanced validation and fallback
       const newValues = {
-        calories: analyzedMealData.total.calories || 0,
-        protein: analyzedMealData.total.protein || 0,
-        carbs: analyzedMealData.total.carbs || 0,
-        fats: analyzedMealData.total.fats || 0,
-        title: analyzedMealData.title || ""
+        calories: Number(analyzedMealData.calories) || 0,
+        protein: Number(analyzedMealData.protein) || 0,
+        carbs: Number(analyzedMealData.carbs) || 0,
+        fats: Number(analyzedMealData.fats) || 0,
+        title: String(analyzedMealData.title || analyzedMealData.name || "Analysierte Mahlzeit")
       };
       
-      console.log('✅ Setting editable values:', newValues);
+      console.log('✅ [DIALOG] Setting editable values:', newValues);
       setEditableValues(newValues);
       setMealDate(new Date());
     }
@@ -253,7 +259,7 @@ export const MealConfirmationDialog = ({
   const handleConfirmMeal = async () => {
     if (!user?.id) return;
     
-    console.log('🍽️ Confirming meal with values:', editableValues);
+    console.log('🍽️ [DIALOG] Confirming meal with values:', editableValues);
     
     try {
       // Create a timestamp that preserves the local date without timezone conversion
@@ -279,7 +285,7 @@ export const MealConfirmationDialog = ({
         return;
       }
 
-      console.log('✅ Meal saved successfully');
+      console.log('✅ [DIALOG] Meal saved successfully');
       // Silent success - no toast needed, dialog closing indicates success
       triggerDataRefresh();
       onSuccess();
@@ -295,17 +301,30 @@ export const MealConfirmationDialog = ({
   const confidence = analyzedMealData?.confidence;
 
   // Enhanced logging for render decision
-  console.log('🎭 Dialog render decision:', {
+  const shouldRender = isOpen && analyzedMealData;
+  console.log('🎭 [DIALOG] Dialog render decision:', {
     isOpen,
-    willRender: isOpen && analyzedMealData,
-    analyzedMealDataExists: !!analyzedMealData
+    hasAnalyzedData: !!analyzedMealData,
+    shouldRender,
+    analyzedMealDataType: typeof analyzedMealData,
+    analyzedMealDataContent: analyzedMealData
   });
 
-  // Early return with logging if no data
-  if (!analyzedMealData) {
-    console.log('❌ No analyzedMealData, not rendering dialog');
+  // Early return with enhanced logging if no data
+  if (!shouldRender) {
+    console.log('❌ [DIALOG] Not rendering dialog - missing requirements:', {
+      isOpen,
+      hasAnalyzedData: !!analyzedMealData,
+      shouldRender
+    });
     return null;
   }
+
+  console.log('✅ [DIALOG] Rendering dialog with data:', {
+    editableValues,
+    selectedMealType,
+    confidence
+  });
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>

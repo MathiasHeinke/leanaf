@@ -50,6 +50,79 @@ export const useGlobalMealInput = () => {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Enhanced data parsing function with extensive debugging
+  const parseAnalyzeResponse = useCallback((data: any) => {
+    console.log('🔍 [PARSE] Raw response data:', JSON.stringify(data, null, 2));
+    console.log('🔍 [PARSE] Data type:', typeof data);
+    console.log('🔍 [PARSE] Data keys:', data ? Object.keys(data) : 'NO KEYS');
+    
+    // Try to detect the data format and parse accordingly
+    let parsedData = null;
+    
+    // Format 1: Nested structure with 'total' object (expected format)
+    if (data?.total && typeof data.total === 'object') {
+      console.log('✅ [PARSE] Found nested format with total object');
+      parsedData = {
+        text: data.title || 'Analysierte Mahlzeit',
+        calories: data.total.calories || 0,
+        protein: data.total.protein || 0,
+        carbs: data.total.carbs || 0,
+        fats: data.total.fats || 0,
+        meal_type: 'other'
+      };
+    }
+    // Format 2: Flattened structure (backup format)
+    else if (data?.calories !== undefined) {
+      console.log('✅ [PARSE] Found flattened format');
+      parsedData = {
+        text: data.title || 'Analysierte Mahlzeit',
+        calories: data.calories || 0,
+        protein: data.protein || 0,
+        carbs: data.carbs || 0,
+        fats: data.fats || 0,
+        meal_type: 'other'
+      };
+    }
+    // Format 3: Legacy format with 'meal' object
+    else if (data?.meal && typeof data.meal === 'object') {
+      console.log('✅ [PARSE] Found legacy format with meal object');
+      parsedData = {
+        text: data.title || 'Analysierte Mahlzeit',
+        calories: data.meal.calories || 0,
+        protein: data.meal.protein || 0,
+        carbs: data.meal.carbs || 0,
+        fats: data.meal.fats || 0,
+        meal_type: data.meal.meal_type || 'other'
+      };
+    }
+    // Format 4: Try to extract from any numeric fields found
+    else {
+      console.log('⚠️ [PARSE] Unknown format, attempting field extraction');
+      console.log('🔍 [PARSE] Available numeric fields:', Object.keys(data || {}).filter(key => typeof data[key] === 'number'));
+      
+      // Last resort: try to find any numeric nutrition data
+      const calories = data?.calories || data?.Calories || data?.kcal || 0;
+      const protein = data?.protein || data?.Protein || data?.eiweiß || 0;
+      const carbs = data?.carbs || data?.Carbs || data?.kohlenhydrate || 0;
+      const fats = data?.fats || data?.Fats || data?.fett || 0;
+      
+      if (calories > 0 || protein > 0 || carbs > 0 || fats > 0) {
+        console.log('✅ [PARSE] Extracted nutrition data from unknown format');
+        parsedData = {
+          text: data.title || data.name || 'Analysierte Mahlzeit',
+          calories,
+          protein,
+          carbs,
+          fats,
+          meal_type: 'other'
+        };
+      }
+    }
+    
+    console.log('🎯 [PARSE] Final parsed data:', parsedData);
+    return parsedData;
+  }, []);
+
   // Cleanup function for media recorder
   const cleanupMediaRecorder = useCallback(() => {
     console.log('🧹 Cleaning up MediaRecorder...');
@@ -92,7 +165,7 @@ export const useGlobalMealInput = () => {
     };
   }, [cleanupMediaRecorder]);
 
-  // Meal analysis function
+  // Enhanced meal analysis function with comprehensive debugging
   const analyzeMealText = useCallback(async (text: string, images: string[] = []): Promise<MealData | null> => {
     if (!user || (!text.trim() && images.length === 0)) return null;
 
@@ -117,12 +190,15 @@ export const useGlobalMealInput = () => {
         body: requestPayload
       });
 
-      console.log('📥 [HOOK] Response from analyze-meal function:', {
-        data,
+      console.log('📥 [HOOK] RAW Response from analyze-meal function:', {
+        rawData: data,
+        dataType: typeof data,
+        dataKeys: data ? Object.keys(data) : 'NO KEYS',
+        dataString: JSON.stringify(data),
         error,
         hasData: !!data,
         hasTotal: !!(data?.total),
-        dataKeys: data ? Object.keys(data) : []
+        hasMeal: !!(data?.meal)
       });
 
       if (error) {
@@ -130,37 +206,15 @@ export const useGlobalMealInput = () => {
         throw error;
       }
 
-      // Handle standardized response format
-      if (data?.total) {
-        const result = {
-          text: data.title || text.trim() || 'Analysierte Mahlzeit',
-          calories: data.total.calories || 0,
-          protein: data.total.protein || 0,
-          carbs: data.total.carbs || 0,
-          fats: data.total.fats || 0,
-          meal_type: 'other'
-        };
-        
-        console.log('✅ [HOOK] Meal analysis successful, result:', result);
-        return result;
+      // Use the enhanced parsing function
+      const parsedMealData = parseAnalyzeResponse(data);
+      
+      if (parsedMealData) {
+        console.log('✅ [HOOK] Meal analysis successful, parsed result:', parsedMealData);
+        return parsedMealData;
       }
 
-      // Fallback for legacy format
-      if (data?.meal) {
-        const result = {
-          text: text.trim() || 'Analysierte Mahlzeit',
-          calories: data.meal.calories || 0,
-          protein: data.meal.protein || 0,
-          carbs: data.meal.carbs || 0,
-          fats: data.meal.fats || 0,
-          meal_type: data.meal.meal_type || 'other'
-        };
-        
-        console.log('✅ [HOOK] Meal analysis successful (legacy format), result:', result);
-        return result;
-      }
-
-      console.error('❌ [HOOK] Unexpected response format:', data);
+      console.error('❌ [HOOK] Could not parse response data:', data);
       return null;
     } catch (error: any) {
       console.error('❌ [HOOK] Meal analysis failed:', error);
@@ -176,7 +230,7 @@ export const useGlobalMealInput = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [user]);
+  }, [user, parseAnalyzeResponse]);
 
   // Voice recording functions - completely isolated
   const startRecording = useCallback(async () => {
@@ -346,7 +400,26 @@ export const useGlobalMealInput = () => {
     }
   }, [user]);
 
-  // Event handlers - completely decoupled
+  // Fixed state update function to prevent race conditions
+  const updateDialogState = useCallback((mealData: AnalyzedMealData, mealType: string) => {
+    console.log('🔄 [HOOK] Updating dialog state with:', { mealData, mealType });
+    
+    // Use a single state update to prevent race conditions
+    const updateStates = () => {
+      setAnalyzedMealData(mealData);
+      setSelectedMealType(mealType);
+      
+      // Small delay to ensure state is set before showing dialog
+      setTimeout(() => {
+        console.log('💫 [HOOK] Showing confirmation dialog');
+        setShowConfirmationDialog(true);
+      }, 50);
+    };
+    
+    updateStates();
+  }, []);
+
+  // Enhanced event handlers with better error handling and debugging
   const handleSubmitMeal = useCallback(async () => {
     console.log('🚀 [HOOK] handleSubmitMeal called');
     
@@ -379,16 +452,12 @@ export const useGlobalMealInput = () => {
           confidence: 0.85
         };
         
-        console.log('🎯 [HOOK] Setting analyzed meal data:', analyzedData);
-        setAnalyzedMealData(analyzedData);
+        console.log('🎯 [HOOK] Prepared analyzed meal data:', analyzedData);
         
-        console.log('🍽️ [HOOK] Setting selected meal type:', mealData.meal_type || 'other');
-        setSelectedMealType(mealData.meal_type || 'other');
+        // Use the fixed state update function
+        updateDialogState(analyzedData, mealData.meal_type || 'other');
         
-        console.log('💫 [HOOK] About to show confirmation dialog...');
-        setShowConfirmationDialog(true);
-        
-        console.log('✅ [HOOK] Dialog should now be visible!');
+        console.log('✅ [HOOK] Dialog state update initiated!');
       } else {
         console.error('❌ [HOOK] No meal data received from analysis');
         toast.error('Keine Daten von der Analyse erhalten');
@@ -397,7 +466,7 @@ export const useGlobalMealInput = () => {
       console.error('❌ [HOOK] Submit meal error:', error);
       toast.error('Fehler beim Analysieren der Mahlzeit');
     }
-  }, [inputText, uploadedImages, analyzeMealText]);
+  }, [inputText, uploadedImages, analyzeMealText, updateDialogState]);
 
   const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log('📷 Photo upload triggered');
