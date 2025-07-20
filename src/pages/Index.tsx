@@ -210,38 +210,36 @@ const Index = () => {
           </button>
         </div>
 
-        <div className="md:flex md:gap-6">
-          <div className="md:w-1/3 space-y-4">
-            {/* Daily Progress with integrated date navigation - now first */}
-            <DailyProgress 
-              dailyTotals={{
-                calories: calorieSummary.consumed,
-                protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-                carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-                fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
-              }}
-              dailyGoal={{
-                calories: dailyGoals?.calories || 2000,
-                protein: dailyGoals?.protein || 150,
-                carbs: dailyGoals?.carbs || 250,
-                fats: dailyGoals?.fats || 65
-              }}
-              userGoal={userProfile?.goal || 'maintain'}
-              currentDate={currentDate}
-              onDateChange={handleDateChange}
-            />
+        <div className="space-y-6">
+          {/* Daily Progress with integrated date navigation - now first */}
+          <DailyProgress 
+            dailyTotals={{
+              calories: calorieSummary.consumed,
+              protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
+              carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
+              fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
+            }}
+            dailyGoal={{
+              calories: dailyGoals?.calories || 2000,
+              protein: dailyGoals?.protein || 150,
+              carbs: dailyGoals?.carbs || 250,
+              fats: dailyGoals?.fats || 65
+            }}
+            userGoal={userProfile?.goal || 'maintain'}
+            currentDate={currentDate}
+            onDateChange={handleDateChange}
+          />
 
-            {/* Quick Weight Input - now second, under the macros */}
-            <QuickWeightInput 
-              currentWeight={userProfile?.weight}
-              onWeightAdded={handleWeightAdded}
-            />
+          {/* Quick Weight Input - now second, under the macros */}
+          <QuickWeightInput 
+            currentWeight={userProfile?.weight}
+            onWeightAdded={handleWeightAdded}
+          />
 
-            {/* Optimized Greeting - after weight input (now only motivational quote) */}
-            <OptimizedGreeting userProfile={userProfile} />
-          </div>
+          {/* Optimized Greeting - after weight input (now only motivational quote) */}
+          <OptimizedGreeting userProfile={userProfile} />
 
-          <div className="md:w-2/3 mt-6 md:mt-0">
+          <div>
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-3">
                 <Badge className="opacity-80">{meals.length} Mahlzeiten</Badge>
