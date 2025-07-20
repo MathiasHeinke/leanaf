@@ -21,6 +21,9 @@ import {
   Activity,
   Scale
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { calculateWeightPrognosis, type WeightPrognosisData } from "@/utils/weightPrognosis";
 
 interface SmartInsightsProps {
   todaysTotals: {
@@ -68,10 +71,75 @@ export const SmartInsights = ({
 }: SmartInsightsProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const [profileData, setProfileData] = useState<any>(null);
+  const [fullDailyGoals, setFullDailyGoals] = useState<any>(null);
+  const [averageCalorieIntake, setAverageCalorieIntake] = useState<number>(0);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      loadProfileData();
+      loadFullDailyGoals();
+      calculateAverageCalorieIntake();
+    }
+  }, [user]);
 
   useEffect(() => {
     generateInsights();
   }, [todaysTotals, dailyGoals, averages, historyData, weightHistory]);
+
+  const loadProfileData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setProfileData(data);
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+    }
+  };
+
+  const loadFullDailyGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('daily_goals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setFullDailyGoals(data);
+    } catch (error) {
+      console.error('Error loading daily goals:', error);
+    }
+  };
+
+  const calculateAverageCalorieIntake = async () => {
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data, error } = await supabase
+        .from('meals')
+        .select('calories, created_at')
+        .eq('user_id', user?.id)
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const totalCalories = data.reduce((sum, meal) => sum + (meal.calories || 0), 0);
+        const averageDaily = totalCalories / 7;
+        setAverageCalorieIntake(averageDaily);
+      }
+    } catch (error) {
+      console.error('Error calculating average calorie intake:', error);
+    }
+  };
 
   const generateInsights = () => {
     const newInsights: Insight[] = [];
@@ -252,6 +320,13 @@ export const SmartInsights = ({
   const calorieProgress = (todaysTotals.calories / dailyGoals.calories) * 100;
   const proteinProgress = (todaysTotals.protein / dailyGoals.protein) * 100;
 
+  // Calculate weight prognosis using the shared utility
+  const weightPrognosis = calculateWeightPrognosis({
+    profileData,
+    dailyGoals: fullDailyGoals,
+    averageCalorieIntake
+  });
+
   return (
     <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
       <CardHeader>
@@ -373,18 +448,41 @@ export const SmartInsights = ({
                   </div>
                   
                   {/* Weight Prognosis */}
-                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-700/30">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Zielgewicht erreicht am</span>
+                  {weightPrognosis && weightPrognosis.type !== 'warning' && weightPrognosis.type !== 'maintain' && (
+                    <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-700/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Zielgewicht erreicht am</span>
+                      </div>
+                      <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                        {weightPrognosis.targetDate}
+                      </div>
+                      <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                        In ca. {weightPrognosis.monthsToTarget && weightPrognosis.monthsToTarget > 1 
+                          ? `${weightPrognosis.monthsToTarget} Monate` 
+                          : `${weightPrognosis.daysToTarget ? Math.ceil(weightPrognosis.daysToTarget / 7) : 0} Wochen`
+                        } bei aktuellem Fortschritt
+                      </div>
                     </div>
-                    <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                      15. März 2025
+                  )}
+                  
+                  {/* Warning or Maintain Messages */}
+                  {weightPrognosis && (weightPrognosis.type === 'warning' || weightPrognosis.type === 'maintain') && (
+                    <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-700/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Target className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Status</span>
+                      </div>
+                      <div className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                        {weightPrognosis.message}
+                      </div>
+                      {weightPrognosis.suggestion && (
+                        <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                          💡 {weightPrognosis.suggestion}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                      In ca. 8 Wochen bei aktuellem Fortschritt
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}

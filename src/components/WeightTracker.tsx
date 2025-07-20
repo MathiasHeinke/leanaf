@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Plus, TrendingUp, TrendingDown, Target, Scale, Calendar, Clock, Zap } f
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { calculateWeightPrognosis, type WeightPrognosisData } from "@/utils/weightPrognosis";
 
 interface WeightEntry {
   id: string;
@@ -88,66 +88,6 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
     }
   };
 
-  const calculateWeightPrognosis = () => {
-    if (!profileData?.target_weight || !profileData?.weight || !dailyGoals?.tdee || !averageCalorieIntake) {
-      return null;
-    }
-
-    const currentWeight = profileData.weight;
-    const targetWeight = profileData.target_weight;
-    const weightDifference = Math.abs(targetWeight - currentWeight);
-    const dailyCalorieBalance = averageCalorieIntake - dailyGoals.tdee;
-    const caloriesPerKg = 7700;
-    
-    let daysToTarget = 0;
-    let prognosisType = '';
-    
-    if (targetWeight < currentWeight) {
-      prognosisType = 'loss';
-      if (dailyCalorieBalance < 0) {
-        const dailyWeightLoss = Math.abs(dailyCalorieBalance) / caloriesPerKg;
-        daysToTarget = weightDifference / dailyWeightLoss;
-      } else {
-        return {
-          type: 'warning',
-          message: 'Aktuelle Kalorienzufuhr führt zur Gewichtszunahme',
-          suggestion: `Reduziere um ${Math.round(dailyCalorieBalance + 300)} kcal/Tag`
-        };
-      }
-    } else if (targetWeight > currentWeight) {
-      prognosisType = 'gain';
-      if (dailyCalorieBalance > 0) {
-        const dailyWeightGain = dailyCalorieBalance / caloriesPerKg;
-        daysToTarget = weightDifference / dailyWeightGain;
-      } else {
-        return {
-          type: 'warning',
-          message: 'Aktuelle Kalorienzufuhr führt zur Gewichtsabnahme',
-          suggestion: `Erhöhe um ${Math.round(Math.abs(dailyCalorieBalance) + 300)} kcal/Tag`
-        };
-      }
-    } else {
-      return {
-        type: 'maintain',
-        message: 'Zielgewicht erreicht!',
-        suggestion: 'Halte deine aktuelle Kalorienzufuhr bei'
-      };
-    }
-
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + daysToTarget);
-    const monthsToTarget = Math.ceil(daysToTarget / 30);
-
-    return {
-      type: prognosisType,
-      daysToTarget: Math.round(daysToTarget),
-      monthsToTarget,
-      targetDate: targetDate.toLocaleDateString('de-DE'),
-      weightDifference,
-      dailyCalorieBalance
-    };
-  };
-
   const handleAddWeight = async () => {
     if (!user || !newWeight) return;
 
@@ -187,7 +127,11 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
     return { icon: TrendingDown, color: 'text-green-500', text: `${diff.toFixed(1)}kg`, bgColor: 'bg-green-50' };
   };
 
-  const prognosis = calculateWeightPrognosis();
+  const prognosis = calculateWeightPrognosis({
+    profileData,
+    dailyGoals,
+    averageCalorieIntake
+  });
   const trend = getWeightTrend();
 
   return (
@@ -298,9 +242,9 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
                     {prognosis.targetDate}
                   </div>
                   <div className="text-sm text-blue-600 dark:text-blue-400">
-                    Das sind noch ca. {prognosis.monthsToTarget > 1 
+                    Das sind noch ca. {prognosis.monthsToTarget && prognosis.monthsToTarget > 1 
                       ? `${prognosis.monthsToTarget} Monate` 
-                      : `${Math.ceil(prognosis.daysToTarget / 7)} Wochen`
+                      : `${prognosis.daysToTarget ? Math.ceil(prognosis.daysToTarget / 7) : 0} Wochen`
                     }
                   </div>
                 </div>
@@ -308,24 +252,24 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
                     <div className="text-lg font-bold text-primary mb-1">
-                      {prognosis.weightDifference.toFixed(1)}
+                      {prognosis.weightDifference?.toFixed(1)}
                     </div>
                     <div className="text-xs text-muted-foreground">kg verbleibend</div>
                   </div>
                   <div className="text-center p-3 bg-muted/50 rounded-lg">
                     <div className={`text-lg font-bold mb-1 ${
-                      prognosis.dailyCalorieBalance < 0 
+                      prognosis.dailyCalorieBalance && prognosis.dailyCalorieBalance < 0 
                         ? 'text-green-600 dark:text-green-400' 
                         : 'text-red-500 dark:text-red-400'
                     }`}>
-                      {prognosis.dailyCalorieBalance > 0 ? '+' : ''}{Math.round(prognosis.dailyCalorieBalance)}
+                      {prognosis.dailyCalorieBalance && prognosis.dailyCalorieBalance > 0 ? '+' : ''}{prognosis.dailyCalorieBalance ? Math.round(prognosis.dailyCalorieBalance) : 0}
                     </div>
                     <div className={`text-xs ${
-                      prognosis.dailyCalorieBalance < 0 
+                      prognosis.dailyCalorieBalance && prognosis.dailyCalorieBalance < 0 
                         ? 'text-green-600/80 dark:text-green-400/80' 
                         : 'text-red-500/80 dark:text-red-400/80'
                     }`}>
-                      kcal {prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
+                      kcal {prognosis.dailyCalorieBalance && prognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
                     </div>
                   </div>
                 </div>
