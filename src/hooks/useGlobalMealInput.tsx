@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -40,17 +41,37 @@ export const useGlobalMealInput = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Cleanup function for media recorder
+  const cleanupMediaRecorder = useCallback(() => {
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      mediaRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
+      mediaRecorderRef.current = null;
+    }
+    
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    
+    setIsRecording(false);
+    setRecordingTime(0);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupMediaRecorder();
+    };
+  }, [cleanupMediaRecorder]);
+
   const analyzeMealText = useCallback(async (text: string, images: string[] = []): Promise<MealData | null> => {
     if (!user || (!text.trim() && images.length === 0)) return null;
 
     setIsAnalyzing(true);
     try {
-      console.log('🔍 Analyzing meal with:', { 
-        hasText: !!text.trim(), 
-        imageCount: images.length,
-        text: text.trim() 
-      });
-
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
           text: text.trim() || null,
@@ -59,13 +80,11 @@ export const useGlobalMealInput = () => {
       });
 
       if (error) {
-        console.error('❌ Meal analysis error:', error);
+        console.error('Meal analysis error:', error);
         throw error;
       }
 
-      console.log('✅ Analysis response:', data);
-
-      // Handle new response format from analyze-meal function
+      // Handle standardized response format
       if (data?.total) {
         return {
           text: data.title || text.trim() || 'Analysierte Mahlzeit',
@@ -73,11 +92,11 @@ export const useGlobalMealInput = () => {
           protein: data.total.protein || 0,
           carbs: data.total.carbs || 0,
           fats: data.total.fats || 0,
-          meal_type: 'other' // Default meal type, will be set by user
+          meal_type: 'other'
         };
       }
 
-      // Fallback for old format
+      // Fallback for legacy format
       if (data?.meal) {
         return {
           text: text.trim() || 'Analysierte Mahlzeit',
@@ -89,10 +108,8 @@ export const useGlobalMealInput = () => {
         };
       }
 
-      console.warn('⚠️ Unexpected response format:', data);
       return null;
     } catch (error: any) {
-      console.error('❌ Meal analysis error:', error);
       if (error.message?.includes('Weder Text noch Bild')) {
         toast.error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
       } else {
@@ -150,20 +167,14 @@ export const useGlobalMealInput = () => {
           console.error('Voice processing error:', error);
           toast.error('Spracherkennung fehlgeschlagen');
           resolve(null);
+        } finally {
+          cleanupMediaRecorder();
         }
       };
 
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current);
-      }
-      
-      setIsRecording(false);
-      setRecordingTime(0);
     });
-  }, [isRecording]);
+  }, [isRecording, cleanupMediaRecorder]);
 
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!user || files.length === 0) return [];
@@ -212,12 +223,6 @@ export const useGlobalMealInput = () => {
 
     setIsProcessing(true);
     try {
-      console.log('🍽️ Submitting meal:', {
-        hasText: !!inputText.trim(),
-        imageCount: uploadedImages.length,
-        images: uploadedImages
-      });
-
       const mealData = await analyzeMealText(inputText, uploadedImages);
       if (mealData) {
         setAnalyzedMealData({
@@ -227,7 +232,7 @@ export const useGlobalMealInput = () => {
           carbs: mealData.carbs,
           fats: mealData.fats,
           meal_type: mealData.meal_type || 'other',
-          confidence: 0.85 // Default confidence
+          confidence: 0.85
         });
         setSelectedMealType(mealData.meal_type || 'other');
         setShowConfirmationDialog(true);
