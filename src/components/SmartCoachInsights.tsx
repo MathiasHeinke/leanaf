@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, TrendingUp, RefreshCw, AlertTriangle, CheckCircle, Info, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { EnhancedCoachAnalyzer, loadTransformationData, CoachInsight } from "@/utils/enhancedCoachAnalyzer";
+import { PremiumGate } from "@/components/PremiumGate";
 
 export const SmartCoachInsights = () => {
   const { user } = useAuth();
@@ -146,21 +147,27 @@ export const SmartCoachInsights = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <Brain className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
-            <h4 className="font-medium mb-2">Noch keine Insights</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Sammle mehr Daten (Training, Schlaf, Maße) für detaillierte KI-Analyse
-            </p>
-            <Button 
-              onClick={generateInsights}
-              disabled={loading}
-              className="bg-indigo-500 hover:bg-indigo-600 text-white"
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Erste Analyse
-            </Button>
-          </div>
+          <PremiumGate 
+            feature="Smart Insights Dashboard" 
+            tier="premium"
+            fallbackMessage="KI-Coach Insights sind ein Premium Feature. Upgrade für erweiterte Analyse!"
+          >
+            <div className="text-center py-8">
+              <Brain className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
+              <h4 className="font-medium mb-2">Noch keine Insights</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Sammle mehr Daten (Training, Schlaf, Maße) für detaillierte KI-Analyse
+              </p>
+              <Button 
+                onClick={generateInsights}
+                disabled={loading}
+                className="bg-indigo-500 hover:bg-indigo-600 text-white"
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Erste Analyse
+              </Button>
+            </div>
+          </PremiumGate>
         )}
 
         {/* Quick Tips - Changed from grid-cols-1 md:grid-cols-2 to grid-cols-1 */}

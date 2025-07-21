@@ -1,23 +1,24 @@
-
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper logging function for enhanced debugging
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Use the service role key to perform writes (upsert) in Supabase
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -44,36 +45,21 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check Stripe for customer and subscription
-    const customersResponse = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(user.email)}&limit=1`, {
-      headers: {
-        'Authorization': `Bearer ${stripeKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-
-    if (!customersResponse.ok) {
-      throw new Error(`Stripe API error: ${await customersResponse.text()}`);
-    }
-
-    const customers = await customersResponse.json();
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
       logStep("No customer found, updating unsubscribed state");
-      await supabaseClient.from("profiles").upsert({
-        user_id: user.id,
+      await supabaseClient.from("subscribers").upsert({
         email: user.email,
-        subscription_status: 'free',
-        subscription_id: null,
-        current_period_end: null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-      
-      return new Response(JSON.stringify({ 
-        subscribed: false, 
+        user_id: user.id,
+        stripe_customer_id: null,
+        subscribed: false,
         subscription_tier: null,
-        subscription_end: null 
-      }), {
+        subscription_end: null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'email' });
+      return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -82,46 +68,46 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    // Check for active subscriptions
-    const subscriptionsResponse = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${customerId}&status=active&limit=1`, {
-      headers: {
-        'Authorization': `Bearer ${stripeKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "active",
+      limit: 1,
     });
-
-    if (!subscriptionsResponse.ok) {
-      throw new Error(`Stripe API error: ${await subscriptionsResponse.text()}`);
-    }
-
-    const subscriptions = await subscriptionsResponse.json();
     const hasActiveSub = subscriptions.data.length > 0;
     let subscriptionTier = null;
     let subscriptionEnd = null;
-    let subscriptionId = null;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionId = subscription.id;
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      subscriptionTier = "Premium"; // KaloAI Premium
-      logStep("Active subscription found", { subscriptionId, endDate: subscriptionEnd });
+      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      // Determine subscription tier from price
+      const priceId = subscription.items.data[0].price.id;
+      const price = await stripe.prices.retrieve(priceId);
+      const amount = price.unit_amount || 0;
+      if (amount <= 999) {
+        subscriptionTier = "Basic";
+      } else if (amount <= 1999) {
+        subscriptionTier = "Premium";
+      } else {
+        subscriptionTier = "Enterprise";
+      }
+      logStep("Determined subscription tier", { priceId, amount, subscriptionTier });
     } else {
       logStep("No active subscription found");
     }
 
-    // Update Supabase profile
-    await supabaseClient.from("profiles").upsert({
-      user_id: user.id,
+    await supabaseClient.from("subscribers").upsert({
       email: user.email,
-      subscription_status: hasActiveSub ? 'premium' : 'free',
-      subscription_id: subscriptionId,
-      current_period_end: subscriptionEnd,
+      user_id: user.id,
+      stripe_customer_id: customerId,
+      subscribed: hasActiveSub,
+      subscription_tier: subscriptionTier,
+      subscription_end: subscriptionEnd,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+    }, { onConflict: 'email' });
 
     logStep("Updated database with subscription info", { subscribed: hasActiveSub, subscriptionTier });
-    
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       subscription_tier: subscriptionTier,

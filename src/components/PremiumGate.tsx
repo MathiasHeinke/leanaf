@@ -1,51 +1,94 @@
-
-import React from 'react';
+import { ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Crown, Lock } from 'lucide-react';
+import { Crown, Lock, Sparkles } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useNavigate } from 'react-router-dom';
 
 interface PremiumGateProps {
-  feature: string;
-  description: string;
-  children?: React.ReactNode;
+  children: ReactNode;
+  feature?: string;
+  tier?: 'basic' | 'premium' | 'enterprise';
+  fallbackMessage?: string;
   showUpgrade?: boolean;
 }
 
 export const PremiumGate = ({ 
-  feature, 
-  description, 
   children, 
-  showUpgrade = true 
+  feature = "Premium Feature", 
+  tier = 'premium',
+  fallbackMessage,
+  showUpgrade = true
 }: PremiumGateProps) => {
-  const { isPremium, createCheckoutSession } = useSubscription();
+  const { isPremium, subscriptionTier } = useSubscription();
+  const navigate = useNavigate();
 
-  if (isPremium) {
+  // Check if user has access to the required tier
+  const hasAccess = () => {
+    if (!isPremium) return false;
+    
+    const tierHierarchy = {
+      'basic': 1,
+      'premium': 2, 
+      'enterprise': 3
+    };
+    
+    const userTierLevel = subscriptionTier ? tierHierarchy[subscriptionTier.toLowerCase() as keyof typeof tierHierarchy] || 0 : 0;
+    const requiredTierLevel = tierHierarchy[tier];
+    
+    return userTierLevel >= requiredTierLevel;
+  };
+
+  if (hasAccess()) {
     return <>{children}</>;
   }
 
+  const getTierDisplayName = (tier: string) => {
+    switch(tier) {
+      case 'basic': return 'Basic';
+      case 'premium': return 'Premium';
+      case 'enterprise': return 'Enterprise';
+      default: return 'Premium';
+    }
+  };
+
+  const getTierIcon = (tier: string) => {
+    switch(tier) {
+      case 'basic': return <Sparkles className="h-5 w-5 text-blue-600" />;
+      case 'premium': return <Crown className="h-5 w-5 text-yellow-600" />;
+      case 'enterprise': return <Crown className="h-5 w-5 text-purple-600" />;
+      default: return <Crown className="h-5 w-5 text-primary" />;
+    }
+  };
+
+  if (!showUpgrade) {
+    return null;
+  }
+
   return (
-    <Card className="relative overflow-hidden border-2 border-primary/20">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10" />
-      <CardHeader className="relative">
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="h-5 w-5 text-primary" />
-          {feature}
-          <Badge variant="outline" className="ml-auto">
-            <Crown className="h-3 w-3 mr-1" />
-            Premium
-          </Badge>
+    <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+      <CardHeader className="text-center space-y-3">
+        <div className="flex justify-center">
+          <div className="p-3 rounded-full bg-primary/10">
+            {getTierIcon(tier)}
+          </div>
+        </div>
+        <CardTitle className="flex items-center justify-center gap-2">
+          <Lock className="h-4 w-4" />
+          {getTierDisplayName(tier)} Feature
         </CardTitle>
       </CardHeader>
-      <CardContent className="relative">
-        <p className="text-muted-foreground mb-4">{description}</p>
-        {showUpgrade && (
-          <Button onClick={createCheckoutSession} className="w-full">
-            <Crown className="h-4 w-4 mr-2" />
-            Jetzt upgraden für 7€/Monat
-          </Button>
-        )}
+      <CardContent className="text-center space-y-4">
+        <p className="text-muted-foreground">
+          {fallbackMessage || `"${feature}" ist ein ${getTierDisplayName(tier)} Feature. Upgrade jetzt um Zugang zu bekommen!`}
+        </p>
+        <Button 
+          onClick={() => navigate('/subscription')}
+          className="w-full"
+        >
+          <Crown className="h-4 w-4 mr-2" />
+          Zu {getTierDisplayName(tier)} upgraden
+        </Button>
       </CardContent>
     </Card>
   );

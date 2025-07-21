@@ -64,12 +64,12 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  const createCheckoutSession = async () => {
+  const createCheckoutSession = async (plan?: string) => {
     if (!user) return;
 
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { user_id: user.id },
+        body: { plan: plan || 'premium' },
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         }
