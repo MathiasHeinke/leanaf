@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -117,7 +118,12 @@ export const usePointsSystem = () => {
     description?: string,
     multiplier: number = 1.0
   ) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('❌ Cannot award points: No user ID');
+      return;
+    }
+
+    console.log(`🎯 Awarding points - Type: ${activityType}, Points: ${basePoints}, Multiplier: ${multiplier}`);
 
     try {
       const { data, error } = await supabase.rpc('update_user_points_and_level', {
@@ -129,11 +135,16 @@ export const usePointsSystem = () => {
       });
 
       if (error) {
-        console.error('Error awarding points:', error);
+        console.error('❌ Error awarding points:', error);
+        toast.error('Fehler beim Vergeben der Punkte', {
+          duration: 3000,
+          position: "top-center",
+        });
         return;
       }
 
       const result = data as any;
+      console.log('✅ Points awarded successfully:', result);
       
       // Update local state
       setUserPoints({
@@ -146,23 +157,32 @@ export const usePointsSystem = () => {
       // Show level up notification
       if (result.level_up) {
         toast.success(`🎉 Level Up! Du bist jetzt ${result.level_name}!`, {
-          duration: 4000,
+          duration: 5000,
+          position: "top-center",
         });
       } else if (result.points_earned > 0) {
-        toast.success(`+${result.points_earned} Punkte`, {
-          duration: 2000,
-        });
+        console.log(`🎉 Points earned: ${result.points_earned}`);
+        // Don't show additional toast here as it's handled in the calling component
       }
 
       return result;
     } catch (error) {
-      console.error('Error in awardPoints:', error);
+      console.error('❌ Error in awardPoints:', error);
+      toast.error('Fehler beim Vergeben der Punkte', {
+        duration: 3000,
+        position: "top-center",
+      });
     }
   };
 
   // Update streak
   const updateStreak = async (streakType: string, activityDate?: Date) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('❌ Cannot update streak: No user ID');
+      return;
+    }
+
+    console.log(`🔥 Updating streak - Type: ${streakType}`);
 
     try {
       const { data, error } = await supabase.rpc('update_user_streak', {
@@ -172,16 +192,18 @@ export const usePointsSystem = () => {
       });
 
       if (error) {
-        console.error('Error updating streak:', error);
+        console.error('❌ Error updating streak:', error);
         return;
       }
+
+      console.log('✅ Streak updated successfully:', data);
 
       // Reload streaks to get updated data
       await loadStreaks();
       
       return data;
     } catch (error) {
-      console.error('Error in updateStreak:', error);
+      console.error('❌ Error in updateStreak:', error);
     }
   };
 

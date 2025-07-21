@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,14 @@ export const QuickSleepInput = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const qualityEmojis = ['😴', '😔', '😐', '😊', '😍'];
-  const qualityLabels = ['Sehr schlecht', 'Schlecht', 'OK', 'Gut', 'Perfekt'];
+  const qualityLabels = ['Grausam', 'Schlecht', 'OK', 'Gut', 'Perfekt'];
 
   const handleSubmit = async () => {
     if (!user || sleepQuality === null) return;
 
     setIsSubmitting(true);
+    console.log('🛌 Starting sleep tracking submission...');
+    
     try {
       const today = new Date().toISOString().split('T')[0];
       
@@ -32,24 +35,49 @@ export const QuickSleepInput = () => {
         sleep_quality: sleepQuality
       };
 
+      console.log('💾 Saving sleep data:', sleepData);
+
       const { error } = await supabase
         .from('sleep_tracking')
         .upsert(sleepData, { onConflict: 'user_id,date' });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error saving sleep data:', error);
+        throw error;
+      }
+
+      console.log('✅ Sleep data saved successfully');
 
       // Award points for sleep tracking
-      await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), `Schlaf erfasst (Qualität: ${sleepQuality}/5)`);
-      await updateStreak('sleep_tracking');
+      const pointsEarned = getPointsForActivity('sleep_tracked');
+      console.log(`🎯 Awarding ${pointsEarned} points for sleep tracking`);
+      
+      const pointsResult = await awardPoints(
+        'sleep_tracked', 
+        pointsEarned, 
+        `Schlaf erfasst (Qualität: ${sleepQuality}/5)`
+      );
+      
+      console.log('🎉 Points awarded result:', pointsResult);
+      
+      const streakResult = await updateStreak('sleep_tracking');
+      console.log('🔥 Streak updated result:', streakResult);
 
-      toast.success('Schlaf erfasst! 😴💤');
+      // Show success toast with longer duration and better visibility
+      toast.success(`Schlaf erfasst! 😴💤 (+${pointsEarned} Punkte)`, {
+        duration: 4000,
+        position: "top-center",
+      });
       
       // Reset form
       setSleepHours('');
       setSleepQuality(null);
     } catch (error) {
-      console.error('Error saving sleep data:', error);
-      toast.error('Fehler beim Speichern der Schlaf-Daten');
+      console.error('❌ Error in sleep tracking:', error);
+      toast.error('Fehler beim Speichern der Schlaf-Daten', {
+        duration: 4000,
+        position: "top-center",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +128,7 @@ export const QuickSleepInput = () => {
                 disabled={isSubmitting}
               >
                 <span className="text-lg">{qualityEmojis[quality - 1]}</span>
-                <span className="leading-tight">{qualityLabels[quality - 1]}</span>
+                <span className="leading-tight" translate="no">{qualityLabels[quality - 1]}</span>
               </Button>
             ))}
           </div>

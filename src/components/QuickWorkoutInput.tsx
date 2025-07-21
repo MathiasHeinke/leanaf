@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,8 @@ export const QuickWorkoutInput = () => {
     if (!user || didWorkout === null) return;
 
     setIsSubmitting(true);
+    console.log('💪 Starting workout tracking submission...');
+    
     try {
       const today = new Date().toISOString().split('T')[0];
       
@@ -34,20 +37,45 @@ export const QuickWorkoutInput = () => {
         intensity: didWorkout ? parseInt(intensity) : null
       };
 
+      console.log('💾 Saving workout data:', workoutData);
+
       const { error } = await supabase
         .from('workouts')
         .upsert(workoutData, { onConflict: 'user_id,date' });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error saving workout data:', error);
+        throw error;
+      }
+
+      console.log('✅ Workout data saved successfully');
 
       // Award points for workout completion
       if (didWorkout) {
         const workoutPoints = getPointsForActivity('workout_completed', { intensity: parseInt(intensity) });
-        await awardPoints('workout_completed', workoutPoints, `${workoutType} Training (Intensität ${intensity})`);
-        await updateStreak('workout');
-      }
+        console.log(`🎯 Awarding ${workoutPoints} points for workout (intensity: ${intensity})`);
+        
+        const pointsResult = await awardPoints(
+          'workout_completed', 
+          workoutPoints, 
+          `${workoutType} Training (Intensität ${intensity})`
+        );
+        
+        console.log('🎉 Points awarded result:', pointsResult);
+        
+        const streakResult = await updateStreak('workout');
+        console.log('🔥 Streak updated result:', streakResult);
 
-      toast.success(didWorkout ? 'Training erfasst! 💪' : 'Ruhetag notiert 😌');
+        toast.success(`Training erfasst! 💪 (+${workoutPoints} Punkte)`, {
+          duration: 4000,
+          position: "top-center",
+        });
+      } else {
+        toast.success('Ruhetag notiert 😌', {
+          duration: 3000,
+          position: "top-center",
+        });
+      }
       
       // Reset form
       setDidWorkout(null);
@@ -55,8 +83,11 @@ export const QuickWorkoutInput = () => {
       setWorkoutType('kraft');
       setIntensity('3');
     } catch (error) {
-      console.error('Error saving workout:', error);
-      toast.error('Fehler beim Speichern des Trainings');
+      console.error('❌ Error in workout tracking:', error);
+      toast.error('Fehler beim Speichern des Trainings', {
+        duration: 4000,
+        position: "top-center",
+      });
     } finally {
       setIsSubmitting(false);
     }
