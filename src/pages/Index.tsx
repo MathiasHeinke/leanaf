@@ -14,6 +14,7 @@ import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { BadgeSystem } from "@/components/BadgeSystem";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
+import { ProgressCharts } from "@/components/ProgressCharts";
 import { useBadgeChecker } from "@/hooks/useBadgeChecker";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -213,6 +214,9 @@ const Index = () => {
           </div>
 
           <BodyMeasurements />
+          
+          {/* Progress Charts */}
+          <ProgressCharts timeRange="week" />
           
           <SmartCoachInsights />
           
