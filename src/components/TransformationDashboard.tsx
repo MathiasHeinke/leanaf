@@ -21,6 +21,7 @@ import {
 
 interface TransformationStats {
   currentWeight: number;
+  startWeight: number;
   targetWeight: number;
   currentBellySize: number;
   startBellySize: number;
@@ -62,6 +63,15 @@ export const TransformationDashboard = () => {
         .limit(1)
         .single();
 
+      // Load first weight entry as fallback for start weight
+      const { data: firstWeight } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
       // Load latest and first body measurements
       const { data: measurements } = await supabase
         .from('body_measurements')
@@ -96,9 +106,15 @@ export const TransformationDashboard = () => {
       const currentBellySize = measurements?.[0]?.belly || 0;
       const startBellySize = measurements?.[measurements.length - 1]?.belly || currentBellySize;
       
+      // Determine start weight: profile.start_weight > first weight entry > current weight
+      const startWeight = profile?.start_weight || firstWeight?.weight || latestWeight?.weight || profile?.weight || 0;
+      const currentWeight = latestWeight?.weight || profile?.weight || 0;
+      const targetWeight = profile?.target_weight || 0;
+      
       setStats({
-        currentWeight: latestWeight?.weight || profile?.weight || 0,
-        targetWeight: profile?.target_weight || 0,
+        currentWeight,
+        startWeight,
+        targetWeight,
         currentBellySize,
         startBellySize,
         targetBellySize: startBellySize * 0.9, // 10% reduction target
@@ -111,6 +127,36 @@ export const TransformationDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateWeightProgress = () => {
+    if (!stats || stats.startWeight === 0 || stats.targetWeight === 0) return 0;
+    
+    const totalWeightToLose = Math.abs(stats.startWeight - stats.targetWeight);
+    const weightAlreadyLost = Math.abs(stats.startWeight - stats.currentWeight);
+    
+    // Avoid division by zero
+    if (totalWeightToLose === 0) return 0;
+    
+    const progress = (weightAlreadyLost / totalWeightToLose) * 100;
+    
+    // Ensure progress is between 0 and 100
+    return Math.min(100, Math.max(0, progress));
+  };
+
+  const calculateBellyProgress = () => {
+    if (!stats || stats.startBellySize === 0) return 0;
+    
+    const totalBellyReduction = Math.abs(stats.startBellySize - stats.targetBellySize);
+    const bellyAlreadyReduced = Math.abs(stats.startBellySize - stats.currentBellySize);
+    
+    // Avoid division by zero
+    if (totalBellyReduction === 0) return 0;
+    
+    const progress = (bellyAlreadyReduced / totalBellyReduction) * 100;
+    
+    // Ensure progress is between 0 and 100
+    return Math.min(100, Math.max(0, progress));
   };
 
   if (loading) {
@@ -136,13 +182,8 @@ export const TransformationDashboard = () => {
     );
   }
 
-  const weightProgress = stats.targetWeight > 0 
-    ? Math.min(100, Math.max(0, ((stats.currentWeight - stats.targetWeight) / (stats.currentWeight - stats.targetWeight)) * 100))
-    : 0;
-
-  const bellyProgress = stats.startBellySize > 0 
-    ? Math.min(100, Math.max(0, ((stats.startBellySize - stats.currentBellySize) / (stats.startBellySize - stats.targetBellySize)) * 100))
-    : 0;
+  const weightProgress = calculateWeightProgress();
+  const bellyProgress = calculateBellyProgress();
 
   return (
     <div className="space-y-6">
@@ -213,6 +254,11 @@ export const TransformationDashboard = () => {
             <div className="text-sm text-muted-foreground">
               Noch {Math.abs(stats.currentWeight - stats.targetWeight).toFixed(1)} kg bis zum Ziel
             </div>
+            {stats.startWeight !== stats.currentWeight && (
+              <div className="text-xs text-muted-foreground">
+                Bereits {Math.abs(stats.startWeight - stats.currentWeight).toFixed(1)} kg von {Math.abs(stats.startWeight - stats.targetWeight).toFixed(1)} kg geschafft
+              </div>
+            )}
           </CardContent>
         </Card>
 
