@@ -122,7 +122,7 @@ export const DepartmentProgress = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="bg-card/50 border-border/50">
             <CardContent className="p-4">
@@ -144,7 +144,7 @@ export const DepartmentProgress = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-4">
       {departments.map((dept) => {
         const progress = departmentProgress.find(p => p.department === dept.id);
         return (
