@@ -10,7 +10,10 @@ import {
   Activity,
   BarChart3,
   Calendar,
-  TrendingDown
+  TrendingDown,
+  Brain,
+  Moon,
+  Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +45,10 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
   const [profileData, setProfileData] = useState<any>(null);
   const [fullDailyGoals, setFullDailyGoals] = useState<any>(null);
   const [averageCalorieIntake, setAverageCalorieIntake] = useState<number>(0);
+  const [workoutsPerWeek, setWorkoutsPerWeek] = useState<number>(0);
+  const [averageSleepHours, setAverageSleepHours] = useState<number>(0);
+  const [weightTrend, setWeightTrend] = useState<number>(0);
+  const [consistencyScore, setConsistencyScore] = useState<number>(0);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -49,6 +56,10 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
       loadProfileData();
       loadFullDailyGoals();
       calculateAverageCalorieIntake();
+      calculateWorkoutsPerWeek();
+      calculateAverageSleepHours();
+      calculateWeightTrend();
+      calculateConsistencyScore();
     }
   }, [user]);
 
@@ -105,6 +116,99 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
     }
   };
 
+  const calculateWorkoutsPerWeek = async () => {
+    try {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('did_workout', true)
+        .gte('date', oneWeekAgo.toISOString().split('T')[0]);
+
+      if (error) throw error;
+      setWorkoutsPerWeek(data?.length || 0);
+    } catch (error) {
+      console.error('Error calculating workouts per week:', error);
+    }
+  };
+
+  const calculateAverageSleepHours = async () => {
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data, error } = await supabase
+        .from('sleep_tracking')
+        .select('sleep_hours')
+        .eq('user_id', user?.id)
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0]);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const totalSleep = data.reduce((sum, sleep) => sum + (sleep.sleep_hours || 0), 0);
+        const averageHours = totalSleep / data.length;
+        setAverageSleepHours(averageHours);
+      }
+    } catch (error) {
+      console.error('Error calculating average sleep hours:', error);
+    }
+  };
+
+  const calculateWeightTrend = async () => {
+    try {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('weight, date')
+        .eq('user_id', user?.id)
+        .gte('date', oneMonthAgo.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length >= 2) {
+        const firstWeight = data[0].weight;
+        const lastWeight = data[data.length - 1].weight;
+        const weightChange = lastWeight - firstWeight;
+        setWeightTrend(weightChange); // kg/month
+      }
+    } catch (error) {
+      console.error('Error calculating weight trend:', error);
+    }
+  };
+
+  const calculateConsistencyScore = async () => {
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: meals, error: mealsError } = await supabase
+        .from('meals')
+        .select('created_at')
+        .eq('user_id', user?.id)
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      if (mealsError) throw mealsError;
+
+      // Check how many days had meal entries
+      const uniqueDays = new Set(
+        meals?.map(meal => new Date(meal.created_at).toISOString().split('T')[0])
+      );
+      
+      const daysWithData = uniqueDays.size;
+      const score = daysWithData / 7;
+      setConsistencyScore(score);
+    } catch (error) {
+      console.error('Error calculating consistency score:', error);
+    }
+  };
+
   if (!dailyGoals) return null;
 
   const calorieProgress = (todaysTotals.calories / dailyGoals.calories) * 100;
@@ -112,11 +216,15 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
   const carbsProgress = (todaysTotals.carbs / dailyGoals.carbs) * 100;
   const fatsProgress = (todaysTotals.fats / dailyGoals.fats) * 100;
 
-  // Calculate weight prognosis
+  // Calculate enhanced weight prognosis
   const weightPrognosis = calculateWeightPrognosis({
     profileData,
     dailyGoals: fullDailyGoals,
-    averageCalorieIntake
+    averageCalorieIntake,
+    workoutsPerWeek,
+    averageSleepHours,
+    weightTrend,
+    consistencyScore
   });
 
   return (
@@ -277,12 +385,16 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
           </div>
         )}
 
-        {/* Gewichtsprognose */}
+        {/* Erweiterte Gewichtsprognose */}
         {weightPrognosis && (
           <div className="space-y-4">
             <h4 className="font-semibold flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              Gewichtsprognose
+              <Brain className="h-4 w-4 text-primary" />
+              Intelligente Gewichtsprognose
+              <Badge variant="outline" className="text-xs">
+                {weightPrognosis.confidence === 'high' ? 'Hoch' : 
+                 weightPrognosis.confidence === 'medium' ? 'Mittel' : 'Niedrig'}
+              </Badge>
             </h4>
             
             {weightPrognosis.type === 'warning' ? (
@@ -322,41 +434,71 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
                   <div className="flex items-center justify-center gap-2 mb-3">
                     <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                      Zielgewicht erreicht am
+                      Zielgewicht erreicht in
                     </div>
                   </div>
                   <div className="text-3xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-                    {weightPrognosis.targetDate}
+                    {weightPrognosis.timeDisplay}
                   </div>
                   <div className="text-sm text-blue-600 dark:text-blue-400">
-                    Das sind noch ca. {weightPrognosis.monthsToTarget && weightPrognosis.monthsToTarget > 1 
-                      ? `${weightPrognosis.monthsToTarget} Monate` 
-                      : `${weightPrognosis.daysToTarget ? Math.ceil(weightPrognosis.daysToTarget / 7) : 0} Wochen`
-                    }
+                    Voraussichtlich am {weightPrognosis.targetDate}
+                  </div>
+                  <div className="text-xs text-blue-500 dark:text-blue-400 mt-2">
+                    Diese Prognose passt sich täglich an deine Daten an
                   </div>
                 </div>
-                
+
+                {/* Lifestyle Faktoren */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-lg font-bold text-primary mb-1">
-                      {weightPrognosis.weightDifference?.toFixed(1)}
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium">Aktivität</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">kg verbleibend</div>
+                    <div className="text-xs text-muted-foreground">
+                      {workoutsPerWeek} Workouts/Woche
+                    </div>
+                    <div className="text-xs text-orange-600 dark:text-orange-400">
+                      {weightPrognosis.factors?.activity}
+                    </div>
                   </div>
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className={`text-lg font-bold mb-1 ${
-                      weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance < 0 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-red-500 dark:text-red-400'
-                    }`}>
-                      {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? '+' : ''}{weightPrognosis.dailyCalorieBalance ? Math.round(weightPrognosis.dailyCalorieBalance) : 0}
+                  
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Moon className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm font-medium">Schlaf</span>
                     </div>
-                    <div className={`text-xs ${
-                      weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance < 0 
-                        ? 'text-green-600/80 dark:text-green-400/80' 
-                        : 'text-red-500/80 dark:text-red-400/80'
-                    }`}>
-                      kcal {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
+                    <div className="text-xs text-muted-foreground">
+                      {averageSleepHours.toFixed(1)}h Durchschnitt
+                    </div>
+                    <div className="text-xs text-purple-600 dark:text-purple-400">
+                      {weightPrognosis.factors?.sleep}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium">Kalorien</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? '+' : ''}{Math.round(weightPrognosis.dailyCalorieBalance || 0)} kcal
+                    </div>
+                    <div className="text-xs text-green-600 dark:text-green-400">
+                      {weightPrognosis.factors?.calories}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium">Konsistenz</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {Math.round(consistencyScore * 100)}% Score
+                    </div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400">
+                      {weightPrognosis.factors?.consistency}
                     </div>
                   </div>
                 </div>
@@ -369,7 +511,7 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
                       <TrendingUp className="h-4 w-4" />
                     )}
                     <span className="text-sm font-medium">
-                      {weightPrognosis.type === 'loss' ? 'Abnehmen' : 'Zunehmen'} - auf Kurs zum Ziel
+                      {weightPrognosis.type === 'loss' ? 'Abnehmen' : 'Zunehmen'} - basierend auf aktuellen Daten
                     </span>
                   </div>
                 </div>
