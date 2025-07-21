@@ -111,27 +111,35 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-orange-800 dark:text-orange-200">Workout erledigt! 💪</h3>
-            <p className="text-sm text-orange-600 dark:text-orange-400">
-              {todaysWorkout.workout_type === 'kraft' ? 'Krafttraining' : 
-               todaysWorkout.workout_type === 'cardio' ? 'Cardio' : 'Anderes'} • 
-              {todaysWorkout.duration_minutes || 0} Min • 
-              Intensität: {todaysWorkout.intensity || 0}/10
-              {todaysWorkout.distance_km && (
-                <> • {todaysWorkout.distance_km} km</>
-              )}
-              {todaysWorkout.steps && (
-                <> • {todaysWorkout.steps} Schritte</>
-              )}
-            </p>
+             <p className="text-sm text-orange-600 dark:text-orange-400">
+               {todaysWorkout.workout_type === 'kraft' ? 'Krafttraining' : 
+                todaysWorkout.workout_type === 'cardio' ? 'Cardio' : 
+                todaysWorkout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'} • 
+               {todaysWorkout.workout_type === 'pause' ? (
+                 'Regeneration ist wichtig! 🛌'
+               ) : (
+                 <>
+                   {todaysWorkout.duration_minutes || 0} Min • 
+                   Intensität: {todaysWorkout.intensity || 0}/10
+                   {todaysWorkout.distance_km && (
+                     <> • {todaysWorkout.distance_km} km</>
+                   )}
+                   {todaysWorkout.steps && (
+                     <> • {todaysWorkout.steps} Schritte</>
+                   )}
+                 </>
+               )}
+             </p>
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
-              title="Workout Tracking"
-              description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Auch kurze, intensive Einheiten sind effektiv."
-              scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche reduzieren das Krankheitsrisiko um bis zu 40%."
+              title="Workout & Regeneration"
+              description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
+              scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
               tips={[
                 "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
-                "Cardio verbessert Herz-Kreislauf-System und Fettverbrennung",
+                "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
+                "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
                 "Progressive Steigerung für kontinuierliche Fortschritte"
               ]}
             />
@@ -153,6 +161,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           <p className="text-xs text-orange-600 dark:text-orange-400">
             • Krafttraining stärkt Muskeln und Knochen
             • Cardio verbessert deine Ausdauer
+            • Ruhetage sind genauso wichtig wie Training
             • Jede Bewegung zählt für deinen Erfolg
           </p>
           <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
@@ -175,12 +184,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           </h3>
         </div>
         <InfoButton
-          title="Workout Tracking"
-          description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Auch kurze, intensive Einheiten sind effektiv."
-          scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche reduzieren das Krankheitsrisiko um bis zu 40%."
+          title="Workout & Regeneration"
+          description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
+          scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
           tips={[
             "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
-            "Cardio verbessert Herz-Kreislauf-System und Fettverbrennung",
+            "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
+            "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
             "Progressive Steigerung für kontinuierliche Fortschritte"
           ]}
         />
@@ -198,6 +208,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             <SelectContent>
               <SelectItem value="kraft">Krafttraining</SelectItem>
               <SelectItem value="cardio">Cardio</SelectItem>
+              <SelectItem value="pause">Pause/Ruhetag</SelectItem>
               <SelectItem value="other">Anderes</SelectItem>
             </SelectContent>
           </Select>
