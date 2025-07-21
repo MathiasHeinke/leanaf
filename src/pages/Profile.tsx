@@ -174,7 +174,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         gender: gender as 'male' | 'female',
         activityLevel,
         goal: goal as 'lose' | 'maintain' | 'gain',
-        calorieDeficit: dailyGoals.calorieDeficit
+        calorieDeficit: calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit
       });
       
       setIntelligentCalories(result);
@@ -224,7 +224,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     if (!maintenance) return 2000;
     
     const multiplier = goal === 'lose' ? -1 : goal === 'gain' ? 1 : 0;
-    return maintenance + (multiplier * dailyGoals.calorieDeficit);
+    const effectiveCalorieDeficit = calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit;
+    return maintenance + (multiplier * effectiveCalorieDeficit);
   };
 
   const calculateMacroGrams = () => {
@@ -327,7 +328,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         protein: macroGrams.protein,
         carbs: macroGrams.carbs,
         fats: macroGrams.fats,
-        calorie_deficit: dailyGoals.calorieDeficit,
+        calorie_deficit: calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit,
         protein_percentage: dailyGoals.protein,
         carbs_percentage: dailyGoals.carbs,
         fats_percentage: dailyGoals.fats,
@@ -520,15 +521,20 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
             <div>
               <Label className="text-sm">{t('profile.calorieDeficit')}</Label>
-              <Input
-                type="number"
-                value={dailyGoals.calorieDeficit}
-                onChange={(e) => setDailyGoals({...dailyGoals, calorieDeficit: parseInt(e.target.value) || 0})}
-                className="mt-1"
-                placeholder="300"
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit}
+                  readOnly
+                  className="mt-1 bg-muted/50 cursor-not-allowed"
+                  placeholder="300"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  Automatisch berechnet
+                </div>
+              </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {t('profile.calorieAdjustment')}
+                {t('profile.calculationNote')}
               </div>
             </div>
 
