@@ -42,16 +42,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
 
-  const getTomorrowDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toLocaleDateString('de-DE', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long' 
-    });
-  };
-
   const isDateInFuture = (date: Date): boolean => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -249,11 +239,16 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         </div>
         
         <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
-          <p className="text-xs text-green-700 dark:text-green-300">
-            <strong>Nächste Eintragung:</strong> {getTomorrowDate()}
+          <p className="text-xs text-green-700 dark:text-green-300 mb-2">
+            <strong>Tipp:</strong> Tägliches Wiegen = bessere Trends erkennen!
           </p>
-          <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-            <strong>Tipp:</strong> Tägliches Wiegen zur gleichen Zeit hilft, Trends zu erkennen!
+          <p className="text-xs text-green-600 dark:text-green-400">
+            • Schwankungen sind völlig normal (Wasser, Salz, Hormone)
+            • Wochentrends sind wichtiger als Tagesschwankungen
+            • Morgens wiegen für beste Vergleichbarkeit
+          </p>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+            <strong>Nächste Eintragung:</strong> Morgen 📅
           </p>
         </div>
       </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,9 +146,6 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <p className="text-sm text-purple-600 dark:text-purple-400">
               {activeMeasurements.length} Messwerte erfasst
             </p>
-            <p className="text-xs text-purple-500 dark:text-purple-400">
-              Nächste Messung: {nextMeasurementDate.toLocaleDateString('de-DE')}
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
@@ -175,15 +171,18 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         
         <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
           <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
-            <strong>Tipp:</strong> Körpermaße zeigen oft Fortschritte, die die Waage nicht anzeigt! Wöchentliche Messungen reichen völlig aus.
+            <strong>Tipp:</strong> Körpermaße zeigen oft Fortschritte, die die Waage nicht anzeigt!
           </p>
-          <div className="grid grid-cols-2 gap-2 text-xs text-purple-600 dark:text-purple-400">
+          <div className="grid grid-cols-2 gap-2 text-xs text-purple-600 dark:text-purple-400 mb-2">
             {activeMeasurements.map(([key, value]) => (
               <div key={key}>
                 <strong>{key === 'neck' ? 'Hals' : key === 'chest' ? 'Brust' : key === 'waist' ? 'Taille' : key === 'belly' ? 'Bauch' : key === 'hips' ? 'Hüfte' : key === 'arms' ? 'Arme' : 'Oberschenkel'}:</strong> {String(value)}cm
               </div>
             ))}
           </div>
+          <p className="text-xs text-purple-600 dark:text-purple-400">
+            <strong>Nächste Messung:</strong> {nextMeasurementDate.toLocaleDateString('de-DE')} 📅
+          </p>
         </div>
       </div>
     );
