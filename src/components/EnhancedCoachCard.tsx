@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Lightbulb, TrendingUp, Target, Clock } from "lucide-react";
+import { PremiumGate } from '@/components/PremiumGate';
 
 interface CoachingInsight {
   type: 'tip' | 'progress' | 'goal' | 'timing';
@@ -173,42 +174,48 @@ export const EnhancedCoachCard = ({
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="w-5 h-5" />
-          Coaching Insights
-          <Badge variant="secondary">{insights.length}</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {insights.map((insight, index) => (
-          <div 
-            key={index}
-            className={`p-3 rounded-lg border transition-all cursor-pointer ${getPriorityColor(insight.priority)}`}
-            onClick={() => setExpandedInsight(expandedInsight === index ? null : index)}
-          >
-            <div className="flex items-start gap-2">
-              {getInsightIcon(insight.type)}
-              <div className="flex-1">
-                <h4 className="font-medium text-sm">{insight.title}</h4>
-                <p className={`text-sm mt-1 ${expandedInsight === index ? '' : 'line-clamp-2'}`}>
-                  {insight.message}
-                </p>
+    <PremiumGate 
+      feature="Enhanced Coach Insights" 
+      tier="premium"
+      fallbackMessage="Erweiterte KI-Coach Funktionen sind ein Premium Feature. Upgrade für personalisierte Coaching-Insights!"
+    >
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5" />
+            Coaching Insights
+            <Badge variant="secondary">{insights.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {insights.map((insight, index) => (
+            <div 
+              key={index}
+              className={`p-3 rounded-lg border transition-all cursor-pointer ${getPriorityColor(insight.priority)}`}
+              onClick={() => setExpandedInsight(expandedInsight === index ? null : index)}
+            >
+              <div className="flex items-start gap-2">
+                {getInsightIcon(insight.type)}
+                <div className="flex-1">
+                  <h4 className="font-medium text-sm">{insight.title}</h4>
+                  <p className={`text-sm mt-1 ${expandedInsight === index ? '' : 'line-clamp-2'}`}>
+                    {insight.message}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={generateInsights}
-          className="w-full mt-3"
-        >
-          Neue Insights generieren
-        </Button>
-      </CardContent>
-    </Card>
+          ))}
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={generateInsights}
+            className="w-full mt-3"
+          >
+            Neue Insights generieren
+          </Button>
+        </CardContent>
+      </Card>
+    </PremiumGate>
   );
 };

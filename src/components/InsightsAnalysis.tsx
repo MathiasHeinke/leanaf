@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { PremiumGate } from '@/components/PremiumGate';
 
 interface InsightsAnalysisProps {
   todaysTotals: {
@@ -278,64 +279,69 @@ export const InsightsAnalysis = ({
   if (!dailyGoals) return null;
 
   return (
-    <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-3">
-          <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-            <Brain className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <div className="text-xl font-bold text-foreground">Smart Insights</div>
-            <div className="text-sm text-muted-foreground font-normal">Intelligente Ernährungsanalyse</div>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Smart Insights */}
-        <div className="space-y-4">
-          {insights.length > 0 ? (
-            insights.map((insight) => (
-              <div
-                key={insight.id}
-                className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {getInsightIcon(insight.type)}
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">{insight.title}</h4>
-                      {getPriorityBadge(insight.priority)}
+    <PremiumGate 
+      feature="Smart Insights Analysis" 
+      tier="premium"
+      fallbackMessage="Die intelligente Ernährungsanalyse ist ein Premium Feature. Upgrade für detaillierte KI-gestützte Insights!"
+    >
+      <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3">
+            <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+              <Brain className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-foreground">Smart Insights</div>
+              <div className="text-sm text-muted-foreground font-normal">Intelligente Ernährungsanalyse</div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Smart Insights */}
+          <div className="space-y-4">
+            {insights.length > 0 ? (
+              insights.map((insight) => (
+                <div
+                  key={insight.id}
+                  className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5">
+                      {getInsightIcon(insight.type)}
                     </div>
-                    <p className="text-sm opacity-80">{insight.description}</p>
-                    {insight.progress && (
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span>Fortschritt</span>
-                          <span>{Math.round(insight.progress)}%</span>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">{insight.title}</h4>
+                        {getPriorityBadge(insight.priority)}
+                      </div>
+                      <p className="text-sm opacity-80">{insight.description}</p>
+                      {insight.progress && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span>Fortschritt</span>
+                            <span>{Math.round(insight.progress)}%</span>
+                          </div>
+                          <Progress value={Math.min(100, insight.progress)} className="h-2" />
                         </div>
-                        <Progress value={Math.min(100, insight.progress)} className="h-2" />
-                      </div>
-                    )}
-                    {insight.action && (
-                      <div className="text-xs font-medium opacity-70">
-                        💡 {insight.action}
-                      </div>
-                    )}
+                      )}
+                      {insight.action && (
+                        <div className="text-xs font-medium opacity-70">
+                          💡 {insight.action}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Sammle mehr Daten für detaillierte Insights...</p>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8">
-              <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Sammle mehr Daten für detaillierte Insights...</p>
-            </div>
-          )}
-        </div>
-
-      </CardContent>
-    </Card>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </PremiumGate>
   );
 };
