@@ -129,7 +129,8 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Changed from grid-cols-1 md:grid-cols-2 to grid-cols-1 */}
+                  <div className="grid grid-cols-1 gap-3">
                     {premiumFeatures.map((feature, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-500 flex-shrink-0" />

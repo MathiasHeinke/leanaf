@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -321,7 +320,7 @@ const Index = () => {
         />
 
         {/* Transformation Tools */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <QuickWorkoutInput 
             onWorkoutAdded={handleWorkoutAdded}
             todaysWorkout={todaysWorkout}

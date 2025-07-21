@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -162,10 +163,10 @@ export const SmartCoachInsights = () => {
           </div>
         )}
 
-        {/* Quick Tips */}
+        {/* Quick Tips - Changed from grid-cols-1 md:grid-cols-2 to grid-cols-1 */}
         <div className="pt-4 border-t border-indigo-200/30 dark:border-indigo-800/30">
           <h4 className="font-medium mb-3 text-indigo-700 dark:text-indigo-300">💡 Erinnerung:</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-muted-foreground">
+          <div className="grid grid-cols-1 gap-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <span>📏</span>
               <span>Maße wichtiger als Waage</span>

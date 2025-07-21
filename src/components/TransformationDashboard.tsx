@@ -193,8 +193,8 @@ export const TransformationDashboard = () => {
         </Card>
       </div>
 
-      {/* Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Progress Cards - Changed from grid-cols-1 md:grid-cols-2 to grid-cols-1 */}
+      <div className="grid grid-cols-1 gap-6">
         <Card className="p-6">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
