@@ -1,4 +1,5 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 
 interface DailyData {
   date: string;
@@ -55,20 +56,26 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
   return (
     <div className="space-y-6">
       {/* Calories Line Chart */}
-      <div className="bg-card p-6 rounded-lg border">
+      <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
         <h3 className="text-lg font-semibold mb-4">Kalorien Verlauf</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="calorieGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="date" 
-                fontSize={12}
+                fontSize={11}
                 angle={timeRange === 'year' ? -45 : 0}
                 textAnchor={timeRange === 'year' ? 'end' : 'middle'}
                 height={timeRange === 'year' ? 60 : 30}
               />
-              <YAxis fontSize={12} />
+              <YAxis fontSize={11} />
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--card))', 
@@ -76,34 +83,33 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
                   borderRadius: '8px'
                 }}
               />
-              <Line 
+              <Area 
                 type="monotone" 
                 dataKey="Kalorien" 
                 stroke="hsl(var(--primary))" 
+                fill="url(#calorieGradient)"
                 strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Macros Bar Chart */}
-      <div className="bg-card p-6 rounded-lg border">
-        <h3 className="text-lg font-semibold mb-4">Makronährstoffe</h3>
+      <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-4">Makros</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="date" 
-                fontSize={12}
+                fontSize={11}
                 angle={timeRange === 'year' ? -45 : 0}
                 textAnchor={timeRange === 'year' ? 'end' : 'middle'}
                 height={timeRange === 'year' ? 60 : 30}
               />
-              <YAxis fontSize={12} />
+              <YAxis fontSize={11} />
               <Tooltip 
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--card))', 
@@ -111,9 +117,9 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
                   borderRadius: '8px'
                 }}
               />
-              <Bar dataKey="Protein" fill="hsl(var(--chart-1))" />
-              <Bar dataKey="Kohlenhydrate" fill="hsl(var(--chart-2))" />
-              <Bar dataKey="Fette" fill="hsl(var(--chart-3))" />
+              <Bar dataKey="Protein" fill="hsl(var(--protein))" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="Kohlenhydrate" fill="hsl(var(--carbs))" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="Fette" fill="hsl(var(--fats))" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -121,21 +127,27 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
 
       {/* Weight Chart */}
       {weightChartData.length > 0 && (
-        <div className="bg-card p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Gewichtsverlauf</h3>
+        <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
+          <h3 className="text-lg font-semibold mb-4">Gewicht</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weightChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <defs>
+                  <linearGradient id="weightHistoryGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="date" 
-                  fontSize={12}
+                  fontSize={11}
                   angle={timeRange === 'year' ? -45 : 0}
                   textAnchor={timeRange === 'year' ? 'end' : 'middle'}
                   height={timeRange === 'year' ? 60 : 30}
                 />
                 <YAxis 
-                  fontSize={12}
+                  fontSize={11}
                   domain={['dataMin - 2', 'dataMax + 2']}
                 />
                 <Tooltip 
@@ -149,10 +161,10 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
                 <Line 
                   type="monotone" 
                   dataKey="weight" 
-                  stroke="hsl(var(--chart-4))" 
+                  stroke="hsl(221, 83%, 53%)" 
                   strokeWidth={3}
-                  dot={{ fill: 'hsl(var(--chart-4))', strokeWidth: 2, r: 5 }}
-                  activeDot={{ r: 7, stroke: 'hsl(var(--chart-4))', strokeWidth: 2 }}
+                  dot={{ fill: 'hsl(221, 83%, 53%)', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: 'hsl(221, 83%, 53%)', stroke: 'white', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>

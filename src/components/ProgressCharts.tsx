@@ -147,35 +147,35 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
     const first = data[0][key];
     const last = data[data.length - 1][key];
     
-    if (last > first) return <TrendingUp className="h-4 w-4 text-green-600" />;
-    if (last < first) return <TrendingDown className="h-4 w-4 text-red-600" />;
+    if (last > first) return <TrendingUp className="h-4 w-4 text-emerald-600" />;
+    if (last < first) return <TrendingDown className="h-4 w-4 text-rose-600" />;
     return <Minus className="h-4 w-4 text-gray-500" />;
   };
 
   const chartConfig = {
     weight: {
       label: "Gewicht",
-      color: "hsl(var(--chart-1))",
+      color: "hsl(221, 83%, 53%)",
     },
     waist: {
       label: "Taille",
-      color: "hsl(var(--chart-2))",
+      color: "hsl(262, 83%, 58%)",
     },
     chest: {
       label: "Brust",
-      color: "hsl(var(--chart-3))",
+      color: "hsl(340, 84%, 60%)",
     },
     belly: {
       label: "Bauch",
-      color: "hsl(var(--chart-4))",
+      color: "hsl(43, 96%, 56%)",
     },
     hips: {
       label: "Hüfte",
-      color: "hsl(var(--chart-5))",
+      color: "hsl(142, 71%, 45%)",
     },
     duration: {
-      label: "Dauer (Min)",
-      color: "hsl(var(--chart-1))",
+      label: "Dauer",
+      color: "hsl(221, 83%, 53%)",
     },
   };
 
@@ -191,11 +191,11 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
   }
 
   return (
-    <Card className="p-6">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2">
+    <Card className="p-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-xl">
           <Target className="h-5 w-5" />
-          Progress Visualisierung
+          Progress
         </CardTitle>
       </CardHeader>
       
@@ -203,15 +203,15 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
         <Tabs defaultValue="weight" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="weight">Gewicht</TabsTrigger>
-            <TabsTrigger value="measurements">Körpermaße</TabsTrigger>
+            <TabsTrigger value="measurements">Maße</TabsTrigger>
             <TabsTrigger value="workouts">Training</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="weight" className="space-y-4">
+          <TabsContent value="weight" className="space-y-4 pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Scale className="h-4 w-4" />
-                <span className="font-medium">Gewichtsverlauf</span>
+                <span className="font-medium">Gewicht</span>
               </div>
               <div className="flex items-center gap-2">
                 {getTrendIcon(weightData, 'weight')}
@@ -222,24 +222,31 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             </div>
             
             {weightData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={weightData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="displayDate" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area 
-                      type="monotone" 
-                      dataKey="weight" 
-                      stroke="var(--color-weight)" 
-                      fill="var(--color-weight)" 
-                      fillOpacity={0.3}
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              <div className="h-[300px] w-full overflow-hidden rounded-lg bg-gradient-to-br from-background to-accent/5 p-1">
+                <ChartContainer config={chartConfig} className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={weightData}>
+                      <defs>
+                        <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="displayDate" fontSize={11} />
+                      <YAxis fontSize={11} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area 
+                        type="monotone" 
+                        dataKey="weight" 
+                        stroke="hsl(221, 83%, 53%)" 
+                        fill="url(#weightGradient)" 
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 Noch keine Gewichtsdaten vorhanden
@@ -247,11 +254,11 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             )}
           </TabsContent>
           
-          <TabsContent value="measurements" className="space-y-4">
+          <TabsContent value="measurements" className="space-y-4 pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Ruler className="h-4 w-4" />
-                <span className="font-medium">Körpermaße Entwicklung</span>
+                <span className="font-medium">Körpermaße</span>
               </div>
               <Badge variant="outline">
                 {measurementData.length} Messungen
@@ -259,44 +266,50 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             </div>
             
             {measurementData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurementData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="displayDate" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="waist" 
-                      stroke="var(--color-waist)" 
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="belly" 
-                      stroke="var(--color-belly)" 
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="chest" 
-                      stroke="var(--color-chest)" 
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="hips" 
-                      stroke="var(--color-hips)" 
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              <div className="h-[300px] w-full overflow-hidden rounded-lg bg-gradient-to-br from-background to-accent/5 p-1">
+                <ChartContainer config={chartConfig} className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={measurementData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="displayDate" fontSize={11} />
+                      <YAxis fontSize={11} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="waist" 
+                        stroke="hsl(262, 83%, 58%)" 
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "hsl(262, 83%, 58%)" }}
+                        activeDot={{ r: 5, strokeWidth: 1 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="belly" 
+                        stroke="hsl(43, 96%, 56%)" 
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "hsl(43, 96%, 56%)" }}
+                        activeDot={{ r: 5, strokeWidth: 1 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="chest" 
+                        stroke="hsl(340, 84%, 60%)" 
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "hsl(340, 84%, 60%)" }}
+                        activeDot={{ r: 5, strokeWidth: 1 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="hips" 
+                        stroke="hsl(142, 71%, 45%)" 
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: "hsl(142, 71%, 45%)" }}
+                        activeDot={{ r: 5, strokeWidth: 1 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 Noch keine Körpermaße erfasst
@@ -304,11 +317,11 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             )}
           </TabsContent>
           
-          <TabsContent value="workouts" className="space-y-4">
+          <TabsContent value="workouts" className="space-y-4 pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                <span className="font-medium">Training Aktivität</span>
+                <span className="font-medium">Training</span>
               </div>
               <Badge variant="outline">
                 {workoutData.length} Workouts
@@ -316,21 +329,29 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             </div>
             
             {workoutData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={workoutData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="displayDate" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar 
-                      dataKey="duration" 
-                      fill="var(--color-duration)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+              <div className="h-[300px] w-full overflow-hidden rounded-lg bg-gradient-to-br from-background to-accent/5 p-1">
+                <ChartContainer config={chartConfig} className="h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={workoutData}>
+                      <defs>
+                        <linearGradient id="workoutGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.4}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="displayDate" fontSize={11} />
+                      <YAxis fontSize={11} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar 
+                        dataKey="duration" 
+                        fill="url(#workoutGradient)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 Noch keine Trainings erfasst

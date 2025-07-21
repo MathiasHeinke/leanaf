@@ -1,3 +1,4 @@
+
 import { GlobalHeader, FloatingBottomNav } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
@@ -31,7 +32,7 @@ export const Layout = ({ children }: LayoutProps) => {
       
       <GlobalHeader />
       <PointsHeader />
-      <main className="container mx-auto px-4 pb-6 max-w-md relative z-10">
+      <main className="container mx-auto px-3 pb-24 pt-2 max-w-md relative z-10">
         {children}
       </main>
       

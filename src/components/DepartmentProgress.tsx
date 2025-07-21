@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,22 +13,43 @@ interface DepartmentCardProps {
   icon: React.ReactNode;
   title: string;
   color: string;
+  gradientFrom: string;
+  gradientTo: string;
 }
 
-const DepartmentCard = ({ department, level, points, icon, title, color }: DepartmentCardProps) => {
+const DepartmentCard = ({ 
+  department, 
+  level, 
+  points, 
+  icon, 
+  title, 
+  color,
+  gradientFrom,
+  gradientTo
+}: DepartmentCardProps) => {
   const nextLevelPoints = level * 50; // Each level requires 50 more points
   const progress = Math.min((points / nextLevelPoints) * 100, 100);
 
   return (
-    <Card className="bg-card/50 border-border/50 hover:bg-card/70 transition-colors">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
+    <Card className="bg-card/50 border-border/50 hover:bg-card/70 transition-colors overflow-hidden">
+      <div 
+        className="absolute inset-0 opacity-10" 
+        style={{ 
+          background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
+          borderRadius: 'inherit'
+        }}
+      />
+      <CardContent className="p-3 relative z-10">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-2">
             <div 
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: `${color}20` }}
+              className="p-1.5 rounded-lg"
+              style={{ 
+                background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
+                boxShadow: `0 2px 8px ${color}30`
+              }}
             >
-              <div style={{ color }}>
+              <div className="text-white">
                 {icon}
               </div>
             </div>
@@ -38,10 +60,10 @@ const DepartmentCard = ({ department, level, points, icon, title, color }: Depar
           </div>
           <Badge 
             variant="secondary" 
-            className="text-xs"
+            className="text-xs px-2 py-0"
             style={{ 
               backgroundColor: `${color}15`,
-              color,
+              color: color,
               border: `1px solid ${color}30`
             }}
           >
@@ -50,15 +72,18 @@ const DepartmentCard = ({ department, level, points, icon, title, color }: Depar
         </div>
         
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Fortschritt</span>
-            <span className="font-medium">{points}/{nextLevelPoints}</span>
-          </div>
           <Progress 
             value={progress} 
             className="h-1.5"
-            style={{ background: `${color}20` }}
+            style={{ 
+              background: `${color}20`,
+              boxShadow: progress > 80 ? `0 0 8px ${color}60` : 'none'
+            }}
           />
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground text-[10px]">Fortschritt</span>
+            <span className="font-medium text-[10px]">{points}/{nextLevelPoints}</span>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -71,21 +96,27 @@ export const DepartmentProgress = () => {
   const departments = [
     {
       id: 'training',
-      title: 'Training Warrior',
-      icon: <Dumbbell className="w-4 h-4" />,
-      color: 'hsl(var(--destructive))'
+      title: 'Workouts',
+      icon: <Dumbbell className="w-3.5 h-3.5" />,
+      color: 'hsl(var(--destructive))',
+      gradientFrom: 'hsl(0, 84%, 60%)',
+      gradientTo: 'hsl(340, 84%, 60%)'
     },
     {
       id: 'nutrition',
-      title: 'Nutrition Ninja',
-      icon: <Apple className="w-4 h-4" />,
-      color: 'hsl(var(--accent))'
+      title: 'Ernährung',
+      icon: <Apple className="w-3.5 h-3.5" />,
+      color: 'hsl(var(--carbs))',
+      gradientFrom: 'hsl(43, 96%, 56%)',
+      gradientTo: 'hsl(30, 96%, 56%)'
     },
     {
       id: 'tracking',
-      title: 'Tracking Master',
-      icon: <Target className="w-4 h-4" />,
-      color: 'hsl(var(--primary))'
+      title: 'Tracker',
+      icon: <Target className="w-3.5 h-3.5" />,
+      color: 'hsl(var(--primary))',
+      gradientFrom: 'hsl(221, 83%, 53%)',
+      gradientTo: 'hsl(250, 83%, 53%)'
     }
   ];
 
@@ -125,6 +156,8 @@ export const DepartmentProgress = () => {
             icon={dept.icon}
             title={dept.title}
             color={dept.color}
+            gradientFrom={dept.gradientFrom}
+            gradientTo={dept.gradientTo}
           />
         );
       })}

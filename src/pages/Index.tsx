@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -6,7 +5,6 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
-import { OptimizedGreeting } from "@/components/OptimizedGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
@@ -39,14 +37,6 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
-
-  // Time-based greeting function
-  const getTimeBasedGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Guten Morgen";
-    if (hour < 18) return "Guten Tag"; 
-    return "Guten Abend";
-  };
 
   // Load user data
   useEffect(() => {
@@ -194,101 +184,97 @@ const Index = () => {
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="space-y-6">
-          <DailyProgress 
-            dailyTotals={{
-              calories: calorieSummary.consumed,
-              protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-              carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-              fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
-            }}
-            dailyGoal={{
-              calories: dailyGoals?.calories || 2000,
-              protein: dailyGoals?.protein || 150,
-              carbs: dailyGoals?.carbs || 250,
-              fats: dailyGoals?.fats || 65
-            }}
-            userGoal={userProfile?.goal || 'maintain'}
-            currentDate={currentDate}
-            onDateChange={handleDateChange}
-          />
+      <div className="space-y-5">
+        <DailyProgress 
+          dailyTotals={{
+            calories: calorieSummary.consumed,
+            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
+            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
+            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
+          }}
+          dailyGoal={{
+            calories: dailyGoals?.calories || 2000,
+            protein: dailyGoals?.protein || 150,
+            carbs: dailyGoals?.carbs || 250,
+            fats: dailyGoals?.fats || 65
+          }}
+          userGoal={userProfile?.goal || 'maintain'}
+          currentDate={currentDate}
+          onDateChange={handleDateChange}
+        />
 
-          <QuickWeightInput 
-            currentWeight={userProfile?.weight}
-            onWeightAdded={handleWeightAdded}
-          />
+        <QuickWeightInput 
+          currentWeight={userProfile?.weight}
+          onWeightAdded={handleWeightAdded}
+        />
 
-          {/* Transformation Tools */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <QuickWorkoutInput />
-            <QuickSleepInput />
-          </div>
+        {/* Transformation Tools */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <QuickWorkoutInput />
+          <QuickSleepInput />
+        </div>
 
-          <BodyMeasurements />
-          
-          {/* Department Progress */}
-          <DepartmentProgress />
-          
-          {/* Progress Charts */}
-          <ProgressCharts timeRange="week" />
-          
-          <SmartCoachInsights />
-          
-          <BadgeSystem />
+        <BodyMeasurements />
+        
+        {/* Department Progress */}
+        <DepartmentProgress />
+        
+        {/* Progress Charts */}
+        <ProgressCharts timeRange="week" />
+        
+        <SmartCoachInsights />
+        
+        <BadgeSystem />
 
-          <OptimizedGreeting userProfile={userProfile} />
-
-          <div>
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                <Badge className="opacity-80">{meals.length} Mahlzeiten</Badge>
+        <div>
+          <div className="mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <Badge className="opacity-80">{meals.length} Mahlzeiten</Badge>
+            </div>
+            {loading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
               </div>
-              {loading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : (
-                <MealList 
-                  dailyMeals={meals.map((meal: any) => ({
-                    id: meal.id,
-                    text: meal.text,
-                    calories: meal.calories,
-                    protein: meal.protein,
-                    carbs: meal.carbs,
-                    fats: meal.fats,
-                    timestamp: new Date(meal.created_at),
-                    meal_type: meal.meal_type
-                  }))} 
-                  onEditMeal={(meal: any) => {
-                    // Handled by MealEditForm component
-                  }}
-                  onDeleteMeal={async (mealId: string) => {
-                    try {
-                      const { error } = await supabase
-                        .from('meals')
-                        .delete()
-                        .eq('id', mealId);
+            ) : (
+              <MealList 
+                dailyMeals={meals.map((meal: any) => ({
+                  id: meal.id,
+                  text: meal.text,
+                  calories: meal.calories,
+                  protein: meal.protein,
+                  carbs: meal.carbs,
+                  fats: meal.fats,
+                  timestamp: new Date(meal.created_at),
+                  meal_type: meal.meal_type
+                }))} 
+                onEditMeal={(meal: any) => {
+                  // Handled by MealEditForm component
+                }}
+                onDeleteMeal={async (mealId: string) => {
+                  try {
+                    const { error } = await supabase
+                      .from('meals')
+                      .delete()
+                      .eq('id', mealId);
 
-                      if (error) {
-                        console.error('Error deleting meal:', error);
-                        toast.error('Fehler beim Löschen der Mahlzeit');
-                        return;
-                      }
-
-                      toast.success('Mahlzeit gelöscht');
-                      await fetchMealsForDate(currentDate);
-                    } catch (error) {
+                    if (error) {
                       console.error('Error deleting meal:', error);
                       toast.error('Fehler beim Löschen der Mahlzeit');
+                      return;
                     }
-                  }}
-                  onUpdateMeal={handleMealUpdated}
-                />
-              )}
-            </div>
+
+                    toast.success('Mahlzeit gelöscht');
+                    await fetchMealsForDate(currentDate);
+                  } catch (error) {
+                    console.error('Error deleting meal:', error);
+                    toast.error('Fehler beim Löschen der Mahlzeit');
+                  }
+                }}
+                onUpdateMeal={handleMealUpdated}
+              />
+            )}
           </div>
         </div>
       </div>

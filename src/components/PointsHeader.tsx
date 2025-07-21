@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -27,24 +28,24 @@ export const PointsHeader = () => {
 
   const getLevelIcon = (levelName: string) => {
     switch (levelName) {
-      case 'Rookie': return <Star className="w-5 h-5" />;
-      case 'Bronze': return <Award className="w-5 h-5" />;
-      case 'Silver': return <Trophy className="w-5 h-5" />;
-      case 'Gold': return <Crown className="w-5 h-5" />;
-      case 'Platinum': return <Crown className="w-5 h-5" />;
-      case 'Diamond': return <Crown className="w-5 h-5" />;
-      case 'Master': return <Crown className="w-5 h-5" />;
-      case 'Grandmaster': return <Crown className="w-5 h-5" />;
-      default: return <Star className="w-5 h-5" />;
+      case 'Rookie': return <Star className="w-4 h-4" />;
+      case 'Bronze': return <Award className="w-4 h-4" />;
+      case 'Silver': return <Trophy className="w-4 h-4" />;
+      case 'Gold': return <Crown className="w-4 h-4" />;
+      case 'Platinum': return <Crown className="w-4 h-4" />;
+      case 'Diamond': return <Crown className="w-4 h-4" />;
+      case 'Master': return <Crown className="w-4 h-4" />;
+      case 'Grandmaster': return <Crown className="w-4 h-4" />;
+      default: return <Star className="w-4 h-4" />;
     }
   };
 
   return (
-    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 backdrop-blur-sm border-b border-border/50 px-4 py-3 mb-6">
+    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 backdrop-blur-sm border-b border-border/50 px-4 py-2">
       <div className="flex items-center justify-between max-w-4xl mx-auto">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <div 
-            className="flex items-center justify-center w-10 h-10 rounded-full border-2"
+            className="flex items-center justify-center w-8 h-8 rounded-full border-2"
             style={{ 
               borderColor: getLevelColor(userPoints.level_name),
               backgroundColor: `${getLevelColor(userPoints.level_name)}15`
@@ -59,7 +60,7 @@ export const PointsHeader = () => {
             <div className="flex items-center space-x-2">
               <Badge 
                 variant="secondary" 
-                className="text-xs font-semibold"
+                className="text-xs font-semibold px-2 py-0"
                 style={{ 
                   backgroundColor: `${getLevelColor(userPoints.level_name)}20`,
                   color: getLevelColor(userPoints.level_name),
@@ -68,24 +69,18 @@ export const PointsHeader = () => {
               >
                 {userPoints.level_name}
               </Badge>
-              <span className="text-sm font-medium text-muted-foreground">
-                Level {userPoints.current_level}
+              <span className="text-xs font-medium text-muted-foreground">
+                Lvl {userPoints.current_level}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              {userPoints.total_points} Punkte insgesamt
+              {userPoints.total_points} Punkte
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4 min-w-0 flex-1 max-w-xs ml-4">
-          <div className="flex-1 space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Bis zum nächsten Level</span>
-              <span className="font-medium">
-                {currentLevelProgress}/{userPoints.points_to_next_level}
-              </span>
-            </div>
+        <div className="flex items-center space-x-2 min-w-0 flex-1 max-w-[160px] ml-2">
+          <div className="flex-1 space-y-0.5">
             <Progress 
               value={(currentLevelProgress / userPoints.points_to_next_level) * 100} 
               className="h-2"
@@ -93,6 +88,12 @@ export const PointsHeader = () => {
                 background: `${getLevelColor(userPoints.level_name)}20`
               }}
             />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground truncate text-[10px]">Nächstes Level</span>
+              <span className="font-medium text-[10px]">
+                {currentLevelProgress}/{userPoints.points_to_next_level}
+              </span>
+            </div>
           </div>
         </div>
       </div>
