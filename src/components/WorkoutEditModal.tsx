@@ -75,7 +75,7 @@ export const WorkoutEditModal = ({
         distance_km: distanceKm ? parseFloat(distanceKm) : null,
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
-        did_workout: true,
+        did_workout: workoutType !== 'pause',
         date: dateStr
       };
 
@@ -99,15 +99,17 @@ export const WorkoutEditModal = ({
 
         if (error) throw error;
 
-        // Award points for new workout (only for new entries)
-        const isToday = dateStr === new Date().toISOString().split('T')[0];
-        if (!isToday) {
-          // For past dates, still award points but with lower multiplier
-          await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Nachträgliches Workout eingetragen', 0.8);
-        } else {
-          await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
+        // Award points for new workout (only for actual workouts, not rest days)
+        if (workoutType !== 'pause') {
+          const isToday = dateStr === new Date().toISOString().split('T')[0];
+          if (!isToday) {
+            // For past dates, still award points but with lower multiplier
+            await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Nachträgliches Workout eingetragen', 0.8);
+          } else {
+            await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
+          }
+          await updateStreak('workout');
         }
-        await updateStreak('workout');
 
         toast.success('Workout erfolgreich eingetragen!');
       }

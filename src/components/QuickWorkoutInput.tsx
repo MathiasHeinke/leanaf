@@ -60,7 +60,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         distance_km: distanceKm ? parseFloat(distanceKm) : null,
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
-        did_workout: true,
+        did_workout: workoutType !== 'pause',
         date: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]
       };
 
@@ -84,9 +84,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
 
         if (error) throw error;
 
-        // Award points for new workout
-        await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
-        await updateStreak('workout');
+        // Award points for new workout (only for actual workouts, not rest days)
+        if (workoutType !== 'pause') {
+          await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
+          await updateStreak('workout');
+        }
 
         toast.success('Workout erfolgreich eingetragen!');
       }
