@@ -3,7 +3,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FloatingCoachChat } from "@/components/FloatingCoachChat";
-import { SmartInsights } from "@/components/SmartInsights";
+import { Overview } from "@/components/Overview";
+import { InsightsAnalysis } from "@/components/InsightsAnalysis";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
@@ -134,13 +135,6 @@ const Coach = ({ onClose }: CoachProps) => {
       calculateTrends();
     }
   }, [user, dailyGoals, todaysMeals, historyData]);
-
-  // Generate greeting when data is loaded
-  useEffect(() => {
-    if (user && dailyGoals && todaysMeals.length >= 0 && historyData.length >= 0 && !coachGreeting) {
-      generateTimeBasedGreeting();
-    }
-  }, [user, dailyGoals, todaysMeals, historyData, coachGreeting]);
 
   // Cleanup function to clear cache and reset connections on unmount
   useEffect(() => {
@@ -419,8 +413,16 @@ const Coach = ({ onClose }: CoachProps) => {
         </Card>
       )}
 
-      {/* Main Smart Insights with 3 tabs */}
-      <SmartInsights 
+      {/* Überblick - grundlegende Statistiken */}
+      <Overview 
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        weightHistory={weightHistory}
+      />
+
+      {/* Insights Analysis - tiefere Einsichten */}
+      <InsightsAnalysis 
         todaysTotals={todaysTotals}
         dailyGoals={dailyGoals}
         averages={averages}
