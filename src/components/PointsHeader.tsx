@@ -50,7 +50,7 @@ export const PointsHeader = () => {
 
   return (
     <div className="border-b border-border/30 py-3 sm:py-2">
-      <div className="container mx-auto px-3 max-w-md flex items-center justify-between">
+        <div className="container mx-auto px-3 max-w-xs flex items-center justify-between">
         {/* Left Side - Level Icon + Badge */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           <div 
