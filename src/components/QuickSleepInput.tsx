@@ -131,6 +131,9 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             • Schlechter Schlaf erhöht Cortisol und Heißhunger
             • 7-9 Stunden sind optimal für die Regeneration
           </p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+            <strong>Nächste Eintragung:</strong> Morgen 📅
+          </p>
         </div>
       </div>
     );

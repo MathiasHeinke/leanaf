@@ -2,9 +2,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Dumbbell, Plus, Edit, CheckCircle } from "lucide-react";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -21,6 +22,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
   const [workoutType, setWorkoutType] = useState("kraft");
   const [duration, setDuration] = useState<number[]>([30]);
   const [intensity, setIntensity] = useState<number[]>([7]);
+  const [distanceKm, setDistanceKm] = useState<string>("");
+  const [steps, setSteps] = useState<string>("");
+  const [walkingNotes, setWalkingNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
@@ -36,6 +40,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
       setWorkoutType(todaysWorkout.workout_type || "kraft");
       setDuration([todaysWorkout.duration_minutes || 30]);
       setIntensity([todaysWorkout.intensity || 7]);
+      setDistanceKm(todaysWorkout.distance_km?.toString() || "");
+      setSteps(todaysWorkout.steps?.toString() || "");
+      setWalkingNotes(todaysWorkout.walking_notes || "");
     }
   }, [hasWorkoutToday, todaysWorkout, isEditing]);
 
@@ -50,6 +57,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         workout_type: workoutType,
         duration_minutes: duration[0],
         intensity: intensity[0],
+        distance_km: distanceKm ? parseFloat(distanceKm) : null,
+        steps: steps ? parseInt(steps) : null,
+        walking_notes: walkingNotes || null,
         did_workout: true,
         date: new Date().toISOString().split('T')[0]
       };
@@ -106,6 +116,12 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                todaysWorkout.workout_type === 'cardio' ? 'Cardio' : 'Anderes'} • 
               {todaysWorkout.duration_minutes || 0} Min • 
               Intensität: {todaysWorkout.intensity || 0}/10
+              {todaysWorkout.distance_km && (
+                <> • {todaysWorkout.distance_km} km</>
+              )}
+              {todaysWorkout.steps && (
+                <> • {todaysWorkout.steps} Schritte</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -138,6 +154,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             • Krafttraining stärkt Muskeln und Knochen
             • Cardio verbessert deine Ausdauer
             • Jede Bewegung zählt für deinen Erfolg
+          </p>
+          <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+            <strong>Nächste Eintragung:</strong> Morgen 📅
           </p>
         </div>
       </div>
@@ -210,6 +229,59 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             step={1}
             className="w-full"
           />
+        </div>
+
+        {/* Lauf/Spazier Tracking Section */}
+        <div className="border-t border-green-200 dark:border-green-800 pt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Footprints className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <h4 className="text-sm font-medium text-green-700 dark:text-green-300">
+              Zusätzliche Bewegung (optional)
+            </h4>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
+                Distanz (km)
+              </label>
+              <Input
+                type="number"
+                value={distanceKm}
+                onChange={(e) => setDistanceKm(e.target.value)}
+                placeholder="z.B. 3.5"
+                step="0.1"
+                min="0"
+                className="text-sm border-green-300 focus:border-green-500"
+              />
+            </div>
+            
+            <div>
+              <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
+                Schritte
+              </label>
+              <Input
+                type="number"
+                value={steps}
+                onChange={(e) => setSteps(e.target.value)}
+                placeholder="z.B. 8000"
+                min="0"
+                className="text-sm border-green-300 focus:border-green-500"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
+              Notizen zur Bewegung
+            </label>
+            <Textarea
+              value={walkingNotes}
+              onChange={(e) => setWalkingNotes(e.target.value)}
+              placeholder="z.B. Morgens spaziert, Treppe statt Aufzug..."
+              className="text-sm border-green-300 focus:border-green-500 resize-none h-16"
+            />
+          </div>
         </div>
 
         <div className="flex gap-2">

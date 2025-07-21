@@ -580,36 +580,45 @@ export type Database = {
           created_at: string
           date: string
           did_workout: boolean
+          distance_km: number | null
           duration_minutes: number | null
           id: string
           intensity: number | null
           notes: string | null
+          steps: number | null
           updated_at: string
           user_id: string
+          walking_notes: string | null
           workout_type: string | null
         }
         Insert: {
           created_at?: string
           date?: string
           did_workout?: boolean
+          distance_km?: number | null
           duration_minutes?: number | null
           id?: string
           intensity?: number | null
           notes?: string | null
+          steps?: number | null
           updated_at?: string
           user_id: string
+          walking_notes?: string | null
           workout_type?: string | null
         }
         Update: {
           created_at?: string
           date?: string
           did_workout?: boolean
+          distance_km?: number | null
           duration_minutes?: number | null
           id?: string
           intensity?: number | null
           notes?: string | null
+          steps?: number | null
           updated_at?: string
           user_id?: string
+          walking_notes?: string | null
           workout_type?: string | null
         }
         Relationships: []

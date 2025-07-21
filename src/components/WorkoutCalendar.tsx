@@ -22,6 +22,9 @@ interface WorkoutEntry {
   workout_type: string;
   duration_minutes: number;
   intensity: number;
+  distance_km?: number;
+  steps?: number;
+  walking_notes?: string;
 }
 
 export const WorkoutCalendar = () => {
@@ -46,7 +49,7 @@ export const WorkoutCalendar = () => {
 
       const { data, error } = await supabase
         .from('workouts')
-        .select('*')
+        .select('date, did_workout, workout_type, duration_minutes, intensity, distance_km, steps, walking_notes')
         .eq('user_id', user.id)
         .gte('date', monthStart.toISOString().split('T')[0])
         .lte('date', monthEnd.toISOString().split('T')[0])
