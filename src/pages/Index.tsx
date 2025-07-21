@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -111,8 +110,11 @@ const Index = () => {
   const loadTodaysData = async (date: Date) => {
     if (!user) return;
 
+    console.log('Loading todays data for date:', date);
+
     try {
       const dateString = date.toISOString().split('T')[0];
+      console.log('Date string:', dateString);
 
       // Load today's workout
       const { data: workoutData, error: workoutError } = await supabase
@@ -125,6 +127,7 @@ const Index = () => {
       if (workoutError) {
         console.error('Error loading workout:', workoutError);
       } else {
+        console.log('Loaded workout data:', workoutData);
         setTodaysWorkout(workoutData);
       }
 
@@ -139,6 +142,7 @@ const Index = () => {
       if (sleepError) {
         console.error('Error loading sleep:', sleepError);
       } else {
+        console.log('Loaded sleep data:', sleepData);
         setTodaysSleep(sleepData);
       }
 
@@ -153,6 +157,7 @@ const Index = () => {
       if (weightError) {
         console.error('Error loading weight:', weightError);
       } else {
+        console.log('Loaded weight data:', weightData);
         setTodaysWeight(weightData);
       }
 
@@ -172,6 +177,7 @@ const Index = () => {
       if (measurementsError) {
         console.error('Error loading measurements:', measurementsError);
       } else {
+        console.log('Loaded measurements data:', measurementsData);
         setTodaysMeasurements(measurementsData);
       }
     } catch (error) {
@@ -228,19 +234,23 @@ const Index = () => {
   };
 
   const handleWeightAdded = () => {
+    console.log('Weight added callback triggered - reloading data');
     loadUserData();
     loadTodaysData(currentDate);
   };
 
   const handleWorkoutAdded = () => {
+    console.log('Workout added callback triggered - reloading data');
     loadTodaysData(currentDate);
   };
 
   const handleSleepAdded = () => {
+    console.log('Sleep added callback triggered - reloading data');
     loadTodaysData(currentDate);
   };
 
   const handleMeasurementsAdded = () => {
+    console.log('Measurements added callback triggered - reloading data');
     loadTodaysData(currentDate);
   };
 

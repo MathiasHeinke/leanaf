@@ -27,6 +27,9 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   // Check if weight already exists for today
   const hasWeightToday = todaysWeight && todaysWeight.weight;
 
+  console.log('QuickWeightInput - todaysWeight:', todaysWeight);
+  console.log('QuickWeightInput - hasWeightToday:', hasWeightToday);
+
   useEffect(() => {
     if (hasWeightToday && !isEditing) {
       setWeight(todaysWeight.weight.toString());
@@ -45,6 +48,8 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         date: new Date().toISOString().split('T')[0]
       };
 
+      console.log('Submitting weight data:', weightData);
+
       if (hasWeightToday) {
         // Update existing weight - no points awarded
         const { error: historyError } = await supabase
@@ -54,6 +59,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
         if (historyError) throw historyError;
         toast.success('Gewicht aktualisiert!');
+        console.log('Weight updated successfully');
       } else {
         // Create new weight entry using UPSERT
         const { error: historyError } = await supabase
@@ -64,6 +70,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           });
 
         if (historyError) throw historyError;
+        console.log('New weight entry created');
 
         // Award points for weight tracking
         await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht gemessen');
@@ -81,6 +88,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
       if (profileError) throw profileError;
 
       setIsEditing(false);
+      console.log('Calling onWeightAdded callback');
       onWeightAdded?.();
     } catch (error) {
       console.error('Error saving weight:', error);
@@ -93,9 +101,9 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   // Show read-only summary if weight exists and not editing
   if (hasWeightToday && !isEditing) {
     return (
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200 dark:border-green-800">
+      <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/70 dark:from-green-950/25 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200/60 dark:border-green-800/60">
         <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
+          <div className="p-2 bg-green-100/80 dark:bg-green-900/60 rounded-xl">
             <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
           <div className="flex-1">
@@ -126,7 +134,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           </div>
         </div>
         
-        <div className="bg-green-100/50 dark:bg-green-900/30 rounded-lg p-3">
+        <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
           <p className="text-xs text-green-700 dark:text-green-300">
             <strong>Tipp:</strong> Tägliches Wiegen zur gleichen Zeit hilft, Trends zu erkennen!
           </p>
@@ -136,9 +144,9 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   }
 
   return (
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200 dark:border-green-800">
+    <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/70 dark:from-green-950/25 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200/60 dark:border-green-800/60">
       <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
+        <div className="p-2 bg-green-100/80 dark:bg-green-900/60 rounded-xl">
           <Scale className="h-5 w-5 text-green-600 dark:text-green-400" />
         </div>
         <div className="flex-1">

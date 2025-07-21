@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,11 +25,29 @@ export const InfoButton = ({
 }: InfoButtonProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const handleLearnMore = () => {
     setIsOpen(false);
     navigate('/science');
   };
+
+  // Handle outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   if (!isOpen) {
     return (
@@ -47,7 +65,7 @@ export const InfoButton = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <Card className="w-full max-w-sm glass-card border-primary/30 animate-scale-in">
+      <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in">
         <CardContent className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">

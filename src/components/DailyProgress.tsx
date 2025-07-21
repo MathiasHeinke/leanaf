@@ -149,7 +149,7 @@ export const DailyProgress = ({
   return (
     <div className="space-y-6">
       {/* Hero Calorie Section with Integrated Date Navigation */}
-      <div className="p-6 bg-gradient-to-br from-primary/5 via-primary/3 to-primary-glow/5 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
+      <div className="p-6 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-xl">
@@ -177,7 +177,7 @@ export const DailyProgress = ({
         </div>
 
         {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-4 p-3 bg-white/50 dark:bg-gray-800/30 rounded-2xl border border-gray-200/30 dark:border-gray-700/30">
+        <div className="flex items-center justify-between mb-4 p-3 bg-white/60 dark:bg-gray-800/40 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
           <Button variant="ghost" size="sm" onClick={goToPreviousDay}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -253,25 +253,25 @@ export const DailyProgress = ({
         </div>
       </div>
 
-      {/* Macros Grid - Modern Clean Cards */}
+      {/* Macros Grid - Brighter Clean Cards */}
       <div className="grid grid-cols-3 gap-4">
         {/* Protein */}
         <div className={`p-4 rounded-2xl border transition-all duration-200 hover:scale-[1.02] ${
           proteinExceeded 
-            ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50' 
-            : 'bg-protein-light dark:bg-protein-light border-protein/20 dark:border-protein/30'
+            ? 'bg-red-50/80 dark:bg-red-950/25 border-red-200/60 dark:border-red-800/60' 
+            : 'bg-green-50/80 dark:bg-green-950/25 border-green-200/60 dark:border-green-300/40'
         }`}>
-          <div className={`text-xs font-semibold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein'}`}>
+          <div className={`text-xs font-semibold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>
             {t('macros.protein')}
           </div>
-          <div className={`text-2xl font-bold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein'}`}>
+          <div className={`text-2xl font-bold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-300'}`}>
             {dailyTotals.protein}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(proteinProgress, 100)} 
-            className={`h-1.5 mb-2 ${proteinExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-protein'}`} 
+            className={`h-1.5 mb-2 ${proteinExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-green-600'}`} 
           />
-          <div className={`text-xs font-medium ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein/80'}`}>
+          <div className={`text-xs font-medium ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-green-700/80 dark:text-green-400/80'}`}>
             {remainingProtein > 0 ? `+${Math.round(remainingProtein)}${t('ui.gram')}` : `${Math.round(Math.abs(remainingProtein))}${t('ui.gram')} ${t('ui.over')}`}
           </div>
         </div>
@@ -279,20 +279,20 @@ export const DailyProgress = ({
         {/* Carbs */}
         <div className={`p-4 rounded-2xl border transition-all duration-200 hover:scale-[1.02] ${
           carbsExceeded 
-            ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50' 
-            : 'bg-carbs-light dark:bg-carbs-light border-carbs/20 dark:border-carbs/30'
+            ? 'bg-red-50/80 dark:bg-red-950/25 border-red-200/60 dark:border-red-800/60' 
+            : 'bg-orange-50/80 dark:bg-orange-950/25 border-orange-200/60 dark:border-orange-300/40'
         }`}>
-          <div className={`text-xs font-semibold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs'}`}>
+          <div className={`text-xs font-semibold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-orange-700 dark:text-orange-400'}`}>
             {t('macros.carbs')}
           </div>
-          <div className={`text-2xl font-bold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs'}`}>
+          <div className={`text-2xl font-bold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-orange-700 dark:text-orange-300'}`}>
             {dailyTotals.carbs}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(carbsProgress, 100)} 
-            className={`h-1.5 mb-2 ${carbsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-carbs'}`} 
+            className={`h-1.5 mb-2 ${carbsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-orange-500'}`} 
           />
-          <div className={`text-xs font-medium ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs/80'}`}>
+          <div className={`text-xs font-medium ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-orange-700/80 dark:text-orange-400/80'}`}>
             {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}${t('ui.gram')}` : `${Math.round(Math.abs(remainingCarbs))}${t('ui.gram')} ${t('ui.over')}`}
           </div>
         </div>
@@ -300,20 +300,20 @@ export const DailyProgress = ({
         {/* Fats */}
         <div className={`p-4 rounded-2xl border transition-all duration-200 hover:scale-[1.02] ${
           fatsExceeded 
-            ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50' 
-            : 'bg-fats-light dark:bg-fats-light border-fats/20 dark:border-fats/30'
+            ? 'bg-red-50/80 dark:bg-red-950/25 border-red-200/60 dark:border-red-800/60' 
+            : 'bg-purple-50/80 dark:bg-purple-950/25 border-purple-200/60 dark:border-purple-300/40'
         }`}>
-          <div className={`text-xs font-semibold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats'}`}>
+          <div className={`text-xs font-semibold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-purple-700 dark:text-purple-400'}`}>
             {t('macros.fats')}
           </div>
-          <div className={`text-2xl font-bold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats'}`}>
+          <div className={`text-2xl font-bold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-purple-700 dark:text-purple-300'}`}>
             {dailyTotals.fats}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(fatsProgress, 100)} 
-            className={`h-1.5 mb-2 ${fatsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-fats'}`} 
+            className={`h-1.5 mb-2 ${fatsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-purple-600'}`} 
           />
-          <div className={`text-xs font-medium ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats/80'}`}>
+          <div className={`text-xs font-medium ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-purple-700/80 dark:text-purple-400/80'}`}>
             {remainingFats > 0 ? `+${Math.round(remainingFats)}${t('ui.gram')}` : `${Math.round(Math.abs(remainingFats))}${t('ui.gram')} ${t('ui.over')}`}
           </div>
         </div>
