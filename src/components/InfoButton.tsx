@@ -1,5 +1,6 @@
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,9 +81,24 @@ export const InfoButton = ({
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/90 backdrop-blur-md animate-in fade-in-0">
-      <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in relative z-50">
+  // Use portal to render directly to body, bypassing any parent container restrictions
+  const overlayContent = (
+    <div 
+      className="fixed inset-0 flex items-center justify-center p-4 bg-white/70 animate-in fade-in-0"
+      style={{ 
+        zIndex: 9999,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0 
+      }}
+    >
+      <Card 
+        ref={cardRef} 
+        className="w-full max-w-sm glass-card border-primary/30 animate-scale-in"
+        style={{ zIndex: 9999 }}
+      >
         <CardContent className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -148,4 +164,6 @@ export const InfoButton = ({
       </Card>
     </div>
   );
+
+  return createPortal(overlayContent, document.body);
 };
