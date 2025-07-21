@@ -15,15 +15,15 @@ const HistoryPage = () => {
         <p className="text-muted-foreground">Deine Transformation im Überblick</p>
       </div>
 
-      <Tabs defaultValue="history" className="w-full">
+      <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <HistoryIcon className="h-4 w-4" />
-            Verlauf
-          </TabsTrigger>
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <HistoryIcon className="h-4 w-4" />
+            Verlauf
           </TabsTrigger>
         </TabsList>
         

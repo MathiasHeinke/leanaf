@@ -44,7 +44,7 @@ export const WorkoutEditModal = ({
         // Pre-fill with existing data
         setWorkoutType(existingWorkout.workout_type || "kraft");
         setDuration([existingWorkout.duration_minutes || 30]);
-        setIntensity([existingWorkout.intensity || 7]);
+        setIntensity([existingWorkout.intensity ?? 7]);
         setDistanceKm(existingWorkout.distance_km?.toString() || "");
         setSteps(existingWorkout.steps?.toString() || "");
         setWalkingNotes(existingWorkout.walking_notes || "");
@@ -71,7 +71,7 @@ export const WorkoutEditModal = ({
         user_id: user.id,
         workout_type: workoutType,
         duration_minutes: workoutType === 'pause' ? 0 : duration[0],
-        intensity: workoutType === 'pause' ? 0 : intensity[0],
+        intensity: workoutType === 'pause' ? null : intensity[0],
         distance_km: distanceKm ? parseFloat(distanceKm) : null,
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
@@ -116,7 +116,11 @@ export const WorkoutEditModal = ({
       onClose();
     } catch (error) {
       console.error('Error saving workout:', error);
-      toast.error('Fehler beim Speichern des Workouts');
+      if (error instanceof Error && error.message.includes('check constraint')) {
+        toast.error('Ungültige Workout-Daten. Bitte überprüfe deine Eingaben.');
+      } else {
+        toast.error('Fehler beim Speichern des Workouts');
+      }
     } finally {
       setIsSubmitting(false);
     }
