@@ -1,9 +1,11 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2 } from "lucide-react";
@@ -31,6 +33,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [isAddingWeight, setIsAddingWeight] = useState(false);
   const [newWeight, setNewWeight] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { user } = useAuth();
 
   const addWeightEntry = async () => {
@@ -67,6 +70,8 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const deleteWeightEntry = async (entryId: string) => {
     if (!user) return;
     
+    setDeletingId(entryId);
+    
     try {
       const { error } = await supabase
         .from('weight_history')
@@ -80,6 +85,8 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     } catch (error: any) {
       console.error('Error deleting weight entry:', error);
       toast.error('Fehler beim Löschen des Gewichtseintrags');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -220,22 +227,43 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 )}
                 
                 {weightHistory[0].id && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteWeightEntry(weightHistory[0].id!)}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={deletingId === weightHistory[0].id}
+                        className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Gewichtseintrag löschen</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Möchtest du diesen Gewichtseintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteWeightEntry(weightHistory[0].id!)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Löschen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             </div>
           </Card>
 
           {/* Weight History */}
-          {weightHistory.map((entry, index) => (
-            <Card key={`${entry.date}-${index}`} className="p-4">
+          {weightHistory.slice(1).map((entry, index) => (
+            <Card key={`${entry.date}-${index + 1}`} className="p-4 hover:bg-muted/30 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
                   <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -248,12 +276,12 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  {/* Show trend for non-latest entries */}
-                  {index < weightHistory.length - 1 && (
+                  {/* Show trend for historical entries */}
+                  {index + 1 < weightHistory.length - 1 && (
                     <div className="text-right">
                       {(() => {
                         const current = entry.weight;
-                        const previous = weightHistory[index + 1].weight;
+                        const previous = weightHistory[index + 2].weight;
                         const diff = current - previous;
                         
                         return (
@@ -279,14 +307,39 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                   )}
                   
                   {entry.id && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteWeightEntry(entry.id!)}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={deletingId === entry.id}
+                          className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          {deletingId === entry.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive"></div>
+                          ) : (
+                            <Trash2 className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Gewichtseintrag löschen</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Möchtest du den Gewichtseintrag vom {entry.displayDate} ({entry.weight} kg) wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteWeightEntry(entry.id!)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Löschen
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
               </div>
