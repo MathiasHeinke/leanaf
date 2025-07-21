@@ -1,0 +1,273 @@
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+interface WeightEntry {
+  id?: string;
+  date: string;
+  weight: number;
+  displayDate: string;
+}
+
+interface WeightHistoryProps {
+  weightHistory: WeightEntry[];
+  loading: boolean;
+  onDataUpdate: () => void;
+}
+
+export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHistoryProps) => {
+  const [isAddingWeight, setIsAddingWeight] = useState(false);
+  const [newWeight, setNewWeight] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { user } = useAuth();
+
+  const addWeightEntry = async () => {
+    if (!user || !newWeight) return;
+    
+    try {
+      const weight = parseFloat(newWeight);
+      if (isNaN(weight) || weight <= 0) {
+        toast.error('Bitte gib ein gültiges Gewicht ein');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('weight_history')
+        .insert({
+          user_id: user.id,
+          weight: weight,
+          date: selectedDate.toISOString().split('T')[0]
+        });
+
+      if (error) throw error;
+
+      toast.success('Gewicht erfolgreich hinzugefügt');
+      setNewWeight('');
+      setSelectedDate(new Date());
+      setIsAddingWeight(false);
+      onDataUpdate();
+    } catch (error: any) {
+      console.error('Error adding weight:', error);
+      toast.error('Fehler beim Hinzufügen des Gewichts');
+    }
+  };
+
+  const deleteWeightEntry = async (entryId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('weight_history')
+        .delete()
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      toast.success('Gewichtseintrag gelöscht');
+      onDataUpdate();
+    } catch (error: any) {
+      console.error('Error deleting weight entry:', error);
+      toast.error('Fehler beim Löschen des Gewichtseintrags');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+        <p className="text-muted-foreground">Lade Gewichtsdaten...</p>
+      </div>
+    );
+  }
+
+  // Calculate trend
+  const getTrend = () => {
+    if (weightHistory.length < 2) return null;
+    const latest = weightHistory[0].weight;
+    const previous = weightHistory[1].weight;
+    const difference = latest - previous;
+    return {
+      direction: difference > 0 ? 'up' : difference < 0 ? 'down' : 'stable',
+      amount: Math.abs(difference)
+    };
+  };
+
+  const trend = getTrend();
+
+  return (
+    <div className="space-y-4">
+      {/* Add Weight Button */}
+      <Dialog open={isAddingWeight} onOpenChange={setIsAddingWeight}>
+        <DialogTrigger asChild>
+          <Button className="w-full" variant="outline">
+            <Plus className="h-4 w-4 mr-2" />
+            Gewicht hinzufügen
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neues Gewicht hinzufügen</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="weight">Gewicht (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                placeholder="75.5"
+                className="mt-2"
+              />
+            </div>
+            
+            <div>
+              <Label>Datum</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-2",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP", { locale: de }) : "Datum auswählen"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => date && setSelectedDate(date)}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsAddingWeight(false)} className="flex-1">
+                Abbrechen
+              </Button>
+              <Button onClick={addWeightEntry} className="flex-1">
+                Hinzufügen
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Weight History List */}
+      {weightHistory.length === 0 ? (
+        <Card className="p-8 text-center">
+          <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+            <Scale className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="text-muted-foreground">Noch keine Gewichtsdaten vorhanden</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Füge dein erstes Gewicht hinzu, um den Verlauf zu verfolgen
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {/* Latest Weight Card */}
+          <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-primary">{weightHistory[0].weight} kg</div>
+                <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
+                <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
+              </div>
+              
+              {trend && (
+                <div className="text-right">
+                  <div className="flex items-center gap-1 justify-end">
+                    {trend.direction === 'up' ? (
+                      <TrendingUp className="h-4 w-4 text-red-500" />
+                    ) : trend.direction === 'down' ? (
+                      <TrendingDown className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Minus className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className={cn(
+                      "text-sm font-medium",
+                      trend.direction === 'up' ? "text-red-500" :
+                      trend.direction === 'down' ? "text-green-500" : "text-muted-foreground"
+                    )}>
+                      {trend.direction === 'stable' ? '±0.0' : `${trend.direction === 'up' ? '+' : '-'}${trend.amount.toFixed(1)}`} kg
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">vs. letzter Eintrag</div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Weight History */}
+          {weightHistory.map((entry, index) => (
+            <Card key={`${entry.date}-${index}`} className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Scale className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">{entry.weight} kg</div>
+                    <div className="text-sm text-muted-foreground">{entry.displayDate}</div>
+                  </div>
+                </div>
+                
+                {/* Show trend for non-latest entries */}
+                {index < weightHistory.length - 1 && (
+                  <div className="text-right">
+                    {(() => {
+                      const current = entry.weight;
+                      const previous = weightHistory[index + 1].weight;
+                      const diff = current - previous;
+                      
+                      return (
+                        <div className="flex items-center gap-1">
+                          {diff > 0 ? (
+                            <TrendingUp className="h-3 w-3 text-red-500" />
+                          ) : diff < 0 ? (
+                            <TrendingDown className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Minus className="h-3 w-3 text-muted-foreground" />
+                          )}
+                          <span className={cn(
+                            "text-xs",
+                            diff > 0 ? "text-red-500" :
+                            diff < 0 ? "text-green-500" : "text-muted-foreground"
+                          )}>
+                            {diff === 0 ? '±0.0' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`} kg
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

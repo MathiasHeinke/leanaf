@@ -1,53 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar
-} from 'recharts';
-import { 
-  History as HistoryIcon, 
-  Calendar, 
-  TrendingUp, 
-  Target,
-  ArrowLeft,
-  ChevronDown,
-  ChevronUp,
-  Edit2,
-  Trash2,
-  Plus,
-  Scale,
-  CalendarIcon,
-  Copy
-} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { toast } from "sonner";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
-import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
-import { MealInput } from "@/components/MealInput";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { HistoryTable } from "./HistoryTable";
+import { HistoryCharts } from "./HistoryCharts";
+import { WeightHistory } from "./WeightHistory";
 
 interface DailyGoal {
   calories: number;
@@ -94,20 +57,9 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('week');
   const [historyData, setHistoryData] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-  const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
-  const [editMode, setEditMode] = useState<'manual' | 'portion'>('manual');
-  const [portionAmount, setPortionAmount] = useState<number>(100);
-  const [baseNutrition, setBaseNutrition] = useState({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fats: 0
-  });
   const [userGoal, setUserGoal] = useState<UserGoal>('maintain');
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [weightLoading, setWeightLoading] = useState(false);
-  const [editingMealDate, setEditingMealDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -123,7 +75,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     refreshData();
   }, [refreshData]);
 
-  // Subscribe to data refresh events
   useDataRefresh(refreshData);
 
   const loadHistoryData = async () => {
@@ -134,8 +85,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     
     try {
       setLoading(true);
-      // Reset expanded days when switching time ranges
-      setExpandedDays(new Set());
       
       const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
       const startDate = new Date();
@@ -150,7 +99,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       if (error) throw error;
 
-      // Load images for all meals
       const mealIds = mealsData?.map(meal => meal.id) || [];
       const { data: imagesData, error: imagesError } = await supabase
         .from('meal_images')
@@ -161,7 +109,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         console.error('Error loading meal images:', imagesError);
       }
 
-      // Group images by meal_id
       const imagesByMealId = new Map<string, string[]>();
       imagesData?.forEach(image => {
         if (!imagesByMealId.has(image.meal_id)) {
@@ -170,18 +117,13 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         imagesByMealId.get(image.meal_id)?.push(image.image_url);
       });
 
-      // Group meals by date or week depending on timeRange
       if (timeRange === 'month') {
-        // 30-Tage-Ansicht: Gruppiere nach Wochen
         const weeklyData = new Map<string, DailyData>();
         
-        // Initialize weeks for the last 5 weeks
         for (let i = 0; i < 5; i++) {
           const today = new Date();
           const currentWeekStart = new Date(today);
-          // Get Monday of current week
           currentWeekStart.setDate(today.getDate() - today.getDay() + 1);
-          // Go back i weeks
           currentWeekStart.setDate(currentWeekStart.getDate() - (i * 7));
           
           const weekKey = currentWeekStart.toISOString().split('T')[0];
@@ -205,10 +147,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           });
         }
 
-        // Add meals to their respective weeks
         mealsData?.forEach(meal => {
           const mealDate = new Date(meal.created_at);
-          // Get Monday of the week for this meal
           const weekStart = new Date(mealDate);
           weekStart.setDate(mealDate.getDate() - mealDate.getDay() + 1);
           const weekKey = weekStart.toISOString().split('T')[0];
@@ -220,7 +160,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
               images: imagesByMealId.get(meal.id) || []
             };
             week.meals.push(mealWithImages);
-            // Summiere die Werte für Durchschnittsberechnung
             week.calories += Number(meal.calories);
             week.protein += Number(meal.protein);
             week.carbs += Number(meal.carbs);
@@ -228,10 +167,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           }
         });
 
-        // Berechne Wochendurchschnitte
         weeklyData.forEach(week => {
           if (week.meals.length > 0) {
-            // Zähle einzigartige Tage mit Mahlzeiten in dieser Woche
             const uniqueDays = new Set();
             week.meals.forEach(meal => {
               const mealDate = new Date(meal.created_at).toISOString().split('T')[0];
@@ -248,16 +185,13 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           }
         });
 
-        // Convert to array and sort by date
         const weeklyArray = Array.from(weeklyData.values())
           .sort((a, b) => b.date.localeCompare(a.date));
 
         setHistoryData(weeklyArray);
       } else {
-        // 7-Tage und Jahresansicht: Gruppiere nach Tagen
         const groupedData = new Map<string, DailyData>();
         
-        // Initialize empty days
         for (let i = 0; i < daysToLoad; i++) {
           const date = new Date();
           date.setDate(date.getDate() - i);
@@ -276,7 +210,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           });
         }
 
-        // Add meals to their respective days
         mealsData?.forEach(meal => {
           const date = new Date(meal.created_at).toISOString().split('T')[0];
           const day = groupedData.get(date);
@@ -385,7 +318,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       if (error) throw error;
 
       toast.success('Mahlzeit aktualisiert');
-      setEditingMeal(null); // Close modal immediately
       await loadHistoryData();
     } catch (error) {
       console.error('Error updating meal:', error);
@@ -397,7 +329,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     if (!user) return;
     
     try {
-      // Create a new meal with the same data but new timestamp
       const { data, error } = await supabase
         .from('meals')
         .insert({
@@ -415,7 +346,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       if (error) throw error;
 
-      // If the original meal had images, duplicate them too
       if (meal.images && meal.images.length > 0) {
         const imageInserts = meal.images.map(imageUrl => ({
           user_id: user.id,
@@ -429,46 +359,20 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
         if (imageError) {
           console.error('Error duplicating images:', imageError);
-          // Don't fail the whole operation for image errors
         }
       }
 
       toast.success('Mahlzeit erfolgreich dupliziert');
-      await loadHistoryData(); // Refresh the data
+      await loadHistoryData();
     } catch (error) {
       console.error('Error duplicating meal:', error);
       toast.error('Fehler beim Duplizieren der Mahlzeit');
     }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingMeal) {
-      // Create a timestamp that preserves the local date without timezone conversion
-      const localDate = new Date(editingMealDate);
-      localDate.setHours(12, 0, 0, 0); // Set to midday to avoid timezone issues
-      
-      updateMeal(editingMeal.id, {
-        text: editingMeal.text,
-        calories: editingMeal.calories,
-        protein: editingMeal.protein,
-        carbs: editingMeal.carbs,
-        fats: editingMeal.fats,
-        meal_type: editingMeal.meal_type,
-        created_at: localDate.toISOString(),
-      });
-    }
-  };
-
-  const toggleExpanded = (date: string) => {
-    const newExpanded = new Set(expandedDays);
-    if (newExpanded.has(date)) {
-      newExpanded.delete(date);
-    } else {
-      newExpanded.add(date);
-    }
-    setExpandedDays(newExpanded);
-  };
+  const refreshDataCallback = useCallback(() => {
+    refreshData();
+  }, [refreshData]);
 
   const currentData = historyData;
   const daysWithMeals = currentData.filter(day => day.meals.length > 0);
@@ -481,11 +385,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     return goalStatus.status === 'success';
   }).length;
 
-  const mealInputHook = useGlobalMealInput();
-
   return (
-    <>
-      <div className="space-y-4 pb-20">
+    <div className="space-y-4 pb-20">
       {/* Header Stats */}
       <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="grid grid-cols-2 gap-6">
@@ -528,7 +429,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         </Button>
       </div>
 
-      {/* Charts und Tabelle */}
+      {/* Tabs */}
       <Tabs defaultValue="table" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="table">Verlauf</TabsTrigger>
@@ -537,725 +438,37 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         </TabsList>
         
         <TabsContent value="table" className="space-y-3 mt-4">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-              <p className="text-muted-foreground">Lade Daten...</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {currentData.map((day, index) => (
-                <Collapsible 
-                  key={day.date} 
-                  open={expandedDays.has(day.date)}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <Card className="overflow-hidden hover:shadow-md transition-all duration-200">
-                    <CollapsibleTrigger asChild>
-                      <div 
-                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors duration-200"
-                        onClick={() => toggleExpanded(day.date)}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                            <Calendar className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-base">{day.displayDate}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {timeRange === 'month' 
-                                ? `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'} • Wochendurchschnitt`
-                                : `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}`
-                              }
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 shrink-0">
-                          <div className="text-right">
-                            <div className="flex items-baseline gap-1">
-                              <span className="font-bold text-xl">{day.calories}</span>
-                              {timeRange === 'month' && <span className="text-xs text-muted-foreground">Ø</span>}
-                            </div>
-                            <div className="text-xs text-muted-foreground">kcal</div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {(() => {
-                              const goalStatus = getGoalStatus(day.calories, dailyGoal.calories, userGoal);
-                              return (
-                                <Badge 
-                                  variant={goalStatus.status === 'success' ? 'default' : 
-                                          goalStatus.status === 'warning' ? 'secondary' : 'destructive'} 
-                                  className="text-xs px-2 py-1"
-                                >
-                                  {goalStatus.status === 'success' ? '✓ Ziel erreicht' :
-                                   goalStatus.status === 'warning' ? '~ Nahe Ziel' :
-                                   userGoal === 'lose' ? '! Über Ziel' :
-                                   userGoal === 'gain' ? '! Zu wenig' : '! Abweichung'}
-                                </Badge>
-                              );
-                            })()}
-                            
-                            <div className="transition-transform duration-200">
-                              {expandedDays.has(day.date) ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    
-                    <CollapsibleContent className="transition-all duration-300 ease-out data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="px-4 pb-4 bg-muted/30">
-                        {/* Macro Summary */}
-                        <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-background/50 rounded-lg">
-                          <div className="text-center">
-                            <div className="text-sm font-medium text-blue-600">{day.protein}g</div>
-                            <div className="text-xs text-muted-foreground">Protein</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-sm font-medium text-orange-600">{day.carbs}g</div>
-                            <div className="text-xs text-muted-foreground">Kohlenhydrate</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-sm font-medium text-yellow-600">{day.fats}g</div>
-                            <div className="text-xs text-muted-foreground">Fette</div>
-                          </div>
-                        </div>
-
-                        {/* Meals */}
-                        {day.meals.length === 0 ? (
-                          <div className="text-center py-8">
-                            <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-                              <Calendar className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                            <p className="text-muted-foreground text-sm">
-                              {timeRange === 'month' ? 'Keine Mahlzeiten in dieser Woche' : 'Keine Mahlzeiten an diesem Tag'}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {day.meals.map((meal, mealIndex) => (
-                              <div 
-                                key={meal.id} 
-                                className="bg-background rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 animate-scale-in"
-                                style={{ animationDelay: `${mealIndex * 100}ms` }}
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <Badge variant="outline" className="text-xs">
-                                        {meal.meal_type === 'breakfast' ? '🌅 Frühstück' :
-                                         meal.meal_type === 'lunch' ? '🌞 Mittagessen' :
-                                         meal.meal_type === 'dinner' ? '🌙 Abendessen' : '🍎 Snack'}
-                                      </Badge>
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(meal.created_at).toLocaleDateString('de-DE', { 
-                                          day: '2-digit', 
-                                          month: '2-digit' 
-                                        })} {new Date(meal.created_at).toLocaleTimeString('de-DE', { 
-                                          hour: '2-digit', 
-                                          minute: '2-digit' 
-                                        })}
-                                      </span>
-                                    </div>
-                                    
-                                    <div className="font-medium text-sm mb-2 line-clamp-2">
-                                      {meal.text}
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                      <span className="font-medium">{meal.calories} kcal</span>
-                                      <span>P: {meal.protein}g</span>
-                                      <span>K: {meal.carbs}g</span>
-                                      <span>F: {meal.fats}g</span>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-1">
-                                    <Dialog open={editingMeal?.id === meal.id} onOpenChange={(open) => {
-                                      if (!open) setEditingMeal(null);
-                                    }}>
-                                      <DialogTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            setEditingMeal(meal);
-                                            setEditingMealDate(new Date(meal.created_at));
-                                          }}
-                                          className="h-8 w-8 p-0 hover:bg-primary/10"
-                                        >
-                                          <Edit2 className="h-3 w-3" />
-                                        </Button>
-                                      </DialogTrigger>
-                                      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-                                        <DialogHeader className="text-left">
-                                          <DialogTitle className="text-xl font-bold">Mahlzeit bearbeiten</DialogTitle>
-                                        </DialogHeader>
-                                        {editingMeal && (
-                                          <div className="space-y-6">
-                                            {/* Edit Mode Toggle */}
-                                            <div className="flex gap-2 p-1 bg-muted rounded-lg">
-                                              <Button
-                                                type="button"
-                                                variant={editMode === 'manual' ? 'default' : 'ghost'}
-                                                size="sm"
-                                                onClick={() => {
-                                                  setEditMode('manual');
-                                                  // Reset to current meal values
-                                                  setEditingMeal(editingMeal);
-                                                }}
-                                                className="flex-1 text-xs"
-                                              >
-                                                Manuell
-                                              </Button>
-                                              <Button
-                                                type="button"
-                                                variant={editMode === 'portion' ? 'default' : 'ghost'}
-                                                size="sm"
-                                                onClick={() => {
-                                                  setEditMode('portion');
-                                                  // Set base nutrition to current per 100g
-                                                  const currentPortion = portionAmount / 100;
-                                                  setBaseNutrition({
-                                                    calories: Math.round(editingMeal.calories / currentPortion),
-                                                    protein: Math.round(editingMeal.protein / currentPortion),
-                                                    carbs: Math.round(editingMeal.carbs / currentPortion),
-                                                    fats: Math.round(editingMeal.fats / currentPortion)
-                                                  });
-                                                }}
-                                                className="flex-1 text-xs"
-                                              >
-                                                Portionen
-                                              </Button>
-                                            </div>
-
-                                            <form onSubmit={handleEditSubmit} className="space-y-4">
-                                              {/* Description */}
-                                              <div>
-                                                <Label htmlFor="text" className="text-sm font-medium">Was gegessen</Label>
-                                                <Textarea
-                                                  id="text"
-                                                  value={editingMeal.text}
-                                                  onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
-                                                  className="mt-2 resize-none"
-                                                  rows={3}
-                                                  placeholder="Beschreibe deine Mahlzeit..."
-                                                />
-                                              </div>
-
-                                              {editMode === 'portion' && (
-                                                <>
-                                                  {/* Base Nutrition per 100g */}
-                                                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                                                    <Label className="text-sm font-medium">Nährwerte pro 100g</Label>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                      <div>
-                                                        <Label htmlFor="base_calories" className="text-xs">Kalorien</Label>
-                                                        <Input
-                                                          id="base_calories"
-                                                          type="number"
-                                                          value={baseNutrition.calories}
-                                                          onChange={(e) => {
-                                                            const newBase = {...baseNutrition, calories: Number(e.target.value)};
-                                                            setBaseNutrition(newBase);
-                                                            const multiplier = portionAmount / 100;
-                                                            setEditingMeal({
-                                                              ...editingMeal,
-                                                              calories: Math.round(newBase.calories * multiplier)
-                                                            });
-                                                          }}
-                                                          className="mt-1 text-sm"
-                                                        />
-                                                      </div>
-                                                      <div>
-                                                        <Label htmlFor="base_protein" className="text-xs">Protein (g)</Label>
-                                                        <Input
-                                                          id="base_protein"
-                                                          type="number"
-                                                          step="0.1"
-                                                          value={baseNutrition.protein}
-                                                          onChange={(e) => {
-                                                            const newBase = {...baseNutrition, protein: Number(e.target.value)};
-                                                            setBaseNutrition(newBase);
-                                                            const multiplier = portionAmount / 100;
-                                                            setEditingMeal({
-                                                              ...editingMeal,
-                                                              protein: Math.round(newBase.protein * multiplier * 10) / 10
-                                                            });
-                                                          }}
-                                                          className="mt-1 text-sm"
-                                                        />
-                                                      </div>
-                                                      <div>
-                                                        <Label htmlFor="base_carbs" className="text-xs">Kohlenhydrate (g)</Label>
-                                                        <Input
-                                                          id="base_carbs"
-                                                          type="number"
-                                                          step="0.1"
-                                                          value={baseNutrition.carbs}
-                                                          onChange={(e) => {
-                                                            const newBase = {...baseNutrition, carbs: Number(e.target.value)};
-                                                            setBaseNutrition(newBase);
-                                                            const multiplier = portionAmount / 100;
-                                                            setEditingMeal({
-                                                              ...editingMeal,
-                                                              carbs: Math.round(newBase.carbs * multiplier * 10) / 10
-                                                            });
-                                                          }}
-                                                          className="mt-1 text-sm"
-                                                        />
-                                                      </div>
-                                                      <div>
-                                                        <Label htmlFor="base_fats" className="text-xs">Fette (g)</Label>
-                                                        <Input
-                                                          id="base_fats"
-                                                          type="number"
-                                                          step="0.1"
-                                                          value={baseNutrition.fats}
-                                                          onChange={(e) => {
-                                                            const newBase = {...baseNutrition, fats: Number(e.target.value)};
-                                                            setBaseNutrition(newBase);
-                                                            const multiplier = portionAmount / 100;
-                                                            setEditingMeal({
-                                                              ...editingMeal,
-                                                              fats: Math.round(newBase.fats * multiplier * 10) / 10
-                                                            });
-                                                          }}
-                                                          className="mt-1 text-sm"
-                                                        />
-                                                      </div>
-                                                    </div>
-                                                  </div>
-
-                                                  {/* Portion Amount */}
-                                                  <div className="bg-primary/5 rounded-lg p-4">
-                                                    <Label htmlFor="portion" className="text-sm font-medium">Menge in Gramm</Label>
-                                                    <div className="flex items-center gap-3 mt-2">
-                                                      <Input
-                                                        id="portion"
-                                                        type="number"
-                                                        value={portionAmount}
-                                                        onChange={(e) => {
-                                                          const newAmount = Number(e.target.value);
-                                                          setPortionAmount(newAmount);
-                                                          const multiplier = newAmount / 100;
-                                                          setEditingMeal({
-                                                            ...editingMeal,
-                                                            calories: Math.round(baseNutrition.calories * multiplier),
-                                                            protein: Math.round(baseNutrition.protein * multiplier * 10) / 10,
-                                                            carbs: Math.round(baseNutrition.carbs * multiplier * 10) / 10,
-                                                            fats: Math.round(baseNutrition.fats * multiplier * 10) / 10
-                                                          });
-                                                        }}
-                                                        className="flex-1"
-                                                        placeholder="z.B. 150"
-                                                      />
-                                                      <span className="text-sm text-muted-foreground">g</span>
-                                                    </div>
-                                                  </div>
-                                                </>
-                                              )}
-
-                                              {/* Calculated/Manual Nutrition */}
-                                              <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg p-4 space-y-3">
-                                                <Label className="text-sm font-medium">
-                                                  {editMode === 'portion' ? 'Berechnete Nährwerte' : 'Nährwerte'}
-                                                </Label>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                  <div>
-                                                    <Label htmlFor="calories" className="text-xs">Kalorien</Label>
-                                                    <Input
-                                                      id="calories"
-                                                      type="number"
-                                                      value={editingMeal.calories}
-                                                      onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
-                                                      className="mt-1 text-sm font-medium"
-                                                      readOnly={editMode === 'portion'}
-                                                    />
-                                                  </div>
-                                                  <div>
-                                                    <Label htmlFor="protein" className="text-xs">Protein (g)</Label>
-                                                    <Input
-                                                      id="protein"
-                                                      type="number"
-                                                      step="0.1"
-                                                      value={editingMeal.protein}
-                                                      onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
-                                                      className="mt-1 text-sm"
-                                                      readOnly={editMode === 'portion'}
-                                                    />
-                                                  </div>
-                                                  <div>
-                                                    <Label htmlFor="carbs" className="text-xs">Kohlenhydrate (g)</Label>
-                                                    <Input
-                                                      id="carbs"
-                                                      type="number"
-                                                      step="0.1"
-                                                      value={editingMeal.carbs}
-                                                      onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
-                                                      className="mt-1 text-sm"
-                                                      readOnly={editMode === 'portion'}
-                                                    />
-                                                  </div>
-                                                  <div>
-                                                    <Label htmlFor="fats" className="text-xs">Fette (g)</Label>
-                                                    <Input
-                                                      id="fats"
-                                                      type="number"
-                                                      step="0.1"
-                                                      value={editingMeal.fats}
-                                                      onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
-                                                      className="mt-1 text-sm"
-                                                      readOnly={editMode === 'portion'}
-                                                    />
-                                                  </div>
-                                                </div>
-                                              </div>
-
-                                              {/* Meal Type and Date Selection - Side by Side */}
-                                              <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                  <Label htmlFor="meal_type" className="text-sm font-medium">Mahlzeit-Typ</Label>
-                                                  <Select 
-                                                    value={editingMeal.meal_type} 
-                                                    onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
-                                                  >
-                                                    <SelectTrigger className="mt-2">
-                                                      <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                      <SelectItem value="breakfast">🌅 Frühstück</SelectItem>
-                                                      <SelectItem value="lunch">🌞 Mittagessen</SelectItem>
-                                                      <SelectItem value="dinner">🌙 Abendessen</SelectItem>
-                                                      <SelectItem value="snack">🍎 Snack</SelectItem>
-                                                    </SelectContent>
-                                                  </Select>
-                                                </div>
-
-                                                <div>
-                                                  <Label className="text-sm font-medium">Datum der Mahlzeit</Label>
-                                                  <Popover>
-                                                    <PopoverTrigger asChild>
-                                                      <Button
-                                                        variant="outline"
-                                                        className={cn(
-                                                          "w-full justify-start text-left font-normal mt-2",
-                                                          !editingMealDate && "text-muted-foreground"
-                                                        )}
-                                                      >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {editingMealDate ? format(editingMealDate, "dd.MM.yyyy", { locale: de }) : "Datum"}
-                                                      </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                      <CalendarComponent
-                                                        mode="single"
-                                                        selected={editingMealDate}
-                                                        onSelect={(date) => date && setEditingMealDate(date)}
-                                                        initialFocus
-                                                        className={cn("p-3 pointer-events-auto")}
-                                                      />
-                                                    </PopoverContent>
-                                                  </Popover>
-                                                </div>
-                                              </div>
-
-                                              {/* Action Buttons */}
-                                              <div className="flex gap-3 pt-2">
-                                                <Button type="submit" className="flex-1 bg-green-600 hover:bg-green-700">
-                                                  Speichern
-                                                </Button>
-                                                <Button 
-                                                  type="button" 
-                                                  variant="outline" 
-                                                  onClick={() => {
-                                                    setEditingMeal(null);
-                                                    setEditMode('manual');
-                                                    setPortionAmount(100);
-                                                    setEditingMealDate(new Date());
-                                                  }}
-                                                  className="flex-1"
-                                                >
-                                                  Abbrechen
-                                                </Button>
-                                              </div>
-                                            </form>
-                                          </div>
-                                        )}
-                                      </DialogContent>
-                                    </Dialog>
-                                    
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => duplicateMeal(meal)}
-                                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                                      title="Mahlzeit duplizieren"
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                    
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteMeal(meal.id)}
-                                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-
-                                {/* Meal Images */}
-                                {meal.images && meal.images.length > 0 && (
-                                  <div className="mt-3 pt-3 border-t border-border/50">
-                                    <div className="text-xs text-muted-foreground mb-2">Bilder:</div>
-                                    <div className="flex gap-2 overflow-x-auto">
-                                      {meal.images.map((imageUrl, index) => (
-                                        <img
-                                          key={index}
-                                          src={imageUrl}
-                                          alt={`Mahlzeit ${index + 1}`}
-                                          className="w-20 h-20 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0 hover-scale"
-                                          onClick={() => window.open(imageUrl, '_blank')}
-                                        />
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
-            </div>
-          )}
+          <HistoryTable
+            data={currentData}
+            timeRange={timeRange}
+            dailyGoal={dailyGoal}
+            userGoal={userGoal}
+            loading={loading}
+            onDeleteMeal={deleteMeal}
+            onUpdateMeal={updateMeal}
+            onDuplicateMeal={duplicateMeal}
+          />
         </TabsContent>
         
-        <TabsContent value="chart" className="space-y-4 mt-4">
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Kalorien-Verlauf
-            </h3>
-            <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 200}>
-              <LineChart data={currentData.slice().reverse()}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="displayDate" 
-                  tick={{ fontSize: 12 }}
-                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                  interval={timeRange === 'year' ? 'preserveStartEnd' : 0}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }}
-                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="calories" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-
-          <Card className="p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Makronährstoffe ({timeRange === 'week' ? 'letzte 7 Tage' : timeRange === 'month' ? 'letzte 5 Wochen' : 'letztes Jahr'})
-            </h3>
-            <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 200}>
-              <BarChart data={
-                timeRange === 'week' ? currentData.slice(-7).reverse() :
-                timeRange === 'month' ? currentData.slice().reverse() :
-                currentData.filter((_, index) => index % 15 === 0).slice(-24).reverse()
-              }>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                <XAxis 
-                  dataKey="displayDate" 
-                  tick={{ fontSize: 12 }}
-                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                  interval={0}
-                />
-                <YAxis 
-                  tick={{ fontSize: 12 }}
-                  tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--background))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                />
-                <Bar dataKey="protein" fill="#3b82f6" name="Protein" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="carbs" fill="#f97316" name="Kohlenhydrate" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="fats" fill="#eab308" name="Fette" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
+        <TabsContent value="chart" className="mt-4">
+          <HistoryCharts
+            data={currentData}
+            weightHistory={weightHistory}
+            timeRange={timeRange}
+            loading={loading}
+          />
         </TabsContent>
         
-        <TabsContent value="weight" className="space-y-4 mt-4">
-          {weightLoading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-              <p className="text-muted-foreground">Lade Gewichtsdaten...</p>
-            </div>
-          ) : weightHistory.length > 0 ? (
-            <>
-              <Card className="p-4">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Gewichtsverlauf
-                </h3>
-                <ResponsiveContainer width="100%" height={timeRange === 'year' ? 300 : 250}>
-                  <LineChart data={weightHistory.slice().reverse()}>
-                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                    <XAxis 
-                      dataKey="displayDate" 
-                      tick={{ fontSize: 12 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      interval={timeRange === 'year' ? 'preserveStartEnd' : 0}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      tickLine={{ stroke: 'hsl(var(--muted-foreground))' }}
-                      domain={['dataMin - 2', 'dataMax + 2']}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--background))', 
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                      formatter={(value) => [`${value} kg`, 'Gewicht']}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="weight" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={3}
-                      dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 5 }}
-                      activeDot={{ r: 7, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-
-              {/* Weight Statistics */}
-              <Card className="p-4">
-                <h3 className="font-semibold mb-4">Gewichtsstatistiken</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-primary">
-                      {Math.min(...weightHistory.map(w => w.weight)).toFixed(1)} kg
-                    </div>
-                    <div className="text-xs text-muted-foreground">Minimum</div>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-primary">
-                      {Math.max(...weightHistory.map(w => w.weight)).toFixed(1)} kg
-                    </div>
-                    <div className="text-xs text-muted-foreground">Maximum</div>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3 text-center">
-                    <div className="text-lg font-bold text-primary">
-                      {(weightHistory.reduce((sum, w) => sum + w.weight, 0) / weightHistory.length).toFixed(1)} kg
-                    </div>
-                    <div className="text-xs text-muted-foreground">Durchschnitt</div>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3 text-center">
-                    <div className={`text-lg font-bold ${
-                      weightHistory.length >= 2 
-                        ? (weightHistory[0].weight - weightHistory[weightHistory.length - 1].weight) > 0 
-                          ? 'text-red-600' 
-                          : 'text-green-600'
-                        : 'text-muted-foreground'
-                    }`}>
-                      {weightHistory.length >= 2 
-                        ? `${(weightHistory[0].weight - weightHistory[weightHistory.length - 1].weight) > 0 ? '-' : '+'}${Math.abs(weightHistory[0].weight - weightHistory[weightHistory.length - 1].weight).toFixed(1)} kg`
-                        : '—'
-                      }
-                    </div>
-                    <div className="text-xs text-muted-foreground">Veränderung</div>
-                  </div>
-                </div>
-              </Card>
-            </>
-          ) : (
-            <Card className="p-8 text-center">
-              <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Keine Gewichtsdaten</h3>
-              <p className="text-muted-foreground text-sm mb-4">
-                Du hast noch keine Gewichtseinträge für diesen Zeitraum.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Gehe zu deinem Profil, um Gewichtseinträge hinzuzufügen.
-              </p>
-            </Card>
-          )}
+        <TabsContent value="weight" className="mt-4">
+          <WeightHistory
+            weightHistory={weightHistory}
+            loading={weightLoading}
+            onDataUpdate={refreshDataCallback}
+          />
         </TabsContent>
       </Tabs>
-      </div>
-
-      {/* Floating Meal Input */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent">
-        <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
-          <MealInput 
-            inputText={mealInputHook.inputText}
-            setInputText={mealInputHook.setInputText}
-            onSubmitMeal={mealInputHook.handleSubmitMeal}
-            onPhotoUpload={mealInputHook.handlePhotoUpload}
-            onVoiceRecord={mealInputHook.handleVoiceRecord}
-            isAnalyzing={mealInputHook.isAnalyzing}
-            isRecording={mealInputHook.isRecording}
-            isProcessing={mealInputHook.isProcessing}
-            uploadedImages={mealInputHook.uploadedImages}
-            onRemoveImage={mealInputHook.removeImage}
-          />
-        </div>
-      </div>
-    </>
+    </div>
   );
-
-  // Effect um Daten zu laden wenn timeRange sich ändert
-  useEffect(() => {
-    console.log('useEffect triggered with timeRange:', timeRange);
-    if (user) {
-      loadHistoryData();
-      loadWeightHistory();
-    }
-  }, [timeRange, user]);
-
-  // Effect um Benutzer-Goal zu laden
-  useEffect(() => {
-    if (user) {
-      loadUserGoal();
-    }
-  }, [user]);
 };
 
 export default History;
