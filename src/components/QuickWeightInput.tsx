@@ -76,9 +76,9 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         const notesValue = safeGet(todaysWeight, 'notes', '');
         const photoUrls = safeJsonParse(safeGet(todaysWeight, 'photo_urls', '[]'), []);
         
-        setWeight(weightValue.toString());
-        setBodyFatPercentage(bodyFatValue ? bodyFatValue.toString() : "");
-        setMusclePercentage(muscleValue ? muscleValue.toString() : "");
+        setWeight(String(weightValue));
+        setBodyFatPercentage(bodyFatValue ? String(bodyFatValue) : "");
+        setMusclePercentage(muscleValue ? String(muscleValue) : "");
         setNotes(notesValue || "");
         
         // Show advanced section if there's existing data
