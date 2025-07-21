@@ -3,23 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Brain, 
   Lightbulb, 
   AlertTriangle,
   CheckCircle,
-  Zap,
-  Target,
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  Calendar,
-  Scale
+  Activity
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { calculateWeightPrognosis, type WeightPrognosisData } from "@/utils/weightPrognosis";
 
 interface InsightsAnalysisProps {
   todaysTotals: {
@@ -66,78 +58,13 @@ export const InsightsAnalysis = ({
   onWeightAdded
 }: InsightsAnalysisProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [activeTab, setActiveTab] = useState("insights");
-  const [profileData, setProfileData] = useState<any>(null);
-  const [fullDailyGoals, setFullDailyGoals] = useState<any>(null);
-  const [averageCalorieIntake, setAverageCalorieIntake] = useState<number>(0);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      loadProfileData();
-      loadFullDailyGoals();
-      calculateAverageCalorieIntake();
-    }
-  }, [user]);
-
-  useEffect(() => {
     generateInsights();
   }, [todaysTotals, dailyGoals, averages, historyData, weightHistory]);
-
-  const loadProfileData = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setProfileData(data);
-    } catch (error) {
-      console.error('Error loading profile data:', error);
-    }
-  };
-
-  const loadFullDailyGoals = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('daily_goals')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setFullDailyGoals(data);
-    } catch (error) {
-      console.error('Error loading daily goals:', error);
-    }
-  };
-
-  const calculateAverageCalorieIntake = async () => {
-    try {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const { data, error } = await supabase
-        .from('meals')
-        .select('calories, created_at')
-        .eq('user_id', user?.id)
-        .gte('created_at', sevenDaysAgo.toISOString());
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const totalCalories = data.reduce((sum, meal) => sum + (meal.calories || 0), 0);
-        const averageDaily = totalCalories / 7;
-        setAverageCalorieIntake(averageDaily);
-      }
-    } catch (error) {
-      console.error('Error calculating average calorie intake:', error);
-    }
-  };
 
   const startAiAnalysis = async () => {
     if (!user || !dailyGoals) return;
@@ -350,13 +277,6 @@ export const InsightsAnalysis = ({
 
   if (!dailyGoals) return null;
 
-  // Calculate weight prognosis using the shared utility
-  const weightPrognosis = calculateWeightPrognosis({
-    profileData,
-    dailyGoals: fullDailyGoals,
-    averageCalorieIntake
-  });
-
   return (
     <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">
       <CardHeader>
@@ -370,230 +290,107 @@ export const InsightsAnalysis = ({
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="insights" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Insights
-            </TabsTrigger>
-            <TabsTrigger value="prognosis" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Prognose
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="insights" className="space-y-6">
-            {/* Smart Insights */}
-            <div className="space-y-4">
-              {insights.length > 0 ? (
-                insights.map((insight) => (
-                  <div
-                    key={insight.id}
-                    className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5">
-                        {getInsightIcon(insight.type)}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold">{insight.title}</h4>
-                          {getPriorityBadge(insight.priority)}
-                        </div>
-                        <p className="text-sm opacity-80">{insight.description}</p>
-                        {insight.progress && (
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>Fortschritt</span>
-                              <span>{Math.round(insight.progress)}%</span>
-                            </div>
-                            <Progress value={Math.min(100, insight.progress)} className="h-2" />
-                          </div>
-                        )}
-                        {insight.action && (
-                          <div className="text-xs font-medium opacity-70">
-                            💡 {insight.action}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+      <CardContent className="space-y-6">
+        {/* Smart Insights */}
+        <div className="space-y-4">
+          {insights.length > 0 ? (
+            insights.map((insight) => (
+              <div
+                key={insight.id}
+                className={`p-4 rounded-lg border ${getInsightColor(insight.type)}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    {getInsightIcon(insight.type)}
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Sammle mehr Daten für detaillierte Insights...</p>
-                </div>
-              )}
-            </div>
-
-            {/* AI Analysis Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-primary" />
-                  KI-Analyse deiner Ernährung
-                </h4>
-                <Button 
-                  onClick={startAiAnalysis} 
-                  disabled={isAnalyzing}
-                  size="sm"
-                  className="bg-gradient-to-r from-primary to-primary/80"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                      Analysiere...
-                    </>
-                  ) : (
-                    'Analyse starten'
-                  )}
-                </Button>
-              </div>
-
-              {aiAnalysis ? (
-                <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700/30">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      <span className="font-semibold text-purple-600 dark:text-purple-400">KI Coach Empfehlung</span>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">{insight.title}</h4>
+                      {getPriorityBadge(insight.priority)}
                     </div>
-                    <div className="text-sm leading-relaxed text-purple-700 dark:text-purple-300">
-                      {aiAnalysis.advice || aiAnalysis.analysis || 'Keine spezifische Empfehlung verfügbar.'}
-                    </div>
-                    {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="font-medium text-purple-600 dark:text-purple-400">Empfehlungen:</div>
-                        <ul className="space-y-1">
-                          {aiAnalysis.recommendations.map((rec: string, index: number) => (
-                            <li key={index} className="text-sm flex items-start gap-2 text-purple-700 dark:text-purple-300">
-                              <span className="text-purple-500 mt-1">•</span>
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
+                    <p className="text-sm opacity-80">{insight.description}</p>
+                    {insight.progress && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span>Fortschritt</span>
+                          <span>{Math.round(insight.progress)}%</span>
+                        </div>
+                        <Progress value={Math.min(100, insight.progress)} className="h-2" />
+                      </div>
+                    )}
+                    {insight.action && (
+                      <div className="text-xs font-medium opacity-70">
+                        💡 {insight.action}
                       </div>
                     )}
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Starte eine KI-Analyse für personalisierte Empfehlungen</p>
-                </div>
-              )}
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Sammle mehr Daten für detaillierte Insights...</p>
             </div>
-          </TabsContent>
+          )}
+        </div>
 
-          <TabsContent value="prognosis" className="space-y-6">
-            {/* Enhanced Weight Prognosis */}
-            {weightPrognosis ? (
-              <div className="space-y-4">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  Gewichtsprognose
-                </h4>
-                
-                {weightPrognosis.type === 'warning' ? (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30">
-                      <div className="flex items-start gap-2">
-                        <span className="text-orange-600 text-sm">⚠️</span>
-                        <div className="flex-1">
-                          <div className="font-medium text-orange-700 dark:text-orange-300 text-sm mb-1">
-                            {weightPrognosis.message}
-                          </div>
-                          <div className="text-xs text-orange-600 dark:text-orange-400">
-                            💡 {weightPrognosis.suggestion}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : weightPrognosis.type === 'maintain' ? (
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/30">
-                    <div className="flex items-start gap-2">
-                      <span className="text-green-600 text-sm">✅</span>
-                      <div className="flex-1">
-                        <div className="font-medium text-green-700 dark:text-green-300 text-sm mb-1">
-                          {weightPrognosis.message}
-                        </div>
-                        <div className="text-xs text-green-600 dark:text-green-400">
-                          💡 {weightPrognosis.suggestion}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Prominent Target Date Display */}
-                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700/30 shadow-sm">
-                      <div className="flex items-center justify-center gap-2 mb-3">
-                        <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                          Zielgewicht erreicht am
-                        </div>
-                      </div>
-                      <div className="text-3xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-                        {weightPrognosis.targetDate}
-                      </div>
-                      <div className="text-sm text-blue-600 dark:text-blue-400">
-                        Das sind noch ca. {weightPrognosis.monthsToTarget && weightPrognosis.monthsToTarget > 1 
-                          ? `${weightPrognosis.monthsToTarget} Monate` 
-                          : `${weightPrognosis.daysToTarget ? Math.ceil(weightPrognosis.daysToTarget / 7) : 0} Wochen`
-                        }
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <div className="text-lg font-bold text-primary mb-1">
-                          {weightPrognosis.weightDifference?.toFixed(1)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">kg verbleibend</div>
-                      </div>
-                      <div className="text-center p-3 bg-muted/50 rounded-lg">
-                        <div className={`text-lg font-bold mb-1 ${
-                          weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance < 0 
-                            ? 'text-green-600 dark:text-green-400' 
-                            : 'text-red-500 dark:text-red-400'
-                        }`}>
-                          {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? '+' : ''}{weightPrognosis.dailyCalorieBalance ? Math.round(weightPrognosis.dailyCalorieBalance) : 0}
-                        </div>
-                        <div className={`text-xs ${
-                          weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance < 0 
-                            ? 'text-green-600/80 dark:text-green-400/80' 
-                            : 'text-red-500/80 dark:text-red-400/80'
-                        }`}>
-                          kcal {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
-                        </div>
-                      </div>
-                    </div>
+        {/* AI Analysis Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              KI-Analyse deiner Ernährung
+            </h4>
+            <Button 
+              onClick={startAiAnalysis} 
+              disabled={isAnalyzing}
+              size="sm"
+              className="bg-gradient-to-r from-primary to-primary/80"
+            >
+              {isAnalyzing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                  Analysiere...
+                </>
+              ) : (
+                'Analyse starten'
+              )}
+            </Button>
+          </div>
 
-                    <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-200/50 dark:border-blue-700/20">
-                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                        {weightPrognosis.type === 'loss' ? (
-                          <TrendingDown className="h-4 w-4" />
-                        ) : (
-                          <TrendingUp className="h-4 w-4" />
-                        )}
-                        <span className="text-sm font-medium">
-                          {weightPrognosis.type === 'loss' ? 'Abnehmen' : 'Zunehmen'} - auf Kurs zum Ziel
-                        </span>
-                      </div>
-                    </div>
+          {aiAnalysis ? (
+            <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700/30">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <span className="font-semibold text-purple-600 dark:text-purple-400">KI Coach Empfehlung</span>
+                </div>
+                <div className="text-sm leading-relaxed text-purple-700 dark:text-purple-300">
+                  {aiAnalysis.advice || aiAnalysis.analysis || 'Keine spezifische Empfehlung verfügbar.'}
+                </div>
+                {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="font-medium text-purple-600 dark:text-purple-400">Empfehlungen:</div>
+                    <ul className="space-y-1">
+                      {aiAnalysis.recommendations.map((rec: string, index: number) => (
+                        <li key={index} className="text-sm flex items-start gap-2 text-purple-700 dark:text-purple-300">
+                          <span className="text-purple-500 mt-1">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Scale className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Gewichtsprognose wird berechnet...</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Starte eine KI-Analyse für personalisierte Empfehlungen</p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
