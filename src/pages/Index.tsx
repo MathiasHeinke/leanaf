@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -24,7 +25,8 @@ import { toast } from "sonner";
 
 const Index = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
@@ -43,6 +45,26 @@ const Index = () => {
   const [todaysSleep, setTodaysSleep] = useState<any>(null);
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
+
+  // Check authentication and redirect if needed
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log('No user found, redirecting to auth page');
+      navigate('/auth');
+      return;
+    }
+  }, [user, authLoading, navigate]);
+
+  // If still loading auth or no user, show loading state
+  if (authLoading || !user) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   // Load user data
   useEffect(() => {
