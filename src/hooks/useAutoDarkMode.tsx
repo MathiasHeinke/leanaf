@@ -23,6 +23,7 @@ export const useAutoDarkMode = () => {
   });
   const [userOverride, setUserOverride] = useState<UserOverrideData | null>(null);
   const [debugMode] = useState(true); // Enable debugging
+  const [isToggling, setIsToggling] = useState(false); // Prevent race conditions
 
   // Debug logging helper
   const debugLog = (message: string, data?: any) => {
@@ -31,7 +32,8 @@ export const useAutoDarkMode = () => {
         theme,
         resolvedTheme,
         systemTheme,
-        htmlClass: document.documentElement.className
+        htmlClass: document.documentElement.className,
+        isToggling
       });
     }
   };
@@ -109,12 +111,19 @@ export const useAutoDarkMode = () => {
     return withinHours;
   };
 
-  // Auto-apply theme based on time with debouncing
+  // Auto-apply theme based on time with race condition prevention
   useEffect(() => {
+    // Skip auto-theme during manual toggling
+    if (isToggling) {
+      debugLog('Skipping auto-theme during manual toggle');
+      return;
+    }
+
     if (!autoSettings.enabled || userOverride) {
       debugLog('Auto-theme disabled:', { 
         autoEnabled: autoSettings.enabled, 
-        hasUserOverride: !!userOverride 
+        hasUserOverride: !!userOverride,
+        isToggling 
       });
       return;
     }
@@ -127,24 +136,32 @@ export const useAutoDarkMode = () => {
         debugLog('Applying auto theme change:', {
           from: theme,
           to: targetTheme,
-          reason: shouldBeDark ? 'within dark hours' : 'outside dark hours'
+          reason: shouldBeDark ? 'within dark hours' : 'outside dark hours',
+          isToggling
         });
         setTheme(targetTheme);
       }
     };
 
-    // Apply immediately
-    applyAutoTheme();
-
-    // Set up interval to check every minute with debouncing
-    const interval = setInterval(() => {
-      if (!userOverride && autoSettings.enabled) {
+    // Apply immediately with debouncing
+    const timeoutId = setTimeout(() => {
+      if (!isToggling && !userOverride && autoSettings.enabled) {
         applyAutoTheme();
       }
-    }, 60000); // Check every minute
+    }, 100); // Small delay to allow state updates
 
-    return () => clearInterval(interval);
-  }, [autoSettings, theme, setTheme, userOverride]);
+    // Set up interval to check every minute
+    const interval = setInterval(() => {
+      if (!isToggling && !userOverride && autoSettings.enabled) {
+        applyAutoTheme();
+      }
+    }, 60000);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(interval);
+    };
+  }, [autoSettings.enabled, theme, setTheme, userOverride, isToggling]); // Added isToggling dependency
 
   // Debug effect to track theme changes
   useEffect(() => {
@@ -152,16 +169,17 @@ export const useAutoDarkMode = () => {
       theme,
       resolvedTheme,
       userOverride: !!userOverride,
-      autoEnabled: autoSettings.enabled
+      autoEnabled: autoSettings.enabled,
+      isToggling
     });
-  }, [theme, resolvedTheme, userOverride, autoSettings.enabled]);
+  }, [theme, resolvedTheme, userOverride, autoSettings.enabled, isToggling]);
 
-  // Handle manual theme toggle
-  const toggleTheme = () => {
+  // Handle manual theme toggle with race condition prevention
+  const toggleTheme = async () => {
     const currentTheme = resolvedTheme || theme || 'light';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
-    debugLog('Manual theme toggle BEFORE:', {
+    debugLog('Manual theme toggle START:', {
       theme,
       resolvedTheme,
       currentTheme,
@@ -169,27 +187,47 @@ export const useAutoDarkMode = () => {
       previousOverride: userOverride
     });
     
-    // Create user override FIRST
-    const now = Date.now();
-    const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours
-    const overrideData: UserOverrideData = {
-      theme: newTheme,
-      timestamp: now,
-      expiresAt
-    };
+    // Set toggle flag to prevent race conditions
+    setIsToggling(true);
     
-    // Set user override immediately to prevent auto-theme interference
-    setUserOverride(overrideData);
-    localStorage.setItem('darkModeUserOverride', JSON.stringify(overrideData));
-    
-    // Then set the theme
-    setTheme(newTheme);
-    
-    debugLog('Manual theme toggle AFTER:', {
-      setTheme: newTheme,
-      overrideSet: true,
-      expiresIn: '24 hours'
-    });
+    try {
+      // Create user override FIRST with immediate state update
+      const now = Date.now();
+      const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours
+      const overrideData: UserOverrideData = {
+        theme: newTheme,
+        timestamp: now,
+        expiresAt
+      };
+      
+      // Set user override immediately in both state and localStorage
+      setUserOverride(overrideData);
+      localStorage.setItem('darkModeUserOverride', JSON.stringify(overrideData));
+      
+      debugLog('User override set, applying theme:', {
+        overrideData,
+        aboutToSetTheme: newTheme
+      });
+      
+      // Small delay to ensure state is synchronized
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Then set the theme
+      setTheme(newTheme);
+      
+      debugLog('Manual theme toggle COMPLETE:', {
+        setTheme: newTheme,
+        overrideSet: true,
+        expiresIn: '24 hours'
+      });
+      
+    } finally {
+      // Reset toggle flag after a short delay to ensure theme is applied
+      setTimeout(() => {
+        setIsToggling(false);
+        debugLog('Toggle flag reset, auto-theme can resume');
+      }, 500);
+    }
   };
 
   // Clear user override
@@ -256,6 +294,7 @@ export const useAutoDarkMode = () => {
     clearUserOverride,
     getThemeStatus,
     getThemeIcon,
-    debugLog // Export for external debugging
+    debugLog, // Export for external debugging
+    isToggling // Export for debugging
   };
 };
