@@ -60,11 +60,11 @@ export const PointsHeader = () => {
               backgroundColor: `${displayLevelColor}15`
             }}
           >
-            {/* Progress fill background based on progress */}
+            {/* Gold fill background based on progress */}
             <div 
               className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
               style={{
-                background: `conic-gradient(from 0deg, hsl(var(--primary)) ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
+                background: `conic-gradient(from 0deg, #FFD700 ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
                 opacity: levelProgress > 0 ? 0.6 : 0
               }}
             />
@@ -74,9 +74,13 @@ export const PointsHeader = () => {
               <div className="absolute inset-0 rounded-full animate-ping bg-gradient-to-r from-primary to-primary-glow opacity-75" />
             )}
             
-            {/* Level Icon with theme-aware styling */}
+            {/* Gold Star Icon */}
             <div 
-              className={`relative z-10 font-bold transition-all duration-300 text-primary drop-shadow-sm ${isLevelUp ? 'animate-pulse' : ''}`}
+              className={`relative z-10 font-bold transition-all duration-300 ${isLevelUp ? 'animate-pulse' : ''}`}
+              style={{ 
+                color: '#FFD700',
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))'
+              }}
             >
               {getLevelIcon(userPoints.level_name)}
             </div>
