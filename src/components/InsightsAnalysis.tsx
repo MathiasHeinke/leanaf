@@ -335,62 +335,6 @@ export const InsightsAnalysis = ({
           )}
         </div>
 
-        {/* AI Analysis Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold flex items-center gap-2">
-              <Brain className="h-5 w-5 text-primary" />
-              KI-Analyse deiner Ernährung
-            </h4>
-            <Button 
-              onClick={startAiAnalysis} 
-              disabled={isAnalyzing}
-              size="sm"
-              className="bg-gradient-to-r from-primary to-primary/80"
-            >
-              {isAnalyzing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                  Analysiere...
-                </>
-              ) : (
-                'Analyse starten'
-              )}
-            </Button>
-          </div>
-
-          {aiAnalysis ? (
-            <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700/30">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  <span className="font-semibold text-purple-600 dark:text-purple-400">KI Coach Empfehlung</span>
-                </div>
-                <div className="text-sm leading-relaxed text-purple-700 dark:text-purple-300">
-                  {aiAnalysis.advice || aiAnalysis.analysis || 'Keine spezifische Empfehlung verfügbar.'}
-                </div>
-                {aiAnalysis.recommendations && aiAnalysis.recommendations.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="font-medium text-purple-600 dark:text-purple-400">Empfehlungen:</div>
-                    <ul className="space-y-1">
-                      {aiAnalysis.recommendations.map((rec: string, index: number) => (
-                        <li key={index} className="text-sm flex items-start gap-2 text-purple-700 dark:text-purple-300">
-                          <span className="text-purple-500 mt-1">•</span>
-                          <span>{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Starte eine KI-Analyse für personalisierte Empfehlungen</p>
-            </div>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

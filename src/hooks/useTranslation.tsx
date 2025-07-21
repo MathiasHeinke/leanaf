@@ -238,8 +238,8 @@ const translations = {
     'header.account': 'Konto',
     'header.subscription': 'Abonnement',
     'header.logout': 'Abmelden',
-    'header.main': 'Basis',
-    'header.coach': 'Coach',
+    'header.main': 'Base',
+    'header.coach': 'Analyse',
     'header.history': 'Verlauf',
     'header.profile': 'Profil',
     
@@ -734,8 +734,8 @@ const translations = {
     'header.account': 'Account',
     'header.subscription': 'Subscription',
     'header.logout': 'Logout',
-    'header.main': 'Main',
-    'header.coach': 'Coach',
+    'header.main': 'Base',
+    'header.coach': 'Analyse',
     'header.history': 'History',
     'header.profile': 'Profile',
     
