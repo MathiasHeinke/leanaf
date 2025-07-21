@@ -74,11 +74,11 @@ export const PointsHeader = () => {
               <div className="absolute inset-0 rounded-full animate-ping bg-gradient-to-r from-yellow-400 to-orange-400 opacity-75" />
             )}
             
-            {/* Icon with enhanced visibility */}
+            {/* Gold Star Icon */}
             <div 
-              className={`relative z-10 font-bold transition-all duration-300 ${isLevelUp ? 'animate-pulse text-yellow-300' : ''}`}
+              className={`relative z-10 font-bold transition-all duration-300 ${isLevelUp ? 'animate-pulse' : ''}`}
               style={{ 
-                color: displayLevelColor,
+                color: '#FFD700',
                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))'
               }}
             >
