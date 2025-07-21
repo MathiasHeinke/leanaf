@@ -29,6 +29,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
   } = useSubscription();
 
   const [subscribing, setSubscribing] = useState(false);
+  const [isYearly, setIsYearly] = useState(false);
 
   const handleBack = () => {
     if (onClose) {
@@ -75,10 +76,11 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
 
   const plans = [
     {
-      id: 'basic',
+      id: isYearly ? 'basic-yearly' : 'basic',
       name: 'Basic',
-      price: '7,99€',
-      period: '/Monat',
+      price: isYearly ? '47,94€' : '7,99€',
+      period: isYearly ? '/Jahr' : '/Monat',
+      originalYearlyPrice: '95,88€',
       icon: <Star className="h-6 w-6 text-blue-600" />,
       color: 'bg-blue-50 border-blue-200 dark:bg-blue-950/20',
       features: [
@@ -90,10 +92,11 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
       ]
     },
     {
-      id: 'premium',
+      id: isYearly ? 'premium-yearly' : 'premium',
       name: 'Premium',
-      price: '19,99€',
-      period: '/Monat',
+      price: isYearly ? '119,94€' : '19,99€',
+      period: isYearly ? '/Jahr' : '/Monat',
+      originalYearlyPrice: '239,88€',
       icon: <Crown className="h-6 w-6 text-yellow-600" />,
       color: 'bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20',
       popular: true,
@@ -185,9 +188,38 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
           {/* Pricing Plans */}
           <div className="space-y-4">
             <h2 className="text-2xl font-bold text-center">3 Tage kostenlos testen</h2>
-            <p className="text-center text-muted-foreground mb-8">
+            <p className="text-center text-muted-foreground mb-4">
               Teste alle Features 3 Tage kostenlos • Dann wähle deinen Plan • Jederzeit kündbar
             </p>
+            
+            {/* Billing Toggle */}
+            <div className="flex justify-center mb-8">
+              <div className="bg-muted p-1 rounded-lg flex items-center">
+                <button
+                  onClick={() => setIsYearly(false)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    !isYearly
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Monatlich
+                </button>
+                <button
+                  onClick={() => setIsYearly(true)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                    isYearly
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Jährlich
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
+                    -50%
+                  </span>
+                </button>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
               {plans.map((plan) => {
@@ -220,10 +252,23 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                       <div className="flex justify-center">{plan.icon}</div>
                       <div>
                         <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                        <div className="flex items-baseline justify-center space-x-1">
-                          <span className="text-3xl font-bold">{plan.price}</span>
-                          <span className="text-sm text-muted-foreground">{plan.period}</span>
-                        </div>
+                         <div className="flex flex-col items-center space-y-2">
+                           {isYearly && (
+                             <div className="text-sm text-muted-foreground">
+                               <span className="line-through">{plan.originalYearlyPrice}</span>
+                               <span className="ml-2 text-green-600 font-semibold">50% Rabatt</span>
+                             </div>
+                           )}
+                           <div className="flex items-baseline justify-center space-x-1">
+                             <span className="text-3xl font-bold">{plan.price}</span>
+                             <span className="text-sm text-muted-foreground">{plan.period}</span>
+                           </div>
+                           {isYearly && (
+                             <div className="text-xs text-green-600 font-medium">
+                               Du sparst {plan.name === 'Basic' ? '47,94€' : '119,94€'} pro Jahr
+                             </div>
+                           )}
+                         </div>
                       </div>
                     </CardHeader>
                     
