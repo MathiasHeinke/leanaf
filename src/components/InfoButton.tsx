@@ -55,7 +55,7 @@ export const InfoButton = ({
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(true)}
-        className={`h-6 w-6 p-0 text-muted-foreground hover:text-primary ${className}`}
+        className={`h-6 w-6 p-0 text-muted-foreground hover:text-primary relative z-10 ${className}`}
         title={`Info über ${title}`}
       >
         <Info className="h-3 w-3" />
@@ -64,8 +64,8 @@ export const InfoButton = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in relative z-[10000]">
         <CardContent className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">

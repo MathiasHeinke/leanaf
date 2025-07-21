@@ -24,17 +24,33 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
-  // Check if weight already exists for today
-  const hasWeightToday = todaysWeight && todaysWeight.weight;
+  // Verbesserte Logik für hasWeightToday - prüft auf gültigen Gewichtswert
+  const hasWeightToday = todaysWeight && 
+    todaysWeight.weight !== null && 
+    todaysWeight.weight !== undefined && 
+    todaysWeight.weight > 0;
 
-  console.log('QuickWeightInput - todaysWeight:', todaysWeight);
-  console.log('QuickWeightInput - hasWeightToday:', hasWeightToday);
+  console.log('QuickWeightInput - Debug Info:');
+  console.log('- todaysWeight object:', todaysWeight);
+  console.log('- todaysWeight.weight value:', todaysWeight?.weight);
+  console.log('- hasWeightToday result:', hasWeightToday);
+  console.log('- isEditing:', isEditing);
 
   useEffect(() => {
     if (hasWeightToday && !isEditing) {
       setWeight(todaysWeight.weight.toString());
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toLocaleDateString('de-DE', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long' 
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +68,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
       if (hasWeightToday) {
         // Update existing weight - no points awarded
+        console.log('Updating existing weight entry with ID:', todaysWeight.id);
         const { error: historyError } = await supabase
           .from('weight_history')
           .update(weightData)
@@ -62,6 +79,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         console.log('Weight updated successfully');
       } else {
         // Create new weight entry using UPSERT with proper constraint name
+        console.log('Creating new weight entry');
         const { error: historyError } = await supabase
           .from('weight_history')
           .upsert(weightData, { 
@@ -109,7 +127,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           <div className="flex-1">
             <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eingetragen! ⚖️</h3>
             <p className="text-sm text-green-600 dark:text-green-400">
-              {todaysWeight.weight}kg erfasst
+              {todaysWeight.weight}kg erfasst am {new Date().toLocaleDateString('de-DE')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -136,6 +154,9 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         
         <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
           <p className="text-xs text-green-700 dark:text-green-300">
+            <strong>Nächste Eintragung:</strong> {getTomorrowDate()}
+          </p>
+          <p className="text-xs text-green-700 dark:text-green-300 mt-1">
             <strong>Tipp:</strong> Tägliches Wiegen zur gleichen Zeit hilft, Trends zu erkennen!
           </p>
         </div>
@@ -207,6 +228,14 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           </Button>
         )}
       </div>
+
+      {!hasWeightToday && (
+        <div className="mt-3 bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
+          <p className="text-xs text-green-700 dark:text-green-300">
+            <strong>Heute:</strong> Erstes Gewicht eintragen für Tracking-Start
+          </p>
+        </div>
+      )}
     </div>
   );
 };

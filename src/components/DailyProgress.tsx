@@ -157,7 +157,7 @@ export const DailyProgress = ({
             </div>
             <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
           </div>
-          <div className="flex items-center gap-2 relative z-10">
+          <div className="flex items-center gap-2">
             <InfoButton
               title="Kalorien & Makro Tracking"
               description="Präzises Tracking deiner Kalorien und Makronährstoffe ist der Schlüssel für nachhaltigen Erfolg. Jeder Makronährstoff hat eine spezielle Funktion für deinen Körper."
