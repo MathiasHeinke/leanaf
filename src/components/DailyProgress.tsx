@@ -235,23 +235,6 @@ export const DailyProgress = ({
               )}
             </div>
             
-            {/* Enhanced motivational message with macro warnings and personalized quotes */}
-            <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${overallStatus.bgColor} ${overallStatus.color}`}>
-              <span className="text-base">{overallStatus.icon}</span>
-              <div className="text-center leading-relaxed">
-                <div>{overallStatus.message}</div>
-                {overallStatus.hasMacroWarnings && language === 'de' && (
-                  <div className="text-xs mt-1 opacity-80">
-                    Morgen auf ausgewogene Balance achten!
-                  </div>
-                )}
-                {overallStatus.hasMacroWarnings && language === 'en' && (
-                  <div className="text-xs mt-1 opacity-80">
-                    Focus on balanced nutrition tomorrow!
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Personalized motivational quote */}
             <div className="mt-4 px-4">
