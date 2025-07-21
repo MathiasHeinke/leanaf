@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Dumbbell, Plus, Edit, CheckCircle, Footprints } from "lucide-react";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -55,8 +55,8 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
       const workoutData = {
         user_id: user.id,
         workout_type: workoutType,
-        duration_minutes: duration[0],
-        intensity: intensity[0],
+        duration_minutes: workoutType === 'pause' ? 0 : duration[0],
+        intensity: workoutType === 'pause' ? 0 : intensity[0],
         distance_km: distanceKm ? parseFloat(distanceKm) : null,
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
@@ -214,33 +214,60 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           </Select>
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
-            Dauer: {duration[0]} Minuten
-          </label>
-          <Slider
-            value={duration}
-            onValueChange={setDuration}
-            max={180}
-            min={5}
-            step={5}
-            className="w-full"
-          />
-        </div>
+        {workoutType === 'pause' ? (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+                <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200">Perfekte Entscheidung! 🌙</h4>
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  Regeneration ist genauso wichtig wie Training
+                </p>
+              </div>
+            </div>
+            <div className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="mb-2"><strong>Warum Ruhetage wichtig sind:</strong></p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li>Muskeln wachsen während der Ruhephase</li>
+                <li>Verletzungsrisiko wird reduziert</li>
+                <li>Motivation und Energie werden wieder aufgeladen</li>
+                <li>Hormonhaushalt regeneriert sich optimal</li>
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
+                Dauer: {duration[0]} Minuten
+              </label>
+              <Slider
+                value={duration}
+                onValueChange={setDuration}
+                max={180}
+                min={5}
+                step={5}
+                className="w-full"
+              />
+            </div>
 
-        <div>
-          <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
-            Intensität: {intensity[0]}/10
-          </label>
-          <Slider
-            value={intensity}
-            onValueChange={setIntensity}
-            max={10}
-            min={1}
-            step={1}
-            className="w-full"
-          />
-        </div>
+            <div>
+              <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
+                Intensität: {intensity[0]}/10
+              </label>
+              <Slider
+                value={intensity}
+                onValueChange={setIntensity}
+                max={10}
+                min={1}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          </>
+        )}
 
         {/* Lauf/Spazier Tracking Section */}
         <div className="border-t border-green-200 dark:border-green-800 pt-4">
