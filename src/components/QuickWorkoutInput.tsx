@@ -61,7 +61,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
         did_workout: true,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]
       };
 
       if (hasWorkoutToday) {
