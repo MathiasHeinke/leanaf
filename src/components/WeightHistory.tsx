@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -190,33 +190,46 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
           {/* Latest Weight Card */}
           <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <div className="text-2xl font-bold text-primary">{weightHistory[0].weight} kg</div>
                 <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
                 <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
               </div>
               
-              {trend && (
-                <div className="text-right">
-                  <div className="flex items-center gap-1 justify-end">
-                    {trend.direction === 'up' ? (
-                      <TrendingUp className="h-4 w-4 text-red-500" />
-                    ) : trend.direction === 'down' ? (
-                      <TrendingDown className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Minus className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className={cn(
-                      "text-sm font-medium",
-                      trend.direction === 'up' ? "text-red-500" :
-                      trend.direction === 'down' ? "text-green-500" : "text-muted-foreground"
-                    )}>
-                      {trend.direction === 'stable' ? '±0.0' : `${trend.direction === 'up' ? '+' : '-'}${trend.amount.toFixed(1)}`} kg
-                    </span>
+              <div className="flex items-center gap-3">
+                {trend && (
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      {trend.direction === 'up' ? (
+                        <TrendingUp className="h-4 w-4 text-red-500" />
+                      ) : trend.direction === 'down' ? (
+                        <TrendingDown className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Minus className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className={cn(
+                        "text-sm font-medium",
+                        trend.direction === 'up' ? "text-red-500" :
+                        trend.direction === 'down' ? "text-green-500" : "text-muted-foreground"
+                      )}>
+                        {trend.direction === 'stable' ? '±0.0' : `${trend.direction === 'up' ? '+' : '-'}${trend.amount.toFixed(1)}`} kg
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">vs. letzter Eintrag</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">vs. letzter Eintrag</div>
-                </div>
-              )}
+                )}
+                
+                {weightHistory[0].id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteWeightEntry(weightHistory[0].id!)}
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -224,7 +237,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
           {weightHistory.map((entry, index) => (
             <Card key={`${entry.date}-${index}`} className="p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1">
                   <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <Scale className="h-4 w-4 text-primary" />
                   </div>
@@ -234,35 +247,48 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                   </div>
                 </div>
                 
-                {/* Show trend for non-latest entries */}
-                {index < weightHistory.length - 1 && (
-                  <div className="text-right">
-                    {(() => {
-                      const current = entry.weight;
-                      const previous = weightHistory[index + 1].weight;
-                      const diff = current - previous;
-                      
-                      return (
-                        <div className="flex items-center gap-1">
-                          {diff > 0 ? (
-                            <TrendingUp className="h-3 w-3 text-red-500" />
-                          ) : diff < 0 ? (
-                            <TrendingDown className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <Minus className="h-3 w-3 text-muted-foreground" />
-                          )}
-                          <span className={cn(
-                            "text-xs",
-                            diff > 0 ? "text-red-500" :
-                            diff < 0 ? "text-green-500" : "text-muted-foreground"
-                          )}>
-                            {diff === 0 ? '±0.0' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`} kg
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
+                <div className="flex items-center gap-3">
+                  {/* Show trend for non-latest entries */}
+                  {index < weightHistory.length - 1 && (
+                    <div className="text-right">
+                      {(() => {
+                        const current = entry.weight;
+                        const previous = weightHistory[index + 1].weight;
+                        const diff = current - previous;
+                        
+                        return (
+                          <div className="flex items-center gap-1">
+                            {diff > 0 ? (
+                              <TrendingUp className="h-3 w-3 text-red-500" />
+                            ) : diff < 0 ? (
+                              <TrendingDown className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Minus className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            <span className={cn(
+                              "text-xs",
+                              diff > 0 ? "text-red-500" :
+                              diff < 0 ? "text-green-500" : "text-muted-foreground"
+                            )}>
+                              {diff === 0 ? '±0.0' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`} kg
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  
+                  {entry.id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteWeightEntry(entry.id!)}
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}
