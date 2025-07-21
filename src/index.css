@@ -93,10 +93,6 @@
     --transition-all: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Onboarding */
-    --onboarding-highlight: 0 0 0 4px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.2);
-    --onboarding-highlight-important: 0 0 0 3px hsl(var(--primary) / 0.4), 0 0 30px hsl(var(--primary) / 0.3);
-    --onboarding-highlight-action: 0 0 0 4px hsl(var(--primary-glow) / 0.5), 0 0 25px hsl(var(--primary-glow) / 0.4);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -218,57 +214,6 @@
     transition: var(--transition-smooth);
   }
 
-  /* Onboarding Highlights */
-  .onboarding-highlight {
-    position: relative;
-    z-index: 9998;
-    box-shadow: var(--onboarding-highlight);
-    border-radius: 12px;
-    animation: onboarding-pulse 2s infinite;
-  }
-
-  .onboarding-highlight-important {
-    box-shadow: var(--onboarding-highlight-important);
-    animation: onboarding-pulse-important 1.5s infinite;
-  }
-
-  .onboarding-highlight-action {
-    box-shadow: var(--onboarding-highlight-action);
-    animation: onboarding-pulse-action 1s infinite;
-  }
-
-  @keyframes onboarding-pulse {
-    0%, 100% { 
-      box-shadow: var(--onboarding-highlight);
-      transform: scale(1);
-    }
-    50% { 
-      box-shadow: 0 0 0 6px hsl(var(--primary) / 0.2), 0 0 25px hsl(var(--primary) / 0.1);
-      transform: scale(1.02);
-    }
-  }
-
-  @keyframes onboarding-pulse-important {
-    0%, 100% { 
-      box-shadow: var(--onboarding-highlight-important);
-      transform: scale(1);
-    }
-    50% { 
-      box-shadow: 0 0 0 5px hsl(var(--primary) / 0.3), 0 0 35px hsl(var(--primary) / 0.2);
-      transform: scale(1.03);
-    }
-  }
-
-  @keyframes onboarding-pulse-action {
-    0%, 100% { 
-      box-shadow: var(--onboarding-highlight-action);
-      transform: scale(1);
-    }
-    50% { 
-      box-shadow: 0 0 0 6px hsl(var(--primary-glow) / 0.4), 0 0 30px hsl(var(--primary-glow) / 0.3);
-      transform: scale(1.04);
-    }
-  }
 }
 
 /* Modern Typography */

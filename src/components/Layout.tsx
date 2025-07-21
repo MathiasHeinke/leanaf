@@ -1,7 +1,7 @@
 import { GlobalHeader, FloatingBottomNav } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
-import { OnboardingOverlay } from "@/components/OnboardingOverlay";
+
 import { PointsHeader } from "@/components/PointsHeader";
 import { DarkModeDebugPanel } from "@/components/DarkModeDebugPanel";
 
@@ -36,8 +36,6 @@ export const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
       
-      {/* Onboarding Overlay */}
-      <OnboardingOverlay />
       
       {/* Floating Bottom Navigation */}
       <FloatingBottomNav />

@@ -35,40 +35,27 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
-  // Safe weight validation with detailed logging
+  // Safe weight validation
   const hasWeightToday = (() => {
     try {
-      console.log('QuickWeightInput - Checking hasWeightToday:');
-      console.log('- todaysWeight:', todaysWeight);
-      
       if (!todaysWeight) {
-        console.log('- No todaysWeight object');
         return false;
       }
       
       const weightValue = safeGet(todaysWeight, 'weight', null);
-      console.log('- Weight value:', weightValue, typeof weightValue);
       
-      const hasValidWeight = weightValue !== null && 
+      return weightValue !== null && 
         weightValue !== undefined && 
         !isNaN(Number(weightValue)) && 
         Number(weightValue) > 0;
-        
-      console.log('- Has valid weight:', hasValidWeight);
-      return hasValidWeight;
     } catch (error) {
-      console.error('Error checking hasWeightToday:', error);
       return false;
     }
   })();
 
-  console.log('QuickWeightInput - Final hasWeightToday:', hasWeightToday);
-
   useEffect(() => {
     try {
       if (hasWeightToday && !isEditing && todaysWeight) {
-        console.log('Setting form values from todaysWeight:', todaysWeight);
-        
         // Safe value extraction with fallbacks
         const weightValue = safeGet(todaysWeight, 'weight', '');
         const bodyFatValue = safeGet(todaysWeight, 'body_fat_percentage', '');
@@ -86,8 +73,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         if (hasAdvancedData) {
           setShowAdvanced(true);
         }
-        
-        console.log('Form values set successfully');
       }
     } catch (error) {
       console.error('Error in useEffect for form values:', error);
@@ -188,7 +173,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         return;
       }
 
-      console.log('Starting weight submission process...');
+      
 
       // Handle photo uploads first if there are selected files
       let photoUrls: string[] = [];
@@ -228,7 +213,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
       if (hasWeightToday && todaysWeight?.id && isEditing) {
         // Update existing weight entry
-        console.log('Updating existing weight entry with ID:', todaysWeight.id);
         const { data, error: historyError } = await supabase
           .from('weight_history')
           .update(weightData)
@@ -242,11 +226,9 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         }
         
         resultData = data;
-        console.log('Weight updated successfully:', data);
         toast.success('Gewicht aktualisiert!');
       } else if (!hasWeightToday) {
         // Create new weight entry - but first double-check no entry exists
-        console.log('Creating new weight entry');
         
         const { data: existingData, error: checkError } = await supabase
           .from('weight_history')
@@ -262,7 +244,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
         if (existingData) {
           // Found existing entry - this shouldn't happen but handle it gracefully
-          console.log('Found unexpected existing entry, updating instead:', existingData.id);
           const { data, error: updateError } = await supabase
             .from('weight_history')
             .update(weightData)
@@ -276,7 +257,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           }
           
           resultData = data;
-          console.log('Existing entry updated:', data);
           toast.success('Gewicht aktualisiert!');
         } else {
           // Safe to insert new entry
@@ -297,7 +277,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           }
           
           resultData = data;
-          console.log('New weight entry created:', data);
 
           // Only award points and update streak for today's entries
           if (isDateToday(today)) {
@@ -315,7 +294,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
       }
 
       // Update profile with current weight and set start_weight if first entry
-      console.log('Updating profile weight...');
       
       // Check if this is the first weight entry (no start_weight set)
       const { data: profileData, error: profileCheckError } = await supabase
@@ -333,7 +311,6 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
       const updateData: any = { weight: weightValue };
       if (!profileData.start_weight) {
         updateData.start_weight = weightValue;
-        console.log('Setting start_weight to:', weightValue);
       }
 
       const { error: profileError } = await supabase
@@ -346,14 +323,12 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         throw profileError;
       }
 
-      console.log('Profile weight updated successfully');
       setIsEditing(false);
       setSelectedFiles([]);
       setBodyFatPercentage("");
       setMusclePercentage("");
       setNotes("");
       setShowAdvanced(false);
-      console.log('Calling onWeightAdded callback with data:', resultData);
       onWeightAdded?.(resultData);
     } catch (error) {
       console.error('Error saving weight:', error);
