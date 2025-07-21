@@ -29,8 +29,8 @@ const translations = {
     'nav.logout': 'Abmelden',
     
     // Main App
-    'app.title': 'KaloAI',
-    'app.welcome': 'Willkommen bei kaloAI',
+    'app.title': 'LeanAI',
+    'app.welcome': 'Willkommen bei LeanAI',
     'app.dailyProgress': 'Täglicher Fortschritt',
     'app.calories': 'Kalorien',
     'app.protein': 'Protein',
@@ -43,7 +43,7 @@ const translations = {
     'app.mealAdded': 'Mahlzeit erfolgreich hinzugefügt!',
     'app.error': 'Fehler beim Hinzufügen der Mahlzeit',
     'app.refresh': 'Aktualisieren',
-    'app.letsGetLean': 'let\'s get lean',
+    'app.letsGetLean': 'get lean as fcuk',
     'app.menu': 'Menü',
     
     // Input modes
