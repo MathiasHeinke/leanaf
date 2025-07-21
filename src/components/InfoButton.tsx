@@ -49,6 +49,23 @@ export const InfoButton = ({
     };
   }, [isOpen]);
 
+  // Handle ESC key
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
   if (!isOpen) {
     return (
       <Button
@@ -64,8 +81,8 @@ export const InfoButton = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-white/50 backdrop-blur-sm">
-      <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in relative z-[10000]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/90 backdrop-blur-md animate-in fade-in-0">
+      <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in relative z-50">
         <CardContent className="p-4 space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
