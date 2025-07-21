@@ -41,6 +41,14 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
     setIsSubmitting(true);
     try {
+      console.log('🔍 Sleep submission started', { 
+        user: user.id, 
+        sleepHours: sleepHours[0], 
+        sleepQuality: sleepQuality[0],
+        hasSleepToday,
+        todaysSleepId: todaysSleep?.id
+      });
+
       const sleepData = {
         user_id: user.id,
         sleep_hours: sleepHours[0],
@@ -48,24 +56,33 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         date: new Date().toISOString().split('T')[0]
       };
 
-      if (hasSleepToday) {
+      console.log('💾 Sleep data to save:', sleepData);
+
+      if (hasSleepToday && todaysSleep?.id) {
         // Update existing sleep entry - no points awarded
-        const { error } = await supabase
+        console.log('🔄 Updating existing sleep entry with ID:', todaysSleep.id);
+        const { error, data } = await supabase
           .from('sleep_tracking')
-          .update(sleepData)
+          .update({
+            sleep_hours: sleepData.sleep_hours,
+            sleep_quality: sleepData.sleep_quality,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', todaysSleep.id);
 
+        console.log('✅ Update result:', { data, error });
         if (error) throw error;
         toast.success('Schlaf aktualisiert!');
       } else {
-        // Create new sleep entry using UPSERT to prevent duplicates
-        const { error } = await supabase
+        // Create new sleep entry using UPSERT with correct constraint reference
+        console.log('➕ Creating new sleep entry');
+        const { error, data } = await supabase
           .from('sleep_tracking')
           .upsert(sleepData, { 
-            onConflict: 'user_id,date',
-            ignoreDuplicates: false 
+            onConflict: 'user_id, date'  // Fixed: proper column reference
           });
 
+        console.log('✅ Insert result:', { data, error });
         if (error) throw error;
 
         // Award points for sleep tracking
@@ -78,8 +95,14 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
       setIsEditing(false);
       onSleepAdded?.();
     } catch (error) {
-      console.error('Error saving sleep:', error);
-      toast.error('Fehler beim Speichern der Schlafdaten');
+      console.error('❌ Error saving sleep:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      toast.error('Fehler beim Speichern der Schlafdaten: ' + (error.message || 'Unbekannter Fehler'));
     } finally {
       setIsSubmitting(false);
     }
