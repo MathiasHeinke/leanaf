@@ -11,7 +11,11 @@ import {
   CheckCircle,
   Zap,
   Target,
-  Activity
+  Activity,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Scale
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -373,9 +377,9 @@ export const InsightsAnalysis = ({
               <Zap className="h-4 w-4" />
               Insights
             </TabsTrigger>
-            <TabsTrigger value="goals" className="flex items-center gap-2">
+            <TabsTrigger value="prognosis" className="flex items-center gap-2">
               <Target className="h-4 w-4" />
-              AI Analyse
+              Prognose
             </TabsTrigger>
           </TabsList>
 
@@ -423,9 +427,7 @@ export const InsightsAnalysis = ({
                 </div>
               )}
             </div>
-          </TabsContent>
 
-          <TabsContent value="goals" className="space-y-6">
             {/* AI Analysis Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -482,63 +484,112 @@ export const InsightsAnalysis = ({
                 </div>
               )}
             </div>
+          </TabsContent>
 
-            {/* Weight Prognosis */}
-            {weightPrognosis && (
+          <TabsContent value="prognosis" className="space-y-6">
+            {/* Enhanced Weight Prognosis */}
+            {weightPrognosis ? (
               <div className="space-y-4">
                 <h4 className="font-semibold flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" />
                   Gewichtsprognose
                 </h4>
-                <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200 dark:border-emerald-700/30">
-                  {weightPrognosis.type === 'warning' ? (
-                    <div className="space-y-3">
-                      <div className="text-orange-600 dark:text-orange-400 font-semibold">
-                        ⚠️ {weightPrognosis.message}
+                
+                {weightPrognosis.type === 'warning' ? (
+                  <div className="space-y-3">
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30">
+                      <div className="flex items-start gap-2">
+                        <span className="text-orange-600 text-sm">⚠️</span>
+                        <div className="flex-1">
+                          <div className="font-medium text-orange-700 dark:text-orange-300 text-sm mb-1">
+                            {weightPrognosis.message}
+                          </div>
+                          <div className="text-xs text-orange-600 dark:text-orange-400">
+                            💡 {weightPrognosis.suggestion}
+                          </div>
+                        </div>
                       </div>
-                      {weightPrognosis.suggestion && (
-                        <div className="text-sm text-orange-700 dark:text-orange-300">
+                    </div>
+                  </div>
+                ) : weightPrognosis.type === 'maintain' ? (
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/30">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 text-sm">✅</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-green-700 dark:text-green-300 text-sm mb-1">
+                          {weightPrognosis.message}
+                        </div>
+                        <div className="text-xs text-green-600 dark:text-green-400">
                           💡 {weightPrognosis.suggestion}
                         </div>
-                      )}
-                    </div>
-                  ) : weightPrognosis.type === 'maintain' ? (
-                    <div className="space-y-3">
-                      <div className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                        ✅ {weightPrognosis.message}
                       </div>
-                      {weightPrognosis.suggestion && (
-                        <div className="text-sm text-emerald-700 dark:text-emerald-300">
-                          💡 {weightPrognosis.suggestion}
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Zieltermin</div>
-                          <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                            {weightPrognosis.targetDate}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-emerald-600 dark:text-emerald-400 mb-1">Gewichtsdifferenz</div>
-                          <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
-                            {weightPrognosis.weightDifference?.toFixed(1)}kg
-                          </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Prominent Target Date Display */}
+                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-700/30 shadow-sm">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                          Zielgewicht erreicht am
                         </div>
                       </div>
-                      {weightPrognosis.daysToTarget && (
-                        <div className="mt-4 p-3 bg-emerald-100 dark:bg-emerald-800/30 rounded border border-emerald-300 dark:border-emerald-600/30">
-                          <div className="text-sm text-emerald-700 dark:text-emerald-300">
-                            <strong>Bis zum Zielgewicht:</strong> ca. {weightPrognosis.daysToTarget} Tage ({weightPrognosis.monthsToTarget} Monate)
-                          </div>
-                        </div>
-                      )}
+                      <div className="text-3xl font-bold text-blue-800 dark:text-blue-200 mb-2">
+                        {weightPrognosis.targetDate}
+                      </div>
+                      <div className="text-sm text-blue-600 dark:text-blue-400">
+                        Das sind noch ca. {weightPrognosis.monthsToTarget && weightPrognosis.monthsToTarget > 1 
+                          ? `${weightPrognosis.monthsToTarget} Monate` 
+                          : `${weightPrognosis.daysToTarget ? Math.ceil(weightPrognosis.daysToTarget / 7) : 0} Wochen`
+                        }
+                      </div>
                     </div>
-                  )}
-                </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className="text-lg font-bold text-primary mb-1">
+                          {weightPrognosis.weightDifference?.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">kg verbleibend</div>
+                      </div>
+                      <div className="text-center p-3 bg-muted/50 rounded-lg">
+                        <div className={`text-lg font-bold mb-1 ${
+                          weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance < 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-500 dark:text-red-400'
+                        }`}>
+                          {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? '+' : ''}{weightPrognosis.dailyCalorieBalance ? Math.round(weightPrognosis.dailyCalorieBalance) : 0}
+                        </div>
+                        <div className={`text-xs ${
+                          weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance < 0 
+                            ? 'text-green-600/80 dark:text-green-400/80' 
+                            : 'text-red-500/80 dark:text-red-400/80'
+                        }`}>
+                          kcal {weightPrognosis.dailyCalorieBalance && weightPrognosis.dailyCalorieBalance > 0 ? 'Überschuss' : 'Defizit'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-200/50 dark:border-blue-700/20">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                        {weightPrognosis.type === 'loss' ? (
+                          <TrendingDown className="h-4 w-4" />
+                        ) : (
+                          <TrendingUp className="h-4 w-4" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {weightPrognosis.type === 'loss' ? 'Abnehmen' : 'Zunehmen'} - auf Kurs zum Ziel
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Scale className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Gewichtsprognose wird berechnet...</p>
               </div>
             )}
           </TabsContent>
