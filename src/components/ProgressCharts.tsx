@@ -223,11 +223,11 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             
             {weightData.length > 0 ? (
               <div className="w-full rounded-lg bg-gradient-to-br from-background to-accent/5 p-2">
-                <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                <ChartContainer config={chartConfig} className="h-[350px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart 
                       data={weightData}
-                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                      margin={{ top: 30, right: 30, left: 30, bottom: 40 }}
                     >
                       <defs>
                         <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
@@ -281,11 +281,11 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             
             {measurementData.length > 0 ? (
               <div className="w-full rounded-lg bg-gradient-to-br from-background to-accent/5 p-2">
-                <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                <ChartContainer config={chartConfig} className="h-[350px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart 
                       data={measurementData}
-                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                      margin={{ top: 30, right: 30, left: 30, bottom: 40 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                       <XAxis 
@@ -358,11 +358,11 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             
             {workoutData.length > 0 ? (
               <div className="w-full rounded-lg bg-gradient-to-br from-background to-accent/5 p-2">
-                <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                <ChartContainer config={chartConfig} className="h-[350px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart 
                       data={workoutData}
-                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                      margin={{ top: 30, right: 30, left: 30, bottom: 40 }}
                     >
                       <defs>
                         <linearGradient id="workoutGradient" x1="0" y1="0" x2="0" y2="1">
