@@ -4,6 +4,7 @@ import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star,
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getGoalStatus, getGoalBasedProgressMessage, UserGoal } from "@/utils/goalBasedMessaging";
+import { RandomQuote } from "@/components/RandomQuote";
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { InfoButton } from "@/components/InfoButton";
@@ -28,6 +29,7 @@ interface DailyProgressProps {
   userGoal?: UserGoal;
   currentDate: Date;
   onDateChange: (date: Date) => void;
+  userProfile?: any;
 }
 
 interface OverallStatus {
@@ -101,7 +103,8 @@ export const DailyProgress = ({
   dailyGoal, 
   userGoal = 'maintain',
   currentDate,
-  onDateChange
+  onDateChange,
+  userProfile
 }: DailyProgressProps) => {
   const { t, language } = useTranslation();
 
@@ -232,7 +235,7 @@ export const DailyProgress = ({
               )}
             </div>
             
-            {/* Enhanced motivational message with macro warnings */}
+            {/* Enhanced motivational message with macro warnings and personalized quotes */}
             <div className={`flex items-center justify-center gap-2 text-sm font-medium mt-4 p-3 rounded-xl ${overallStatus.bgColor} ${overallStatus.color}`}>
               <span className="text-base">{overallStatus.icon}</span>
               <div className="text-center leading-relaxed">
@@ -248,6 +251,14 @@ export const DailyProgress = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Personalized motivational quote */}
+            <div className="mt-4 px-4">
+              <RandomQuote 
+                userGender={userProfile?.gender}
+                fallbackText=""
+              />
             </div>
           </div>
         </div>

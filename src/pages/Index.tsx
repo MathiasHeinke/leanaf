@@ -324,6 +324,7 @@ const Index = () => {
             carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
             fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
           }}
+          userProfile={userProfile}
           dailyGoal={{
             calories: dailyGoals?.calories || 2000,
             protein: dailyGoals?.protein || 150,
