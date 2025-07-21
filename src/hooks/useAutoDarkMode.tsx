@@ -15,7 +15,7 @@ interface UserOverrideData {
 }
 
 export const useAutoDarkMode = () => {
-  const { theme, setTheme, systemTheme } = useTheme();
+  const { theme, setTheme, systemTheme, resolvedTheme } = useTheme();
   const [autoSettings, setAutoSettings] = useState<AutoDarkModeSettings>({
     enabled: true,
     startTime: '19:00',
@@ -27,7 +27,12 @@ export const useAutoDarkMode = () => {
   // Debug logging helper
   const debugLog = (message: string, data?: any) => {
     if (debugMode) {
-      console.log(`[DarkMode Debug] ${message}`, data || '');
+      console.log(`[DarkMode Debug] ${message}`, data || '', {
+        theme,
+        resolvedTheme,
+        systemTheme,
+        htmlClass: document.documentElement.className
+      });
     }
   };
 
@@ -141,18 +146,30 @@ export const useAutoDarkMode = () => {
     return () => clearInterval(interval);
   }, [autoSettings, theme, setTheme, userOverride]);
 
+  // Debug effect to track theme changes
+  useEffect(() => {
+    debugLog('Theme state changed:', {
+      theme,
+      resolvedTheme,
+      userOverride: !!userOverride,
+      autoEnabled: autoSettings.enabled
+    });
+  }, [theme, resolvedTheme, userOverride, autoSettings.enabled]);
+
   // Handle manual theme toggle
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    debugLog('Manual theme toggle:', {
-      from: theme,
-      to: newTheme,
+    const currentTheme = resolvedTheme || theme || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    debugLog('Manual theme toggle BEFORE:', {
+      theme,
+      resolvedTheme,
+      currentTheme,
+      targetTheme: newTheme,
       previousOverride: userOverride
     });
     
-    setTheme(newTheme);
-    
-    // Create user override with 24-hour expiration
+    // Create user override FIRST
     const now = Date.now();
     const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours
     const overrideData: UserOverrideData = {
@@ -161,11 +178,16 @@ export const useAutoDarkMode = () => {
       expiresAt
     };
     
+    // Set user override immediately to prevent auto-theme interference
     setUserOverride(overrideData);
     localStorage.setItem('darkModeUserOverride', JSON.stringify(overrideData));
     
-    debugLog('Set user override:', {
-      theme: newTheme,
+    // Then set the theme
+    setTheme(newTheme);
+    
+    debugLog('Manual theme toggle AFTER:', {
+      setTheme: newTheme,
+      overrideSet: true,
       expiresIn: '24 hours'
     });
   };

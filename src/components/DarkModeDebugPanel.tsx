@@ -12,7 +12,7 @@ interface DarkModeDebugPanelProps {
 }
 
 export const DarkModeDebugPanel = ({ isOpen, onClose }: DarkModeDebugPanelProps) => {
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
   const { 
     autoSettings, 
     userOverride, 
@@ -61,10 +61,18 @@ export const DarkModeDebugPanel = ({ isOpen, onClose }: DarkModeDebugPanelProps)
           
           {/* Current Theme */}
           <div className="flex items-center justify-between">
-            <span>Current Theme:</span>
+            <span>Set Theme:</span>
             <div className="flex items-center gap-1">
-              {theme === 'dark' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
               <span className="capitalize">{theme}</span>
+            </div>
+          </div>
+          
+          {/* Resolved Theme */}
+          <div className="flex items-center justify-between">
+            <span>Active Theme:</span>
+            <div className="flex items-center gap-1">
+              {resolvedTheme === 'dark' ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
+              <span className="capitalize">{resolvedTheme}</span>
             </div>
           </div>
           
