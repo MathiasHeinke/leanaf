@@ -12,6 +12,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { uploadFilesWithProgress, UploadProgress } from "@/utils/uploadHelpers";
+import { safeJsonParse, safeGet } from "@/utils/safeJsonHelpers";
 
 interface QuickWeightInputProps {
   onWeightAdded?: (weightData: any) => void;
@@ -34,65 +35,118 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
-  // Improved logic for hasWeightToday - checks for valid weight value
-  const hasWeightToday = todaysWeight && 
-    todaysWeight.weight !== null && 
-    todaysWeight.weight !== undefined && 
-    todaysWeight.weight > 0;
+  // Safe weight validation with detailed logging
+  const hasWeightToday = (() => {
+    try {
+      console.log('QuickWeightInput - Checking hasWeightToday:');
+      console.log('- todaysWeight:', todaysWeight);
+      
+      if (!todaysWeight) {
+        console.log('- No todaysWeight object');
+        return false;
+      }
+      
+      const weightValue = safeGet(todaysWeight, 'weight', null);
+      console.log('- Weight value:', weightValue, typeof weightValue);
+      
+      const hasValidWeight = weightValue !== null && 
+        weightValue !== undefined && 
+        !isNaN(Number(weightValue)) && 
+        Number(weightValue) > 0;
+        
+      console.log('- Has valid weight:', hasValidWeight);
+      return hasValidWeight;
+    } catch (error) {
+      console.error('Error checking hasWeightToday:', error);
+      return false;
+    }
+  })();
 
-  console.log('QuickWeightInput - Debug Info:');
-  console.log('- todaysWeight object:', todaysWeight);
-  console.log('- todaysWeight.weight value:', todaysWeight?.weight);
-  console.log('- hasWeightToday result:', hasWeightToday);
-  console.log('- isEditing:', isEditing);
+  console.log('QuickWeightInput - Final hasWeightToday:', hasWeightToday);
 
   useEffect(() => {
-    if (hasWeightToday && !isEditing) {
-      setWeight(todaysWeight.weight.toString());
-      setBodyFatPercentage(todaysWeight.body_fat_percentage?.toString() || "");
-      setMusclePercentage(todaysWeight.muscle_percentage?.toString() || "");
-      setNotes(todaysWeight.notes || "");
-      // Show advanced section if there's existing data
-      if (todaysWeight.body_fat_percentage || todaysWeight.muscle_percentage || todaysWeight.notes || (todaysWeight.photo_urls && todaysWeight.photo_urls.length > 0)) {
-        setShowAdvanced(true);
+    try {
+      if (hasWeightToday && !isEditing && todaysWeight) {
+        console.log('Setting form values from todaysWeight:', todaysWeight);
+        
+        // Safe value extraction with fallbacks
+        const weightValue = safeGet(todaysWeight, 'weight', '');
+        const bodyFatValue = safeGet(todaysWeight, 'body_fat_percentage', '');
+        const muscleValue = safeGet(todaysWeight, 'muscle_percentage', '');
+        const notesValue = safeGet(todaysWeight, 'notes', '');
+        const photoUrls = safeJsonParse(safeGet(todaysWeight, 'photo_urls', '[]'), []);
+        
+        setWeight(weightValue.toString());
+        setBodyFatPercentage(bodyFatValue ? bodyFatValue.toString() : "");
+        setMusclePercentage(muscleValue ? muscleValue.toString() : "");
+        setNotes(notesValue || "");
+        
+        // Show advanced section if there's existing data
+        const hasAdvancedData = bodyFatValue || muscleValue || notesValue || photoUrls.length > 0;
+        if (hasAdvancedData) {
+          setShowAdvanced(true);
+        }
+        
+        console.log('Form values set successfully');
       }
+    } catch (error) {
+      console.error('Error in useEffect for form values:', error);
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
 
   const isDateInFuture = (date: Date): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-    return date > today;
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      return date > today;
+    } catch (error) {
+      console.error('Error in isDateInFuture:', error);
+      return false;
+    }
   };
 
   const isDateToday = (date: Date): boolean => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime() === today.getTime();
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      return date.getTime() === today.getTime();
+    } catch (error) {
+      console.error('Error in isDateToday:', error);
+      return false;
+    }
   };
 
   // Handle file selection for photo upload
   const handleFileSelect = (files: FileList) => {
-    const newFiles = Array.from(files).slice(0, 3 - selectedFiles.length); // Max 3 photos
-    const validFiles = newFiles.filter(file => {
-      if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} ist kein Bild`);
-        return false;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} ist zu groß (max. 10MB)`);
-        return false;
-      }
-      return true;
-    });
+    try {
+      const newFiles = Array.from(files).slice(0, 3 - selectedFiles.length); // Max 3 photos
+      const validFiles = newFiles.filter(file => {
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} ist kein Bild`);
+          return false;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} ist zu groß (max. 10MB)`);
+          return false;
+        }
+        return true;
+      });
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    } catch (error) {
+      console.error('Error in handleFileSelect:', error);
+      toast.error('Fehler beim Dateien auswählen');
+    }
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    try {
+      setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error('Error in removeFile:', error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -312,85 +366,100 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
   // Show read-only summary if weight exists and not editing
   if (hasWeightToday && !isEditing) {
-    const hasBodyComposition = todaysWeight.body_fat_percentage || todaysWeight.muscle_percentage;
-    const hasPhotos = todaysWeight.photo_urls && JSON.parse(todaysWeight.photo_urls || '[]').length > 0;
-    const hasNotes = todaysWeight.notes;
+    try {
+      const bodyFatValue = safeGet(todaysWeight, 'body_fat_percentage', null);
+      const muscleValue = safeGet(todaysWeight, 'muscle_percentage', null);
+      const notesValue = safeGet(todaysWeight, 'notes', '');
+      const photoUrlsValue = safeGet(todaysWeight, 'photo_urls', '[]');
+      const photoUrls = safeJsonParse(photoUrlsValue, []);
+      
+      const hasBodyComposition = bodyFatValue || muscleValue;
+      const hasPhotos = photoUrls.length > 0;
+      const hasNotes = notesValue;
 
-    return (
-      <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/70 dark:from-green-950/25 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200/60 dark:border-green-800/60">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-green-100/80 dark:bg-green-900/60 rounded-xl">
-            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eingetragen! ⚖️</h3>
-            <div className="text-sm text-green-600 dark:text-green-400">
-              <p className="font-medium">{todaysWeight.weight}kg am {new Date().toLocaleDateString('de-DE')}</p>
-              
-              {hasBodyComposition && (
-                <div className="mt-2 flex gap-4 text-xs">
-                  {todaysWeight.body_fat_percentage && (
-                    <span>🧍 Körperfett: {todaysWeight.body_fat_percentage}%</span>
-                  )}
-                  {todaysWeight.muscle_percentage && (
-                    <span>💪 Muskeln: {todaysWeight.muscle_percentage}%</span>
-                  )}
-                </div>
-              )}
+      return (
+        <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/70 dark:from-green-950/25 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200/60 dark:border-green-800/60">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-green-100/80 dark:bg-green-900/60 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eingetragen! ⚖️</h3>
+              <div className="text-sm text-green-600 dark:text-green-400">
+                <p className="font-medium">{safeGet(todaysWeight, 'weight', 0)}kg am {new Date().toLocaleDateString('de-DE')}</p>
+                
+                {hasBodyComposition && (
+                  <div className="mt-2 flex gap-4 text-xs">
+                    {bodyFatValue && (
+                      <span>🧍 Körperfett: {bodyFatValue}%</span>
+                    )}
+                    {muscleValue && (
+                      <span>💪 Muskeln: {muscleValue}%</span>
+                    )}
+                  </div>
+                )}
 
-              {hasPhotos && (
-                <div className="mt-2 flex gap-1">
-                  {JSON.parse(todaysWeight.photo_urls).slice(0, 3).map((url: string, index: number) => (
-                    <img
-                      key={index}
-                      src={url}
-                      alt={`Gewichtsfoto ${index + 1}`}
-                      className="w-8 h-8 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
-                      onClick={() => window.open(url, '_blank')}
-                    />
-                  ))}
-                </div>
-              )}
+                {hasPhotos && (
+                  <div className="mt-2 flex gap-1">
+                    {photoUrls.slice(0, 3).map((url: string, index: number) => (
+                      <img
+                        key={index}
+                        src={url}
+                        alt={`Gewichtsfoto ${index + 1}`}
+                        className="w-8 h-8 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
+                        onClick={() => window.open(url, '_blank')}
+                      />
+                    ))}
+                  </div>
+                )}
 
-              {hasNotes && (
-                <p className="mt-2 text-xs italic">💭 "{todaysWeight.notes}"</p>
-              )}
+                {hasNotes && (
+                  <p className="mt-2 text-xs italic">💭 "{notesValue}"</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <InfoButton
+                title="Gewicht Tracking"
+                description="Regelmäßiges Wiegen mit zusätzlichen Daten wie Körperfett und Fotos hilft dabei, den wahren Fortschritt zu verfolgen."
+                scientificBasis="Studien zeigen: Die Kombination aus Gewicht, Körperkomposition und visueller Dokumentation gibt das vollständigste Bild der Körperveränderung."
+                tips={[
+                  "Gewicht + Körperfett = vollständiges Bild",
+                  "Fotos zeigen oft mehr als die Waage",
+                  "Morgens wiegen für beste Vergleichbarkeit"
+                ]}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="text-green-600 border-green-300 hover:bg-green-50"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <InfoButton
-              title="Gewicht Tracking"
-              description="Regelmäßiges Wiegen mit zusätzlichen Daten wie Körperfett und Fotos hilft dabei, den wahren Fortschritt zu verfolgen."
-              scientificBasis="Studien zeigen: Die Kombination aus Gewicht, Körperkomposition und visueller Dokumentation gibt das vollständigste Bild der Körperveränderung."
-              tips={[
-                "Gewicht + Körperfett = vollständiges Bild",
-                "Fotos zeigen oft mehr als die Waage",
-                "Morgens wiegen für beste Vergleichbarkeit"
-              ]}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(true)}
-              className="text-green-600 border-green-300 hover:bg-green-50"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
+          
+          <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
+            <p className="text-xs text-green-700 dark:text-green-300 mb-2">
+              <strong>Vollständiges Tracking aktiv!</strong> 🎯
+            </p>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              • Gewicht, Körperkomposition und visuelle Fortschritte werden erfasst<br />
+              • Trends sind wichtiger als tägliche Schwankungen<br />
+              • Deine Transformation wird vollständig dokumentiert
+            </p>
           </div>
         </div>
-        
-        <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
-          <p className="text-xs text-green-700 dark:text-green-300 mb-2">
-            <strong>Vollständiges Tracking aktiv!</strong> 🎯
-          </p>
-          <p className="text-xs text-green-600 dark:text-green-400">
-            • Gewicht, Körperkomposition und visuelle Fortschritte werden erfasst
-            • Trends sind wichtiger als tägliche Schwankungen
-            • Deine Transformation wird vollständig dokumentiert
-          </p>
+      );
+    } catch (error) {
+      console.error('Error rendering read-only summary:', error);
+      return (
+        <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+          <p className="text-red-600">Fehler beim Anzeigen der Gewichtsdaten. Bitte neu laden.</p>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return (
