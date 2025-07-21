@@ -8,6 +8,10 @@ import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
 import { OptimizedGreeting } from "@/components/OptimizedGreeting";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
+import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
+import { QuickSleepInput } from "@/components/QuickSleepInput";
+import { BodyMeasurements } from "@/components/BodyMeasurements";
+import { BadgeSystem } from "@/components/BadgeSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -196,6 +200,16 @@ const Index = () => {
             currentWeight={userProfile?.weight}
             onWeightAdded={handleWeightAdded}
           />
+
+          {/* Transformation Tools */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <QuickWorkoutInput />
+            <QuickSleepInput />
+          </div>
+
+          <BodyMeasurements />
+          
+          <BadgeSystem />
 
           <OptimizedGreeting userProfile={userProfile} />
 

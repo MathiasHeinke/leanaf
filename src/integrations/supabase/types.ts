@@ -14,6 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          badge_description: string | null
+          badge_name: string
+          badge_type: string
+          earned_at: string
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          badge_description?: string | null
+          badge_name: string
+          badge_type: string
+          earned_at?: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          badge_description?: string | null
+          badge_name?: string
+          badge_type?: string
+          earned_at?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      body_measurements: {
+        Row: {
+          belly: number | null
+          chest: number | null
+          created_at: string
+          date: string
+          hips: number | null
+          id: string
+          notes: string | null
+          photo_url: string | null
+          thigh: number | null
+          updated_at: string
+          user_id: string
+          waist: number | null
+        }
+        Insert: {
+          belly?: number | null
+          chest?: number | null
+          created_at?: string
+          date?: string
+          hips?: number | null
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          thigh?: number | null
+          updated_at?: string
+          user_id: string
+          waist?: number | null
+        }
+        Update: {
+          belly?: number | null
+          chest?: number | null
+          created_at?: string
+          date?: string
+          hips?: number | null
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          thigh?: number | null
+          updated_at?: string
+          user_id?: string
+          waist?: number | null
+        }
+        Relationships: []
+      }
       daily_goals: {
         Row: {
           bmr: number | null
@@ -278,6 +353,39 @@ export type Database = {
         }
         Relationships: []
       }
+      sleep_tracking: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          sleep_hours: number | null
+          sleep_quality: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          sleep_hours?: number | null
+          sleep_quality?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weight_history: {
         Row: {
           created_at: string
@@ -326,6 +434,45 @@ export type Database = {
           language?: string | null
           quote_text?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      workouts: {
+        Row: {
+          created_at: string
+          date: string
+          did_workout: boolean
+          duration_minutes: number | null
+          id: string
+          intensity: number | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+          workout_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          did_workout?: boolean
+          duration_minutes?: number | null
+          id?: string
+          intensity?: number | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          workout_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          did_workout?: boolean
+          duration_minutes?: number | null
+          id?: string
+          intensity?: number | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          workout_type?: string | null
         }
         Relationships: []
       }
