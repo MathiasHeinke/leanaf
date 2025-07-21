@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { intelligentCalorieCalculator, type CalorieCalculationResult } from "@/utils/intelligentCalorieCalculator";
 
 export interface TransformationData {
   workouts: any[];
@@ -8,6 +9,7 @@ export interface TransformationData {
   weight: any[];
   goals: any;
   profile: any;
+  calorieInsights?: CalorieCalculationResult;
 }
 
 export interface CoachInsight {
@@ -27,6 +29,10 @@ export class EnhancedCoachAnalyzer {
 
   async generateInsights(): Promise<CoachInsight[]> {
     const insights: CoachInsight[] = [];
+
+    // NEW: AI-Powered Calorie Intelligence - Highest priority
+    const calorieInsight = await this.analyzeIntelligentCalories();
+    if (calorieInsight) insights.push(calorieInsight);
 
     // AI-Powered Priority Analysis - Most important first
     const criticalInsight = this.analyzeCriticalPatterns();
@@ -248,6 +254,63 @@ export class EnhancedCoachAnalyzer {
         message: `${poorSleepDays} Tage schlechter Schlaf blockieren deinen Fortschritt. Priorität #1: Schlaf optimieren!`,
         icon: '🚨',
         data: { poorSleepDays }
+      };
+    }
+
+    return null;
+  }
+
+  // NEW: Intelligent Calorie Analysis using the advanced calculator
+  private async analyzeIntelligentCalories(): Promise<CoachInsight | null> {
+    if (!this.data.profile || !this.data.calorieInsights) return null;
+
+    const { calorieInsights } = this.data;
+    const { confidence, dataQuality, metabolicAdaptation, recommendations } = calorieInsights;
+
+    // Critical: Metabolic adaptation detected
+    if (metabolicAdaptation && metabolicAdaptation > 0.15) {
+      return {
+        type: 'warning',
+        title: 'Metabolische Anpassung erkannt! 🔥',
+        message: `Dein Stoffwechsel hat sich um ${(metabolicAdaptation * 100).toFixed(1)}% verlangsamt. Diet Break oder Refeed könnte helfen.`,
+        icon: '🚨',
+        data: { metabolicAdaptation: metabolicAdaptation * 100, confidence }
+      };
+    }
+
+    // High confidence calculation with good progress
+    if (confidence === 'high' && dataQuality.daysOfData >= 30) {
+      const recentWeight = this.getRecentWeightTrend(7);
+      const isLosingWeight = recentWeight.length >= 2 && recentWeight[0] > recentWeight[recentWeight.length - 1];
+      
+      if (isLosingWeight) {
+        return {
+          type: 'success',
+          title: 'KI-Kalorienziel optimiert! 🧠✨',
+          message: `Basierend auf ${dataQuality.daysOfData} Tagen: Dein TDEE ist ${calorieInsights.tdee}kcal. Die Berechnungen sind hochpräzise!`,
+          icon: '🎯',
+          data: { 
+            tdee: calorieInsights.tdee, 
+            targetCalories: calorieInsights.targetCalories,
+            confidence,
+            daysOfData: dataQuality.daysOfData
+          }
+        };
+      }
+    }
+
+    // Data quality recommendations
+    if (confidence === 'low' && recommendations && recommendations.length > 0) {
+      return {
+        type: 'info',
+        title: 'Kalorienziel verbessern! 📊',
+        message: `Aktuelle Berechnung unsicher (${confidence}). ${recommendations[0]} für genauere Empfehlungen.`,
+        icon: '🔍',
+        data: { 
+          confidence,
+          daysOfData: dataQuality.daysOfData,
+          mainRecommendation: recommendations[0]
+        }
       };
     }
 
@@ -557,6 +620,24 @@ export async function loadTransformationData(userId: string): Promise<Transforma
     supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle()
   ]);
 
+  // Enhanced: Calculate intelligent calories if we have profile data
+  let calorieInsights: CalorieCalculationResult | undefined;
+  if (profile.data && profile.data.weight && profile.data.height && profile.data.age && profile.data.gender) {
+    try {
+      calorieInsights = await intelligentCalorieCalculator.calculateIntelligentCalories(userId, {
+        weight: profile.data.weight,
+        height: profile.data.height,
+        age: profile.data.age,
+        gender: profile.data.gender as 'male' | 'female',
+        activityLevel: profile.data.activity_level || 'moderate',
+        goal: (profile.data.goal || 'maintain') as 'lose' | 'maintain' | 'gain',
+        calorieDeficit: goals.data?.calorie_deficit || 300
+      });
+    } catch (error) {
+      console.error('Error calculating intelligent calories:', error);
+    }
+  }
+
   return {
     workouts: workouts.data || [],
     sleepData: sleepData.data || [],
@@ -564,6 +645,7 @@ export async function loadTransformationData(userId: string): Promise<Transforma
     meals: meals.data || [],
     weight: weight.data || [],
     goals: goals.data,
-    profile: profile.data
+    profile: profile.data,
+    calorieInsights
   };
 }
