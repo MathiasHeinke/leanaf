@@ -35,11 +35,10 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [newWeight, setNewWeight] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmOverwrite, setConfirmOverwrite] = useState<{ show: boolean; existingEntry?: WeightEntry }>({ show: false });
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
 
-  const addWeightEntry = async (forceOverwrite = false) => {
+  const addWeightEntry = async () => {
     if (!user || !newWeight) return;
     
     try {
@@ -61,11 +60,6 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       // Check for existing entry for this date
       const existingEntry = weightHistory.find(entry => entry.date === selectedDateStr);
       
-      if (existingEntry && !forceOverwrite) {
-        setConfirmOverwrite({ show: true, existingEntry });
-        return;
-      }
-
       let result;
       if (existingEntry) {
         // Update existing entry
@@ -76,6 +70,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
         if (error) throw error;
         result = 'updated';
+        toast.success('Gewicht erfolgreich aktualisiert');
       } else {
         // Insert new entry
         const { error } = await supabase
@@ -88,29 +83,26 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
         if (error) throw error;
         result = 'inserted';
-      }
 
-      // Award points and update streak only for today's entries
-      if (selectedDateStr === today && result === 'inserted') {
-        console.log('🎯 Awarding points for weight measurement today');
-        try {
-          await awardPoints('weight_measured', 3, 'Gewicht gemessen');
-          await updateStreak('daily_tracking', selectedDate);
-          toast.success('Gewicht erfolgreich hinzugefügt! +3 Punkte erhalten');
-        } catch (pointsError) {
-          console.error('Error awarding points:', pointsError);
+        // Award points and update streak only for today's entries
+        if (selectedDateStr === today) {
+          console.log('🎯 Awarding points for weight measurement today');
+          try {
+            await awardPoints('weight_measured', 3, 'Gewicht gemessen');
+            await updateStreak('daily_tracking', selectedDate);
+            toast.success('Gewicht erfolgreich hinzugefügt! +3 Punkte erhalten');
+          } catch (pointsError) {
+            console.error('Error awarding points:', pointsError);
+            toast.success('Gewicht erfolgreich hinzugefügt');
+          }
+        } else {
           toast.success('Gewicht erfolgreich hinzugefügt');
         }
-      } else if (result === 'updated') {
-        toast.success('Gewicht erfolgreich aktualisiert');
-      } else {
-        toast.success('Gewicht erfolgreich hinzugefügt');
       }
 
       setNewWeight('');
       setSelectedDate(new Date());
       setIsAddingWeight(false);
-      setConfirmOverwrite({ show: false });
       onDataUpdate();
     } catch (error: any) {
       console.error('Error adding/updating weight:', error);
@@ -176,7 +168,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Neues Gewicht hinzufügen</DialogTitle>
+            <DialogTitle>Gewicht hinzufügen</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
@@ -228,34 +220,13 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
               <Button type="button" variant="outline" onClick={() => setIsAddingWeight(false)} className="flex-1">
                 Abbrechen
               </Button>
-              <Button onClick={() => addWeightEntry(false)} className="flex-1">
-                Hinzufügen
+              <Button onClick={addWeightEntry} className="flex-1">
+                Speichern
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Confirm Overwrite Dialog */}
-      <AlertDialog open={confirmOverwrite.show} onOpenChange={(open) => setConfirmOverwrite({ show: open })}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Gewicht bereits vorhanden</AlertDialogTitle>
-            <AlertDialogDescription>
-              Für das Datum {confirmOverwrite.existingEntry?.displayDate} ist bereits ein Gewichtseintrag vorhanden ({confirmOverwrite.existingEntry?.weight} kg). 
-              Möchtest du diesen überschreiben?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmOverwrite({ show: false })}>
-              Abbrechen
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => addWeightEntry(true)}>
-              Überschreiben
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Weight History List */}
       {weightHistory.length === 0 ? (
