@@ -12,7 +12,9 @@ import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { BadgeSystem } from "@/components/BadgeSystem";
+import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
+import { useBadgeChecker } from "@/hooks/useBadgeChecker";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +25,7 @@ const Index = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const mealInputHook = useGlobalMealInput();
+  const { checkBadges } = useBadgeChecker();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -158,6 +161,8 @@ const Index = () => {
   const handleMealSuccess = async () => {
     await fetchMealsForDate(currentDate);
     mealInputHook.resetForm();
+    // Check for new badges after meal submission
+    setTimeout(() => checkBadges(), 1000);
   };
 
   if (dataLoading) {
@@ -208,6 +213,8 @@ const Index = () => {
           </div>
 
           <BodyMeasurements />
+          
+          <SmartCoachInsights />
           
           <BadgeSystem />
 
