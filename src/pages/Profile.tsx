@@ -4,12 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart } from 'lucide-react';
+import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -39,6 +40,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     calorieDeficit: 300
   });
   const [profileExists, setProfileExists] = useState(false);
+  const [intelligentCalories, setIntelligentCalories] = useState<CalorieCalculationResult | null>(null);
   
   // Coach Settings State
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
@@ -85,8 +87,16 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     if (user) {
       loadProfile();
       loadDailyGoals();
+      calculateIntelligentCalories();
     }
   }, [user]);
+
+  // Recalculate when relevant data changes
+  useEffect(() => {
+    if (user && weight && height && age && gender) {
+      calculateIntelligentCalories();
+    }
+  }, [weight, height, age, gender, activityLevel, goal, dailyGoals.calorieDeficit]);
 
   const loadProfile = async () => {
     try {
@@ -150,6 +160,32 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       }
     } catch (error: any) {
       console.error('Error loading daily goals:', error);
+    }
+  };
+
+  const calculateIntelligentCalories = async () => {
+    if (!user || !weight || !height || !age || !gender) return;
+    
+    try {
+      const result = await intelligentCalorieCalculator.calculateIntelligentCalories(user.id, {
+        weight: parseFloat(weight),
+        height: parseInt(height),
+        age: parseInt(age),
+        gender: gender as 'male' | 'female',
+        activityLevel,
+        goal: goal as 'lose' | 'maintain' | 'gain',
+        calorieDeficit: dailyGoals.calorieDeficit
+      });
+      
+      setIntelligentCalories(result);
+      
+      // Update daily goals with intelligent calculation
+      setDailyGoals({
+        ...dailyGoals,
+        calories: result.targetCalories
+      });
+    } catch (error) {
+      console.error('Error calculating intelligent calories:', error);
     }
   };
 
@@ -671,33 +707,114 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   <div className="text-sm text-muted-foreground">{t('macros.fats')}</div>
                 </div>
               </div>
+          </div>
+        </div>
+
+        {/* Intelligent Calorie Calculation */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-white" />
             </div>
+            <h2 className="text-xl font-bold">Intelligente Kalorienberechnung</h2>
           </div>
 
-          {/* Calorie Calculation */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                <Zap className="h-5 w-5 text-white" />
+          {intelligentCalories && (
+            <>
+              {/* Main Calculation Results */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                  <div className="text-lg font-bold">{intelligentCalories.bmr}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.bmr')}</div>
+                </div>
+                <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                  <div className="text-lg font-bold">{intelligentCalories.tdee}</div>
+                  <div className="text-xs text-muted-foreground">{t('profile.tdee')}</div>
+                </div>
+                <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                  <div className="text-lg font-bold">{intelligentCalories.targetCalories}</div>
+                  <div className="text-xs text-muted-foreground">{t('ui.goal')}</div>
+                </div>
               </div>
-              <h2 className="text-xl font-bold">{t('profile.calorieCalculation')}</h2>
-            </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-lg font-bold">{calculateBMR() ? Math.round(calculateBMR()!) : '-'}</div>
-                <div className="text-xs text-muted-foreground">{t('profile.bmr')}</div>
+              {/* Confidence & Data Quality */}
+              <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {intelligentCalories.confidence === 'high' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                    {intelligentCalories.confidence === 'medium' && <AlertCircle className="h-5 w-5 text-yellow-500" />}
+                    {intelligentCalories.confidence === 'low' && <AlertCircle className="h-5 w-5 text-red-500" />}
+                    <span className="font-medium">
+                      Berechnungsgenauigkeit: {
+                        intelligentCalories.confidence === 'high' ? 'Hoch' :
+                        intelligentCalories.confidence === 'medium' ? 'Mittel' : 'Niedrig'
+                      }
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {intelligentCalories.dataQuality.daysOfData} Tage Daten
+                  </span>
+                </div>
+
+                {/* Data Quality Indicators */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    {intelligentCalories.dataQuality.hasWeightHistory ? 
+                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      <AlertCircle className="h-4 w-4 text-gray-400" />}
+                    <span>Gewichtsverlauf</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {intelligentCalories.dataQuality.hasMealData ? 
+                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      <AlertCircle className="h-4 w-4 text-gray-400" />}
+                    <span>Mahlzeiten-Daten</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {intelligentCalories.dataQuality.hasWorkoutData ? 
+                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      <AlertCircle className="h-4 w-4 text-gray-400" />}
+                    <span>Workout-Daten</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {intelligentCalories.dataQuality.hasSleepData ? 
+                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                      <AlertCircle className="h-4 w-4 text-gray-400" />}
+                    <span>Schlaf-Daten</span>
+                  </div>
+                </div>
+
+                {/* Metabolic Adaptation Warning */}
+                {intelligentCalories.metabolicAdaptation && intelligentCalories.metabolicAdaptation > 0.1 && (
+                  <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                      <div className="text-orange-700 dark:text-orange-400 text-sm">
+                        <div className="font-medium">Metabolische Anpassung erkannt</div>
+                        <div className="text-xs mt-1">
+                          Ihr Stoffwechsel hat sich um {Math.round(intelligentCalories.metabolicAdaptation * 100)}% verlangsamt.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Empfehlungen:</div>
+                    {intelligentCalories.recommendations.map((rec, index) => (
+                      <div key={index} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <div className="w-1 h-1 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                        <span>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-lg font-bold">{calculateMaintenanceCalories() || '-'}</div>
-                <div className="text-xs text-muted-foreground">{t('profile.tdee')}</div>
-              </div>
-              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-lg font-bold">{calculateTargetCalories()}</div>
-                <div className="text-xs text-muted-foreground">{t('ui.goal')}</div>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
+        </div>
 
           {/* Weight Goal Analysis */}
           {weight && targetWeight && (
