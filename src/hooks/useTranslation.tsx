@@ -27,8 +27,8 @@ const translations = {
     'nav.logout': 'Abmelden',
     
     // Main App
-    'app.title': 'leanAF',
-    'app.welcome': 'Willkommen bei leanAF',
+    'app.title': 'getleanAI',
+    'app.welcome': 'Willkommen bei getleanAI',
     'app.dailyProgress': 'Täglicher Fortschritt',
     'app.calories': 'Kalorien',
     'app.protein': 'Protein',
@@ -252,7 +252,7 @@ const translations = {
     'coach.close': 'Schließen',
     'coach.recording': 'Aufnahme läuft...',
     'coach.processing': 'Verarbeitung...',
-    'coach.kaloaiCoach': 'leanAF Coach',
+    'coach.kaloaiCoach': 'getleanAI Coach',
     
     // Profile
     'profile.title': 'Profil',
@@ -523,8 +523,8 @@ const translations = {
     'nav.logout': 'Logout',
     
     // Main App
-    'app.title': 'leanAF',
-    'app.welcome': 'Welcome to leanAF',
+    'app.title': 'getleanAI',
+    'app.welcome': 'Welcome to getleanAI',
     'app.dailyProgress': 'Daily Progress',
     'app.calories': 'Calories',
     'app.protein': 'Protein',
@@ -748,7 +748,7 @@ const translations = {
     'coach.close': 'Close',
     'coach.recording': 'Recording...',
     'coach.processing': 'Processing...',
-    'coach.kaloaiCoach': 'leanAF Coach',
+    'coach.kaloaiCoach': 'getleanAI Coach',
     
     // Profile
     'profile.title': 'Profile',

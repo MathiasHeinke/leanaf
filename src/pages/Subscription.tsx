@@ -181,7 +181,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
             Zurück
           </Button>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-            leanAF Pläne
+            getleanAI Pläne
           </h1>
         </div>
 
@@ -389,7 +389,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
           {/* Features Comparison */}
           <Card>
             <CardHeader>
-              <CardTitle>Warum leanAF Premium?</CardTitle>
+              <CardTitle>Warum getleanAI Premium?</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center space-y-3 text-muted-foreground">
