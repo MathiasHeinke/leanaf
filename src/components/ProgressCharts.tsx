@@ -222,19 +222,33 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             </div>
             
             {weightData.length > 0 ? (
-              <div className="h-[300px] w-full overflow-hidden rounded-lg bg-gradient-to-br from-background to-accent/5 p-1">
-                <ChartContainer config={chartConfig} className="h-full">
+              <div className="w-full rounded-lg bg-gradient-to-br from-background to-accent/5 p-2">
+                <ChartContainer config={chartConfig} className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weightData}>
+                    <AreaChart 
+                      data={weightData}
+                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                    >
                       <defs>
                         <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.1}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="displayDate" fontSize={11} />
-                      <YAxis fontSize={11} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="displayDate" 
+                        fontSize={10}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        fontSize={10}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Area 
                         type="monotone" 
@@ -266,45 +280,59 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             </div>
             
             {measurementData.length > 0 ? (
-              <div className="h-[300px] w-full overflow-hidden rounded-lg bg-gradient-to-br from-background to-accent/5 p-1">
-                <ChartContainer config={chartConfig} className="h-full">
+              <div className="w-full rounded-lg bg-gradient-to-br from-background to-accent/5 p-2">
+                <ChartContainer config={chartConfig} className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={measurementData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="displayDate" fontSize={11} />
-                      <YAxis fontSize={11} />
+                    <LineChart 
+                      data={measurementData}
+                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="displayDate" 
+                        fontSize={10}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        fontSize={10}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Line 
                         type="monotone" 
                         dataKey="waist" 
                         stroke="hsl(262, 83%, 58%)" 
                         strokeWidth={2}
-                        dot={{ r: 3, fill: "hsl(262, 83%, 58%)" }}
-                        activeDot={{ r: 5, strokeWidth: 1 }}
+                        dot={{ r: 2, fill: "hsl(262, 83%, 58%)" }}
+                        activeDot={{ r: 4, strokeWidth: 1 }}
                       />
                       <Line 
                         type="monotone" 
                         dataKey="belly" 
                         stroke="hsl(43, 96%, 56%)" 
                         strokeWidth={2}
-                        dot={{ r: 3, fill: "hsl(43, 96%, 56%)" }}
-                        activeDot={{ r: 5, strokeWidth: 1 }}
+                        dot={{ r: 2, fill: "hsl(43, 96%, 56%)" }}
+                        activeDot={{ r: 4, strokeWidth: 1 }}
                       />
                       <Line 
                         type="monotone" 
                         dataKey="chest" 
                         stroke="hsl(340, 84%, 60%)" 
                         strokeWidth={2}
-                        dot={{ r: 3, fill: "hsl(340, 84%, 60%)" }}
-                        activeDot={{ r: 5, strokeWidth: 1 }}
+                        dot={{ r: 2, fill: "hsl(340, 84%, 60%)" }}
+                        activeDot={{ r: 4, strokeWidth: 1 }}
                       />
                       <Line 
                         type="monotone" 
                         dataKey="hips" 
                         stroke="hsl(142, 71%, 45%)" 
                         strokeWidth={2}
-                        dot={{ r: 3, fill: "hsl(142, 71%, 45%)" }}
-                        activeDot={{ r: 5, strokeWidth: 1 }}
+                        dot={{ r: 2, fill: "hsl(142, 71%, 45%)" }}
+                        activeDot={{ r: 4, strokeWidth: 1 }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -329,19 +357,33 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
             </div>
             
             {workoutData.length > 0 ? (
-              <div className="h-[300px] w-full overflow-hidden rounded-lg bg-gradient-to-br from-background to-accent/5 p-1">
-                <ChartContainer config={chartConfig} className="h-full">
+              <div className="w-full rounded-lg bg-gradient-to-br from-background to-accent/5 p-2">
+                <ChartContainer config={chartConfig} className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={workoutData}>
+                    <BarChart 
+                      data={workoutData}
+                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                    >
                       <defs>
                         <linearGradient id="workoutGradient" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.4}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="displayDate" fontSize={11} />
-                      <YAxis fontSize={11} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="displayDate" 
+                        fontSize={10}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        fontSize={10}
+                        tickMargin={8}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Bar 
                         dataKey="duration" 
