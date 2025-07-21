@@ -176,8 +176,8 @@ export const EnhancedCoachCard = ({
   return (
     <PremiumGate 
       feature="Enhanced Coach Insights" 
-      tier="premium"
-      fallbackMessage="Erweiterte KI-Coach Funktionen sind ein Premium Feature. Upgrade für personalisierte Coaching-Insights!"
+      tier="basic"
+      fallbackMessage="Basis KI-Coaching ist ab dem Basic Plan verfügbar. Upgrade für personalisierte Coaching-Insights!"
     >
       <Card className="w-full">
         <CardHeader>
