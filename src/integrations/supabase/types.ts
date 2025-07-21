@@ -559,25 +559,37 @@ export type Database = {
       }
       weight_history: {
         Row: {
+          body_fat_percentage: number | null
           created_at: string
           date: string
           id: string
+          muscle_percentage: number | null
+          notes: string | null
+          photo_urls: Json | null
           updated_at: string
           user_id: string
           weight: number
         }
         Insert: {
+          body_fat_percentage?: number | null
           created_at?: string
           date?: string
           id?: string
+          muscle_percentage?: number | null
+          notes?: string | null
+          photo_urls?: Json | null
           updated_at?: string
           user_id: string
           weight: number
         }
         Update: {
+          body_fat_percentage?: number | null
           created_at?: string
           date?: string
           id?: string
+          muscle_percentage?: number | null
+          notes?: string | null
+          photo_urls?: Json | null
           updated_at?: string
           user_id?: string
           weight?: number

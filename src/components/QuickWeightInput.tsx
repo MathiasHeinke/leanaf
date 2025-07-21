@@ -2,13 +2,16 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Scale, Plus, CheckCircle, Edit } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Scale, Plus, CheckCircle, Edit, ChevronDown, Upload, X, Image as ImageIcon, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
+import { uploadFilesWithProgress, UploadProgress } from "@/utils/uploadHelpers";
 
 interface QuickWeightInputProps {
   onWeightAdded?: (weightData: any) => void;
@@ -18,8 +21,15 @@ interface QuickWeightInputProps {
 
 export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
+  const [bodyFatPercentage, setBodyFatPercentage] = useState("");
+  const [musclePercentage, setMusclePercentage] = useState("");
+  const [notes, setNotes] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -39,6 +49,13 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   useEffect(() => {
     if (hasWeightToday && !isEditing) {
       setWeight(todaysWeight.weight.toString());
+      setBodyFatPercentage(todaysWeight.body_fat_percentage?.toString() || "");
+      setMusclePercentage(todaysWeight.muscle_percentage?.toString() || "");
+      setNotes(todaysWeight.notes || "");
+      // Show advanced section if there's existing data
+      if (todaysWeight.body_fat_percentage || todaysWeight.muscle_percentage || todaysWeight.notes || (todaysWeight.photo_urls && todaysWeight.photo_urls.length > 0)) {
+        setShowAdvanced(true);
+      }
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
 
@@ -54,6 +71,28 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
     today.setHours(0, 0, 0, 0);
     date.setHours(0, 0, 0, 0);
     return date.getTime() === today.getTime();
+  };
+
+  // Handle file selection for photo upload
+  const handleFileSelect = (files: FileList) => {
+    const newFiles = Array.from(files).slice(0, 3 - selectedFiles.length); // Max 3 photos
+    const validFiles = newFiles.filter(file => {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} ist kein Bild`);
+        return false;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} ist zu groß (max. 10MB)`);
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,12 +118,57 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         return;
       }
 
+      // Validate optional numeric fields
+      const bodyFat = bodyFatPercentage ? parseFloat(bodyFatPercentage) : null;
+      const muscle = musclePercentage ? parseFloat(musclePercentage) : null;
+      
+      if (bodyFat && (bodyFat < 0 || bodyFat > 100)) {
+        toast.error('Körperfettanteil muss zwischen 0% und 100% liegen.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (muscle && (muscle < 0 || muscle > 100)) {
+        toast.error('Muskelanteil muss zwischen 0% und 100% liegen.');
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log('Starting weight submission process...');
-      console.log('- Weight value:', weightValue);
-      console.log('- Date:', dateStr);
-      console.log('- User ID:', user.id);
-      console.log('- Has existing weight today:', hasWeightToday);
-      console.log('- Is editing mode:', isEditing);
+
+      // Handle photo uploads first if there are selected files
+      let photoUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        setIsUploading(true);
+        try {
+          const uploadResult = await uploadFilesWithProgress(
+            selectedFiles,
+            user.id,
+            setUploadProgress
+          );
+          
+          if (uploadResult.success) {
+            photoUrls = uploadResult.urls;
+          } else {
+            toast.error('Einige Fotos konnten nicht hochgeladen werden.');
+          }
+        } catch (uploadError) {
+          console.error('Photo upload failed:', uploadError);
+          toast.error('Fehler beim Hochladen der Fotos.');
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
+      // Prepare data for database
+      const weightData = {
+        weight: weightValue,
+        body_fat_percentage: bodyFat,
+        muscle_percentage: muscle,
+        notes: notes.trim() || null,
+        photo_urls: photoUrls.length > 0 ? JSON.stringify(photoUrls) : null,
+        date: dateStr
+      };
 
       let resultData = null;
 
@@ -93,10 +177,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         console.log('Updating existing weight entry with ID:', todaysWeight.id);
         const { data, error: historyError } = await supabase
           .from('weight_history')
-          .update({ 
-            weight: weightValue,
-            date: dateStr 
-          })
+          .update(weightData)
           .eq('id', todaysWeight.id)
           .select()
           .single();
@@ -130,7 +211,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           console.log('Found unexpected existing entry, updating instead:', existingData.id);
           const { data, error: updateError } = await supabase
             .from('weight_history')
-            .update({ weight: weightValue })
+            .update(weightData)
             .eq('id', existingData.id)
             .select()
             .single();
@@ -145,13 +226,14 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           toast.success('Gewicht aktualisiert!');
         } else {
           // Safe to insert new entry
+          const insertData = {
+            user_id: user.id,
+            ...weightData
+          };
+
           const { data, error: insertError } = await supabase
             .from('weight_history')
-            .insert({
-              user_id: user.id,
-              weight: weightValue,
-              date: dateStr
-            })
+            .insert(insertData)
             .select()
             .single();
 
@@ -212,6 +294,11 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
       console.log('Profile weight updated successfully');
       setIsEditing(false);
+      setSelectedFiles([]);
+      setBodyFatPercentage("");
+      setMusclePercentage("");
+      setNotes("");
+      setShowAdvanced(false);
       console.log('Calling onWeightAdded callback with data:', resultData);
       onWeightAdded?.(resultData);
     } catch (error) {
@@ -219,11 +306,16 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
       toast.error('Fehler beim Speichern des Gewichts: ' + (error as any)?.message || 'Unbekannter Fehler');
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
   // Show read-only summary if weight exists and not editing
   if (hasWeightToday && !isEditing) {
+    const hasBodyComposition = todaysWeight.body_fat_percentage || todaysWeight.muscle_percentage;
+    const hasPhotos = todaysWeight.photo_urls && JSON.parse(todaysWeight.photo_urls || '[]').length > 0;
+    const hasNotes = todaysWeight.notes;
+
     return (
       <div className="bg-gradient-to-br from-green-50/80 to-emerald-50/70 dark:from-green-950/25 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200/60 dark:border-green-800/60">
         <div className="flex items-center gap-3 mb-3">
@@ -232,19 +324,48 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eingetragen! ⚖️</h3>
-            <p className="text-sm text-green-600 dark:text-green-400">
-              {todaysWeight.weight}kg erfasst am {new Date().toLocaleDateString('de-DE')}
-            </p>
+            <div className="text-sm text-green-600 dark:text-green-400">
+              <p className="font-medium">{todaysWeight.weight}kg am {new Date().toLocaleDateString('de-DE')}</p>
+              
+              {hasBodyComposition && (
+                <div className="mt-2 flex gap-4 text-xs">
+                  {todaysWeight.body_fat_percentage && (
+                    <span>🧍 Körperfett: {todaysWeight.body_fat_percentage}%</span>
+                  )}
+                  {todaysWeight.muscle_percentage && (
+                    <span>💪 Muskeln: {todaysWeight.muscle_percentage}%</span>
+                  )}
+                </div>
+              )}
+
+              {hasPhotos && (
+                <div className="mt-2 flex gap-1">
+                  {JSON.parse(todaysWeight.photo_urls).slice(0, 3).map((url: string, index: number) => (
+                    <img
+                      key={index}
+                      src={url}
+                      alt={`Gewichtsfoto ${index + 1}`}
+                      className="w-8 h-8 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
+                      onClick={() => window.open(url, '_blank')}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {hasNotes && (
+                <p className="mt-2 text-xs italic">💭 "{todaysWeight.notes}"</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
               title="Gewicht Tracking"
-              description="Regelmäßiges Wiegen hilft dabei, Fortschritte zu verfolgen und Trends zu erkennen. Schwankungen sind normal und durch viele Faktoren bedingt."
-              scientificBasis="Studien zeigen: Tägliches Wiegen zur gleichen Zeit (morgens, nüchtern) liefert die genauesten und vergleichbarsten Daten für Langzeittrends."
+              description="Regelmäßiges Wiegen mit zusätzlichen Daten wie Körperfett und Fotos hilft dabei, den wahren Fortschritt zu verfolgen."
+              scientificBasis="Studien zeigen: Die Kombination aus Gewicht, Körperkomposition und visueller Dokumentation gibt das vollständigste Bild der Körperveränderung."
               tips={[
-                "Wiege dich täglich zur gleichen Zeit (morgens, nüchtern)",
-                "Achte auf Wochentrends statt tägliche Schwankungen",
-                "Wasser, Salz und Hormone beeinflussen das Tagesgewicht"
+                "Gewicht + Körperfett = vollständiges Bild",
+                "Fotos zeigen oft mehr als die Waage",
+                "Morgens wiegen für beste Vergleichbarkeit"
               ]}
             />
             <Button
@@ -260,15 +381,12 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         
         <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
           <p className="text-xs text-green-700 dark:text-green-300 mb-2">
-            <strong>Tipp:</strong> Tägliches Wiegen = bessere Trends erkennen!
+            <strong>Vollständiges Tracking aktiv!</strong> 🎯
           </p>
           <p className="text-xs text-green-600 dark:text-green-400">
-            • Schwankungen sind völlig normal (Wasser, Salz, Hormone)
-            • Wochentrends sind wichtiger als Tagesschwankungen
-            • Morgens wiegen für beste Vergleichbarkeit
-          </p>
-          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-            <strong>Nächste Eintragung:</strong> Morgen 📅
+            • Gewicht, Körperkomposition und visuelle Fortschritte werden erfasst
+            • Trends sind wichtiger als tägliche Schwankungen
+            • Deine Transformation wird vollständig dokumentiert
           </p>
         </div>
       </div>
@@ -283,70 +401,199 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         </div>
         <div className="flex-1">
           <h3 className="font-semibold text-green-800 dark:text-green-200">
-            {hasWeightToday ? 'Gewicht bearbeiten' : t('weightInput.title')}
+            {hasWeightToday ? 'Gewicht bearbeiten' : 'Gewicht eintragen'}
           </h3>
-          {currentWeight && (
-            <p className="text-sm text-green-600 dark:text-green-400">
-              {t('weightInput.current').replace('{weight}', currentWeight.toString())}
-            </p>
-          )}
+          <p className="text-sm text-green-600 dark:text-green-400">
+            Vollständiges Tracking mit Körperkomposition & Fotos
+          </p>
         </div>
         <InfoButton
-          title="Gewicht Tracking"
-          description="Regelmäßiges Wiegen hilft dabei, Fortschritte zu verfolgen und Trends zu erkennen. Schwankungen sind normal und durch viele Faktoren bedingt."
-          scientificBasis="Studien zeigen: Tägliches Wiegen zur gleichen Zeit (morgens, nüchtern) liefert die genauesten und vergleichbarsten Daten für Langzeittrends."
+          title="Erweiterte Gewichtsmessung"
+          description="Die Kombination aus Gewicht, Körperfett, Muskelmasse und Fotos gibt ein vollständiges Bild deiner Transformation."
+          scientificBasis="Studien zeigen: Körperkomposition ist aussagekräftiger als nur das Gewicht. Visuelle Dokumentation hilft bei der Motivation."
           tips={[
-            "Wiege dich täglich zur gleichen Zeit (morgens, nüchtern)",
-            "Achte auf Wochentrends statt tägliche Schwankungen",
-            "Wasser, Salz und Hormone beeinflussen das Tagesgewicht"
+            "Körperfett und Muskelmasse ergänzen das Gewicht perfekt",
+            "Fotos zeigen Veränderungen, die die Waage nicht erfasst",
+            "Morgens messen für beste Vergleichbarkeit"
           ]}
         />
       </div>
       
-      <div className="flex gap-2">
-        <form onSubmit={handleSubmit} className="flex gap-2 flex-1">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Main Weight Input */}
+        <div className="flex gap-2">
           <Input
             type="number"
             step="0.1"
-            placeholder={t('weightInput.placeholder')}
+            placeholder="Gewicht in kg (z.B. 70.5)"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             className="flex-1"
+            required
           />
           <Button 
             type="submit" 
             size="sm" 
-            disabled={!weight || isSubmitting}
-            className="bg-green-600 hover:bg-green-700"
+            disabled={!weight || isSubmitting || isUploading}
+            className="bg-green-600 hover:bg-green-700 min-w-[44px]"
           >
-            {isSubmitting ? (
+            {(isSubmitting || isUploading) ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
               <Plus className="h-4 w-4" />
             )}
           </Button>
-        </form>
-        
-        {hasWeightToday && isEditing && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsEditing(false)}
-            className="border-green-300 text-green-600"
-          >
-            Abbrechen
-          </Button>
-        )}
-      </div>
-
-      {!hasWeightToday && (
-        <div className="mt-3 bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
-          <p className="text-xs text-green-700 dark:text-green-300">
-            <strong>Heute:</strong> Erstes Gewicht eintragen für Tracking-Start
-          </p>
+          
+          {hasWeightToday && isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsEditing(false);
+                setSelectedFiles([]);
+                setShowAdvanced(false);
+              }}
+              className="border-green-300 text-green-600"
+            >
+              Abbrechen
+            </Button>
+          )}
         </div>
-      )}
+
+        {/* Advanced Data Section */}
+        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full justify-between text-green-700 hover:bg-green-100/50"
+            >
+              <span className="flex items-center gap-2">
+                <Camera className="h-4 w-4" />
+                Erweiterte Daten (optional)
+              </span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-3 mt-3">
+            {/* Body Composition */}
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="Körperfett %"
+                value={bodyFatPercentage}
+                onChange={(e) => setBodyFatPercentage(e.target.value)}
+                className="text-sm"
+              />
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="Muskeln %"
+                value={musclePercentage}
+                onChange={(e) => setMusclePercentage(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+
+            {/* Photo Upload */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-green-700">
+                Transformation Fotos (max. 3)
+              </label>
+              
+              {/* Selected Files Preview */}
+              {selectedFiles.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Preview ${index + 1}`}
+                        className="w-16 h-16 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Progress */}
+              {uploadProgress.length > 0 && (
+                <div className="space-y-1">
+                  {uploadProgress.map((progress, index) => (
+                    <div key={index} className="text-xs text-green-600">
+                      <div className="flex justify-between">
+                        <span>{progress.fileName}</span>
+                        <span>{progress.status === 'completed' ? '✅' : `${progress.progress}%`}</span>
+                      </div>
+                      {progress.status === 'uploading' && (
+                        <div className="w-full bg-gray-200 rounded-full h-1">
+                          <div 
+                            className="bg-green-500 h-1 rounded-full transition-all"
+                            style={{ width: `${progress.progress}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* File Input */}
+              {selectedFiles.length < 3 && (
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={isUploading}
+                  />
+                  <div className="border-2 border-dashed border-green-300 rounded-lg p-4 text-center hover:border-green-400 transition-colors">
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="h-6 w-6 text-green-500" />
+                      <p className="text-sm text-green-600">
+                        Klicken oder Drag & Drop
+                      </p>
+                      <p className="text-xs text-green-500">
+                        JPG, PNG (max. 10MB pro Bild)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <Textarea
+              placeholder="Notizen (optional) - z.B. Gefühl, Besonderheiten..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="resize-none text-sm"
+              rows={2}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        {!hasWeightToday && !showAdvanced && (
+          <div className="bg-green-100/60 dark:bg-green-900/40 rounded-lg p-3">
+            <p className="text-xs text-green-700 dark:text-green-300">
+              <strong>💡 Tipp:</strong> Nutze "Erweiterte Daten" für vollständiges Tracking!
+            </p>
+          </div>
+        )}
+      </form>
     </div>
   );
 };
