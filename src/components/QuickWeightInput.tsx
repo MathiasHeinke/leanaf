@@ -61,11 +61,11 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         toast.success('Gewicht aktualisiert!');
         console.log('Weight updated successfully');
       } else {
-        // Create new weight entry using UPSERT
+        // Create new weight entry using UPSERT with proper constraint name
         const { error: historyError } = await supabase
           .from('weight_history')
           .upsert(weightData, { 
-            onConflict: 'user_id,date',
+            onConflict: 'weight_history_user_id_date_unique',
             ignoreDuplicates: false 
           });
 

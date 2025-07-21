@@ -233,10 +233,11 @@ const Index = () => {
     await fetchMealsForDate(currentDate);
   };
 
-  const handleWeightAdded = () => {
+  const handleWeightAdded = async () => {
     console.log('Weight added callback triggered - reloading data');
-    loadUserData();
-    loadTodaysData(currentDate);
+    // Ensure proper sequence: first reload today's data, then user data
+    await loadTodaysData(currentDate);
+    await loadUserData();
   };
 
   const handleWorkoutAdded = () => {
