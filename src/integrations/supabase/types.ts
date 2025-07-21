@@ -46,12 +46,14 @@ export type Database = {
       }
       body_measurements: {
         Row: {
+          arms: number | null
           belly: number | null
           chest: number | null
           created_at: string
           date: string
           hips: number | null
           id: string
+          neck: number | null
           notes: string | null
           photo_url: string | null
           thigh: number | null
@@ -60,12 +62,14 @@ export type Database = {
           waist: number | null
         }
         Insert: {
+          arms?: number | null
           belly?: number | null
           chest?: number | null
           created_at?: string
           date?: string
           hips?: number | null
           id?: string
+          neck?: number | null
           notes?: string | null
           photo_url?: string | null
           thigh?: number | null
@@ -74,12 +78,14 @@ export type Database = {
           waist?: number | null
         }
         Update: {
+          arms?: number | null
           belly?: number | null
           chest?: number | null
           created_at?: string
           date?: string
           hips?: number | null
           id?: string
+          neck?: number | null
           notes?: string | null
           photo_url?: string | null
           thigh?: number | null

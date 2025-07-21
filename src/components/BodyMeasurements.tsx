@@ -19,6 +19,8 @@ interface BodyMeasurement {
   belly?: number;
   hips?: number;
   thigh?: number;
+  arms?: number;
+  neck?: number;
   photo_url?: string;
 }
 
@@ -35,7 +37,9 @@ export const BodyMeasurements = () => {
     waist: '',
     belly: '',
     hips: '',
-    thigh: ''
+    thigh: '',
+    arms: '',
+    neck: ''
   });
 
   useEffect(() => {
@@ -87,6 +91,8 @@ export const BodyMeasurements = () => {
         belly: formData.belly ? parseFloat(formData.belly) : null,
         hips: formData.hips ? parseFloat(formData.hips) : null,
         thigh: formData.thigh ? parseFloat(formData.thigh) : null,
+        arms: formData.arms ? parseFloat(formData.arms) : null,
+        neck: formData.neck ? parseFloat(formData.neck) : null
       };
 
       const { error } = await supabase
@@ -103,7 +109,9 @@ export const BodyMeasurements = () => {
         waist: '',
         belly: '',
         hips: '',
-        thigh: ''
+        thigh: '',
+        arms: '',
+        neck: ''
       });
       setShowForm(false);
       await loadMeasurements();
@@ -137,7 +145,9 @@ export const BodyMeasurements = () => {
     { key: 'waist', label: 'Taille', icon: '⌛', description: 'Schmalste Stelle' },
     { key: 'chest', label: 'Brust', icon: '💪', description: 'Breiteste Stelle' },
     { key: 'hips', label: 'Hüfte', icon: '🍑', description: 'Breiteste Stelle' },
-    { key: 'thigh', label: 'Oberschenkel', icon: '🦵', description: 'Dickste Stelle' }
+    { key: 'thigh', label: 'Oberschenkel', icon: '🦵', description: 'Dickste Stelle' },
+    { key: 'arms', label: 'Arme', icon: '💪', description: 'Umfang am Bizeps' },
+    { key: 'neck', label: 'Hals', icon: '🦒', description: 'Halsumfang' }
   ];
 
   if (loading) {
