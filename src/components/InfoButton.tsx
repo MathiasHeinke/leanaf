@@ -64,7 +64,7 @@ export const InfoButton = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-white/50 backdrop-blur-sm">
       <Card ref={cardRef} className="w-full max-w-sm glass-card border-primary/30 animate-scale-in relative z-[10000]">
         <CardContent className="p-4 space-y-3">
           {/* Header */}
