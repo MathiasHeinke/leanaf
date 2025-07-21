@@ -8,6 +8,7 @@ import { Plus, TrendingUp, TrendingDown, Target, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { PremiumGate } from "@/components/PremiumGate";
 
 interface WeightEntry {
   id: string;
@@ -81,51 +82,57 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
   const trend = getWeightTrend();
 
   return (
-    <Card className="glass-card hover-scale">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
-            <Scale className="h-4 w-4 text-primary" />
+    <PremiumGate 
+      feature="Gewicht Tracking" 
+      tier="premium"
+      fallbackMessage="Gewichts-Tracking ist ein Premium Feature. Upgrade für detaillierte Gewichtsverfolgung!"
+    >
+      <Card className="glass-card hover-scale">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
+              <Scale className="h-4 w-4 text-primary" />
+            </div>
+            <h4 className="font-medium text-foreground">Gewicht eintragen</h4>
           </div>
-          <h4 className="font-medium text-foreground">Gewicht eintragen</h4>
-        </div>
-        
-        <div className="flex gap-3">
-          <Input
-            type="number"
-            value={newWeight}
-            onChange={(e) => setNewWeight(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAddWeight();
-              }
-            }}
-            placeholder="z.B. 72.5"
-            className="flex-1"
-            step="0.1"
-          />
-          <Button 
-            onClick={handleAddWeight} 
-            disabled={!newWeight}
-            size="sm"
-            className="px-4"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Hinzufügen
-          </Button>
-        </div>
-        
-        {/* Trend Badge */}
-        {trend && (
-          <div className="flex items-center gap-2 mt-3">
-            <Badge variant="outline" className={`${trend.color} border-current`}>
-              <trend.icon className="h-3 w-3 mr-1" />
-              {trend.text}
-            </Badge>
+          
+          <div className="flex gap-3">
+            <Input
+              type="number"
+              value={newWeight}
+              onChange={(e) => setNewWeight(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddWeight();
+                }
+              }}
+              placeholder="z.B. 72.5"
+              className="flex-1"
+              step="0.1"
+            />
+            <Button 
+              onClick={handleAddWeight} 
+              disabled={!newWeight}
+              size="sm"
+              className="px-4"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Hinzufügen
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {/* Trend Badge */}
+          {trend && (
+            <div className="flex items-center gap-2 mt-3">
+              <Badge variant="outline" className={`${trend.color} border-current`}>
+                <trend.icon className="h-3 w-3 mr-1" />
+                {trend.text}
+              </Badge>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </PremiumGate>
   );
 };

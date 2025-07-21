@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
+import { PremiumGate } from "@/components/PremiumGate";
 
 interface BodyMeasurementsProps {
   onMeasurementsAdded?: () => void;
@@ -189,167 +190,173 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   }
 
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
-          <Ruler className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-purple-800 dark:text-purple-200">
-            {hasMeasurementsThisWeek ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
-          </h3>
-        </div>
-        <InfoButton
-          title="Körpermaße Tracking"
-          description="Körpermaße sind oft aussagekräftiger als das Gewicht allein. Muskeln sind schwerer als Fett - der Umfang zeigt deinen wahren Fortschritt."
-          scientificBasis="Studien zeigen: Bauchumfang ist ein besserer Prädiktor für Gesundheitsrisiken als BMI. Reduktion um 5cm senkt kardiovaskuläre Risiken um 20%."
-          tips={[
-            "Immer zur gleichen Tageszeit messen (morgens, nüchtern)",
-            "Bauchumfang auf Höhe des Nabels messen",
-            "Monatliche Messungen reichen für gute Trends"
-          ]}
-        />
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-              Hals (cm)
-            </label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="32.0"
-              value={measurements.neck}
-              onChange={(e) => handleInputChange('neck', e.target.value)}
-              className="text-sm"
-            />
+    <PremiumGate 
+      feature="Körpermaße Tracking" 
+      tier="premium"
+      fallbackMessage="Körpermaße-Tracking ist ein Premium Feature. Upgrade für detaillierte Körpermaß-Aufzeichnung!"
+    >
+      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
+            <Ruler className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
-          <div>
-            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-              Brust (cm)
-            </label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="95.0"
-              value={measurements.chest}
-              onChange={(e) => handleInputChange('chest', e.target.value)}
-              className="text-sm"
-            />
+          <div className="flex-1">
+            <h3 className="font-semibold text-purple-800 dark:text-purple-200">
+              {hasMeasurementsThisWeek ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
+            </h3>
           </div>
-          <div>
-            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-              Taille (cm)
-            </label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="85.0"
-              value={measurements.waist}
-              onChange={(e) => handleInputChange('waist', e.target.value)}
-              className="text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-              Bauch (cm)
-            </label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="90.0"
-              value={measurements.belly}
-              onChange={(e) => handleInputChange('belly', e.target.value)}
-              className="text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-              Hüfte (cm)
-            </label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="95.0"
-              value={measurements.hips}
-              onChange={(e) => handleInputChange('hips', e.target.value)}
-              className="text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-              Arme (cm)
-            </label>
-            <Input
-              type="number"
-              step="0.1"
-              placeholder="30.0"
-              value={measurements.arms}
-              onChange={(e) => handleInputChange('arms', e.target.value)}
-              className="text-sm"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-            Oberschenkel (cm)
-          </label>
-          <Input
-            type="number"
-            step="0.1"
-            placeholder="55.0"
-            value={measurements.thigh}
-            onChange={(e) => handleInputChange('thigh', e.target.value)}
-            className="text-sm"
+          <InfoButton
+            title="Körpermaße Tracking"
+            description="Körpermaße sind oft aussagekräftiger als das Gewicht allein. Muskeln sind schwerer als Fett - der Umfang zeigt deinen wahren Fortschritt."
+            scientificBasis="Studien zeigen: Bauchumfang ist ein besserer Prädiktor für Gesundheitsrisiken als BMI. Reduktion um 5cm senkt kardiovaskuläre Risiken um 20%."
+            tips={[
+              "Immer zur gleichen Tageszeit messen (morgens, nüchtern)",
+              "Bauchumfang auf Höhe des Nabels messen",
+              "Monatliche Messungen reichen für gute Trends"
+            ]}
           />
         </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Hals (cm)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="32.0"
+                value={measurements.neck}
+                onChange={(e) => handleInputChange('neck', e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Brust (cm)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="95.0"
+                value={measurements.chest}
+                onChange={(e) => handleInputChange('chest', e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Taille (cm)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="85.0"
+                value={measurements.waist}
+                onChange={(e) => handleInputChange('waist', e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Bauch (cm)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="90.0"
+                value={measurements.belly}
+                onChange={(e) => handleInputChange('belly', e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Hüfte (cm)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="95.0"
+                value={measurements.hips}
+                onChange={(e) => handleInputChange('hips', e.target.value)}
+                className="text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Arme (cm)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="30.0"
+                value={measurements.arms}
+                onChange={(e) => handleInputChange('arms', e.target.value)}
+                className="text-sm"
+              />
+            </div>
+          </div>
 
-        <div>
-          <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
-            Notizen (optional)
-          </label>
-          <Input
-            placeholder="z.B. Messzeit, Besonderheiten..."
-            value={measurements.notes}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            className="text-sm"
-          />
-        </div>
+          <div>
+            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+              Oberschenkel (cm)
+            </label>
+            <Input
+              type="number"
+              step="0.1"
+              placeholder="55.0"
+              value={measurements.thigh}
+              onChange={(e) => handleInputChange('thigh', e.target.value)}
+              className="text-sm"
+            />
+          </div>
 
-        <div className="flex gap-2">
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-          >
-            {isSubmitting ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Speichern...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                {hasMeasurementsThisWeek ? 'Aktualisieren' : 'Eintragen'}
-              </div>
-            )}
-          </Button>
-          
-          {hasMeasurementsThisWeek && isEditing && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditing(false)}
-              className="border-purple-300 text-purple-600"
+          <div>
+            <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+              Notizen (optional)
+            </label>
+            <Input
+              placeholder="z.B. Messzeit, Besonderheiten..."
+              value={measurements.notes}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              className="text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
             >
-              Abbrechen
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Speichern...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  {hasMeasurementsThisWeek ? 'Aktualisieren' : 'Eintragen'}
+                </div>
+              )}
             </Button>
-          )}
-        </div>
-      </form>
-    </div>
+            
+            {hasMeasurementsThisWeek && isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+                className="border-purple-300 text-purple-600"
+              >
+                Abbrechen
+              </Button>
+            )}
+          </div>
+        </form>
+      </div>
+    </PremiumGate>
   );
 };
