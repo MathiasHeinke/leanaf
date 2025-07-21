@@ -32,13 +32,18 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   const { t } = useTranslation();
   const { awardPoints, getPointsForActivity } = usePointsSystem();
 
-  // Check if measurements already exist for today
-  const hasMeasurementsToday = todaysMeasurements && Object.keys(todaysMeasurements).some(key => 
+  // Check if measurements already exist for this week
+  const hasMeasurementsThisWeek = todaysMeasurements && Object.keys(todaysMeasurements).some(key => 
     key !== 'id' && key !== 'user_id' && key !== 'date' && key !== 'created_at' && key !== 'updated_at' && key !== 'notes' && todaysMeasurements[key] !== null
   );
 
+  // Calculate next measurement date (7 days from last measurement)
+  const nextMeasurementDate = todaysMeasurements?.date ? 
+    new Date(new Date(todaysMeasurements.date).getTime() + 7 * 24 * 60 * 60 * 1000) : 
+    new Date();
+
   useEffect(() => {
-    if (hasMeasurementsToday && !isEditing) {
+    if (hasMeasurementsThisWeek && !isEditing) {
       // Pre-fill form with existing data
       setMeasurements({
         neck: todaysMeasurements.neck || "",
@@ -51,7 +56,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         notes: todaysMeasurements.notes || ""
       });
     }
-  }, [hasMeasurementsToday, todaysMeasurements, isEditing]);
+  }, [hasMeasurementsThisWeek, todaysMeasurements, isEditing]);
 
   const handleInputChange = (field: string, value: string) => {
     setMeasurements(prev => ({
@@ -89,7 +94,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         notes: measurements.notes || null
       };
 
-      if (hasMeasurementsToday) {
+      if (hasMeasurementsThisWeek) {
         // Update existing measurements - no points awarded
         const { error } = await supabase
           .from('body_measurements')
@@ -126,7 +131,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   };
 
   // Show read-only summary if measurements exist and not editing
-  if (hasMeasurementsToday && !isEditing) {
+  if (hasMeasurementsThisWeek && !isEditing) {
     const activeMeasurements = Object.entries(todaysMeasurements).filter(([key, value]) => 
       key !== 'id' && key !== 'user_id' && key !== 'date' && key !== 'created_at' && key !== 'updated_at' && key !== 'notes' && value !== null
     );
@@ -141,6 +146,9 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <h3 className="font-semibold text-purple-800 dark:text-purple-200">Körpermaße eingetragen! 📏</h3>
             <p className="text-sm text-purple-600 dark:text-purple-400">
               {activeMeasurements.length} Messwerte erfasst
+            </p>
+            <p className="text-xs text-purple-500 dark:text-purple-400">
+              Nächste Messung: {nextMeasurementDate.toLocaleDateString('de-DE')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -167,12 +175,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         
         <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
           <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
-            <strong>Tipp:</strong> Körpermaße zeigen oft Fortschritte, die die Waage nicht anzeigt!
+            <strong>Tipp:</strong> Körpermaße zeigen oft Fortschritte, die die Waage nicht anzeigt! Wöchentliche Messungen reichen völlig aus.
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs text-purple-600 dark:text-purple-400">
             {activeMeasurements.map(([key, value]) => (
               <div key={key}>
-                <strong>{key === 'neck' ? 'Hals' : key === 'chest' ? 'Brust' : key === 'waist' ? 'Taille' : key === 'belly' ? 'Bauch' : key === 'hips' ? 'Hüfte' : key === 'arms' ? 'Arme' : 'Oberschenkel'}:</strong> {value}cm
+                <strong>{key === 'neck' ? 'Hals' : key === 'chest' ? 'Brust' : key === 'waist' ? 'Taille' : key === 'belly' ? 'Bauch' : key === 'hips' ? 'Hüfte' : key === 'arms' ? 'Arme' : 'Oberschenkel'}:</strong> {String(value)}cm
               </div>
             ))}
           </div>
@@ -189,7 +197,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         </div>
         <div className="flex-1">
           <h3 className="font-semibold text-purple-800 dark:text-purple-200">
-            {hasMeasurementsToday ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
+            {hasMeasurementsThisWeek ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
           </h3>
         </div>
         <InfoButton
@@ -326,12 +334,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             ) : (
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
-                {hasMeasurementsToday ? 'Aktualisieren' : 'Eintragen'}
+                {hasMeasurementsThisWeek ? 'Aktualisieren' : 'Eintragen'}
               </div>
             )}
           </Button>
           
-          {hasMeasurementsToday && isEditing && (
+          {hasMeasurementsThisWeek && isEditing && (
             <Button
               type="button"
               variant="outline"

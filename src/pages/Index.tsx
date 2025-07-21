@@ -43,6 +43,7 @@ const Index = () => {
   const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
   const [todaysSleep, setTodaysSleep] = useState<any>(null);
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
+  const [todaysWeight, setTodaysWeight] = useState<any>(null);
 
   // Load user data
   useEffect(() => {
@@ -141,12 +142,31 @@ const Index = () => {
         setTodaysSleep(sleepData);
       }
 
-      // Load today's body measurements
+      // Load today's weight
+      const { data: weightData, error: weightError } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle();
+
+      if (weightError) {
+        console.error('Error loading weight:', weightError);
+      } else {
+        setTodaysWeight(weightData);
+      }
+
+      // Load this week's measurements (within last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       const { data: measurementsData, error: measurementsError } = await supabase
         .from('body_measurements')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', dateString)
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (measurementsError) {
@@ -209,6 +229,7 @@ const Index = () => {
 
   const handleWeightAdded = () => {
     loadUserData();
+    loadTodaysData(currentDate);
   };
 
   const handleWorkoutAdded = () => {
@@ -277,6 +298,7 @@ const Index = () => {
         <QuickWeightInput 
           currentWeight={userProfile?.weight}
           onWeightAdded={handleWeightAdded}
+          todaysWeight={todaysWeight}
         />
 
         {/* Transformation Tools */}
