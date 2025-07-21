@@ -46,7 +46,9 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="absolute top-1/3 left-1/2 w-40 h-20 bg-gradient-to-r from-primary/10 to-transparent rounded-full blur-3xl transform -translate-x-1/2 rotate-45 animate-float-5"></div>
       </div>
       
-      <GlobalHeader />
+      <GlobalHeader 
+        onRefresh={() => setShowSubscriptionDebug(true)}
+      />
       <PointsHeader />
       <main className="container mx-auto px-3 pb-24 pt-2 max-w-md relative z-10">
         {children}
