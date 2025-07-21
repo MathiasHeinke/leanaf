@@ -40,7 +40,7 @@ export const PointsHeader = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 backdrop-blur-sm border-b border-border/50 px-4 py-3">
+    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 backdrop-blur-sm border-b border-border/50 px-4 py-3 mb-6">
       <div className="flex items-center justify-between max-w-4xl mx-auto">
         <div className="flex items-center space-x-4">
           <div 

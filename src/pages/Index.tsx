@@ -195,10 +195,6 @@ const Index = () => {
   return (
     <>
       <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-foreground">{getTimeBasedGreeting()}! 👋</h1>
-        </div>
-
         <div className="space-y-6">
           <DailyProgress 
             dailyTotals={{
