@@ -40,18 +40,42 @@ export const PointsHeader = () => {
     }
   };
 
+  const levelProgress = (currentLevelProgress / userPoints.points_to_next_level) * 100;
+  const isLevelUp = levelProgress >= 100;
+
   return (
     <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 backdrop-blur-sm border-b border-border/50 px-4 py-2">
       <div className="flex items-center justify-between max-w-4xl mx-auto">
         <div className="flex items-center space-x-3">
           <div 
-            className="flex items-center justify-center w-8 h-8 rounded-full border-2"
+            className={`relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 ${isLevelUp ? 'animate-bounce' : ''}`}
             style={{ 
               borderColor: getLevelColor(userPoints.level_name),
-              backgroundColor: `${getLevelColor(userPoints.level_name)}15`
+              backgroundColor: `${getLevelColor(userPoints.level_name)}20`
             }}
           >
-            <div style={{ color: getLevelColor(userPoints.level_name) }}>
+            {/* Gold fill background based on progress */}
+            <div 
+              className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
+              style={{
+                background: `conic-gradient(from 0deg, #FFD700 ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
+                opacity: levelProgress > 0 ? 0.6 : 0
+              }}
+            />
+            
+            {/* Level up celebration effect */}
+            {isLevelUp && (
+              <div className="absolute inset-0 rounded-full animate-ping bg-gradient-to-r from-yellow-400 to-orange-400 opacity-75" />
+            )}
+            
+            {/* Icon with enhanced visibility */}
+            <div 
+              className={`relative z-10 font-bold transition-all duration-300 ${isLevelUp ? 'animate-pulse text-yellow-300' : ''}`}
+              style={{ 
+                color: userPoints.level_name === 'Rookie' ? '#FFD700' : getLevelColor(userPoints.level_name),
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))'
+              }}
+            >
               {getLevelIcon(userPoints.level_name)}
             </div>
           </div>
