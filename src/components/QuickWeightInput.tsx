@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,59 +57,111 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
     setIsSubmitting(true);
     try {
-      const weightData = {
-        user_id: user.id,
-        weight: parseFloat(weight),
-        date: new Date().toISOString().split('T')[0]
-      };
+      const weightValue = parseFloat(weight);
+      const dateStr = new Date().toISOString().split('T')[0];
+      
+      console.log('Starting weight submission process...');
+      console.log('- Weight value:', weightValue);
+      console.log('- Date:', dateStr);
+      console.log('- User ID:', user.id);
+      console.log('- Has existing weight today:', hasWeightToday);
 
-      console.log('Submitting weight data:', weightData);
-
-      if (hasWeightToday) {
-        // Update existing weight - no points awarded
+      if (hasWeightToday && todaysWeight?.id) {
+        // Update existing weight entry
         console.log('Updating existing weight entry with ID:', todaysWeight.id);
-        const { error: historyError } = await supabase
+        const { data, error: historyError } = await supabase
           .from('weight_history')
-          .update(weightData)
-          .eq('id', todaysWeight.id);
+          .update({ 
+            weight: weightValue,
+            date: dateStr 
+          })
+          .eq('id', todaysWeight.id)
+          .select();
 
-        if (historyError) throw historyError;
+        if (historyError) {
+          console.error('Error updating weight:', historyError);
+          throw historyError;
+        }
+        
+        console.log('Weight updated successfully:', data);
         toast.success('Gewicht aktualisiert!');
-        console.log('Weight updated successfully');
       } else {
-        // Create new weight entry using UPSERT with proper constraint name
+        // Create new weight entry with simple INSERT
         console.log('Creating new weight entry');
-        const { error: historyError } = await supabase
+        
+        // First check if there's already an entry for today (safety check)
+        const { data: existingData, error: checkError } = await supabase
           .from('weight_history')
-          .upsert(weightData, { 
-            onConflict: 'weight_history_user_id_date_unique',
-            ignoreDuplicates: false 
-          });
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('date', dateStr)
+          .maybeSingle();
 
-        if (historyError) throw historyError;
-        console.log('New weight entry created');
+        if (checkError) {
+          console.error('Error checking existing entry:', checkError);
+          throw checkError;
+        }
 
-        // Award points for weight tracking
-        await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht gemessen');
-        await updateStreak('weight_tracking');
+        if (existingData) {
+          console.log('Found existing entry, updating instead:', existingData.id);
+          const { data, error: updateError } = await supabase
+            .from('weight_history')
+            .update({ weight: weightValue })
+            .eq('id', existingData.id)
+            .select();
 
-        toast.success(t('weightInput.success'));
+          if (updateError) {
+            console.error('Error updating existing entry:', updateError);
+            throw updateError;
+          }
+          
+          console.log('Existing entry updated:', data);
+          toast.success('Gewicht aktualisiert!');
+        } else {
+          // Safe to insert new entry
+          const { data, error: insertError } = await supabase
+            .from('weight_history')
+            .insert({
+              user_id: user.id,
+              weight: weightValue,
+              date: dateStr
+            })
+            .select();
+
+          if (insertError) {
+            console.error('Error inserting new weight:', insertError);
+            throw insertError;
+          }
+          
+          console.log('New weight entry created:', data);
+
+          // Award points for weight tracking
+          await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht gemessen');
+          await updateStreak('weight_tracking');
+
+          toast.success(t('weightInput.success'));
+        }
       }
 
       // Update profile with current weight
+      console.log('Updating profile weight...');
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ weight: parseFloat(weight) })
+        .update({ weight: weightValue })
         .eq('user_id', user.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        throw profileError;
+      }
 
+      console.log('Profile weight updated successfully');
       setIsEditing(false);
       console.log('Calling onWeightAdded callback');
       onWeightAdded?.();
     } catch (error) {
       console.error('Error saving weight:', error);
-      toast.error(t('weightInput.error'));
+      toast.error('Fehler beim Speichern des Gewichts: ' + (error as any)?.message || 'Unbekannter Fehler');
     } finally {
       setIsSubmitting(false);
     }
