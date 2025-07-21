@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
+import { useSubscription } from "@/hooks/useSubscription";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -26,6 +27,7 @@ import { toast } from "sonner";
 const Index = () => {
   const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
+  const { isPremium, subscriptionTier } = useSubscription();
   const navigate = useNavigate();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
@@ -314,6 +316,9 @@ const Index = () => {
     );
   }
 
+  // Check if user has premium features
+  const hasPremiumFeatures = isPremium || ['premium', 'enterprise'].includes(subscriptionTier?.toLowerCase() || '');
+
   return (
     <>
       <div className="space-y-5">
@@ -336,36 +341,42 @@ const Index = () => {
           onDateChange={handleDateChange}
         />
 
-        <QuickWeightInput 
-          currentWeight={userProfile?.weight}
-          onWeightAdded={handleWeightAdded}
-          todaysWeight={todaysWeight}
-        />
+        {/* Premium Features - Only show for premium users */}
+        {hasPremiumFeatures && (
+          <>
+            <QuickWeightInput 
+              currentWeight={userProfile?.weight}
+              onWeightAdded={handleWeightAdded}
+              todaysWeight={todaysWeight}
+            />
 
-        {/* Transformation Tools */}
-        <div className="grid grid-cols-1 gap-4">
-          <QuickWorkoutInput 
-            onWorkoutAdded={handleWorkoutAdded}
-            todaysWorkout={todaysWorkout}
-          />
-          <QuickSleepInput 
-            onSleepAdded={handleSleepAdded}
-            todaysSleep={todaysSleep}
-          />
-        </div>
+            {/* Transformation Tools */}
+            <div className="grid grid-cols-1 gap-4">
+              <QuickWorkoutInput 
+                onWorkoutAdded={handleWorkoutAdded}
+                todaysWorkout={todaysWorkout}
+              />
+              <QuickSleepInput 
+                onSleepAdded={handleSleepAdded}
+                todaysSleep={todaysSleep}
+              />
+            </div>
 
-        <BodyMeasurements 
-          onMeasurementsAdded={handleMeasurementsAdded}
-          todaysMeasurements={todaysMeasurements}
-        />
+            <BodyMeasurements 
+              onMeasurementsAdded={handleMeasurementsAdded}
+              todaysMeasurements={todaysMeasurements}
+            />
+          </>
+        )}
         
         {/* Department Progress */}
         <DepartmentProgress />
         
-        {/* Progress Charts */}
-        <ProgressCharts timeRange="week" />
+        {/* Progress Charts - Only for premium users */}
+        {hasPremiumFeatures && <ProgressCharts timeRange="week" />}
         
-        <SmartCoachInsights />
+        {/* Smart Coach Insights - Only for premium users */}
+        {hasPremiumFeatures && <SmartCoachInsights />}
         
         <BadgeSystem />
 
