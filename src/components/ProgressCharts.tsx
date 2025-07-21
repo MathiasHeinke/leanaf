@@ -243,6 +243,7 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
                         tickLine={false}
                       />
                       <YAxis 
+                        domain={['dataMin - 5', 'dataMax + 5']}
                         fontSize={10}
                         tickMargin={8}
                         axisLine={false}
@@ -295,6 +296,7 @@ export const ProgressCharts = ({ timeRange = 'month' }: ProgressChartsProps) => 
                         tickLine={false}
                       />
                       <YAxis 
+                        domain={['dataMin - 5', 'dataMax + 5']}
                         fontSize={10}
                         tickMargin={8}
                         axisLine={false}
