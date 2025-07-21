@@ -161,7 +161,7 @@ export const useAutoDarkMode = () => {
       clearTimeout(timeoutId);
       clearInterval(interval);
     };
-  }, [autoSettings.enabled, theme, setTheme, userOverride, isToggling]); // Added isToggling dependency
+  }, [autoSettings.enabled, setTheme, userOverride, isToggling]); // Removed theme dependency to prevent race condition
 
   // Debug effect to track theme changes
   useEffect(() => {
