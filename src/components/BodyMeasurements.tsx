@@ -1,38 +1,22 @@
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Ruler, Camera, TrendingDown, Calendar, Target } from "lucide-react";
+import { Ruler, Plus, Camera, Edit, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { useTranslation } from "@/hooks/useTranslation";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { InfoButton } from "@/components/InfoButton";
 
-interface BodyMeasurement {
-  id: string;
-  date: string;
-  chest?: number;
-  waist?: number;
-  belly?: number;
-  hips?: number;
-  thigh?: number;
-  arms?: number;
-  neck?: number;
-  photo_url?: string;
+interface BodyMeasurementsProps {
+  onMeasurementAdded?: () => void;
+  todaysMeasurements?: any;
 }
 
-export const BodyMeasurements = () => {
-  const { user } = useAuth();
-  const [measurements, setMeasurements] = useState<BodyMeasurement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form state
-  const [formData, setFormData] = useState({
+export const BodyMeasurements = ({ onMeasurementAdded, todaysMeasurements }: BodyMeasurementsProps) => {
+  const [measurements, setMeasurements] = useState({
     chest: '',
     waist: '',
     belly: '',
@@ -41,266 +25,332 @@ export const BodyMeasurements = () => {
     arms: '',
     neck: ''
   });
+  const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
+
+  // Check if measurements already exist for today
+  const hasMeasurementsToday = todaysMeasurements && Object.values(todaysMeasurements).some(value => 
+    value !== null && value !== undefined && value !== ''
+  );
 
   useEffect(() => {
-    if (user) {
-      loadMeasurements();
+    if (hasMeasurementsToday && !isEditing) {
+      // Pre-fill form with existing data
+      setMeasurements({
+        chest: todaysMeasurements.chest?.toString() || '',
+        waist: todaysMeasurements.waist?.toString() || '',
+        belly: todaysMeasurements.belly?.toString() || '',
+        hips: todaysMeasurements.hips?.toString() || '',
+        thigh: todaysMeasurements.thigh?.toString() || '',
+        arms: todaysMeasurements.arms?.toString() || '',
+        neck: todaysMeasurements.neck?.toString() || ''
+      });
+      setNotes(todaysMeasurements.notes || '');
     }
-  }, [user]);
+  }, [hasMeasurementsToday, todaysMeasurements, isEditing]);
 
-  const loadMeasurements = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('body_measurements')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setMeasurements(data || []);
-    } catch (error) {
-      console.error('Error loading measurements:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!user) return;
 
-    // Check if at least one measurement is provided
-    const hasAnyMeasurement = Object.values(formData).some(value => value !== '');
+    // Check if at least one measurement is filled
+    const hasAnyMeasurement = Object.values(measurements).some(value => value !== '');
     if (!hasAnyMeasurement) {
-      toast.error('Bitte mindestens einen Wert eingeben');
+      toast.error('Bitte mindestens eine Messung eingeben');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
       const measurementData = {
         user_id: user.id,
-        date: today,
-        chest: formData.chest ? parseFloat(formData.chest) : null,
-        waist: formData.waist ? parseFloat(formData.waist) : null,
-        belly: formData.belly ? parseFloat(formData.belly) : null,
-        hips: formData.hips ? parseFloat(formData.hips) : null,
-        thigh: formData.thigh ? parseFloat(formData.thigh) : null,
-        arms: formData.arms ? parseFloat(formData.arms) : null,
-        neck: formData.neck ? parseFloat(formData.neck) : null
+        chest: measurements.chest ? parseFloat(measurements.chest) : null,
+        waist: measurements.waist ? parseFloat(measurements.waist) : null,
+        belly: measurements.belly ? parseFloat(measurements.belly) : null,
+        hips: measurements.hips ? parseFloat(measurements.hips) : null,
+        thigh: measurements.thigh ? parseFloat(measurements.thigh) : null,
+        arms: measurements.arms ? parseFloat(measurements.arms) : null,
+        neck: measurements.neck ? parseFloat(measurements.neck) : null,
+        notes,
+        date: new Date().toISOString().split('T')[0]
       };
 
-      const { error } = await supabase
-        .from('body_measurements')
-        .upsert(measurementData, { onConflict: 'user_id,date' });
+      if (hasMeasurementsToday) {
+        // Update existing measurements
+        const { error } = await supabase
+          .from('body_measurements')
+          .update(measurementData)
+          .eq('id', todaysMeasurements.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast.success('Körpermaße aktualisiert!');
+      } else {
+        // Create new measurements
+        const { error } = await supabase
+          .from('body_measurements')
+          .insert(measurementData);
 
-      toast.success('Körpermaße erfasst! 📏✨');
-      
-      // Reset form and reload data
-      setFormData({
-        chest: '',
-        waist: '',
-        belly: '',
-        hips: '',
-        thigh: '',
-        arms: '',
-        neck: ''
-      });
-      setShowForm(false);
-      await loadMeasurements();
+        if (error) throw error;
+
+        // Award points for new measurements
+        await awardPoints('body_measurements', getPointsForActivity('body_measurements'), 'Körpermaße gemessen');
+        await updateStreak('body_tracking');
+
+        toast.success('Körpermaße erfolgreich eingetragen!');
+      }
+
+      setIsEditing(false);
+      onMeasurementAdded?.();
     } catch (error) {
       console.error('Error saving measurements:', error);
-      toast.error('Fehler beim Speichern der Maße');
+      toast.error('Fehler beim Speichern der Körpermaße');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getLastMeasurement = () => {
-    return measurements.length > 0 ? measurements[0] : null;
+  const handleInputChange = (field: string, value: string) => {
+    setMeasurements(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const getTrend = (current: number | undefined, previous: number | undefined) => {
-    if (!current || !previous) return null;
-    const diff = current - previous;
-    return {
-      value: Math.abs(diff),
-      direction: diff < 0 ? 'down' : diff > 0 ? 'up' : 'same',
-      isGood: diff < 0 // For body measurements, decrease is usually good
-    };
-  };
+  // Show read-only summary if measurements exist and not editing
+  if (hasMeasurementsToday && !isEditing) {
+    const activeMeasurements = Object.entries(measurements).filter(([_, value]) => value !== '');
+    
+    return (
+      <Card className="glass-card border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-purple-800 dark:text-purple-200">Körpermaße eingetragen! 📏</h3>
+              <p className="text-sm text-purple-600 dark:text-purple-400">
+                {activeMeasurements.length} Messung{activeMeasurements.length !== 1 ? 'en' : ''} erfasst
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <InfoButton
+                title="Körpermaße Tracking"
+                description="Körpermaße sind oft aussagekräftiger als das Gewicht, da sie Muskelaufbau und Fettabbau besser widerspiegeln. Messe immer zur gleichen Zeit."
+                scientificBasis="Studien zeigen: Umfangsmessungen korrelieren stärker mit Gesundheitsrisiken als BMI. Taillenumfang ist ein starker Prädiktor für metabolische Gesundheit."
+                tips={[
+                  "Messe immer zur gleichen Tageszeit (morgens, nüchtern)",
+                  "Achte auf korrekte Messpunkte für Vergleichbarkeit",
+                  "Fortschritte zeigen sich oft früher in Maßen als auf der Waage"
+                ]}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="text-purple-600 border-purple-300 hover:bg-purple-50"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-  const lastMeasurement = getLastMeasurement();
-  const secondLastMeasurement = measurements.length > 1 ? measurements[1] : null;
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {activeMeasurements.map(([key, value]) => {
+              const labels: Record<string, string> = {
+                chest: 'Brust',
+                waist: 'Taille',
+                belly: 'Bauch',
+                hips: 'Hüfte',
+                thigh: 'Oberschenkel',
+                arms: 'Arme',
+                neck: 'Hals'
+              };
+              return (
+                <div key={key} className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-2">
+                  <p className="text-xs text-purple-700 dark:text-purple-300 font-medium">
+                    {labels[key]}
+                  </p>
+                  <p className="text-sm text-purple-800 dark:text-purple-200">
+                    {value} cm
+                  </p>
+                </div>
+              );
+            })}
+          </div>
 
-  const measurementFields = [
-    { key: 'belly', label: 'Bauchumfang', icon: '🏠', description: 'Über dem Bauchnabel' },
-    { key: 'waist', label: 'Taille', icon: '⌛', description: 'Schmalste Stelle' },
-    { key: 'chest', label: 'Brust', icon: '💪', description: 'Breiteste Stelle' },
-    { key: 'hips', label: 'Hüfte', icon: '🍑', description: 'Breiteste Stelle' },
-    { key: 'thigh', label: 'Oberschenkel', icon: '🦵', description: 'Dickste Stelle' },
-    { key: 'arms', label: 'Arme', icon: '💪', description: 'Umfang am Bizeps' },
-    { key: 'neck', label: 'Hals', icon: '🦒', description: 'Halsumfang' }
-  ];
-
-  if (loading) {
-    return <Card className="p-6"><div>Lade Körpermaße...</div></Card>;
+          <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
+            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
+              <strong>Tipp:</strong> Körpermaße zeigen Fortschritte oft früher als die Waage!
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              • Muskelaufbau kann das Gewicht erhöhen, aber Umfänge reduzieren
+              • Messe immer an denselben Körperstellen
+              • Dokumentiere Fortschritte auch mit Fotos
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-purple-50/50 via-purple-25/30 to-purple-50/20 dark:from-purple-950/20 dark:via-purple-950/10 dark:to-purple-950/5 border-purple-200/30 dark:border-purple-800/30">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-xl">
-              <Ruler className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">Körpermaße</h3>
-              <p className="text-sm text-muted-foreground">Die Waage lügt, Maße nicht!</p>
-            </div>
+    <Card className="glass-card border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
+            <Ruler className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
-          
-          {!showForm && (
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-purple-500 hover:bg-purple-600 text-white"
-            >
-              <Ruler className="h-4 w-4 mr-2" />
-              Messen
-            </Button>
-          )}
+          <div className="flex-1">
+            <h3 className="font-semibold text-purple-800 dark:text-purple-200">
+              {hasMeasurementsToday ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
+            </h3>
+            <p className="text-sm text-purple-600 dark:text-purple-400">Alle Angaben in cm</p>
+          </div>
+          <InfoButton
+            title="Körpermaße Tracking"
+            description="Körpermaße sind oft aussagekräftiger als das Gewicht, da sie Muskelaufbau und Fettabbau besser widerspiegeln. Messe immer zur gleichen Zeit."
+            scientificBasis="Studien zeigen: Umfangsmessungen korrelieren stärker mit Gesundheitsrisiken als BMI. Taillenumfang ist ein starker Prädiktor für metabolische Gesundheit."
+            tips={[
+              "Messe immer zur gleichen Tageszeit (morgens, nüchtern)",
+              "Achte auf korrekte Messpunkte für Vergleichbarkeit",
+              "Fortschritte zeigen sich oft früher in Maßen als auf der Waage"
+            ]}
+          />
         </div>
 
-        {/* Measurement Form */}
-        {showForm && (
-          <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
-            <div className="bg-purple-50/50 dark:bg-purple-950/20 p-4 rounded-xl border border-purple-200/50 dark:border-purple-800/50">
-              <h4 className="font-medium mb-3 text-purple-700 dark:text-purple-300">Neue Messung (in cm)</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {measurementFields.map(({ key, label, icon, description }) => (
-                  <div key={key}>
-                    <Label htmlFor={key} className="text-sm font-medium flex items-center gap-2 mb-2">
-                      <span>{icon}</span>
-                      {label}
-                      <span className="text-xs text-muted-foreground">({description})</span>
-                    </Label>
-                    <Input
-                      id={key}
-                      type="number"
-                      step="0.1"
-                      placeholder="z.B. 85.5"
-                      value={formData[key as keyof typeof formData]}
-                      onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
-                      className="border-purple-200 dark:border-purple-800"
-                    />
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex gap-3 mt-4">
-                <Button 
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="bg-purple-500 hover:bg-purple-600 text-white"
-                >
-                  {isSubmitting ? 'Speichere...' : 'Maße speichern'}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowForm(false)}
-                  className="border-purple-200 dark:border-purple-800"
-                >
-                  Abbrechen
-                </Button>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Brust
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="z.B. 95.5"
+                value={measurements.chest}
+                onChange={(e) => handleInputChange('chest', e.target.value)}
+                className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Taille
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="z.B. 85.0"
+                value={measurements.waist}
+                onChange={(e) => handleInputChange('waist', e.target.value)}
+                className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Bauch
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="z.B. 90.0"
+                value={measurements.belly}
+                onChange={(e) => handleInputChange('belly', e.target.value)}
+                className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Hüfte
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="z.B. 100.0"
+                value={measurements.hips}
+                onChange={(e) => handleInputChange('hips', e.target.value)}
+                className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Oberschenkel
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="z.B. 60.0"
+                value={measurements.thigh}
+                onChange={(e) => handleInputChange('thigh', e.target.value)}
+                className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+                Arme
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="z.B. 30.0"
+                value={measurements.arms}
+                onChange={(e) => handleInputChange('arms', e.target.value)}
+                className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+              />
             </div>
           </div>
-        )}
 
-        {/* Last Measurements Display */}
-        {lastMeasurement && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Letzte Messung
-              </h4>
-              <Badge variant="outline" className="border-purple-200 dark:border-purple-800">
-                {format(new Date(lastMeasurement.date), 'dd. MMM yyyy', { locale: de })}
-              </Badge>
-            </div>
+          <div>
+            <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1 block">
+              Hals
+            </label>
+            <Input
+              type="number"
+              step="0.1"
+              placeholder="z.B. 38.0"
+              value={measurements.neck}
+              onChange={(e) => handleInputChange('neck', e.target.value)}
+              className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+            />
+          </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {measurementFields.map(({ key, label, icon }) => {
-                const current = lastMeasurement[key as keyof BodyMeasurement] as number;
-                const previous = secondLastMeasurement?.[key as keyof BodyMeasurement] as number;
-                const trend = getTrend(current, previous);
-                
-                if (!current) return null;
-                
-                return (
-                  <div key={key} className="p-3 bg-white/50 dark:bg-gray-800/30 rounded-xl border border-purple-200/30 dark:border-purple-800/30">
-                    <div className="text-xs font-medium text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
-                      <span>{icon}</span>
-                      {label}
-                    </div>
-                    <div className="text-lg font-bold">{current} cm</div>
-                    {trend && (
-                      <div className={`text-xs flex items-center gap-1 mt-1 ${
-                        trend.isGood ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        <TrendingDown className={`h-3 w-3 ${trend.direction === 'up' ? 'rotate-180' : ''}`} />
-                        {trend.direction === 'down' ? '-' : '+'}{trend.value.toFixed(1)} cm
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Progress Motivation */}
-            {secondLastMeasurement && (
-              <div className="p-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl border border-purple-200/30 dark:border-purple-800/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  <span className="font-medium text-purple-700 dark:text-purple-300">Fortschritt</span>
+          <div className="flex gap-2">
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Speichern...
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {measurements.length > 1 ? 
-                    "Weiter so! Konsistente Messungen zeigen deinen echten Fortschritt. 💪" :
-                    "Erste Messung erfasst! Miss nächste Woche wieder für deinen Fortschritt. 📏"
-                  }
-                </p>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  {hasMeasurementsToday ? 'Aktualisieren' : 'Speichern'}
+                </div>
+              )}
+            </Button>
+            
+            {hasMeasurementsToday && isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+                className="border-purple-300 text-purple-600"
+              >
+                Abbrechen
+              </Button>
             )}
           </div>
-        )}
-
-        {/* Empty State */}
-        {measurements.length === 0 && !showForm && (
-          <div className="text-center py-8">
-            <Ruler className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-            <h4 className="font-medium mb-2">Noch keine Messungen</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Starte mit deiner ersten Messung - der echte Fortschritt zeigt sich in den Maßen!
-            </p>
-            <Button 
-              onClick={() => setShowForm(true)}
-              className="bg-purple-500 hover:bg-purple-600 text-white"
-            >
-              Erste Messung
-            </Button>
-          </div>
-        )}
-      </div>
+        </form>
+      </CardContent>
     </Card>
   );
 };

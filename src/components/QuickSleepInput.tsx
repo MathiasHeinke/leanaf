@@ -1,285 +1,221 @@
 
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Moon, Star, Edit2, CheckCircle2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Moon, Plus, Edit, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { InfoButton } from "@/components/InfoButton";
 
-export const QuickSleepInput = () => {
-  const { user } = useAuth();
-  const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
-  const [sleepHours, setSleepHours] = useState<string>('');
-  const [sleepQuality, setSleepQuality] = useState<number | null>(null);
+interface QuickSleepInputProps {
+  onSleepAdded?: () => void;
+  todaysSleep?: any;
+}
+
+export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputProps) => {
+  const [sleepHours, setSleepHours] = useState<number[]>([7.5]);
+  const [sleepQuality, setSleepQuality] = useState<number[]>([7]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingSleep, setExistingSleep] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
+
+  // Check if sleep already exists for today
+  const hasSleepToday = todaysSleep && todaysSleep.sleep_hours !== null;
 
   useEffect(() => {
-    if (user) {
-      checkExistingSleep();
+    if (hasSleepToday && !isEditing) {
+      // Pre-fill form with existing data
+      setSleepHours([todaysSleep.sleep_hours || 7.5]);
+      setSleepQuality([todaysSleep.sleep_quality || 7]);
     }
-  }, [user]);
+  }, [hasSleepToday, todaysSleep, isEditing]);
 
-  const checkExistingSleep = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('sleep_tracking')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking existing sleep:', error);
-        return;
-      }
-
-      if (data) {
-        setExistingSleep(data);
-        setSleepHours(data.sleep_hours?.toString() || '');
-        setSleepQuality(data.sleep_quality);
-      }
-    } catch (error) {
-      console.error('Error checking existing sleep:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const qualityEmojis = ['😴', '😔', '😐', '😊', '😍'];
-  const qualityLabels = ['Grausam', 'Schlecht', 'OK', 'Gut', 'Perfekt'];
-
-  const handleSubmit = async () => {
-    if (!user || sleepQuality === null) return;
 
     setIsSubmitting(true);
-    console.log('🛌 Starting sleep tracking submission...');
-    
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
       const sleepData = {
         user_id: user.id,
-        date: today,
-        sleep_hours: sleepHours ? parseFloat(sleepHours) : null,
-        sleep_quality: sleepQuality
+        sleep_hours: sleepHours[0],
+        sleep_quality: sleepQuality[0],
+        date: new Date().toISOString().split('T')[0]
       };
 
-      console.log('💾 Saving sleep data:', sleepData);
+      if (hasSleepToday) {
+        // Update existing sleep entry
+        const { error } = await supabase
+          .from('sleep_tracking')
+          .update(sleepData)
+          .eq('id', todaysSleep.id);
 
-      const { error } = await supabase
-        .from('sleep_tracking')
-        .upsert(sleepData, { onConflict: 'user_id,date' });
+        if (error) throw error;
+        toast.success('Schlaf aktualisiert!');
+      } else {
+        // Create new sleep entry
+        const { error } = await supabase
+          .from('sleep_tracking')
+          .insert(sleepData);
 
-      if (error) {
-        console.error('❌ Error saving sleep data:', error);
-        throw error;
+        if (error) throw error;
+
+        // Award points for sleep tracking
+        await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), 'Schlaf eingetragen');
+        await updateStreak('sleep_tracking');
+
+        toast.success('Schlaf erfolgreich eingetragen!');
       }
 
-      console.log('✅ Sleep data saved successfully');
-
-      // Award points for sleep tracking
-      const pointsEarned = getPointsForActivity('sleep_tracked');
-      console.log(`🎯 Awarding ${pointsEarned} points for sleep tracking`);
-      
-      const pointsResult = await awardPoints(
-        'sleep_tracked', 
-        pointsEarned, 
-        `Schlaf erfasst (Qualität: ${sleepQuality}/5)`
-      );
-      
-      console.log('🎉 Points awarded result:', pointsResult);
-      
-      const streakResult = await updateStreak('sleep_tracking');
-      console.log('🔥 Streak updated result:', streakResult);
-
-      // Show success toast with longer duration and better visibility
-      toast.success(`Schlaf erfasst! 😴💤 (+${pointsEarned} Punkte)`, {
-        duration: 4000,
-        position: "top-center",
-      });
-      
-      // Update existing sleep state
-      setExistingSleep({
-        ...sleepData,
-        sleep_hours: sleepData.sleep_hours,
-        sleep_quality: sleepData.sleep_quality
-      });
       setIsEditing(false);
+      onSleepAdded?.();
     } catch (error) {
-      console.error('❌ Error in sleep tracking:', error);
-      toast.error('Fehler beim Speichern der Schlaf-Daten', {
-        duration: 4000,
-        position: "top-center",
-      });
+      console.error('Error saving sleep:', error);
+      toast.error('Fehler beim Speichern der Schlafdaten');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
+  // Show read-only summary if sleep exists and not editing
+  if (hasSleepToday && !isEditing) {
     return (
-      <Card className="p-6 bg-gradient-to-br from-indigo-50/50 via-indigo-25/30 to-indigo-50/20 dark:from-indigo-950/20 dark:via-indigo-950/10 dark:to-indigo-950/5 border-indigo-200/30 dark:border-indigo-800/30">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-indigo-200/50 rounded w-32"></div>
-          <div className="h-12 bg-indigo-200/50 rounded"></div>
-        </div>
-      </Card>
-    );
-  }
-
-  // Show read-only summary if sleep already exists and not editing
-  if (existingSleep && !isEditing) {
-    const getTip = () => {
-      const quality = existingSleep.sleep_quality;
-      if (quality >= 4) {
-        return "Excellenter Schlaf! Du bist bereit für alles was der Tag bringt! 🌟";
-      } else if (quality === 3) {
-        return "Solider Schlaf! Versuche eine regelmäßige Schlafenszeit beizubehalten. 💤";
-      } else {
-        return "Schlaf ist wichtig für deine Gesundheit. Versuche heute Abend früher ins Bett zu gehen. 🛌";
-      }
-    };
-
-    return (
-      <Card className="p-6 bg-gradient-to-br from-indigo-50/50 via-indigo-25/30 to-indigo-50/20 dark:from-indigo-950/20 dark:via-indigo-950/10 dark:to-indigo-950/5 border-indigo-200/30 dark:border-indigo-800/30">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-500/10 rounded-xl">
-                <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h3 className="font-semibold text-lg">Schlaf heute</h3>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditing(true)}
-              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300"
-            >
-              <Edit2 className="h-4 w-4 mr-1" />
-              Bearbeiten
-            </Button>
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+            <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
-
-          <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-indigo-500" />
-              <span className="font-medium">Schlaf erfasst!</span>
-            </div>
-            
-            <div className="text-sm text-muted-foreground space-y-1">
-              {existingSleep.sleep_hours && <div>Dauer: {existingSleep.sleep_hours}h</div>}
-              <div className="flex items-center gap-2">
-                <span>Qualität: {existingSleep.sleep_quality}/5</span>
-                <span className="text-base">{qualityEmojis[existingSleep.sleep_quality - 1]}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-indigo-50/50 dark:bg-indigo-950/20 rounded-lg p-3">
-            <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
-              💡 {getTip()}
+          <div className="flex-1">
+            <h3 className="font-semibold text-blue-800 dark:text-blue-200">Schlaf eingetragen! 😴</h3>
+            <p className="text-sm text-blue-600 dark:text-blue-400">
+              {todaysSleep.sleep_hours || 0} Stunden • 
+              Qualität: {todaysSleep.sleep_quality || 0}/10
             </p>
           </div>
+          <div className="flex items-center gap-2">
+            <InfoButton
+              title="Schlaf Tracking"
+              description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
+              scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
+              tips={[
+                "7-9 Stunden Schlaf für optimale Regeneration",
+                "Feste Schlafzeiten unterstützen den Biorhythmus",
+                "Bildschirme 1h vor dem Schlafen vermeiden"
+              ]}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </Card>
+        
+        <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
+          <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+            <strong>Tipp:</strong> Guter Schlaf = bessere Fettverbrennung!
+          </p>
+          <p className="text-xs text-blue-600 dark:text-blue-400">
+            • Während des Schlafs produziert dein Körper Wachstumshormone
+            • Schlechter Schlaf erhöht Cortisol und Heißhunger
+            • 7-9 Stunden sind optimal für die Regeneration
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-indigo-50/50 via-indigo-25/30 to-indigo-50/20 dark:from-indigo-950/20 dark:via-indigo-950/10 dark:to-indigo-950/5 border-indigo-200/30 dark:border-indigo-800/30">
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/10 rounded-xl">
-              <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <h3 className="font-semibold text-lg">{existingSleep ? 'Schlaf bearbeiten' : 'Wie hast du geschlafen?'}</h3>
-          </div>
-          {existingSleep && (
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+          <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+            {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
+          </h3>
+        </div>
+        <InfoButton
+          title="Schlaf Tracking"
+          description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
+          scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
+          tips={[
+            "7-9 Stunden Schlaf für optimale Regeneration",
+            "Feste Schlafzeiten unterstützen den Biorhythmus",
+            "Bildschirme 1h vor dem Schlafen vermeiden"
+          ]}
+        />
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
+            Schlafdauer: {sleepHours[0]} Stunden
+          </label>
+          <Slider
+            value={sleepHours}
+            onValueChange={setSleepHours}
+            max={12}
+            min={3}
+            step={0.5}
+            className="w-full"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
+            Schlafqualität: {sleepQuality[0]}/10
+          </label>
+          <Slider
+            value={sleepQuality}
+            onValueChange={setSleepQuality}
+            max={10}
+            min={1}
+            step={1}
+            className="w-full"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isSubmitting ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Speichern...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                {hasSleepToday ? 'Aktualisieren' : 'Eintragen'}
+              </div>
+            )}
+          </Button>
+          
+          {hasSleepToday && isEditing && (
             <Button
-              variant="ghost"
-              size="sm"
+              type="button"
+              variant="outline"
               onClick={() => setIsEditing(false)}
-              className="text-gray-500 hover:text-gray-700"
+              className="border-blue-300 text-blue-600"
             >
               Abbrechen
             </Button>
           )}
         </div>
-
-        {/* Sleep Hours Input */}
-        <div>
-          <label className="text-sm font-medium text-indigo-700 dark:text-indigo-300 mb-2 block">
-            Stunden geschlafen (optional)
-          </label>
-          <Input
-            type="number"
-            step="0.5"
-            placeholder="7.5"
-            value={sleepHours}
-            onChange={(e) => setSleepHours(e.target.value)}
-            className="border-indigo-200 dark:border-indigo-800"
-          />
-        </div>
-
-        {/* Sleep Quality Buttons */}
-        <div>
-          <label className="text-sm font-medium text-indigo-700 dark:text-indigo-300 mb-3 block flex items-center gap-2">
-            <Star className="h-4 w-4" />
-            Schlafqualität (1-5)
-          </label>
-          <div className="grid grid-cols-5 gap-2">
-            {[1, 2, 3, 4, 5].map((quality) => (
-              <Button
-                key={quality}
-                variant={sleepQuality === quality ? "default" : "outline"}
-                onClick={() => setSleepQuality(quality)}
-                className={`h-16 flex flex-col gap-1 text-xs font-medium ${
-                  sleepQuality === quality 
-                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white' 
-                    : 'border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950/20'
-                }`}
-                disabled={isSubmitting}
-              >
-                <span className="text-lg">{qualityEmojis[quality - 1]}</span>
-                <span className="leading-tight" translate="no">{qualityLabels[quality - 1]}</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        {sleepQuality !== null && (
-          <Button 
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="w-full h-12 bg-indigo-500 hover:bg-indigo-600 text-white font-medium animate-in slide-in-from-bottom-2 duration-300"
-          >
-            {isSubmitting ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Speichere...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Moon className="h-4 w-4" />
-                Schlaf speichern
-              </div>
-            )}
-          </Button>
-        )}
-      </div>
-    </Card>
+      </form>
+    </div>
   );
 };

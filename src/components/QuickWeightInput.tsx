@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { InfoButton } from "@/components/InfoButton";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -67,7 +68,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
         <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
           <Scale className="h-5 w-5 text-green-600 dark:text-green-400" />
         </div>
-        <div>
+        <div className="flex-1">
           <h3 className="font-semibold text-green-800 dark:text-green-200">{t('weightInput.title')}</h3>
           {currentWeight && (
             <p className="text-sm text-green-600 dark:text-green-400">
@@ -75,6 +76,16 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
             </p>
           )}
         </div>
+        <InfoButton
+          title="Gewicht Tracking"
+          description="Regelmäßiges Wiegen hilft dabei, Fortschritte zu verfolgen und Trends zu erkennen. Schwankungen sind normal und durch viele Faktoren bedingt."
+          scientificBasis="Studien zeigen: Tägliches Wiegen zur gleichen Zeit (morgens, nüchtern) liefert die genauesten und vergleichbarsten Daten für Langzeittrends."
+          tips={[
+            "Wiege dich täglich zur gleichen Zeit (morgens, nüchtern)",
+            "Achte auf Wochentrends statt tägliche Schwankungen",
+            "Wasser, Salz und Hormone beeinflussen das Tagesgewicht"
+          ]}
+        />
       </div>
       
       <form onSubmit={handleSubmit} className="flex gap-2">

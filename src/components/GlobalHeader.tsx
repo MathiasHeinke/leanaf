@@ -18,7 +18,8 @@ import {
   TrendingUp,
   Sun,
   Moon,
-  Clock
+  Clock,
+  Microscope
 } from "lucide-react";
 
 interface GlobalHeaderProps {
@@ -195,6 +196,10 @@ export const GlobalHeader = ({
               <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 {t('header.subscription')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/science')}>
+                <Microscope className="h-4 w-4 mr-2" />
+                Wissenschaft & Methodik
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />

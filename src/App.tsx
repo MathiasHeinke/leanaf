@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import Subscription from "./pages/Subscription";
 import CoachPage from "./pages/Coach";
 import HistoryPage from "./pages/History";
+import Science from "./pages/Science";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
                   <Route path="/subscription" element={<Subscription />} />
                   <Route path="/coach" element={<CoachPage />} />
                   <Route path="/history" element={<HistoryPage />} />
+                  <Route path="/science" element={<Science />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
