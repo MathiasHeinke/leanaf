@@ -267,7 +267,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       const { data: weightData, error } = await supabase
         .from('weight_history')
-        .select('*')
+        .select('id, date, weight')
         .eq('user_id', user.id)
         .gte('date', startDate.toISOString().split('T')[0])
         .order('date', { ascending: false });
@@ -275,6 +275,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       if (error) throw error;
       
       const formattedWeights = weightData?.map(entry => ({
+        id: entry.id,
         date: entry.date,
         weight: Number(entry.weight),
         displayDate: new Date(entry.date).toLocaleDateString('de-DE', { 
