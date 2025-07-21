@@ -149,7 +149,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
             Zurück
           </Button>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-            KI Coach Subscription
+            leanAF Pläne
           </h1>
         </div>
 
