@@ -146,8 +146,8 @@ export const TransformationDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Header Stats - Changed to grid-cols-2 for all screen sizes */}
+      <div className="grid grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Scale className="h-4 w-4 text-blue-600" />
@@ -193,7 +193,7 @@ export const TransformationDashboard = () => {
         </Card>
       </div>
 
-      {/* Progress Cards - Changed from grid-cols-1 md:grid-cols-2 to grid-cols-1 */}
+      {/* Progress Cards */}
       <div className="grid grid-cols-1 gap-6">
         <Card className="p-6">
           <CardHeader className="pb-4">
