@@ -41,9 +41,9 @@ export const PointsHeader = () => {
   const levelProgress = (currentLevelProgress / userPoints.points_to_next_level) * 100;
   const isLevelUp = levelProgress >= 100;
 
-  // Improved color for Rookie level with better contrast
+  // Theme-aware color for Rookie level
   const getRookieLevelColor = () => {
-    return 'hsl(220, 15%, 45%)'; // Better contrast for light mode
+    return 'hsl(var(--muted-foreground))'; // Use theme-aware muted foreground
   };
 
   const displayLevelColor = userPoints.level_name === 'Rookie' ? getRookieLevelColor() : getLevelColor(userPoints.level_name);
@@ -60,40 +60,36 @@ export const PointsHeader = () => {
               backgroundColor: `${displayLevelColor}15`
             }}
           >
-            {/* Gold fill background based on progress */}
+            {/* Progress fill background based on progress */}
             <div 
               className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
               style={{
-                background: `conic-gradient(from 0deg, #FFD700 ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
+                background: `conic-gradient(from 0deg, hsl(var(--primary)) ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
                 opacity: levelProgress > 0 ? 0.6 : 0
               }}
             />
             
             {/* Level up celebration effect */}
             {isLevelUp && (
-              <div className="absolute inset-0 rounded-full animate-ping bg-gradient-to-r from-yellow-400 to-orange-400 opacity-75" />
+              <div className="absolute inset-0 rounded-full animate-ping bg-gradient-to-r from-primary to-primary-glow opacity-75" />
             )}
             
-            {/* Gold Star Icon */}
+            {/* Level Icon with theme-aware styling */}
             <div 
-              className={`relative z-10 font-bold transition-all duration-300 ${isLevelUp ? 'animate-pulse' : ''}`}
-              style={{ 
-                color: '#FFD700',
-                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))'
-              }}
+              className={`relative z-10 font-bold transition-all duration-300 text-primary drop-shadow-sm ${isLevelUp ? 'animate-pulse' : ''}`}
             >
               {getLevelIcon(userPoints.level_name)}
             </div>
           </div>
           
-          {/* Restored previous Badge design with better visibility for Rookie */}
+          {/* Level Badge with theme-aware styling */}
           <div className="flex flex-col">
             <div className="flex items-center space-x-1.5 sm:space-x-2">
               <Badge 
                 variant="secondary" 
                 className="text-xs font-semibold px-2 py-0.5 sm:py-0"
                 style={{ 
-                  backgroundColor: userPoints.level_name === 'Rookie' ? 'hsl(220, 15%, 92%)' : `${displayLevelColor}20`,
+                  backgroundColor: userPoints.level_name === 'Rookie' ? 'hsl(var(--muted))' : `${displayLevelColor}20`,
                   color: displayLevelColor,
                   border: `1px solid ${displayLevelColor}40`
                 }}
