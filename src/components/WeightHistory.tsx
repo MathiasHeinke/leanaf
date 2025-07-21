@@ -14,6 +14,7 @@ import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { toast } from "sonner";
 
 interface WeightEntry {
@@ -34,9 +35,11 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [newWeight, setNewWeight] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmOverwrite, setConfirmOverwrite] = useState<{ show: boolean; existingEntry?: WeightEntry }>({ show: false });
   const { user } = useAuth();
+  const { awardPoints, updateStreak } = usePointsSystem();
 
-  const addWeightEntry = async () => {
+  const addWeightEntry = async (forceOverwrite = false) => {
     if (!user || !newWeight) return;
     
     try {
@@ -46,24 +49,72 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         return;
       }
 
-      const { error } = await supabase
-        .from('weight_history')
-        .insert({
-          user_id: user.id,
-          weight: weight,
-          date: selectedDate.toISOString().split('T')[0]
-        });
+      const selectedDateStr = selectedDate.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Validate date - no future entries allowed
+      if (selectedDateStr > today) {
+        toast.error('Du kannst kein Gewicht für die Zukunft eintragen');
+        return;
+      }
 
-      if (error) throw error;
+      // Check for existing entry for this date
+      const existingEntry = weightHistory.find(entry => entry.date === selectedDateStr);
+      
+      if (existingEntry && !forceOverwrite) {
+        setConfirmOverwrite({ show: true, existingEntry });
+        return;
+      }
 
-      toast.success('Gewicht erfolgreich hinzugefügt');
+      let result;
+      if (existingEntry) {
+        // Update existing entry
+        const { error } = await supabase
+          .from('weight_history')
+          .update({ weight: weight })
+          .eq('id', existingEntry.id);
+
+        if (error) throw error;
+        result = 'updated';
+      } else {
+        // Insert new entry
+        const { error } = await supabase
+          .from('weight_history')
+          .insert({
+            user_id: user.id,
+            weight: weight,
+            date: selectedDateStr
+          });
+
+        if (error) throw error;
+        result = 'inserted';
+      }
+
+      // Award points and update streak only for today's entries
+      if (selectedDateStr === today && result === 'inserted') {
+        console.log('🎯 Awarding points for weight measurement today');
+        try {
+          await awardPoints('weight_measured', 3, 'Gewicht gemessen');
+          await updateStreak('daily_tracking', selectedDate);
+          toast.success('Gewicht erfolgreich hinzugefügt! +3 Punkte erhalten');
+        } catch (pointsError) {
+          console.error('Error awarding points:', pointsError);
+          toast.success('Gewicht erfolgreich hinzugefügt');
+        }
+      } else if (result === 'updated') {
+        toast.success('Gewicht erfolgreich aktualisiert');
+      } else {
+        toast.success('Gewicht erfolgreich hinzugefügt');
+      }
+
       setNewWeight('');
       setSelectedDate(new Date());
       setIsAddingWeight(false);
+      setConfirmOverwrite({ show: false });
       onDataUpdate();
     } catch (error: any) {
-      console.error('Error adding weight:', error);
-      toast.error('Fehler beim Hinzufügen des Gewichts');
+      console.error('Error adding/updating weight:', error);
+      toast.error('Fehler beim Speichern des Gewichts');
     }
   };
 
@@ -162,24 +213,49 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => date && setSelectedDate(date)}
+                    disabled={(date) => date > new Date()}
                     initialFocus
                     className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
+              <p className="text-xs text-muted-foreground mt-1">
+                Du kannst kein Gewicht für die Zukunft eintragen
+              </p>
             </div>
             
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setIsAddingWeight(false)} className="flex-1">
                 Abbrechen
               </Button>
-              <Button onClick={addWeightEntry} className="flex-1">
+              <Button onClick={() => addWeightEntry(false)} className="flex-1">
                 Hinzufügen
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Overwrite Dialog */}
+      <AlertDialog open={confirmOverwrite.show} onOpenChange={(open) => setConfirmOverwrite({ show: open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gewicht bereits vorhanden</AlertDialogTitle>
+            <AlertDialogDescription>
+              Für das Datum {confirmOverwrite.existingEntry?.displayDate} ist bereits ein Gewichtseintrag vorhanden ({confirmOverwrite.existingEntry?.weight} kg). 
+              Möchtest du diesen überschreiben?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmOverwrite({ show: false })}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => addWeightEntry(true)}>
+              Überschreiben
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Weight History List */}
       {weightHistory.length === 0 ? (
