@@ -84,7 +84,7 @@ export const InfoButton = ({
   // Use portal to render directly to body, bypassing any parent container restrictions
   const overlayContent = (
     <div 
-      className="fixed inset-0 flex items-center justify-center p-4 bg-white/70 animate-in fade-in-0"
+      className="fixed inset-0 flex items-center justify-center p-4 bg-white/70 backdrop-blur-sm animate-in fade-in-0"
       style={{ 
         zIndex: 9999,
         position: 'fixed',
