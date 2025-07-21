@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 
 interface QuickWeightInputProps {
-  onWeightAdded?: () => void;
+  onWeightAdded?: (weightData: any) => void;
   currentWeight?: number;
   todaysWeight?: any;
 }
@@ -23,7 +24,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
-  // Verbesserte Logik für hasWeightToday - prüft auf gültigen Gewichtswert
+  // Improved logic for hasWeightToday - checks for valid weight value
   const hasWeightToday = todaysWeight && 
     todaysWeight.weight !== null && 
     todaysWeight.weight !== undefined && 
@@ -51,22 +52,53 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
     });
   };
 
+  const isDateInFuture = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    return date > today;
+  };
+
+  const isDateToday = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    return date.getTime() === today.getTime();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!weight || !user) return;
 
+    // Prevent duplicate submissions if weight already exists for today and not editing
+    if (hasWeightToday && !isEditing) {
+      toast.error('Gewicht für heute bereits eingetragen. Verwende den Bearbeiten-Button.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const weightValue = parseFloat(weight);
-      const dateStr = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
       
+      // Validate that we're not trying to enter weight for future dates
+      if (isDateInFuture(today)) {
+        toast.error('Gewicht kann nicht für zukünftige Daten eingetragen werden.');
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log('Starting weight submission process...');
       console.log('- Weight value:', weightValue);
       console.log('- Date:', dateStr);
       console.log('- User ID:', user.id);
       console.log('- Has existing weight today:', hasWeightToday);
+      console.log('- Is editing mode:', isEditing);
 
-      if (hasWeightToday && todaysWeight?.id) {
+      let resultData = null;
+
+      if (hasWeightToday && todaysWeight?.id && isEditing) {
         // Update existing weight entry
         console.log('Updating existing weight entry with ID:', todaysWeight.id);
         const { data, error: historyError } = await supabase
@@ -76,23 +108,24 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
             date: dateStr 
           })
           .eq('id', todaysWeight.id)
-          .select();
+          .select()
+          .single();
 
         if (historyError) {
           console.error('Error updating weight:', historyError);
           throw historyError;
         }
         
+        resultData = data;
         console.log('Weight updated successfully:', data);
         toast.success('Gewicht aktualisiert!');
-      } else {
-        // Create new weight entry with simple INSERT
+      } else if (!hasWeightToday) {
+        // Create new weight entry - but first double-check no entry exists
         console.log('Creating new weight entry');
         
-        // First check if there's already an entry for today (safety check)
         const { data: existingData, error: checkError } = await supabase
           .from('weight_history')
-          .select('id')
+          .select('id, weight')
           .eq('user_id', user.id)
           .eq('date', dateStr)
           .maybeSingle();
@@ -103,18 +136,21 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         }
 
         if (existingData) {
-          console.log('Found existing entry, updating instead:', existingData.id);
+          // Found existing entry - this shouldn't happen but handle it gracefully
+          console.log('Found unexpected existing entry, updating instead:', existingData.id);
           const { data, error: updateError } = await supabase
             .from('weight_history')
             .update({ weight: weightValue })
             .eq('id', existingData.id)
-            .select();
+            .select()
+            .single();
 
           if (updateError) {
             console.error('Error updating existing entry:', updateError);
             throw updateError;
           }
           
+          resultData = data;
           console.log('Existing entry updated:', data);
           toast.success('Gewicht aktualisiert!');
         } else {
@@ -126,21 +162,30 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
               weight: weightValue,
               date: dateStr
             })
-            .select();
+            .select()
+            .single();
 
           if (insertError) {
             console.error('Error inserting new weight:', insertError);
             throw insertError;
           }
           
+          resultData = data;
           console.log('New weight entry created:', data);
 
-          // Award points for weight tracking
-          await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht gemessen');
-          await updateStreak('weight_tracking');
+          // Only award points and update streak for today's entries
+          if (isDateToday(today)) {
+            await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht gemessen');
+            await updateStreak('weight_tracking');
+          }
 
           toast.success(t('weightInput.success'));
         }
+      } else {
+        // This case shouldn't happen - hasWeightToday is true but not in editing mode
+        toast.error('Unerwarteter Zustand. Bitte versuche es erneut.');
+        setIsSubmitting(false);
+        return;
       }
 
       // Update profile with current weight
@@ -157,8 +202,8 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
 
       console.log('Profile weight updated successfully');
       setIsEditing(false);
-      console.log('Calling onWeightAdded callback');
-      onWeightAdded?.();
+      console.log('Calling onWeightAdded callback with data:', resultData);
+      onWeightAdded?.(resultData);
     } catch (error) {
       console.error('Error saving weight:', error);
       toast.error('Fehler beim Speichern des Gewichts: ' + (error as any)?.message || 'Unbekannter Fehler');

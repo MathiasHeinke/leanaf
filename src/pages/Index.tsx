@@ -233,9 +233,16 @@ const Index = () => {
     await fetchMealsForDate(currentDate);
   };
 
-  const handleWeightAdded = async () => {
-    console.log('Weight added callback triggered - reloading data');
-    // Ensure proper sequence: first reload today's data, then user data
+  const handleWeightAdded = async (newWeightData?: any) => {
+    console.log('Weight added callback triggered - immediate state update');
+    
+    // Immediately update todaysWeight state with the new data
+    if (newWeightData) {
+      console.log('Updating todaysWeight state with new data:', newWeightData);
+      setTodaysWeight(newWeightData);
+    }
+    
+    // Then reload all data to ensure consistency
     await loadTodaysData(currentDate);
     await loadUserData();
   };
