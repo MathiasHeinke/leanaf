@@ -29,7 +29,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
   } = useSubscription();
 
   const [subscribing, setSubscribing] = useState(false);
-  const [isYearly, setIsYearly] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'sixmonths' | 'yearly'>('monthly');
 
   const handleBack = () => {
     if (onClose) {
@@ -74,13 +74,56 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
     }
   };
 
+  const getPlanId = (base: string) => {
+    if (billingPeriod === 'yearly') return `${base}-yearly`;
+    if (billingPeriod === 'sixmonths') return `${base}-sixmonths`;
+    return base;
+  };
+
+  const getPlanPrice = (base: string, monthlyPrice: number) => {
+    if (billingPeriod === 'yearly') {
+      return base === 'basic' ? '47,94€' : '119,94€';
+    }
+    if (billingPeriod === 'sixmonths') {
+      const sixMonthPrice = (monthlyPrice * 6 * 0.67); // 33% discount
+      return `${(sixMonthPrice / 100).toFixed(2).replace('.', ',')}€`;
+    }
+    return `${(monthlyPrice / 100).toFixed(2).replace('.', ',')}€`;
+  };
+
+  const getPlanPeriod = () => {
+    if (billingPeriod === 'yearly') return '/Jahr';
+    if (billingPeriod === 'sixmonths') return '/6 Monate';
+    return '/Monat';
+  };
+
+  const getSavings = (planName: string) => {
+    if (billingPeriod === 'yearly') {
+      return planName === 'Basic' ? '47,94€' : '119,94€';
+    }
+    if (billingPeriod === 'sixmonths') {
+      return planName === 'Basic' ? '15,98€' : '39,98€';
+    }
+    return null;
+  };
+
+  const getOriginalPrice = (planName: string) => {
+    if (billingPeriod === 'yearly') {
+      return planName === 'Basic' ? '95,88€' : '239,88€';
+    }
+    if (billingPeriod === 'sixmonths') {
+      return planName === 'Basic' ? '47,94€' : '119,94€';
+    }
+    return null;
+  };
+
   const plans = [
     {
-      id: isYearly ? 'basic-yearly' : 'basic',
+      id: getPlanId('basic'),
       name: 'Basic',
-      price: isYearly ? '47,94€' : '7,99€',
-      period: isYearly ? '/Jahr' : '/Monat',
-      originalYearlyPrice: '95,88€',
+      price: getPlanPrice('basic', 799),
+      period: getPlanPeriod(),
+      originalPrice: getOriginalPrice('Basic'),
       icon: <Star className="h-6 w-6 text-blue-600" />,
       color: 'bg-blue-50 border-blue-200 dark:bg-blue-950/20',
       features: [
@@ -92,11 +135,11 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
       ]
     },
     {
-      id: isYearly ? 'premium-yearly' : 'premium',
+      id: getPlanId('premium'),
       name: 'Premium',
-      price: isYearly ? '119,94€' : '19,99€',
-      period: isYearly ? '/Jahr' : '/Monat',
-      originalYearlyPrice: '239,88€',
+      price: getPlanPrice('premium', 1999),
+      period: getPlanPeriod(),
+      originalPrice: getOriginalPrice('Premium'),
       icon: <Crown className="h-6 w-6 text-yellow-600" />,
       color: 'bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20',
       popular: true,
@@ -194,11 +237,11 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
             
             {/* Billing Toggle */}
             <div className="flex justify-center mb-8">
-              <div className="bg-muted p-1 rounded-lg flex items-center">
+              <div className="bg-muted p-1 rounded-lg grid grid-cols-3 w-fit">
                 <button
-                  onClick={() => setIsYearly(false)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    !isYearly
+                  onClick={() => setBillingPeriod('monthly')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    billingPeriod === 'monthly'
                       ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
@@ -206,9 +249,22 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                   Monatlich
                 </button>
                 <button
-                  onClick={() => setIsYearly(true)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors relative ${
-                    isYearly
+                  onClick={() => setBillingPeriod('sixmonths')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                    billingPeriod === 'sixmonths'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  6 Monate
+                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
+                    -33%
+                  </span>
+                </button>
+                <button
+                  onClick={() => setBillingPeriod('yearly')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
+                    billingPeriod === 'yearly'
                       ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
@@ -253,19 +309,21 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                       <div>
                         <CardTitle className="text-2xl">{plan.name}</CardTitle>
                          <div className="flex flex-col items-center space-y-2">
-                           {isYearly && (
+                           {billingPeriod !== 'monthly' && (
                              <div className="text-sm text-muted-foreground">
-                               <span className="line-through">{plan.originalYearlyPrice}</span>
-                               <span className="ml-2 text-green-600 font-semibold">50% Rabatt</span>
+                               <span className="line-through">{plan.originalPrice}</span>
+                               <span className="ml-2 text-green-600 font-semibold">
+                                 {billingPeriod === 'yearly' ? '50%' : '33%'} Rabatt
+                               </span>
                              </div>
                            )}
                            <div className="flex items-baseline justify-center space-x-1">
                              <span className="text-3xl font-bold">{plan.price}</span>
                              <span className="text-sm text-muted-foreground">{plan.period}</span>
                            </div>
-                           {isYearly && (
+                           {billingPeriod !== 'monthly' && (
                              <div className="text-xs text-green-600 font-medium">
-                               Du sparst {plan.name === 'Basic' ? '47,94€' : '119,94€'} pro Jahr
+                               Du sparst {getSavings(plan.name)} {billingPeriod === 'yearly' ? 'pro Jahr' : 'alle 6 Monate'}
                              </div>
                            )}
                          </div>

@@ -57,13 +57,20 @@ serve(async (req) => {
       logStep("No existing customer, will be created during checkout");
     }
 
-    // Plan pricing configuration with yearly options
+    // Plan pricing configuration with 6-month and yearly options
     const planPricing = {
       basic: {
         amount: 799, // €7.99
         name: "KI Coach Basic",
         features: ["Basis KI-Coaching", "Meal Tracking", "Basic Insights"],
         interval: "month" as const
+      },
+      "basic-sixmonths": {
+        amount: 3197, // €31.97 (6 months with 33% discount)
+        name: "KI Coach Basic (6 Monate)",
+        features: ["Basis KI-Coaching", "Meal Tracking", "Basic Insights", "33% Rabatt"],
+        interval: "month" as const,
+        interval_count: 6
       },
       "basic-yearly": {
         amount: 4794, // €47.94 (50% discount from €95.88)
@@ -76,6 +83,13 @@ serve(async (req) => {
         name: "KI Coach Premium",
         features: ["Erweiterte KI-Analyse", "Alle Features", "Priority Support", "Transformation Dashboard"],
         interval: "month" as const
+      },
+      "premium-sixmonths": {
+        amount: 8036, // €80.36 (6 months with 33% discount)
+        name: "KI Coach Premium (6 Monate)",
+        features: ["Erweiterte KI-Analyse", "Alle Features", "Priority Support", "Transformation Dashboard", "33% Rabatt"],
+        interval: "month" as const,
+        interval_count: 6
       },
       "premium-yearly": {
         amount: 11994, // €119.94 (50% discount from €239.88)
@@ -101,7 +115,10 @@ serve(async (req) => {
               description: selectedPlan.features.join(", ")
             },
             unit_amount: selectedPlan.amount,
-            recurring: { interval: selectedPlan.interval },
+            recurring: { 
+              interval: selectedPlan.interval,
+              ...(selectedPlan.interval_count && { interval_count: selectedPlan.interval_count })
+            },
           },
           quantity: 1,
         },
