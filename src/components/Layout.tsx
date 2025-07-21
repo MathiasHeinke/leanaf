@@ -1,9 +1,11 @@
 import { GlobalHeader, FloatingBottomNav } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 import { PointsHeader } from "@/components/PointsHeader";
 import { DarkModeDebugPanel } from "@/components/DarkModeDebugPanel";
+import { SubscriptionDebugPanel } from "@/components/SubscriptionDebugPanel";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +14,20 @@ interface LayoutProps {
 export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
+  const [showSubscriptionDebug, setShowSubscriptionDebug] = useState(false);
+  
+  // Keyboard shortcut for subscription debug panel
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'S') {
+        event.preventDefault();
+        setShowSubscriptionDebug(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   // Don't show header on auth page - early return AFTER hook calls
   if (location.pathname === '/auth' || !user) {
@@ -36,6 +52,12 @@ export const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
       
+      
+      {/* Debug Panels */}
+      <SubscriptionDebugPanel 
+        isOpen={showSubscriptionDebug} 
+        onClose={() => setShowSubscriptionDebug(false)} 
+      />
       
       {/* Floating Bottom Navigation */}
       <FloatingBottomNav />

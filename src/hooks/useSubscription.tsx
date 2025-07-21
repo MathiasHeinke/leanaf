@@ -11,6 +11,11 @@ interface SubscriptionContextType {
   refreshSubscription: () => Promise<void>;
   createCheckoutSession: () => Promise<void>;
   createPortalSession: () => Promise<void>;
+  // Debug functions
+  isInDebugMode: () => boolean;
+  debugTier: string | null;
+  setDebugTier: (tier: string) => void;
+  clearDebugMode: () => void;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -28,6 +33,10 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Debug state
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugTier, setDebugTierState] = useState<string | null>(null);
   
   const { user } = useAuth();
 
@@ -106,18 +115,60 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  // Debug functions
+  const isInDebugMode = () => debugMode && debugTier !== null;
+  
+  const setDebugTier = (tier: string) => {
+    console.log(`[Subscription Debug] Switching to tier: ${tier}`);
+    setDebugMode(true);
+    setDebugTierState(tier);
+  };
+  
+  const clearDebugMode = () => {
+    console.log('[Subscription Debug] Clearing debug mode, returning to real subscription status');
+    setDebugMode(false);
+    setDebugTierState(null);
+  };
+  
+  // Clear debug mode on logout
+  useEffect(() => {
+    if (!user) {
+      clearDebugMode();
+    }
+  }, [user]);
+
   useEffect(() => {
     refreshSubscription();
   }, [user]);
 
+  // Override values when in debug mode
+  const getIsPremium = () => {
+    if (isInDebugMode() && debugTier) {
+      return ['basic', 'premium', 'enterprise'].includes(debugTier.toLowerCase());
+    }
+    return isPremium;
+  };
+  
+  const getSubscriptionTier = () => {
+    if (isInDebugMode() && debugTier) {
+      return debugTier;
+    }
+    return subscriptionTier;
+  };
+
   const value = {
-    isPremium,
-    subscriptionTier,
+    isPremium: getIsPremium(),
+    subscriptionTier: getSubscriptionTier(),
     subscriptionEnd,
     loading,
     refreshSubscription,
     createCheckoutSession,
     createPortalSession,
+    // Debug functions
+    isInDebugMode,
+    debugTier,
+    setDebugTier,
+    clearDebugMode,
   };
 
   return (
