@@ -178,11 +178,31 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight, todaysWeight }:
         return;
       }
 
-      // Update profile with current weight
+      // Update profile with current weight and set start_weight if first entry
       console.log('Updating profile weight...');
+      
+      // Check if this is the first weight entry (no start_weight set)
+      const { data: profileData, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('start_weight')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileCheckError) {
+        console.error('Error checking profile:', profileCheckError);
+        throw profileCheckError;
+      }
+
+      // If no start_weight is set, set it to this weight
+      const updateData: any = { weight: weightValue };
+      if (!profileData.start_weight) {
+        updateData.start_weight = weightValue;
+        console.log('Setting start_weight to:', weightValue);
+      }
+
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ weight: weightValue })
+        .update(updateData)
         .eq('user_id', user.id);
 
       if (profileError) {

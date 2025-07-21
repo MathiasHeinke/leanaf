@@ -38,9 +38,24 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
 
       if (error) throw error;
 
+      // Check if this is the first weight entry (no start_weight set)
+      const { data: profileData, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('start_weight')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileCheckError) throw profileCheckError;
+
+      // Update profile with current weight and set start_weight if first entry
+      const updateData: any = { weight: parseFloat(newWeight) };
+      if (!profileData.start_weight) {
+        updateData.start_weight = parseFloat(newWeight);
+      }
+
       await supabase
         .from('profiles')
-        .update({ weight: parseFloat(newWeight) })
+        .update(updateData)
         .eq('user_id', user.id);
 
       setNewWeight('');
