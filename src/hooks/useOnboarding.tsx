@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +22,7 @@ export const useOnboarding = () => {
   const onboardingSteps: OnboardingStep[] = [
     {
       id: 'welcome',
-      title: 'Willkommen bei KaloAI! 👋',
+      title: 'Willkommen bei leanAF! 👋',
       description: 'Lass uns dein Profil einrichten, damit wir dir personalisierte Ernährungstipps geben können.',
       targetElement: '.profile-button',
       position: 'bottom'

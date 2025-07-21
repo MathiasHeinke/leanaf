@@ -1,5 +1,3 @@
-
-
 import { createContext, useContext, useState, useEffect } from 'react';
 
 interface TranslationContextType {
@@ -22,15 +20,15 @@ const translations = {
   de: {
     // Navigation
     'nav.home': 'Startseite',
-    'nav.history': 'Verlauf',
+    'nav.history': 'Verlauf', 
     'nav.settings': 'Einstellungen',
     'nav.profile': 'Profil',
     'nav.subscription': 'Abonnement',
     'nav.logout': 'Abmelden',
     
     // Main App
-    'app.title': 'LeanAI',
-    'app.welcome': 'Willkommen bei LeanAI',
+    'app.title': 'leanAF',
+    'app.welcome': 'Willkommen bei leanAF',
     'app.dailyProgress': 'Täglicher Fortschritt',
     'app.calories': 'Kalorien',
     'app.protein': 'Protein',
@@ -254,7 +252,7 @@ const translations = {
     'coach.close': 'Schließen',
     'coach.recording': 'Aufnahme läuft...',
     'coach.processing': 'Verarbeitung...',
-    'coach.kaloaiCoach': 'kaloAI Coach',
+    'coach.kaloaiCoach': 'leanAF Coach',
     
     // Profile
     'profile.title': 'Profil',
@@ -525,8 +523,8 @@ const translations = {
     'nav.logout': 'Logout',
     
     // Main App
-    'app.title': 'KaloAI',
-    'app.welcome': 'Welcome to kaloAI',
+    'app.title': 'leanAF',
+    'app.welcome': 'Welcome to leanAF',
     'app.dailyProgress': 'Daily Progress',
     'app.calories': 'Calories',
     'app.protein': 'Protein',
@@ -539,7 +537,7 @@ const translations = {
     'app.mealAdded': 'Meal added successfully!',
     'app.error': 'Error adding meal',
     'app.refresh': 'Refresh',
-    'app.letsGetLean': 'let\'s get lean',
+    'app.letsGetLean': 'get lean as fcuk',
     'app.menu': 'Menu',
     
     // Input modes
@@ -750,7 +748,7 @@ const translations = {
     'coach.close': 'Close',
     'coach.recording': 'Recording...',
     'coach.processing': 'Processing...',
-    'coach.kaloaiCoach': 'kaloAI Coach',
+    'coach.kaloaiCoach': 'leanAF Coach',
     
     // Profile
     'profile.title': 'Profile',
@@ -1046,4 +1044,3 @@ export const TranslationProvider = ({ children }: { children: React.ReactNode })
     </TranslationContext.Provider>
   );
 };
-

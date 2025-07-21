@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { 
-  Activity, 
+  Zap, 
   RefreshCw, 
   Menu, 
   LogOut, 
@@ -131,7 +131,7 @@ export const GlobalHeader = ({
         <div className="flex items-center gap-3">
           {/* Icon positioned further left */}
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
-            <Activity className="h-6 w-6 text-white" />
+            <Zap className="h-6 w-6 text-white" />
           </div>
           
           {/* Logo text with subtext */}
