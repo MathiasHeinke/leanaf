@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -18,6 +19,7 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +45,10 @@ export const QuickWeightInput = ({ onWeightAdded, currentWeight }: QuickWeightIn
         .eq('user_id', user.id);
 
       if (profileError) throw profileError;
+
+      // Award points for weight tracking
+      await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht gemessen');
+      await updateStreak('weight_tracking');
 
       toast.success(t('weightInput.success'));
       setWeight("");

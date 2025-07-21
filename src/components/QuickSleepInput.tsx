@@ -6,9 +6,11 @@ import { Moon, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 
 export const QuickSleepInput = () => {
   const { user } = useAuth();
+  const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
   const [sleepHours, setSleepHours] = useState<string>('');
   const [sleepQuality, setSleepQuality] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +37,10 @@ export const QuickSleepInput = () => {
         .upsert(sleepData, { onConflict: 'user_id,date' });
 
       if (error) throw error;
+
+      // Award points for sleep tracking
+      await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), `Schlaf erfasst (Qualität: ${sleepQuality}/5)`);
+      await updateStreak('sleep_tracking');
 
       toast.success('Schlaf erfasst! 😴💤');
       

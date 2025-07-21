@@ -2,6 +2,7 @@ import { GlobalHeader, FloatingBottomNav } from "@/components/GlobalHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
+import { PointsHeader } from "@/components/PointsHeader";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -29,6 +30,7 @@ export const Layout = ({ children }: LayoutProps) => {
       </div>
       
       <GlobalHeader />
+      <PointsHeader />
       <main className="container mx-auto px-4 pb-6 max-w-md relative z-10">
         {children}
       </main>

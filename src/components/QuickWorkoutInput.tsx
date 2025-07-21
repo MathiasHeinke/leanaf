@@ -7,9 +7,11 @@ import { Dumbbell, Clock, Zap, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 
 export const QuickWorkoutInput = () => {
   const { user } = useAuth();
+  const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
   const [didWorkout, setDidWorkout] = useState<boolean | null>(null);
   const [workoutType, setWorkoutType] = useState<string>('kraft');
   const [duration, setDuration] = useState<string>('');
@@ -37,6 +39,13 @@ export const QuickWorkoutInput = () => {
         .upsert(workoutData, { onConflict: 'user_id,date' });
 
       if (error) throw error;
+
+      // Award points for workout completion
+      if (didWorkout) {
+        const workoutPoints = getPointsForActivity('workout_completed', { intensity: parseInt(intensity) });
+        await awardPoints('workout_completed', workoutPoints, `${workoutType} Training (Intensität ${intensity})`);
+        await updateStreak('workout');
+      }
 
       toast.success(didWorkout ? 'Training erfasst! 💪' : 'Ruhetag notiert 😌');
       

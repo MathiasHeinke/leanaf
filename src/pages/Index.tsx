@@ -13,6 +13,8 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { BadgeSystem } from "@/components/BadgeSystem";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
+import { DepartmentProgress } from "@/components/DepartmentProgress";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { useBadgeChecker } from "@/hooks/useBadgeChecker";
@@ -27,6 +29,7 @@ const Index = () => {
   const { user } = useAuth();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
+  const { awardPoints, updateStreak, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -162,6 +165,19 @@ const Index = () => {
   const handleMealSuccess = async () => {
     await fetchMealsForDate(currentDate);
     mealInputHook.resetForm();
+    
+    // Award points for meal tracking
+    if (user?.id && mealInputHook.uploadedImages.length > 0) {
+      await awardPoints('meal_tracked_with_photo', getPointsForActivity('meal_tracked_with_photo'), 'Mahlzeit mit Foto getrackt');
+    } else if (user?.id) {
+      await awardPoints('meal_tracked', getPointsForActivity('meal_tracked'), 'Mahlzeit getrackt');
+    }
+    
+    // Update meal tracking streak
+    if (user?.id) {
+      await updateStreak('meal_tracking');
+    }
+    
     // Check for new badges after meal submission
     setTimeout(() => checkBadges(), 1000);
   };
@@ -214,6 +230,9 @@ const Index = () => {
           </div>
 
           <BodyMeasurements />
+          
+          {/* Department Progress */}
+          <DepartmentProgress />
           
           {/* Progress Charts */}
           <ProgressCharts timeRange="week" />

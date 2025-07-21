@@ -140,6 +140,36 @@ export type Database = {
         }
         Relationships: []
       }
+      department_progress: {
+        Row: {
+          created_at: string
+          department: string
+          id: string
+          level: number
+          points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department: string
+          id?: string
+          level?: number
+          points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: string
+          id?: string
+          level?: number
+          points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_images: {
         Row: {
           created_at: string
@@ -230,6 +260,39 @@ export type Database = {
           language?: string | null
           quote_text?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      point_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          multiplier: number
+          points_earned: number
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          multiplier?: number
+          points_earned: number
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          multiplier?: number
+          points_earned?: number
+          user_id?: string
         }
         Relationships: []
       }
@@ -386,6 +449,72 @@ export type Database = {
         }
         Relationships: []
       }
+      user_points: {
+        Row: {
+          created_at: string
+          current_level: number
+          id: string
+          level_name: string
+          points_to_next_level: number
+          total_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_level?: number
+          id?: string
+          level_name?: string
+          points_to_next_level?: number
+          total_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_level?: number
+          id?: string
+          level_name?: string
+          points_to_next_level?: number
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          last_activity_date: string | null
+          longest_streak: number
+          streak_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          streak_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          streak_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weight_history: {
         Row: {
           created_at: string
@@ -481,7 +610,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_user_points_and_level: {
+        Args: {
+          p_user_id: string
+          p_points: number
+          p_activity_type: string
+          p_description?: string
+          p_multiplier?: number
+        }
+        Returns: Json
+      }
+      update_user_streak: {
+        Args: {
+          p_user_id: string
+          p_streak_type: string
+          p_activity_date?: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
