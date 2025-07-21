@@ -98,28 +98,14 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
       color: 'bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20',
       popular: true,
       features: [
+        '2-3x schnellere Zielerreichung',
+        'Geringere Abbruchrate',
         'Erweiterte KI-Analyse',
         'Smart Insights Dashboard',
         'Transformation Tracking',
         'Custom Meal Plans',
         'Priority Support',
         'Alle Basic Features'
-      ]
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: '39,99€',
-      period: '/Monat',
-      icon: <Trophy className="h-6 w-6 text-purple-600" />,
-      color: 'bg-purple-50 border-purple-300 dark:bg-purple-950/20',
-      features: [
-        'Personal AI Coach',
-        'Custom Training Plans',
-        '1:1 Support',
-        'Advanced Analytics',
-        'API Access',
-        'Alle Premium Features'
       ]
     }
   ];
@@ -198,12 +184,12 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
 
           {/* Pricing Plans */}
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-center">Wähle deinen Plan</h2>
+            <h2 className="text-2xl font-bold text-center">3 Tage kostenlos testen</h2>
             <p className="text-center text-muted-foreground mb-8">
-              Jederzeit kündbar • 30 Tage Geld-zurück-Garantie
+              Teste alle Features 3 Tage kostenlos • Dann wähle deinen Plan • Jederzeit kündbar
             </p>
             
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
               {plans.map((plan) => {
                 const isCurrentPlan = isPremium && subscriptionTier === plan.name;
                 
@@ -300,13 +286,13 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
           {/* Features Comparison */}
           <Card>
             <CardHeader>
-              <CardTitle>Warum KI Coach Premium?</CardTitle>
+              <CardTitle>Warum leanAF Premium?</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center space-y-2 text-muted-foreground">
+              <div className="text-center space-y-3 text-muted-foreground">
                 <p>🎯 <strong>Basic:</strong> Perfekt für den Einstieg in AI-gesteuertes Fitness Tracking</p>
-                <p>🚀 <strong>Premium:</strong> Erweiterte Analyse & Smart Insights für optimale Ergebnisse</p>
-                <p>👑 <strong>Enterprise:</strong> Persönlicher AI Coach mit maßgeschneiderten Plänen</p>
+                <p>🚀 <strong>Premium:</strong> Nutzer erreichen ihre Ziele 2-3x schneller und brechen seltener ab</p>
+                <p>✨ <strong>3 Tage kostenlos:</strong> Teste alle Features unverbindlich vor deiner Entscheidung</p>
               </div>
             </CardContent>
           </Card>
