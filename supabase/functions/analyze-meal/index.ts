@@ -37,25 +37,63 @@ serve(async (req) => {
       throw new Error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
     }
 
-    let prompt = `Du bist ein Ernährungsexperte mit Zugang zu präzisen Nährwertdatenbanken (USDA, BLS). 
+    // Extract user-provided nutritional values from text
+    const extractUserValues = (text: string) => {
+      const values: any = {};
+      
+      // Extract calories (kcal, kalorien)
+      const calorieMatch = text.match(/(\d+)\s*(?:kcal|kalorien)/i);
+      if (calorieMatch) values.calories = parseInt(calorieMatch[1]);
+      
+      // Extract protein
+      const proteinMatch = text.match(/(\d+)\s*(?:g\s*)?protein/i);
+      if (proteinMatch) values.protein = parseInt(proteinMatch[1]);
+      
+      // Extract carbs
+      const carbsMatch = text.match(/(\d+)\s*(?:g\s*)?(?:carbs|kohlenhydrate)/i);
+      if (carbsMatch) values.carbs = parseInt(carbsMatch[1]);
+      
+      // Extract fats
+      const fatsMatch = text.match(/(\d+)\s*(?:g\s*)?(?:fett|fats)/i);
+      if (fatsMatch) values.fats = parseInt(fatsMatch[1]);
+      
+      return values;
+    };
+
+    const userValues = text ? extractUserValues(text) : {};
+    const hasUserValues = Object.keys(userValues).length > 0;
+
+    let prompt = `Du bist ein präziser Ernährungsexperte mit Zugang zu aktuellen Nährwertdatenbanken (USDA, BLS). 
 
 WICHTIGE ANWEISUNGEN:
-- Schätze realistische Portionsgrößen basierend auf typischen Mahlzeiten
-- Verwende Standard-Nährwertdatenbanken als Referenz
+- Analysiere Bilder genau auf Portionsgrößen und Lebensmittel
+- Respektiere IMMER vom User angegebene Nährwerte (z.B. "620kcal und 50g Protein")
+- Verwende realistische Portionsgrößen basierend auf Standard-Portionen
 - Bei Unsicherheiten: wähle konservative, realistische Werte
-- Berücksichtige Zubereitungsarten (gebraten/gekocht beeinflusst Kalorien)
-- Runde auf realistische Werte (keine Kommastellen bei Kalorien)
+- Berücksichtige Zubereitungsarten (gebraten vs. gekocht)
+- Maximale Kalorienzahl pro normaler Portion: 800 kcal
 
-PORTION SIZE GUIDELINES:
-- Pasta/Reis: 80-100g trocken = 250-300g gekocht
-- Fleisch: 120-150g pro Portion
-- Gemüse: 150-200g pro Portion
-- Brot: 1 Scheibe = 30-40g
-- Öl/Butter: 1 TL = 5ml, 1 EL = 15ml
+REALISTISCHE PORTIONSGRÖSSEN - BEISPIELE:
+- Rumpsteak 200g: 400-500 kcal, 50-60g Protein, 0g Carbs, 20-25g Fett
+- Hähnchenbrust 150g: 250-300 kcal, 50g Protein, 0g Carbs, 3-5g Fett
+- Pasta mit Sauce 300g: 400-500 kcal, 15g Protein, 70g Carbs, 12g Fett
+- Reis mit Gemüse 250g: 300-400 kcal, 8g Protein, 70g Carbs, 5g Fett
+- Sandwich: 350-450 kcal, 20g Protein, 40g Carbs, 15g Fett
 
-${text ? `Analysiere diese Mahlzeit: "${text}"` : "Analysiere die hochgeladenen Bilder und schätze die Portionsgrößen"}
+${hasUserValues ? `
+BENUTZER HAT FOLGENDE WERTE ANGEGEBEN - NUTZE DIESE ALS REFERENZ:
+${Object.entries(userValues).map(([key, value]) => `${key}: ${value}`).join(', ')}
+` : ''}
 
-${!text && images?.length > 0 ? "HINWEIS: Analysiere NUR die Bilder, da kein Text bereitgestellt wurde." : ""}
+${text ? `Analysiere diese Mahlzeit: "${text}"` : ""}
+
+${images?.length > 0 ? `
+BILD-ANALYSE:
+- Schätze die Portionsgröße anhand der Tellergröße und Lebensmittel-Proportionen
+- Berücksichtige die Zubereitungsart (roh, gekocht, gebraten)
+- Achte auf Beilagen und Saucen
+- Normale Tellergröße = ca. 24-26cm Durchmesser als Referenz
+` : ""}
 
 Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
 
@@ -78,7 +116,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     "fats": Gesamt_Fette
   },
   "confidence": "high|medium|low",
-  "notes": "Erklärung der Schätzung und Unsicherheiten"
+  "notes": "Erklärung der Schätzung und respektierte User-Werte"
 }`;
 
     // Build user content with text and images
@@ -99,7 +137,9 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     const messages = [
       {
         role: 'system',
-        content: 'Du bist ein präziser Ernährungsexperte. Nutze Referenz-Nährwertdatenbanken für genaue Angaben. Antworte nur mit dem angeforderten JSON-Format.'
+        content: `Du bist ein präziser Ernährungsexperte. Nutze Referenz-Nährwertdatenbanken für genaue Angaben. 
+        Respektiere IMMER vom User angegebene Nährwerte. Maximale Kalorienzahl pro normaler Portion: 800 kcal.
+        Antworte nur mit dem angeforderten JSON-Format.`
       },
       {
         role: 'user',
@@ -159,12 +199,36 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         confidence: parsed.confidence
       });
       
-      // Validate and ensure reasonable values
+      // Enhanced sanity checks with stricter limits
       if (parsed.total && parsed.total.calories) {
-        // Basic sanity checks
-        if (parsed.total.calories < 10 || parsed.total.calories > 5000) {
-          console.warn('⚠️ [ANALYZE-MEAL] Unusual calorie value detected:', parsed.total.calories);
+        // More realistic sanity checks
+        if (parsed.total.calories > 800) {
+          console.warn('⚠️ [ANALYZE-MEAL] Unusual high calorie value detected:', parsed.total.calories);
+          parsed.confidence = 'low';
+          parsed.notes = (parsed.notes || '') + ' WARNUNG: Ungewöhnlich hohe Kalorienzahl - bitte prüfen.';
         }
+        if (parsed.total.calories < 50) {
+          console.warn('⚠️ [ANALYZE-MEAL] Unusual low calorie value detected:', parsed.total.calories);
+          parsed.confidence = 'low';
+          parsed.notes = (parsed.notes || '') + ' WARNUNG: Ungewöhnlich niedrige Kalorienzahl - bitte prüfen.';
+        }
+        if (parsed.total.protein > 80) {
+          console.warn('⚠️ [ANALYZE-MEAL] Unusual high protein value detected:', parsed.total.protein);
+          parsed.confidence = 'low';
+          parsed.notes = (parsed.notes || '') + ' WARNUNG: Sehr hoher Proteinwert - bitte prüfen.';
+        }
+      }
+      
+      // Override with user-provided values if available
+      if (hasUserValues) {
+        console.log('🎯 [ANALYZE-MEAL] Applying user-provided values:', userValues);
+        if (userValues.calories) parsed.total.calories = userValues.calories;
+        if (userValues.protein) parsed.total.protein = userValues.protein;
+        if (userValues.carbs) parsed.total.carbs = userValues.carbs;
+        if (userValues.fats) parsed.total.fats = userValues.fats;
+        
+        parsed.confidence = 'high';
+        parsed.notes = (parsed.notes || '') + ' Benutzerdefinierte Werte wurden berücksichtigt.';
       }
       
       const totalDuration = Date.now() - requestStartTime;
@@ -177,25 +241,25 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       console.error('❌ [ANALYZE-MEAL] JSON Parse Error:', parseError);
       console.error('📄 [ANALYZE-MEAL] Raw content that failed to parse:', content);
       
-      // Fallback response if JSON parsing fails
+      // Improved fallback response with more realistic values
       const fallbackResponse = {
         title: text || 'Analysierte Mahlzeit',
         items: [{
           name: text || 'Unbekannte Mahlzeit',
           amount: '1 Portion',
-          calories: 300,
-          protein: 15,
-          carbs: 30,
-          fats: 10
+          calories: userValues.calories || 350,
+          protein: userValues.protein || 20,
+          carbs: userValues.carbs || 40,
+          fats: userValues.fats || 12
         }],
         total: {
-          calories: 300,
-          protein: 15,
-          carbs: 30,
-          fats: 10
+          calories: userValues.calories || 350,
+          protein: userValues.protein || 20,
+          carbs: userValues.carbs || 40,
+          fats: userValues.fats || 12
         },
         confidence: 'low',
-        notes: 'Automatische Schätzung - bitte Werte überprüfen. Analyse-Fehler bei der KI-Antwort.'
+        notes: 'Fallback-Schätzung - bitte Werte überprüfen. ' + (hasUserValues ? 'Benutzerdefinierte Werte wurden berücksichtigt.' : 'Analyse-Fehler bei der KI-Antwort.')
       };
       
       console.log('🔄 [ANALYZE-MEAL] Using fallback response:', fallbackResponse);

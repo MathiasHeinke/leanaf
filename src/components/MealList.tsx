@@ -1,11 +1,18 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Heart } from "lucide-react";
+import { Edit2, Trash2, Heart, ImageIcon } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { MealEditForm } from "@/components/MealEditForm";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface MealImage {
+  id: string;
+  image_url: string;
+}
 
 interface MealData {
   id: string;
@@ -16,6 +23,7 @@ interface MealData {
   fats: number;
   timestamp: Date;
   meal_type?: string;
+  images?: MealImage[];
 }
 
 interface MealListProps {
@@ -27,7 +35,59 @@ interface MealListProps {
 
 export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }: MealListProps) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [mealsWithImages, setMealsWithImages] = useState<MealData[]>([]);
+
+  // Load images for meals
+  useEffect(() => {
+    const loadMealImages = async () => {
+      if (!user?.id || dailyMeals.length === 0) {
+        setMealsWithImages(dailyMeals);
+        return;
+      }
+
+      try {
+        const mealIds = dailyMeals.map(meal => meal.id);
+        
+        const { data: imagesData, error } = await supabase
+          .from('meal_images')
+          .select('id, meal_id, image_url')
+          .in('meal_id', mealIds);
+
+        if (error) {
+          console.error('Error loading meal images:', error);
+          setMealsWithImages(dailyMeals);
+          return;
+        }
+
+        // Group images by meal_id
+        const imagesByMeal = imagesData.reduce((acc: any, image: any) => {
+          if (!acc[image.meal_id]) {
+            acc[image.meal_id] = [];
+          }
+          acc[image.meal_id].push({
+            id: image.id,
+            image_url: image.image_url
+          });
+          return acc;
+        }, {});
+
+        // Add images to meals
+        const mealsWithImagesData = dailyMeals.map(meal => ({
+          ...meal,
+          images: imagesByMeal[meal.id] || []
+        }));
+
+        setMealsWithImages(mealsWithImagesData);
+      } catch (error) {
+        console.error('Error loading meal images:', error);
+        setMealsWithImages(dailyMeals);
+      }
+    };
+
+    loadMealImages();
+  }, [dailyMeals, user?.id]);
 
   const getMealTypeDisplay = (mealType?: string) => {
     switch (mealType) {
@@ -59,7 +119,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
     }
   };
 
-  if (dailyMeals.length === 0) {
+  if (mealsWithImages.length === 0) {
     return (
       <Card className="p-8 text-center border-dashed border-2 border-muted">
         <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -74,7 +134,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-lg mb-3">{t('meal.todaysMeals')}</h3>
-      {dailyMeals.map((meal) => {
+      {mealsWithImages.map((meal) => {
         const mealDisplay = getMealTypeDisplay(meal.meal_type);
         
         // Show edit form if this meal is being edited
@@ -106,6 +166,12 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                       minute: '2-digit' 
                     })}
                   </span>
+                  {meal.images && meal.images.length > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      <ImageIcon className="h-3 w-3 mr-1" />
+                      {meal.images.length}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm font-medium mb-2 line-clamp-2">
                   {meal.text}
@@ -130,6 +196,26 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                 </Button>
               </div>
             </div>
+            
+            {/* Meal images */}
+            {meal.images && meal.images.length > 0 && (
+              <div className="mb-3">
+                <div className="flex gap-2 flex-wrap">
+                  {meal.images.map((image) => (
+                    <img
+                      key={image.id}
+                      src={image.image_url}
+                      alt="Mahlzeit"
+                      className="w-16 h-16 object-cover rounded-lg border border-border/20 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => {
+                        // Open image in new tab for full view
+                        window.open(image.image_url, '_blank');
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             
             {/* Nutritional info display */}
             <div className="grid grid-cols-4 gap-2 text-xs">

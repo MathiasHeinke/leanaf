@@ -21,7 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { CalendarIcon, MessageSquare } from "lucide-react";
+import { CalendarIcon, MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
@@ -33,6 +33,7 @@ interface MealConfirmationDialogProps {
   selectedMealType: string;
   onMealTypeChange: (type: string) => void;
   onSuccess: () => void;
+  uploadedImages?: string[];
 }
 
 export const MealConfirmationDialog = ({
@@ -41,7 +42,8 @@ export const MealConfirmationDialog = ({
   analyzedMealData,
   selectedMealType,
   onMealTypeChange,
-  onSuccess
+  onSuccess,
+  uploadedImages = []
 }: MealConfirmationDialogProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -103,11 +105,11 @@ export const MealConfirmationDialog = ({
 
   const getValueWarnings = () => {
     const warnings = [];
-    if (editableValues.calories > 1200) warnings.push("Sehr hohe Kalorienzahl");
+    if (editableValues.calories > 800) warnings.push("Sehr hohe Kalorienzahl");
     if (editableValues.calories < 50) warnings.push("Sehr niedrige Kalorienzahl");
-    if (editableValues.protein > 60) warnings.push("Sehr hoher Proteinwert");
+    if (editableValues.protein > 80) warnings.push("Sehr hoher Proteinwert");
     if (editableValues.carbs > 150) warnings.push("Sehr hohe Kohlenhydrate");
-    if (editableValues.fats > 80) warnings.push("Sehr hohe Fettwerte");
+    if (editableValues.fats > 60) warnings.push("Sehr hohe Fettwerte");
     return warnings;
   };
 
@@ -130,7 +132,8 @@ export const MealConfirmationDialog = ({
             fats: editableValues.fats,
             description: editableValues.title,
             confidence: analyzedMealData?.confidence
-          }
+          },
+          images: uploadedImages
         }
       });
 
@@ -153,8 +156,9 @@ export const MealConfirmationDialog = ({
 
       setVerificationMessage('');
       setShowVerification(false);
+      toast.success('Werte wurden überprüft und angepasst');
     } catch (error: any) {
-      toast.error('Fehler bei der Überprüfung');
+      toast.error('Fehler bei der Überprüfung: ' + (error.message || 'Unbekannter Fehler'));
     } finally {
       setIsVerifying(false);
     }
@@ -201,7 +205,8 @@ export const MealConfirmationDialog = ({
       const localDate = new Date(mealDate);
       localDate.setHours(12, 0, 0, 0);
       
-      const { error } = await supabase
+      // Insert meal first
+      const { data: mealData, error: mealError } = await supabase
         .from('meals')
         .insert({
           user_id: user.id,
@@ -212,19 +217,41 @@ export const MealConfirmationDialog = ({
           carbs: editableValues.carbs,
           fats: editableValues.fats,
           created_at: localDate.toISOString(),
-        });
+        })
+        .select()
+        .single();
 
-      if (error) {
-        toast.error('Fehler beim Speichern');
+      if (mealError) {
+        toast.error('Fehler beim Speichern der Mahlzeit: ' + mealError.message);
         return;
       }
 
+      // Save uploaded images to meal_images table
+      if (uploadedImages.length > 0) {
+        const imageInserts = uploadedImages.map(imageUrl => ({
+          user_id: user.id,
+          meal_id: mealData.id,
+          image_url: imageUrl
+        }));
+
+        const { error: imagesError } = await supabase
+          .from('meal_images')
+          .insert(imageInserts);
+
+        if (imagesError) {
+          console.error('Error saving meal images:', imagesError);
+          toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
+        }
+      }
+
       triggerDataRefresh();
+      toast.success('Mahlzeit erfolgreich gespeichert' + (uploadedImages.length > 0 ? ' mit Bildern' : ''));
       onSuccess();
       onClose();
       
     } catch (error) {
-      toast.error('Fehler beim Speichern');
+      console.error('Error saving meal:', error);
+      toast.error('Fehler beim Speichern der Mahlzeit');
     }
   };
 
@@ -248,7 +275,7 @@ export const MealConfirmationDialog = ({
           {confidence === 'low' && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
               <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                ⚠️ Bitte Nährwerte prüfen
+                ⚠️ Bitte Nährwerte prüfen - niedrige Vertrauenswürdigkeit
               </div>
             </div>
           )}
@@ -257,6 +284,24 @@ export const MealConfirmationDialog = ({
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
               <div className="text-sm text-yellow-800 dark:text-yellow-200">
                 ⚠️ Auffällige Werte: {warnings.join(', ')}
+              </div>
+            </div>
+          )}
+
+          {uploadedImages.length > 0 && (
+            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+              <div className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                📸 Bilder werden mit der Mahlzeit gespeichert ({uploadedImages.length})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {uploadedImages.map((imageUrl, index) => (
+                  <img
+                    key={index}
+                    src={imageUrl}
+                    alt={`Mahlzeit ${index + 1}`}
+                    className="w-12 h-12 object-cover rounded border"
+                  />
+                ))}
               </div>
             </div>
           )}

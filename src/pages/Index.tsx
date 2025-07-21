@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -374,6 +375,13 @@ const Index = () => {
                 }}
                 onDeleteMeal={async (mealId: string) => {
                   try {
+                    // Delete meal images first
+                    await supabase
+                      .from('meal_images')
+                      .delete()
+                      .eq('meal_id', mealId);
+
+                    // Then delete the meal
                     const { error } = await supabase
                       .from('meals')
                       .delete()
@@ -428,6 +436,7 @@ const Index = () => {
           selectedMealType={mealInputHook.selectedMealType}
           onMealTypeChange={mealInputHook.setSelectedMealType}
           onSuccess={handleMealSuccess}
+          uploadedImages={mealInputHook.uploadedImages}
         />
       )}
     </>
