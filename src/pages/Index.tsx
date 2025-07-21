@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +38,11 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  
+  // New state for today's data
+  const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
+  const [todaysSleep, setTodaysSleep] = useState<any>(null);
+  const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
 
   // Load user data
   useEffect(() => {
@@ -49,6 +55,7 @@ const Index = () => {
   useEffect(() => {
     if (user && dailyGoals) {
       fetchMealsForDate(currentDate);
+      loadTodaysData(currentDate);
     }
   }, [user, currentDate, dailyGoals]);
 
@@ -97,6 +104,58 @@ const Index = () => {
       console.error('Error loading user data:', error);
     } finally {
       setDataLoading(false);
+    }
+  };
+
+  const loadTodaysData = async (date: Date) => {
+    if (!user) return;
+
+    try {
+      const dateString = date.toISOString().split('T')[0];
+
+      // Load today's workout
+      const { data: workoutData, error: workoutError } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle();
+
+      if (workoutError) {
+        console.error('Error loading workout:', workoutError);
+      } else {
+        setTodaysWorkout(workoutData);
+      }
+
+      // Load today's sleep
+      const { data: sleepData, error: sleepError } = await supabase
+        .from('sleep_tracking')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle();
+
+      if (sleepError) {
+        console.error('Error loading sleep:', sleepError);
+      } else {
+        setTodaysSleep(sleepData);
+      }
+
+      // Load today's body measurements
+      const { data: measurementsData, error: measurementsError } = await supabase
+        .from('body_measurements')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle();
+
+      if (measurementsError) {
+        console.error('Error loading measurements:', measurementsError);
+      } else {
+        setTodaysMeasurements(measurementsData);
+      }
+    } catch (error) {
+      console.error('Error loading today\'s data:', error);
     }
   };
 
@@ -150,6 +209,18 @@ const Index = () => {
 
   const handleWeightAdded = () => {
     loadUserData();
+  };
+
+  const handleWorkoutAdded = () => {
+    loadTodaysData(currentDate);
+  };
+
+  const handleSleepAdded = () => {
+    loadTodaysData(currentDate);
+  };
+
+  const handleMeasurementsAdded = () => {
+    loadTodaysData(currentDate);
   };
 
   const handleMealSuccess = async () => {
@@ -210,11 +281,20 @@ const Index = () => {
 
         {/* Transformation Tools */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <QuickWorkoutInput />
-          <QuickSleepInput />
+          <QuickWorkoutInput 
+            onWorkoutAdded={handleWorkoutAdded}
+            todaysWorkout={todaysWorkout}
+          />
+          <QuickSleepInput 
+            onSleepAdded={handleSleepAdded}
+            todaysSleep={todaysSleep}
+          />
         </div>
 
-        <BodyMeasurements />
+        <BodyMeasurements 
+          onMeasurementsAdded={handleMeasurementsAdded}
+          todaysMeasurements={todaysMeasurements}
+        />
         
         {/* Department Progress */}
         <DepartmentProgress />

@@ -49,7 +49,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
       };
 
       if (hasSleepToday) {
-        // Update existing sleep entry
+        // Update existing sleep entry - no points awarded
         const { error } = await supabase
           .from('sleep_tracking')
           .update(sleepData)
@@ -58,10 +58,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         if (error) throw error;
         toast.success('Schlaf aktualisiert!');
       } else {
-        // Create new sleep entry
+        // Create new sleep entry using UPSERT to prevent duplicates
         const { error } = await supabase
           .from('sleep_tracking')
-          .insert(sleepData);
+          .upsert(sleepData, { 
+            onConflict: 'user_id,date',
+            ignoreDuplicates: false 
+          });
 
         if (error) throw error;
 

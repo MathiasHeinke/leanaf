@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star, ChevronLeft, ChevronRight } from "lucide-react";
@@ -7,6 +6,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { getGoalStatus, getGoalBasedProgressMessage, UserGoal } from "@/utils/goalBasedMessaging";
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
+import { InfoButton } from "@/components/InfoButton";
 
 interface DailyTotals {
   calories: number;
@@ -157,11 +157,23 @@ export const DailyProgress = ({
             </div>
             <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
           </div>
-          {!isToday && (
-            <Button variant="outline" size="sm" onClick={goToToday}>
-              {t('date.today')}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <InfoButton
+              title="Kalorien & Makro Tracking"
+              description="Präzises Tracking deiner Kalorien und Makronährstoffe ist der Schlüssel für nachhaltigen Erfolg. Jeder Makronährstoff hat eine spezielle Funktion für deinen Körper."
+              scientificBasis="Studien zeigen: Ein moderates Kaloriendefizit von 300-500 kcal führt zu 0,3-0,5kg Gewichtsverlust pro Woche bei optimaler Muskelerhaltung."
+              tips={[
+                "Protein: 1,6-2,2g pro kg Körpergewicht für Muskelerhalt",
+                "Kohlenhydrate: Energie für Training und Gehirn",
+                "Fette: 0,8-1,2g pro kg für Hormonproduktion"
+              ]}
+            />
+            {!isToday && (
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                {t('date.today')}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Date Navigation */}

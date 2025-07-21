@@ -55,7 +55,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
       };
 
       if (hasWorkoutToday) {
-        // Update existing workout
+        // Update existing workout - no points awarded
         const { error } = await supabase
           .from('workouts')
           .update(workoutData)
@@ -64,10 +64,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         if (error) throw error;
         toast.success('Workout aktualisiert!');
       } else {
-        // Create new workout
+        // Create new workout using UPSERT to prevent duplicates
         const { error } = await supabase
           .from('workouts')
-          .insert(workoutData);
+          .upsert(workoutData, { 
+            onConflict: 'user_id,date',
+            ignoreDuplicates: false 
+          });
 
         if (error) throw error;
 
