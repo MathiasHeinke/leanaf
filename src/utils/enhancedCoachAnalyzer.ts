@@ -28,31 +28,52 @@ export class EnhancedCoachAnalyzer {
   async generateInsights(): Promise<CoachInsight[]> {
     const insights: CoachInsight[] = [];
 
-    // Check plateau vs real progress
+    // AI-Powered Priority Analysis - Most important first
+    const criticalInsight = this.analyzeCriticalPatterns();
+    if (criticalInsight) insights.push(criticalInsight);
+
+    // Smart plateau vs real progress
     const plateauInsight = this.analyzePlateauVsProgress();
     if (plateauInsight) insights.push(plateauInsight);
 
-    // Check water retention factors
+    // Predictive weight analysis
+    const predictiveInsight = this.analyzePredictivePatterns();
+    if (predictiveInsight) insights.push(predictiveInsight);
+
+    // Multi-factor correlation analysis
+    const correlationInsight = this.analyzeMultiFactorCorrelation();
+    if (correlationInsight) insights.push(correlationInsight);
+
+    // Smart water retention detection
     const waterInsight = this.analyzeWaterRetention();
     if (waterInsight) insights.push(waterInsight);
 
-    // Check workout consistency
-    const workoutInsight = this.analyzeWorkoutConsistency();
+    // Workout efficiency analysis
+    const workoutInsight = this.analyzeWorkoutEfficiency();
     if (workoutInsight) insights.push(workoutInsight);
 
-    // Check sleep impact
-    const sleepInsight = this.analyzeSleepImpact();
+    // Sleep-performance correlation
+    const sleepInsight = this.analyzeSleepPerformanceImpact();
     if (sleepInsight) insights.push(sleepInsight);
 
-    // Check measurement progress
-    const measurementInsight = this.analyzeMeasurementProgress();
-    if (measurementInsight) insights.push(measurementInsight);
+    // Body composition insights
+    const bodyCompInsight = this.analyzeBodyComposition();
+    if (bodyCompInsight) insights.push(bodyCompInsight);
 
-    // Motivational insight
-    const motivationInsight = this.generateMotivation();
+    // Nutrition timing optimization
+    const nutritionInsight = this.analyzeNutritionTiming();
+    if (nutritionInsight) insights.push(nutritionInsight);
+
+    // Goal-specific coaching
+    const goalInsight = this.generateGoalSpecificInsight();
+    if (goalInsight) insights.push(goalInsight);
+
+    // Adaptive motivation
+    const motivationInsight = this.generateAdaptiveMotivation();
     if (motivationInsight) insights.push(motivationInsight);
 
-    return insights;
+    // Limit to top 4-5 insights for better UX
+    return insights.slice(0, 5);
   }
 
   private analyzePlateauVsProgress(): CoachInsight | null {
@@ -196,31 +217,288 @@ export class EnhancedCoachAnalyzer {
     return null;
   }
 
-  private generateMotivation(): CoachInsight | null {
-    const motivationalMessages = [
-      {
-        title: 'Transformation läuft! 🔥',
-        message: 'Jede Messung, jedes Training, jede bewusste Mahlzeit bringt dich näher zum Ziel. Weiter so!',
-        icon: '🔥'
-      },
-      {
-        title: 'Sixpack-Formel aktiv! 💪',
-        message: 'Defizit + Training + Schlaf + Geduld = Sichtbare Ergebnisse. Du machst alles richtig!',
-        icon: '💪'
-      },
-      {
-        title: 'Progress über Perfektion! 📈',
-        message: 'Nicht jeden Tag perfekt? Egal! Konsistenz schlägt Perfektion - und du bist konsistent!',
-        icon: '📈'
-      }
-    ];
-
-    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+  // NEW: Critical pattern detection - highest priority insights
+  private analyzeCriticalPatterns(): CoachInsight | null {
+    const recentWeight = this.getRecentWeightTrend(14);
+    const recentWorkouts = this.data.workouts.slice(-14);
+    const recentSleep = this.data.sleepData.slice(-7);
     
-    return {
-      type: 'motivation',
-      ...randomMessage
-    };
+    // Critical: Rapid weight loss + no training = muscle loss risk
+    if (recentWeight.length >= 3) {
+      const weightLossRate = (recentWeight[recentWeight.length - 1] - recentWeight[0]) / (recentWeight.length / 7);
+      const noTraining = recentWorkouts.filter(w => w.did_workout).length === 0;
+      
+      if (weightLossRate < -1 && noTraining) {
+        return {
+          type: 'warning',
+          title: 'WARNUNG: Muskelverlust-Risiko! ⚠️',
+          message: `Schneller Gewichtsverlust (${Math.abs(weightLossRate).toFixed(1)}kg/Woche) ohne Training kann Muskelmasse kosten. Sofort 2x/Woche Krafttraining!`,
+          icon: '🚨',
+          data: { weightLossRate, trainingDays: 0 }
+        };
+      }
+    }
+
+    // Critical: Consistent poor sleep affecting everything
+    const poorSleepDays = recentSleep.filter(s => s.sleep_quality < 2 || s.sleep_hours < 5).length;
+    if (poorSleepDays >= 5) {
+      return {
+        type: 'warning',
+        title: 'Schlaf-Krise gefährdet Ziele! 😴',
+        message: `${poorSleepDays} Tage schlechter Schlaf blockieren deinen Fortschritt. Priorität #1: Schlaf optimieren!`,
+        icon: '🚨',
+        data: { poorSleepDays }
+      };
+    }
+
+    return null;
+  }
+
+  // NEW: Predictive analysis based on trends
+  private analyzePredictivePatterns(): CoachInsight | null {
+    const recentWeight = this.getRecentWeightTrend(21); // 3 weeks
+    const recentMeasurements = this.getRecentMeasurements(21);
+    
+    if (recentWeight.length >= 6) {
+      const weeklyChanges = [];
+      for (let i = 0; i < recentWeight.length - 6; i += 7) {
+        weeklyChanges.push(recentWeight[i] - recentWeight[i + 7]);
+      }
+      
+      if (weeklyChanges.length >= 2) {
+        const avgWeeklyChange = weeklyChanges.reduce((a, b) => a + b, 0) / weeklyChanges.length;
+        const isConsistent = weeklyChanges.every(change => Math.sign(change) === Math.sign(avgWeeklyChange));
+        
+        if (isConsistent && Math.abs(avgWeeklyChange) > 0.3) {
+          const prediction = avgWeeklyChange * 4; // Monthly prediction
+          return {
+            type: avgWeeklyChange < 0 ? 'success' : 'info',
+            title: 'Trend-Prognose berechnet! 📊',
+            message: `Bei aktuellem Tempo: ${Math.abs(prediction).toFixed(1)}kg ${avgWeeklyChange < 0 ? 'weniger' : 'mehr'} in 4 Wochen. ${avgWeeklyChange < 0 ? 'Perfekt!' : 'Trend beobachten.'}`,
+            icon: '🔮',
+            data: { weeklyChange: avgWeeklyChange, monthlyPrediction: prediction }
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // NEW: Multi-factor correlation analysis
+  private analyzeMultiFactorCorrelation(): CoachInsight | null {
+    const recentData = this.getCorrelationData(14);
+    if (recentData.length < 7) return null;
+
+    // Find best performing days pattern
+    const bestDays = recentData
+      .filter(d => d.workout && d.sleepQuality >= 3)
+      .sort((a, b) => b.sleepQuality - a.sleepQuality);
+
+    if (bestDays.length >= 3) {
+      const avgSleep = bestDays.reduce((sum, d) => sum + d.sleepQuality, 0) / bestDays.length;
+      return {
+        type: 'success',
+        title: 'Erfolgsformel identifiziert! 🧪',
+        message: `Training + ${avgSleep.toFixed(1)}/5 Schlafqualität = deine beste Kombination! Wiederhole diese Tage.`,
+        icon: '⚗️',
+        data: { optimalSleep: avgSleep, pattern: 'workout_good_sleep' }
+      };
+    }
+
+    return null;
+  }
+
+  // NEW: Enhanced workout efficiency analysis
+  private analyzeWorkoutEfficiency(): CoachInsight | null {
+    const recentWorkouts = this.data.workouts.slice(-14);
+    const workoutsWithData = recentWorkouts.filter(w => w.did_workout && w.intensity);
+
+    if (workoutsWithData.length >= 3) {
+      const avgIntensity = workoutsWithData.reduce((sum, w) => sum + w.intensity, 0) / workoutsWithData.length;
+      const highIntensityDays = workoutsWithData.filter(w => w.intensity >= 4).length;
+      const recentWeight = this.getRecentWeightTrend(14);
+
+      if (highIntensityDays >= 2 && recentWeight.length >= 2) {
+        const weightChange = recentWeight[0] - recentWeight[recentWeight.length - 1];
+        
+        if (weightChange < -0.5) {
+          return {
+            type: 'success',
+            title: 'High-Intensity zahlt sich aus! 💪⚡',
+            message: `${highIntensityDays} intensive Trainings + ${Math.abs(weightChange).toFixed(1)}kg weniger = perfekte Kombination!`,
+            icon: '🔥',
+            data: { highIntensityDays, weightChange, avgIntensity }
+          };
+        }
+      }
+    }
+
+    return this.analyzeWorkoutConsistency(); // Fallback to basic analysis
+  }
+
+  // NEW: Sleep-performance correlation
+  private analyzeSleepPerformanceImpact(): CoachInsight | null {
+    const correlationData = this.getCorrelationData(14);
+    if (correlationData.length < 7) return null;
+
+    const workoutDays = correlationData.filter(d => d.workout);
+    const noWorkoutDays = correlationData.filter(d => !d.workout);
+
+    if (workoutDays.length >= 3 && noWorkoutDays.length >= 3) {
+      const workoutSleepAvg = workoutDays.reduce((sum, d) => sum + d.sleepQuality, 0) / workoutDays.length;
+      const restSleepAvg = noWorkoutDays.reduce((sum, d) => sum + d.sleepQuality, 0) / noWorkoutDays.length;
+
+      const difference = workoutSleepAvg - restSleepAvg;
+      
+      if (Math.abs(difference) > 0.5) {
+        return {
+          type: difference > 0 ? 'success' : 'info',
+          title: 'Training-Schlaf Korrelation! 📊',
+          message: `Du schläfst ${Math.abs(difference).toFixed(1)} Punkte ${difference > 0 ? 'besser' : 'schlechter'} nach dem Training. ${difference > 0 ? 'Training hilft deinem Schlaf!' : 'Training könnte deinen Schlaf stören.'}`,
+          icon: '🔄',
+          data: { workoutSleepAvg, restSleepAvg, correlation: difference }
+        };
+      }
+    }
+
+    return this.analyzeSleepImpact(); // Fallback to basic analysis
+  }
+
+  // NEW: Body composition analysis
+  private analyzeBodyComposition(): CoachInsight | null {
+    const measurements = this.data.measurements.slice(-8); // 8 most recent
+    if (measurements.length < 3) return null;
+
+    const latestMeasurement = measurements[0];
+    const oldestMeasurement = measurements[measurements.length - 1];
+    
+    if (latestMeasurement && oldestMeasurement) {
+      const bellyChange = this.getMeasurementChange([latestMeasurement, oldestMeasurement], 'belly');
+      const waistChange = this.getMeasurementChange([latestMeasurement, oldestMeasurement], 'waist');
+      const chestChange = this.getMeasurementChange([latestMeasurement, oldestMeasurement], 'chest');
+      
+      // Body recomposition pattern
+      if (bellyChange < -1 && chestChange > -0.5) {
+        return {
+          type: 'success',
+          title: 'Body Recomposition läuft! 🎯',
+          message: `Bauch: ${Math.abs(bellyChange).toFixed(1)}cm weniger, Brust stabil - du baust Fett ab und hältst Muskeln!`,
+          icon: '🎯',
+          data: { bellyChange, chestChange, waistChange }
+        };
+      }
+    }
+
+    return this.analyzeMeasurementProgress(); // Fallback to basic analysis
+  }
+
+  // NEW: Nutrition timing optimization
+  private analyzeNutritionTiming(): CoachInsight | null {
+    const recentMeals = this.data.meals.slice(-21); // 3 weeks
+    if (recentMeals.length < 10) return null;
+
+    // Analyze meal timing patterns
+    const mealTimes = recentMeals.map(meal => {
+      const hour = new Date(meal.created_at).getHours();
+      return { hour, type: meal.meal_type, calories: meal.calories };
+    });
+
+    const breakfastMeals = mealTimes.filter(m => m.hour >= 6 && m.hour <= 10);
+    const lateMeals = mealTimes.filter(m => m.hour >= 20);
+    
+    if (lateMeals.length > breakfastMeals.length) {
+      return {
+        type: 'info',
+        title: 'Meal-Timing optimieren! ⏰',
+        message: `Mehr späte Mahlzeiten (${lateMeals.length}) als Frühstück (${breakfastMeals.length}). Früher essen kann Stoffwechsel ankurbeln.`,
+        icon: '🍽️',
+        data: { breakfastCount: breakfastMeals.length, lateCount: lateMeals.length }
+      };
+    }
+
+    return null;
+  }
+
+  // NEW: Goal-specific coaching
+  private generateGoalSpecificInsight(): CoachInsight | null {
+    if (!this.data.profile || !this.data.goals) return null;
+
+    const goal = this.data.profile.goal || 'maintain';
+    const currentWeight = this.data.weight[0]?.weight;
+    const targetWeight = this.data.profile.target_weight;
+
+    if (goal === 'lose' && currentWeight && targetWeight) {
+      const remaining = currentWeight - targetWeight;
+      const recentTrend = this.getRecentWeightTrend(14);
+      
+      if (remaining > 0 && recentTrend.length >= 3) {
+        const weeklyRate = (recentTrend[0] - recentTrend[recentTrend.length - 1]) / (recentTrend.length / 7);
+        const weeksToGoal = weeklyRate !== 0 ? Math.abs(remaining / weeklyRate) : 0;
+
+        if (weeksToGoal > 0 && weeksToGoal < 52) {
+          return {
+            type: 'info',
+            title: 'Ziel-Prognose aktualisiert! 🎯',
+            message: `Noch ${remaining.toFixed(1)}kg bis zum Ziel. Bei aktuellem Tempo: ${Math.ceil(weeksToGoal)} Wochen. ${weeksToGoal <= 12 ? 'Sehr realistisch!' : 'Geduld zahlt sich aus.'}`,
+            icon: '📅',
+            data: { remaining, weeksToGoal, weeklyRate }
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // NEW: Adaptive motivation based on user data
+  private generateAdaptiveMotivation(): CoachInsight | null {
+    const recentWorkouts = this.data.workouts.slice(-7).filter(w => w.did_workout).length;
+    const recentMeasurements = this.data.measurements.length;
+    const consistencyScore = (recentWorkouts * 2 + Math.min(recentMeasurements, 4)) / 10;
+
+    if (consistencyScore >= 0.7) {
+      return {
+        type: 'motivation',
+        title: 'Transformation-Modus: AKTIV! 🚀',
+        message: `Konsistenz-Score: ${Math.round(consistencyScore * 100)}%! Du entwickelst echte Gewohnheiten. Jetzt kommen die sichtbaren Resultate!`,
+        icon: '🚀'
+      };
+    } else if (consistencyScore >= 0.4) {
+      return {
+        type: 'motivation',
+        title: 'Auf dem richtigen Weg! 🌟',
+        message: 'Kleine tägliche Schritte führen zu großen Veränderungen. Du bist näher am Ziel als du denkst!',
+        icon: '🌟'
+      };
+    } else {
+      return {
+        type: 'motivation',
+        title: 'Neustart-Energie! 💫',
+        message: 'Jeder Tag ist eine neue Chance. Ein kleiner Schritt heute ist besser als kein Schritt. Du schaffst das!',
+        icon: '💫'
+      };
+    }
+  }
+
+  // Helper method for correlation data
+  private getCorrelationData(days: number) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+
+    const workouts = this.data.workouts.filter(w => new Date(w.date) >= cutoff);
+    const sleepData = this.data.sleepData.filter(s => new Date(s.date) >= cutoff);
+
+    return workouts.map(workout => {
+      const matchingSleep = sleepData.find(s => s.date === workout.date);
+      return {
+        date: workout.date,
+        workout: workout.did_workout,
+        intensity: workout.intensity || 0,
+        sleepQuality: matchingSleep?.sleep_quality || 3,
+        sleepHours: matchingSleep?.sleep_hours || 7
+      };
+    });
   }
 
   // Helper methods
