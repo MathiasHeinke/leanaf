@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
-import { DarkModeDebugPanel } from "./DarkModeDebugPanel";
+
 import { 
   Zap, 
   RefreshCw, 
@@ -36,7 +36,7 @@ export const GlobalHeader = ({
   currentView
 }: GlobalHeaderProps) => {
   const [currentActiveView, setCurrentActiveView] = useState<string>('main');
-  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false);
+  
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -181,12 +181,7 @@ export const GlobalHeader = ({
               variant="outline"
               size="sm"
               onClick={toggleTheme}
-              onDoubleClick={() => setShowDebugPanel(!showDebugPanel)}
-              className={`flex items-center gap-2 ${
-                themeStatus.override ? 'ring-2 ring-orange-500/50' : ''
-              } ${
-                themeStatus.isAuto && isWithinDarkModeHours ? 'ring-2 ring-blue-500/50' : ''
-              }`}
+              className="flex items-center gap-2"
               title={getThemeTooltip()}
             >
               {renderThemeIcon()}
@@ -308,11 +303,6 @@ export const GlobalHeader = ({
         </div>
       </div>
 
-      {/* Debug Panel */}
-      <DarkModeDebugPanel 
-        isOpen={showDebugPanel} 
-        onClose={() => setShowDebugPanel(false)} 
-      />
     </>
   );
 };
