@@ -10,7 +10,7 @@ export const PointsHeader = () => {
 
   if (loading || !userPoints) {
     return (
-      <div className="bg-card/50 backdrop-blur-sm border-b border-border/50 px-4 py-3">
+      <div className="bg-card/30 border-b border-border/30 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-muted rounded-full animate-pulse" />
@@ -49,7 +49,7 @@ export const PointsHeader = () => {
   const displayLevelColor = userPoints.level_name === 'Rookie' ? getRookieLevelColor() : getLevelColor(userPoints.level_name);
 
   return (
-    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 backdrop-blur-sm border-b border-border/50 px-4 py-2">
+    <div className="border-b border-border/30 px-4 py-2">
       <div className="flex items-center justify-between max-w-4xl mx-auto">
         {/* Left Side - Level Icon + Badge */}
         <div className="flex items-center space-x-3">
@@ -86,36 +86,39 @@ export const PointsHeader = () => {
             </div>
           </div>
           
-          {/* Level Badge with improved visibility */}
-          <Badge 
-            variant="secondary" 
-            className="text-xs font-semibold px-2 py-1 border shadow-sm"
-            style={{ 
-              backgroundColor: userPoints.level_name === 'Rookie' ? 'hsl(220, 15%, 95%)' : `${displayLevelColor}15`,
-              color: displayLevelColor,
-              borderColor: `${displayLevelColor}30`
-            }}
-          >
-            Lvl {userPoints.current_level} {userPoints.level_name}
-          </Badge>
-        </div>
-
-        {/* Right Side - Progress Bar + Points */}
-        <div className="flex items-center space-x-2 min-w-0 flex-1 max-w-[140px] ml-2">
-          <div className="flex-1 space-y-1">
-            <Progress 
-              value={(currentLevelProgress / userPoints.points_to_next_level) * 100} 
-              className="h-2"
-              style={{
-                background: `${displayLevelColor}20`
-              }}
-            />
-            <div className="text-right">
-              <span className="font-medium text-xs text-foreground">
-                {currentLevelProgress}/{userPoints.points_to_next_level}
+          {/* Restored previous Badge design with better visibility for Rookie */}
+          <div className="flex flex-col">
+            <div className="flex items-center space-x-2">
+              <Badge 
+                variant="secondary" 
+                className="text-xs font-semibold px-2 py-0"
+                style={{ 
+                  backgroundColor: userPoints.level_name === 'Rookie' ? 'hsl(220, 15%, 92%)' : `${displayLevelColor}20`,
+                  color: displayLevelColor,
+                  border: `1px solid ${displayLevelColor}40`
+                }}
+              >
+                {userPoints.level_name}
+              </Badge>
+              <span className="text-xs font-medium text-muted-foreground">
+                Lvl {userPoints.current_level}
               </span>
             </div>
           </div>
+        </div>
+
+        {/* Right Side - Progress Bar + Points in same line */}
+        <div className="flex items-center space-x-3 min-w-0">
+          <Progress 
+            value={(currentLevelProgress / userPoints.points_to_next_level) * 100} 
+            className="h-2 w-20"
+            style={{
+              background: `${displayLevelColor}20`
+            }}
+          />
+          <span className="font-medium text-xs text-foreground whitespace-nowrap">
+            {currentLevelProgress}/{userPoints.points_to_next_level}
+          </span>
         </div>
       </div>
     </div>
