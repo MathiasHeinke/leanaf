@@ -119,7 +119,7 @@ export const QuickWeightInput = ({ currentWeight, onWeightAdded, todaysWeight }:
           <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
             <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eingetragen! ⚖️</h3>
             <p className="text-sm text-green-600 dark:text-green-400">
               {todaysWeight.weight || 0} kg
@@ -130,14 +130,8 @@ export const QuickWeightInput = ({ currentWeight, onWeightAdded, todaysWeight }:
                 </>
               )}
             </p>
-            <PointsDisplay 
-              basePoints={getPointsForActivity('weight_measured')} 
-              bonusPoints={0}
-              reason="Gewicht getrackt"
-              className="mt-1"
-            />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <InfoButton
               title="Gewichts-Tracking"
               description="Regelmäßiges Wiegen hilft dabei, deine Fortschritte zu verfolgen und deine Ziele zu erreichen. Schwankungen sind völlig normal!"
@@ -157,6 +151,15 @@ export const QuickWeightInput = ({ currentWeight, onWeightAdded, todaysWeight }:
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        
+        {/* Points display moved to bottom */}
+        <div className="mt-3 mb-3">
+          <PointsDisplay 
+            basePoints={getPointsForActivity('weight_measured')} 
+            bonusPoints={0}
+            reason="Gewicht getrackt"
+          />
         </div>
         
         <div className="bg-green-100/50 dark:bg-green-900/30 rounded-lg p-3">
@@ -182,16 +185,10 @@ export const QuickWeightInput = ({ currentWeight, onWeightAdded, todaysWeight }:
         <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
           <Scale className="h-5 w-5 text-green-600 dark:text-green-400" />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-green-800 dark:text-green-200">
             {hasWeightToday ? 'Gewicht bearbeiten' : 'Gewicht eintragen'}
           </h3>
-          <PointsDisplay 
-            basePoints={getPointsForActivity('weight_measured')} 
-            bonusPoints={0}
-            reason="Gewicht tracken"
-            className="mt-1"
-          />
         </div>
         <InfoButton
           title="Gewichts-Tracking"
@@ -202,6 +199,15 @@ export const QuickWeightInput = ({ currentWeight, onWeightAdded, todaysWeight }:
             "Nackt oder in derselben Kleidung wiegen",
             "Wöchentliche Trends sind wichtiger als tägliche Schwankungen"
           ]}
+        />
+      </div>
+      
+      {/* Points display moved to bottom */}
+      <div className="mb-3">
+        <PointsDisplay 
+          basePoints={getPointsForActivity('weight_measured')} 
+          bonusPoints={0}
+          reason="Gewicht tracken"
         />
       </div>
       

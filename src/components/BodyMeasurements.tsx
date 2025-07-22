@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,19 +148,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
             <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-purple-800 dark:text-purple-200">Körpermaße eingetragen! 📏</h3>
             <p className="text-sm text-purple-600 dark:text-purple-400">
               {activeMeasurements.length} Messwerte erfasst
             </p>
-            <PointsDisplay 
-              basePoints={getMeasurementsPoints()} 
-              bonusPoints={0}
-              reason="Körpermaße getrackt"
-              className="mt-1"
-            />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <InfoButton
               title="Körpermaße Tracking"
               description="Körpermaße sind oft aussagekräftiger als das Gewicht allein. Muskeln sind schwerer als Fett - der Umfang zeigt deinen wahren Fortschritt."
@@ -179,6 +174,15 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        
+        {/* Points display moved to bottom */}
+        <div className="mt-3 mb-3">
+          <PointsDisplay 
+            basePoints={getMeasurementsPoints()} 
+            bonusPoints={0}
+            reason="Körpermaße getrackt"
+          />
         </div>
         
         <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
@@ -210,16 +214,10 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
             <Ruler className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-purple-800 dark:text-purple-200">
               {hasMeasurementsThisWeek ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
             </h3>
-            <PointsDisplay 
-              basePoints={getMeasurementsPoints()} 
-              bonusPoints={0}
-              reason="Körpermaße tracken"
-              className="mt-1"
-            />
           </div>
           <InfoButton
             title="Körpermaße Tracking"
@@ -230,6 +228,15 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               "Bauchumfang auf Höhe des Nabels messen",
               "Monatliche Messungen reichen für gute Trends"
             ]}
+          />
+        </div>
+        
+        {/* Points display moved to bottom */}
+        <div className="mb-3">
+          <PointsDisplay 
+            basePoints={getMeasurementsPoints()} 
+            bonusPoints={0}
+            reason="Körpermaße tracken"
           />
         </div>
         

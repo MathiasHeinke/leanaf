@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,7 +122,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-xl">
             <CheckCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-orange-800 dark:text-orange-200">Workout erledigt! 💪</h3>
              <p className="text-sm text-orange-600 dark:text-orange-400">
                {todaysWorkout.workout_type === 'kraft' ? 'Krafttraining' : 
@@ -142,16 +143,8 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                  </>
                )}
              </p>
-             {todaysWorkout.workout_type !== 'pause' && (
-               <PointsDisplay 
-                 basePoints={getWorkoutPoints()} 
-                 bonusPoints={getBonusPoints()}
-                 reason="Workout abgeschlossen"
-                 className="mt-1"
-               />
-             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <InfoButton
               title="Workout & Regeneration"
               description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
@@ -173,6 +166,17 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             </Button>
           </div>
         </div>
+        
+        {/* Points display moved to bottom */}
+        {todaysWorkout.workout_type !== 'pause' && (
+          <div className="mt-3 mb-3">
+            <PointsDisplay 
+              basePoints={getWorkoutPoints()} 
+              bonusPoints={getBonusPoints()}
+              reason="Workout abgeschlossen"
+            />
+          </div>
+        )}
         
         <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3">
           <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
@@ -202,18 +206,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-xl">
             <Dumbbell className="h-5 w-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-orange-800 dark:text-orange-200">
               {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
             </h3>
-            {workoutType !== 'pause' && (
-              <PointsDisplay 
-                basePoints={getWorkoutPoints()} 
-                bonusPoints={0}
-                reason="Workout tracken"
-                className="mt-1"
-              />
-            )}
           </div>
           <InfoButton
             title="Workout & Regeneration"
@@ -227,6 +223,17 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             ]}
           />
         </div>
+        
+        {/* Points display moved to bottom */}
+        {workoutType !== 'pause' && (
+          <div className="mb-3">
+            <PointsDisplay 
+              basePoints={getWorkoutPoints()} 
+              bonusPoints={0}
+              reason="Workout tracken"
+            />
+          </div>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -1,6 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
-import { Star, TrendingUp } from "lucide-react";
+import { Star } from "lucide-react";
 
 interface PointsDisplayProps {
   basePoints: number;
@@ -15,22 +15,18 @@ export const PointsDisplay = ({ basePoints, bonusPoints = 0, reason, className =
   if (totalPoints === 0) return null;
 
   return (
-    <div className={`flex items-center gap-2 text-xs ${className}`}>
-      <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300">
-        📊 +{basePoints} Punkte
+    <div className={`flex items-center gap-1 text-xs flex-wrap ${className}`}>
+      <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-300 px-2 py-0.5">
+        📊 +{basePoints}P
       </Badge>
       {bonusPoints > 0 && (
-        <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-300">
-          <Star className="h-3 w-3 mr-1" />
-          +{bonusPoints} Bonus
+        <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-300 px-2 py-0.5">
+          <Star className="h-3 w-3 mr-0.5" />
+          +{bonusPoints}BP
         </Badge>
       )}
-      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
-        <TrendingUp className="h-3 w-3 mr-1" />
-        {totalPoints} Total
-      </Badge>
       {reason && (
-        <span className="text-muted-foreground">({reason})</span>
+        <span className="text-muted-foreground text-xs">({reason})</span>
       )}
     </div>
   );

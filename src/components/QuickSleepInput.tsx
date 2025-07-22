@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -125,20 +126,14 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
             <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-blue-800 dark:text-blue-200">Schlaf eingetragen! 😴</h3>
             <p className="text-sm text-blue-600 dark:text-blue-400">
               {todaysSleep.sleep_hours || 0} Stunden • 
               Qualität: {todaysSleep.sleep_quality || 0}/10
             </p>
-            <PointsDisplay 
-              basePoints={getSleepPoints()} 
-              bonusPoints={getBonusPoints()}
-              reason="Schlaf getrackt"
-              className="mt-1"
-            />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <InfoButton
               title="Schlaf Tracking"
               description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
@@ -158,6 +153,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Points display moved to bottom */}
+        <div className="mt-3 mb-3">
+          <PointsDisplay 
+            basePoints={getSleepPoints()} 
+            bonusPoints={getBonusPoints()}
+            reason="Schlaf getrackt"
+          />
         </div>
         
         <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
@@ -187,16 +191,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
             <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-blue-800 dark:text-blue-200">
               {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
             </h3>
-            <PointsDisplay 
-              basePoints={getSleepPoints()} 
-              bonusPoints={0}
-              reason="Schlaf tracken"
-              className="mt-1"
-            />
           </div>
           <InfoButton
             title="Schlaf Tracking"
@@ -207,6 +205,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               "Feste Schlafzeiten unterstützen den Biorhythmus",
               "Bildschirme 1h vor dem Schlafen vermeiden"
             ]}
+          />
+        </div>
+        
+        {/* Points display moved to bottom */}
+        <div className="mb-3">
+          <PointsDisplay 
+            basePoints={getSleepPoints()} 
+            bonusPoints={0}
+            reason="Schlaf tracken"
           />
         </div>
         
