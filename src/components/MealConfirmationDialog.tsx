@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { CalendarIcon, MessageSquare, X } from "lucide-react";
@@ -46,6 +47,7 @@ export const MealConfirmationDialog = ({
 }: MealConfirmationDialogProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { evaluateMeal } = usePointsSystem();
 
   // State for editable nutritional values
   const [editableValues, setEditableValues] = useState({
@@ -296,11 +298,35 @@ export const MealConfirmationDialog = ({
             console.error('🔧 [DEBUG] Error saving meal images:', imagesError);
             toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
           } else {
-            console.log('🔧 [DEBUG] Images saved successfully');
+      console.log('🔧 [DEBUG] Images saved successfully');
           }
         } catch (imageNetworkError) {
           console.error('🔧 [DEBUG] Network error saving images:', imageNetworkError);
           toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
+        }
+      }
+
+      // Evaluate meal quality and award bonus points
+      console.log('🔧 [DEBUG] Starting meal evaluation...');
+      if (evaluateMeal) {
+        try {
+          await evaluateMeal(mealData.id, {
+            text: editableValues.title,
+            calories: editableValues.calories,
+            protein: editableValues.protein,
+            carbs: editableValues.carbs,
+            fats: editableValues.fats,
+            meal_type: selectedMealType,
+            images: uploadedImages.length > 0 ? uploadedImages.map((url, index) => ({ id: `temp-${index}`, image_url: url })) : []
+          });
+          console.log('🔧 [DEBUG] Meal evaluation completed');
+        } catch (evaluationError) {
+          console.warn('🔧 [DEBUG] Meal evaluation failed:', evaluationError);
+          // Show fallback success message if evaluation fails
+          const fallbackMessage = uploadedImages.length > 0 
+            ? `Mahlzeit gespeichert! (+${uploadedImages.length > 0 ? '5' : '3'} Punkte)` 
+            : 'Mahlzeit gespeichert! (+3 Punkte)';
+          toast.success(fallbackMessage);
         }
       }
 

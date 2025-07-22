@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Heart, ImageIcon } from "lucide-react";
+import { Edit2, Trash2, Heart, ImageIcon, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { MealEditForm } from "@/components/MealEditForm";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,10 @@ interface MealData {
   timestamp: Date;
   meal_type?: string;
   images?: MealImage[];
+  quality_score?: number;
+  bonus_points?: number;
+  ai_feedback?: string;
+  evaluation_criteria?: any;
 }
 
 interface MealListProps {
@@ -38,6 +42,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
   const { user } = useAuth();
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [mealsWithImages, setMealsWithImages] = useState<MealData[]>([]);
+  const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
 
   // Load images for meals
   useEffect(() => {
@@ -169,10 +174,23 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                   {meal.images && meal.images.length > 0 && (
                     <Badge variant="outline" className="text-xs">
                       <ImageIcon className="h-3 w-3 mr-1" />
-                      {meal.images.length}
-                    </Badge>
-                  )}
-                </div>
+                   {meal.images.length}
+                     </Badge>
+                   )}
+                   {meal.quality_score !== undefined && meal.quality_score !== null && (
+                     <Badge 
+                       variant={
+                         meal.quality_score >= 8 ? "default" : 
+                         meal.quality_score >= 6 ? "secondary" : 
+                         "destructive"
+                       }
+                       className="text-xs"
+                     >
+                       <Star className="h-3 w-3 mr-1" />
+                       {meal.quality_score}/10
+                     </Badge>
+                   )}
+                 </div>
                 <p className="text-sm font-medium mb-2 line-clamp-2">
                   {meal.text}
                 </p>
@@ -244,6 +262,64 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                 <div className="text-purple-500 dark:text-purple-300">{t('macros.fats')}</div>
               </div>
             </div>
+
+            {/* AI Feedback and Quality Score Details */}
+            {meal.ai_feedback && (
+              <div className="mt-3 border-t pt-3">
+                <div 
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => setExpandedFeedback(expandedFeedback === meal.id ? null : meal.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">Coach Feedback</span>
+                    {meal.bonus_points && meal.bonus_points > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{meal.bonus_points} Bonus Punkte
+                      </Badge>
+                    )}
+                  </div>
+                  {expandedFeedback === meal.id ? 
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" /> : 
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  }
+                </div>
+                
+                {expandedFeedback === meal.id && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm text-muted-foreground bg-muted/30 p-2 rounded">
+                      {meal.ai_feedback}
+                    </p>
+                    
+                    {meal.evaluation_criteria && (
+                      <div className="text-xs text-muted-foreground">
+                        <div className="grid grid-cols-2 gap-1">
+                          {meal.evaluation_criteria.macro_balance && (
+                            <div>
+                              <span className="font-medium">Makros:</span> {meal.evaluation_criteria.macro_balance.score?.toFixed(1) || 'N/A'}/3
+                            </div>
+                          )}
+                          {meal.evaluation_criteria.goal_alignment && (
+                            <div>
+                              <span className="font-medium">Ziel:</span> {meal.evaluation_criteria.goal_alignment.score?.toFixed(1) || 'N/A'}/3
+                            </div>
+                          )}
+                          {meal.evaluation_criteria.nutritional_quality && (
+                            <div>
+                              <span className="font-medium">Qualität:</span> {meal.evaluation_criteria.nutritional_quality.score?.toFixed(1) || 'N/A'}/2
+                            </div>
+                          )}
+                          {meal.evaluation_criteria.meal_timing && (
+                            <div>
+                              <span className="font-medium">Timing:</span> {meal.evaluation_criteria.meal_timing.score?.toFixed(1) || 'N/A'}/2
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         );
       })}

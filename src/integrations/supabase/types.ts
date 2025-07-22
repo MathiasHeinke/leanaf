@@ -205,37 +205,49 @@ export type Database = {
       }
       meals: {
         Row: {
+          ai_feedback: string | null
+          bonus_points: number | null
           calories: number | null
           carbs: number | null
           created_at: string
+          evaluation_criteria: Json | null
           fats: number | null
           id: string
           meal_type: string | null
           protein: number | null
+          quality_score: number | null
           text: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          ai_feedback?: string | null
+          bonus_points?: number | null
           calories?: number | null
           carbs?: number | null
           created_at?: string
+          evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
           meal_type?: string | null
           protein?: number | null
+          quality_score?: number | null
           text: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          ai_feedback?: string | null
+          bonus_points?: number | null
           calories?: number | null
           carbs?: number | null
           created_at?: string
+          evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
           meal_type?: string | null
           protein?: number | null
+          quality_score?: number | null
           text?: string
           updated_at?: string
           user_id?: string

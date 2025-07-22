@@ -1,6 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -23,7 +24,52 @@ serve(async (req) => {
       throw new Error('OpenAI API key not found');
     }
 
-    const systemPrompt = `Du bist ein Ernährungsexperte, der dabei hilft, Mahlzeiten zu analysieren und die Nährwerte zu korrigieren. 
+    // Get user profile for coach personality
+    let coachPersonality = 'moderat';
+    try {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          {
+            global: {
+              headers: { Authorization: authHeader },
+            },
+          }
+        );
+        
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+          const { data: profileData } = await supabaseClient
+            .from('profiles')
+            .select('coach_personality')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (profileData?.coach_personality) {
+            coachPersonality = profileData.coach_personality;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not fetch coach personality, using default');
+    }
+
+    const getPersonalityPrompt = (personality: string): string => {
+      switch (personality) {
+        case 'streng':
+          return 'Du bist ein strenger aber fairer Ernährungs-Coach. Sei direkt, ehrlich und fordere Verbesserungen. Verwende einen bestimmten, professionellen Ton.';
+        case 'liebevoll':
+          return 'Du bist ein sehr liebevoller, unterstützender Ernährungs-Coach. Sei warmherzig, ermutigend und verwende liebevolle Anreden wie "Schatz" oder "mein Lieber/meine Liebe".';
+        default: // 'moderat'
+          return 'Du bist ein ausgewogener Ernährungs-Coach. Sei freundlich aber ehrlich, ermutigend aber realistisch. Verwende einen warmen, professionellen Ton.';
+      }
+    };
+
+    const systemPrompt = `${getPersonalityPrompt(coachPersonality)}
+    
+Du hilfst dabei, Mahlzeiten zu analysieren und die Nährwerte zu korrigieren.
 
 Aktuelle Mahlzeitdaten:
 - Titel: ${mealData.title}

@@ -211,11 +211,105 @@ export const usePointsSystem = () => {
     }
   };
 
+  // Evaluate meal quality and award points
+  const evaluateMeal = async (mealId: string, mealData: any) => {
+    if (!user?.id) {
+      console.warn('❌ Cannot evaluate meal: No user ID');
+      return;
+    }
+
+    try {
+      console.log('🧠 Evaluating meal quality:', mealData);
+      
+      // Get user profile and daily goals
+      const [profileResult, goalsResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('goal, activity_level, target_weight, weight, height, age, gender, macro_strategy, muscle_maintenance_priority, coach_personality')
+          .eq('user_id', user.id)
+          .single(),
+        supabase
+          .from('daily_goals')
+          .select('calories, protein, carbs, fats, calorie_deficit')
+          .eq('user_id', user.id)
+          .single()
+      ]);
+
+      if (profileResult.error || goalsResult.error) {
+        console.error('Error loading profile/goals for meal evaluation:', profileResult.error || goalsResult.error);
+        return;
+      }
+
+      const profile = {
+        ...profileResult.data,
+        coach_personality: profileResult.data.coach_personality || 'moderat'
+      };
+
+      // Call evaluate-meal edge function
+      const { data: evaluationData, error: evaluationError } = await supabase.functions.invoke('evaluate-meal', {
+        body: {
+          meal: mealData,
+          profile: profile,
+          dailyGoals: goalsResult.data
+        }
+      });
+
+      if (evaluationError) {
+        console.error('Error calling evaluate-meal function:', evaluationError);
+        return;
+      }
+
+      console.log('✅ Meal evaluation completed:', evaluationData);
+
+      // Update meal with evaluation data
+      const { error: updateError } = await supabase
+        .from('meals')
+        .update({
+          quality_score: evaluationData.quality_score,
+          bonus_points: evaluationData.bonus_points,
+          ai_feedback: evaluationData.ai_feedback,
+          evaluation_criteria: evaluationData.evaluation_criteria
+        })
+        .eq('id', mealId);
+
+      if (updateError) {
+        console.error('Error updating meal with evaluation:', updateError);
+        return;
+      }
+
+      // Award bonus points if applicable
+      if (evaluationData.bonus_points > 0) {
+        const bonusResult = await awardPoints(
+          'meal_quality_bonus',
+          evaluationData.bonus_points,
+          `Qualitätsbonus für Mahlzeit (${evaluationData.quality_score}/10)`
+        );
+
+        if (bonusResult) {
+          const hasPhoto = mealData.images && mealData.images.length > 0;
+          const basePoints = hasPhoto ? 5 : 3;
+          const totalPoints = basePoints + evaluationData.bonus_points;
+          
+          toast.success(`🎯 ${totalPoints} Punkte! (${basePoints} fürs Tracken + ${evaluationData.bonus_points} Qualitätsbonus)`, {
+            duration: 5000,
+            position: "top-center",
+          });
+        }
+      }
+
+      return evaluationData;
+
+    } catch (error) {
+      console.error('❌ Error in evaluateMeal:', error);
+    }
+  };
+
   // Calculate points for different activities
   const getPointsForActivity = (activityType: string, data?: any): number => {
     switch (activityType) {
       case 'meal_tracked_with_photo': return 5;
       case 'meal_tracked': return 3;
+      case 'meal_quality_bonus': return data?.bonus_points || 0; // Variable bonus points
       case 'workout_completed': return data?.intensity ? data.intensity * 2 : 8;
       case 'weight_measured': return 3;
       case 'body_measurements': return 4;
@@ -268,6 +362,7 @@ export const usePointsSystem = () => {
     loading,
     awardPoints,
     updateStreak,
+    evaluateMeal,
     getPointsForActivity,
     getStreakMultiplier,
     getLevelColor,
