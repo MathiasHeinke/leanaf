@@ -17,7 +17,6 @@ import {
   Ruler,
   Scale,
   Activity,
-  Zap,
   Camera,
   Eye
 } from "lucide-react";
@@ -27,16 +26,9 @@ interface TransformationStats {
   currentWeight: number;
   startWeight: number;
   targetWeight: number;
-  currentBodyFat: number;
-  startBodyFat: number;
-  targetBodyFat: number;
-  currentMuscle: number;
-  startMuscle: number;
-  targetMuscle: number;
   currentBellySize: number;
   startBellySize: number;
   targetBellySize: number;
-  weeklyDeficit: number;
   workoutsThisWeek: number;
   measurementsThisMonth: number;
   latestPhotos: string[];
@@ -67,7 +59,7 @@ export const TransformationDashboard = () => {
         .eq('user_id', user.id)
         .single();
 
-      // Load weight history with body composition
+      // Load weight history
       const { data: weightHistory } = await supabase
         .from('weight_history')
         .select('*')
@@ -106,9 +98,6 @@ export const TransformationDashboard = () => {
         .eq('user_id', user.id)
         .gte('date', monthStart.toISOString().split('T')[0]);
 
-      // Calculate weekly calorie deficit
-      const weeklyDeficit = 0; // Would need meal data calculation
-
       const currentBellySize = measurements?.[0]?.belly || 0;
       const startBellySize = measurements?.[measurements.length - 1]?.belly || currentBellySize;
       
@@ -116,15 +105,6 @@ export const TransformationDashboard = () => {
       const startWeight = profile?.start_weight || firstWeight?.weight || latestWeight?.weight || profile?.weight || 0;
       const currentWeight = latestWeight?.weight || profile?.weight || 0;
       const targetWeight = profile?.target_weight || 0;
-
-      // Body composition data
-      const currentBodyFat = latestWeight?.body_fat_percentage || 0;
-      const startBodyFat = firstWeight?.body_fat_percentage || currentBodyFat;
-      const targetBodyFat = Math.max(8, startBodyFat * 0.7); // Target: 30% reduction, min 8%
-
-      const currentMuscle = latestWeight?.muscle_percentage || 0;
-      const startMuscle = firstWeight?.muscle_percentage || currentMuscle;
-      const targetMuscle = Math.min(60, startMuscle * 1.15); // Target: 15% increase, max 60%
 
       // Progress photos
       const latestPhotos = Array.isArray(latestWeight?.photo_urls) 
@@ -138,16 +118,9 @@ export const TransformationDashboard = () => {
         currentWeight,
         startWeight,
         targetWeight,
-        currentBodyFat,
-        startBodyFat,
-        targetBodyFat,
-        currentMuscle,
-        startMuscle,
-        targetMuscle,
         currentBellySize,
         startBellySize,
         targetBellySize: startBellySize * 0.9, // 10% reduction target
-        weeklyDeficit,
         workoutsThisWeek: thisWeekWorkouts?.length || 0,
         measurementsThisMonth: thisMonthMeasurements?.length || 0,
         latestPhotos,
@@ -169,30 +142,6 @@ export const TransformationDashboard = () => {
     if (totalWeightToLose === 0) return 0;
     
     const progress = (weightAlreadyLost / totalWeightToLose) * 100;
-    return Math.min(100, Math.max(0, progress));
-  };
-
-  const calculateBodyFatProgress = () => {
-    if (!stats || stats.startBodyFat === 0 || stats.targetBodyFat === 0) return 0;
-    
-    const totalBodyFatToLose = Math.abs(stats.startBodyFat - stats.targetBodyFat);
-    const bodyFatAlreadyLost = Math.abs(stats.startBodyFat - stats.currentBodyFat);
-    
-    if (totalBodyFatToLose === 0) return 0;
-    
-    const progress = (bodyFatAlreadyLost / totalBodyFatToLose) * 100;
-    return Math.min(100, Math.max(0, progress));
-  };
-
-  const calculateMuscleProgress = () => {
-    if (!stats || stats.startMuscle === 0 || stats.targetMuscle === 0) return 0;
-    
-    const totalMuscleToGain = Math.abs(stats.targetMuscle - stats.startMuscle);
-    const muscleAlreadyGained = Math.abs(stats.currentMuscle - stats.startMuscle);
-    
-    if (totalMuscleToGain === 0) return 0;
-    
-    const progress = (muscleAlreadyGained / totalMuscleToGain) * 100;
     return Math.min(100, Math.max(0, progress));
   };
 
@@ -232,8 +181,6 @@ export const TransformationDashboard = () => {
   }
 
   const weightProgress = calculateWeightProgress();
-  const bodyFatProgress = calculateBodyFatProgress();
-  const muscleProgress = calculateMuscleProgress();
   const bellyProgress = calculateBellyProgress();
 
   return (
@@ -257,34 +204,34 @@ export const TransformationDashboard = () => {
 
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium">Körperfett</span>
+              <Ruler className="h-4 w-4 text-purple-600" />
+              <span className="text-sm font-medium">Bauchumfang</span>
             </div>
-            <div className="text-2xl font-bold">{stats.currentBodyFat.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{stats.currentBellySize.toFixed(1)} cm</div>
             <div className="text-sm text-muted-foreground">
-              Ziel: {stats.targetBodyFat.toFixed(1)}%
+              Ziel: {stats.targetBellySize.toFixed(1)} cm
             </div>
           </Card>
 
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Muskelmasse</span>
-            </div>
-            <div className="text-2xl font-bold">{stats.currentMuscle.toFixed(1)}%</div>
-            <div className="text-sm text-muted-foreground">
-              Ziel: {stats.targetMuscle.toFixed(1)}%
-            </div>
-          </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-purple-600" />
               <span className="text-sm font-medium">Training</span>
             </div>
             <div className="text-2xl font-bold">{stats.workoutsThisWeek}</div>
             <div className="text-sm text-muted-foreground">
               Diese Woche
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="h-4 w-4 text-orange-600" />
+              <span className="text-sm font-medium">Messungen</span>
+            </div>
+            <div className="text-2xl font-bold">{stats.measurementsThisMonth}</div>
+            <div className="text-sm text-muted-foreground">
+              Diesen Monat
             </div>
           </Card>
         </div>
@@ -374,7 +321,7 @@ export const TransformationDashboard = () => {
           </Card>
         )}
 
-        {/* Progress Cards */}
+        {/* Progress Cards - Only Weight and Belly Goals */}
         <div className="grid grid-cols-1 gap-6">
           <Card className="p-6">
             <CardHeader className="pb-4">
@@ -402,50 +349,6 @@ export const TransformationDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="p-6">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-red-600" />
-                Körperfett Reduktion
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Fortschritt</span>
-                  <span>{bodyFatProgress.toFixed(1)}%</span>
-                </div>
-                <Progress value={bodyFatProgress} className="h-2" />
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Noch {Math.abs(stats.currentBodyFat - stats.targetBodyFat).toFixed(1)}% bis zum Ziel
-              </div>
-            </CardContent>
-          </Card>
-
-          {stats.currentMuscle > 0 && (
-            <Card className="p-6">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-green-600" />
-                  Muskelaufbau
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Fortschritt</span>
-                    <span>{muscleProgress.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={muscleProgress} className="h-2" />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Noch {Math.abs(stats.targetMuscle - stats.currentMuscle).toFixed(1)}% bis zum Ziel
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {stats.currentBellySize > 0 && (
             <Card className="p-6">
               <CardHeader className="pb-4">
@@ -464,6 +367,9 @@ export const TransformationDashboard = () => {
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Noch {Math.abs(stats.currentBellySize - stats.targetBellySize).toFixed(1)} cm bis zum Ziel
+                </div>
+                <div className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-950/20 p-2 rounded">
+                  <strong>Tipp:</strong> Ein reduzierter Bauchumfang ist oft der beste Indikator für einen gesunden Körperfettanteil und Sixpack-Entwicklung.
                 </div>
               </CardContent>
             </Card>
