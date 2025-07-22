@@ -82,7 +82,6 @@ export const ChatCoach = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressType[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [currentTime, setCurrentTime] = useState('');
   const [remainingCalories, setRemainingCalories] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -157,25 +156,17 @@ export const ChatCoach = ({
     if (user?.id) {
       loadUserData();
       loadChatHistory();
-      updateTimeAndCalories();
+      updateCalories();
     }
   }, [user?.id]);
 
-  // Update time and remaining calories periodically
+  // Update remaining calories periodically
   useEffect(() => {
-    const interval = setInterval(updateTimeAndCalories, 60000); // Update every minute
+    const interval = setInterval(updateCalories, 60000); // Update every minute
     return () => clearInterval(interval);
   }, [todaysTotals, dailyGoals]);
 
-  const updateTimeAndCalories = () => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('de-DE', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      timeZone: 'Europe/Berlin'
-    });
-    setCurrentTime(timeString);
-    
+  const updateCalories = () => {
     const remaining = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
     setRemainingCalories(remaining);
   };
@@ -190,6 +181,26 @@ export const ChatCoach = ({
       setTimeout(() => {
         scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
+    }
+  };
+
+  const formatMessageTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return date.toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      });
+    } else {
+      return date.toLocaleDateString('de-DE', { 
+        day: '2-digit', 
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
   };
 
@@ -517,12 +528,6 @@ export const ChatCoach = ({
               <Badge variant="secondary" className="text-xs flex-shrink-0">
                 {coachInfo.profession}
               </Badge>
-              {currentTime && (
-                <Badge variant="outline" className="text-xs flex items-center gap-1 flex-shrink-0">
-                  <Clock className="h-3 w-3" />
-                  {currentTime}
-                </Badge>
-              )}
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <p className="text-sm text-muted-foreground font-normal">
@@ -556,58 +561,65 @@ export const ChatCoach = ({
               {messages.map((message, index) => (
                 <div key={message.id || index} className="space-y-2">
                   <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted border'
-                    }`}>
-                      {message.role === 'assistant' && (
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                            <img 
-                              src={coachInfo.imageUrl} 
-                              alt={coachInfo.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                              }}
-                            />
-                            <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
-                              {coachInfo.emoji}
+                    <div className={`max-w-[85%] ${message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+                      <div className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted border'
+                      }`}>
+                        {message.role === 'assistant' && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                              <img 
+                                src={coachInfo.imageUrl} 
+                                alt={coachInfo.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                                {coachInfo.emoji}
+                              </div>
                             </div>
+                            <span className="text-xs font-medium text-primary truncate">
+                              {coachInfo.name}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-primary truncate">
-                            {coachInfo.name} • {coachInfo.profession}
-                          </span>
-                        </div>
-                      )}
-                      
-                      {/* Show images if available */}
-                      {message.images && message.images.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {message.images.map((imageUrl, imgIndex) => (
-                            <img
-                              key={imgIndex}
-                              src={imageUrl}
-                              alt={`Message image ${imgIndex + 1}`}
-                              className="w-16 h-16 object-cover rounded-lg border"
-                            />
-                          ))}
-                        </div>
-                      )}
-                      
-                      {message.role === 'assistant' ? (
-                        <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
-                          <ReactMarkdown>
+                        )}
+                        
+                        {/* Show images if available */}
+                        {message.images && message.images.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {message.images.map((imageUrl, imgIndex) => (
+                              <img
+                                key={imgIndex}
+                                src={imageUrl}
+                                alt={`Message image ${imgIndex + 1}`}
+                                className="w-16 h-16 object-cover rounded-lg border"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
+                        {message.role === 'assistant' ? (
+                          <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+                            <ReactMarkdown>
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
                             {message.content}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                          {message.content}
-                        </p>
-                      )}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Timestamp outside bubble */}
+                      <span className="text-xs text-muted-foreground mt-1 px-1">
+                        {formatMessageTime(message.created_at)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -615,29 +627,34 @@ export const ChatCoach = ({
               
               {isThinking && (
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] bg-muted border rounded-2xl px-4 py-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                        <img 
-                          src={coachInfo.imageUrl} 
-                          alt={coachInfo.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                          }}
-                        />
-                        <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
-                          {coachInfo.emoji}
+                  <div className="max-w-[85%] flex flex-col items-start">
+                    <div className="bg-muted border rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                          <img 
+                            src={coachInfo.imageUrl} 
+                            alt={coachInfo.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                            {coachInfo.emoji}
+                          </div>
                         </div>
+                        <span className="text-xs font-medium text-primary">{coachInfo.name} schreibt...</span>
                       </div>
-                      <span className="text-xs font-medium text-primary">{coachInfo.name} analysiert...</span>
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    </div>
+                    <span className="text-xs text-muted-foreground mt-1 px-1">
+                      jetzt
+                    </span>
                   </div>
                 </div>
               )}
