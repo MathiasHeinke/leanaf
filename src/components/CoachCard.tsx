@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check } from 'lucide-react';
@@ -26,6 +26,17 @@ interface CoachCardProps {
 }
 
 export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelect }) => {
+  const [imageError, setImageError] = useState(false);
+
+  const handleImageError = () => {
+    console.log(`❌ Failed to load image for ${coach.name}: ${coach.imageUrl}`);
+    setImageError(true);
+  };
+
+  const handleImageLoad = () => {
+    console.log(`✅ Successfully loaded image for ${coach.name}: ${coach.imageUrl}`);
+  };
+
   return (
     <Card 
       className={`relative cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg ${
@@ -44,12 +55,14 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
       <CardContent className="p-6 text-center">
         {/* Avatar */}
         <div className="relative mb-4">
-          {coach.imageUrl ? (
+          {coach.imageUrl && !imageError ? (
             <div className="w-24 h-24 mx-auto rounded-full overflow-hidden shadow-lg">
               <img 
                 src={coach.imageUrl} 
                 alt={coach.name}
                 className="w-full h-full object-cover"
+                onError={handleImageError}
+                onLoad={handleImageLoad}
               />
             </div>
           ) : (
