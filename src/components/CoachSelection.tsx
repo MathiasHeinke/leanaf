@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CoachCard } from './CoachCard';
 
@@ -9,6 +8,7 @@ const coachProfiles = [
     age: 32,
     role: 'Fitness Drill-Instructor',
     avatar: '🎯',
+    imageUrl: '/lovable-uploads/a63e162b-e74d-40ac-83f0-a1f9b61591c0.png',
     personality: 'Hart & Direkt',
     description: 'Keine Ausreden, nur Resultate. Sascha bringt dich mit klaren Ansagen und kompromissloser Disziplin zu deinen Zielen.',
     strengths: ['Disziplin', 'Klare Ansagen', 'Schnelle Resultate', 'Effizienz'],
@@ -22,6 +22,7 @@ const coachProfiles = [
     age: 28,
     role: 'Ernährungsberaterin',
     avatar: '❤️',
+    imageUrl: '/lovable-uploads/7ce7bd93-d57c-406c-b756-94cf0b7a7623.png',
     personality: 'Liebevoll & Unterstützend',
     description: 'Mit Verständnis und Geduld hilft Lucy dir dabei, nachhaltige und gesunde Gewohnheiten zu entwickeln.',
     strengths: ['Empathie', 'Geduld', 'Nachhaltigkeit', 'Verständnis'],
@@ -35,6 +36,7 @@ const coachProfiles = [
     age: 30,
     role: 'Personal Trainer',
     avatar: '💪',
+    imageUrl: '/lovable-uploads/27ecb912-ebe1-48be-b0b7-452344faad3c.png',
     personality: 'Motivierend & Energisch',
     description: 'Kai bringt die Energie! Mit positivem Spirit und ansteckender Begeisterung macht Fitness richtig Spaß.',
     strengths: ['Energie', 'Positive Verstärkung', 'Spaß', 'Motivation'],

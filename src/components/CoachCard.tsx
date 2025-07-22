@@ -10,6 +10,7 @@ interface CoachProfile {
   age: number;
   role: string;
   avatar: string;
+  imageUrl?: string;
   personality: string;
   description: string;
   strengths: string[];
@@ -29,13 +30,13 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
     <Card 
       className={`relative cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg ${
         isSelected 
-          ? `ring-2 ring-${coach.color}-500 shadow-lg` 
+          ? 'ring-2 ring-green-500 shadow-lg' 
           : 'hover:shadow-md'
       }`}
       onClick={() => onSelect(coach.id)}
     >
       {isSelected && (
-        <div className={`absolute -top-2 -right-2 w-6 h-6 bg-${coach.color}-500 rounded-full flex items-center justify-center z-10`}>
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center z-10">
           <Check className="h-4 w-4 text-white" />
         </div>
       )}
@@ -43,9 +44,19 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
       <CardContent className="p-6 text-center">
         {/* Avatar */}
         <div className="relative mb-4">
-          <div className={`w-20 h-20 mx-auto rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center text-white text-2xl font-bold shadow-lg`}>
-            {coach.avatar}
-          </div>
+          {coach.imageUrl ? (
+            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden shadow-lg">
+              <img 
+                src={coach.imageUrl} 
+                alt={coach.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className={`w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center text-white text-2xl font-bold shadow-lg`}>
+              {coach.avatar}
+            </div>
+          )}
         </div>
 
         {/* Name & Role */}
