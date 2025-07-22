@@ -1,4 +1,3 @@
-
 import { 
   AlertDialog, 
   AlertDialogContent, 
@@ -199,59 +198,157 @@ export const MealConfirmationDialog = ({
   };
 
   const handleConfirmMeal = async () => {
-    if (!user?.id) return;
+    console.log('🔧 [DEBUG] handleConfirmMeal started');
+    console.log('🔧 [DEBUG] User ID:', user?.id);
+    console.log('🔧 [DEBUG] Selected meal type:', selectedMealType);
+    console.log('🔧 [DEBUG] Editable values:', editableValues);
+    console.log('🔧 [DEBUG] Meal date:', mealDate);
+    console.log('🔧 [DEBUG] Uploaded images count:', uploadedImages.length);
+    
+    if (!user?.id) {
+      console.error('🔧 [DEBUG] No user ID found');
+      toast.error('Benutzer nicht authentifiziert');
+      return;
+    }
     
     try {
-      const localDate = new Date(mealDate);
-      localDate.setHours(12, 0, 0, 0);
-      
-      // Insert meal first
-      const { data: mealData, error: mealError } = await supabase
-        .from('meals')
-        .insert({
-          user_id: user.id,
-          meal_type: selectedMealType,
-          text: editableValues.title,
-          calories: editableValues.calories,
-          protein: editableValues.protein,
-          carbs: editableValues.carbs,
-          fats: editableValues.fats,
-          created_at: localDate.toISOString(),
-        })
-        .select()
-        .single();
+      // Prepare meal data with validation
+      const mealPayload = {
+        user_id: user.id,
+        meal_type: selectedMealType || 'other',
+        text: editableValues.title || 'Unbenannte Mahlzeit',
+        calories: Number(editableValues.calories) || 0,
+        protein: Number(editableValues.protein) || 0,
+        carbs: Number(editableValues.carbs) || 0,
+        fats: Number(editableValues.fats) || 0
+      };
 
-      if (mealError) {
-        toast.error('Fehler beim Speichern der Mahlzeit: ' + mealError.message);
-        return;
+      console.log('🔧 [DEBUG] Meal payload prepared:', mealPayload);
+      console.log('🔧 [DEBUG] About to insert meal...');
+      
+      // Insert meal with retry mechanism
+      let mealData = null;
+      let insertError = null;
+      
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`🔧 [DEBUG] Insert attempt ${attempt}/3`);
+          
+          const { data, error } = await supabase
+            .from('meals')
+            .insert(mealPayload)
+            .select()
+            .single();
+
+          if (error) {
+            console.error(`🔧 [DEBUG] Insert error (attempt ${attempt}):`, error);
+            insertError = error;
+            
+            if (attempt === 3) {
+              throw error;
+            }
+            
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+
+          console.log('🔧 [DEBUG] Meal insert successful:', data);
+          mealData = data;
+          break;
+          
+        } catch (networkError) {
+          console.error(`🔧 [DEBUG] Network error (attempt ${attempt}):`, networkError);
+          insertError = networkError;
+          
+          if (attempt === 3) {
+            throw networkError;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
       }
 
-      // Save uploaded images to meal_images table
+      if (!mealData) {
+        throw insertError || new Error('Failed to insert meal after retries');
+      }
+
+      console.log('🔧 [DEBUG] Meal saved successfully, ID:', mealData.id);
+
+      // Save uploaded images if any
       if (uploadedImages.length > 0) {
+        console.log('🔧 [DEBUG] Processing uploaded images:', uploadedImages.length);
+        
         const imageInserts = uploadedImages.map(imageUrl => ({
           user_id: user.id,
           meal_id: mealData.id,
           image_url: imageUrl
         }));
 
-        const { error: imagesError } = await supabase
-          .from('meal_images')
-          .insert(imageInserts);
+        console.log('🔧 [DEBUG] Image inserts prepared:', imageInserts);
 
-        if (imagesError) {
-          console.error('Error saving meal images:', imagesError);
+        try {
+          const { error: imagesError } = await supabase
+            .from('meal_images')
+            .insert(imageInserts);
+
+          if (imagesError) {
+            console.error('🔧 [DEBUG] Error saving meal images:', imagesError);
+            toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
+          } else {
+            console.log('🔧 [DEBUG] Images saved successfully');
+          }
+        } catch (imageNetworkError) {
+          console.error('🔧 [DEBUG] Network error saving images:', imageNetworkError);
           toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
         }
       }
 
+      console.log('🔧 [DEBUG] Triggering data refresh...');
       triggerDataRefresh();
-      toast.success('Mahlzeit erfolgreich gespeichert' + (uploadedImages.length > 0 ? ' mit Bildern' : ''));
+      
+      console.log('🔧 [DEBUG] Showing success message...');
+      const successMessage = uploadedImages.length > 0 
+        ? `Mahlzeit erfolgreich gespeichert mit ${uploadedImages.length} Bild(ern)` 
+        : 'Mahlzeit erfolgreich gespeichert';
+      
+      toast.success(successMessage);
+      
+      console.log('🔧 [DEBUG] Calling onSuccess callback...');
       onSuccess();
+      
+      console.log('🔧 [DEBUG] Closing dialog...');
       onClose();
       
-    } catch (error) {
-      console.error('Error saving meal:', error);
-      toast.error('Fehler beim Speichern der Mahlzeit');
+      console.log('🔧 [DEBUG] handleConfirmMeal completed successfully');
+      
+    } catch (error: any) {
+      console.error('🔧 [DEBUG] Critical error in handleConfirmMeal:', error);
+      console.error('🔧 [DEBUG] Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stack: error.stack
+      });
+      
+      let errorMessage = 'Fehler beim Speichern der Mahlzeit';
+      
+      // Specific error handling
+      if (error.message?.includes('violates row-level security')) {
+        errorMessage = 'Sicherheitsfehler - bitte erneut anmelden';
+      } else if (error.message?.includes('Load failed')) {
+        errorMessage = 'Netzwerkfehler - bitte Internetverbindung prüfen';
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = 'Zeitüberschreitung - bitte erneut versuchen';
+      } else if (error.code) {
+        errorMessage = `Datenbankfehler (${error.code}): ${error.message}`;
+      } else if (error.message) {
+        errorMessage = `Fehler: ${error.message}`;
+      }
+      
+      console.log('🔧 [DEBUG] Showing error toast:', errorMessage);
+      toast.error(errorMessage);
     }
   };
 
