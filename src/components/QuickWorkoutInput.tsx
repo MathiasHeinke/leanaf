@@ -1,10 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
 import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface QuickWorkoutInputProps {
@@ -34,8 +35,8 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
-  // Check if workout already exists for today
-  const hasWorkoutToday = todaysWorkout && todaysWorkout.did_workout;
+  // Check if ANY workout entry exists for today (including rest days)
+  const hasWorkoutToday = todaysWorkout && todaysWorkout.id;
 
   useEffect(() => {
     if (hasWorkoutToday && !isEditing) {
@@ -144,14 +145,6 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
              </p>
           </div>
           <div className="flex items-center gap-2">
-            {todaysWorkout.workout_type !== 'pause' && (
-              <Badge 
-                variant="secondary" 
-                className={`bg-orange-100 text-orange-700 border-orange-300 ${showPointsAnimation ? 'animate-pulse' : ''}`}
-              >
-                💪 +8P
-              </Badge>
-            )}
             <InfoButton
               title="Workout & Regeneration"
               description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
@@ -173,6 +166,27 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             </Button>
           </div>
         </div>
+        
+        {/* Points badges in separate row for better responsive layout */}
+        {todaysWorkout.workout_type !== 'pause' && (
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <PointsBadge 
+              points={8} 
+              icon="💪"
+              animated={showPointsAnimation}
+              variant="secondary"
+            />
+            {todaysWorkout.bonus_points && todaysWorkout.bonus_points > 0 && (
+              <PointsBadge 
+                points={0}
+                bonusPoints={todaysWorkout.bonus_points}
+                icon="⭐"
+                animated={showPointsAnimation}
+                variant="outline"
+              />
+            )}
+          </div>
+        )}
         
         <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3">
           <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
