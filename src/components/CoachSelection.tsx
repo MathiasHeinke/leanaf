@@ -5,7 +5,7 @@ const coachProfiles = [
   {
     id: 'hart',
     name: 'Sascha',
-    age: 32,
+    age: 42,
     role: 'Fitness Drill-Instructor',
     avatar: '🎯',
     imageUrl: '/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',

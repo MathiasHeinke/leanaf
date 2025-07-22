@@ -102,7 +102,8 @@ export const ChatCoach = ({
           emoji: '🎯', 
           profession: 'Fitness-Coach',
           greeting: 'Hey {name}, Sascha hier. Keine Zeit für Smalltalk - was ist dein Ziel heute?',
-          accentColor: 'from-red-500 to-red-600'
+          accentColor: 'from-red-500 to-red-600',
+          imageUrl: '/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png'
         };
       case 'soft': 
         return { 
@@ -110,7 +111,8 @@ export const ChatCoach = ({
           emoji: '❤️', 
           profession: 'Ernährungsberaterin',
           greeting: 'Hey {name}, Lucy hier. Wie geht\'s dir denn heute - wie kann ich dir helfen?',
-          accentColor: 'from-pink-500 to-rose-500'
+          accentColor: 'from-pink-500 to-rose-500',
+          imageUrl: '/lovable-uploads/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
         };
       case 'motivierend':
       default:
@@ -119,7 +121,8 @@ export const ChatCoach = ({
           emoji: '💪', 
           profession: 'Personal Trainer',
           greeting: 'Hey {name}, Kai hier! Bereit durchzustarten? Wie kann ich dir heute helfen?',
-          accentColor: 'from-blue-500 to-blue-600'
+          accentColor: 'from-blue-500 to-blue-600',
+          imageUrl: '/lovable-uploads/2c06031d-707a-400d-aaa0-a46decdddfe2.png'
         };
     }
   };
@@ -560,7 +563,20 @@ export const ChatCoach = ({
                     }`}>
                       {message.role === 'assistant' && (
                         <div className="flex items-center gap-2 mb-2">
-                          <Brain className="h-4 w-4 text-primary" />
+                          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                            <img 
+                              src={coachInfo.imageUrl} 
+                              alt={coachInfo.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                            <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                              {coachInfo.emoji}
+                            </div>
+                          </div>
                           <span className="text-xs font-medium text-primary">
                             {coachInfo.name} • {coachInfo.profession}
                           </span>
@@ -601,7 +617,20 @@ export const ChatCoach = ({
                 <div className="flex justify-start">
                   <div className="max-w-[85%] bg-muted border rounded-2xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <Brain className="h-4 w-4 text-primary" />
+                      <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                        <img 
+                          src={coachInfo.imageUrl} 
+                          alt={coachInfo.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                          {coachInfo.emoji}
+                        </div>
+                      </div>
                       <span className="text-xs font-medium text-primary">{coachInfo.name} analysiert...</span>
                     </div>
                     <div className="flex gap-1">
