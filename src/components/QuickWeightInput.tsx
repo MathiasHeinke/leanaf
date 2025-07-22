@@ -41,7 +41,19 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       setBodyFat(todaysWeight.body_fat_percentage?.toString() || "");
       setMuscleMass(todaysWeight.muscle_percentage?.toString() || "");
       setNotes(todaysWeight.notes || "");
-      setExistingPhotos(todaysWeight.photo_urls || []);
+      // Parse photo_urls if it's a JSON string
+      let photos = [];
+      if (todaysWeight.photo_urls) {
+        try {
+          photos = typeof todaysWeight.photo_urls === 'string' 
+            ? JSON.parse(todaysWeight.photo_urls) 
+            : todaysWeight.photo_urls;
+        } catch (e) {
+          console.error('Failed to parse photo_urls:', e);
+          photos = [];
+        }
+      }
+      setExistingPhotos(Array.isArray(photos) ? photos : []);
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
 
@@ -209,21 +221,34 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         </div>
         
         {/* Progress Photos */}
-        {todaysWeight.photo_urls && todaysWeight.photo_urls.length > 0 && (
-          <div className="mb-3">
-            <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">Progress Fotos:</p>
-            <div className="flex gap-2">
-              {todaysWeight.photo_urls.map((url: string, index: number) => (
-                <img
-                  key={index}
-                  src={url}
-                  alt={`Progress ${index + 1}`}
-                  className="w-16 h-16 object-cover rounded border border-green-200"
-                />
-              ))}
+        {(() => {
+          let photos = [];
+          if (todaysWeight.photo_urls) {
+            try {
+              photos = typeof todaysWeight.photo_urls === 'string' 
+                ? JSON.parse(todaysWeight.photo_urls) 
+                : todaysWeight.photo_urls;
+            } catch (e) {
+              console.error('Failed to parse photo_urls:', e);
+              photos = [];
+            }
+          }
+          return Array.isArray(photos) && photos.length > 0 ? (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">Progress Fotos:</p>
+              <div className="flex gap-2">
+                {photos.map((url: string, index: number) => (
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`Progress ${index + 1}`}
+                    className="w-16 h-16 object-cover rounded border border-green-200"
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })()}
         
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <PointsBadge 
