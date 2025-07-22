@@ -95,6 +95,39 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_conversations: {
+        Row: {
+          coach_personality: string | null
+          context_data: Json | null
+          created_at: string
+          id: string
+          message_content: string
+          message_role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_personality?: string | null
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          message_content: string
+          message_role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_personality?: string | null
+          context_data?: Json | null
+          created_at?: string
+          id?: string
+          message_content?: string
+          message_role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_goals: {
         Row: {
           bmr: number | null
@@ -284,34 +317,40 @@ export type Database = {
       point_activities: {
         Row: {
           activity_type: string
+          bonus_reason: string | null
           created_at: string
           description: string | null
           id: string
           metadata: Json | null
           multiplier: number
           points_earned: number
+          streak_length: number | null
           trial_multiplier: number | null
           user_id: string
         }
         Insert: {
           activity_type: string
+          bonus_reason?: string | null
           created_at?: string
           description?: string | null
           id?: string
           metadata?: Json | null
           multiplier?: number
           points_earned: number
+          streak_length?: number | null
           trial_multiplier?: number | null
           user_id: string
         }
         Update: {
           activity_type?: string
+          bonus_reason?: string | null
           created_at?: string
           description?: string | null
           id?: string
           metadata?: Json | null
           multiplier?: number
           points_earned?: number
+          streak_length?: number | null
           trial_multiplier?: number | null
           user_id?: string
         }
@@ -439,30 +478,36 @@ export type Database = {
       }
       sleep_tracking: {
         Row: {
+          bonus_points: number | null
           created_at: string
           date: string
           id: string
           notes: string | null
+          quality_score: number | null
           sleep_hours: number | null
           sleep_quality: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          bonus_points?: number | null
           created_at?: string
           date?: string
           id?: string
           notes?: string | null
+          quality_score?: number | null
           sleep_hours?: number | null
           sleep_quality?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          bonus_points?: number | null
           created_at?: string
           date?: string
           id?: string
           notes?: string | null
+          quality_score?: number | null
           sleep_hours?: number | null
           sleep_quality?: number | null
           updated_at?: string
@@ -673,6 +718,7 @@ export type Database = {
       }
       workouts: {
         Row: {
+          bonus_points: number | null
           created_at: string
           date: string
           did_workout: boolean
@@ -681,6 +727,7 @@ export type Database = {
           id: string
           intensity: number | null
           notes: string | null
+          quality_score: number | null
           steps: number | null
           updated_at: string
           user_id: string
@@ -688,6 +735,7 @@ export type Database = {
           workout_type: string | null
         }
         Insert: {
+          bonus_points?: number | null
           created_at?: string
           date?: string
           did_workout?: boolean
@@ -696,6 +744,7 @@ export type Database = {
           id?: string
           intensity?: number | null
           notes?: string | null
+          quality_score?: number | null
           steps?: number | null
           updated_at?: string
           user_id: string
@@ -703,6 +752,7 @@ export type Database = {
           workout_type?: string | null
         }
         Update: {
+          bonus_points?: number | null
           created_at?: string
           date?: string
           did_workout?: boolean
@@ -711,6 +761,7 @@ export type Database = {
           id?: string
           intensity?: number | null
           notes?: string | null
+          quality_score?: number | null
           steps?: number | null
           updated_at?: string
           user_id?: string

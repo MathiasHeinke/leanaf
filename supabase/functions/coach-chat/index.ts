@@ -162,7 +162,7 @@ ${profile?.muscle_maintenance_priority ? 'Fokussiere auf Muskelerhalt und Protei
     console.log('Generated chat response successfully');
 
     return new Response(JSON.stringify({ 
-      reply,
+      response: reply,
       personality,
       context: {
         todaysTotals,

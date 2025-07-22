@@ -34,7 +34,7 @@ const Index = () => {
   const navigate = useNavigate();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
-  const { awardPoints, updateStreak, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
+  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -274,13 +274,25 @@ const Index = () => {
     await loadUserData();
   };
 
-  const handleWorkoutAdded = () => {
+  const handleWorkoutAdded = async (workoutData?: any) => {
     console.log('Workout added callback triggered - reloading data');
+    
+    // Evaluate workout quality if data provided
+    if (workoutData && workoutData.id) {
+      await evaluateWorkout(workoutData.id, workoutData);
+    }
+    
     loadTodaysData(currentDate);
   };
 
-  const handleSleepAdded = () => {
+  const handleSleepAdded = async (sleepData?: any) => {
     console.log('Sleep added callback triggered - reloading data');
+    
+    // Evaluate sleep quality if data provided
+    if (sleepData && sleepData.id) {
+      await evaluateSleep(sleepData.id, sleepData);
+    }
+    
     loadTodaysData(currentDate);
   };
 
