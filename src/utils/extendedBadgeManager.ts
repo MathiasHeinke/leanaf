@@ -239,7 +239,7 @@ export class ExtendedBadgeManager extends BadgeManager {
     if (workoutDays.size >= 4 && mealDays.size >= 6) {
       const { data: existingBadge } = await supabase
         .from('badges')
-        .select('id')
+        .select('id, earned_at')
         .eq('user_id', this.userId)
         .eq('badge_type', 'special_achievement')
         .eq('badge_name', 'Perfekte Woche ✨')
@@ -248,7 +248,7 @@ export class ExtendedBadgeManager extends BadgeManager {
         .maybeSingle();
 
       // Award only once per week to avoid spam
-      if (!existingBadge || this.wasAwardedThisWeek(existingBadge.earned_at)) {
+      if (!existingBadge) {
         return {
           badge_type: 'special_achievement',
           badge_name: 'Perfekte Woche ✨',
@@ -402,11 +402,5 @@ export class ExtendedBadgeManager extends BadgeManager {
     const now = new Date();
     const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
     return earnedDate >= weekStart;
-  }
-
-  private getWeekOfYear(date: Date): number {
-    const start = new Date(date.getFullYear(), 0, 1);
-    const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
-    return Math.ceil((days + start.getDay() + 1) / 7);
   }
 }

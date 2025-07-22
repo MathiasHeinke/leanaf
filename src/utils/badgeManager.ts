@@ -8,7 +8,7 @@ export interface BadgeCheck {
 }
 
 export class BadgeManager {
-  private userId: string;
+  protected userId: string;
 
   constructor(userId: string) {
     this.userId = userId;
@@ -258,7 +258,7 @@ export class BadgeManager {
     return null;
   }
 
-  private async awardBadge(badge: BadgeCheck): Promise<void> {
+  protected async awardBadge(badge: BadgeCheck): Promise<void> {
     try {
       await supabase
         .from('badges')
@@ -274,7 +274,7 @@ export class BadgeManager {
     }
   }
 
-  private getWeekOfYear(date: Date): number {
+  protected getWeekOfYear(date: Date): number {
     const start = new Date(date.getFullYear(), 0, 1);
     const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
     return Math.ceil((days + start.getDay() + 1) / 7);
