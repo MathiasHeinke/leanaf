@@ -4,11 +4,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2 } from "lucide-react";
+import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2, Upload, X, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -16,11 +17,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { toast } from "sonner";
+import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 
 interface WeightEntry {
   id?: string;
   date: string;
   weight: number;
+  body_fat_percentage?: number;
+  muscle_percentage?: number;
+  photo_urls?: string[];
+  notes?: string;
   displayDate: string;
 }
 
@@ -33,18 +39,52 @@ interface WeightHistoryProps {
 export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHistoryProps) => {
   const [isAddingWeight, setIsAddingWeight] = useState(false);
   const [newWeight, setNewWeight] = useState<string>('');
+  const [newBodyFat, setNewBodyFat] = useState<string>('');
+  const [newMuscleMass, setNewMuscleMass] = useState<string>('');
+  const [newNotes, setNewNotes] = useState<string>('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (selectedFiles.length + imageFiles.length > 3) {
+      toast.error('Maximal 3 Bilder erlaubt');
+      return;
+    }
+    
+    setSelectedFiles(prev => [...prev, ...imageFiles].slice(0, 3));
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const addWeightEntry = async () => {
     if (!user || !newWeight) return;
     
     try {
       const weight = parseFloat(newWeight);
+      const bodyFat = newBodyFat ? parseFloat(newBodyFat) : null;
+      const muscleMass = newMuscleMass ? parseFloat(newMuscleMass) : null;
+
       if (isNaN(weight) || weight <= 0) {
         toast.error('Bitte gib ein gültiges Gewicht ein');
+        return;
+      }
+
+      if (bodyFat !== null && (bodyFat < 0 || bodyFat > 100)) {
+        toast.error('Körperfettanteil muss zwischen 0 und 100% liegen');
+        return;
+      }
+
+      if (muscleMass !== null && (muscleMass < 0 || muscleMass > 100)) {
+        toast.error('Muskelanteil muss zwischen 0 und 100% liegen');
         return;
       }
 
@@ -57,6 +97,18 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         return;
       }
 
+      // Upload photos if any
+      let photoUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
+        if (uploadResult.success) {
+          photoUrls = uploadResult.urls;
+        } else {
+          console.error('Photo upload failed:', uploadResult.errors);
+          toast.error('Fehler beim Hochladen der Bilder');
+        }
+      }
+
       // Check for existing entry for this date
       const existingEntry = weightHistory.find(entry => entry.date === selectedDateStr);
       
@@ -65,7 +117,13 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         // Update existing entry
         const { error } = await supabase
           .from('weight_history')
-          .update({ weight: weight })
+          .update({ 
+            weight: weight,
+            body_fat_percentage: bodyFat,
+            muscle_percentage: muscleMass,
+            photo_urls: photoUrls,
+            notes: newNotes || null
+          })
           .eq('id', existingEntry.id);
 
         if (error) throw error;
@@ -78,6 +136,10 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
           .insert({
             user_id: user.id,
             weight: weight,
+            body_fat_percentage: bodyFat,
+            muscle_percentage: muscleMass,
+            photo_urls: photoUrls,
+            notes: newNotes || null,
             date: selectedDateStr
           });
 
@@ -100,7 +162,12 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         }
       }
 
+      // Reset form
       setNewWeight('');
+      setNewBodyFat('');
+      setNewMuscleMass('');
+      setNewNotes('');
+      setSelectedFiles([]);
       setSelectedDate(new Date());
       setIsAddingWeight(false);
       onDataUpdate();
@@ -158,7 +225,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
   return (
     <div className="space-y-4">
-      {/* Add Weight Button */}
+      {/* Add Weight Dialog */}
       <Dialog open={isAddingWeight} onOpenChange={setIsAddingWeight}>
         <DialogTrigger asChild>
           <Button className="w-full" variant="outline">
@@ -166,14 +233,15 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             Gewicht hinzufügen
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Gewicht hinzufügen</DialogTitle>
+            <DialogTitle>Gewicht & Body Composition hinzufügen</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Weight */}
             <div>
-              <Label htmlFor="weight">Gewicht (kg)</Label>
+              <Label htmlFor="weight">Gewicht (kg) *</Label>
               <Input
                 id="weight"
                 type="number"
@@ -184,7 +252,96 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 className="mt-2"
               />
             </div>
+
+            {/* Body Composition */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="bodyFat">Körperfett (%)</Label>
+                <Input
+                  id="bodyFat"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={newBodyFat}
+                  onChange={(e) => setNewBodyFat(e.target.value)}
+                  placeholder="15.5"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="muscleMass">Muskelmasse (%)</Label>
+                <Input
+                  id="muscleMass"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={newMuscleMass}
+                  onChange={(e) => setNewMuscleMass(e.target.value)}
+                  placeholder="45.0"
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            {/* Photo Upload */}
+            <div>
+              <Label>Progress Fotos (max. 3)</Label>
+              <div className="mt-2">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="dialog-photo-upload"
+                />
+                <label
+                  htmlFor="dialog-photo-upload"
+                  className="flex items-center justify-center w-full p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+                >
+                  <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Bilder auswählen</span>
+                </label>
+              </div>
+              
+              {/* Selected Files Preview */}
+              {selectedFiles.length > 0 && (
+                <div className="mt-2 flex gap-2 flex-wrap">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Preview ${index + 1}`}
+                        className="w-16 h-16 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <Label htmlFor="notes">Notizen (optional)</Label>
+              <Textarea
+                id="notes"
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                placeholder="z.B. Training heute, gute Form..."
+                className="mt-2 min-h-[60px]"
+              />
+            </div>
             
+            {/* Date */}
             <div>
               <Label>Datum</Label>
               <Popover>
@@ -228,6 +385,19 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         </DialogContent>
       </Dialog>
 
+      {/* Image Lightbox */}
+      {selectedImageUrl && (
+        <Dialog open={!!selectedImageUrl} onOpenChange={() => setSelectedImageUrl(null)}>
+          <DialogContent className="max-w-3xl">
+            <img
+              src={selectedImageUrl}
+              alt="Progress Foto"
+              className="w-full h-auto max-h-[80vh] object-contain rounded"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Weight History List */}
       {weightHistory.length === 0 ? (
         <Card className="p-8 text-center">
@@ -248,6 +418,47 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 <div className="text-2xl font-bold text-primary">{weightHistory[0].weight} kg</div>
                 <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
                 <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
+                
+                {/* Body Composition */}
+                {(weightHistory[0].body_fat_percentage || weightHistory[0].muscle_percentage) && (
+                  <div className="flex gap-4 mt-2 text-xs">
+                    {weightHistory[0].body_fat_percentage && (
+                      <span className="text-red-600">KFA: {weightHistory[0].body_fat_percentage}%</span>
+                    )}
+                    {weightHistory[0].muscle_percentage && (
+                      <span className="text-blue-600">Muskeln: {weightHistory[0].muscle_percentage}%</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Photos */}
+                {weightHistory[0].photo_urls && weightHistory[0].photo_urls.length > 0 && (
+                  <div className="flex gap-1 mt-2">
+                    {weightHistory[0].photo_urls.slice(0, 3).map((url, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedImageUrl(url)}
+                        className="relative group"
+                      >
+                        <img
+                          src={url}
+                          alt={`Progress ${index + 1}`}
+                          className="w-12 h-12 object-cover rounded border hover:opacity-80 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                          <Eye className="h-4 w-4 text-white" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Notes */}
+                {weightHistory[0].notes && (
+                  <div className="mt-2 text-xs text-muted-foreground italic">
+                    "{weightHistory[0].notes}"
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center gap-3">
@@ -308,7 +519,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             </div>
           </Card>
 
-          {/* Weight History */}
+          {/* Historical Weight Entries */}
           {weightHistory.slice(1).map((entry, index) => (
             <Card key={`${entry.date}-${index + 1}`} className="p-4 hover:bg-muted/30 transition-colors">
               <div className="flex items-center justify-between">
@@ -316,9 +527,55 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                   <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <Scale className="h-4 w-4 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <div className="font-semibold">{entry.weight} kg</div>
                     <div className="text-sm text-muted-foreground">{entry.displayDate}</div>
+                    
+                    {/* Body Composition */}
+                    {(entry.body_fat_percentage || entry.muscle_percentage) && (
+                      <div className="flex gap-4 mt-1 text-xs">
+                        {entry.body_fat_percentage && (
+                          <span className="text-red-600">KFA: {entry.body_fat_percentage}%</span>
+                        )}
+                        {entry.muscle_percentage && (
+                          <span className="text-blue-600">Muskeln: {entry.muscle_percentage}%</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Photos */}
+                    {entry.photo_urls && entry.photo_urls.length > 0 && (
+                      <div className="flex gap-1 mt-2">
+                        {entry.photo_urls.slice(0, 3).map((url, photoIndex) => (
+                          <button
+                            key={photoIndex}
+                            onClick={() => setSelectedImageUrl(url)}
+                            className="relative group"
+                          >
+                            <img
+                              src={url}
+                              alt={`Progress ${photoIndex + 1}`}
+                              className="w-10 h-10 object-cover rounded border hover:opacity-80 transition-opacity"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                              <Eye className="h-3 w-3 text-white" />
+                            </div>
+                          </button>
+                        ))}
+                        {entry.photo_urls.length > 3 && (
+                          <div className="w-10 h-10 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground">
+                            +{entry.photo_urls.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {entry.notes && (
+                      <div className="mt-1 text-xs text-muted-foreground italic">
+                        "{entry.notes}"
+                      </div>
+                    )}
                   </div>
                 </div>
                 

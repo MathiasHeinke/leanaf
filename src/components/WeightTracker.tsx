@@ -4,16 +4,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, TrendingUp, TrendingDown, Target, Scale } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Plus, TrendingUp, TrendingDown, Target, Scale, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { PremiumGate } from "@/components/PremiumGate";
+import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 
 interface WeightEntry {
   id: string;
   weight: number;
   date: string;
+  body_fat_percentage?: number;
+  muscle_percentage?: number;
+  photo_urls?: string[];
+  notes?: string;
 }
 
 interface WeightTrackerProps {
@@ -23,18 +29,76 @@ interface WeightTrackerProps {
 
 export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerProps) => {
   const [newWeight, setNewWeight] = useState('');
+  const [bodyFat, setBodyFat] = useState('');
+  const [muscleMass, setMuscleMass] = useState('');
+  const [notes, setNotes] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const { user } = useAuth();
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (selectedFiles.length + imageFiles.length > 3) {
+      toast.error('Maximal 3 Bilder erlaubt');
+      return;
+    }
+    
+    setSelectedFiles(prev => [...prev, ...imageFiles].slice(0, 3));
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleAddWeight = async () => {
     if (!user || !newWeight) return;
 
+    setIsUploading(true);
     try {
+      const weightValue = parseFloat(newWeight);
+      const bodyFatValue = bodyFat ? parseFloat(bodyFat) : null;
+      const muscleMassValue = muscleMass ? parseFloat(muscleMass) : null;
+
+      // Validate values
+      if (isNaN(weightValue) || weightValue <= 0) {
+        toast.error('Bitte gib ein gültiges Gewicht ein');
+        return;
+      }
+
+      if (bodyFatValue !== null && (bodyFatValue < 0 || bodyFatValue > 100)) {
+        toast.error('Körperfettanteil muss zwischen 0 und 100% liegen');
+        return;
+      }
+
+      if (muscleMassValue !== null && (muscleMassValue < 0 || muscleMassValue > 100)) {
+        toast.error('Muskelanteil muss zwischen 0 und 100% liegen');
+        return;
+      }
+
+      // Upload photos if any
+      let photoUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
+        if (uploadResult.success) {
+          photoUrls = uploadResult.urls;
+        } else {
+          console.error('Photo upload failed:', uploadResult.errors);
+          toast.error('Fehler beim Hochladen der Bilder');
+        }
+      }
+
       const { error } = await supabase
         .from('weight_history')
         .insert({
           user_id: user.id,
-          weight: parseFloat(newWeight),
-          date: new Date().toISOString().split('T')[0]
+          weight: weightValue,
+          date: new Date().toISOString().split('T')[0],
+          body_fat_percentage: bodyFatValue,
+          muscle_percentage: muscleMassValue,
+          photo_urls: photoUrls,
+          notes: notes || null
         });
 
       if (error) throw error;
@@ -49,9 +113,9 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
       if (profileCheckError) throw profileCheckError;
 
       // Update profile with current weight and set start_weight if first entry
-      const updateData: any = { weight: parseFloat(newWeight) };
+      const updateData: any = { weight: weightValue };
       if (!profileData.start_weight) {
-        updateData.start_weight = parseFloat(newWeight);
+        updateData.start_weight = weightValue;
       }
 
       await supabase
@@ -59,12 +123,20 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
         .update(updateData)
         .eq('user_id', user.id);
 
+      // Reset form
       setNewWeight('');
+      setBodyFat('');
+      setMuscleMass('');
+      setNotes('');
+      setSelectedFiles([]);
+      
       toast.success('Gewicht erfolgreich hinzugefügt!');
       onWeightAdded();
     } catch (error: any) {
       console.error('Error adding weight:', error);
       toast.error('Fehler beim Hinzufügen des Gewichts');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -83,50 +155,146 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
 
   return (
     <Card className="glass-card hover-scale">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
-              <Scale className="h-4 w-4 text-primary" />
-            </div>
-            <h4 className="font-medium text-foreground">Gewicht eintragen</h4>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
+            <Scale className="h-4 w-4 text-primary" />
           </div>
-          
-          <div className="flex gap-3">
+          <h4 className="font-medium text-foreground">Gewicht & Body Composition</h4>
+        </div>
+        
+        <div className="space-y-4">
+          {/* Weight Input */}
+          <div>
+            <Label htmlFor="weight" className="text-sm font-medium">Gewicht (kg) *</Label>
             <Input
+              id="weight"
               type="number"
               value={newWeight}
               onChange={(e) => setNewWeight(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddWeight();
-                }
-              }}
               placeholder="z.B. 72.5"
-              className="flex-1"
               step="0.1"
+              className="mt-1"
             />
-            <Button 
-              onClick={handleAddWeight} 
-              disabled={!newWeight}
-              size="sm"
-              className="px-4"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Hinzufügen
-            </Button>
           </div>
-          
+
+          {/* Body Composition */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="bodyFat" className="text-sm font-medium">Körperfett (%)</Label>
+              <Input
+                id="bodyFat"
+                type="number"
+                value={bodyFat}
+                onChange={(e) => setBodyFat(e.target.value)}
+                placeholder="z.B. 15.5"
+                step="0.1"
+                min="0"
+                max="100"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="muscleMass" className="text-sm font-medium">Muskelmasse (%)</Label>
+              <Input
+                id="muscleMass"
+                type="number"
+                value={muscleMass}
+                onChange={(e) => setMuscleMass(e.target.value)}
+                placeholder="z.B. 45.0"
+                step="0.1"
+                min="0"
+                max="100"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          {/* Photo Upload */}
+          <div>
+            <Label className="text-sm font-medium">Progress Fotos (max. 3)</Label>
+            <div className="mt-1">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="photo-upload"
+              />
+              <label
+                htmlFor="photo-upload"
+                className="flex items-center justify-center w-full p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Bilder auswählen</span>
+              </label>
+            </div>
+            
+            {/* Selected Files */}
+            {selectedFiles.length > 0 && (
+              <div className="mt-2 flex gap-2 flex-wrap">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Preview ${index + 1}`}
+                      className="w-16 h-16 object-cover rounded border"
+                    />
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div>
+            <Label htmlFor="notes" className="text-sm font-medium">Notizen (optional)</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="z.B. Training heute, gute Form..."
+              className="mt-1 min-h-[80px]"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <Button 
+            onClick={handleAddWeight} 
+            disabled={!newWeight || isUploading}
+            className="w-full"
+          >
+            {isUploading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Speichern...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Eintrag hinzufügen
+              </div>
+            )}
+          </Button>
+
           {/* Trend Badge */}
           {trend && (
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex items-center gap-2 pt-2">
               <Badge variant="outline" className={`${trend.color} border-current`}>
                 <trend.icon className="h-3 w-3 mr-1" />
                 {trend.text}
               </Badge>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

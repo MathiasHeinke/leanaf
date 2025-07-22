@@ -17,25 +17,37 @@ import {
   Ruler,
   Scale,
   Activity,
-  Zap
+  Zap,
+  Camera,
+  Eye
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 interface TransformationStats {
   currentWeight: number;
   startWeight: number;
   targetWeight: number;
+  currentBodyFat: number;
+  startBodyFat: number;
+  targetBodyFat: number;
+  currentMuscle: number;
+  startMuscle: number;
+  targetMuscle: number;
   currentBellySize: number;
   startBellySize: number;
   targetBellySize: number;
   weeklyDeficit: number;
   workoutsThisWeek: number;
   measurementsThisMonth: number;
+  latestPhotos: string[];
+  firstPhotos: string[];
 }
 
 export const TransformationDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<TransformationStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -55,23 +67,16 @@ export const TransformationDashboard = () => {
         .eq('user_id', user.id)
         .single();
 
-      // Load latest weight
-      const { data: latestWeight } = await supabase
+      // Load weight history with body composition
+      const { data: weightHistory } = await supabase
         .from('weight_history')
         .select('*')
         .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(1)
-        .single();
+        .order('date', { ascending: false });
 
-      // Load first weight entry as fallback for start weight
-      const { data: firstWeight } = await supabase
-        .from('weight_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+      // Load first and latest weight entries
+      const latestWeight = weightHistory?.[0];
+      const firstWeight = weightHistory?.[weightHistory.length - 1];
 
       // Load latest and first body measurements
       const { data: measurements } = await supabase
@@ -111,17 +116,38 @@ export const TransformationDashboard = () => {
       const startWeight = profile?.start_weight || firstWeight?.weight || latestWeight?.weight || profile?.weight || 0;
       const currentWeight = latestWeight?.weight || profile?.weight || 0;
       const targetWeight = profile?.target_weight || 0;
+
+      // Body composition data
+      const currentBodyFat = latestWeight?.body_fat_percentage || 0;
+      const startBodyFat = firstWeight?.body_fat_percentage || currentBodyFat;
+      const targetBodyFat = Math.max(8, startBodyFat * 0.7); // Target: 30% reduction, min 8%
+
+      const currentMuscle = latestWeight?.muscle_percentage || 0;
+      const startMuscle = firstWeight?.muscle_percentage || currentMuscle;
+      const targetMuscle = Math.min(60, startMuscle * 1.15); // Target: 15% increase, max 60%
+
+      // Progress photos
+      const latestPhotos = latestWeight?.photo_urls || [];
+      const firstPhotos = firstWeight?.photo_urls || [];
       
       setStats({
         currentWeight,
         startWeight,
         targetWeight,
+        currentBodyFat,
+        startBodyFat,
+        targetBodyFat,
+        currentMuscle,
+        startMuscle,
+        targetMuscle,
         currentBellySize,
         startBellySize,
         targetBellySize: startBellySize * 0.9, // 10% reduction target
         weeklyDeficit,
         workoutsThisWeek: thisWeekWorkouts?.length || 0,
-        measurementsThisMonth: thisMonthMeasurements?.length || 0
+        measurementsThisMonth: thisMonthMeasurements?.length || 0,
+        latestPhotos,
+        firstPhotos
       });
     } catch (error) {
       console.error('Error loading transformation stats:', error);
@@ -136,12 +162,33 @@ export const TransformationDashboard = () => {
     const totalWeightToLose = Math.abs(stats.startWeight - stats.targetWeight);
     const weightAlreadyLost = Math.abs(stats.startWeight - stats.currentWeight);
     
-    // Avoid division by zero
     if (totalWeightToLose === 0) return 0;
     
     const progress = (weightAlreadyLost / totalWeightToLose) * 100;
+    return Math.min(100, Math.max(0, progress));
+  };
+
+  const calculateBodyFatProgress = () => {
+    if (!stats || stats.startBodyFat === 0 || stats.targetBodyFat === 0) return 0;
     
-    // Ensure progress is between 0 and 100
+    const totalBodyFatToLose = Math.abs(stats.startBodyFat - stats.targetBodyFat);
+    const bodyFatAlreadyLost = Math.abs(stats.startBodyFat - stats.currentBodyFat);
+    
+    if (totalBodyFatToLose === 0) return 0;
+    
+    const progress = (bodyFatAlreadyLost / totalBodyFatToLose) * 100;
+    return Math.min(100, Math.max(0, progress));
+  };
+
+  const calculateMuscleProgress = () => {
+    if (!stats || stats.startMuscle === 0 || stats.targetMuscle === 0) return 0;
+    
+    const totalMuscleToGain = Math.abs(stats.targetMuscle - stats.startMuscle);
+    const muscleAlreadyGained = Math.abs(stats.currentMuscle - stats.startMuscle);
+    
+    if (totalMuscleToGain === 0) return 0;
+    
+    const progress = (muscleAlreadyGained / totalMuscleToGain) * 100;
     return Math.min(100, Math.max(0, progress));
   };
 
@@ -151,12 +198,9 @@ export const TransformationDashboard = () => {
     const totalBellyReduction = Math.abs(stats.startBellySize - stats.targetBellySize);
     const bellyAlreadyReduced = Math.abs(stats.startBellySize - stats.currentBellySize);
     
-    // Avoid division by zero
     if (totalBellyReduction === 0) return 0;
     
     const progress = (bellyAlreadyReduced / totalBellyReduction) * 100;
-    
-    // Ensure progress is between 0 and 100
     return Math.min(100, Math.max(0, progress));
   };
 
@@ -184,6 +228,8 @@ export const TransformationDashboard = () => {
   }
 
   const weightProgress = calculateWeightProgress();
+  const bodyFatProgress = calculateBodyFatProgress();
+  const muscleProgress = calculateMuscleProgress();
   const bellyProgress = calculateBellyProgress();
 
   return (
@@ -192,7 +238,7 @@ export const TransformationDashboard = () => {
       fallbackMessage="Das detaillierte Transformation Dashboard ist ein Premium Feature. Upgrade für umfassende Fortschritts-Analysen!"
     >
       <div className="space-y-6">
-        {/* Header Stats - Changed to grid-cols-2 for all screen sizes */}
+        {/* Header Stats */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -207,18 +253,29 @@ export const TransformationDashboard = () => {
 
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Ruler className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium">Bauchumfang</span>
+              <Zap className="h-4 w-4 text-red-600" />
+              <span className="text-sm font-medium">Körperfett</span>
             </div>
-            <div className="text-2xl font-bold">{stats.currentBellySize.toFixed(1)} cm</div>
+            <div className="text-2xl font-bold">{stats.currentBodyFat.toFixed(1)}%</div>
             <div className="text-sm text-muted-foreground">
-              Ziel: {stats.targetBellySize.toFixed(1)} cm
+              Ziel: {stats.targetBodyFat.toFixed(1)}%
             </div>
           </Card>
 
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium">Muskelmasse</span>
+            </div>
+            <div className="text-2xl font-bold">{stats.currentMuscle.toFixed(1)}%</div>
+            <div className="text-sm text-muted-foreground">
+              Ziel: {stats.targetMuscle.toFixed(1)}%
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="h-4 w-4 text-purple-600" />
               <span className="text-sm font-medium">Training</span>
             </div>
             <div className="text-2xl font-bold">{stats.workoutsThisWeek}</div>
@@ -226,18 +283,92 @@ export const TransformationDashboard = () => {
               Diese Woche
             </div>
           </Card>
-
-          <Card className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium">Messungen</span>
-            </div>
-            <div className="text-2xl font-bold">{stats.measurementsThisMonth}</div>
-            <div className="text-sm text-muted-foreground">
-              Diesen Monat
-            </div>
-          </Card>
         </div>
+
+        {/* Progress Photos Comparison */}
+        {(stats.firstPhotos.length > 0 || stats.latestPhotos.length > 0) && (
+          <Card className="p-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-primary" />
+                Progress Fotos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Before Photos */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Vorher</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    {stats.firstPhotos.slice(0, 3).map((url, index) => (
+                      <Dialog key={index}>
+                        <DialogTrigger asChild>
+                          <button className="relative group">
+                            <img
+                              src={url}
+                              alt={`Vorher ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded border hover:opacity-80 transition-opacity"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                              <Eye className="h-4 w-4 text-white" />
+                            </div>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl">
+                          <img
+                            src={url}
+                            alt={`Vorher ${index + 1}`}
+                            className="w-full h-auto max-h-[80vh] object-contain rounded"
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    ))}
+                    {stats.firstPhotos.length === 0 && (
+                      <div className="w-20 h-20 bg-muted rounded border flex items-center justify-center">
+                        <Camera className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* After Photos */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2 text-muted-foreground">Nachher</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    {stats.latestPhotos.slice(0, 3).map((url, index) => (
+                      <Dialog key={index}>
+                        <DialogTrigger asChild>
+                          <button className="relative group">
+                            <img
+                              src={url}
+                              alt={`Nachher ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded border hover:opacity-80 transition-opacity"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                              <Eye className="h-4 w-4 text-white" />
+                            </div>
+                          </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl">
+                          <img
+                            src={url}
+                            alt={`Nachher ${index + 1}`}
+                            className="w-full h-auto max-h-[80vh] object-contain rounded"
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    ))}
+                    {stats.latestPhotos.length === 0 && (
+                      <div className="w-20 h-20 bg-muted rounded border flex items-center justify-center">
+                        <Camera className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Progress Cards */}
         <div className="grid grid-cols-1 gap-6">
@@ -270,23 +401,69 @@ export const TransformationDashboard = () => {
           <Card className="p-6">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5 text-red-600" />
-                Sixpack Ziel
+                <Zap className="h-5 w-5 text-red-600" />
+                Körperfett Reduktion
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Bauchumfang Reduktion</span>
-                  <span>{bellyProgress.toFixed(1)}%</span>
+                  <span>Fortschritt</span>
+                  <span>{bodyFatProgress.toFixed(1)}%</span>
                 </div>
-                <Progress value={bellyProgress} className="h-2" />
+                <Progress value={bodyFatProgress} className="h-2" />
               </div>
               <div className="text-sm text-muted-foreground">
-                Noch {Math.abs(stats.currentBellySize - stats.targetBellySize).toFixed(1)} cm bis zum Ziel
+                Noch {Math.abs(stats.currentBodyFat - stats.targetBodyFat).toFixed(1)}% bis zum Ziel
               </div>
             </CardContent>
           </Card>
+
+          {stats.currentMuscle > 0 && (
+            <Card className="p-6">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-green-600" />
+                  Muskelaufbau
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Fortschritt</span>
+                    <span>{muscleProgress.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={muscleProgress} className="h-2" />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Noch {Math.abs(stats.targetMuscle - stats.currentMuscle).toFixed(1)}% bis zum Ziel
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {stats.currentBellySize > 0 && (
+            <Card className="p-6">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-yellow-600" />
+                  Sixpack Ziel
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Bauchumfang Reduktion</span>
+                    <span>{bellyProgress.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={bellyProgress} className="h-2" />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Noch {Math.abs(stats.currentBellySize - stats.targetBellySize).toFixed(1)} cm bis zum Ziel
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Charts */}

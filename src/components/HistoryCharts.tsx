@@ -1,5 +1,5 @@
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, ComposedChart } from 'recharts';
 import { PremiumGate } from '@/components/PremiumGate';
 
 interface DailyData {
@@ -15,6 +15,8 @@ interface DailyData {
 interface WeightEntry {
   date: string;
   weight: number;
+  body_fat_percentage?: number;
+  muscle_percentage?: number;
   displayDate: string;
 }
 
@@ -50,9 +52,30 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
   const weightChartData = weightHistory
     .map(entry => ({
       date: entry.displayDate,
-      weight: entry.weight
+      weight: entry.weight,
+      bodyFat: entry.body_fat_percentage || null,
+      muscle: entry.muscle_percentage || null
     }))
     .reverse();
+
+  // Custom tooltip for weight chart
+  const WeightTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-medium">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} style={{ color: entry.color }} className="text-sm">
+              {entry.dataKey === 'weight' && `Gewicht: ${entry.value} kg`}
+              {entry.dataKey === 'bodyFat' && entry.value && `Körperfett: ${entry.value}%`}
+              {entry.dataKey === 'muscle' && entry.value && `Muskelmasse: ${entry.value}%`}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <PremiumGate 
@@ -130,15 +153,15 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
           </div>
         </div>
 
-        {/* Weight Chart */}
+        {/* Enhanced Weight Chart with Body Composition */}
         {weightChartData.length > 0 && (
           <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
-            <h3 className="text-lg font-semibold mb-4">Gewicht</h3>
-            <div className="h-64">
+            <h3 className="text-lg font-semibold mb-4">Gewicht & Body Composition</h3>
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weightChartData}>
+                <ComposedChart data={weightChartData}>
                   <defs>
-                    <linearGradient id="weightHistoryGradient" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.1}/>
                     </linearGradient>
@@ -151,19 +174,29 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
                     textAnchor={timeRange === 'year' ? 'end' : 'middle'}
                     height={timeRange === 'year' ? 60 : 30}
                   />
+                  
+                  {/* Left Y-axis for weight */}
                   <YAxis 
+                    yAxisId="weight"
                     fontSize={11}
                     domain={['dataMin - 2', 'dataMax + 2']}
+                    label={{ value: 'Gewicht (kg)', angle: -90, position: 'insideLeft' }}
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                    formatter={(value) => [`${value} kg`, 'Gewicht']}
+                  
+                  {/* Right Y-axis for percentages */}
+                  <YAxis 
+                    yAxisId="percentage"
+                    orientation="right"
+                    fontSize={11}
+                    domain={[0, 100]}
+                    label={{ value: 'Prozent (%)', angle: 90, position: 'insideRight' }}
                   />
+                  
+                  <Tooltip content={<WeightTooltip />} />
+                  
+                  {/* Weight line */}
                   <Line 
+                    yAxisId="weight"
                     type="monotone" 
                     dataKey="weight" 
                     stroke="hsl(221, 83%, 53%)" 
@@ -171,8 +204,48 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
                     dot={{ fill: 'hsl(221, 83%, 53%)', strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6, fill: 'hsl(221, 83%, 53%)', stroke: 'white', strokeWidth: 2 }}
                   />
-                </LineChart>
+                  
+                  {/* Body Fat line */}
+                  <Line 
+                    yAxisId="percentage"
+                    type="monotone" 
+                    dataKey="bodyFat" 
+                    stroke="hsl(0, 84%, 60%)" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 2, r: 3 }}
+                    connectNulls={false}
+                  />
+                  
+                  {/* Muscle Mass line */}
+                  <Line 
+                    yAxisId="percentage"
+                    type="monotone" 
+                    dataKey="muscle" 
+                    stroke="hsl(142, 76%, 36%)" 
+                    strokeWidth={2}
+                    strokeDasharray="10 5"
+                    dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 3 }}
+                    connectNulls={false}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
+            </div>
+            
+            {/* Legend */}
+            <div className="flex flex-wrap justify-center gap-4 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 bg-[hsl(221,83%,53%)]"></div>
+                <span>Gewicht (kg)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 bg-[hsl(0,84%,60%)] border-dashed border-b-2"></div>
+                <span>Körperfett (%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-0.5 bg-[hsl(142,76%,36%)] border-dashed border-b-2"></div>
+                <span>Muskelmasse (%)</span>
+              </div>
             </div>
           </div>
         )}
