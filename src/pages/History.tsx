@@ -9,12 +9,7 @@ const HistoryPage = () => {
   const { t } = useTranslation();
   
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold text-foreground mb-2">Verlauf & Progress</h1>
-        <p className="text-muted-foreground">Deine Transformation im Überblick</p>
-      </div>
-
+    <div className="space-y-4 animate-fade-in">
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
@@ -27,11 +22,11 @@ const HistoryPage = () => {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="history" className="mt-6">
+        <TabsContent value="history" className="mt-3">
           <History />
         </TabsContent>
         
-        <TabsContent value="dashboard" className="mt-6">
+        <TabsContent value="dashboard" className="mt-3">
           <TransformationDashboard />
         </TabsContent>
       </Tabs>
