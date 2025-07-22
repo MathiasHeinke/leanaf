@@ -188,14 +188,23 @@ export const ChatCoach = ({
         return;
       }
 
-      const mappedMessages = (data || []).map(msg => ({
-        id: msg.id,
-        role: msg.message_role,
-        content: msg.message_content,
-        created_at: msg.created_at,
-        coach_personality: msg.coach_personality,
-        images: msg.context_data?.images || []
-      })) as ChatMessage[];
+      const mappedMessages = (data || []).map(msg => {
+        // Safely parse context_data and extract images
+        let images: string[] = [];
+        if (msg.context_data && typeof msg.context_data === 'object') {
+          const contextData = msg.context_data as { images?: string[] };
+          images = contextData.images || [];
+        }
+
+        return {
+          id: msg.id,
+          role: msg.message_role,
+          content: msg.message_content,
+          created_at: msg.created_at,
+          coach_personality: msg.coach_personality,
+          images
+        };
+      }) as ChatMessage[];
       
       setMessages(mappedMessages);
       
@@ -512,9 +521,11 @@ export const ChatCoach = ({
                       )}
                       
                       {message.role === 'assistant' ? (
-                        <ReactMarkdown className="text-sm leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
-                          {message.content}
-                        </ReactMarkdown>
+                        <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+                          <ReactMarkdown>
+                            {message.content}
+                          </ReactMarkdown>
+                        </div>
                       ) : (
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">
                           {message.content}
