@@ -46,15 +46,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     isProcessing,
     startRecording,
     stopRecording
-  } = useVoiceRecording({
-    onTranscriptionComplete: (transcription) => {
-      setInputText(transcription);
-    },
-    onError: (error) => {
-      toast.error('Fehler bei der Sprachaufnahme');
-      console.error('Voice recording error:', error);
-    }
-  });
+  } = useVoiceRecording();
 
   // Load chat history on component mount
   useEffect(() => {

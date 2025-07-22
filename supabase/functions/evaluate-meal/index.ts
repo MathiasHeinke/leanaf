@@ -1,396 +1,287 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0'
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 interface MealData {
-  calories: number
-  protein: number
-  carbs: number
-  fats: number
-  text: string
-  meal_type: string
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  text: string;
+  meal_type?: string;
 }
 
 interface UserProfile {
-  goal: string
-  activity_level: string
-  target_weight?: number
-  weight?: number
-  height?: number
-  age?: number
-  gender?: string
-  macro_strategy: string
-  muscle_maintenance_priority: boolean
-  coach_personality: string
+  goal: string;
+  macro_strategy: string;
+  coach_personality: string;
+  weight: number;
+  target_weight: number;
+  activity_level: string;
+  age: number;
+  gender: string;
 }
 
 interface DailyGoals {
-  calories: number
-  protein: number
-  carbs: number
-  fats: number
-  calorie_deficit: number
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
 }
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
+    const { meal, profile, dailyGoals } = await req.json();
 
-    const { meal, profile, dailyGoals } = await req.json()
-    console.log('Evaluating meal:', { meal, profile, dailyGoals })
-
-    // Get user from token
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error('User not authenticated')
+    if (!meal || !profile || !dailyGoals) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required data' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const evaluation = await evaluateMeal(meal, profile, dailyGoals)
-    console.log('Meal evaluation result:', evaluation)
+    const evaluation = await evaluateMeal(meal, profile, dailyGoals);
 
     return new Response(
       JSON.stringify(evaluation),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    )
-
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
-    console.error('Error evaluating meal:', error)
+    console.error('Error in evaluate-meal function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
-      }
-    )
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
-})
+});
 
 async function evaluateMeal(meal: MealData, profile: UserProfile, dailyGoals: DailyGoals) {
-  // Calculate quality score based on multiple criteria
-  let qualityScore = 0
-  let bonusPoints = 0
-  let evaluationCriteria: any = {}
+  // Calculate base quality score (0-10)
+  const macroScore = evaluateMacroBalance(meal, profile, dailyGoals);
+  const goalScore = evaluateGoalAlignment(meal, profile, dailyGoals);
+  const qualityScore = evaluateNutritionalQuality(meal);
+  const timingScore = evaluateMealTiming(meal);
 
-  // 1. Macro balance evaluation (0-3 points)
-  const macroScore = evaluateMacroBalance(meal, profile, dailyGoals)
-  qualityScore += macroScore.score
-  evaluationCriteria.macro_balance = macroScore
+  const totalScore = Math.round((macroScore.score + goalScore.score + qualityScore.score + timingScore.score) / 4);
+  
+  // Calculate bonus points (0-10)
+  let bonusPoints = 0;
+  if (totalScore >= 8) bonusPoints += 3;
+  if (totalScore >= 6) bonusPoints += 2;
+  if (macroScore.score >= 8) bonusPoints += 2;
+  if (qualityScore.score >= 8) bonusPoints += 3;
 
-  // 2. Goal alignment evaluation (0-3 points)
-  const goalScore = evaluateGoalAlignment(meal, profile, dailyGoals)
-  qualityScore += goalScore.score
-  evaluationCriteria.goal_alignment = goalScore
-
-  // 3. Nutritional quality evaluation (0-2 points)
-  const nutritionScore = evaluateNutritionalQuality(meal)
-  qualityScore += nutritionScore.score
-  evaluationCriteria.nutritional_quality = nutritionScore
-
-  // 4. Meal timing evaluation (0-2 points)
-  const timingScore = evaluateMealTiming(meal)
-  qualityScore += timingScore.score
-  evaluationCriteria.meal_timing = timingScore
-
-  // Calculate bonus points (0-10 based on excellence)
-  if (qualityScore >= 9) bonusPoints = 10
-  else if (qualityScore >= 8) bonusPoints = 7
-  else if (qualityScore >= 7) bonusPoints = 5
-  else if (qualityScore >= 6) bonusPoints = 3
-  else if (qualityScore >= 5) bonusPoints = 1
-
-  // Generate AI feedback based on coach personality
-  const aiFeedback = await generateCoachFeedback(meal, profile, qualityScore, evaluationCriteria)
+  // Generate AI feedback
+  const aiFeedback = await generateCoachFeedback(meal, profile, totalScore, {
+    macro: macroScore,
+    goal: goalScore,
+    quality: qualityScore,
+    timing: timingScore
+  });
 
   return {
-    quality_score: Math.round(qualityScore),
-    bonus_points: bonusPoints,
+    quality_score: Math.max(0, Math.min(10, totalScore)),
+    bonus_points: Math.max(0, Math.min(10, bonusPoints)),
     ai_feedback: aiFeedback,
-    evaluation_criteria: evaluationCriteria
-  }
+    evaluation_criteria: {
+      macro_balance: macroScore,
+      goal_alignment: goalScore,
+      nutritional_quality: qualityScore,
+      meal_timing: timingScore
+    }
+  };
 }
 
 function evaluateMacroBalance(meal: MealData, profile: UserProfile, dailyGoals: DailyGoals) {
-  let score = 0
-  let feedback = []
+  const proteinRatio = meal.protein / (dailyGoals.protein / 4); // Assuming 4 meals per day
+  const carbRatio = meal.carbs / (dailyGoals.carbs / 4);
+  const fatRatio = meal.fats / (dailyGoals.fats / 4);
 
-  const mealCalorieRatio = meal.calories / dailyGoals.calories
-  const mealProteinRatio = meal.protein / dailyGoals.protein
-  const mealCarbsRatio = meal.carbs / dailyGoals.carbs
-  const mealFatsRatio = meal.fats / dailyGoals.fats
+  let score = 10;
+  let feedback = "Perfekte Makro-Balance!";
 
-  // Protein evaluation (most important for most goals)
-  if (mealProteinRatio >= 0.2 && mealProteinRatio <= 0.4) {
-    score += 1.5
-    feedback.push("Excellent protein content")
-  } else if (mealProteinRatio >= 0.15) {
-    score += 1
-    feedback.push("Good protein content")
-  } else {
-    feedback.push("Could use more protein")
+  // Evaluate based on macro strategy
+  if (profile.macro_strategy === 'high_protein') {
+    if (proteinRatio < 0.8) {
+      score -= 3;
+      feedback = "Mehr Protein wäre optimal für deine High-Protein Strategie.";
+    }
+  } else if (profile.macro_strategy === 'low_carb') {
+    if (carbRatio > 1.2) {
+      score -= 3;
+      feedback = "Weniger Kohlenhydrate für deine Low-Carb Strategie.";
+    }
   }
 
-  // Carb evaluation based on strategy
-  if (profile.macro_strategy === 'low_carb' && mealCarbsRatio <= 0.15) {
-    score += 1
-    feedback.push("Perfect for low-carb strategy")
-  } else if (profile.macro_strategy === 'high_carb' && mealCarbsRatio >= 0.3) {
-    score += 1
-    feedback.push("Great carb content for your strategy")
-  } else if (mealCarbsRatio >= 0.15 && mealCarbsRatio <= 0.35) {
-    score += 0.5
-    feedback.push("Balanced carb content")
+  // General balance check
+  if (Math.abs(proteinRatio - 1) > 0.5 || Math.abs(carbRatio - 1) > 0.5 || Math.abs(fatRatio - 1) > 0.5) {
+    score -= 2;
+    if (feedback === "Perfekte Makro-Balance!") {
+      feedback = "Die Makro-Verteilung könnte ausgewogener sein.";
+    }
   }
 
-  // Fat evaluation
-  if (mealFatsRatio >= 0.15 && mealFatsRatio <= 0.35) {
-    score += 0.5
-    feedback.push("Good fat balance")
-  }
-
-  return { score: Math.min(score, 3), feedback, ratios: { protein: mealProteinRatio, carbs: mealCarbsRatio, fats: mealFatsRatio } }
+  return {
+    score: Math.max(0, score),
+    feedback,
+    ratios: { protein: proteinRatio, carbs: carbRatio, fats: fatRatio }
+  };
 }
 
 function evaluateGoalAlignment(meal: MealData, profile: UserProfile, dailyGoals: DailyGoals) {
-  let score = 0
-  let feedback = []
+  const calorieRatio = meal.calories / (dailyGoals.calories / 4);
+  let score = 10;
+  let feedback = "Perfekt für dein Ziel!";
 
-  const caloriesPerMeal = dailyGoals.calories / 4 // Assuming 3 main meals + snacks
-
-  switch (profile.goal) {
-    case 'lose':
-      if (meal.calories <= caloriesPerMeal * 0.8) {
-        score += 2
-        feedback.push("Perfect portion size for weight loss")
-      } else if (meal.calories <= caloriesPerMeal) {
-        score += 1.5
-        feedback.push("Good portion control")
-      } else {
-        feedback.push("Consider smaller portions for weight loss")
-      }
-      
-      // High protein bonus for weight loss
-      if (meal.protein >= caloriesPerMeal * 0.3 / 4) {
-        score += 1
-        feedback.push("Excellent protein for preserving muscle while losing weight")
-      }
-      break
-
-    case 'gain':
-      if (meal.calories >= caloriesPerMeal * 1.1) {
-        score += 2
-        feedback.push("Great calorie density for weight gain")
-      } else if (meal.calories >= caloriesPerMeal) {
-        score += 1.5
-        feedback.push("Good calories for your goal")
-      } else {
-        feedback.push("Consider adding more calories for weight gain")
-      }
-      break
-
-    case 'maintain':
-      if (meal.calories >= caloriesPerMeal * 0.9 && meal.calories <= caloriesPerMeal * 1.1) {
-        score += 2
-        feedback.push("Perfect balance for maintenance")
-      } else {
-        score += 1
-        feedback.push("Close to your maintenance target")
-      }
-      break
+  if (profile.goal === 'lose') {
+    if (calorieRatio > 1.3) {
+      score -= 4;
+      feedback = "Zu kalorienreich für dein Abnehm-Ziel.";
+    } else if (calorieRatio > 1.1) {
+      score -= 2;
+      feedback = "Etwas weniger Kalorien wären ideal zum Abnehmen.";
+    }
+  } else if (profile.goal === 'gain') {
+    if (calorieRatio < 0.8) {
+      score -= 3;
+      feedback = "Mehr Kalorien needed für den Muskelaufbau!";
+    }
+  } else if (profile.goal === 'maintain') {
+    if (Math.abs(calorieRatio - 1) > 0.2) {
+      score -= 2;
+      feedback = "Für Gewicht halten sind die Kalorien nicht optimal.";
+    }
   }
 
-  return { score: Math.min(score, 3), feedback }
+  return { score: Math.max(0, score), feedback };
 }
 
 function evaluateNutritionalQuality(meal: MealData) {
-  let score = 0
-  let feedback = []
+  let score = 5; // Base score
+  let feedback = "Durchschnittliche Nährstoffqualität.";
 
-  const mealText = meal.text.toLowerCase()
+  const text = meal.text.toLowerCase();
+  
+  // Positive indicators
+  const healthyKeywords = ['gemüse', 'obst', 'vollkorn', 'nüsse', 'fisch', 'hähnchen', 'quinoa', 'hafer'];
+  const processedKeywords = ['fast', 'fertig', 'chips', 'süß', 'schokolade', 'limonade', 'pizza'];
 
-  // Check for whole foods indicators
-  const wholefoods = ['gemüse', 'obst', 'vollkorn', 'nüsse', 'samen', 'fisch', 'hähnchen', 'pute', 'bohnen', 'linsen', 'quinoa', 'reis', 'haferflocken']
-  const processedFoods = ['pizza', 'burger', 'pommes', 'chips', 'süßigkeiten', 'schokolade', 'kekse', 'limonade', 'cola']
+  const healthyCount = healthyKeywords.filter(keyword => text.includes(keyword)).length;
+  const processedCount = processedKeywords.filter(keyword => text.includes(keyword)).length;
 
-  const wholefoodCount = wholefoods.filter(food => mealText.includes(food)).length
-  const processedCount = processedFoods.filter(food => mealText.includes(food)).length
+  score += healthyCount * 1.5;
+  score -= processedCount * 2;
 
-  if (wholefoodCount >= 3) {
-    score += 2
-    feedback.push("Excellent variety of whole foods")
-  } else if (wholefoodCount >= 2) {
-    score += 1.5
-    feedback.push("Good whole food content")
-  } else if (wholefoodCount >= 1) {
-    score += 1
-    feedback.push("Some whole foods included")
+  if (healthyCount >= 3) {
+    feedback = "Ausgezeichnete Nährstoffqualität!";
+  } else if (healthyCount >= 1) {
+    feedback = "Gute Nährstoffauswahl!";
+  } else if (processedCount >= 2) {
+    feedback = "Versuche mehr natürliche Lebensmittel zu wählen.";
   }
 
-  if (processedCount > 0) {
-    score -= 0.5
-    feedback.push("Try to reduce processed foods")
-  }
-
-  return { score: Math.max(0, Math.min(score, 2)), feedback }
+  return { score: Math.max(0, Math.min(10, score)), feedback };
 }
 
 function evaluateMealTiming(meal: MealData) {
-  let score = 1 // Base score
-  let feedback = []
+  const now = new Date();
+  const hour = now.getHours();
+  let score = 8; // Default good score
+  let feedback = "Gutes Timing!";
 
-  const hour = new Date().getHours()
-  
-  // Breakfast timing (6-11 AM)
-  if (meal.meal_type === 'breakfast' && hour >= 6 && hour <= 11) {
-    if (meal.protein >= 20) {
-      score += 1
-      feedback.push("Great protein-rich breakfast timing")
-    } else {
-      score += 0.5
-      feedback.push("Good breakfast timing")
-    }
-  }
-  
-  // Lunch timing (11 AM - 3 PM)
-  else if (meal.meal_type === 'lunch' && hour >= 11 && hour <= 15) {
-    score += 0.5
-    feedback.push("Perfect lunch timing")
-  }
-  
-  // Dinner timing (5-9 PM)
-  else if (meal.meal_type === 'dinner' && hour >= 17 && hour <= 21) {
-    score += 0.5
-    feedback.push("Good dinner timing")
+  if (meal.meal_type === 'breakfast' && (hour < 6 || hour > 11)) {
+    score -= 2;
+    feedback = "Ungewöhnliche Zeit für Frühstück.";
+  } else if (meal.meal_type === 'lunch' && (hour < 11 || hour > 15)) {
+    score -= 2;
+    feedback = "Ungewöhnliche Zeit für Mittagessen.";
+  } else if (meal.meal_type === 'dinner' && (hour < 17 || hour > 21)) {
+    score -= 2;
+    feedback = "Ungewöhnliche Zeit für Abendessen.";
   }
 
-  return { score: Math.min(score, 2), feedback }
+  return { score: Math.max(0, score), feedback };
 }
 
 async function generateCoachFeedback(meal: MealData, profile: UserProfile, score: number, criteria: any): Promise<string> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    return getDefaultFeedback(profile.coach_personality, score);
+  }
+
   try {
-    const openAIKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openAIKey) {
-      return getDefaultFeedback(profile.coach_personality, score)
-    }
-
-    const personality = getPersonalityPrompt(profile.coach_personality)
-    const goalContext = getGoalContext(profile.goal, profile.macro_strategy)
-
-    const prompt = `${personality}
-
-Bewerte diese Mahlzeit für einen Nutzer mit folgenden Zielen:
-${goalContext}
-
-Mahlzeit: ${meal.text}
-Nährwerte: ${meal.calories} kcal, ${meal.protein}g Protein, ${meal.carbs}g Kohlenhydrate, ${meal.fats}g Fett
-Qualitätsscore: ${score}/10
-
-Bewertungskriterien:
-- Makro-Balance: ${criteria.macro_balance?.feedback?.join(', ') || 'N/A'}
-- Ziel-Ausrichtung: ${criteria.goal_alignment?.feedback?.join(', ') || 'N/A'}
-- Nährstoffqualität: ${criteria.nutritional_quality?.feedback?.join(', ') || 'N/A'}
-
-Gib ein kurzes, persönliches Feedback (max 2 Sätze) im gewählten Tonfall.`
+    const personalityPrompt = getPersonalityPrompt(profile.coach_personality);
+    const goalContext = getGoalContext(profile.goal, profile.macro_strategy);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: 'Du bist ein personalisierter Ernährungs-Coach. Antworte immer auf Deutsch und bleibe im gewählten Tonfall.'
+          { 
+            role: 'system', 
+            content: `${personalityPrompt} ${goalContext} Gib kurzes, prägnantes Feedback (max 2 Sätze) zur Mahlzeit. Verwende deutsche Sprache.`
           },
-          {
-            role: 'user',
-            content: prompt
+          { 
+            role: 'user', 
+            content: `Bewerte diese Mahlzeit: ${meal.text}. Score: ${score}/10. Kriterien: Makros ${criteria.macro.score}/10, Ziel ${criteria.goal.score}/10, Qualität ${criteria.quality.score}/10, Timing ${criteria.timing.score}/10.`
           }
         ],
-        max_tokens: 150,
-        temperature: 0.7,
+        max_tokens: 100,
+        temperature: 0.7
       }),
-    })
+    });
 
-    const data = await response.json()
-    return data.choices?.[0]?.message?.content || getDefaultFeedback(profile.coach_personality, score)
-
+    const data = await response.json();
+    return data.choices[0].message.content || getDefaultFeedback(profile.coach_personality, score);
   } catch (error) {
-    console.error('Error generating AI feedback:', error)
-    return getDefaultFeedback(profile.coach_personality, score)
+    console.error('OpenAI API error:', error);
+    return getDefaultFeedback(profile.coach_personality, score);
   }
 }
 
 function getPersonalityPrompt(personality: string): string {
   switch (personality) {
     case 'streng':
-      return 'Du bist ein strenger aber fairer Coach. Sei direkt, ehrlich und fordere Verbesserungen. Verwende einen bestimmten, professionellen Ton.'
-    
+      return "Du bist ein strenger, direkter Fitness-Coach. Sei ehrlich und fordernd.";
     case 'liebevoll':
-      return 'Du bist ein sehr liebevoller, unterstützender Coach. Sei warmherzig, ermutigend und verwende liebevolle Anreden wie "Schatz" oder "mein Lieber/meine Liebe".'
-    
-    default: // 'moderat'
-      return 'Du bist ein ausgewogener Coach. Sei freundlich aber ehrlich, ermutigend aber realistisch. Verwende einen warmen, professionellen Ton.'
+      return "Du bist ein liebevoller, ermutigender Coach. Sei unterstützend und positiv.";
+    default:
+      return "Du bist ein motivierender, ausgewogener Coach. Sei konstruktiv und ermutigend.";
   }
 }
 
 function getGoalContext(goal: string, macroStrategy: string): string {
-  const goalTexts = {
-    lose: 'Abnehmen mit Kaloriendefizit',
-    gain: 'Zunehmen mit Kalorienüberschuss',
-    maintain: 'Gewicht halten mit ausgeglichener Kalorienbilanz'
-  }
-
-  const strategyTexts = {
-    low_carb: 'Low-Carb Ernährung',
-    high_protein: 'High-Protein Ernährung',
-    standard: 'Ausgewogene Makroverteilung'
-  }
-
-  return `Ziel: ${goalTexts[goal] || goal}
-Strategie: ${strategyTexts[macroStrategy] || macroStrategy}`
+  const goalText = goal === 'lose' ? 'Abnehmen' : goal === 'gain' ? 'Zunehmen/Muskelaufbau' : 'Gewicht halten';
+  const strategyText = macroStrategy === 'high_protein' ? 'High-Protein' : macroStrategy === 'low_carb' ? 'Low-Carb' : 'Standard';
+  return `User-Ziel: ${goalText}, Strategie: ${strategyText}.`;
 }
 
 function getDefaultFeedback(personality: string, score: number): string {
-  const feedbackTemplates = {
-    streng: {
-      high: 'Solide Leistung! Das kann sich sehen lassen.',
-      medium: 'Geht in Ordnung, aber da ist noch Luft nach oben.',
-      low: 'Das können wir besser machen. Mehr Fokus auf die Nährstoffqualität!'
-    },
-    liebevoll: {
-      high: 'Fantastisch, Schatz! Du machst das richtig gut! 💪',
-      medium: 'Das war schon ganz gut, meine/r Liebe/r. Du bist auf dem richtigen Weg!',
-      low: 'Ach Schatz, das nächste Mal wird bestimmt besser. Ich glaube an dich! 😊'
-    },
-    moderat: {
-      high: 'Sehr gute Wahl! Du bist definitiv auf dem richtigen Weg.',
-      medium: 'Das ist schon okay. Ein paar kleine Anpassungen und es wird noch besser.',
-      low: 'Da können wir beim nächsten Mal sicher noch etwas optimieren.'
-    }
+  if (score >= 8) {
+    return personality === 'streng' ? "Solide Wahl! Weiter so." : 
+           personality === 'liebevoll' ? "Fantastisch! Du machst das großartig! 💪" : 
+           "Excellente Mahlzeit! Perfekt für deine Ziele.";
+  } else if (score >= 6) {
+    return personality === 'streng' ? "Geht so. Da ist noch Luft nach oben." : 
+           personality === 'liebevoll' ? "Gut gemacht! Kleine Anpassungen und es wird perfekt! 😊" : 
+           "Gute Wahl! Mit kleinen Optimierungen wird's noch besser.";
+  } else {
+    return personality === 'streng' ? "Das geht besser. Fokus auf Qualität!" : 
+           personality === 'liebevoll' ? "Kein Problem! Nächstes Mal wird's noch besser! 🌟" : 
+           "Hier ist noch Verbesserungspotential. Du schaffst das!";
   }
-
-  const level = score >= 7 ? 'high' : score >= 5 ? 'medium' : 'low'
-  return feedbackTemplates[personality]?.[level] || feedbackTemplates.moderat[level]
 }
