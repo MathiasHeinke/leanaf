@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2, Upload, X, Eye } from "lucide-react";
+import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2, Upload, X, Eye, Camera } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -46,6 +45,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
 
@@ -170,6 +170,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       setSelectedFiles([]);
       setSelectedDate(new Date());
       setIsAddingWeight(false);
+      setShowPhotoUpload(false);
       onDataUpdate();
     } catch (error: any) {
       console.error('Error adding/updating weight:', error);
@@ -285,47 +286,61 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
               </div>
             </div>
 
-            {/* Photo Upload */}
+            {/* Photo Upload Toggle */}
             <div>
-              <Label>Progress Fotos (max. 3)</Label>
-              <div className="mt-2">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="dialog-photo-upload"
-                />
-                <label
-                  htmlFor="dialog-photo-upload"
-                  className="flex items-center justify-center w-full p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
-                >
-                  <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Bilder auswählen</span>
-                </label>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+                className="w-full mb-2"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                {showPhotoUpload ? 'Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
+              </Button>
               
-              {/* Selected Files Preview */}
-              {selectedFiles.length > 0 && (
-                <div className="mt-2 flex gap-2 flex-wrap">
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Preview ${index + 1}`}
-                        className="w-16 h-16 object-cover rounded border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+              {showPhotoUpload && (
+                <>
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="dialog-photo-upload"
+                    />
+                    <label
+                      htmlFor="dialog-photo-upload"
+                      className="flex items-center justify-center w-full p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+                    >
+                      <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Bilder auswählen (max. 3)</span>
+                    </label>
+                  </div>
+                  
+                  {/* Selected Files Preview */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-2 flex gap-2 flex-wrap">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
 

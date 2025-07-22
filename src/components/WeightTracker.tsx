@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, TrendingUp, TrendingDown, Target, Scale, Upload, X } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Target, Scale, Upload, X, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +34,7 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
   const [notes, setNotes] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const { user } = useAuth();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +130,7 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
       setMuscleMass('');
       setNotes('');
       setSelectedFiles([]);
+      setShowPhotoUpload(false);
       
       toast.success('Gewicht erfolgreich hinzugefügt!');
       onWeightAdded();
@@ -210,46 +212,60 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
             </div>
           </div>
 
-          {/* Photo Upload */}
+          {/* Photo Upload Toggle */}
           <div>
-            <Label className="text-sm font-medium">Progress Fotos (max. 3)</Label>
-            <div className="mt-1">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-                id="photo-upload"
-              />
-              <label
-                htmlFor="photo-upload"
-                className="flex items-center justify-center w-full p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
-              >
-                <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Bilder auswählen</span>
-              </label>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+              className="w-full mb-2"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              {showPhotoUpload ? 'Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
+            </Button>
             
-            {/* Selected Files */}
-            {selectedFiles.length > 0 && (
-              <div className="mt-2 flex gap-2 flex-wrap">
-                {selectedFiles.map((file, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      className="w-16 h-16 object-cover rounded border"
-                    />
-                    <button
-                      onClick={() => removeFile(index)}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+            {showPhotoUpload && (
+              <>
+                <div className="mt-1">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="photo-upload"
+                  />
+                  <label
+                    htmlFor="photo-upload"
+                    className="flex items-center justify-center w-full p-3 border-2 border-dashed border-muted-foreground/20 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+                  >
+                    <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Bilder auswählen (max. 3)</span>
+                  </label>
+                </div>
+                
+                {/* Selected Files */}
+                {selectedFiles.length > 0 && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded border"
+                        />
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
 

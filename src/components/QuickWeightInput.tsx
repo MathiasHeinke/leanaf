@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Scale, Plus, Edit, CheckCircle, Upload, X, TrendingUp, TrendingDown } from "lucide-react";
+import { Scale, Plus, Edit, CheckCircle, Upload, X, TrendingUp, TrendingDown, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -62,6 +63,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       setMuscleMass(todaysWeight.muscle_percentage?.toString() || "");
       setNotes(todaysWeight.notes || "");
       setExistingPhotos(parsePhotoUrls(todaysWeight.photo_urls));
+      setShowPhotoUpload(parsePhotoUrls(todaysWeight.photo_urls).length > 0);
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
 
@@ -176,6 +178,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
       setIsEditing(false);
       setSelectedFiles([]);
+      setShowPhotoUpload(false);
       onWeightAdded?.();
     } catch (error) {
       console.error('Error saving weight:', error);
@@ -351,81 +354,92 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           </div>
         </div>
 
-        {/* Photo Upload */}
+        {/* Photo Upload Toggle */}
         <div>
-          <Label className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
-            Progress Fotos (max. 3)
-          </Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+            className="w-full mb-2 border-green-300 text-green-600 hover:bg-green-50"
+          >
+            <Camera className="h-4 w-4 mr-2" />
+            {showPhotoUpload ? 'Progress Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
+          </Button>
           
-          {/* Existing Photos */}
-          {existingPhotos.length > 0 && (
-            <div className="mb-2">
-              <p className="text-xs text-green-600 dark:text-green-400 mb-1">Vorhandene Fotos:</p>
-              <div className="flex gap-2 flex-wrap">
-                {existingPhotos.map((url, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={url}
-                      alt={`Existing ${index + 1}`}
-                      className="w-16 h-16 object-cover rounded border"
-                    />
-                    {isEditing && (
-                      <button
-                        type="button"
-                        onClick={() => removeExistingPhoto(index)}
-                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
+          {showPhotoUpload && (
+            <>
+              {/* Existing Photos */}
+              {existingPhotos.length > 0 && (
+                <div className="mb-2">
+                  <p className="text-xs text-green-600 dark:text-green-400 mb-1">Vorhandene Fotos:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {existingPhotos.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Existing ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded border"
+                        />
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => removeExistingPhoto(index)}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* New Photos Upload */}
-          <div>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="photo-upload"
-            />
-            <label
-              htmlFor="photo-upload"
-              className="flex items-center justify-center w-full p-3 border-2 border-dashed border-green-300 dark:border-green-700 rounded-lg cursor-pointer hover:border-green-500 transition-colors"
-            >
-              <Upload className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
-              <span className="text-sm text-green-600 dark:text-green-400">Neue Bilder hinzufügen</span>
-            </label>
-          </div>
-          
-          {/* Selected New Files */}
-          {selectedFiles.length > 0 && (
-            <div className="mt-2">
-              <p className="text-xs text-green-600 dark:text-green-400 mb-1">Neue Fotos:</p>
-              <div className="flex gap-2 flex-wrap">
-                {selectedFiles.map((file, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`New Preview ${index + 1}`}
-                      className="w-16 h-16 object-cover rounded border"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
+              {/* New Photos Upload */}
+              <div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="photo-upload"
+                />
+                <label
+                  htmlFor="photo-upload"
+                  className="flex items-center justify-center w-full p-3 border-2 border-dashed border-green-300 dark:border-green-700 rounded-lg cursor-pointer hover:border-green-500 transition-colors"
+                >
+                  <Upload className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
+                  <span className="text-sm text-green-600 dark:text-green-400">Neue Bilder hinzufügen</span>
+                </label>
               </div>
-            </div>
+              
+              {/* Selected New Files */}
+              {selectedFiles.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-green-600 dark:text-green-400 mb-1">Neue Fotos:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`New Preview ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
