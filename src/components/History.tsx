@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,9 +91,12 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     try {
       setLoading(true);
       
-      const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
+      // For year view, we need more days to create proper weekly averages
+      const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 42; // 6 weeks for year view
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToLoad);
+
+      console.log(`Loading ${daysToLoad} days of data for ${timeRange} view from ${startDate.toISOString()}`);
 
       const { data: mealsData, error } = await supabase
         .from('meals')
@@ -104,6 +106,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log(`Loaded ${mealsData?.length || 0} meals`);
 
       const mealIds = mealsData?.map(meal => meal.id) || [];
       const { data: imagesData, error: imagesError } = await supabase
@@ -123,10 +127,12 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         imagesByMealId.get(image.meal_id)?.push(image.image_url);
       });
 
-      if (timeRange === 'month') {
+      // Only use weekly grouping for year view
+      if (timeRange === 'year') {
         const weeklyData = new Map<string, DailyData>();
         
-        for (let i = 0; i < 5; i++) {
+        // Create 6 weeks of data for year view
+        for (let i = 0; i < 6; i++) {
           const today = new Date();
           const currentWeekStart = new Date(today);
           currentWeekStart.setDate(today.getDate() - today.getDay() + 1);
@@ -173,6 +179,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           }
         });
 
+        // Calculate weekly averages
         weeklyData.forEach(week => {
           if (week.meals.length > 0) {
             const uniqueDays = new Set();
@@ -194,8 +201,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         const weeklyArray = Array.from(weeklyData.values())
           .sort((a, b) => b.date.localeCompare(a.date));
 
+        console.log(`Created ${weeklyArray.length} weekly entries for year view`);
         setHistoryData(weeklyArray);
       } else {
+        // For week and month view, show individual days
         const groupedData = new Map<string, DailyData>();
         
         for (let i = 0; i < daysToLoad; i++) {
@@ -232,7 +241,9 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           }
         });
 
-        setHistoryData(Array.from(groupedData.values()).sort((a, b) => b.date.localeCompare(a.date)));
+        const dailyArray = Array.from(groupedData.values()).sort((a, b) => b.date.localeCompare(a.date));
+        console.log(`Created ${dailyArray.length} daily entries for ${timeRange} view`);
+        setHistoryData(dailyArray);
       }
     } catch (error) {
       console.error('Error loading history:', error);

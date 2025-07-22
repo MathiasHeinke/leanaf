@@ -107,10 +107,8 @@ export const HistoryTable = ({
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-base">{day.displayDate}</div>
                       <div className="text-sm text-muted-foreground">
-                        {timeRange === 'month' 
-                          ? `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'} • Wochendurchschnitt`
-                          : `${day.meals.length} ${day.meals.length === 1 ? 'Mahlzeit' : 'Mahlzeiten'}`
-                        }
+                        {day.meals.length === 1 ? '1 Mahlzeit' : `${day.meals.length} Mahlzeiten`}
+                        {timeRange === 'year' && ' • Wochendurchschnitt'}
                       </div>
                     </div>
                   </div>
@@ -119,7 +117,7 @@ export const HistoryTable = ({
                     <div className="text-right">
                       <div className="flex items-baseline gap-1">
                         <span className="font-bold text-xl">{day.calories}</span>
-                        {timeRange === 'month' && <span className="text-xs text-muted-foreground">Ø</span>}
+                        {timeRange === 'year' && <span className="text-xs text-muted-foreground">Ø</span>}
                       </div>
                       <div className="text-xs text-muted-foreground">kcal</div>
                     </div>
@@ -178,7 +176,7 @@ export const HistoryTable = ({
                         <Calendar className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <p className="text-muted-foreground text-sm">
-                        {timeRange === 'month' ? 'Keine Mahlzeiten in dieser Woche' : 'Keine Mahlzeiten an diesem Tag'}
+                        {timeRange === 'year' ? 'Keine Mahlzeiten in dieser Woche' : 'Keine Mahlzeiten an diesem Tag'}
                       </p>
                     </div>
                   ) : (
