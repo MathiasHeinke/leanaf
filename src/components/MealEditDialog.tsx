@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,8 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface MealData {
   id: string;
@@ -42,6 +45,7 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
     fats: 0
   });
   const [editingMealDate, setEditingMealDate] = useState<Date>(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (meal) {
@@ -50,14 +54,17 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
     }
   }, [meal]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingMeal) {
+    if (!editingMeal || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
       // Create a timestamp that preserves the local date without timezone conversion
       const localDate = new Date(editingMealDate);
       localDate.setHours(12, 0, 0, 0); // Set to midday to avoid timezone issues
       
-      onUpdate(editingMeal.id, {
+      const updates = {
         text: editingMeal.text,
         calories: editingMeal.calories,
         protein: editingMeal.protein,
@@ -65,7 +72,30 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
         fats: editingMeal.fats,
         meal_type: editingMeal.meal_type,
         created_at: localDate.toISOString(),
-      });
+      };
+
+      // Update in database
+      const { error } = await supabase
+        .from('meals')
+        .update(updates)
+        .eq('id', editingMeal.id);
+
+      if (error) {
+        console.error('Error updating meal:', error);
+        toast.error('Fehler beim Speichern der Mahlzeit');
+        return;
+      }
+
+      toast.success('Mahlzeit erfolgreich aktualisiert');
+      
+      // Call the onUpdate callback to refresh the UI
+      onUpdate(editingMeal.id, updates);
+      onClose();
+    } catch (error) {
+      console.error('Error updating meal:', error);
+      toast.error('Fehler beim Speichern der Mahlzeit');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -337,11 +367,21 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onClose} 
+                className="flex-1"
+                disabled={isSubmitting}
+              >
                 Abbrechen
               </Button>
-              <Button type="submit" className="flex-1">
-                Speichern
+              <Button 
+                type="submit" 
+                className="flex-1"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Speichern...' : 'Speichern'}
               </Button>
             </div>
           </form>
