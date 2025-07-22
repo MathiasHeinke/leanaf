@@ -358,7 +358,6 @@ const Index = () => {
 
         {/* Weight Tracking - Always available (Basic/Free feature) */}
         <QuickWeightInput 
-          currentWeight={userProfile?.weight}
           onWeightAdded={handleWeightAdded}
           todaysWeight={todaysWeight}
         />
