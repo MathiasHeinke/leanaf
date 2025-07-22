@@ -9,6 +9,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { PointsDisplay } from "@/components/PointsDisplay";
 
 interface BodyMeasurementsProps {
   onMeasurementsAdded?: () => void;
@@ -130,6 +131,10 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
     }
   };
 
+  const getMeasurementsPoints = () => {
+    return getPointsForActivity('body_measurements');
+  };
+
   // Show read-only summary if measurements exist and not editing
   if (hasMeasurementsThisWeek && !isEditing) {
     const activeMeasurements = Object.entries(todaysMeasurements).filter(([key, value]) => 
@@ -147,6 +152,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <p className="text-sm text-purple-600 dark:text-purple-400">
               {activeMeasurements.length} Messwerte erfasst
             </p>
+            <PointsDisplay 
+              basePoints={getMeasurementsPoints()} 
+              bonusPoints={0}
+              reason="Körpermaße getrackt"
+              className="mt-1"
+            />
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
@@ -203,6 +214,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <h3 className="font-semibold text-purple-800 dark:text-purple-200">
               {hasMeasurementsThisWeek ? 'Körpermaße bearbeiten' : 'Körpermaße eintragen'}
             </h3>
+            <PointsDisplay 
+              basePoints={getMeasurementsPoints()} 
+              bonusPoints={0}
+              reason="Körpermaße tracken"
+              className="mt-1"
+            />
           </div>
           <InfoButton
             title="Körpermaße Tracking"

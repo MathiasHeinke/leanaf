@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { PointsDisplay } from "@/components/PointsDisplay";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
@@ -46,6 +46,15 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
       setWalkingNotes(todaysWorkout.walking_notes || "");
     }
   }, [hasWorkoutToday, todaysWorkout, isEditing]);
+
+  const getWorkoutPoints = () => {
+    if (workoutType === 'pause') return 0;
+    return getPointsForActivity('workout_completed');
+  };
+
+  const getBonusPoints = () => {
+    return todaysWorkout?.bonus_points || 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +142,14 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                  </>
                )}
              </p>
+             {todaysWorkout.workout_type !== 'pause' && (
+               <PointsDisplay 
+                 basePoints={getWorkoutPoints()} 
+                 bonusPoints={getBonusPoints()}
+                 reason="Workout abgeschlossen"
+                 className="mt-1"
+               />
+             )}
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
@@ -189,6 +206,14 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             <h3 className="font-semibold text-orange-800 dark:text-orange-200">
               {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
             </h3>
+            {workoutType !== 'pause' && (
+              <PointsDisplay 
+                basePoints={getWorkoutPoints()} 
+                bonusPoints={0}
+                reason="Workout tracken"
+                className="mt-1"
+              />
+            )}
           </div>
           <InfoButton
             title="Workout & Regeneration"

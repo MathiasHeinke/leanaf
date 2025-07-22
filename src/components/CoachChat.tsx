@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -46,7 +46,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     isProcessing,
     startRecording,
     stopRecording
-  } = useVoiceRecording({
+  } = useEnhancedVoiceRecording({
     onTranscriptionComplete: (transcription) => {
       setInputText(transcription);
     },

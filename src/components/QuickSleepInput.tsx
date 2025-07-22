@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -10,6 +9,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { PointsDisplay } from "@/components/PointsDisplay";
 
 interface QuickSleepInputProps {
   onSleepAdded?: () => void;
@@ -109,6 +109,14 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
     }
   };
 
+  const getSleepPoints = () => {
+    return getPointsForActivity('sleep_tracked');
+  };
+
+  const getBonusPoints = () => {
+    return todaysSleep?.bonus_points || 0;
+  };
+
   // Show read-only summary if sleep exists and not editing
   if (hasSleepToday && !isEditing) {
     return (
@@ -123,6 +131,12 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               {todaysSleep.sleep_hours || 0} Stunden • 
               Qualität: {todaysSleep.sleep_quality || 0}/10
             </p>
+            <PointsDisplay 
+              basePoints={getSleepPoints()} 
+              bonusPoints={getBonusPoints()}
+              reason="Schlaf getrackt"
+              className="mt-1"
+            />
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
@@ -177,6 +191,12 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             <h3 className="font-semibold text-blue-800 dark:text-blue-200">
               {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
             </h3>
+            <PointsDisplay 
+              basePoints={getSleepPoints()} 
+              bonusPoints={0}
+              reason="Schlaf tracken"
+              className="mt-1"
+            />
           </div>
           <InfoButton
             title="Schlaf Tracking"

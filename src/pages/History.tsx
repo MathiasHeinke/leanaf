@@ -1,42 +1,56 @@
 
-import { useTranslation } from "@/hooks/useTranslation";
-import History from "@/components/History";
-import { TransformationDashboard } from "@/components/TransformationDashboard";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { History as HistoryIcon, Target, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { History as HistoryIcon, TrendingUp } from "lucide-react";
+import { HistoryCharts } from "@/components/HistoryCharts";
+import { HistoryTable } from "@/components/HistoryTable";
+import { PointsHistoryModal } from "@/components/PointsHistoryModal";
 
-const HistoryPage = () => {
-  const { t } = useTranslation();
-  
+const History = () => {
+  const [showPointsHistory, setShowPointsHistory] = useState(false);
+
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold text-foreground mb-2">Verlauf & Progress</h1>
-        <p className="text-muted-foreground">Deine Transformation im Überblick</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
+            <HistoryIcon className="h-4 w-4 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold">Verlauf</h1>
+        </div>
+        
+        <Button
+          onClick={() => setShowPointsHistory(true)}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <TrendingUp className="h-4 w-4" />
+          Punkte-Verlauf
+        </Button>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
+      <Tabs defaultValue="charts" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="dashboard" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <HistoryIcon className="h-4 w-4" />
-            Verlauf
-          </TabsTrigger>
+          <TabsTrigger value="charts">Diagramme</TabsTrigger>
+          <TabsTrigger value="table">Tabelle</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="history" className="mt-6">
-          <History />
+        <TabsContent value="charts" className="space-y-6">
+          <HistoryCharts />
         </TabsContent>
         
-        <TabsContent value="dashboard" className="mt-6">
-          <TransformationDashboard />
+        <TabsContent value="table" className="space-y-6">
+          <HistoryTable />
         </TabsContent>
       </Tabs>
+
+      <PointsHistoryModal
+        isOpen={showPointsHistory}
+        onClose={() => setShowPointsHistory(false)}
+      />
     </div>
   );
 };
 
-export default HistoryPage;
+export default History;
