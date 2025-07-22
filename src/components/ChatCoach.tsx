@@ -19,7 +19,9 @@ import {
   TrendingUp,
   Apple,
   Paperclip,
-  X
+  X,
+  Clock,
+  Zap
 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { supabase } from "@/integrations/supabase/client";
@@ -76,11 +78,13 @@ export const ChatCoach = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
-  const [userName, setUserName] = useState('');
+  const [firstName, setFirstName] = useState('');
   const [quickActionsShown, setQuickActionsShown] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressType[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentTime, setCurrentTime] = useState('');
+  const [remainingCalories, setRemainingCalories] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -90,45 +94,89 @@ export const ChatCoach = ({
     stopRecording
   } = useVoiceRecording();
 
-  // Coach personality mapping
+  // Enhanced coach personality mapping with professions
   const getCoachInfo = (personality: string) => {
     switch (personality) {
       case 'hart': 
-        return { name: 'Sascha', emoji: '🎯', greeting: 'Hey {name}, Sascha hier. Keine Zeit für Smalltalk - was ist dein Ziel heute?' };
-      case 'liebevoll': 
-        return { name: 'Lucy', emoji: '❤️', greeting: 'Hey {name}, Lucy hier. Wie geht\'s dir denn heute - wie kann ich dir helfen?' };
+        return { 
+          name: 'Sascha', 
+          emoji: '🎯', 
+          profession: 'Fitness-Coach',
+          greeting: 'Hey {name}, Sascha hier. Keine Zeit für Smalltalk - was ist dein Ziel heute?',
+          accentColor: 'from-red-500 to-red-600'
+        };
+      case 'soft': 
+        return { 
+          name: 'Lucy', 
+          emoji: '❤️', 
+          profession: 'Ernährungsberaterin',
+          greeting: 'Hey {name}, Lucy hier. Wie geht\'s dir denn heute - wie kann ich dir helfen?',
+          accentColor: 'from-pink-500 to-rose-500'
+        };
       case 'motivierend':
       default:
-        return { name: 'Kai', emoji: '💪', greeting: 'Hey {name}, Kai hier! Bereit durchzustarten? Wie kann ich dir heute helfen?' };
+        return { 
+          name: 'Kai', 
+          emoji: '💪', 
+          profession: 'Personal Trainer',
+          greeting: 'Hey {name}, Kai hier! Bereit durchzustarten? Wie kann ich dir heute helfen?',
+          accentColor: 'from-blue-500 to-blue-600'
+        };
     }
   };
 
-  // Quick actions (reduced to 3)
-  const quickActions = [
-    {
-      icon: Target,
-      text: "Wie ist mein Fortschritt?",
-      prompt: "Gib mir eine detaillierte Analyse meines aktuellen Fortschritts und was ich verbessern kann."
-    },
-    {
-      icon: Apple,
-      text: "Gib mir Meal-Vorschläge",
-      prompt: "Basierend auf meinen Zielen und bisherigen Mahlzeiten, welche Meals empfiehlst du mir für heute?"
-    },
-    {
-      icon: TrendingUp,
-      text: "Analysiere meine letzte Woche",
-      prompt: "Analysiere meinen Fortschritt der letzten Woche und gib mir Feedback zu meiner Entwicklung."
-    }
-  ];
+  // Enhanced quick actions with time and calorie awareness
+  const getQuickActions = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const timeOfDay = currentHour < 12 ? 'Morgen' : currentHour < 18 ? 'Mittag' : 'Abend';
+    
+    return [
+      {
+        icon: Target,
+        text: `Fortschritt-Analyse (${timeOfDay})`,
+        prompt: `Gib mir eine detaillierte Analyse meines aktuellen Fortschritts. Berücksichtige dabei, dass es jetzt ${timeOfDay} ist und der Tag noch nicht vorbei ist. Wie sieht mein bisheriger Fortschritt aus und was kann ich noch heute verbessern?`
+      },
+      {
+        icon: Apple,
+        text: `Meal-Vorschläge (${remainingCalories}kcal übrig)`,
+        prompt: `Basierend auf meinen Zielen und bisherigen Mahlzeiten heute habe ich noch ${remainingCalories}kcal übrig. Welche Meals empfiehlst du mir für den Rest des Tages? Berücksichtige die Tageszeit und meine Makro-Ziele.`
+      },
+      {
+        icon: TrendingUp,
+        text: "Wöchentliche Trainings-Analyse",
+        prompt: "Analysiere meine Trainingsfrequenz und -intensität dieser Woche. Wie oft habe ich trainiert, wie war die Qualität und was empfiehlst du mir für die kommenden Tage? Beachte dabei die optimale Trainingsfrequenz."
+      }
+    ];
+  };
 
   // Load user data and coach personality
   useEffect(() => {
     if (user?.id) {
       loadUserData();
       loadChatHistory();
+      updateTimeAndCalories();
     }
   }, [user?.id]);
+
+  // Update time and remaining calories periodically
+  useEffect(() => {
+    const interval = setInterval(updateTimeAndCalories, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [todaysTotals, dailyGoals]);
+
+  const updateTimeAndCalories = () => {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('de-DE', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Europe/Berlin'
+    });
+    setCurrentTime(timeString);
+    
+    const remaining = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
+    setRemainingCalories(remaining);
+  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -160,12 +208,14 @@ export const ChatCoach = ({
 
       setCoachPersonality(data?.coach_personality || 'motivierend');
       
-      // Improved username handling
+      // Extract first name only
       let displayName = data?.display_name;
       if (!displayName || displayName.trim() === '') {
         displayName = user.email?.split('@')[0] || 'User';
       }
-      setUserName(displayName);
+      
+      const extractedFirstName = displayName.split(' ')[0] || displayName;
+      setFirstName(extractedFirstName);
     } catch (error) {
       console.error('Error in loadUserData:', error);
     }
@@ -227,7 +277,7 @@ export const ChatCoach = ({
 
   const generateWelcomeMessage = async () => {
     const coachInfo = getCoachInfo(coachPersonality);
-    const welcomeText = coachInfo.greeting.replace('{name}', userName);
+    const welcomeText = coachInfo.greeting.replace('{name}', firstName);
     
     const savedMessage = await saveMessage('assistant', welcomeText);
     if (savedMessage) {
@@ -439,6 +489,7 @@ export const ChatCoach = ({
   };
 
   const coachInfo = getCoachInfo(coachPersonality);
+  const quickActions = getQuickActions();
 
   if (isLoading) {
     return (
@@ -455,19 +506,30 @@ export const ChatCoach = ({
     <Card className="h-[calc(100vh-160px)] flex flex-col">
       <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+          <div className={`h-10 w-10 bg-gradient-to-br ${coachInfo.accentColor} rounded-xl flex items-center justify-center shadow-lg`}>
             <Brain className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">{coachInfo.name}</span>
+              <span className="text-lg font-bold">{coachInfo.name} {coachInfo.emoji}</span>
               <Badge variant="secondary" className="text-xs">
-                getLeanAI
+                {coachInfo.profession}
               </Badge>
+              {currentTime && (
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {currentTime}
+                </Badge>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground font-normal">
-              Dein persönlicher Ernährungs- und Fitness-Coach
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-muted-foreground font-normal">
+                Für {firstName} • {remainingCalories}kcal übrig heute
+              </p>
+              {remainingCalories > 0 && (
+                <Zap className="h-3 w-3 text-green-500" />
+              )}
+            </div>
           </div>
           {messages.length > 1 && (
             <Button
@@ -501,7 +563,7 @@ export const ChatCoach = ({
                         <div className="flex items-center gap-2 mb-2">
                           <Brain className="h-4 w-4 text-primary" />
                           <span className="text-xs font-medium text-primary">
-                            {coachInfo.name}
+                            {coachInfo.name} • {coachInfo.profession}
                           </span>
                         </div>
                       )}
@@ -541,7 +603,7 @@ export const ChatCoach = ({
                   <div className="max-w-[85%] bg-muted border rounded-2xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Brain className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-medium text-primary">{coachInfo.name} schreibt...</span>
+                      <span className="text-xs font-medium text-primary">{coachInfo.name} analysiert...</span>
                     </div>
                     <div className="flex gap-1">
                       <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
@@ -552,7 +614,7 @@ export const ChatCoach = ({
                 </div>
               )}
               
-              {/* Quick Actions in Chat */}
+              {/* Enhanced Quick Actions with time and calorie context */}
               {quickActionsShown && !isThinking && (
                 <div className="flex justify-start">
                   <div className="max-w-[90%] space-y-2">
@@ -631,7 +693,7 @@ export const ChatCoach = ({
               <Textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Frage deinen Coach etwas..."
+                placeholder={`Frage ${coachInfo.name} etwas...`}
                 className="min-h-[60px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {

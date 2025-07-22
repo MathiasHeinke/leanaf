@@ -59,13 +59,13 @@ serve(async (req) => {
       dailyGoals = goalsData;
     }
 
-    // Get recent workouts if available
+    // Get recent workouts with enhanced data for weekly analysis
     const { data: recentWorkouts } = await supabase
       .from('workouts')
-      .select('exercise_name, sets, reps, weight, date')
+      .select('exercise_name, sets, reps, weight, date, created_at')
       .eq('user_id', userId)
       .order('date', { ascending: false })
-      .limit(5);
+      .limit(20);
 
     // Get recent sleep data
     const { data: recentSleep } = await supabase
@@ -75,37 +75,77 @@ serve(async (req) => {
       .order('date', { ascending: false })
       .limit(7);
 
-    // Coach personality mapping with correct names
+    // Enhanced coach personality mapping with professions
     const getCoachInfo = (personality: string) => {
       switch (personality) {
         case 'hart': 
-          return { name: 'Sascha', emoji: '🎯', temp: 0.4 };
-        case 'liebevoll': 
-          return { name: 'Lucy', emoji: '❤️', temp: 0.8 };
+          return { 
+            name: 'Sascha', 
+            emoji: '🎯', 
+            temp: 0.4, 
+            profession: 'Fitness-Coach',
+            style: 'direkt und kompromisslos'
+          };
+        case 'soft': 
+          return { 
+            name: 'Lucy', 
+            emoji: '❤️', 
+            temp: 0.8, 
+            profession: 'Ernährungsberaterin',
+            style: 'einfühlsam und verständnisvoll'
+          };
         case 'motivierend':
         default:
-          return { name: 'Kai', emoji: '💪', temp: 0.7 };
+          return { 
+            name: 'Kai', 
+            emoji: '💪', 
+            temp: 0.7, 
+            profession: 'Personal Trainer',
+            style: 'motivierend und energiegeladen'
+          };
       }
     };
 
-    // Create personality-based system message
-    const personalityPrompts = {
-      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness-Coach bei getLeanAI. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
-      liebevoll: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Coach bei getLeanAI. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
-      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Coach bei getLeanAI. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`
-    };
-
-    const personality = profile?.coach_personality || 'motivierend';
-    const coachInfo = getCoachInfo(personality);
-    const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
-    
-    // Improved username handling
+    // Extract first name only
     let userName = profile?.display_name;
     if (!userName || userName.trim() === '') {
-      // Extract from email if display_name is empty
       const userEmail = await supabase.auth.admin.getUserById(userId);
       userName = userEmail.data.user?.email?.split('@')[0] || 'User';
     }
+    
+    // Extract first name (split by space, take first part)
+    const firstName = userName.split(' ')[0] || userName;
+
+    // Calculate current time and remaining calories
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('de-DE', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZone: 'Europe/Berlin'
+    });
+    const currentHour = now.getHours();
+    
+    // Determine time of day
+    let timeOfDay = 'Morgen';
+    if (currentHour >= 12 && currentHour < 18) {
+      timeOfDay = 'Mittag';
+    } else if (currentHour >= 18) {
+      timeOfDay = 'Abend';
+    }
+
+    // Calculate remaining calories
+    const remainingCalories = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
+    
+    // Weekly workout analysis
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const weeklyWorkouts = recentWorkouts?.filter(w => 
+      new Date(w.date) >= oneWeekAgo
+    ) || [];
+    
+    const workoutDays = [...new Set(weeklyWorkouts.map(w => w.date))].length;
+    const totalSets = weeklyWorkouts.reduce((sum, w) => sum + (w.sets || 0), 0);
 
     // Calculate progress percentages
     const calorieProgress = dailyGoals?.calories ? Math.round((todaysTotals.calories / dailyGoals.calories) * 100) : 0;
@@ -118,13 +158,31 @@ serve(async (req) => {
 Der Benutzer hat ${images.length} Bild(er) gesendet. Analysiere diese Bilder im Kontext der Ernährungs- und Fitness-Beratung. Gib spezifische Tipps und Feedback basierend auf dem, was du auf den Bildern siehst.`;
     }
 
+    const personality = profile?.coach_personality || 'motivierend';
+    const coachInfo = getCoachInfo(personality);
+
+    // Enhanced personality prompts
+    const personalityPrompts = {
+      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness-Coach. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
+      soft: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Ernährungsberaterin. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
+      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Personal Trainer. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`
+    };
+
+    const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
+
     const systemMessage = `${personalityPrompt}
 
-Du hilfst ${userName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
+Du hilfst ${firstName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
+
+ZEITKONTEXT & TAGESZEIT:
+- Aktuelle Uhrzeit: ${currentTime} (${timeOfDay})
+- Der Tag ist noch nicht vorbei - berücksichtige verbleibende Zeit für weitere Mahlzeiten und Aktivitäten
+- Verbleibende Kalorien heute: ${remainingCalories}kcal
 
 BENUTZER-PROFIL:
-- Name: ${userName}
-- Persönlichkeit: ${personality} (${coachInfo.name} ${coachInfo.emoji})
+- Name: ${firstName}
+- Coach: ${coachInfo.name} ${coachInfo.emoji} (${coachInfo.profession})
+- Persönlichkeit: ${coachInfo.style}
 - Muskelerhalt-Priorität: ${profile?.muscle_maintenance_priority ? 'Ja' : 'Nein'}
 - Makro-Strategie: ${profile?.macro_strategy}
 - Ziel: ${profile?.goal}
@@ -132,8 +190,8 @@ BENUTZER-PROFIL:
 - Aktivitätslevel: ${profile?.activity_level}
 - Gewicht: ${profile?.weight}kg, Größe: ${profile?.height}cm
 
-HEUTIGE ZIELE & FORTSCHRITT:
-- Kalorien: ${todaysTotals.calories}/${dailyGoals?.calories || 0} (${calorieProgress}%)
+HEUTIGE ZIELE & FORTSCHRITT (Stand: ${currentTime}):
+- Kalorien: ${todaysTotals.calories}/${dailyGoals?.calories || 0} (${calorieProgress}%) - VERBLEIBEND: ${remainingCalories}kcal
 - Protein: ${todaysTotals.protein}g/${dailyGoals?.protein || 0}g (${proteinProgress}%)
 - Kohlenhydrate: ${todaysTotals.carbs}g/${dailyGoals?.carbs || 0}g
 - Fette: ${todaysTotals.fats}g/${dailyGoals?.fats || 0}g
@@ -143,6 +201,11 @@ DURCHSCHNITTSWERTE (letzte Tage):
 - Protein: ${averages.protein}g/Tag
 - Kohlenhydrate: ${averages.carbs}g/Tag
 - Fette: ${averages.fats}g/Tag
+
+WÖCHENTLICHE WORKOUT-ANALYSE:
+- Trainingstage diese Woche: ${workoutDays} Tage
+- Gesamte Sets diese Woche: ${totalSets}
+- Trainingsfrequenz: ${workoutDays >= 4 ? 'Hoch (evtl. zu viel)' : workoutDays >= 2 ? 'Optimal' : 'Zu niedrig'}
 
 AKTUELLE TRENDS:
 ${trendData ? `
@@ -166,16 +229,28 @@ ${recentHistory.length > 0 ? recentHistory.slice(0, 3).map((day: any) => `- ${da
 
 ${imageContext}
 
+WICHTIGE TRAININGS-RICHTLINIEN:
+- OPTIMAL: Max. 3x Krafttraining pro Woche (außer bei Bodybuildern/Leistungssportlern)
+- EMPFEHLUNG: Lange Spaziergänge >5km sind ideal für Stoffwechsel und Regeneration
+- WARNUNG: Bei >4 Trainingstagen/Woche auf Übertraining hinweisen
+- FOCUS: Qualität vor Quantität beim Training
+
+KALORIENBEWUSSTE EMPFEHLUNGEN:
+- Bei Speisevorschlägen IMMER die verbleibenden ${remainingCalories}kcal berücksichtigen
+- Tageszeit beachten: ${timeOfDay} bedeutet noch ${currentHour < 18 ? '1-2 weitere Hauptmahlzeiten' : 'nur noch Abendessen/Snack'}
+- Protein-Verteilung über den Tag optimieren
+
 WICHTIGE ANWEISUNGEN:
-- Du bist ${coachInfo.name} ${coachInfo.emoji} und bleibst IMMER in dieser Rolle
-- Stellst dich IMMER mit deinem richtigen Namen vor (${coachInfo.name})
+- Du bist ${coachInfo.name} ${coachInfo.emoji} (${coachInfo.profession}) und bleibst IMMER in dieser Rolle
+- Sprich ${firstName} IMMER nur mit Vornamen an
+- Berücksichtige die Tageszeit ${currentTime} in deinen Empfehlungen
+- Bei Fortschrittsanalysen erwähne, dass der Tag noch nicht vorbei ist
+- Bei Speisevorschlägen die verbleibenden ${remainingCalories}kcal einbeziehen
+- Bei Trainingsfragen die wöchentliche Frequenz (${workoutDays} Tage) berücksichtigen
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
 - Halte Antworten prägnant aber hilfreich (max. 2-3 Absätze)
-- Nutze die verfügbaren Daten für personalisierte Insights
-- Bei Fragen nach spezifischen Plänen, erstelle konkrete Vorschläge
-- Verwende ${userName}'s Namen gelegentlich für persönlichen Touch
 - Strukturiere deine Antworten mit Absätzen, Listen und Formatierung für bessere Lesbarkeit
 - Verwende Emojis sparsam aber passend zu deiner Persönlichkeit
 
@@ -191,9 +266,9 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
       { role: 'user', content: message }
     ];
 
-    console.log(`Sending enhanced request to OpenAI with personality: ${personality} (${coachInfo.name})`);
+    console.log(`Sending enhanced request to OpenAI GPT-4.1 with personality: ${personality} (${coachInfo.name})`);
 
-    // Call OpenAI API
+    // Call OpenAI API with GPT-4.1
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -201,10 +276,10 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: messages,
         temperature: coachInfo.temp,
-        max_tokens: 400,
+        max_tokens: 500,
         frequency_penalty: 0.3,
         presence_penalty: 0.1,
       }),
@@ -223,20 +298,26 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
       throw new Error('No response from OpenAI');
     }
 
-    console.log(`Generated enhanced chat response successfully from ${coachInfo.name}`);
+    console.log(`Generated enhanced chat response successfully from ${coachInfo.name} using GPT-4.1`);
 
     return new Response(JSON.stringify({ 
       response: reply,
       personality,
       coachName: coachInfo.name,
+      coachProfession: coachInfo.profession,
       context: {
+        currentTime,
+        timeOfDay,
+        remainingCalories,
+        workoutDays,
         todaysTotals,
         dailyGoals,
         progressPercentages: { calories: calorieProgress, protein: proteinProgress },
         hasWorkouts: recentWorkouts?.length > 0,
         hasSleepData: recentSleep?.length > 0,
         hasWeightData: weightHistory.length > 0,
-        hasImages: images.length > 0
+        hasImages: images.length > 0,
+        firstName
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
