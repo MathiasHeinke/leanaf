@@ -555,107 +555,87 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-        {/* 3. Preferences */}
-        <div className="space-y-6">
-          {/* Coach Settings */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
-                <Bot className="h-5 w-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold">{t('profile.coachSettings')}</h2>
+        {/* 3. Macro Strategies */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
+              <Activity className="h-5 w-5 text-white" />
             </div>
-
-            <div className="bg-background rounded-xl p-4 shadow-sm border">
-              <CoachSelection 
-                selectedCoach={coachPersonality}
-                onCoachChange={setCoachPersonality}
-              />
-            </div>
+            <h2 className="text-xl font-bold">{t('profile.macroStrategies')}</h2>
           </div>
 
-          {/* Macro Strategies */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
-                <Activity className="h-5 w-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold">{t('profile.macroStrategies')}</h2>
-            </div>
-
-            <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
-              <div className="space-y-3">
-                {[
-                  { key: 'high_protein', label: 'High Protein', desc: 'Fokus auf Proteinzufuhr für Muskelaufbau', macros: '50/20/30' },
-                  { key: 'high_carb', label: 'High Carb', desc: 'Kohlenhydratreich für Ausdauersport', macros: '20/50/30' },
-                  { key: 'low_carb', label: 'Low Carb', desc: 'Wenig Kohlenhydrate für Fettverbrennung', macros: '30/20/50' },
-                  { key: 'custom', label: 'Custom', desc: 'Individuelle Anpassung der Makronährstoffe', macros: 'Custom' }
-                ].map((strategy) => (
-                  <div 
-                    key={strategy.key}
-                    className={`p-3 rounded-xl border cursor-pointer transition-colors ${
-                      macroStrategy === strategy.key 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => {
-                      setMacroStrategy(strategy.key);
-                      if (strategy.key !== 'custom') {
-                        applyMacroStrategy(strategy.key);
-                      }
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-medium text-sm">{strategy.label}</div>
-                        <div className="text-xs text-muted-foreground">{strategy.desc}</div>
-                      </div>
-                      <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                        {strategy.macros}
-                      </div>
+          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+            <div className="space-y-3">
+              {[
+                { key: 'high_protein', label: 'High Protein', desc: 'Fokus auf Proteinzufuhr für Muskelaufbau', macros: '50/20/30' },
+                { key: 'high_carb', label: 'High Carb', desc: 'Kohlenhydratreich für Ausdauersport', macros: '20/50/30' },
+                { key: 'low_carb', label: 'Low Carb', desc: 'Wenig Kohlenhydrate für Fettverbrennung', macros: '30/20/50' },
+                { key: 'custom', label: 'Custom', desc: 'Individuelle Anpassung der Makronährstoffe', macros: 'Custom' }
+              ].map((strategy) => (
+                <div 
+                  key={strategy.key}
+                  className={`p-3 rounded-xl border cursor-pointer transition-colors ${
+                    macroStrategy === strategy.key 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                  onClick={() => {
+                    setMacroStrategy(strategy.key);
+                    if (strategy.key !== 'custom') {
+                      applyMacroStrategy(strategy.key);
+                    }
+                  }}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-medium text-sm">{strategy.label}</div>
+                      <div className="text-xs text-muted-foreground">{strategy.desc}</div>
+                    </div>
+                    <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                      {strategy.macros}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
 
-              {/* Custom Input Fields - only show when custom is selected */}
-              <div className={`grid grid-cols-3 gap-4 transition-opacity ${
-                macroStrategy === 'custom' ? 'opacity-100' : 'opacity-50 pointer-events-none'
-              }`}>
-                <div>
-                  <Label className="text-xs">{t('macros.protein')} %</Label>
-                  <Input
-                    type="number"
-                    value={dailyGoals.protein}
-                    onChange={(e) => setDailyGoals({...dailyGoals, protein: parseInt(e.target.value) || 0})}
-                    className="h-8 text-sm mt-1"
-                    disabled={macroStrategy !== 'custom'}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">{t('macros.carbs')} %</Label>
-                  <Input
-                    type="number"
-                    value={dailyGoals.carbs}
-                    onChange={(e) => setDailyGoals({...dailyGoals, carbs: parseInt(e.target.value) || 0})}
-                    className="h-8 text-sm mt-1"
-                    disabled={macroStrategy !== 'custom'}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">{t('macros.fats')} %</Label>
-                  <Input
-                    type="number"
-                    value={dailyGoals.fats}
-                    onChange={(e) => setDailyGoals({...dailyGoals, fats: parseInt(e.target.value) || 0})}
-                    className="h-8 text-sm mt-1"
-                    disabled={macroStrategy !== 'custom'}
-                  />
-                </div>
+            {/* Custom Input Fields - only show when custom is selected */}
+            <div className={`grid grid-cols-3 gap-4 transition-opacity ${
+              macroStrategy === 'custom' ? 'opacity-100' : 'opacity-50 pointer-events-none'
+            }`}>
+              <div>
+                <Label className="text-xs">{t('macros.protein')} %</Label>
+                <Input
+                  type="number"
+                  value={dailyGoals.protein}
+                  onChange={(e) => setDailyGoals({...dailyGoals, protein: parseInt(e.target.value) || 0})}
+                  className="h-8 text-sm mt-1"
+                  disabled={macroStrategy !== 'custom'}
+                />
               </div>
-              <div className="text-center text-xs text-muted-foreground">
-                {t('profile.totalPercentage', { total: dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats })}
+              <div>
+                <Label className="text-xs">{t('macros.carbs')} %</Label>
+                <Input
+                  type="number"
+                  value={dailyGoals.carbs}
+                  onChange={(e) => setDailyGoals({...dailyGoals, carbs: parseInt(e.target.value) || 0})}
+                  className="h-8 text-sm mt-1"
+                  disabled={macroStrategy !== 'custom'}
+                />
               </div>
+              <div>
+                <Label className="text-xs">{t('macros.fats')} %</Label>
+                <Input
+                  type="number"
+                  value={dailyGoals.fats}
+                  onChange={(e) => setDailyGoals({...dailyGoals, fats: parseInt(e.target.value) || 0})}
+                  className="h-8 text-sm mt-1"
+                  disabled={macroStrategy !== 'custom'}
+                />
+              </div>
+            </div>
+            <div className="text-center text-xs text-muted-foreground">
+              {t('profile.totalPercentage', { total: dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats })}
             </div>
           </div>
         </div>
@@ -686,114 +666,114 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   <div className="text-sm text-muted-foreground">{t('macros.fats')}</div>
                 </div>
               </div>
-          </div>
-        </div>
-
-        {/* Intelligent Calorie Calculation */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Intelligente Kalorienberechnung</h2>
           </div>
 
-          {intelligentCalories && (
-            <>
-              {/* Main Calculation Results */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                  <div className="text-lg font-bold">{intelligentCalories.bmr}</div>
-                  <div className="text-xs text-muted-foreground">{t('profile.bmr')}</div>
-                </div>
-                <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                  <div className="text-lg font-bold">{intelligentCalories.tdee}</div>
-                  <div className="text-xs text-muted-foreground">{t('profile.tdee')}</div>
-                </div>
-                <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                  <div className="text-lg font-bold">{intelligentCalories.targetCalories}</div>
-                  <div className="text-xs text-muted-foreground">{t('ui.goal')}</div>
-                </div>
+          {/* Intelligent Calorie Calculation */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
               </div>
+              <h2 className="text-xl font-bold">Intelligente Kalorienberechnung</h2>
+            </div>
 
-              {/* Confidence & Data Quality */}
-              <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {intelligentCalories.confidence === 'high' && <CheckCircle className="h-5 w-5 text-green-500" />}
-                    {intelligentCalories.confidence === 'medium' && <AlertCircle className="h-5 w-5 text-yellow-500" />}
-                    {intelligentCalories.confidence === 'low' && <AlertCircle className="h-5 w-5 text-red-500" />}
-                    <span className="font-medium">
-                      Berechnungsgenauigkeit: {
-                        intelligentCalories.confidence === 'high' ? 'Hoch' :
-                        intelligentCalories.confidence === 'medium' ? 'Mittel' : 'Niedrig'
-                      }
+            {intelligentCalories && (
+              <>
+                {/* Main Calculation Results */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                    <div className="text-lg font-bold">{intelligentCalories.bmr}</div>
+                    <div className="text-xs text-muted-foreground">{t('profile.bmr')}</div>
+                  </div>
+                  <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                    <div className="text-lg font-bold">{intelligentCalories.tdee}</div>
+                    <div className="text-xs text-muted-foreground">{t('profile.tdee')}</div>
+                  </div>
+                  <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                    <div className="text-lg font-bold">{intelligentCalories.targetCalories}</div>
+                    <div className="text-xs text-muted-foreground">{t('ui.goal')}</div>
+                  </div>
+                </div>
+
+                {/* Confidence & Data Quality */}
+                <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {intelligentCalories.confidence === 'high' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                      {intelligentCalories.confidence === 'medium' && <AlertCircle className="h-5 w-5 text-yellow-500" />}
+                      {intelligentCalories.confidence === 'low' && <AlertCircle className="h-5 w-5 text-red-500" />}
+                      <span className="font-medium">
+                        Berechnungsgenauigkeit: {
+                          intelligentCalories.confidence === 'high' ? 'Hoch' :
+                          intelligentCalories.confidence === 'medium' ? 'Mittel' : 'Niedrig'
+                        }
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {intelligentCalories.dataQuality.daysOfData} Tage Daten
                     </span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {intelligentCalories.dataQuality.daysOfData} Tage Daten
-                  </span>
-                </div>
 
-                {/* Data Quality Indicators */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    {intelligentCalories.dataQuality.hasWeightHistory ? 
-                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
-                      <AlertCircle className="h-4 w-4 text-gray-400" />}
-                    <span>Gewichtsverlauf</span>
+                  {/* Data Quality Indicators */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      {intelligentCalories.dataQuality.hasWeightHistory ? 
+                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                        <AlertCircle className="h-4 w-4 text-gray-400" />}
+                      <span>Gewichtsverlauf</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {intelligentCalories.dataQuality.hasMealData ? 
+                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                        <AlertCircle className="h-4 w-4 text-gray-400" />}
+                      <span>Mahlzeiten-Daten</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {intelligentCalories.dataQuality.hasWorkoutData ? 
+                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                        <AlertCircle className="h-4 w-4 text-gray-400" />}
+                      <span>Workout-Daten</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {intelligentCalories.dataQuality.hasSleepData ? 
+                        <CheckCircle className="h-4 w-4 text-green-500" /> : 
+                        <AlertCircle className="h-4 w-4 text-gray-400" />}
+                      <span>Schlaf-Daten</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {intelligentCalories.dataQuality.hasMealData ? 
-                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
-                      <AlertCircle className="h-4 w-4 text-gray-400" />}
-                    <span>Mahlzeiten-Daten</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {intelligentCalories.dataQuality.hasWorkoutData ? 
-                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
-                      <AlertCircle className="h-4 w-4 text-gray-400" />}
-                    <span>Workout-Daten</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {intelligentCalories.dataQuality.hasSleepData ? 
-                      <CheckCircle className="h-4 w-4 text-green-500" /> : 
-                      <AlertCircle className="h-4 w-4 text-gray-400" />}
-                    <span>Schlaf-Daten</span>
-                  </div>
-                </div>
 
-                {/* Metabolic Adaptation Warning */}
-                {intelligentCalories.metabolicAdaptation && intelligentCalories.metabolicAdaptation > 0.1 && (
-                  <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-3">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                      <div className="text-orange-700 dark:text-orange-400 text-sm">
-                        <div className="font-medium">Metabolische Anpassung erkannt</div>
-                        <div className="text-xs mt-1">
-                          Ihr Stoffwechsel hat sich um {Math.round(intelligentCalories.metabolicAdaptation * 100)}% verlangsamt.
+                  {/* Metabolic Adaptation Warning */}
+                  {intelligentCalories.metabolicAdaptation && intelligentCalories.metabolicAdaptation > 0.1 && (
+                    <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                        <div className="text-orange-700 dark:text-orange-400 text-sm">
+                          <div className="font-medium">Metabolische Anpassung erkannt</div>
+                          <div className="text-xs mt-1">
+                            Ihr Stoffwechsel hat sich um {Math.round(intelligentCalories.metabolicAdaptation * 100)}% verlangsamt.
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Recommendations */}
-                {intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Empfehlungen:</div>
-                    {intelligentCalories.recommendations.map((rec, index) => (
-                      <div key={index} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <div className="w-1 h-1 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                        <span>{rec}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+                  {/* Recommendations */}
+                  {intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Empfehlungen:</div>
+                      {intelligentCalories.recommendations.map((rec, index) => (
+                        <div key={index} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <div className="w-1 h-1 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                          <span>{rec}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Weight Goal Analysis */}
           {weight && targetWeight && (
@@ -871,6 +851,23 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* 5. Coach Settings */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
+              <Bot className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold">{t('profile.coachSettings')}</h2>
+          </div>
+
+          <div className="bg-background rounded-xl p-4 shadow-sm border">
+            <CoachSelection 
+              selectedCoach={coachPersonality}
+              onCoachChange={setCoachPersonality}
+            />
+          </div>
         </div>
 
         {/* Save Status */}
