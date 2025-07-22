@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock } from "lucide-react";
+import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock, Globe } from "lucide-react";
+import { getUserTimezone, setUserTimezone, TIMEZONE_OPTIONS } from "@/utils/dateHelpers";
 
 interface DailyGoal {
   calories: number;
@@ -27,6 +29,7 @@ interface SettingsProps {
 
 const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const [goal, setGoal] = useState(dailyGoal.calories.toString());
+  const [selectedTimezone, setSelectedTimezone] = useState(getUserTimezone());
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -46,6 +49,9 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
     }
     
     try {
+      // Save timezone preference
+      setUserTimezone(selectedTimezone);
+
       // Save to database
       const { error } = await supabase
         .from('daily_goals')
@@ -115,6 +121,39 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           <p className="text-sm text-muted-foreground mt-1">
             {t('settings.recommended')}
           </p>
+        </div>
+
+        {/* Timezone Settings */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-2 rounded-lg">
+                <Globe className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <Label className="text-base font-medium">Zeitzone</Label>
+                <p className="text-sm text-muted-foreground">Für korrekte Datum- und Zeitanzeige</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="ml-12">
+            <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Derzeit: {selectedTimezone} • Beeinflusst Workouts und Kalender-Anzeige
+            </p>
+          </div>
         </div>
 
         {/* Dark Mode Settings */}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
@@ -53,11 +53,8 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
 
     setIsSubmitting(true);
     try {
-      // FIXED: Use proper timezone-aware date generation
-      const today = new Date();
-      const localDateString = today.getFullYear() + '-' + 
-                              String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                              String(today.getDate()).padStart(2, '0');
+      // Use timezone-aware date from dateHelpers
+      const todayDateString = getCurrentDateString();
 
       const workoutData = {
         user_id: user.id,
@@ -68,7 +65,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
         did_workout: workoutType !== 'pause',
-        date: localDateString // FIXED: Use proper local date
+        date: todayDateString
       };
 
       if (hasWorkoutToday) {
@@ -81,7 +78,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         if (error) throw error;
         toast.success('Workout aktualisiert!');
       } else {
-        // FIXED: Create new workout with explicit conflict resolution
+        // Create new workout with proper UPSERT
         const { error } = await supabase
           .from('workouts')
           .upsert(workoutData, { 

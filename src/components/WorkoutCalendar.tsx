@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,17 @@ import {
 } from "lucide-react";
 import { WorkoutEditModal } from "./WorkoutEditModal";
 import { toast } from "sonner";
+import { 
+  getCurrentWeekBounds, 
+  getWeekBounds, 
+  getPreviousWeek, 
+  getNextWeek, 
+  getWeekDays,
+  formatDisplayDate,
+  toDateString,
+  isDateToday,
+  isDatePast
+} from "@/utils/dateHelpers";
 
 interface WorkoutEntry {
   id: string;
@@ -28,7 +40,7 @@ interface WorkoutEntry {
 
 export const WorkoutCalendar = () => {
   const { user } = useAuth();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => getCurrentWeekBounds().start);
   const [workouts, setWorkouts] = useState<WorkoutEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -39,22 +51,23 @@ export const WorkoutCalendar = () => {
     if (user) {
       loadWorkouts();
     }
-  }, [user, currentMonth]);
+  }, [user, currentWeekStart]);
 
   const loadWorkouts = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
-      const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      const weekBounds = getWeekBounds(currentWeekStart);
+      const startDate = toDateString(weekBounds.start);
+      const endDate = toDateString(weekBounds.end);
 
       const { data, error } = await supabase
         .from('workouts')
         .select('id, date, did_workout, workout_type, duration_minutes, intensity, distance_km, steps, walking_notes')
         .eq('user_id', user.id)
-        .gte('date', monthStart.toISOString().split('T')[0])
-        .lte('date', monthEnd.toISOString().split('T')[0])
+        .gte('date', startDate)
+        .lte('date', endDate)
         .order('date', { ascending: true });
 
       if (error) throw error;
@@ -67,7 +80,6 @@ export const WorkoutCalendar = () => {
     }
   };
 
-  // NEW: Delete workout function
   const handleDeleteWorkout = async (workoutId: string, date: string) => {
     if (!confirm('Workout-Eintrag wirklich löschen?')) return;
 
@@ -88,36 +100,21 @@ export const WorkoutCalendar = () => {
     }
   };
 
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-
-    // Add empty cells for days before the first day of the month
-    const firstDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push(null);
-    }
-
-    // Add all days of the month
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push(new Date(year, month, day));
-    }
-
-    return days;
-  };
-
   const getWorkoutForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toDateString(date);
     return workouts.find(w => w.date === dateStr);
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const newMonth = new Date(currentMonth);
-    newMonth.setMonth(currentMonth.getMonth() + (direction === 'next' ? 1 : -1));
-    setCurrentMonth(newMonth);
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      setCurrentWeekStart(getPreviousWeek(currentWeekStart));
+    } else {
+      setCurrentWeekStart(getNextWeek(currentWeekStart));
+    }
+  };
+
+  const goToCurrentWeek = () => {
+    setCurrentWeekStart(getCurrentWeekBounds().start);
   };
 
   const getIntensityColor = (intensity: number) => {
@@ -144,25 +141,22 @@ export const WorkoutCalendar = () => {
     setShowEditModal(true);
   };
 
-  const isPastDate = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
+  const weekDays = getWeekDays(currentWeekStart);
+  const weekBounds = getWeekBounds(currentWeekStart);
+  const weekRange = `${formatDisplayDate(weekBounds.start, 'd. MMM')} - ${formatDisplayDate(weekBounds.end, 'd. MMM yyyy')}`;
+  
+  const isCurrentWeek = () => {
+    const currentWeekBounds = getCurrentWeekBounds();
+    return toDateString(currentWeekStart) === toDateString(currentWeekBounds.start);
   };
 
-  const days = getDaysInMonth(currentMonth);
-  const monthYear = currentMonth.toLocaleDateString('de-DE', { 
-    month: 'long', 
-    year: 'numeric' 
-  });
-
-  // FIXED: Only count actual workouts (did_workout = true) for stats
-  const thisMonthActualWorkouts = workouts.filter(w => w.did_workout === true);
-  const totalWorkouts = thisMonthActualWorkouts.length;
-  const avgIntensity = thisMonthActualWorkouts.length > 0 
-    ? Math.round(thisMonthActualWorkouts.reduce((sum, w) => sum + w.intensity, 0) / thisMonthActualWorkouts.length)
+  // Stats calculation - only count actual workouts
+  const thisWeekActualWorkouts = workouts.filter(w => w.did_workout === true);
+  const totalWorkouts = thisWeekActualWorkouts.length;
+  const avgIntensity = thisWeekActualWorkouts.length > 0 
+    ? Math.round(thisWeekActualWorkouts.reduce((sum, w) => sum + w.intensity, 0) / thisWeekActualWorkouts.length)
     : 0;
-  const totalMinutes = thisMonthActualWorkouts.reduce((sum, w) => sum + w.duration_minutes, 0);
+  const totalMinutes = thisWeekActualWorkouts.reduce((sum, w) => sum + w.duration_minutes, 0);
 
   return (
     <>
@@ -177,17 +171,30 @@ export const WorkoutCalendar = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigateMonth('prev')}
+                onClick={() => navigateWeek('prev')}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="font-medium min-w-[120px] text-center">
-                {monthYear}
+              
+              {!isCurrentWeek() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToCurrentWeek}
+                  className="text-xs px-2"
+                >
+                  Heute
+                </Button>
+              )}
+              
+              <span className="font-medium min-w-[160px] text-center text-sm">
+                {weekRange}
               </span>
+              
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigateMonth('next')}
+                onClick={() => navigateWeek('next')}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -196,11 +203,11 @@ export const WorkoutCalendar = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Stats - FIXED: Only count actual workouts */}
+          {/* Weekly Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{totalWorkouts}</div>
-              <div className="text-sm text-muted-foreground">Echte Workouts</div>
+              <div className="text-sm text-muted-foreground">Workouts</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">{avgIntensity}</div>
@@ -212,54 +219,53 @@ export const WorkoutCalendar = () => {
             </div>
           </div>
 
-          {/* Calendar Grid */}
-          <div className="space-y-2">
+          {/* Weekly Calendar Grid */}
+          <div className="space-y-3">
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 gap-1 text-center text-sm font-medium text-muted-foreground">
+            <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-muted-foreground">
               {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(day => (
                 <div key={day} className="p-2">{day}</div>
               ))}
             </div>
             
             {/* Calendar days */}
-            <div className="grid grid-cols-7 gap-1">
-              {days.map((day, index) => {
-                if (!day) {
-                  return <div key={index} className="p-2 h-16"></div>;
-                }
-                
+            <div className="grid grid-cols-7 gap-2">
+              {weekDays.map((day, index) => {
                 const workout = getWorkoutForDate(day);
-                const isToday = day.toDateString() === new Date().toDateString();
-                const isPast = isPastDate(day);
+                const isToday = isDateToday(toDateString(day));
+                const isPast = isDatePast(toDateString(day));
                 const canEdit = isPast || isToday;
                 
                 return (
                   <div 
                     key={day.toISOString()} 
                     className={`
-                      relative p-2 h-16 border rounded-lg text-center text-sm group
-                      ${isToday ? 'border-primary bg-primary/10' : 'border-gray-200'}
-                      ${canEdit && !workout ? 'hover:bg-gray-50 hover:border-gray-300 cursor-pointer' : ''}
+                      relative p-3 h-20 border rounded-xl text-center text-sm group transition-all
+                      ${isToday ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-gray-200 hover:border-gray-300'}
+                      ${canEdit && !workout ? 'hover:bg-gray-50 cursor-pointer' : ''}
                     `}
                   >
-                    <div className="font-medium">{day.getDate()}</div>
+                    <div className={`font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+                      {day.getDate()}
+                    </div>
                     
                     {workout && workout.did_workout ? (
-                      <div className="absolute inset-1 flex flex-col items-center justify-center">
-                        <div className="flex items-center gap-1 mb-1">
-                          <span className="text-xs">{getWorkoutTypeEmoji(workout.workout_type)}</span>
+                      <div className="flex flex-col items-center justify-center space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-lg">{getWorkoutTypeEmoji(workout.workout_type)}</span>
                           {workout.workout_type !== 'pause' && (
                             <div 
                               className={`w-2 h-2 rounded-full ${getIntensityColor(workout.intensity)}`}
                             />
                           )}
                         </div>
+                        
                         {canEdit && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
+                              className="h-6 w-6 p-0 hover:bg-blue-100"
                               onClick={() => handleDateClick(day, workout)}
                             >
                               <Edit className="h-3 w-3" />
@@ -267,7 +273,7 @@ export const WorkoutCalendar = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteWorkout(workout.id, workout.date);
@@ -279,14 +285,14 @@ export const WorkoutCalendar = () => {
                         )}
                       </div>
                     ) : workout && !workout.did_workout ? (
-                      <div className="absolute inset-1 flex items-center justify-center">
+                      <div className="flex flex-col items-center justify-center space-y-1">
                         <span className="text-lg">🏝️</span>
                         {canEdit && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
+                              className="h-6 w-6 p-0 hover:bg-blue-100"
                               onClick={() => handleDateClick(day, workout)}
                             >
                               <Edit className="h-3 w-3" />
@@ -294,7 +300,7 @@ export const WorkoutCalendar = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteWorkout(workout.id, workout.date);
@@ -306,17 +312,21 @@ export const WorkoutCalendar = () => {
                         )}
                       </div>
                     ) : canEdit ? (
-                      <div className="absolute inset-1 flex items-center justify-center">
+                      <div className="flex items-center justify-center h-full">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity border border-dashed border-gray-300"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity border border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5"
                           onClick={() => handleDateClick(day)}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="text-xs text-gray-400">
+                        {formatDisplayDate(day, 'd')}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -324,7 +334,7 @@ export const WorkoutCalendar = () => {
           </div>
 
           {/* Legend */}
-          <div className="text-xs text-muted-foreground space-y-1">
+          <div className="text-xs text-muted-foreground space-y-2 pt-2 border-t">
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -343,11 +353,11 @@ export const WorkoutCalendar = () => {
                 <span>Extrem (8-10)</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs">
               <Plus className="h-3 w-3 inline mr-1" />
-              Klicke auf vergangene Tage um Workouts nachzutragen •
-              <Trash2 className="h-3 w-3 inline mx-1" />
-              Hover über Einträge zum Löschen
+              Klicke auf vergangene/heutige Tage um Workouts einzutragen •
+              <Edit className="h-3 w-3 inline mx-1" />
+              Hover über Einträge zum Bearbeiten
             </p>
           </div>
         </CardContent>
