@@ -82,6 +82,28 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
   useDataRefresh(refreshData);
 
+  // Helper function to get German calendar week number
+  const getGermanWeekNumber = (date: Date): number => {
+    const tempDate = new Date(date.getTime());
+    tempDate.setHours(0, 0, 0, 0);
+    // Thursday in current week decides the year
+    tempDate.setDate(tempDate.getDate() + 3 - (tempDate.getDay() + 6) % 7);
+    // January 4 is always in week 1
+    const week1 = new Date(tempDate.getFullYear(), 0, 4);
+    // Adjust to Thursday in week 1 and count weeks from there
+    return 1 + Math.round(((tempDate.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  };
+
+  // Helper function to get start of week (Monday)
+  const getWeekStart = (date: Date): Date => {
+    const weekStart = new Date(date);
+    const day = weekStart.getDay();
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
+  };
+
   const loadHistoryData = async () => {
     if (!user) {
       setLoading(false);
@@ -91,8 +113,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
     try {
       setLoading(true);
       
-      // For year view, we need more days to create proper weekly averages
-      const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 42; // 6 weeks for year view
+      // Load proper amount of days based on time range
+      const daysToLoad = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365; // Full year for year view
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToLoad);
 
@@ -127,24 +149,31 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         imagesByMealId.get(image.meal_id)?.push(image.image_url);
       });
 
-      // Only use weekly grouping for year view
+      // For year view, group by calendar weeks (52 weeks)
       if (timeRange === 'year') {
         const weeklyData = new Map<string, DailyData>();
+        const today = new Date();
+        const currentYear = today.getFullYear();
         
-        // Create 6 weeks of data for year view
-        for (let i = 0; i < 6; i++) {
-          const today = new Date();
-          const currentWeekStart = new Date(today);
-          currentWeekStart.setDate(today.getDate() - today.getDay() + 1);
-          currentWeekStart.setDate(currentWeekStart.getDate() - (i * 7));
+        // Generate all 52 calendar weeks of the current year
+        for (let weekNum = 1; weekNum <= 52; weekNum++) {
+          // Calculate the Monday of each calendar week
+          const jan4 = new Date(currentYear, 0, 4); // January 4th is always in week 1
+          const week1Monday = getWeekStart(jan4);
+          const weekStart = new Date(week1Monday);
+          weekStart.setDate(week1Monday.getDate() + (weekNum - 1) * 7);
           
-          const weekKey = currentWeekStart.toISOString().split('T')[0];
-          const weekEnd = new Date(currentWeekStart);
-          weekEnd.setDate(currentWeekStart.getDate() + 6);
+          // Skip future weeks
+          if (weekStart > today) continue;
+          
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          
+          const weekKey = `${currentYear}-W${weekNum.toString().padStart(2, '0')}`;
           
           weeklyData.set(weekKey, {
             date: weekKey,
-            displayDate: `${currentWeekStart.toLocaleDateString('de-DE', { 
+            displayDate: `KW ${weekNum}: ${weekStart.toLocaleDateString('de-DE', { 
               day: '2-digit', 
               month: '2-digit' 
             })} - ${weekEnd.toLocaleDateString('de-DE', { 
@@ -159,11 +188,11 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           });
         }
 
+        // Group meals by calendar week
         mealsData?.forEach(meal => {
           const mealDate = new Date(meal.created_at);
-          const weekStart = new Date(mealDate);
-          weekStart.setDate(mealDate.getDate() - mealDate.getDay() + 1);
-          const weekKey = weekStart.toISOString().split('T')[0];
+          const weekNum = getGermanWeekNumber(mealDate);
+          const weekKey = `${mealDate.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
           
           const week = weeklyData.get(weekKey);
           if (week) {
@@ -179,26 +208,39 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           }
         });
 
-        // Calculate weekly averages
+        // Calculate weekly averages (over all 7 days, not just days with meals)
         weeklyData.forEach(week => {
-          if (week.meals.length > 0) {
-            const uniqueDays = new Set();
-            week.meals.forEach(meal => {
-              const mealDate = new Date(meal.created_at).toISOString().split('T')[0];
-              uniqueDays.add(mealDate);
-            });
-            const daysWithMeals = uniqueDays.size;
+          const today = new Date();
+          const weekMatch = week.date.match(/(\d{4})-W(\d{2})/);
+          if (weekMatch) {
+            const year = parseInt(weekMatch[1]);
+            const weekNum = parseInt(weekMatch[2]);
             
-            if (daysWithMeals > 0) {
-              week.calories = Math.round(week.calories / daysWithMeals);
-              week.protein = Math.round(week.protein / daysWithMeals);
-              week.carbs = Math.round(week.carbs / daysWithMeals);
-              week.fats = Math.round(week.fats / daysWithMeals);
+            // Calculate actual week start
+            const jan4 = new Date(year, 0, 4);
+            const week1Monday = getWeekStart(jan4);
+            const weekStart = new Date(week1Monday);
+            weekStart.setDate(week1Monday.getDate() + (weekNum - 1) * 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            // For current week, only count days that have passed
+            let daysToAverage = 7;
+            if (weekEnd > today) {
+              const daysPassed = Math.max(1, Math.ceil((today.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+              daysToAverage = Math.min(7, daysPassed);
             }
+            
+            // Calculate average over the appropriate number of days
+            week.calories = Math.round(week.calories / daysToAverage);
+            week.protein = Math.round(week.protein / daysToAverage);
+            week.carbs = Math.round(week.carbs / daysToAverage);
+            week.fats = Math.round(week.fats / daysToAverage);
           }
         });
 
         const weeklyArray = Array.from(weeklyData.values())
+          .filter(week => week.date <= `${currentYear}-W${getGermanWeekNumber(today).toString().padStart(2, '0')}`)
           .sort((a, b) => b.date.localeCompare(a.date));
 
         console.log(`Created ${weeklyArray.length} weekly entries for year view`);
@@ -447,7 +489,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           onClick={() => setTimeRange('year')}
           className="text-xs"
         >
-          365 Tage
+          52 Wochen
         </Button>
       </div>
 
