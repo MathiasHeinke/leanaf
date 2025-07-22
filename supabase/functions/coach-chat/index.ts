@@ -29,6 +29,39 @@ serve(async (req) => {
 
     console.log('Processing enhanced coach chat for user:', userId);
 
+    // Check if user has active subscription
+    let userTier = 'free';
+    const { data: subscriber } = await supabase
+      .from('subscribers')
+      .select('subscribed, subscription_tier')
+      .eq('user_id', userId)
+      .single();
+      
+    if (subscriber?.subscribed) {
+      userTier = 'pro';
+    }
+    
+    // For free users, check usage limits
+    if (userTier === 'free') {
+      const { data: usageResult } = await supabase.rpc('check_ai_usage_limit', {
+        p_user_id: userId,
+        p_feature_type: 'coach_chat'
+      });
+      
+      if (!usageResult?.can_use) {
+        console.log('⛔ [COACH-CHAT] Usage limit exceeded for user:', userId);
+        return new Response(JSON.stringify({ 
+          error: 'Tägliches Limit für Coach-Chat erreicht. Upgrade zu Pro für unbegrenzte Nutzung.',
+          code: 'USAGE_LIMIT_EXCEEDED',
+          daily_remaining: usageResult?.daily_remaining || 0,
+          monthly_remaining: usageResult?.monthly_remaining || 0
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Get user profile and coach settings
     const { data: profile, error: profileError } = await supabase
       .from('profiles')

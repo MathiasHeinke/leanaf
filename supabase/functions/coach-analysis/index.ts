@@ -36,6 +36,41 @@ serve(async (req) => {
 
     console.log('🧠 Coach Analysis - Starting analysis with GPT-4.1');
 
+    // Check if user has active subscription for daily analysis limits
+    if (userId) {
+      let userTier = 'free';
+      const { data: subscriber } = await supabase
+        .from('subscribers')
+        .select('subscribed, subscription_tier')
+        .eq('user_id', userId)
+        .single();
+        
+      if (subscriber?.subscribed) {
+        userTier = 'pro';
+      }
+      
+      // For free users, check usage limits (1 per week)
+      if (userTier === 'free') {
+        const { data: usageResult } = await supabase.rpc('check_ai_usage_limit', {
+          p_user_id: userId,
+          p_feature_type: 'daily_analysis'
+        });
+        
+        if (!usageResult?.can_use) {
+          console.log('⛔ [COACH-ANALYSIS] Usage limit exceeded for user:', userId);
+          return new Response(JSON.stringify({ 
+            error: 'Wöchentliches Limit für tägliche Analyse erreicht. Upgrade zu Pro für unbegrenzte Nutzung.',
+            code: 'USAGE_LIMIT_EXCEEDED',
+            weekly_remaining: usageResult?.weekly_remaining || 0,
+            monthly_remaining: usageResult?.monthly_remaining || 0
+          }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    }
+
     // Get user personality if userId provided
     let personality = 'motivierend';
     let muscleMaintenancePriority = false;

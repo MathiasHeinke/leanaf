@@ -43,11 +43,11 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
       case 'meal_analysis':
         return { name: 'AI Meal Analysen', dailyLimit: 5, icon: Brain };
       case 'coach_chat':
-        return { name: 'Coach Chat', dailyLimit: 0, icon: Zap };
+        return { name: 'Coach Chat', dailyLimit: 2, icon: Zap };
       case 'coach_recipes':
-        return { name: 'Coach Recipes', dailyLimit: 0, icon: Zap };
+        return { name: 'Coach Recipes', dailyLimit: 1, icon: Zap };
       case 'daily_analysis':
-        return { name: 'Daily Analysis', dailyLimit: 0, icon: Zap };
+        return { name: 'Daily Analysis', dailyLimit: 0, weeklyLimit: 1, icon: Zap };
       default:
         return { name: 'AI Feature', dailyLimit: 0, icon: Brain };
     }
@@ -59,7 +59,8 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
   const dailyRemaining = Math.max(0, featureInfo.dailyLimit - dailyUsed);
   const progressPercent = featureInfo.dailyLimit > 0 ? (dailyUsed / featureInfo.dailyLimit) * 100 : 0;
 
-  const isProOnly = featureInfo.dailyLimit === 0;
+  const isWeeklyFeature = featureType === 'daily_analysis';
+  const isProOnly = featureInfo.dailyLimit === 0 && !isWeeklyFeature;
 
   return (
     <Card className={`${className} ${isProOnly ? 'border-orange-200 bg-orange-50' : ''}`}>
@@ -86,6 +87,32 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
             >
               Jetzt upgraden
             </Button>
+          </div>
+        ) : isWeeklyFeature ? (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span>Diese Woche verwendet:</span>
+              <span className="text-blue-600 font-medium">
+                0/1
+              </span>
+            </div>
+            <Progress value={0} className="h-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                1 pro Woche verfügbar
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => navigate('/subscription')}
+                className="text-xs px-2 py-1 h-6"
+              >
+                Upgrade
+              </Button>
+            </div>
+            <div className="text-xs text-blue-600">
+              Wöchentliches Feature - Upgrade für tägliche Nutzung
+            </div>
           </div>
         ) : (
           <div className="space-y-2">

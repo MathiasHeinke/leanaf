@@ -7,10 +7,13 @@ interface AIUsageStatus {
   can_use: boolean;
   daily_count: number;
   monthly_count: number;
+  weekly_count?: number;
   daily_limit: number;
   monthly_limit: number;
+  weekly_limit?: number;
   daily_remaining: number;
   monthly_remaining: number;
+  weekly_remaining?: number;
 }
 
 export const useAIUsageLimits = () => {
@@ -36,26 +39,13 @@ export const useAIUsageLimits = () => {
       };
     }
 
-    // Only meal_analysis is available for free users
-    if (featureType !== 'meal_analysis') {
-      return {
-        can_use: false,
-        daily_count: 0,
-        monthly_count: 0,
-        daily_limit: 0,
-        monthly_limit: 0,
-        daily_remaining: 0,
-        monthly_remaining: 0
-      };
-    }
+    // All AI features are now available for free users with limits
 
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc('check_ai_usage_limit', {
         p_user_id: user.id,
-        p_feature_type: featureType,
-        p_daily_limit: 5,
-        p_monthly_limit: 150
+        p_feature_type: featureType
       });
 
       if (error) {

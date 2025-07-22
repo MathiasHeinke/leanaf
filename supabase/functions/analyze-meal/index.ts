@@ -66,9 +66,7 @@ serve(async (req) => {
           if (userTier === 'free') {
             const { data: usageResult } = await supabaseClient.rpc('check_ai_usage_limit', {
               p_user_id: user.id,
-              p_feature_type: 'meal_analysis',
-              p_daily_limit: 5,
-              p_monthly_limit: 150
+              p_feature_type: 'meal_analysis'
             });
             
             if (!usageResult?.can_use) {
@@ -232,8 +230,8 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     console.log('📤 [ANALYZE-MEAL] Sending request to OpenAI...');
     const openAIStartTime = Date.now();
     
-    // Select AI model based on user tier
-    const aiModel = userTier === 'pro' ? 'gpt-4o' : 'gpt-4o-mini';
+    // Use GPT-4.1 for all users for better quality
+    const aiModel = 'gpt-4.1-2025-04-14';
     console.log(`🤖 [ANALYZE-MEAL] Using AI model: ${aiModel} for ${userTier} user`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

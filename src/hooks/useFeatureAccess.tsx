@@ -10,7 +10,10 @@ export const FEATURE_TIERS = {
   basic_dashboard: 'free',
   profile: 'free',
   basic_charts: 'free',
-  meal_analysis_limited: 'free', // 5 per day with GPT-4o-mini
+  meal_analysis: 'free', // 5 per day with GPT-4.1
+  coach_chat: 'free', // 2 per day with GPT-4.1
+  coach_recipes: 'free', // 1 per day with GPT-4.1
+  daily_analysis: 'free', // 1 per week with GPT-4.1
   
   // Pro features - require subscription
   workout_tracking: 'pro',
@@ -21,9 +24,6 @@ export const FEATURE_TIERS = {
   advanced_charts: 'pro',
   meal_verification: 'pro',
   premium_insights: 'pro',
-  coach_recipes: 'pro',
-  coach_chat: 'pro',
-  daily_analysis: 'pro',
   transformation_dashboard: 'pro',
   unlimited_ai: 'pro', // Unlimited AI with GPT-4.1
 } as const;

@@ -43,6 +43,39 @@ serve(async (req) => {
 
     console.log('🍳 Coach Recipes - Generating recommendations with GPT-4.1 for user:', user.id);
 
+    // Check if user has active subscription
+    let userTier = 'free';
+    const { data: subscriber } = await supabase
+      .from('subscribers')
+      .select('subscribed, subscription_tier')
+      .eq('user_id', user.id)
+      .single();
+      
+    if (subscriber?.subscribed) {
+      userTier = 'pro';
+    }
+    
+    // For free users, check usage limits
+    if (userTier === 'free') {
+      const { data: usageResult } = await supabase.rpc('check_ai_usage_limit', {
+        p_user_id: user.id,
+        p_feature_type: 'coach_recipes'
+      });
+      
+      if (!usageResult?.can_use) {
+        console.log('⛔ [COACH-RECIPES] Usage limit exceeded for user:', user.id);
+        return new Response(JSON.stringify({ 
+          error: 'Tägliches Limit für Coach-Rezepte erreicht. Upgrade zu Pro für unbegrenzte Nutzung.',
+          code: 'USAGE_LIMIT_EXCEEDED',
+          daily_remaining: usageResult?.daily_remaining || 0,
+          monthly_remaining: usageResult?.monthly_remaining || 0
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
