@@ -28,6 +28,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
   const [walkingNotes, setWalkingNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -68,7 +69,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         date: todayDateString
       };
 
-      if (hasWorkoutToday) {
+      if (hasWorkoutToday && todaysWorkout?.id) {
         // Update existing workout - no points awarded
         const { error } = await supabase
           .from('workouts')
@@ -92,6 +93,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         if (workoutType !== 'pause') {
           await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
           await updateStreak('workout');
+          
+          // Show points animation
+          setShowPointsAnimation(true);
+          setTimeout(() => setShowPointsAnimation(false), 3000);
         }
 
         toast.success('Workout erfolgreich eingetragen!');
@@ -138,6 +143,14 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
              </p>
           </div>
           <div className="flex items-center gap-2">
+            {todaysWorkout.workout_type !== 'pause' && (
+              <Badge 
+                variant="secondary" 
+                className={`bg-orange-100 text-orange-700 border-orange-300 ${showPointsAnimation ? 'animate-pulse' : ''}`}
+              >
+                💪 +8P
+              </Badge>
+            )}
             <InfoButton
               title="Workout & Regeneration"
               description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"

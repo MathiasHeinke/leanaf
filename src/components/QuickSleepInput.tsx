@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -10,6 +9,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { Badge } from "@/components/ui/badge";
 
 interface QuickSleepInputProps {
   onSleepAdded?: () => void;
@@ -21,6 +21,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   const [sleepQuality, setSleepQuality] = useState<number[]>([7]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -90,6 +91,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), 'Schlaf eingetragen');
         await updateStreak('sleep_tracking');
 
+        // Show points animation
+        setShowPointsAnimation(true);
+        setTimeout(() => setShowPointsAnimation(false), 3000);
+
         toast.success('Schlaf erfolgreich eingetragen!');
       }
 
@@ -125,6 +130,12 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Badge 
+              variant="secondary" 
+              className={`bg-blue-100 text-blue-700 border-blue-300 ${showPointsAnimation ? 'animate-pulse' : ''}`}
+            >
+              😴 +4P
+            </Badge>
             <InfoButton
               title="Schlaf Tracking"
               description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
