@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,17 +66,17 @@ export const BadgeSystem = () => {
   const getBadgeColor = (badgeType: string) => {
     switch (badgeType) {
       case 'measurement_consistency':
-        return 'bg-purple-500/10 text-purple-600 border-purple-200 dark:border-purple-800';
+        return 'hsl(270, 70%, 55%)'; // Purple
       case 'workout_streak':
-        return 'bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-800';
+        return 'hsl(160, 70%, 45%)'; // Emerald
       case 'deficit_consistency':
-        return 'bg-blue-500/10 text-blue-600 border-blue-200 dark:border-blue-800';
+        return 'hsl(210, 70%, 55%)'; // Blue
       case 'first_measurement':
-        return 'bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-800';
+        return 'hsl(45, 80%, 55%)'; // Amber
       case 'weekly_goal':
-        return 'bg-rose-500/10 text-rose-600 border-rose-200 dark:border-rose-800';
+        return 'hsl(350, 70%, 55%)'; // Rose
       default:
-        return 'bg-gray-500/10 text-gray-600 border-gray-200 dark:border-gray-800';
+        return 'hsl(220, 20%, 50%)'; // Gray
     }
   };
 
@@ -100,25 +101,48 @@ export const BadgeSystem = () => {
 
         {badges.length > 0 ? (
           <div className="space-y-3">
-            {badges.map((badge) => (
-              <div 
-                key={badge.id}
-                className={`p-4 rounded-xl border ${getBadgeColor(badge.badge_type)} transition-all hover:scale-[1.02]`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0">
-                    {getBadgeIcon(badge.badge_type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">{badge.badge_name}</div>
-                    <div className="text-sm opacity-80">{badge.badge_description}</div>
-                    <div className="text-xs opacity-60 mt-1">
-                      Verdient am {new Date(badge.earned_at).toLocaleDateString('de-DE')}
+            {badges.map((badge) => {
+              const badgeColor = getBadgeColor(badge.badge_type);
+              return (
+                <div 
+                  key={badge.id}
+                  className="p-4 rounded-xl border-2 bg-background/90 backdrop-blur-sm transition-all hover:scale-[1.02]"
+                  style={{
+                    borderColor: `${badgeColor}50`
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="flex-shrink-0 p-2 rounded-lg border-2"
+                      style={{
+                        backgroundColor: `${badgeColor}15`,
+                        borderColor: `${badgeColor}30`,
+                        color: badgeColor
+                      }}
+                    >
+                      {getBadgeIcon(badge.badge_type)}
                     </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-foreground">{badge.badge_name}</div>
+                      <div className="text-sm text-muted-foreground">{badge.badge_description}</div>
+                      <div className="text-xs text-muted-foreground/70 mt-1">
+                        Verdient am {new Date(badge.earned_at).toLocaleDateString('de-DE')}
+                      </div>
+                    </div>
+                    <Badge 
+                      variant="outline"
+                      className="bg-background/90 font-semibold border-2"
+                      style={{
+                        color: badgeColor,
+                        borderColor: `${badgeColor}50`
+                      }}
+                    >
+                      ✓
+                    </Badge>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -128,15 +152,15 @@ export const BadgeSystem = () => {
               Verdiene deine ersten Badges durch:
             </p>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 justify-center">
+              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
                 <Target className="h-4 w-4" />
                 <span>Regelmäßige Körpermaße (4 Wochen)</span>
               </div>
-              <div className="flex items-center gap-2 justify-center">
+              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
                 <Zap className="h-4 w-4" />
                 <span>Training-Streak (7 Tage)</span>
               </div>
-              <div className="flex items-center gap-2 justify-center">
+              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
                 <Star className="h-4 w-4" />
                 <span>Kaloriendefizit halten (1 Woche)</span>
               </div>

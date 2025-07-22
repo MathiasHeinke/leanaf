@@ -15,20 +15,20 @@ export const PointsBadge = ({
   bonusPoints, 
   icon, 
   animated = false,
-  variant = 'secondary'
+  variant = 'outline'
 }: PointsBadgeProps) => {
   return (
     <div className="flex items-center gap-1">
       <Badge 
-        variant={variant}
-        className={`${animated ? 'animate-pulse' : ''}`}
+        variant="outline"
+        className={`bg-background/90 border-2 border-primary/50 text-foreground font-semibold backdrop-blur-sm ${animated ? 'animate-pulse' : ''}`}
       >
         {icon} +{points}P
       </Badge>
       {bonusPoints && bonusPoints > 0 && (
         <Badge 
           variant="outline"
-          className={`text-yellow-600 border-yellow-300 bg-yellow-50 ${animated ? 'animate-bounce' : ''}`}
+          className={`bg-yellow-50/90 dark:bg-yellow-950/90 border-2 border-yellow-500/60 text-yellow-700 dark:text-yellow-300 font-semibold backdrop-blur-sm ${animated ? 'animate-bounce' : ''}`}
         >
           ⭐ +{bonusPoints}BP
         </Badge>

@@ -46,9 +46,6 @@ export const PointsHeader = () => {
 
   const displayLevelColor = getLevelColor(userPoints.level_name);
 
-  // Always use outline variant for transparent backgrounds
-  const getBadgeVariant = () => 'outline';
-
   return (
     <div className="border-b border-border/30 py-1">
         <div className="container mx-auto px-3 max-w-sm flex items-center justify-between">
@@ -92,16 +89,17 @@ export const PointsHeader = () => {
             <div className="flex items-center space-x-1.5 sm:space-x-2">
               <Badge 
                 variant="outline"
-                className="text-xs font-semibold px-2 py-0.5 sm:py-0 bg-transparent"
+                className="text-xs font-semibold px-2 py-0.5 sm:py-0 bg-background/90 backdrop-blur-sm border-2"
                 style={{ 
                   color: displayLevelColor,
                   borderColor: displayLevelColor,
-                  backgroundColor: 'transparent'
+                  backgroundColor: 'hsl(var(--background) / 0.9)',
+                  backdropFilter: 'blur(4px)'
                 }}
               >
                 {userPoints.level_name}
               </Badge>
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-foreground/80 bg-background/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
                 Lvl {userPoints.current_level}
               </span>
             </div>
@@ -117,7 +115,7 @@ export const PointsHeader = () => {
               background: `${displayLevelColor}20`
             }}
           />
-          <span className="font-medium text-xs sm:text-xs text-foreground whitespace-nowrap">
+          <span className="font-medium text-xs sm:text-xs text-foreground whitespace-nowrap bg-background/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
             {Math.max(0, currentLevelProgress)}/{maxPointsForCurrentLevel}
           </span>
         </div>
