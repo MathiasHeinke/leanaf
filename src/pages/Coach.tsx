@@ -2,11 +2,7 @@
 import Coach from "@/components/Coach";
 
 const CoachPage = () => {
-  return (
-    <div className="mt-3">
-      <Coach />
-    </div>
-  );
+  return <Coach />;
 };
 
 export default CoachPage;

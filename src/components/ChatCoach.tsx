@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -493,7 +492,7 @@ export const ChatCoach = ({
 
   if (isLoading) {
     return (
-      <Card className="h-[calc(100vh-160px)] flex items-center justify-center">
+      <Card className="h-[calc(100vh-140px)] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Lade Chat-Verlauf...</p>
@@ -503,8 +502,8 @@ export const ChatCoach = ({
   }
 
   return (
-    <Card className="h-[calc(100vh-160px)] flex flex-col">
-      <CardHeader className="pb-3 flex-shrink-0">
+    <Card className="h-[calc(100vh-140px)] flex flex-col">
+      <CardHeader className="pb-2 flex-shrink-0">
         <CardTitle className="flex items-center gap-3">
           <div className={`h-10 w-10 bg-gradient-to-br ${coachInfo.accentColor} rounded-xl flex items-center justify-center shadow-lg`}>
             <Brain className="h-5 w-5 text-white" />

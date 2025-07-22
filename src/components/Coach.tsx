@@ -332,14 +332,14 @@ const Coach = ({ onClose }: CoachProps) => {
   const averages = calculateAverages();
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <Tabs defaultValue="analyse" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="analyse">Analyse</TabsTrigger>
           <TabsTrigger value="coach">Coach</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="analyse" className="space-y-6 mt-6">
+        <TabsContent value="analyse" className="space-y-4 mt-3">
           {/* Überblick - grundlegende Statistiken */}
           <Overview 
             todaysTotals={todaysTotals}
@@ -360,7 +360,7 @@ const Coach = ({ onClose }: CoachProps) => {
           />
         </TabsContent>
         
-        <TabsContent value="coach" className="mt-6">
+        <TabsContent value="coach" className="mt-3">
           <ChatCoach 
             todaysTotals={todaysTotals}
             dailyGoals={dailyGoals}
