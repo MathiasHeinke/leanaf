@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
+import { CoachSelection } from '@/components/CoachSelection';
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -567,44 +568,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <h2 className="text-xl font-bold">{t('profile.coachSettings')}</h2>
             </div>
 
-            <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
-              <div>
-                <Label className="text-sm font-medium">{t('profile.coachPersonality')}</Label>
-                <Select value={coachPersonality} onValueChange={setCoachPersonality}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hart">
-                      <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-red-500" />
-                        <span>{t('profile.coachPersonalities.hart')}</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="soft">
-                      <div className="flex items-center gap-2">
-                        <Heart className="h-4 w-4 text-pink-500" />
-                        <span>{t('profile.coachPersonalities.soft')}</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="motivierend">
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-green-500" />
-                        <span>{t('profile.coachPersonalities.motivierend')}</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="bg-accent/10 rounded-xl p-3">
-                <div className="text-sm font-medium mb-1">{t('coach.preview')}:</div>
-                <div className="text-muted-foreground italic text-sm">
-                  {coachPersonality === 'hart' && t('coach.preview.tough')}
-                  {coachPersonality === 'soft' && t('coach.preview.soft')}
-                  {coachPersonality === 'motivierend' && t('coach.preview.motivating')}
-                </div>
-              </div>
+            <div className="bg-background rounded-xl p-4 shadow-sm border">
+              <CoachSelection 
+                selectedCoach={coachPersonality}
+                onCoachChange={setCoachPersonality}
+              />
             </div>
           </div>
 
