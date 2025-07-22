@@ -32,7 +32,7 @@ serve(async (req) => {
     // Get user profile and coach settings
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('coach_personality, muscle_maintenance_priority, macro_strategy, goal, age, gender, activity_level, weight, height')
+      .select('coach_personality, muscle_maintenance_priority, macro_strategy, goal, age, gender, activity_level, weight, height, display_name')
       .eq('user_id', userId)
       .single();
 
@@ -75,17 +75,30 @@ serve(async (req) => {
       .order('date', { ascending: false })
       .limit(7);
 
+    // Coach personality mapping with names
+    const getCoachInfo = (personality: string) => {
+      switch (personality) {
+        case 'hart': 
+          return { name: 'Sascha', emoji: '🎯', temp: 0.4 };
+        case 'liebevoll': 
+          return { name: 'Lucy', emoji: '❤️', temp: 0.8 };
+        case 'motivierend':
+        default:
+          return { name: 'Kai', emoji: '💪', temp: 0.7 };
+      }
+    };
+
     // Create personality-based system message
     const personalityPrompts = {
-      hart: "Du bist ein direkter, kompromissloser Fitness-Coach. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert.",
-      soft: "Du bist ein einfühlsamer, verständnisvoller Coach. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten.",
-      lustig: "Du bist ein humorvoller Coach mit guter Laune. Du motivierst mit Witzen, lockeren Sprüchen und bringst die Leute zum Lächeln.",
-      ironisch: "Du bist ein ironischer Coach mit sarkastischem Humor. Du nutzt Ironie und Augenzwinkern, aber immer konstruktiv.",
-      motivierend: "Du bist ein begeisternder, positiver Coach. Du feuerst an, motivierst mit Energie und siehst immer das Positive."
+      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness-Coach bei getLeanAI. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig.`,
+      liebevoll: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Coach bei getLeanAI. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend.`,
+      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Coach bei getLeanAI. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend.`
     };
 
     const personality = profile?.coach_personality || 'motivierend';
+    const coachInfo = getCoachInfo(personality);
     const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
+    const userName = profile?.display_name || 'User';
 
     // Calculate progress percentages
     const calorieProgress = dailyGoals?.calories ? Math.round((todaysTotals.calories / dailyGoals.calories) * 100) : 0;
@@ -93,10 +106,11 @@ serve(async (req) => {
 
     const systemMessage = `${personalityPrompt}
 
-Du bist ein KaloAI Coach und hilfst dem Benutzer bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
+Du hilfst ${userName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
 
 BENUTZER-PROFIL:
-- Persönlichkeit: ${personality}
+- Name: ${userName}
+- Persönlichkeit: ${personality} (${coachInfo.name} ${coachInfo.emoji})
 - Muskelerhalt-Priorität: ${profile?.muscle_maintenance_priority ? 'Ja' : 'Nein'}
 - Makro-Strategie: ${profile?.macro_strategy}
 - Ziel: ${profile?.goal}
@@ -137,15 +151,16 @@ ERNÄHRUNGSHISTORIE (letzte Tage):
 ${recentHistory.length > 0 ? recentHistory.slice(0, 3).map((day: any) => `- ${day.date}: ${day.totals.calories}kcal (${day.meals.length} Mahlzeiten)`).join('\n') : '- Noch keine Ernährungshistorie'}
 
 WICHTIGE ANWEISUNGEN:
-- Sei ${personality} in deinen Antworten
+- Du bist ${coachInfo.name} ${coachInfo.emoji} und bleibst IMMER in dieser Rolle
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
 - Halte Antworten prägnant aber hilfreich (max. 2-3 Absätze)
 - Nutze die verfügbaren Daten für personalisierte Insights
 - Bei Fragen nach spezifischen Plänen, erstelle konkrete Vorschläge
+- Verwende ${userName}'s Namen gelegentlich für persönlichen Touch
 
-Antworte auf Deutsch und nutze die Persönlichkeit "${personality}".`;
+Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
     // Prepare messages for OpenAI
     const messages = [
@@ -157,7 +172,7 @@ Antworte auf Deutsch und nutze die Persönlichkeit "${personality}".`;
       { role: 'user', content: message }
     ];
 
-    console.log('Sending enhanced request to OpenAI with personality:', personality);
+    console.log(`Sending enhanced request to OpenAI with personality: ${personality} (${coachInfo.name})`);
 
     // Call OpenAI API
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -169,7 +184,7 @@ Antworte auf Deutsch und nutze die Persönlichkeit "${personality}".`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: messages,
-        temperature: personality === 'lustig' ? 0.9 : personality === 'hart' ? 0.4 : 0.7,
+        temperature: coachInfo.temp,
         max_tokens: 300,
         frequency_penalty: 0.3,
         presence_penalty: 0.1,
@@ -189,11 +204,12 @@ Antworte auf Deutsch und nutze die Persönlichkeit "${personality}".`;
       throw new Error('No response from OpenAI');
     }
 
-    console.log('Generated enhanced chat response successfully');
+    console.log(`Generated enhanced chat response successfully from ${coachInfo.name}`);
 
     return new Response(JSON.stringify({ 
       response: reply,
       personality,
+      coachName: coachInfo.name,
       context: {
         todaysTotals,
         dailyGoals,

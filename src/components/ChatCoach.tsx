@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,12 +15,10 @@ import {
   MessageSquare,
   Trash2,
   Loader2,
-  Sparkles,
   Target,
   TrendingUp,
   Apple,
-  Dumbbell,
-  CalendarDays
+  Paperclip
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -73,6 +71,8 @@ export const ChatCoach = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
+  const [userName, setUserName] = useState('');
+  const [quickActionsShown, setQuickActionsShown] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -82,17 +82,25 @@ export const ChatCoach = ({
     stopRecording
   } = useVoiceRecording();
 
-  // Quick Action buttons
+  // Coach personality mapping
+  const getCoachInfo = (personality: string) => {
+    switch (personality) {
+      case 'hart': 
+        return { name: 'Sascha', emoji: '🎯', greeting: 'Hey {name}, Sascha hier. Keine Zeit für Smalltalk - was ist dein Ziel heute?' };
+      case 'liebevoll': 
+        return { name: 'Lucy', emoji: '❤️', greeting: 'Hey {name}, Lucy hier. Wie geht\'s dir denn heute - wie kann ich dir helfen?' };
+      case 'motivierend':
+      default:
+        return { name: 'Kai', emoji: '💪', greeting: 'Hey {name}, Kai hier! Bereit durchzustarten? Wie kann ich dir heute helfen?' };
+    }
+  };
+
+  // Quick actions (reduced to 3)
   const quickActions = [
     {
       icon: Target,
-      text: "Wie kann ich mein Ziel erreichen?",
-      prompt: "Analysiere meine aktuellen Daten und gib mir konkrete Tipps, wie ich mein Ziel erreichen kann."
-    },
-    {
-      icon: TrendingUp,
-      text: "Analysiere meine letzte Woche",
-      prompt: "Analysiere meinen Fortschritt der letzten Woche und gib mir Feedback zu meiner Entwicklung."
+      text: "Wie ist mein Fortschritt?",
+      prompt: "Gib mir eine detaillierte Analyse meines aktuellen Fortschritts und was ich verbessern kann."
     },
     {
       icon: Apple,
@@ -100,23 +108,17 @@ export const ChatCoach = ({
       prompt: "Basierend auf meinen Zielen und bisherigen Mahlzeiten, welche Meals empfiehlst du mir für heute?"
     },
     {
-      icon: Dumbbell,
-      text: "Erstelle einen Trainingsplan",
-      prompt: "Erstelle mir einen Trainingsplan, der zu meinen Zielen und meinem aktuellen Fortschritt passt."
-    },
-    {
-      icon: CalendarDays,
-      text: "Wie ist mein Fortschritt?",
-      prompt: "Gib mir eine detaillierte Analyse meines aktuellen Fortschritts und was ich verbessern kann."
+      icon: TrendingUp,
+      text: "Analysiere meine letzte Woche",
+      prompt: "Analysiere meinen Fortschritt der letzten Woche und gib mir Feedback zu meiner Entwicklung."
     }
   ];
 
-  // Load coach personality and chat history
+  // Load user data and coach personality
   useEffect(() => {
     if (user?.id) {
-      loadCoachPersonality();
+      loadUserData();
       loadChatHistory();
-      generateWelcomeMessage();
     }
   }, [user?.id]);
 
@@ -131,24 +133,25 @@ export const ChatCoach = ({
     }
   };
 
-  const loadCoachPersonality = async () => {
+  const loadUserData = async () => {
     if (!user?.id) return;
 
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('coach_personality')
+        .select('coach_personality, display_name')
         .eq('user_id', user.id)
         .single();
 
       if (error) {
-        console.error('Error loading coach personality:', error);
+        console.error('Error loading user data:', error);
         return;
       }
 
       setCoachPersonality(data?.coach_personality || 'motivierend');
+      setUserName(data?.display_name || user.email?.split('@')[0] || 'User');
     } catch (error) {
-      console.error('Error in loadCoachPersonality:', error);
+      console.error('Error in loadUserData:', error);
     }
   };
 
@@ -162,7 +165,7 @@ export const ChatCoach = ({
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
-        .limit(20); // Last 20 messages
+        .limit(20);
 
       if (error) {
         console.error('Error loading chat history:', error);
@@ -176,7 +179,19 @@ export const ChatCoach = ({
         created_at: msg.created_at,
         coach_personality: msg.coach_personality
       })) as ChatMessage[];
+      
       setMessages(mappedMessages);
+      
+      // Generate welcome message if no history
+      if (mappedMessages.length === 0) {
+        generateWelcomeMessage();
+      } else {
+        // Show quick actions if last message was from assistant
+        const lastMessage = mappedMessages[mappedMessages.length - 1];
+        if (lastMessage?.role === 'assistant') {
+          setQuickActionsShown(true);
+        }
+      }
     } catch (error) {
       console.error('Error in loadChatHistory:', error);
     } finally {
@@ -185,11 +200,10 @@ export const ChatCoach = ({
   };
 
   const generateWelcomeMessage = async () => {
-    if (!user?.id || messages.length > 0) return;
-
-    const welcomeMessage = "Hallo! Ich bin dein persönlicher Coach. Ich kann dir bei allem rund um deine Ernährung, dein Training und deine Ziele helfen. Was möchtest du wissen?";
+    const coachInfo = getCoachInfo(coachPersonality);
+    const welcomeText = coachInfo.greeting.replace('{name}', userName);
     
-    const savedMessage = await saveMessage('assistant', welcomeMessage);
+    const savedMessage = await saveMessage('assistant', welcomeText);
     if (savedMessage) {
       const mappedMessage: ChatMessage = {
         id: savedMessage.id,
@@ -199,6 +213,7 @@ export const ChatCoach = ({
         coach_personality: savedMessage.coach_personality
       };
       setMessages([mappedMessage]);
+      setQuickActionsShown(true);
     }
   };
 
@@ -236,6 +251,7 @@ export const ChatCoach = ({
 
     setInputText("");
     setIsThinking(true);
+    setQuickActionsShown(false);
 
     try {
       // Save user message and add to UI
@@ -256,14 +272,14 @@ export const ChatCoach = ({
         body: {
           message: userMessage,
           userId: user.id,
-          chatHistory: messages.slice(-10), // Last 10 messages for context
+          chatHistory: messages.slice(-10),
           userData: {
             todaysTotals,
             dailyGoals,
             averages,
-            historyData: historyData.slice(0, 7), // Last 7 days
+            historyData: historyData.slice(0, 7),
             trendData,
-            weightHistory: weightHistory.slice(0, 10) // Last 10 weight entries
+            weightHistory: weightHistory.slice(0, 10)
           }
         }
       });
@@ -285,6 +301,7 @@ export const ChatCoach = ({
           coach_personality: savedAssistantMessage.coach_personality
         };
         setMessages(prev => [...prev, mappedMessage]);
+        setQuickActionsShown(true);
       }
 
     } catch (error) {
@@ -303,17 +320,26 @@ export const ChatCoach = ({
           coach_personality: savedErrorMessage.coach_personality
         };
         setMessages(prev => [...prev, mappedMessage]);
+        setQuickActionsShown(true);
       }
     } finally {
       setIsThinking(false);
     }
   };
 
-  const handleVoiceToggle = () => {
+  const handleVoiceToggle = async () => {
     if (isRecording) {
-      stopRecording();
+      const transcribedText = await stopRecording();
+      if (transcribedText) {
+        setInputText(prev => prev ? prev + ' ' + transcribedText : transcribedText);
+        toast.success('Spracheingabe hinzugefügt');
+      }
     } else {
-      startRecording();
+      try {
+        await startRecording();
+      } catch (error) {
+        toast.error('Fehler bei der Sprachaufnahme');
+      }
     }
   };
 
@@ -333,6 +359,7 @@ export const ChatCoach = ({
       }
 
       setMessages([]);
+      setQuickActionsShown(false);
       toast.success('Chat-Verlauf gelöscht');
       generateWelcomeMessage();
     } catch (error) {
@@ -341,16 +368,7 @@ export const ChatCoach = ({
     }
   };
 
-  const getCoachIcon = (personality: string) => {
-    switch (personality) {
-      case 'hart': return '🎯';
-      case 'soft': return '😊';
-      case 'lustig': return '😄';
-      case 'ironisch': return '😏';
-      case 'motivierend': return '💪';
-      default: return '🤖';
-    }
-  };
+  const coachInfo = getCoachInfo(coachPersonality);
 
   if (isLoading) {
     return (
@@ -364,69 +382,43 @@ export const ChatCoach = ({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Schnelle Fragen
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {quickActions.map((action, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                className="h-auto p-4 text-left justify-start"
-                onClick={() => handleSendMessage(action.prompt)}
-              >
-                <action.icon className="h-4 w-4 mr-3 text-primary" />
-                <span className="text-sm">{action.text}</span>
-              </Button>
-            ))}
+    <Card className="h-[700px] flex flex-col">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+            <Brain className="h-5 w-5 text-white" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Chat Interface */}
-      <Card className="h-[600px] flex flex-col">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-              <Brain className="h-5 w-5 text-white" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">Coach {coachInfo.name} {coachInfo.emoji}</span>
+              <Badge variant="secondary" className="text-xs">
+                getLeanAI
+              </Badge>
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold">KaloAI Coach</span>
-                <Badge variant="secondary" className="text-xs">
-                  {getCoachIcon(coachPersonality)} {coachPersonality}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground font-normal">
-                Dein persönlicher Ernährungs- und Fitness-Coach
-              </p>
-            </div>
-            {messages.length > 1 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearChat}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </CardTitle>
-        </CardHeader>
-        
-        <Separator />
-        
-        <CardContent className="flex-1 flex flex-col p-4 gap-4">
-          {/* Chat Messages */}
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4">
+            <p className="text-sm text-muted-foreground font-normal">
+              Dein persönlicher Ernährungs- und Fitness-Coach
+            </p>
+          </div>
+          {messages.length > 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearChat}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      
+      <Separator />
+      
+      <CardContent className="flex-1 flex flex-col p-0 gap-0">
+        {/* Chat Messages - Fixed height container for scrolling */}
+        <div className="flex-1 relative overflow-hidden">
+          <ScrollArea className="h-full px-4">
+            <div className="space-y-4 py-4">
               {messages.map((message, index) => (
                 <div key={message.id || index} className="space-y-2">
                   <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -439,7 +431,7 @@ export const ChatCoach = ({
                         <div className="flex items-center gap-2 mb-2">
                           <Brain className="h-4 w-4 text-primary" />
                           <span className="text-xs font-medium text-primary">
-                            Coach ({message.coach_personality || coachPersonality})
+                            Coach {coachInfo.name} {coachInfo.emoji}
                           </span>
                         </div>
                       )}
@@ -456,7 +448,7 @@ export const ChatCoach = ({
                   <div className="max-w-[85%] bg-muted border rounded-2xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Brain className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-medium text-primary">Coach denkt nach...</span>
+                      <span className="text-xs font-medium text-primary">Coach {coachInfo.name} denkt nach...</span>
                     </div>
                     <div className="flex gap-1">
                       <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
@@ -466,63 +458,42 @@ export const ChatCoach = ({
                   </div>
                 </div>
               )}
+              
+              {/* Quick Actions in Chat */}
+              {quickActionsShown && !isThinking && (
+                <div className="flex justify-start">
+                  <div className="max-w-[90%] space-y-2">
+                    <div className="text-xs text-muted-foreground px-2">Oder frag mich:</div>
+                    <div className="grid gap-2">
+                      {quickActions.map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          className="h-auto p-3 text-left justify-start hover:bg-muted/80"
+                          onClick={() => {
+                            setQuickActionsShown(false);
+                            handleSendMessage(action.prompt);
+                          }}
+                        >
+                          <action.icon className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
+                          <span className="text-xs">{action.text}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div ref={scrollRef} />
             </div>
           </ScrollArea>
+        </div>
 
-          {/* Input Area */}
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <Textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Frage deinen Coach etwas..."
-                className="min-h-[60px] max-h-[120px] resize-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={isThinking}
-              />
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              {/* Voice Button */}
-              <Button
-                variant={isRecording ? "destructive" : "outline"}
-                size="sm"
-                onClick={handleVoiceToggle}
-                disabled={isThinking || isProcessing}
-                className="h-10 w-10 p-0"
-              >
-                {isRecording ? (
-                  <StopCircle className="h-4 w-4" />
-                ) : isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-              
-              {/* Send Button */}
-              <Button
-                onClick={() => handleSendMessage()}
-                disabled={!inputText.trim() || isThinking}
-                className="h-10 w-10 p-0"
-              >
-                {isThinking ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-          
+        {/* Input Area - MealInput style */}
+        <div className="p-4 border-t bg-background">
           {(isRecording || isProcessing) && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
               <div className="flex gap-1">
                 <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
                 <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
@@ -533,8 +504,83 @@ export const ChatCoach = ({
               </span>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </div>
+          
+          <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group">
+            <div className="relative">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Frage deinen Coach etwas..."
+                className="min-h-[60px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isThinking}
+              />
+              
+              {/* Left Action Button - Paperclip (disabled for now) */}
+              <div className="absolute left-4 bottom-2 flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className="h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 opacity-50 cursor-not-allowed"
+                  disabled={true}
+                >
+                  <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                </Button>
+              </div>
+              
+              {/* Right Action Buttons - Voice + Send */}
+              <div className="absolute right-4 bottom-2 flex items-center gap-2">
+                {/* Voice Recording Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 ${
+                    isRecording
+                      ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30' 
+                      : 'hover:bg-muted/90 hover:scale-105'
+                  } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={handleVoiceToggle}
+                  disabled={isProcessing}
+                >
+                  {isRecording ? (
+                    <StopCircle className="h-5 w-5" />
+                  ) : isProcessing ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  )}
+                </Button>
+                
+                {/* Send Button */}
+                <Button
+                  size="sm"
+                  type="button"
+                  className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
+                    (!inputText.trim() || isThinking)
+                      ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
+                      : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
+                  }`}
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputText.trim() || isThinking}
+                >
+                  {isThinking ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
