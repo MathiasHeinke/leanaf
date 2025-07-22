@@ -286,7 +286,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         weight: Number(entry.weight),
         body_fat_percentage: entry.body_fat_percentage ? Number(entry.body_fat_percentage) : undefined,
         muscle_percentage: entry.muscle_percentage ? Number(entry.muscle_percentage) : undefined,
-        photo_urls: entry.photo_urls || [],
+        photo_urls: Array.isArray(entry.photo_urls) ? entry.photo_urls.filter((url): url is string => typeof url === 'string') : [],
         notes: entry.notes || undefined,
         displayDate: new Date(entry.date).toLocaleDateString('de-DE', { 
           day: '2-digit', 
