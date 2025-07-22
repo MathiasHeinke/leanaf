@@ -69,21 +69,23 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     if (!user || !newWeight) return;
     
     try {
-      const weight = parseFloat(newWeight);
-      const bodyFat = newBodyFat ? parseFloat(newBodyFat) : null;
-      const muscleMass = newMuscleMass ? parseFloat(newMuscleMass) : null;
+      // Parse and validate input with locale-safe number parsing
+      const weight = parseFloat(newWeight.replace(',', '.'));
+      const bodyFat = newBodyFat ? parseFloat(newBodyFat.replace(',', '.')) : null;
+      const muscleMass = newMuscleMass ? parseFloat(newMuscleMass.replace(',', '.')) : null;
 
-      if (isNaN(weight) || weight <= 0) {
-        toast.error('Bitte gib ein gültiges Gewicht ein');
+      // Enhanced validation
+      if (isNaN(weight) || weight <= 0 || weight > 1000) {
+        toast.error('Bitte gib ein gültiges Gewicht zwischen 1 und 1000 kg ein');
         return;
       }
 
-      if (bodyFat !== null && (bodyFat < 0 || bodyFat > 100)) {
+      if (bodyFat !== null && (isNaN(bodyFat) || bodyFat < 0 || bodyFat > 100)) {
         toast.error('Körperfettanteil muss zwischen 0 und 100% liegen');
         return;
       }
 
-      if (muscleMass !== null && (muscleMass < 0 || muscleMass > 100)) {
+      if (muscleMass !== null && (isNaN(muscleMass) || muscleMass < 0 || muscleMass > 100)) {
         toast.error('Muskelanteil muss zwischen 0 und 100% liegen');
         return;
       }
@@ -97,15 +99,25 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         return;
       }
 
+      console.log('💾 [WeightHistory] Saving weight entry:', {
+        userId: user.id,
+        weight: weight,
+        date: selectedDateStr,
+        isToday: selectedDateStr === today
+      });
+
       // Upload photos if any
       let photoUrls: string[] = [];
       if (selectedFiles.length > 0) {
+        console.log('📸 [WeightHistory] Uploading photos...');
         const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
         if (uploadResult.success) {
           photoUrls = uploadResult.urls;
+          console.log('📸 [WeightHistory] Photos uploaded successfully:', photoUrls);
         } else {
-          console.error('Photo upload failed:', uploadResult.errors);
+          console.error('📸 [WeightHistory] Photo upload failed:', uploadResult.errors);
           toast.error('Fehler beim Hochladen der Bilder');
+          return;
         }
       }
 
@@ -115,6 +127,8 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       let result;
       if (existingEntry) {
         // Update existing entry
+        console.log('🔄 [WeightHistory] Updating existing entry with ID:', existingEntry.id);
+        
         const { error } = await supabase
           .from('weight_history')
           .update({ 
@@ -122,39 +136,75 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             body_fat_percentage: bodyFat,
             muscle_percentage: muscleMass,
             photo_urls: photoUrls,
-            notes: newNotes || null
+            notes: newNotes || null,
+            updated_at: new Date().toISOString()
           })
           .eq('id', existingEntry.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('🔄 [WeightHistory] Update failed:', error);
+          throw error;
+        }
+        
         result = 'updated';
+        console.log('✅ [WeightHistory] Weight entry updated successfully');
         toast.success('Gewicht erfolgreich aktualisiert');
       } else {
-        // Insert new entry
-        const { error } = await supabase
-          .from('weight_history')
-          .insert({
-            user_id: user.id,
-            weight: weight,
-            body_fat_percentage: bodyFat,
-            muscle_percentage: muscleMass,
-            photo_urls: photoUrls,
-            notes: newNotes || null,
-            date: selectedDateStr
-          });
+        // Insert new entry with fallback strategy
+        console.log('🆕 [WeightHistory] Creating new weight entry');
+        
+        const weightData = {
+          user_id: user.id,
+          weight: weight,
+          body_fat_percentage: bodyFat,
+          muscle_percentage: muscleMass,
+          photo_urls: photoUrls,
+          notes: newNotes || null,
+          date: selectedDateStr
+        };
 
-        if (error) throw error;
+        try {
+          // Try upsert first (preferred method with unique constraint)
+          const { error: upsertError } = await supabase
+            .from('weight_history')
+            .upsert(weightData, { 
+              onConflict: 'user_id, date'
+            });
+
+          if (upsertError) {
+            console.warn('⚠️ [WeightHistory] Upsert failed, trying insert fallback:', upsertError);
+            
+            // Fallback: Try direct insert
+            const { error: insertError } = await supabase
+              .from('weight_history')
+              .insert(weightData);
+
+            if (insertError) {
+              console.error('🆕 [WeightHistory] Insert failed:', insertError);
+              throw insertError;
+            }
+            
+            console.log('✅ [WeightHistory] Fallback insert successful');
+          } else {
+            console.log('✅ [WeightHistory] Upsert successful');
+          }
+        } catch (saveError) {
+          console.error('💥 [WeightHistory] All save strategies failed:', saveError);
+          throw saveError;
+        }
+        
         result = 'inserted';
 
         // Award points and update streak only for today's entries
         if (selectedDateStr === today) {
-          console.log('🎯 Awarding points for weight measurement today');
+          console.log('🎯 [WeightHistory] Awarding points for weight measurement today');
           try {
             await awardPoints('weight_measured', 3, 'Gewicht gemessen');
             await updateStreak('daily_tracking', selectedDate);
             toast.success('Gewicht erfolgreich hinzugefügt! +3 Punkte erhalten');
+            console.log('🎯 [WeightHistory] Points awarded successfully');
           } catch (pointsError) {
-            console.error('Error awarding points:', pointsError);
+            console.error('🎯 [WeightHistory] Points award failed (non-critical):', pointsError);
             toast.success('Gewicht erfolgreich hinzugefügt');
           }
         } else {
@@ -173,8 +223,25 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       setShowPhotoUpload(false);
       onDataUpdate();
     } catch (error: any) {
-      console.error('Error adding/updating weight:', error);
-      toast.error('Fehler beim Speichern des Gewichts');
+      console.error('💥 [WeightHistory] Critical error adding/updating weight:', {
+        error,
+        message: error?.message,
+        code: error?.code,
+        details: error?.details
+      });
+      
+      // Enhanced error messages based on error type
+      let errorMessage = 'Fehler beim Speichern des Gewichts';
+      
+      if (error?.message?.includes('duplicate')) {
+        errorMessage = 'Ein Gewichtseintrag für dieses Datum existiert bereits.';
+      } else if (error?.message?.includes('network')) {
+        errorMessage = 'Netzwerkfehler. Bitte überprüfe deine Internetverbindung.';
+      } else if (error?.code === '23505') {
+        errorMessage = 'Gewichtseintrag für dieses Datum bereits vorhanden.';
+      }
+      
+      toast.error(errorMessage);
     }
   };
 

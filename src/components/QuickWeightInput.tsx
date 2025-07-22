@@ -94,35 +94,49 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
     setIsSubmitting(true);
     try {
-      const weightValue = parseFloat(weight);
-      const bodyFatValue = bodyFat ? parseFloat(bodyFat) : null;
-      const muscleMassValue = muscleMass ? parseFloat(muscleMass) : null;
+      // Parse and validate input with locale-safe number parsing
+      const weightValue = parseFloat(weight.replace(',', '.'));
+      const bodyFatValue = bodyFat ? parseFloat(bodyFat.replace(',', '.')) : null;
+      const muscleMassValue = muscleMass ? parseFloat(muscleMass.replace(',', '.')) : null;
 
-      // Validate values
-      if (isNaN(weightValue) || weightValue <= 0) {
-        toast.error('Bitte gib ein gültiges Gewicht ein');
+      // Enhanced validation
+      if (isNaN(weightValue) || weightValue <= 0 || weightValue > 1000) {
+        toast.error('Bitte gib ein gültiges Gewicht zwischen 1 und 1000 kg ein');
         return;
       }
 
-      if (bodyFatValue !== null && (bodyFatValue < 0 || bodyFatValue > 100)) {
+      if (bodyFatValue !== null && (isNaN(bodyFatValue) || bodyFatValue < 0 || bodyFatValue > 100)) {
         toast.error('Körperfettanteil muss zwischen 0 und 100% liegen');
         return;
       }
 
-      if (muscleMassValue !== null && (muscleMassValue < 0 || muscleMassValue > 100)) {
+      if (muscleMassValue !== null && (isNaN(muscleMassValue) || muscleMassValue < 0 || muscleMassValue > 100)) {
         toast.error('Muskelanteil muss zwischen 0 und 100% liegen');
         return;
       }
 
+      const today = new Date().toISOString().split('T')[0];
+      
+      console.log('💾 [QuickWeightInput] Saving weight entry:', {
+        userId: user.id,
+        weight: weightValue,
+        date: today,
+        hasExistingEntry: hasWeightToday,
+        existingId: todaysWeight?.id
+      });
+
       // Upload new photos if any
       let newPhotoUrls: string[] = [];
       if (selectedFiles.length > 0) {
+        console.log('📸 [QuickWeightInput] Uploading photos...');
         const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
         if (uploadResult.success) {
           newPhotoUrls = uploadResult.urls;
+          console.log('📸 [QuickWeightInput] Photos uploaded successfully:', newPhotoUrls);
         } else {
-          console.error('Photo upload failed:', uploadResult.errors);
+          console.error('📸 [QuickWeightInput] Photo upload failed:', uploadResult.errors);
           toast.error('Fehler beim Hochladen der Bilder');
+          return;
         }
       }
 
@@ -132,7 +146,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       const weightData = {
         user_id: user.id,
         weight: weightValue,
-        date: new Date().toISOString().split('T')[0],
+        date: today,
         body_fat_percentage: bodyFatValue,
         muscle_percentage: muscleMassValue,
         photo_urls: allPhotoUrls,
@@ -141,6 +155,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
       if (hasWeightToday && todaysWeight?.id) {
         // Update existing weight entry - no points awarded
+        console.log('🔄 [QuickWeightInput] Updating existing entry with ID:', todaysWeight.id);
+        
         const { error } = await supabase
           .from('weight_history')
           .update({
@@ -153,36 +169,120 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           })
           .eq('id', todaysWeight.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('🔄 [QuickWeightInput] Update failed:', error);
+          throw error;
+        }
+        
+        console.log('✅ [QuickWeightInput] Weight entry updated successfully');
         toast.success('Gewicht aktualisiert!');
       } else {
-        // Create new weight entry
-        const { error } = await supabase
-          .from('weight_history')
-          .upsert(weightData, { 
-            onConflict: 'user_id, date'
-          });
+        // Create new weight entry with fallback strategy
+        console.log('🆕 [QuickWeightInput] Creating new weight entry');
+        
+        try {
+          // Try upsert first (preferred method with unique constraint)
+          const { error: upsertError } = await supabase
+            .from('weight_history')
+            .upsert(weightData, { 
+              onConflict: 'user_id, date'
+            });
 
-        if (error) throw error;
+          if (upsertError) {
+            console.warn('⚠️ [QuickWeightInput] Upsert failed, trying insert/update fallback:', upsertError);
+            
+            // Fallback: Try insert first, then update if constraint violation
+            try {
+              const { error: insertError } = await supabase
+                .from('weight_history')
+                .insert(weightData);
 
-        // Award points for weight tracking
-        await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen');
-        await updateStreak('weight_tracking');
+              if (insertError) {
+                // If insert fails due to duplicate, try update
+                if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
+                  console.log('🔄 [QuickWeightInput] Duplicate detected, updating existing entry...');
+                  
+                  const { error: updateError } = await supabase
+                    .from('weight_history')
+                    .update({
+                      weight: weightValue,
+                      body_fat_percentage: bodyFatValue,
+                      muscle_percentage: muscleMassValue,
+                      photo_urls: allPhotoUrls,
+                      notes: notes || null,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', user.id)
+                    .eq('date', today);
 
-        // Show points animation
-        setShowPointsAnimation(true);
-        setTimeout(() => setShowPointsAnimation(false), 3000);
+                  if (updateError) {
+                    console.error('🔄 [QuickWeightInput] Fallback update failed:', updateError);
+                    throw updateError;
+                  }
+                  
+                  console.log('✅ [QuickWeightInput] Fallback update successful');
+                } else {
+                  console.error('🆕 [QuickWeightInput] Insert failed with non-duplicate error:', insertError);
+                  throw insertError;
+                }
+              } else {
+                console.log('✅ [QuickWeightInput] Insert successful');
+              }
+            } catch (fallbackError) {
+              console.error('💥 [QuickWeightInput] All fallback strategies failed:', fallbackError);
+              throw fallbackError;
+            }
+          } else {
+            console.log('✅ [QuickWeightInput] Upsert successful');
+          }
 
-        toast.success('Gewicht erfolgreich eingetragen!');
+          // Award points for weight tracking (only for new entries)
+          try {
+            console.log('🎯 [QuickWeightInput] Awarding points for weight tracking');
+            await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen');
+            await updateStreak('weight_tracking');
+
+            // Show points animation
+            setShowPointsAnimation(true);
+            setTimeout(() => setShowPointsAnimation(false), 3000);
+            
+            console.log('🎯 [QuickWeightInput] Points awarded successfully');
+          } catch (pointsError) {
+            console.error('🎯 [QuickWeightInput] Points award failed (non-critical):', pointsError);
+            // Continue without failing the entire operation
+          }
+
+          toast.success('Gewicht erfolgreich eingetragen!');
+        } catch (saveError) {
+          console.error('💥 [QuickWeightInput] All save strategies failed:', saveError);
+          throw saveError;
+        }
       }
 
       setIsEditing(false);
       setSelectedFiles([]);
       setShowPhotoUpload(false);
       onWeightAdded?.();
-    } catch (error) {
-      console.error('Error saving weight:', error);
-      toast.error('Fehler beim Speichern des Gewichts');
+    } catch (error: any) {
+      console.error('💥 [QuickWeightInput] Critical error saving weight:', {
+        error,
+        message: error?.message,
+        code: error?.code,
+        details: error?.details
+      });
+      
+      // Enhanced error messages based on error type
+      let errorMessage = 'Fehler beim Speichern des Gewichts';
+      
+      if (error?.message?.includes('duplicate')) {
+        errorMessage = 'Ein Gewichtseintrag für heute existiert bereits. Bitte aktualisiere ihn stattdessen.';
+      } else if (error?.message?.includes('network')) {
+        errorMessage = 'Netzwerkfehler. Bitte überprüfe deine Internetverbindung.';
+      } else if (error?.code === '23505') {
+        errorMessage = 'Gewichtseintrag für heute bereits vorhanden. Lade die Seite neu und versuche es erneut.';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
