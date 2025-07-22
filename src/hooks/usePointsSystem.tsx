@@ -494,7 +494,7 @@ export const usePointsSystem = () => {
   // Get level color based on level name
   const getLevelColor = (levelName: string): string => {
     switch (levelName) {
-      case 'Rookie': return 'hsl(var(--muted))';
+      case 'Rookie': return 'hsl(210, 70%, 55%)';
       case 'Bronze': return 'hsl(30, 50%, 45%)';
       case 'Silver': return 'hsl(210, 20%, 70%)';
       case 'Gold': return 'hsl(45, 100%, 50%)';
