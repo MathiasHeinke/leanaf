@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2, Upload, X, Eye, Camera } from "lucide-react";
+import { Scale, CalendarIcon, Plus, TrendingUp, TrendingDown, Minus, Trash2, Upload, X, Eye, Camera, Edit2, Check, XIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,13 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  
+  // Inline editing states
+  const [editingEntry, setEditingEntry] = useState<string | null>(null);
+  const [editingField, setEditingField] = useState<'weight' | 'body_fat_percentage' | 'muscle_percentage' | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
 
@@ -63,6 +70,74 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Inline editing functions
+  const startEditing = (entryId: string, field: 'weight' | 'body_fat_percentage' | 'muscle_percentage', currentValue: number | undefined) => {
+    setEditingEntry(entryId);
+    setEditingField(field);
+    setEditValue(currentValue?.toString() || '');
+  };
+
+  const cancelEditing = () => {
+    setEditingEntry(null);
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const saveInlineEdit = async () => {
+    if (!editingEntry || !editingField || !user) return;
+
+    const numValue = parseFloat(editValue.replace(',', '.'));
+    
+    // Validation
+    if (isNaN(numValue) || numValue <= 0) {
+      toast.error('Bitte gib einen gültigen Wert ein');
+      return;
+    }
+
+    if ((editingField === 'body_fat_percentage' || editingField === 'muscle_percentage') && 
+        (numValue < 0 || numValue > 100)) {
+      toast.error('Prozentangaben müssen zwischen 0 und 100% liegen');
+      return;
+    }
+
+    if (editingField === 'weight' && (numValue > 1000)) {
+      toast.error('Gewicht muss unter 1000 kg liegen');
+      return;
+    }
+
+    setIsUpdating(true);
+
+    try {
+      const updateData: any = {};
+      updateData[editingField] = numValue;
+      updateData.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('weight_history')
+        .update(updateData)
+        .eq('id', editingEntry);
+
+      if (error) throw error;
+
+      toast.success('Wert erfolgreich aktualisiert');
+      onDataUpdate();
+      cancelEditing();
+    } catch (error: any) {
+      console.error('Error updating weight entry:', error);
+      toast.error('Fehler beim Aktualisieren des Werts');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveInlineEdit();
+    } else if (e.key === 'Escape') {
+      cancelEditing();
+    }
   };
 
   const addWeightEntry = async () => {
@@ -266,6 +341,48 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const renderEditableValue = (entry: WeightEntry, field: 'weight' | 'body_fat_percentage' | 'muscle_percentage', value: number | undefined, unit: string, color?: string) => {
+    const isEditing = editingEntry === entry.id && editingField === field;
+    
+    if (!value && !isEditing) return null;
+    
+    if (isEditing) {
+      return (
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            step="0.1"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyPress}
+            onBlur={saveInlineEdit}
+            className="w-16 h-6 text-xs p-1"
+            autoFocus
+            disabled={isUpdating}
+          />
+          <span className={cn("text-xs", color)}>{unit}</span>
+          {isUpdating && (
+            <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+          )}
+        </div>
+      );
+    }
+    
+    return (
+      <button
+        onClick={() => startEditing(entry.id!, field, value)}
+        className={cn(
+          "text-xs hover:bg-muted/50 px-1 py-0.5 rounded transition-colors group flex items-center gap-1",
+          color
+        )}
+        title="Klicken zum Bearbeiten"
+      >
+        <span>{value}{unit}</span>
+        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+      </button>
+    );
   };
 
   if (loading) {
@@ -497,18 +614,26 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
           <Card className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="text-2xl font-bold text-primary">{weightHistory[0].weight} kg</div>
+                <div className="flex items-center gap-2">
+                  {renderEditableValue(weightHistory[0], 'weight', weightHistory[0].weight, ' kg', 'text-2xl font-bold text-primary')}
+                </div>
                 <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
                 <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
                 
                 {/* Body Composition */}
                 {(weightHistory[0].body_fat_percentage || weightHistory[0].muscle_percentage) && (
-                  <div className="flex gap-4 mt-2 text-xs">
+                  <div className="flex gap-4 mt-2">
                     {weightHistory[0].body_fat_percentage && (
-                      <span className="text-red-600">KFA: {weightHistory[0].body_fat_percentage}%</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">KFA:</span>
+                        {renderEditableValue(weightHistory[0], 'body_fat_percentage', weightHistory[0].body_fat_percentage, '%', 'text-red-600')}
+                      </div>
                     )}
                     {weightHistory[0].muscle_percentage && (
-                      <span className="text-blue-600">Muskeln: {weightHistory[0].muscle_percentage}%</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Muskeln:</span>
+                        {renderEditableValue(weightHistory[0], 'muscle_percentage', weightHistory[0].muscle_percentage, '%', 'text-blue-600')}
+                      </div>
                     )}
                   </div>
                 )}
@@ -610,17 +735,25 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                     <Scale className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold">{entry.weight} kg</div>
+                    <div className="flex items-center gap-2">
+                      {renderEditableValue(entry, 'weight', entry.weight, ' kg', 'font-semibold')}
+                    </div>
                     <div className="text-sm text-muted-foreground">{entry.displayDate}</div>
                     
                     {/* Body Composition */}
                     {(entry.body_fat_percentage || entry.muscle_percentage) && (
-                      <div className="flex gap-4 mt-1 text-xs">
+                      <div className="flex gap-4 mt-1">
                         {entry.body_fat_percentage && (
-                          <span className="text-red-600">KFA: {entry.body_fat_percentage}%</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">KFA:</span>
+                            {renderEditableValue(entry, 'body_fat_percentage', entry.body_fat_percentage, '%', 'text-red-600')}
+                          </div>
                         )}
                         {entry.muscle_percentage && (
-                          <span className="text-blue-600">Muskeln: {entry.muscle_percentage}%</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground">Muskeln:</span>
+                            {renderEditableValue(entry, 'muscle_percentage', entry.muscle_percentage, '%', 'text-blue-600')}
+                          </div>
                         )}
                       </div>
                     )}
