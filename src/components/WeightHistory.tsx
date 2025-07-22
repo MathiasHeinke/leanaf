@@ -419,52 +419,43 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
                 <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
                 
-                {/* Body Composition - More prominent display */}
+                {/* Body Composition */}
                 {(weightHistory[0].body_fat_percentage || weightHistory[0].muscle_percentage) && (
-                  <div className="flex gap-3 mt-3">
+                  <div className="flex gap-4 mt-2 text-xs">
                     {weightHistory[0].body_fat_percentage && (
-                      <div className="bg-red-50 dark:bg-red-950/50 px-3 py-2 rounded-lg text-sm border border-red-200 dark:border-red-800">
-                        <span className="text-red-700 dark:text-red-300 font-medium">KFA: {weightHistory[0].body_fat_percentage}%</span>
-                      </div>
+                      <span className="text-red-600">KFA: {weightHistory[0].body_fat_percentage}%</span>
                     )}
                     {weightHistory[0].muscle_percentage && (
-                      <div className="bg-blue-50 dark:bg-blue-950/50 px-3 py-2 rounded-lg text-sm border border-blue-200 dark:border-blue-800">
-                        <span className="text-blue-700 dark:text-blue-300 font-medium">Muskeln: {weightHistory[0].muscle_percentage}%</span>
-                      </div>
+                      <span className="text-blue-600">Muskeln: {weightHistory[0].muscle_percentage}%</span>
                     )}
                   </div>
                 )}
 
-                {/* Photos - Larger and more prominent */}
+                {/* Photos */}
                 {weightHistory[0].photo_urls && weightHistory[0].photo_urls.length > 0 && (
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex gap-1 mt-2">
                     {weightHistory[0].photo_urls.slice(0, 3).map((url, index) => (
                       <button
                         key={index}
                         onClick={() => setSelectedImageUrl(url)}
-                        className="relative group border-2 border-primary/30 rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
+                        className="relative group"
                       >
                         <img
                           src={url}
                           alt={`Progress ${index + 1}`}
-                          className="w-16 h-16 object-cover hover:opacity-80 transition-opacity"
+                          className="w-12 h-12 object-cover rounded border hover:opacity-80 transition-opacity"
                         />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Eye className="h-4 w-4 text-white drop-shadow-sm" />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                          <Eye className="h-4 w-4 text-white" />
                         </div>
                       </button>
                     ))}
-                    {weightHistory[0].photo_urls.length > 3 && (
-                      <div className="w-16 h-16 bg-muted/50 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-sm text-muted-foreground font-medium">
-                        +{weightHistory[0].photo_urls.length - 3}
-                      </div>
-                    )}
                   </div>
                 )}
 
                 {/* Notes */}
                 {weightHistory[0].notes && (
-                  <div className="mt-3 text-sm text-muted-foreground italic bg-muted/30 p-2 rounded-lg">
+                  <div className="mt-2 text-xs text-muted-foreground italic">
                     "{weightHistory[0].notes}"
                   </div>
                 )}
@@ -537,46 +528,42 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                     <Scale className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-lg">{entry.weight} kg</div>
+                    <div className="font-semibold">{entry.weight} kg</div>
                     <div className="text-sm text-muted-foreground">{entry.displayDate}</div>
                     
-                    {/* Body Composition - More prominent display */}
+                    {/* Body Composition */}
                     {(entry.body_fat_percentage || entry.muscle_percentage) && (
-                      <div className="flex gap-3 mt-2">
+                      <div className="flex gap-4 mt-1 text-xs">
                         {entry.body_fat_percentage && (
-                          <div className="bg-red-50 dark:bg-red-950/50 px-2 py-1 rounded text-sm border border-red-200 dark:border-red-800">
-                            <span className="text-red-700 dark:text-red-300 font-medium">KFA: {entry.body_fat_percentage}%</span>
-                          </div>
+                          <span className="text-red-600">KFA: {entry.body_fat_percentage}%</span>
                         )}
                         {entry.muscle_percentage && (
-                          <div className="bg-blue-50 dark:bg-blue-950/50 px-2 py-1 rounded text-sm border border-blue-200 dark:border-blue-800">
-                            <span className="text-blue-700 dark:text-blue-300 font-medium">Muskeln: {entry.muscle_percentage}%</span>
-                          </div>
+                          <span className="text-blue-600">Muskeln: {entry.muscle_percentage}%</span>
                         )}
                       </div>
                     )}
 
-                    {/* Photos - Larger and more prominent */}
+                    {/* Photos */}
                     {entry.photo_urls && entry.photo_urls.length > 0 && (
-                      <div className="flex gap-2 mt-3">
+                      <div className="flex gap-1 mt-2">
                         {entry.photo_urls.slice(0, 3).map((url, photoIndex) => (
                           <button
                             key={photoIndex}
                             onClick={() => setSelectedImageUrl(url)}
-                            className="relative group border-2 border-primary/20 rounded-lg overflow-hidden hover:border-primary/40 transition-colors"
+                            className="relative group"
                           >
                             <img
                               src={url}
                               alt={`Progress ${photoIndex + 1}`}
-                              className="w-16 h-16 object-cover hover:opacity-80 transition-opacity"
+                              className="w-10 h-10 object-cover rounded border hover:opacity-80 transition-opacity"
                             />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Eye className="h-4 w-4 text-white drop-shadow-sm" />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                              <Eye className="h-3 w-3 text-white" />
                             </div>
                           </button>
                         ))}
                         {entry.photo_urls.length > 3 && (
-                          <div className="w-16 h-16 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-sm text-muted-foreground font-medium">
+                          <div className="w-10 h-10 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground">
                             +{entry.photo_urls.length - 3}
                           </div>
                         )}
@@ -585,7 +572,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
                     {/* Notes */}
                     {entry.notes && (
-                      <div className="mt-2 text-sm text-muted-foreground italic bg-muted/30 p-2 rounded">
+                      <div className="mt-1 text-xs text-muted-foreground italic">
                         "{entry.notes}"
                       </div>
                     )}
