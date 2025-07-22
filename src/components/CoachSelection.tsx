@@ -17,7 +17,7 @@ const coachProfiles = [
     accentColor: 'from-red-500 to-red-600'
   },
   {
-    id: 'liebevoll',
+    id: 'soft',
     name: 'Lucy',
     age: 28,
     role: 'Ernährungsberaterin',
