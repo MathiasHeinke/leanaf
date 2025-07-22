@@ -230,6 +230,7 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
           open={!!editingMeal}
           onClose={() => setEditingMeal(null)}
           onUpdate={(mealId, updates) => {
+            // Convert back from text to food_items for update
             onMealUpdate();
             setEditingMeal(null);
           }}
