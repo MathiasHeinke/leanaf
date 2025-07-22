@@ -40,8 +40,45 @@ export const PointsHeader = () => {
   // Get the maximum points needed for the current level
   const maxPointsForCurrentLevel = getMaxPointsForLevel(userPoints.current_level);
   
-  // Calculate progress in the current level based on points_to_next_level
-  const currentLevelProgress = maxPointsForCurrentLevel - userPoints.points_to_next_level;
+  // Calculate the points already earned in the current level
+  let pointsEarnedInCurrentLevel = 0;
+  let minPointsForCurrentLevel = 0;
+  
+  // Calculate minimum points required for the current level
+  if (userPoints.current_level === 1) {
+    minPointsForCurrentLevel = 0; // Level 1 starts at 0
+  } else if (userPoints.current_level === 2) {
+    minPointsForCurrentLevel = 100; // Level 2 starts at 100
+  } else if (userPoints.current_level === 3) {
+    minPointsForCurrentLevel = 300; // Level 3 starts at 300
+  } else if (userPoints.current_level === 4) {
+    minPointsForCurrentLevel = 650; // Level 4 starts at 650
+  } else if (userPoints.current_level === 5) {
+    minPointsForCurrentLevel = 1200; // Level 5 starts at 1200
+  } else if (userPoints.current_level === 6) {
+    minPointsForCurrentLevel = 2000; // Level 6 starts at 2000
+  } else if (userPoints.current_level === 7) {
+    minPointsForCurrentLevel = 3100; // Level 7 starts at 3100
+  } else if (userPoints.current_level >= 8) {
+    // Level 8+ (Grandmaster) increases by 500 points per level
+    minPointsForCurrentLevel = 4600 + ((userPoints.current_level - 8) * 500);
+  }
+  
+  // Calculate the points earned in the current level
+  pointsEarnedInCurrentLevel = userPoints.total_points - minPointsForCurrentLevel;
+  
+  // Debug values
+  console.log(`Level: ${userPoints.current_level} (${userPoints.level_name})`);
+  console.log(`Total Points: ${userPoints.total_points}`);
+  console.log(`Min Points for Level: ${minPointsForCurrentLevel}`);
+  console.log(`Max Points for Level: ${maxPointsForCurrentLevel}`);
+  console.log(`Points Earned in Level: ${pointsEarnedInCurrentLevel}/${maxPointsForCurrentLevel}`);
+  console.log(`Points to Next Level: ${userPoints.points_to_next_level}`);
+  
+  // Use the points earned in the current level for progress display
+  // Ensure it can't be negative and doesn't exceed max
+  const currentLevelProgress = Math.max(0, Math.min(pointsEarnedInCurrentLevel, maxPointsForCurrentLevel));
+  
   const getLevelIcon = (levelName: string) => {
     switch (levelName) {
       case 'Rookie': return <Star className="w-4 h-4" />;
@@ -131,7 +168,7 @@ export const PointsHeader = () => {
             }}
           />
           <span className="font-medium text-xs sm:text-xs text-foreground whitespace-nowrap bg-background/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
-            {Math.max(0, currentLevelProgress)}/{maxPointsForCurrentLevel}
+            {currentLevelProgress}/{maxPointsForCurrentLevel}
           </span>
         </div>
       </div>
