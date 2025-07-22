@@ -10,7 +10,7 @@ export const PointsHeader = () => {
 
   if (loading || !userPoints) {
     return (
-      <div className="bg-card/30 border-b border-border/30 py-3">
+      <div className="bg-card/30 border-b border-border/30 py-2">
         <div className="container mx-auto px-3 max-w-sm flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className="w-9 h-9 sm:w-8 sm:h-8 bg-muted rounded-full animate-pulse" />
@@ -41,15 +41,15 @@ export const PointsHeader = () => {
   const levelProgress = (currentLevelProgress / userPoints.points_to_next_level) * 100;
   const isLevelUp = levelProgress >= 100;
 
-  // Theme-aware color for Rookie level
-  const getRookieLevelColor = () => {
-    return 'hsl(var(--muted-foreground))'; // Use theme-aware muted foreground
+  const displayLevelColor = getLevelColor(userPoints.level_name);
+
+  // Use outline variant for better readability on Rookie and Bronze levels
+  const getBadgeVariant = (levelName: string) => {
+    return (levelName === 'Rookie' || levelName === 'Bronze') ? 'outline' : 'secondary';
   };
 
-  const displayLevelColor = userPoints.level_name === 'Rookie' ? getRookieLevelColor() : getLevelColor(userPoints.level_name);
-
   return (
-    <div className="border-b border-border/30 py-3 sm:py-2">
+    <div className="border-b border-border/30 py-2 sm:py-1">
         <div className="container mx-auto px-3 max-w-sm flex items-center justify-between">
         {/* Left Side - Level Icon + Badge */}
         <div className="flex items-center space-x-2 sm:space-x-3">
@@ -86,14 +86,17 @@ export const PointsHeader = () => {
             </div>
           </div>
           
-          {/* Level Badge with theme-aware styling */}
+          {/* Level Badge with improved readability */}
           <div className="flex flex-col">
             <div className="flex items-center space-x-1.5 sm:space-x-2">
               <Badge 
-                variant="secondary" 
+                variant={getBadgeVariant(userPoints.level_name)}
                 className="text-xs font-semibold px-2 py-0.5 sm:py-0"
-                style={{ 
-                  backgroundColor: userPoints.level_name === 'Rookie' ? 'hsl(var(--muted))' : `${displayLevelColor}20`,
+                style={getBadgeVariant(userPoints.level_name) === 'outline' ? { 
+                  color: displayLevelColor,
+                  borderColor: displayLevelColor
+                } : { 
+                  backgroundColor: `${displayLevelColor}20`,
                   color: displayLevelColor,
                   border: `1px solid ${displayLevelColor}40`
                 }}

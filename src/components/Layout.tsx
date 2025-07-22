@@ -50,7 +50,7 @@ export const Layout = ({ children }: LayoutProps) => {
         onRefresh={() => setShowSubscriptionDebug(true)}
       />
       <PointsHeader />
-      <main className="container mx-auto px-3 pb-24 pt-2 max-w-md relative z-10">
+      <main className="container mx-auto px-3 pb-24 pt-0 max-w-md relative z-10">
         {children}
       </main>
       
