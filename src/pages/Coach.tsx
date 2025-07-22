@@ -1,5 +1,5 @@
 
-import { Coach } from "@/components/Coach";
+import Coach from "@/components/Coach";
 
 const CoachPage = () => {
   return <Coach />;

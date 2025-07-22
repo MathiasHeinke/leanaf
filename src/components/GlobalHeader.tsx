@@ -1,55 +1,76 @@
-
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Home, 
-  BarChart3, 
-  Settings, 
-  Brain,
-  Microscope,
-  History,
-  User,
-  Menu,
-  X,
-  MessageSquare
-} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription } from "@/hooks/useSubscription";
-import { supabase } from "@/integrations/supabase/client";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
+
+import { 
+  Zap, 
+  RefreshCw, 
+  Menu, 
+  LogOut, 
+  CreditCard, 
+  User as UserIcon, 
+  MessageCircle, 
+  LayoutDashboard,
+  TrendingUp,
+  Sun,
+  Moon,
+  Clock,
+  Microscope
+} from "lucide-react";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
+  isRefreshing?: boolean;
+  onViewChange?: (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => void;
+  currentView?: string;
 }
 
-export const GlobalHeader = ({ onRefresh }: GlobalHeaderProps) => {
-  const { user, signOut } = useAuth();
-  const { subscription } = useSubscription();
-  const location = useLocation();
+export const GlobalHeader = ({ 
+  onRefresh, 
+  isRefreshing = false, 
+  onViewChange,
+  currentView
+}: GlobalHeaderProps) => {
+  const [currentActiveView, setCurrentActiveView] = useState<string>('main');
+  
+  const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const { language, setLanguage, t } = useTranslation();
+  const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
 
-  // Don't show header on auth page or for logged out users
-  if (location.pathname === '/auth' || !user) {
-    return null;
-  }
-
-  const navItems = [
-    { path: '/', label: 'Home', icon: Home },
-    { path: '/coach', label: 'KI-Coach', icon: Brain, badge: 'NEW' },
-    { path: '/history', label: 'Verlauf', icon: History },
-    { path: '/science', label: 'Studien', icon: Microscope },
-  ];
-
-  const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
+  // Handle navigation to different views
+  const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => {
+    if (onViewChange) {
+      onViewChange(view);
+      setCurrentActiveView(view);
+    } else {
+      // For route-based navigation
+      switch (view) {
+        case 'main':
+          navigate('/');
+          break;
+        case 'coach':
+          navigate('/coach');
+          break;
+        case 'history':
+          navigate('/history');
+          break;
+        case 'profile':
+          navigate('/profile');
+          break;
+        case 'subscription':
+          navigate('/subscription');
+          break;
+      }
     }
-    return location.pathname.startsWith(path);
   };
 
+  // Handle sign out
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -59,153 +80,232 @@ export const GlobalHeader = ({ onRefresh }: GlobalHeaderProps) => {
     }
   };
 
+  // Handle refresh
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      window.location.reload();
+    }
+  };
+
+  // Determine current active tab
+  const getActiveTab = () => {
+    switch (location.pathname) {
+      case '/':
+        return 'main';
+      case '/coach':
+        return 'coach';
+      case '/history':
+        return 'history';
+      case '/profile':
+        return 'profile';
+      case '/subscription':
+        return 'subscription';
+      default:
+        return 'main';
+    }
+  };
+
+  const activeTab = getActiveTab();
+  const themeStatus = getThemeStatus();
+  const themeIconType = getThemeIcon();
+
+  // Get theme icon component based on status
+  const renderThemeIcon = () => {
+    switch (themeIconType) {
+      case 'clock':
+        return <Clock className="h-4 w-4" />;
+      case 'sun':
+      case 'sun-override':
+        return <Sun className="h-4 w-4" />;
+      case 'moon':
+      case 'moon-override':
+        return <Moon className="h-4 w-4" />;
+      default:
+        return themeStatus.current === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />;
+    }
+  };
+
+  // Get theme tooltip with detailed status
+  const getThemeTooltip = () => {
+    if (themeStatus.override) {
+      return `${t('settings.darkModeOverride')} (${themeStatus.nextChange} remaining)`;
+    }
+    if (themeStatus.isAuto) {
+      const timeInfo = isWithinDarkModeHours ? 
+        `Auto: Dark until ${themeStatus.nextChange}` : 
+        `Auto: Light until ${themeStatus.nextChange}`;
+      return timeInfo;
+    }
+    return themeStatus.current === 'dark' ? t('settings.darkModeLight') : t('settings.darkModeDark');
+  };
+
   return (
     <>
-      {/* Desktop Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-3 max-w-md">
-          <div className="flex h-14 items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">K</span>
-              </div>
-              <span className="font-bold text-lg">KaloAI</span>
-            </Link>
+      <div className="container mx-auto px-4 py-6 max-w-md">
+        {/* Header - Restructured logo with icon on left */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            {/* Icon positioned further left */}
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
+              <Zap className="h-6 w-6 text-white" />
+            </div>
+            
+            {/* Logo text with subtext */}
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+                {t('app.title')}
+              </h1>
+              <p className="text-sm text-gray-600 -mt-1">
+                {t('app.letsGetLean')}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+              title={t('app.refresh')}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            
+            {/* Dark Mode Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className="flex items-center gap-2"
+              title={getThemeTooltip()}
+            >
+              {renderThemeIcon()}
+            </Button>
+            
+            {/* Language Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
+              className="flex items-center gap-2 text-sm"
+              title={t('settings.language')}
+            >
+              <span className="text-xs">{language === 'de' ? '🇩🇪' : '🇬🇧'}</span>
+              {language.toUpperCase()}
+            </Button>
+            
+            {/* Menu Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" title={t('app.menu')}>
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate('/account')}>
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  {t('header.account')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  {t('header.subscription')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/science')}>
+                  <Microscope className="h-4 w-4 mr-2" />
+                  Wissenschaft & Methodik
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t('header.logout')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
-            {/* Mobile Menu */}
-            <div className="flex items-center gap-2">
-              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-2">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-64">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    {/* Navigation Links */}
-                    {navItems.map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                          isActive(item.path)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-muted'
-                        }`}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.label}</span>
-                        {item.badge && (
-                          <Badge variant="secondary" className="text-xs ml-auto">
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </Link>
-                    ))}
-
-                    {/* Account Links */}
-                    <div className="border-t pt-4 space-y-2">
-                      <Link
-                        to="/profile"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
-                      >
-                        <User className="h-5 w-5" />
-                        <span>Profile</span>
-                      </Link>
-                      <Link
-                        to="/account"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
-                      >
-                        <Settings className="h-5 w-5" />
-                        <span>Settings</span>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        onClick={handleSignOut}
-                        className="w-full justify-start px-3 py-2 h-auto"
-                      >
-                        <span>Sign Out</span>
-                      </Button>
-                    </div>
-
-                    {/* Subscription Status */}
-                    <div className="border-t pt-4">
-                      <div className="px-3 py-2">
-                        <p className="text-sm font-medium">Status</p>
-                        <Badge variant={subscription?.status === 'active' ? 'default' : 'secondary'}>
-                          {subscription?.status === 'active' ? 'Premium' : 'Free'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
+        {/* Enhanced Segmented Control Navigation with Smooth Sliding Background */}
+        <div className="flex justify-center mb-6">
+          <div className="relative bg-muted/60 backdrop-blur-xl p-1.5 rounded-2xl border border-border/30 shadow-lg">
+            {/* Sliding background indicator */}
+            <div 
+              className={`absolute top-1.5 h-[calc(100%-12px)] bg-gradient-to-r from-background to-background/95 rounded-xl shadow-md border border-border/20 transition-all duration-300 ease-out transform ${
+                activeTab === 'main' ? 'left-1.5 w-[calc(25%-3px)]' :
+                activeTab === 'coach' ? 'left-[calc(25%+3px)] w-[calc(25%-3px)]' :
+                activeTab === 'history' ? 'left-[calc(50%+3px)] w-[calc(25%-3px)]' :
+                'left-[calc(75%+3px)] w-[calc(25%-3px)]'
+              }`}
+            />
+            
+            <div className="flex relative z-10">
+              <button 
+                onClick={() => handleNavigation('main')}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  activeTab === 'main' 
+                    ? 'text-foreground scale-105 font-semibold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                style={{ width: '25%' }}
+              >
+                <LayoutDashboard className={`h-4 w-4 mr-2 transition-all duration-300 ${
+                  activeTab === 'main' ? 'animate-pulse text-primary' : ''
+                }`} style={{ animationDuration: activeTab === 'main' ? '2s' : undefined }} />
+                {t('header.main')}
+              </button>
+              <button 
+                onClick={() => handleNavigation('coach')}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  activeTab === 'coach' 
+                    ? 'text-foreground scale-105 font-semibold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                style={{ width: '25%' }}
+              >
+                <MessageCircle className={`h-4 w-4 mr-2 transition-all duration-300 ${
+                  activeTab === 'coach' ? 'animate-pulse text-primary' : ''
+                }`} style={{ animationDuration: activeTab === 'coach' ? '2s' : undefined }} />
+                {t('header.coach')}
+              </button>
+              <button 
+                onClick={() => handleNavigation('history')}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  activeTab === 'history' 
+                    ? 'text-foreground scale-105 font-semibold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                style={{ width: '25%' }}
+              >
+                <TrendingUp className={`h-4 w-4 mr-2 transition-all duration-300 ${
+                  activeTab === 'history' ? 'animate-pulse text-primary' : ''
+                }`} style={{ animationDuration: activeTab === 'history' ? '2s' : undefined }} />
+                {t('header.history')}
+              </button>
+              <button 
+                onClick={() => handleNavigation('profile')}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center profile-button ${
+                  activeTab === 'profile' 
+                    ? 'text-foreground scale-105 font-semibold' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                style={{ width: '25%' }}
+              >
+                <UserIcon className={`h-4 w-4 mr-2 transition-all duration-300 ${
+                  activeTab === 'profile' ? 'animate-pulse text-primary' : ''
+                }`} style={{ animationDuration: activeTab === 'profile' ? '2s' : undefined }} />
+                {t('header.profile')}
+              </button>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Floating Bottom Navigation */}
-      <FloatingBottomNav />
     </>
   );
 };
 
-export const FloatingBottomNav = () => {
-  const location = useLocation();
-  const { user } = useAuth();
-
-  // Don't show on auth page or for logged out users
-  if (location.pathname === '/auth' || !user) {
-    return null;
-  }
-
-  const navItems = [
-    { path: '/', label: 'Home', icon: Home },
-    { path: '/coach', label: 'Coach', icon: Brain, badge: 'NEW' },
-    { path: '/history', label: 'History', icon: History },
-    { path: '/account', label: 'Account', icon: Settings },
-  ];
-
-  const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/';
-    }
-    return location.pathname.startsWith(path);
-  };
-
-  return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-      <nav className="glass-card border-2 border-primary/20 rounded-2xl p-2 shadow-2xl">
-        <div className="flex items-center gap-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 ${
-                isActive(item.path)
-                  ? 'bg-primary text-primary-foreground shadow-lg scale-105'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-xs font-medium">{item.label}</span>
-              {item.badge && (
-                <Badge 
-                  variant="secondary" 
-                  className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4 bg-red-500 text-white border-none"
-                >
-                  {item.badge}
-                </Badge>
-              )}
-            </Link>
-          ))}
-        </div>
-      </nav>
-    </div>
-  );
-};
+// Entferne die FloatingBottomNav
+export const FloatingBottomNav = () => null;
