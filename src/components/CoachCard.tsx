@@ -37,18 +37,46 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
     console.log(`✅ Successfully loaded image for ${coach.name}: ${coach.imageUrl}`);
   };
 
+  // Secure color mapping for coach personalities
+  const getCoachColors = (color: string) => {
+    switch (color) {
+      case 'red':
+        return {
+          badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-800/30',
+          quote: 'bg-red-50 border-red-500 dark:bg-red-950/20 dark:border-red-700'
+        };
+      case 'pink':
+        return {
+          badge: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/20 dark:text-pink-300 dark:border-pink-800/30',
+          quote: 'bg-pink-50 border-pink-500 dark:bg-pink-950/20 dark:border-pink-700'
+        };
+      case 'green':
+        return {
+          badge: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-300 dark:border-green-800/30',
+          quote: 'bg-green-50 border-green-500 dark:bg-green-950/20 dark:border-green-700'
+        };
+      default:
+        return {
+          badge: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/20 dark:text-gray-300 dark:border-gray-800/30',
+          quote: 'bg-gray-50 border-gray-500 dark:bg-gray-950/20 dark:border-gray-700'
+        };
+    }
+  };
+
+  const colors = getCoachColors(coach.color);
+
   return (
     <Card 
       className={`relative cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg ${
         isSelected 
-          ? 'ring-2 ring-green-500 shadow-lg' 
+          ? 'ring-2 ring-green-500 shadow-lg dark:ring-green-400' 
           : 'hover:shadow-md'
       }`}
       onClick={() => onSelect(coach.id)}
     >
       {isSelected && (
-        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center z-10">
-          <Check className="h-4 w-4 text-white" />
+        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 dark:bg-green-400 rounded-full flex items-center justify-center z-10">
+          <Check className="h-4 w-4 text-white dark:text-green-900" />
         </div>
       )}
       
@@ -73,12 +101,12 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
         </div>
 
         {/* Name & Role */}
-        <h3 className="text-xl font-bold mb-1">{coach.name}</h3>
+        <h3 className="text-xl font-bold mb-1 text-foreground">{coach.name}</h3>
         <p className="text-sm text-muted-foreground mb-1">{coach.age} Jahre</p>
         <p className="text-sm font-medium text-primary mb-3">{coach.role}</p>
 
         {/* Personality Badge */}
-        <Badge variant="secondary" className={`mb-3 bg-${coach.color}-50 text-${coach.color}-700 border-${coach.color}-200`}>
+        <Badge variant="secondary" className={`mb-3 ${colors.badge}`}>
           {coach.personality}
         </Badge>
 
@@ -100,7 +128,7 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
         </div>
 
         {/* Quote */}
-        <div className={`bg-${coach.color}-50 rounded-lg p-3 border-l-4 border-${coach.color}-500`}>
+        <div className={`${colors.quote} rounded-lg p-3 border-l-4 transition-colors`}>
           <p className="text-xs italic text-muted-foreground">
             "{coach.quote}"
           </p>
