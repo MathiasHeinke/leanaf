@@ -415,11 +415,6 @@ const Index = () => {
         {/* Department Progress - Always available */}
         <DepartmentProgress />
         
-        {/* Progress Charts - Basic charts for all, advanced for premium */}
-        <ProgressCharts timeRange="week" />
-        
-        {/* Smart Coach Insights - Premium feature */}
-        <SmartCoachInsights />
         
         <BadgeSystem />
 
