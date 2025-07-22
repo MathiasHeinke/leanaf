@@ -6,6 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Calendar, ChevronDown, ChevronUp, Edit2, Trash2, Copy } from "lucide-react";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { MealEditDialog } from "./MealEditDialog";
+import { MealImageManager } from "./MealImageManager";
 
 interface DailyGoal {
   calories: number;
@@ -68,6 +69,10 @@ export const HistoryTable = ({
       newExpanded.add(date);
     }
     setExpandedDays(newExpanded);
+  };
+
+  const handleMealImagesUpdate = (mealId: string, newImages: string[]) => {
+    onUpdateMeal(mealId, { images: newImages });
   };
 
   if (loading) {
@@ -184,7 +189,7 @@ export const HistoryTable = ({
                           className="bg-background rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200 animate-scale-in"
                           style={{ animationDelay: `${mealIndex * 100}ms` }}
                         >
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge variant="outline" className="text-xs">
@@ -244,6 +249,14 @@ export const HistoryTable = ({
                               </Button>
                             </div>
                           </div>
+
+                          {/* Image Management for each meal */}
+                          <MealImageManager
+                            mealId={meal.id}
+                            images={meal.images || []}
+                            onImagesUpdate={(newImages) => handleMealImagesUpdate(meal.id, newImages)}
+                            compact={false}
+                          />
                         </div>
                       ))}
                     </div>

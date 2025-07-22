@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { MealEditDialog } from '@/components/MealEditDialog';
 import { PointsBadge } from '@/components/PointsBadge';
+import { MealImageManager } from '@/components/MealImageManager';
 import { calculateMealBonusPoints, getMealPointsIcon, getMealBasePoints } from '@/utils/mealPointsHelper';
 
 interface Meal {
@@ -53,6 +53,10 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
       console.error('Error deleting meal:', error);
       toast.error('Fehler beim Löschen der Mahlzeit');
     }
+  };
+
+  const handleImagesUpdate = (mealId: string, newImages: string[]) => {
+    onMealUpdate();
   };
 
   const formatTime = (dateString: string) => {
@@ -142,6 +146,7 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                 </div>
               </div>
 
+              {/* Nutritional Values */}
               <div className="space-y-2 mb-3">
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   <div className="text-center p-2 bg-muted/50 rounded">
@@ -185,19 +190,12 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                 )}
               </div>
 
-              {/* Large images if available */}
-              {hasImages && meal.images && meal.images.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {meal.images.slice(0, 2).map((imageUrl, index) => (
-                    <img
-                      key={index}
-                      src={imageUrl}
-                      alt={`Mahlzeit ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-md"
-                    />
-                  ))}
-                </div>
-              )}
+              {/* Image Management */}
+              <MealImageManager
+                mealId={meal.id}
+                images={meal.images || []}
+                onImagesUpdate={(newImages) => handleImagesUpdate(meal.id, newImages)}
+              />
 
               {/* AI Feedback if available */}
               {meal.ai_feedback && (
