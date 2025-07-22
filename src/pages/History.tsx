@@ -37,11 +37,25 @@ const History = () => {
         </TabsList>
         
         <TabsContent value="charts" className="space-y-6">
-          <HistoryCharts />
+          <HistoryCharts 
+            data={[]}
+            weightHistory={[]}
+            timeRange="week"
+            loading={false}
+          />
         </TabsContent>
         
         <TabsContent value="table" className="space-y-6">
-          <HistoryTable />
+          <HistoryTable 
+            data={[]}
+            timeRange="week"
+            dailyGoal={{ calories: 2000, protein: 150, carbs: 250, fats: 65 }}
+            userGoal="lose"
+            loading={false}
+            onDeleteMeal={() => {}}
+            onUpdateMeal={() => {}}
+            onDuplicateMeal={() => {}}
+          />
         </TabsContent>
       </Tabs>
 

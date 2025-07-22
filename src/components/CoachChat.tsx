@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,17 +44,17 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
   const {
     isRecording,
     isProcessing,
+    transcribedText,
     startRecording,
     stopRecording
-  } = useEnhancedVoiceRecording({
-    onTranscriptionComplete: (transcription) => {
-      setInputText(transcription);
-    },
-    onError: (error) => {
-      toast.error('Fehler bei der Sprachaufnahme');
-      console.error('Voice recording error:', error);
+  } = useEnhancedVoiceRecording();
+
+  // Handle transcription completion
+  React.useEffect(() => {
+    if (transcribedText && !isRecording && !isProcessing) {
+      setInputText(transcribedText);
     }
-  });
+  }, [transcribedText, isRecording, isProcessing]);
 
   // Load chat history on component mount
   useEffect(() => {

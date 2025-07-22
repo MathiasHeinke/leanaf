@@ -413,8 +413,12 @@ const Index = () => {
                   carbs: meal.carbs,
                   fats: meal.fats,
                   timestamp: new Date(meal.created_at),
-                  meal_type: meal.meal_type
-                }))} 
+                  created_at: meal.created_at,
+                  meal_type: meal.meal_type,
+                  quality_score: meal.quality_score,
+                  bonus_points: meal.bonus_points,
+                  ai_feedback: meal.ai_feedback
+                }))}
                 onEditMeal={(meal: any) => {
                   // Handled by MealEditForm component
                 }}

@@ -18,6 +18,7 @@ interface Meal {
   carbs: number;
   fats: number;
   timestamp: Date;
+  created_at: string;
   meal_type: string;
   quality_score?: number;
   bonus_points?: number;
@@ -198,7 +199,7 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
       {editingMeal && (
         <MealEditDialog
           meal={editingMeal}
-          isOpen={!!editingMeal}
+          open={!!editingMeal}
           onClose={() => setEditingMeal(null)}
           onUpdate={onUpdateMeal}
         />
