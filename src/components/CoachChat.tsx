@@ -19,6 +19,7 @@ interface CoachChatProps {
   onClose?: () => void;
   className?: string;
   showHeader?: boolean;
+  coachPersonality?: string;
 }
 
 export const CoachChat = ({ onClose, className = "", showHeader = true }: CoachChatProps) => {

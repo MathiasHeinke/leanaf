@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
-import { uploadImages, UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
+import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 
 interface MealData {
   id: string;
@@ -35,14 +35,11 @@ const Index = () => {
     inputText,
     setInputText,
     uploadedImages,
-    setUploadedImages,
-    clearInput,
     isAnalyzing,
-    setIsAnalyzing,
     uploadProgress,
-    setUploadProgress,
     isUploading,
-    setIsUploading
+    removeImage,
+    resetForm
   } = useGlobalMealInput();
 
   const [dailyMeals, setDailyMeals] = useState<MealData[]>([]);
@@ -85,23 +82,7 @@ const Index = () => {
     loadTodaysMeals();
   }, [user?.id, refreshTrigger]);
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0 || !user?.id) return;
-
-    setIsUploading(true);
-    try {
-      const { uploadedUrls } = await uploadImages(Array.from(files), user.id, setUploadProgress);
-      setUploadedImages(prev => [...prev, ...uploadedUrls]);
-      toast.success(`${uploadedUrls.length} Bild(er) hochgeladen`);
-    } catch (error) {
-      console.error('Error uploading images:', error);
-      toast.error('Fehler beim Hochladen der Bilder');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress([]);
-    }
-  };
+  const { handlePhotoUpload } = useGlobalMealInput();
 
   const handleVoiceRecord = async () => {
     if (isRecording) {
@@ -177,7 +158,6 @@ const Index = () => {
       return;
     }
 
-    setIsAnalyzing(true);
     try {
       let mealData;
       
@@ -270,14 +250,12 @@ const Index = () => {
       toast.success(`🎯 ${basePoints} Punkte! Mahlzeit erfolgreich eingetragen`);
 
       // Clear form and refresh
-      clearInput();
+      resetForm();
       setRefreshTrigger(prev => prev + 1);
 
     } catch (error: any) {
       console.error('Error submitting meal:', error);
       toast.error('Fehler beim Eintragen der Mahlzeit');
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
@@ -316,9 +294,7 @@ const Index = () => {
     }
   };
 
-  const removeImage = (index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index));
-  };
+  // removeImage is now provided by useGlobalMealInput hook
 
   if (!user) {
     return null;
@@ -328,7 +304,12 @@ const Index = () => {
     <div className="container mx-auto p-4 space-y-6 pb-20">
       <DailyGreeting />
       
-      <DailyProgress />
+      <DailyProgress 
+        dailyTotals={{ calories: 0, protein: 0, carbs: 0, fats: 0 }}
+        dailyGoal={{ calories: 2000, protein: 150, carbs: 250, fats: 65 }}
+        currentDate={new Date()}
+        onDateChange={() => {}}
+      />
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
