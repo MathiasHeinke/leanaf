@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { X, Crown } from 'lucide-react';
+import { X, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,20 +14,17 @@ interface CoachRecommendation {
   recommendation_count: number;
 }
 
-const COACH_MESSAGES = {
+const COACH_DATA = {
   sascha: {
     name: "Sascha",
-    message: "Hey! Zeit für den nächsten Level. Mit Pro holst du 300% mehr aus deinem Training raus!",
     avatar: "/lovable-uploads/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
   },
   lucy: {
     name: "Lucy", 
-    message: "Du machst das schon so toll! Mit Pro können wir noch viel sanfter und nachhaltiger an deine Ziele.",
     avatar: "/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
   },
   kai: {
     name: "Kai",
-    message: "BOOM! 🔥 Du rockst das! Aber stell dir vor, was mit Pro möglich wäre - unlimited Power!",
     avatar: "/lovable-uploads/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
   }
 };
@@ -40,6 +37,8 @@ export const WeeklyCoachRecommendation = () => {
   const [showRecommendation, setShowRecommendation] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState<string>('sascha');
   const [isLoading, setIsLoading] = useState(true);
+  const [coachMessage, setCoachMessage] = useState<string>('');
+  const [generatingMessage, setGeneratingMessage] = useState(false);
 
   useEffect(() => {
     if (!user || isPremium) {
@@ -50,28 +49,59 @@ export const WeeklyCoachRecommendation = () => {
     checkForRecommendation();
   }, [user, isPremium]);
 
+  const generateCoachMessage = async (coachPersonality: string, userName?: string) => {
+    setGeneratingMessage(true);
+    try {
+      const response = await supabase.functions.invoke('generate-coach-recommendation', {
+        body: { 
+          coachPersonality,
+          userName: userName || 'Champion'
+        }
+      });
+
+      if (response.data?.recommendation) {
+        setCoachMessage(response.data.recommendation);
+      } else {
+        // Fallback messages if API fails
+        const fallbackMessages = {
+          sascha: "Zeit für Pro! Erreiche deine Ziele 3x schneller.",
+          lucy: "Mit Pro wird alles leichter und nachhaltiger 💝",
+          kai: "Pro = Deine Transformation! Jetzt upgraden! 🔥💪"
+        };
+        setCoachMessage(fallbackMessages[coachPersonality as keyof typeof fallbackMessages] || fallbackMessages.sascha);
+      }
+    } catch (error) {
+      console.error('Error generating coach message:', error);
+      // Fallback message
+      setCoachMessage("Hol dir Pro und erreiche deine Ziele schneller!");
+    } finally {
+      setGeneratingMessage(false);
+    }
+  };
+
   const checkForRecommendation = async () => {
     if (!user) return;
 
     try {
-      // Get user's selected coach from profile
+      // Get user's profile data
       const { data: profile } = await supabase
         .from('profiles')
-        .select('coach_personality')
+        .select('coach_personality, display_name')
         .eq('user_id', user.id)
         .single();
 
-      if (profile?.coach_personality) {
-        setSelectedCoach(profile.coach_personality);
-      }
+      const coachPersonality = profile?.coach_personality || 'sascha';
+      setSelectedCoach(coachPersonality);
 
       // Check for existing recommendation
       const { data: existingRec } = await supabase
         .from('coach_recommendations')
         .select('*')
         .eq('user_id', user.id)
-        .eq('coach_id', profile?.coach_personality || 'sascha')
+        .eq('coach_id', coachPersonality)
         .single();
+
+      let shouldShow = false;
 
       if (!existingRec) {
         // Create first recommendation
@@ -79,14 +109,14 @@ export const WeeklyCoachRecommendation = () => {
           .from('coach_recommendations')
           .insert({
             user_id: user.id,
-            coach_id: profile?.coach_personality || 'sascha',
+            coach_id: coachPersonality,
             recommendation_count: 1
           })
           .select()
           .single();
 
         setRecommendation(newRec);
-        setShowRecommendation(true);
+        shouldShow = true;
       } else {
         // Check if 7 days have passed since last recommendation
         const lastSent = new Date(existingRec.last_recommendation_sent);
@@ -106,8 +136,13 @@ export const WeeklyCoachRecommendation = () => {
             .single();
 
           setRecommendation(updatedRec);
-          setShowRecommendation(true);
+          shouldShow = true;
         }
+      }
+
+      if (shouldShow) {
+        await generateCoachMessage(coachPersonality, profile?.display_name);
+        setShowRecommendation(true);
       }
     } catch (error) {
       console.error('Error checking coach recommendation:', error);
@@ -129,55 +164,74 @@ export const WeeklyCoachRecommendation = () => {
     return null;
   }
 
-  const coachData = COACH_MESSAGES[selectedCoach as keyof typeof COACH_MESSAGES] || COACH_MESSAGES.sascha;
+  const coachData = COACH_DATA[selectedCoach as keyof typeof COACH_DATA] || COACH_DATA.sascha;
 
   return (
-    <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0">
-            <img
-              src={coachData.avatar}
-              alt={coachData.name}
-              className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-            />
-          </div>
+    <Card className="mx-4 mb-4 border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg">
+      <CardContent className="p-0">
+        <div className="relative overflow-hidden rounded-lg">
+          {/* Background gradient */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20" />
           
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-foreground">
-                {coachData.name} empfiehlt
-              </h3>
+          {/* Content */}
+          <div className="relative p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <img
+                    src={coachData.avatar}
+                    alt={coachData.name}
+                    className="w-10 h-10 rounded-full object-cover border-2 border-white/50"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                    <Sparkles className="w-3 h-3 text-primary-foreground" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">{coachData.name} empfiehlt</p>
+                </div>
+              </div>
+              
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={dismissRecommendation}
-                className="h-6 w-6 p-0"
+                className="h-8 w-8 p-0 hover:bg-white/10"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
             
-            <p className="text-sm text-muted-foreground mb-3">
-              {coachData.message}
-            </p>
+            <div className="mb-4">
+              {generatingMessage ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="animate-pulse">💭</div>
+                  <span>Dein Coach denkt nach...</span>
+                </div>
+              ) : (
+                <p className="text-sm font-medium text-foreground leading-relaxed">
+                  {coachMessage}
+                </p>
+              )}
+            </div>
             
             <div className="flex gap-2">
               <Button
                 onClick={handleUpgrade}
                 size="sm"
-                className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+                className="flex-1 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground font-semibold shadow-md"
               >
-                <Crown className="h-4 w-4 mr-1" />
-                Jetzt Pro holen - 33% Rabatt!
+                <Crown className="h-4 w-4 mr-2" />
+                Pro holen - 33% Rabatt!
               </Button>
               
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={dismissRecommendation}
+                className="px-3 hover:bg-white/10 text-muted-foreground"
               >
-                Später erinnern
+                Später
               </Button>
             </div>
           </div>
