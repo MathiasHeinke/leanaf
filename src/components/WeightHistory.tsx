@@ -380,10 +380,9 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     }
   };
 
+  // Updated renderEditableValue function to always show KFA and muscle fields
   const renderEditableValue = (entry: WeightEntry, field: 'weight' | 'body_fat_percentage' | 'muscle_percentage', value: number | undefined, unit: string, color?: string) => {
     const isEditing = editingEntry === entry.id && editingField === field;
-    
-    if (!value && !isEditing) return null;
     
     if (isEditing) {
       return (
@@ -398,7 +397,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             className="w-20 h-7 text-xs p-1 border-primary/50 focus:border-primary"
             autoFocus
             disabled={isUpdating}
-            placeholder={value?.toString() || ''}
+            placeholder={value?.toString() || '0'}
           />
           <span className={cn("text-xs whitespace-nowrap", color)}>{unit}</span>
           {isUpdating && (
@@ -426,32 +425,24 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       );
     }
     
+    const displayValue = value ? `${value}${unit}` : `- ${unit}`;
+    const displayColor = value ? color : "text-muted-foreground";
+    
     return (
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => startEditing(entry.id!, field, value)}
-          onTouchStart={() => handleTouchStart(entry.id!, field, value)}
-          className={cn(
-            "text-xs hover:bg-muted/50 active:bg-muted/70 px-2 py-1 rounded transition-all duration-200 group flex items-center gap-1 min-h-[28px] touch-manipulation",
-            "border border-transparent hover:border-muted-foreground/20 focus:border-primary focus:outline-none",
-            "cursor-pointer select-none",
-            color
-          )}
-          title="Zum Bearbeiten klicken (Mobil: Doppel-Tap)"
-        >
-          <span className="font-medium">{value}{unit}</span>
-          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-60 group-active:opacity-80 transition-opacity flex-shrink-0" />
-        </button>
-        
-        {/* Alternative: Direct edit button for better mobile UX */}
-        <button
-          onClick={() => startEditing(entry.id!, field, value)}
-          className="text-muted-foreground hover:text-primary p-1 rounded transition-colors opacity-0 group-hover:opacity-100 md:hidden"
-          title="Bearbeiten"
-        >
-          <Edit2 className="h-3 w-3" />
-        </button>
-      </div>
+      <button
+        onClick={() => startEditing(entry.id!, field, value)}
+        onTouchStart={() => handleTouchStart(entry.id!, field, value)}
+        className={cn(
+          "text-xs hover:bg-muted/50 active:bg-muted/70 px-3 py-2 rounded transition-all duration-200 group flex items-center gap-1 min-h-[32px] touch-manipulation",
+          "border border-transparent hover:border-muted-foreground/20 focus:border-primary focus:outline-none",
+          "cursor-pointer select-none min-w-[60px]",
+          displayColor
+        )}
+        title={value ? "Zum Bearbeiten klicken (Mobil: Doppel-Tap)" : "Wert hinzufügen"}
+      >
+        <span className="font-medium">{displayValue}</span>
+        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-60 group-active:opacity-80 transition-opacity flex-shrink-0" />
+      </button>
     );
   };
 
@@ -690,23 +681,17 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
                 <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
                 
-                {/* Body Composition with enhanced editing */}
-                {(weightHistory[0].body_fat_percentage || weightHistory[0].muscle_percentage) && (
-                  <div className="flex gap-4 mt-2 flex-wrap">
-                    {weightHistory[0].body_fat_percentage && (
-                      <div className="flex items-center gap-1 group">
-                        <span className="text-xs text-muted-foreground">KFA:</span>
-                        {renderEditableValue(weightHistory[0], 'body_fat_percentage', weightHistory[0].body_fat_percentage, '%', 'text-red-600')}
-                      </div>
-                    )}
-                    {weightHistory[0].muscle_percentage && (
-                      <div className="flex items-center gap-1 group">
-                        <span className="text-xs text-muted-foreground">Muskeln:</span>
-                        {renderEditableValue(weightHistory[0], 'muscle_percentage', weightHistory[0].muscle_percentage, '%', 'text-blue-600')}
-                      </div>
-                    )}
+                {/* Body Composition - always shown */}
+                <div className="flex gap-4 mt-2 flex-wrap">
+                  <div className="flex items-center gap-1 group">
+                    <span className="text-xs text-muted-foreground">KFA:</span>
+                    {renderEditableValue(weightHistory[0], 'body_fat_percentage', weightHistory[0].body_fat_percentage, '%', 'text-red-600')}
                   </div>
-                )}
+                  <div className="flex items-center gap-1 group">
+                    <span className="text-xs text-muted-foreground">Muskeln:</span>
+                    {renderEditableValue(weightHistory[0], 'muscle_percentage', weightHistory[0].muscle_percentage, '%', 'text-blue-600')}
+                  </div>
+                </div>
 
                 {/* Photos */}
                 {weightHistory[0].photo_urls && weightHistory[0].photo_urls.length > 0 && (
@@ -810,23 +795,17 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                     </div>
                     <div className="text-sm text-muted-foreground">{entry.displayDate}</div>
                     
-                    {/* Body Composition with enhanced editing */}
-                    {(entry.body_fat_percentage || entry.muscle_percentage) && (
-                      <div className="flex gap-4 mt-1 flex-wrap">
-                        {entry.body_fat_percentage && (
-                          <div className="flex items-center gap-1 group">
-                            <span className="text-xs text-muted-foreground">KFA:</span>
-                            {renderEditableValue(entry, 'body_fat_percentage', entry.body_fat_percentage, '%', 'text-red-600')}
-                          </div>
-                        )}
-                        {entry.muscle_percentage && (
-                          <div className="flex items-center gap-1 group">
-                            <span className="text-xs text-muted-foreground">Muskeln:</span>
-                            {renderEditableValue(entry, 'muscle_percentage', entry.muscle_percentage, '%', 'text-blue-600')}
-                          </div>
-                        )}
+                    {/* Body Composition - always shown */}
+                    <div className="flex gap-4 mt-1 flex-wrap">
+                      <div className="flex items-center gap-1 group">
+                        <span className="text-xs text-muted-foreground">KFA:</span>
+                        {renderEditableValue(entry, 'body_fat_percentage', entry.body_fat_percentage, '%', 'text-red-600')}
                       </div>
-                    )}
+                      <div className="flex items-center gap-1 group">
+                        <span className="text-xs text-muted-foreground">Muskeln:</span>
+                        {renderEditableValue(entry, 'muscle_percentage', entry.muscle_percentage, '%', 'text-blue-600')}
+                      </div>
+                    </div>
 
                     {/* Photos */}
                     {entry.photo_urls && entry.photo_urls.length > 0 && (
