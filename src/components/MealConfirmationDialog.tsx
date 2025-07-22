@@ -63,6 +63,8 @@ export const MealConfirmationDialog = ({
   const [verificationMessage, setVerificationMessage] = useState('');
   const [showVerification, setShowVerification] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [mealEvaluation, setMealEvaluation] = useState<any>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // Fetch user's coach personality
   useEffect(() => {
@@ -308,9 +310,11 @@ export const MealConfirmationDialog = ({
 
       // Evaluate meal quality and award bonus points
       console.log('🔧 [DEBUG] Starting meal evaluation...');
+      setIsEvaluating(true);
+      
       if (evaluateMeal) {
         try {
-          await evaluateMeal(mealData.id, {
+          const evaluationResult = await evaluateMeal(mealData.id, {
             text: editableValues.title,
             calories: editableValues.calories,
             protein: editableValues.protein,
@@ -319,7 +323,11 @@ export const MealConfirmationDialog = ({
             meal_type: selectedMealType,
             images: uploadedImages.length > 0 ? uploadedImages.map((url, index) => ({ id: `temp-${index}`, image_url: url })) : []
           });
-          console.log('🔧 [DEBUG] Meal evaluation completed');
+          
+          if (evaluationResult) {
+            setMealEvaluation(evaluationResult);
+            console.log('🔧 [DEBUG] Meal evaluation completed:', evaluationResult);
+          }
         } catch (evaluationError) {
           console.warn('🔧 [DEBUG] Meal evaluation failed:', evaluationError);
           // Show fallback success message if evaluation fails
@@ -327,6 +335,8 @@ export const MealConfirmationDialog = ({
             ? `Mahlzeit gespeichert! (+${uploadedImages.length > 0 ? '5' : '3'} Punkte)` 
             : 'Mahlzeit gespeichert! (+3 Punkte)';
           toast.success(fallbackMessage);
+        } finally {
+          setIsEvaluating(false);
         }
       }
 
@@ -425,6 +435,58 @@ export const MealConfirmationDialog = ({
                     className="w-12 h-12 object-cover rounded border"
                   />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Meal Evaluation Results */}
+          {mealEvaluation && (
+            <div className="mt-2 p-3 bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">🏆 Qualitätsbewertung</span>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <div
+                        key={i}
+                        className={`w-2 h-2 rounded-full ${
+                          i < mealEvaluation.quality_score
+                            ? 'bg-primary'
+                            : 'bg-muted'
+                        }`}
+                      />
+                    ))}
+                    <span className="text-sm font-bold ml-1">
+                      {mealEvaluation.quality_score}/10
+                    </span>
+                  </div>
+                </div>
+                {mealEvaluation.bonus_points > 0 && (
+                  <div className="flex items-center gap-1 bg-secondary/20 px-2 py-1 rounded-full">
+                    <span className="text-xs">⭐</span>
+                    <span className="text-xs font-medium">
+                      +{mealEvaluation.bonus_points}BP
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {mealEvaluation.ai_feedback && (
+                <div className="text-sm text-muted-foreground italic">
+                  "{mealEvaluation.ai_feedback}"
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Evaluation Loading */}
+          {isEvaluating && (
+            <div className="mt-2 p-3 bg-muted/20 border border-muted/40 rounded-lg">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span className="text-sm text-muted-foreground">
+                  Bewerte Mahlzeitqualität...
+                </span>
               </div>
             </div>
           )}
@@ -596,12 +658,40 @@ export const MealConfirmationDialog = ({
           </div>
         </div>
         
-        <AlertDialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <AlertDialogFooter className="gap-2">
+          {/* Cancel Button */}
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            disabled={isEvaluating}
+          >
             {t('meal.cancel')}
           </Button>
-          <Button onClick={handleConfirmMeal}>
-            {t('meal.save')}
+          
+          {/* AI Verification Toggle */}
+          <Button
+            variant="secondary"
+            onClick={() => setShowVerification(!showVerification)}
+            disabled={isEvaluating}
+          >
+            <MessageSquare className="w-4 h-4 mr-2" />
+            AI-Check
+          </Button>
+          
+          {/* Confirm Button */}
+          <Button 
+            onClick={handleConfirmMeal}
+            disabled={isEvaluating}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isEvaluating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                Bewerte...
+              </>
+            ) : (
+              t('meal.save')
+            )}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
