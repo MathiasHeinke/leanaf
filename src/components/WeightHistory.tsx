@@ -47,11 +47,12 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   
-  // Inline editing states
+  // Enhanced inline editing states
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'weight' | 'body_fat_percentage' | 'muscle_percentage' | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [lastTap, setLastTap] = useState<number>(0);
   
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
@@ -72,14 +73,16 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Inline editing functions
+  // Enhanced inline editing functions with debugging
   const startEditing = (entryId: string, field: 'weight' | 'body_fat_percentage' | 'muscle_percentage', currentValue: number | undefined) => {
+    console.log('🖊️ [WeightHistory] Starting edit:', { entryId, field, currentValue });
     setEditingEntry(entryId);
     setEditingField(field);
     setEditValue(currentValue?.toString() || '');
   };
 
   const cancelEditing = () => {
+    console.log('❌ [WeightHistory] Cancelling edit');
     setEditingEntry(null);
     setEditingField(null);
     setEditValue('');
@@ -90,20 +93,30 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
     const numValue = parseFloat(editValue.replace(',', '.'));
     
-    // Validation
+    console.log('💾 [WeightHistory] Saving inline edit:', { 
+      editingEntry, 
+      editingField, 
+      originalValue: editValue,
+      parsedValue: numValue 
+    });
+
+    // Enhanced validation with better error messages
     if (isNaN(numValue) || numValue <= 0) {
       toast.error('Bitte gib einen gültigen Wert ein');
+      console.warn('⚠️ [WeightHistory] Invalid value:', numValue);
       return;
     }
 
     if ((editingField === 'body_fat_percentage' || editingField === 'muscle_percentage') && 
         (numValue < 0 || numValue > 100)) {
       toast.error('Prozentangaben müssen zwischen 0 und 100% liegen');
+      console.warn('⚠️ [WeightHistory] Percentage out of range:', numValue);
       return;
     }
 
     if (editingField === 'weight' && (numValue > 1000)) {
       toast.error('Gewicht muss unter 1000 kg liegen');
+      console.warn('⚠️ [WeightHistory] Weight too high:', numValue);
       return;
     }
 
@@ -114,18 +127,24 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       updateData[editingField] = numValue;
       updateData.updated_at = new Date().toISOString();
 
+      console.log('🔄 [WeightHistory] Updating database:', updateData);
+
       const { error } = await supabase
         .from('weight_history')
         .update(updateData)
         .eq('id', editingEntry);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [WeightHistory] Database update failed:', error);
+        throw error;
+      }
 
+      console.log('✅ [WeightHistory] Database update successful');
       toast.success('Wert erfolgreich aktualisiert');
       onDataUpdate();
       cancelEditing();
     } catch (error: any) {
-      console.error('Error updating weight entry:', error);
+      console.error('💥 [WeightHistory] Error updating weight entry:', error);
       toast.error('Fehler beim Aktualisieren des Werts');
     } finally {
       setIsUpdating(false);
@@ -134,10 +153,28 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      console.log('⌨️ [WeightHistory] Enter pressed - saving');
       saveInlineEdit();
     } else if (e.key === 'Escape') {
+      console.log('⌨️ [WeightHistory] Escape pressed - cancelling');
       cancelEditing();
     }
+  };
+
+  // Enhanced mobile touch handling
+  const handleTouchStart = (entryId: string, field: 'weight' | 'body_fat_percentage' | 'muscle_percentage', currentValue: number | undefined) => {
+    const now = Date.now();
+    const timeDiff = now - lastTap;
+    
+    console.log('📱 [WeightHistory] Touch detected:', { entryId, field, timeDiff });
+    
+    if (timeDiff < 300) {
+      // Double tap detected
+      console.log('👆 [WeightHistory] Double tap - starting edit');
+      startEditing(entryId, field, currentValue);
+    }
+    
+    setLastTap(now);
   };
 
   const addWeightEntry = async () => {
@@ -350,7 +387,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     
     if (isEditing) {
       return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 min-w-0">
           <Input
             type="number"
             step="0.1"
@@ -358,30 +395,63 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyPress}
             onBlur={saveInlineEdit}
-            className="w-16 h-6 text-xs p-1"
+            className="w-20 h-7 text-xs p-1 border-primary/50 focus:border-primary"
             autoFocus
             disabled={isUpdating}
+            placeholder={value?.toString() || ''}
           />
-          <span className={cn("text-xs", color)}>{unit}</span>
+          <span className={cn("text-xs whitespace-nowrap", color)}>{unit}</span>
           {isUpdating && (
-            <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+            <div className="animate-spin rounded-full h-3 w-3 border-b border-primary flex-shrink-0"></div>
           )}
+          <div className="flex gap-0.5 ml-1">
+            <button
+              onClick={saveInlineEdit}
+              disabled={isUpdating}
+              className="text-green-600 hover:text-green-700 p-0.5 rounded transition-colors"
+              title="Speichern (Enter)"
+            >
+              <Check className="h-3 w-3" />
+            </button>
+            <button
+              onClick={cancelEditing}
+              disabled={isUpdating}
+              className="text-red-500 hover:text-red-600 p-0.5 rounded transition-colors"
+              title="Abbrechen (Esc)"
+            >
+              <XIcon className="h-3 w-3" />
+            </button>
+          </div>
         </div>
       );
     }
     
     return (
-      <button
-        onClick={() => startEditing(entry.id!, field, value)}
-        className={cn(
-          "text-xs hover:bg-muted/50 px-1 py-0.5 rounded transition-colors group flex items-center gap-1",
-          color
-        )}
-        title="Klicken zum Bearbeiten"
-      >
-        <span>{value}{unit}</span>
-        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => startEditing(entry.id!, field, value)}
+          onTouchStart={() => handleTouchStart(entry.id!, field, value)}
+          className={cn(
+            "text-xs hover:bg-muted/50 active:bg-muted/70 px-2 py-1 rounded transition-all duration-200 group flex items-center gap-1 min-h-[28px] touch-manipulation",
+            "border border-transparent hover:border-muted-foreground/20 focus:border-primary focus:outline-none",
+            "cursor-pointer select-none",
+            color
+          )}
+          title="Zum Bearbeiten klicken (Mobil: Doppel-Tap)"
+        >
+          <span className="font-medium">{value}{unit}</span>
+          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-60 group-active:opacity-80 transition-opacity flex-shrink-0" />
+        </button>
+        
+        {/* Alternative: Direct edit button for better mobile UX */}
+        <button
+          onClick={() => startEditing(entry.id!, field, value)}
+          className="text-muted-foreground hover:text-primary p-1 rounded transition-colors opacity-0 group-hover:opacity-100 md:hidden"
+          title="Bearbeiten"
+        >
+          <Edit2 className="h-3 w-3" />
+        </button>
+      </div>
     );
   };
 
@@ -620,17 +690,17 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                 <div className="text-sm text-muted-foreground">Aktuelles Gewicht</div>
                 <div className="text-xs text-muted-foreground">{weightHistory[0].displayDate}</div>
                 
-                {/* Body Composition */}
+                {/* Body Composition with enhanced editing */}
                 {(weightHistory[0].body_fat_percentage || weightHistory[0].muscle_percentage) && (
-                  <div className="flex gap-4 mt-2">
+                  <div className="flex gap-4 mt-2 flex-wrap">
                     {weightHistory[0].body_fat_percentage && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 group">
                         <span className="text-xs text-muted-foreground">KFA:</span>
                         {renderEditableValue(weightHistory[0], 'body_fat_percentage', weightHistory[0].body_fat_percentage, '%', 'text-red-600')}
                       </div>
                     )}
                     {weightHistory[0].muscle_percentage && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 group">
                         <span className="text-xs text-muted-foreground">Muskeln:</span>
                         {renderEditableValue(weightHistory[0], 'muscle_percentage', weightHistory[0].muscle_percentage, '%', 'text-blue-600')}
                       </div>
@@ -728,7 +798,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
           {/* Historical Weight Entries */}
           {weightHistory.slice(1).map((entry, index) => (
-            <Card key={`${entry.date}-${index + 1}`} className="p-4 hover:bg-muted/30 transition-colors">
+            <Card key={`${entry.date}-${index + 1}`} className="p-4 hover:bg-muted/30 transition-colors group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
                   <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -740,17 +810,17 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                     </div>
                     <div className="text-sm text-muted-foreground">{entry.displayDate}</div>
                     
-                    {/* Body Composition */}
+                    {/* Body Composition with enhanced editing */}
                     {(entry.body_fat_percentage || entry.muscle_percentage) && (
-                      <div className="flex gap-4 mt-1">
+                      <div className="flex gap-4 mt-1 flex-wrap">
                         {entry.body_fat_percentage && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 group">
                             <span className="text-xs text-muted-foreground">KFA:</span>
                             {renderEditableValue(entry, 'body_fat_percentage', entry.body_fat_percentage, '%', 'text-red-600')}
                           </div>
                         )}
                         {entry.muscle_percentage && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 group">
                             <span className="text-xs text-muted-foreground">Muskeln:</span>
                             {renderEditableValue(entry, 'muscle_percentage', entry.muscle_percentage, '%', 'text-blue-600')}
                           </div>
@@ -794,73 +864,71 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  {/* Show trend for historical entries */}
-                  {index + 1 < weightHistory.length - 1 && (
-                    <div className="text-right">
-                      {(() => {
-                        const current = entry.weight;
-                        const previous = weightHistory[index + 2].weight;
-                        const diff = current - previous;
-                        
-                        return (
-                          <div className="flex items-center gap-1">
-                            {diff > 0 ? (
-                              <TrendingUp className="h-3 w-3 text-red-500" />
-                            ) : diff < 0 ? (
-                              <TrendingDown className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <Minus className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            <span className={cn(
-                              "text-xs",
-                              diff > 0 ? "text-red-500" :
-                              diff < 0 ? "text-green-500" : "text-muted-foreground"
-                            )}>
-                              {diff === 0 ? '±0.0' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`} kg
-                            </span>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  
-                  {entry.id && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={deletingId === entry.id}
-                          className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          {deletingId === entry.id ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive"></div>
+                {/* Show trend for historical entries */}
+                {index + 1 < weightHistory.length - 1 && (
+                  <div className="text-right">
+                    {(() => {
+                      const current = entry.weight;
+                      const previous = weightHistory[index + 2].weight;
+                      const diff = current - previous;
+                      
+                      return (
+                        <div className="flex items-center gap-1">
+                          {diff > 0 ? (
+                            <TrendingUp className="h-3 w-3 text-red-500" />
+                          ) : diff < 0 ? (
+                            <TrendingDown className="h-3 w-3 text-green-500" />
                           ) : (
-                            <Trash2 className="h-5 w-5" />
+                            <Minus className="h-3 w-3 text-muted-foreground" />
                           )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Gewichtseintrag löschen</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Möchtest du den Gewichtseintrag vom {entry.displayDate} ({entry.weight} kg) wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteWeightEntry(entry.id!)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Löschen
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
+                          <span className={cn(
+                            "text-xs",
+                            diff > 0 ? "text-red-500" :
+                            diff < 0 ? "text-green-500" : "text-muted-foreground"
+                          )}>
+                            {diff === 0 ? '±0.0' : `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`} kg
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                
+                {entry.id && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={deletingId === entry.id}
+                        className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        {deletingId === entry.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive"></div>
+                        ) : (
+                          <Trash2 className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Gewichtseintrag löschen</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Möchtest du den Gewichtseintrag vom {entry.displayDate} ({entry.weight} kg) wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteWeightEntry(entry.id!)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Löschen
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </Card>
           ))}
