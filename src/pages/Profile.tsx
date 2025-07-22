@@ -46,7 +46,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   // Coach Settings State
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
   const [muscleMaintenancePriority, setMuscleMaintenancePriority] = useState(false);
-  const [macroStrategy, setMacroStrategy] = useState('standard');
+  const [macroStrategy, setMacroStrategy] = useState('high_protein');
   
   const { user } = useAuth();
   const { language, setLanguage } = useTranslation();
@@ -262,11 +262,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   const applyMacroStrategy = (strategy: string) => {
     const strategies = {
-      standard: { protein: 30, carbs: 40, fats: 30 },
-      high_protein: { protein: 40, carbs: 30, fats: 30 },
-      balanced: { protein: 25, carbs: 45, fats: 30 },
-      low_carb: { protein: 35, carbs: 20, fats: 45 },
-      athletic: { protein: 30, carbs: 50, fats: 20 }
+      high_protein: { protein: 50, carbs: 20, fats: 30 },
+      high_carb: { protein: 20, carbs: 50, fats: 30 },
+      low_carb: { protein: 30, carbs: 20, fats: 50 }
     };
     
     const macros = strategies[strategy as keyof typeof strategies];
@@ -588,11 +586,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
               <div className="space-y-3">
                 {[
-                  { key: 'standard', label: t('profile.macroStrategy.standard'), desc: t('profile.macroStrategyDesc.standard'), macros: '30/40/30' },
-                  { key: 'high_protein', label: t('profile.macroStrategy.high_protein'), desc: t('profile.macroStrategyDesc.high_protein'), macros: '40/30/30' },
-                  { key: 'balanced', label: t('profile.macroStrategy.balanced'), desc: t('profile.macroStrategyDesc.balanced'), macros: '25/45/30' },
-                  { key: 'low_carb', label: t('profile.macroStrategy.low_carb'), desc: t('profile.macroStrategyDesc.low_carb'), macros: '35/20/45' },
-                  { key: 'athletic', label: t('profile.macroStrategy.athletic'), desc: t('profile.macroStrategyDesc.athletic'), macros: '30/50/20' }
+                  { key: 'high_protein', label: 'High Protein', desc: 'Fokus auf Proteinzufuhr für Muskelaufbau', macros: '50/20/30' },
+                  { key: 'high_carb', label: 'High Carb', desc: 'Kohlenhydratreich für Ausdauersport', macros: '20/50/30' },
+                  { key: 'low_carb', label: 'Low Carb', desc: 'Wenig Kohlenhydrate für Fettverbrennung', macros: '30/20/50' },
+                  { key: 'custom', label: 'Custom', desc: 'Individuelle Anpassung der Makronährstoffe', macros: 'Custom' }
                 ].map((strategy) => (
                   <div 
                     key={strategy.key}
@@ -603,7 +600,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     }`}
                     onClick={() => {
                       setMacroStrategy(strategy.key);
-                      applyMacroStrategy(strategy.key);
+                      if (strategy.key !== 'custom') {
+                        applyMacroStrategy(strategy.key);
+                      }
                     }}
                   >
                     <div className="flex justify-between items-center">
@@ -619,7 +618,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 ))}
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              {/* Custom Input Fields - only show when custom is selected */}
+              <div className={`grid grid-cols-3 gap-4 transition-opacity ${
+                macroStrategy === 'custom' ? 'opacity-100' : 'opacity-50 pointer-events-none'
+              }`}>
                 <div>
                   <Label className="text-xs">{t('macros.protein')} %</Label>
                   <Input
@@ -627,6 +629,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     value={dailyGoals.protein}
                     onChange={(e) => setDailyGoals({...dailyGoals, protein: parseInt(e.target.value) || 0})}
                     className="h-8 text-sm mt-1"
+                    disabled={macroStrategy !== 'custom'}
                   />
                 </div>
                 <div>
@@ -636,6 +639,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     value={dailyGoals.carbs}
                     onChange={(e) => setDailyGoals({...dailyGoals, carbs: parseInt(e.target.value) || 0})}
                     className="h-8 text-sm mt-1"
+                    disabled={macroStrategy !== 'custom'}
                   />
                 </div>
                 <div>
@@ -645,6 +649,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     value={dailyGoals.fats}
                     onChange={(e) => setDailyGoals({...dailyGoals, fats: parseInt(e.target.value) || 0})}
                     className="h-8 text-sm mt-1"
+                    disabled={macroStrategy !== 'custom'}
                   />
                 </div>
               </div>
