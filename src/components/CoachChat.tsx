@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
   const [inputText, setInputText] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentCoachPersonality, setCurrentCoachPersonality] = useState(coachPersonality);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -47,6 +49,45 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     startRecording,
     stopRecording
   } = useVoiceRecording();
+
+  // Monitor coach personality changes from database
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const checkCoachPersonality = async () => {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('coach_personality')
+          .eq('user_id', user.id)
+          .single();
+
+        if (profile?.coach_personality && profile.coach_personality !== currentCoachPersonality) {
+          console.log('Coach personality changed:', { 
+            old: currentCoachPersonality, 
+            new: profile.coach_personality 
+          });
+          
+          // Clear chat when coach changes
+          await clearChat(false); // Don't show toast during automatic clear
+          setCurrentCoachPersonality(profile.coach_personality);
+          
+          // Generate new greeting with correct coach
+          setTimeout(() => {
+            generateCoachGreeting(profile.coach_personality);
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error checking coach personality:', error);
+      }
+    };
+
+    // Check immediately and then every 2 seconds
+    checkCoachPersonality();
+    const interval = setInterval(checkCoachPersonality, 2000);
+
+    return () => clearInterval(interval);
+  }, [user?.id, currentCoachPersonality]);
 
   // Load chat history on component mount
   useEffect(() => {
@@ -66,6 +107,50 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     }
   };
 
+  const generateCoachGreeting = async (personality: string) => {
+    if (!user?.id) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', user.id)
+        .single();
+
+      let userName = profile?.display_name;
+      if (!userName || userName.trim() === '') {
+        const userEmail = await supabase.auth.admin.getUserById(user.id);
+        userName = userEmail.data.user?.email?.split('@')[0] || 'User';
+      }
+      
+      const firstName = userName.split(' ')[0] || userName;
+
+      const greetings = {
+        hart: `Hey ${firstName}! 🎯 Sascha hier, dein neuer Drill-Instructor. Keine Zeit für Smalltalk - lass uns direkt loslegen! Was ist dein Ziel heute?`,
+        soft: `Hallo liebe/r ${firstName}! ❤️ Ich bin Lucy, deine neue Ernährungsberaterin. Ich freue mich darauf, dich einfühlsam auf deinem Weg zu begleiten. Wie kann ich dir heute helfen?`,
+        motivierend: `Hey ${firstName}! 💪 Kai hier, dein neuer Personal Trainer! Ich bin super motiviert, mit dir zusammenzuarbeiten und deine Ziele zu erreichen. Lass uns durchstarten!`
+      };
+
+      const greeting = greetings[personality as keyof typeof greetings] || greetings.motivierend;
+
+      // Save the greeting message
+      const savedMessage = await saveMessage('assistant', greeting);
+      if (savedMessage) {
+        const mappedMessage: ChatMessage = {
+          id: savedMessage.id,
+          role: savedMessage.message_role as 'user' | 'assistant',
+          content: savedMessage.message_content,
+          created_at: savedMessage.created_at,
+          coach_personality: savedMessage.coach_personality
+        };
+        setMessages([mappedMessage]);
+      }
+
+    } catch (error) {
+      console.error('Error generating coach greeting:', error);
+    }
+  };
+
   const loadChatHistory = async () => {
     if (!user?.id) return;
 
@@ -76,7 +161,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
-        .limit(50); // Last 50 messages
+        .limit(50);
 
       if (error) {
         console.error('Error loading chat history:', error);
@@ -90,7 +175,15 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
         created_at: msg.created_at,
         coach_personality: msg.coach_personality
       })) as ChatMessage[];
+      
       setMessages(mappedMessages);
+
+      // If no messages exist, generate initial greeting
+      if (mappedMessages.length === 0) {
+        setTimeout(() => {
+          generateCoachGreeting(currentCoachPersonality);
+        }, 500);
+      }
     } catch (error) {
       console.error('Error in loadChatHistory:', error);
     } finally {
@@ -108,7 +201,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
           user_id: user.id,
           message_role: role,
           message_content: content,
-          coach_personality: coachPersonality,
+          coach_personality: currentCoachPersonality,
           context_data: {}
         })
         .select()
@@ -190,12 +283,12 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
           .single()
       ]);
 
-      // Call enhanced coach-chat function
+      // Call enhanced coach-chat function with current personality
       const { data: coachResponse, error } = await supabase.functions.invoke('coach-chat', {
         body: {
           message: userMessage,
           userId: user.id,
-          coachPersonality: coachPersonality,
+          coachPersonality: currentCoachPersonality,
           userData: {
             meals: mealsData.data || [],
             workouts: workoutsData.data || [],
@@ -204,7 +297,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
             profile: profileData.data || {},
             goals: goalsData.data || {}
           },
-          chatHistory: messages.slice(-10) // Last 10 messages for context
+          chatHistory: messages.slice(-10)
         }
       });
 
@@ -257,7 +350,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     }
   };
 
-  const clearChat = async () => {
+  const clearChat = async (showToast = true) => {
     if (!user?.id) return;
 
     try {
@@ -268,24 +361,39 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
 
       if (error) {
         console.error('Error clearing chat:', error);
-        toast.error('Fehler beim Löschen des Chat-Verlaufs');
+        if (showToast) {
+          toast.error('Fehler beim Löschen des Chat-Verlaufs');
+        }
         return;
       }
 
       setMessages([]);
-      toast.success('Chat-Verlauf gelöscht');
+      if (showToast) {
+        toast.success('Chat-Verlauf gelöscht');
+      }
     } catch (error) {
       console.error('Error in clearChat:', error);
-      toast.error('Fehler beim Löschen des Chat-Verlaufs');
+      if (showToast) {
+        toast.error('Fehler beim Löschen des Chat-Verlaufs');
+      }
     }
   };
 
   const getCoachIcon = (personality: string) => {
     switch (personality) {
-      case 'streng': return '🎯';
-      case 'motivierend': return '💪';
-      case 'entspannt': return '😊';
-      default: return '🤖';
+      case 'hart': return '🎯';
+      case 'soft': return '❤️';
+      case 'motivierend':
+      default: return '💪';
+    }
+  };
+
+  const getCoachName = (personality: string) => {
+    switch (personality) {
+      case 'hart': return 'Sascha';
+      case 'soft': return 'Lucy';
+      case 'motivierend':
+      default: return 'Kai';
     }
   };
 
@@ -311,7 +419,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
             <div className="flex items-center gap-2">
               <span className="text-lg font-bold">KaloAI Coach</span>
               <Badge variant="secondary" className="text-xs">
-                {getCoachIcon(coachPersonality)} {coachPersonality}
+                {getCoachIcon(currentCoachPersonality)} {getCoachName(currentCoachPersonality)}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground font-normal">
@@ -322,7 +430,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearChat}
+              onClick={() => clearChat(true)}
               className="text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
@@ -358,7 +466,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
                         <div className="flex items-center gap-2 mb-2">
                           <Brain className="h-4 w-4 text-primary" />
                           <span className="text-xs font-medium text-primary">
-                            Coach ({message.coach_personality || coachPersonality})
+                            {getCoachName(message.coach_personality || currentCoachPersonality)} ({getCoachIcon(message.coach_personality || currentCoachPersonality)})
                           </span>
                         </div>
                       )}
@@ -376,7 +484,9 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
                 <div className="max-w-[80%] bg-muted border rounded-2xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Brain className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-medium text-primary">Coach denkt nach...</span>
+                    <span className="text-xs font-medium text-primary">
+                      {getCoachName(currentCoachPersonality)} denkt nach...
+                    </span>
                   </div>
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
