@@ -221,7 +221,8 @@ const Index = () => {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const { data, error } = await supabase
+      // Fetch meals
+      const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
         .select('*')
         .eq('user_id', user?.id)
@@ -229,11 +230,42 @@ const Index = () => {
         .lte('created_at', endOfDay.toISOString())
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (mealsError) throw mealsError;
       
-      const mealsData = data || [];
-      setMeals(mealsData);
-      updateCalorieSummary(mealsData);
+      if (!mealsData || mealsData.length === 0) {
+        setMeals([]);
+        updateCalorieSummary([]);
+        return;
+      }
+
+      // Fetch images for all meals
+      const mealIds = mealsData.map(meal => meal.id);
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('meal_images')
+        .select('meal_id, image_url')
+        .in('meal_id', mealIds);
+
+      if (imagesError) {
+        console.error('Error fetching meal images:', imagesError);
+      }
+
+      // Group images by meal_id
+      const imagesByMeal = (imagesData || []).reduce((acc, img) => {
+        if (!acc[img.meal_id]) {
+          acc[img.meal_id] = [];
+        }
+        acc[img.meal_id].push(img.image_url);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      // Combine meals with their images
+      const mealsWithImages = mealsData.map(meal => ({
+        ...meal,
+        images: imagesByMeal[meal.id] || []
+      }));
+      
+      setMeals(mealsWithImages);
+      updateCalorieSummary(mealsWithImages);
     } catch (error) {
       console.error('Error fetching meals:', error);
       setMeals([]);

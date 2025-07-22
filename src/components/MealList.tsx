@@ -13,7 +13,7 @@ import { calculateMealBonusPoints, getMealPointsIcon, getMealBasePoints } from '
 interface Meal {
   id: string;
   meal_type: string;
-  food_items: string;
+  text: string;
   calories: number;
   protein: number;
   carbs: number;
@@ -102,11 +102,11 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
           <Card key={meal.id} className="overflow-hidden">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1">
                   <span className="text-lg">{getMealTypeEmoji(meal.meal_type)}</span>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-sm">
-                      {getMealTypeLabel(meal.meal_type)}
+                      {meal.text} ({getMealTypeLabel(meal.meal_type)})
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
@@ -120,9 +120,28 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                       )}
                     </div>
                   </div>
+                  
+                  {/* Miniature images */}
+                  {hasImages && (
+                    <div className="flex gap-1 ml-2">
+                      {meal.images?.slice(0, 3).map((imageUrl, index) => (
+                        <img
+                          key={index}
+                          src={imageUrl}
+                          alt={`Miniatur ${index + 1}`}
+                          className="w-10 h-10 object-cover rounded border"
+                        />
+                      ))}
+                      {meal.images && meal.images.length > 3 && (
+                        <div className="w-10 h-10 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground">
+                          +{meal.images.length - 3}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 ml-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -143,8 +162,6 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
               </div>
 
               <div className="space-y-2 mb-3">
-                <p className="text-sm font-medium">{meal.food_items}</p>
-                
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   <div className="text-center p-2 bg-muted/50 rounded">
                     <div className="font-semibold">{meal.calories}</div>
@@ -165,7 +182,7 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                 </div>
               </div>
 
-              {/* Points badges in same row for meals */}
+              {/* Points badges */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <PointsBadge 
                   points={basePoints} 
@@ -187,10 +204,10 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                 )}
               </div>
 
-              {/* Show images if available */}
-              {hasImages && (
+              {/* Large images if available */}
+              {hasImages && meal.images && meal.images.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 mb-3">
-                  {meal.images?.slice(0, 2).map((imageUrl, index) => (
+                  {meal.images.slice(0, 2).map((imageUrl, index) => (
                     <img
                       key={index}
                       src={imageUrl}
@@ -218,7 +235,7 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
         <MealEditDialog
           meal={{
             id: editingMeal.id,
-            text: editingMeal.food_items,
+            text: editingMeal.text,
             calories: editingMeal.calories,
             protein: editingMeal.protein,
             carbs: editingMeal.carbs,
@@ -230,7 +247,6 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
           open={!!editingMeal}
           onClose={() => setEditingMeal(null)}
           onUpdate={(mealId, updates) => {
-            // Convert back from text to food_items for update
             onMealUpdate();
             setEditingMeal(null);
           }}
