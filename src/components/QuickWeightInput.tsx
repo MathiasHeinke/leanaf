@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,24 +38,6 @@ const parsePhotoUrls = (photoUrls: any): string[] => {
   return [];
 };
 
-// Locale-safe number parsing for German input
-const parseGermanNumber = (value: string): number | null => {
-  if (!value || value.trim() === '') return null;
-  
-  // Replace German decimal comma with dot
-  const normalizedValue = value.trim().replace(',', '.');
-  const parsed = parseFloat(normalizedValue);
-  
-  console.log('🔧 [WEIGHT INPUT] Parsing input:', { 
-    original: value, 
-    normalized: normalizedValue, 
-    parsed,
-    isValid: !isNaN(parsed)
-  });
-  
-  return isNaN(parsed) ? null : parsed;
-};
-
 export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
@@ -75,18 +56,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   // Check if weight already exists for today
   const hasWeightToday = todaysWeight && todaysWeight.weight !== null;
 
-  console.log('🔧 [WEIGHT INPUT] Component state:', {
-    user: user?.id,
-    hasWeightToday,
-    todaysWeight,
-    weight,
-    isSubmitting,
-    isEditing
-  });
-
   useEffect(() => {
     if (hasWeightToday && !isEditing) {
-      console.log('🔧 [WEIGHT INPUT] Loading existing weight data:', todaysWeight);
       setWeight(todaysWeight.weight?.toString() || "");
       setBodyFat(todaysWeight.body_fat_percentage?.toString() || "");
       setMuscleMass(todaysWeight.muscle_percentage?.toString() || "");
@@ -119,53 +90,26 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !weight) {
-      console.log('🔧 [WEIGHT INPUT] Submit blocked - missing user or weight:', { user: !!user, weight });
-      return;
-    }
-
-    console.log('🔧 [WEIGHT INPUT] Starting weight submission...', {
-      userId: user.id,
-      weight,
-      bodyFat,
-      muscleMass,
-      hasWeightToday,
-      todaysWeightId: todaysWeight?.id
-    });
+    if (!user || !weight) return;
 
     setIsSubmitting(true);
     try {
-      const weightValue = parseGermanNumber(weight);
-      const bodyFatValue = bodyFat ? parseGermanNumber(bodyFat) : null;
-      const muscleMassValue = muscleMass ? parseGermanNumber(muscleMass) : null;
+      const weightValue = parseFloat(weight);
+      const bodyFatValue = bodyFat ? parseFloat(bodyFat) : null;
+      const muscleMassValue = muscleMass ? parseFloat(muscleMass) : null;
 
-      console.log('🔧 [WEIGHT INPUT] Parsed values:', {
-        weightValue,
-        bodyFatValue,
-        muscleMassValue
-      });
-
-      // Validate values with better error messages
-      if (weightValue === null || weightValue <= 0) {
-        console.error('🔧 [WEIGHT INPUT] Invalid weight value:', weight);
-        toast.error(`Ungültiges Gewicht: "${weight}". Bitte verwende Zahlen (z.B. 62 oder 62,5)`);
-        return;
-      }
-
-      if (weightValue > 500) {
-        console.error('🔧 [WEIGHT INPUT] Weight too high:', weightValue);
-        toast.error('Gewicht ist zu hoch. Maximal 500kg erlaubt.');
+      // Validate values
+      if (isNaN(weightValue) || weightValue <= 0) {
+        toast.error('Bitte gib ein gültiges Gewicht ein');
         return;
       }
 
       if (bodyFatValue !== null && (bodyFatValue < 0 || bodyFatValue > 100)) {
-        console.error('🔧 [WEIGHT INPUT] Invalid body fat:', bodyFatValue);
         toast.error('Körperfettanteil muss zwischen 0 und 100% liegen');
         return;
       }
 
       if (muscleMassValue !== null && (muscleMassValue < 0 || muscleMassValue > 100)) {
-        console.error('🔧 [WEIGHT INPUT] Invalid muscle mass:', muscleMassValue);
         toast.error('Muskelanteil muss zwischen 0 und 100% liegen');
         return;
       }
@@ -173,13 +117,11 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       // Upload new photos if any
       let newPhotoUrls: string[] = [];
       if (selectedFiles.length > 0) {
-        console.log('🔧 [WEIGHT INPUT] Uploading photos:', selectedFiles.length);
         const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
         if (uploadResult.success) {
           newPhotoUrls = uploadResult.urls;
-          console.log('🔧 [WEIGHT INPUT] Photos uploaded successfully:', newPhotoUrls);
         } else {
-          console.error('🔧 [WEIGHT INPUT] Photo upload failed:', uploadResult.errors);
+          console.error('Photo upload failed:', uploadResult.errors);
           toast.error('Fehler beim Hochladen der Bilder');
         }
       }
@@ -197,11 +139,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         notes: notes || null
       };
 
-      console.log('🔧 [WEIGHT INPUT] Saving weight data:', weightData);
-
       if (hasWeightToday && todaysWeight?.id) {
         // Update existing weight entry - no points awarded
-        console.log('🔧 [WEIGHT INPUT] Updating existing entry with ID:', todaysWeight.id);
         const { error } = await supabase
           .from('weight_history')
           .update({
@@ -214,30 +153,18 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           })
           .eq('id', todaysWeight.id);
 
-        if (error) {
-          console.error('🔧 [WEIGHT INPUT] Update failed:', error);
-          throw error;
-        }
-        
-        console.log('🔧 [WEIGHT INPUT] Weight updated successfully');
-        toast.success(`Gewicht erfolgreich auf ${weightValue}kg aktualisiert! 📊`, {
-          description: bodyFatValue ? `Körperfett: ${bodyFatValue}%` : undefined
-        });
+        if (error) throw error;
+        toast.success('Gewicht aktualisiert!');
       } else {
         // Create new weight entry
-        console.log('🔧 [WEIGHT INPUT] Creating new weight entry');
         const { error } = await supabase
           .from('weight_history')
           .upsert(weightData, { 
             onConflict: 'user_id, date'
           });
 
-        if (error) {
-          console.error('🔧 [WEIGHT INPUT] Insert failed:', error);
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log('🔧 [WEIGHT INPUT] Weight saved successfully, awarding points...');
         // Award points for weight tracking
         await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen');
         await updateStreak('weight_tracking');
@@ -246,31 +173,16 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         setShowPointsAnimation(true);
         setTimeout(() => setShowPointsAnimation(false), 3000);
 
-        toast.success(`Gewicht ${weightValue}kg erfolgreich eingetragen! 🎉`, {
-          description: `Du hast ${getPointsForActivity('weight_measured')} Punkte erhalten!`
-        });
+        toast.success('Gewicht erfolgreich eingetragen!');
       }
 
-      // Reset form and trigger callbacks
-      console.log('🔧 [WEIGHT INPUT] Resetting form and triggering callbacks...');
       setIsEditing(false);
       setSelectedFiles([]);
       setShowPhotoUpload(false);
-      
-      // Trigger callback to refresh data
-      if (onWeightAdded) {
-        console.log('🔧 [WEIGHT INPUT] Calling onWeightAdded callback');
-        onWeightAdded();
-      }
-      
-      // Small delay to ensure state updates propagate
-      setTimeout(() => {
-        console.log('🔧 [WEIGHT INPUT] Weight submission completed successfully');
-      }, 100);
-      
+      onWeightAdded?.();
     } catch (error) {
-      console.error('🔧 [WEIGHT INPUT] Error saving weight:', error);
-      toast.error('Fehler beim Speichern des Gewichts. Bitte versuche es erneut.');
+      console.error('Error saving weight:', error);
+      toast.error('Fehler beim Speichern des Gewichts');
     } finally {
       setIsSubmitting(false);
     }
@@ -311,10 +223,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                console.log('🔧 [WEIGHT INPUT] Starting edit mode');
-                setIsEditing(true);
-              }}
+              onClick={() => setIsEditing(true)}
               className="text-green-600 border-green-300 hover:bg-green-50"
             >
               <Edit className="h-4 w-4" />
@@ -393,17 +302,17 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         {/* Weight */}
         <div>
           <Label htmlFor="weight" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
-            Gewicht (kg) * <span className="text-xs text-gray-500">(z.B. 62 oder 62,5)</span>
+            Gewicht (kg) *
           </Label>
           <Input
             id="weight"
-            type="text"
+            type="number"
             value={weight}
-            onChange={(e) => {
-              console.log('🔧 [WEIGHT INPUT] Weight input changed:', e.target.value);
-              setWeight(e.target.value);
-            }}
-            placeholder="z.B. 75,5 oder 75.5"
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="z.B. 75.5"
+            step="0.1"
+            min="1"
+            max="500"
             className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
             required
           />
@@ -417,10 +326,13 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </Label>
             <Input
               id="bodyFat"
-              type="text"
+              type="number"
               value={bodyFat}
               onChange={(e) => setBodyFat(e.target.value)}
-              placeholder="z.B. 15,5"
+              placeholder="z.B. 15.5"
+              step="0.1"
+              min="0"
+              max="100"
               className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
             />
           </div>
@@ -430,10 +342,13 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </Label>
             <Input
               id="muscleMass"
-              type="text"
+              type="number"
               value={muscleMass}
               onChange={(e) => setMuscleMass(e.target.value)}
-              placeholder="z.B. 45,0"
+              placeholder="z.B. 45.0"
+              step="0.1"
+              min="0"
+              max="100"
               className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
             />
           </div>
@@ -546,7 +461,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <Button 
             type="submit" 
             disabled={isSubmitting || !weight}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
             {isSubmitting ? (
               <div className="flex items-center gap-2">
@@ -565,10 +480,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                console.log('🔧 [WEIGHT INPUT] Canceling edit mode');
-                setIsEditing(false);
-              }}
+              onClick={() => setIsEditing(false)}
               className="border-green-300 text-green-600"
             >
               Abbrechen
