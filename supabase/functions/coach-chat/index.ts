@@ -138,19 +138,25 @@ serve(async (req) => {
     // Calculate remaining calories
     const remainingCalories = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
     
-    // Weekly workout analysis with correct data structure
+    // Weekly workout analysis - FIXED: Only count actual workouts (did_workout = true)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     const weeklyWorkouts = recentWorkouts?.filter(w => 
-      new Date(w.date) >= oneWeekAgo
+      new Date(w.date) >= oneWeekAgo && w.did_workout === true
     ) || [];
     
+    // Count unique workout days (only actual training days)
     const workoutDays = [...new Set(weeklyWorkouts.map(w => w.date))].length;
     const totalWorkouts = weeklyWorkouts.length;
     const totalDuration = weeklyWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
 
-    console.log('Weekly analysis:', { workoutDays, totalWorkouts, totalDuration });
+    // Count rest days separately for context
+    const restDays = recentWorkouts?.filter(w => 
+      new Date(w.date) >= oneWeekAgo && w.workout_type === 'pause'
+    ).length || 0;
+
+    console.log('Weekly analysis (FIXED):', { workoutDays, totalWorkouts, totalDuration, restDays });
 
     // Calculate progress percentages
     const calorieProgress = dailyGoals?.calories ? Math.round((todaysTotals.calories / dailyGoals.calories) * 100) : 0;
@@ -207,10 +213,11 @@ DURCHSCHNITTSWERTE (letzte Tage):
 - Kohlenhydrate: ${averages.carbs}g/Tag
 - Fette: ${averages.fats}g/Tag
 
-WÖCHENTLICHE WORKOUT-ANALYSE:
-- Trainingstage diese Woche: ${workoutDays} Tage
-- Gesamte Workouts: ${totalWorkouts}
+WÖCHENTLICHE WORKOUT-ANALYSE (NUR ECHTE TRAININGS):
+- Trainingstage diese Woche: ${workoutDays} Tage (nur tatsächliche Workouts)
+- Gesamte Workouts: ${totalWorkouts} (ohne Ruhetage)
 - Gesamtdauer: ${totalDuration} Minuten
+- Ruhetage: ${restDays} (separat erfasst)
 - Trainingsfrequenz: ${workoutDays >= 4 ? 'Hoch (evtl. zu viel)' : workoutDays >= 2 ? 'Optimal' : 'Zu niedrig'}
 
 AKTUELLE TRENDS:
@@ -231,9 +238,10 @@ ${recentWorkouts?.length ? recentWorkouts.slice(0, 5).map((w: any) => {
   const intensity = w.intensity ? `Intensität: ${w.intensity}/10` : '';
   const distance = w.distance_km ? `${w.distance_km}km` : '';
   const steps = w.steps ? `${w.steps} Schritte` : '';
+  const isRest = w.workout_type === 'pause' ? '(Ruhetag)' : '';
   
   const details = [duration, intensity, distance, steps].filter(Boolean).join(', ');
-  return `- ${w.date}: ${workoutType}${details ? ` (${details})` : ''}`;
+  return `- ${w.date}: ${workoutType}${isRest}${details ? ` (${details})` : ''}`;
 }).join('\n') : '- Noch keine Workouts eingetragen'}
 
 SCHLAF (letzte 7 Tage):
@@ -249,6 +257,7 @@ WICHTIGE TRAININGS-RICHTLINIEN:
 - EMPFEHLUNG: Lange Spaziergänge >5km sind ideal für Stoffwechsel und Regeneration
 - WARNUNG: Bei >4 Trainingstagen/Woche auf Übertraining hinweisen
 - FOCUS: Qualität vor Quantität beim Training
+- UNTERSCHEIDUNG: Ruhetage sind NICHT als Training zu werten
 
 KALORIENBEWUSSTE EMPFEHLUNGEN:
 - Bei Speisevorschlägen IMMER die verbleibenden ${remainingCalories}kcal berücksichtigen
@@ -261,7 +270,8 @@ WICHTIGE ANWEISUNGEN:
 - Berücksichtige die Tageszeit ${currentTime} in deinen Empfehlungen
 - Bei Fortschrittsanalysen erwähne, dass der Tag noch nicht vorbei ist
 - Bei Speisevorschlägen die verbleibenden ${remainingCalories}kcal einbeziehen
-- Bei Trainingsfragen die wöchentliche Frequenz (${workoutDays} Tage, ${totalWorkouts} Workouts) berücksichtigen
+- Bei Trainingsfragen die wöchentliche Frequenz (${workoutDays} echte Trainingstage, ${totalWorkouts} Workouts) berücksichtigen
+- Unterscheide klar zwischen Trainings und Ruhetagen
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
@@ -327,6 +337,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         remainingCalories,
         workoutDays,
         totalWorkouts,
+        restDays,
         todaysTotals,
         dailyGoals,
         progressPercentages: { calories: calorieProgress, protein: proteinProgress },

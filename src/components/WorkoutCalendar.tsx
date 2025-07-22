@@ -10,9 +10,11 @@ import {
   ChevronRight,
   Plus,
   Edit,
-  XCircle
+  XCircle,
+  Trash2
 } from "lucide-react";
 import { WorkoutEditModal } from "./WorkoutEditModal";
+import { toast } from "sonner";
 
 interface WorkoutEntry {
   id: string;
@@ -64,6 +66,27 @@ export const WorkoutCalendar = () => {
       console.error('Error loading workouts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // NEW: Delete workout function
+  const handleDeleteWorkout = async (workoutId: string, date: string) => {
+    if (!confirm('Workout-Eintrag wirklich löschen?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', workoutId)
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      toast.success('Workout-Eintrag gelöscht');
+      loadWorkouts();
+    } catch (error) {
+      console.error('Error deleting workout:', error);
+      toast.error('Fehler beim Löschen des Workout-Eintrags');
     }
   };
 
@@ -135,12 +158,13 @@ export const WorkoutCalendar = () => {
     year: 'numeric' 
   });
 
-  const thisMonth = workouts.filter(w => w.did_workout);
-  const totalWorkouts = thisMonth.length;
-  const avgIntensity = thisMonth.length > 0 
-    ? Math.round(thisMonth.reduce((sum, w) => sum + w.intensity, 0) / thisMonth.length)
+  // FIXED: Only count actual workouts (did_workout = true) for stats
+  const thisMonthActualWorkouts = workouts.filter(w => w.did_workout === true);
+  const totalWorkouts = thisMonthActualWorkouts.length;
+  const avgIntensity = thisMonthActualWorkouts.length > 0 
+    ? Math.round(thisMonthActualWorkouts.reduce((sum, w) => sum + w.intensity, 0) / thisMonthActualWorkouts.length)
     : 0;
-  const totalMinutes = thisMonth.reduce((sum, w) => sum + w.duration_minutes, 0);
+  const totalMinutes = thisMonthActualWorkouts.reduce((sum, w) => sum + w.duration_minutes, 0);
 
   return (
     <>
@@ -174,11 +198,11 @@ export const WorkoutCalendar = () => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Stats */}
+          {/* Stats - FIXED: Only count actual workouts */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{totalWorkouts}</div>
-              <div className="text-sm text-muted-foreground">Workouts</div>
+              <div className="text-sm text-muted-foreground">Echte Workouts</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">{avgIntensity}</div>
@@ -233,28 +257,54 @@ export const WorkoutCalendar = () => {
                           )}
                         </div>
                         {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleDateClick(day, workout)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleDateClick(day, workout)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteWorkout(workout.id, workout.date);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ) : workout && !workout.did_workout ? (
                       <div className="absolute inset-1 flex items-center justify-center">
                         <XCircle className="h-3 w-3 text-gray-400" />
                         {canEdit && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
-                            onClick={() => handleDateClick(day, workout)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleDateClick(day, workout)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteWorkout(workout.id, workout.date);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ) : canEdit ? (
@@ -297,7 +347,9 @@ export const WorkoutCalendar = () => {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               <Plus className="h-3 w-3 inline mr-1" />
-              Klicke auf vergangene Tage um Workouts nachzutragen
+              Klicke auf vergangene Tage um Workouts nachzutragen •
+              <Trash2 className="h-3 w-3 inline mx-1" />
+              Hover über Einträge zum Löschen
             </p>
           </div>
         </CardContent>

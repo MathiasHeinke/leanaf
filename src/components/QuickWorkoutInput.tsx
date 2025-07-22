@@ -53,6 +53,12 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
 
     setIsSubmitting(true);
     try {
+      // FIXED: Use proper timezone-aware date generation
+      const today = new Date();
+      const localDateString = today.getFullYear() + '-' + 
+                              String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                              String(today.getDate()).padStart(2, '0');
+
       const workoutData = {
         user_id: user.id,
         workout_type: workoutType,
@@ -62,7 +68,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
         did_workout: workoutType !== 'pause',
-        date: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]
+        date: localDateString // FIXED: Use proper local date
       };
 
       if (hasWorkoutToday) {
@@ -75,7 +81,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         if (error) throw error;
         toast.success('Workout aktualisiert!');
       } else {
-        // Create new workout using UPSERT to prevent duplicates
+        // FIXED: Create new workout with explicit conflict resolution
         const { error } = await supabase
           .from('workouts')
           .upsert(workoutData, { 
