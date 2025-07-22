@@ -82,12 +82,7 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
   const trend = getWeightTrend();
 
   return (
-    <PremiumGate 
-      feature="Gewicht Tracking" 
-      tier="premium"
-      fallbackMessage="Gewichts-Tracking ist ein Premium Feature. Upgrade für detaillierte Gewichtsverfolgung!"
-    >
-      <Card className="glass-card hover-scale">
+    <Card className="glass-card hover-scale">
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-8 w-8 bg-primary/20 rounded-lg flex items-center justify-center">
@@ -133,6 +128,5 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
           )}
         </CardContent>
       </Card>
-    </PremiumGate>
   );
 };

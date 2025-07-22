@@ -177,8 +177,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
 
   return (
     <PremiumGate 
-      feature="Workout Tracking" 
-      tier="premium"
+      feature="workout_tracking"
       fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
     >
       <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">

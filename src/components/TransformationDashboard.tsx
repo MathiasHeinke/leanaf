@@ -188,8 +188,7 @@ export const TransformationDashboard = () => {
 
   return (
     <PremiumGate 
-      feature="Transformation Dashboard" 
-      tier="premium"
+      feature="transformation_dashboard"
       fallbackMessage="Das detaillierte Transformation Dashboard ist ein Premium Feature. Upgrade für umfassende Fortschritts-Analysen!"
     >
       <div className="space-y-6">

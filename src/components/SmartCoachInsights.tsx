@@ -148,8 +148,7 @@ export const SmartCoachInsights = () => {
           </div>
         ) : (
           <PremiumGate 
-            feature="Smart Insights Dashboard" 
-            tier="premium"
+            feature="premium_insights"
             fallbackMessage="KI-Coach Insights sind ein Premium Feature. Upgrade für erweiterte KI-gestützte Analyse!"
           >
             <div className="text-center py-8">

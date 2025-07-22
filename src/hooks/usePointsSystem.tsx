@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useFeatureAccess } from './useFeatureAccess';
 import { toast } from 'sonner';
 
 interface UserPoints {
@@ -32,6 +33,7 @@ interface UserStreak {
 
 export const usePointsSystem = () => {
   const { user } = useAuth();
+  const { getTrialMultiplier } = useFeatureAccess();
   const [userPoints, setUserPoints] = useState<UserPoints | null>(null);
   const [departmentProgress, setDepartmentProgress] = useState<DepartmentProgress[]>([]);
   const [streaks, setStreaks] = useState<UserStreak[]>([]);
@@ -111,7 +113,7 @@ export const usePointsSystem = () => {
     }
   };
 
-  // Award points for activity
+  // Award points for activity with automatic trial boost
   const awardPoints = async (
     activityType: string,
     basePoints: number,
@@ -123,7 +125,8 @@ export const usePointsSystem = () => {
       return;
     }
 
-    console.log(`🎯 Awarding points - Type: ${activityType}, Points: ${basePoints}, Multiplier: ${multiplier}`);
+    const trialMultiplier = getTrialMultiplier();
+    console.log(`🎯 Awarding points - Type: ${activityType}, Points: ${basePoints}, Multiplier: ${multiplier}, Trial: ${trialMultiplier}`);
 
     try {
       const { data, error } = await supabase.rpc('update_user_points_and_level', {
@@ -131,7 +134,8 @@ export const usePointsSystem = () => {
         p_points: basePoints,
         p_activity_type: activityType,
         p_description: description,
-        p_multiplier: multiplier
+        p_multiplier: multiplier,
+        p_trial_multiplier: trialMultiplier
       });
 
       if (error) {

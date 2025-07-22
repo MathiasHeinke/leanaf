@@ -3,14 +3,23 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+interface TrialData {
+  hasActiveTrial: boolean;
+  trialExpiry: Date | null;
+  trialDaysLeft: number;
+}
+
 interface SubscriptionContextType {
   isPremium: boolean;
+  isBasic: boolean;
   subscriptionTier: string | null;
   subscriptionEnd: string | null;
   loading: boolean;
+  trial: TrialData;
   refreshSubscription: () => Promise<void>;
   createCheckoutSession: () => Promise<void>;
   createPortalSession: () => Promise<void>;
+  startPremiumTrial: () => Promise<boolean>;
   // Debug functions
   isInDebugMode: () => boolean;
   debugTier: string | null;
@@ -30,9 +39,15 @@ export const useSubscription = () => {
 
 export const SubscriptionProvider = ({ children }: { children: React.ReactNode }) => {
   const [isPremium, setIsPremium] = useState(false);
+  const [isBasic, setIsBasic] = useState(true);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [trial, setTrial] = useState<TrialData>({
+    hasActiveTrial: false,
+    trialExpiry: null,
+    trialDaysLeft: 0,
+  });
   
   // Debug state
   const [debugMode, setDebugMode] = useState(false);
@@ -43,8 +58,14 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const refreshSubscription = async () => {
     if (!user) {
       setIsPremium(false);
+      setIsBasic(true);
       setSubscriptionTier(null);
       setSubscriptionEnd(null);
+      setTrial({
+        hasActiveTrial: false,
+        trialExpiry: null,
+        trialDaysLeft: 0,
+      });
       setLoading(false);
       return;
     }
@@ -52,6 +73,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     try {
       setLoading(true);
       
+      // Check subscription status
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
@@ -60,16 +82,83 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
       if (error) throw error;
 
-      setIsPremium(data?.subscribed || false);
-      setSubscriptionTier(data?.subscription_tier || null);
+      // Check trial status
+      const { data: trialData, error: trialError } = await supabase
+        .from('user_trials')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .eq('trial_type', 'premium')
+        .maybeSingle();
+
+      if (trialError && trialError.code !== 'PGRST116') {
+        console.error('Error checking trial:', trialError);
+      }
+
+      // Calculate trial status
+      let hasActiveTrial = false;
+      let trialExpiry: Date | null = null;
+      let trialDaysLeft = 0;
+
+      if (trialData && new Date(trialData.expires_at) > new Date()) {
+        hasActiveTrial = true;
+        trialExpiry = new Date(trialData.expires_at);
+        trialDaysLeft = Math.ceil((trialExpiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      const isSubscribed = data?.subscribed || false;
+      const premium = isSubscribed || hasActiveTrial;
+      const basic = !premium;
+
+      setIsPremium(premium);
+      setIsBasic(basic);
+      setSubscriptionTier(data?.subscription_tier || (hasActiveTrial ? 'premium' : null));
       setSubscriptionEnd(data?.subscription_end || null);
+      setTrial({
+        hasActiveTrial,
+        trialExpiry,
+        trialDaysLeft,
+      });
     } catch (error) {
       console.error('Error checking subscription:', error);
       setIsPremium(false);
+      setIsBasic(true);
       setSubscriptionTier(null);
       setSubscriptionEnd(null);
+      setTrial({
+        hasActiveTrial: false,
+        trialExpiry: null,
+        trialDaysLeft: 0,
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startPremiumTrial = async (): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_trials')
+        .insert({
+          user_id: user.id,
+          trial_type: 'premium',
+          started_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          is_active: true,
+        });
+
+      if (error) {
+        console.error('Error starting trial:', error);
+        return false;
+      }
+
+      await refreshSubscription();
+      return true;
+    } catch (error) {
+      console.error('Error starting premium trial:', error);
+      return false;
     }
   };
 
@@ -158,12 +247,15 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
   const value = {
     isPremium: getIsPremium(),
+    isBasic: !getIsPremium(),
     subscriptionTier: getSubscriptionTier(),
     subscriptionEnd,
     loading,
+    trial,
     refreshSubscription,
     createCheckoutSession,
     createPortalSession,
+    startPremiumTrial,
     // Debug functions
     isInDebugMode,
     debugTier,

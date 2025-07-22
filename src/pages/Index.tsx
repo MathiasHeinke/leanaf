@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { MealList } from "@/components/MealList";
 import { DailyProgress } from "@/components/DailyProgress";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -17,6 +18,7 @@ import { DepartmentProgress } from "@/components/DepartmentProgress";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { ProgressCharts } from "@/components/ProgressCharts";
+import { TrialBanner } from "@/components/TrialBanner";
 import { useBadgeChecker } from "@/hooks/useBadgeChecker";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +29,8 @@ import { toast } from "sonner";
 const Index = () => {
   const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
-  const { isPremium, subscriptionTier } = useSubscription();
+  const { isPremium, trial } = useSubscription();
+  const { hasFeatureAccess } = useFeatureAccess();
   const navigate = useNavigate();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
@@ -316,13 +319,13 @@ const Index = () => {
     );
   }
 
-  // Check if user has premium features
-  const hasPremiumFeatures = isPremium || ['premium', 'enterprise'].includes(subscriptionTier?.toLowerCase() || '');
-
   return (
     <>
       <div className="space-y-5">
-        <DailyProgress 
+        {/* Trial Banner */}
+        <TrialBanner />
+        
+        <DailyProgress
           dailyTotals={{
             calories: calorieSummary.consumed,
             protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
@@ -341,42 +344,39 @@ const Index = () => {
           onDateChange={handleDateChange}
         />
 
-        {/* Premium Features - Only show for premium users */}
-        {hasPremiumFeatures && (
-          <>
-            <QuickWeightInput 
-              currentWeight={userProfile?.weight}
-              onWeightAdded={handleWeightAdded}
-              todaysWeight={todaysWeight}
-            />
+        {/* Weight Tracking - Always available (Basic/Free feature) */}
+        <QuickWeightInput 
+          currentWeight={userProfile?.weight}
+          onWeightAdded={handleWeightAdded}
+          todaysWeight={todaysWeight}
+        />
 
-            {/* Transformation Tools */}
-            <div className="grid grid-cols-1 gap-4">
-              <QuickWorkoutInput 
-                onWorkoutAdded={handleWorkoutAdded}
-                todaysWorkout={todaysWorkout}
-              />
-              <QuickSleepInput 
-                onSleepAdded={handleSleepAdded}
-                todaysSleep={todaysSleep}
-              />
-            </div>
+        {/* Premium Workout and Sleep Features */}
+        <div className="grid grid-cols-1 gap-4">
+          <QuickWorkoutInput 
+            onWorkoutAdded={handleWorkoutAdded}
+            todaysWorkout={todaysWorkout}
+          />
+          <QuickSleepInput 
+            onSleepAdded={handleSleepAdded}
+            todaysSleep={todaysSleep}
+          />
+        </div>
 
-            <BodyMeasurements 
-              onMeasurementsAdded={handleMeasurementsAdded}
-              todaysMeasurements={todaysMeasurements}
-            />
-          </>
-        )}
+        {/* Premium Body Measurements */}
+        <BodyMeasurements 
+          onMeasurementsAdded={handleMeasurementsAdded}
+          todaysMeasurements={todaysMeasurements}
+        />
         
-        {/* Department Progress */}
+        {/* Department Progress - Always available */}
         <DepartmentProgress />
         
-        {/* Progress Charts - Only for premium users */}
-        {hasPremiumFeatures && <ProgressCharts timeRange="week" />}
+        {/* Progress Charts - Basic charts for all, advanced for premium */}
+        <ProgressCharts timeRange="week" />
         
-        {/* Smart Coach Insights - Only for premium users */}
-        {hasPremiumFeatures && <SmartCoachInsights />}
+        {/* Smart Coach Insights - Premium feature */}
+        <SmartCoachInsights />
         
         <BadgeSystem />
 

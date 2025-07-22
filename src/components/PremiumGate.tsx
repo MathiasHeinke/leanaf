@@ -1,63 +1,45 @@
 import { ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Crown, Lock, Sparkles } from 'lucide-react';
+import { Crown, Lock, Sparkles, Clock } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useFeatureAccess, FeatureName } from '@/hooks/useFeatureAccess';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface PremiumGateProps {
   children: ReactNode;
-  feature?: string;
-  tier?: 'basic' | 'premium' | 'enterprise';
+  feature?: FeatureName;
   fallbackMessage?: string;
   showUpgrade?: boolean;
+  showTrialPrompt?: boolean;
 }
 
 export const PremiumGate = ({ 
   children, 
-  feature = "Premium Feature", 
-  tier = 'premium',
+  feature = "workout_tracking", 
   fallbackMessage,
-  showUpgrade = true
+  showUpgrade = true,
+  showTrialPrompt = true
 }: PremiumGateProps) => {
-  const { isPremium, subscriptionTier } = useSubscription();
+  const { trial, startPremiumTrial, isPremium } = useSubscription();
+  const { hasFeatureAccess, getFeatureStatus } = useFeatureAccess();
   const navigate = useNavigate();
 
-  // Check if user has access to the required tier
-  const hasAccess = () => {
-    if (!isPremium) return false;
-    
-    const tierHierarchy = {
-      'basic': 1,
-      'premium': 2, 
-      'enterprise': 3
-    };
-    
-    const userTierLevel = subscriptionTier ? tierHierarchy[subscriptionTier.toLowerCase() as keyof typeof tierHierarchy] || 0 : 0;
-    const requiredTierLevel = tierHierarchy[tier];
-    
-    return userTierLevel >= requiredTierLevel;
-  };
-
-  if (hasAccess()) {
+  const featureStatus = getFeatureStatus(feature);
+  
+  if (featureStatus.hasAccess) {
     return <>{children}</>;
   }
 
-  const getTierDisplayName = (tier: string) => {
-    switch(tier) {
-      case 'basic': return 'Basic';
-      case 'premium': return 'Premium';
-      case 'enterprise': return 'Enterprise';
-      default: return 'Premium';
-    }
-  };
-
-  const getTierIcon = (tier: string) => {
-    switch(tier) {
-      case 'basic': return <Sparkles className="h-5 w-5 text-blue-600" />;
-      case 'premium': return <Crown className="h-5 w-5 text-yellow-600" />;
-      case 'enterprise': return <Crown className="h-5 w-5 text-purple-600" />;
-      default: return <Crown className="h-5 w-5 text-primary" />;
+  const handleStartTrial = async () => {
+    const success = await startPremiumTrial();
+    if (success) {
+      toast.success('🎉 Premium Trial gestartet! 3 Tage kostenloses Premium.', {
+        duration: 5000,
+      });
+    } else {
+      toast.error('Fehler beim Starten des Trials. Bitte versuche es erneut.');
     }
   };
 
@@ -70,25 +52,49 @@ export const PremiumGate = ({
       <CardHeader className="text-center space-y-3">
         <div className="flex justify-center">
           <div className="p-3 rounded-full bg-primary/10">
-            {getTierIcon(tier)}
+            <Crown className="h-5 w-5 text-primary" />
           </div>
         </div>
         <CardTitle className="flex items-center justify-center gap-2">
           <Lock className="h-4 w-4" />
-          {getTierDisplayName(tier)} Feature
+          Premium Feature
         </CardTitle>
       </CardHeader>
       <CardContent className="text-center space-y-4">
         <p className="text-muted-foreground">
-          {fallbackMessage || `"${feature}" ist ein ${getTierDisplayName(tier)} Feature. Upgrade jetzt um Zugang zu bekommen!`}
+          {fallbackMessage || 'Dieses Feature ist nur für Premium-Nutzer verfügbar.'}
         </p>
+        
+        {showTrialPrompt && !trial.hasActiveTrial && !isPremium && (
+          <div className="space-y-3">
+            <Button 
+              onClick={handleStartTrial}
+              className="w-full"
+              variant="default"
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              3 Tage Premium kostenlos testen
+            </Button>
+            <div className="text-xs text-muted-foreground">
+              Oder direkt zu Premium upgraden:
+            </div>
+          </div>
+        )}
+        
         <Button 
           onClick={() => navigate('/subscription')}
           className="w-full"
+          variant={showTrialPrompt && !trial.hasActiveTrial ? "outline" : "default"}
         >
           <Crown className="h-4 w-4 mr-2" />
-          Zu {getTierDisplayName(tier)} upgraden
+          Zu Premium upgraden
         </Button>
+        
+        {trial.hasActiveTrial && (
+          <div className="text-sm text-muted-foreground">
+            Trial läuft noch {trial.trialDaysLeft} Tag{trial.trialDaysLeft !== 1 ? 'e' : ''}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

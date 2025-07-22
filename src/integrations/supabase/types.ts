@@ -278,6 +278,7 @@ export type Database = {
           metadata: Json | null
           multiplier: number
           points_earned: number
+          trial_multiplier: number | null
           user_id: string
         }
         Insert: {
@@ -288,6 +289,7 @@ export type Database = {
           metadata?: Json | null
           multiplier?: number
           points_earned: number
+          trial_multiplier?: number | null
           user_id: string
         }
         Update: {
@@ -298,6 +300,7 @@ export type Database = {
           metadata?: Json | null
           multiplier?: number
           points_earned?: number
+          trial_multiplier?: number | null
           user_id?: string
         }
         Relationships: []
@@ -557,6 +560,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_trials: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          started_at: string
+          trial_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          started_at?: string
+          trial_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          started_at?: string
+          trial_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weight_history: {
         Row: {
           body_fat_percentage: number | null
@@ -677,13 +713,22 @@ export type Database = {
     }
     Functions: {
       update_user_points_and_level: {
-        Args: {
-          p_user_id: string
-          p_points: number
-          p_activity_type: string
-          p_description?: string
-          p_multiplier?: number
-        }
+        Args:
+          | {
+              p_user_id: string
+              p_points: number
+              p_activity_type: string
+              p_description?: string
+              p_multiplier?: number
+            }
+          | {
+              p_user_id: string
+              p_points: number
+              p_activity_type: string
+              p_description?: string
+              p_multiplier?: number
+              p_trial_multiplier?: number
+            }
         Returns: Json
       }
       update_user_streak: {
