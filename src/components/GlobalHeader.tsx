@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
+import { PointsDebugPanel } from "./PointsDebugPanel";
 
 import { 
   Zap, 
@@ -37,12 +37,22 @@ export const GlobalHeader = ({
   currentView
 }: GlobalHeaderProps) => {
   const [currentActiveView, setCurrentActiveView] = useState<string>('main');
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
   
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { language, setLanguage, t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
+
+  // Reset click count after 1 second
+  useEffect(() => {
+    if (clickCount > 0) {
+      const timer = setTimeout(() => setClickCount(0), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [clickCount]);
 
   // Handle navigation to different views
   const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => {
@@ -81,8 +91,19 @@ export const GlobalHeader = ({
     }
   };
 
-  // Handle refresh
+  // Handle refresh with debug functionality
   const handleRefresh = () => {
+    const newClickCount = clickCount + 1;
+    setClickCount(newClickCount);
+    
+    // Open debug panel on triple click
+    if (newClickCount >= 3) {
+      setIsDebugPanelOpen(true);
+      setClickCount(0);
+      return;
+    }
+    
+    // Normal refresh functionality
     if (onRefresh) {
       onRefresh();
     } else {
@@ -165,16 +186,19 @@ export const GlobalHeader = ({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Refresh Button */}
+            {/* Refresh Button with Debug functionality */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="flex items-center gap-2"
-              title={t('app.refresh')}
+              title={clickCount > 0 ? `Debug: ${clickCount}/3 Klicks` : t('app.refresh')}
             >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''} ${clickCount > 0 ? 'text-primary' : ''}`} />
+              {clickCount > 0 && (
+                <span className="text-xs text-primary font-bold">{clickCount}</span>
+              )}
             </Button>
             
             {/* Dark Mode Toggle */}
@@ -304,6 +328,11 @@ export const GlobalHeader = ({
         </div>
       </div>
 
+      {/* Points Debug Panel */}
+      <PointsDebugPanel 
+        isOpen={isDebugPanelOpen} 
+        onClose={() => setIsDebugPanelOpen(false)} 
+      />
     </>
   );
 };
