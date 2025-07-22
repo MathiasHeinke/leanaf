@@ -246,6 +246,7 @@ export type Database = {
           evaluation_criteria: Json | null
           fats: number | null
           id: string
+          images: string[] | null
           meal_type: string | null
           protein: number | null
           quality_score: number | null
@@ -262,6 +263,7 @@ export type Database = {
           evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
+          images?: string[] | null
           meal_type?: string | null
           protein?: number | null
           quality_score?: number | null
@@ -278,6 +280,7 @@ export type Database = {
           evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
+          images?: string[] | null
           meal_type?: string | null
           protein?: number | null
           quality_score?: number | null
