@@ -10,7 +10,7 @@ export const PointsHeader = () => {
 
   if (loading || !userPoints) {
     return (
-      <div className="bg-card/30 border-b border-border/30 py-2">
+      <div className="bg-card/30 border-b border-border/30 py-1">
         <div className="container mx-auto px-3 max-w-sm flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className="w-9 h-9 sm:w-8 sm:h-8 bg-muted rounded-full animate-pulse" />
@@ -49,7 +49,7 @@ export const PointsHeader = () => {
   };
 
   return (
-    <div className="border-b border-border/30 py-2 sm:py-1">
+    <div className="border-b border-border/30 py-1">
         <div className="container mx-auto px-3 max-w-sm flex items-center justify-between">
         {/* Left Side - Level Icon + Badge */}
         <div className="flex items-center space-x-2 sm:space-x-3">

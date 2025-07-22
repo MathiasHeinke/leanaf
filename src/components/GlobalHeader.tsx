@@ -144,9 +144,9 @@ export const GlobalHeader = ({
 
   return (
     <>
-      <div className="container mx-auto px-4 py-6 max-w-md">
+      <div className="container mx-auto px-4 py-3 max-w-md">
         {/* Header - Restructured logo with icon on left */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             {/* Icon positioned further left */}
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
@@ -230,7 +230,7 @@ export const GlobalHeader = ({
         </div>
 
         {/* Enhanced Segmented Control Navigation with Smooth Sliding Background */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-3">
           <div className="relative bg-muted/60 backdrop-blur-xl p-1.5 rounded-2xl border border-border/30 shadow-lg">
             {/* Sliding background indicator */}
             <div 
@@ -245,7 +245,7 @@ export const GlobalHeader = ({
             <div className="flex relative z-10">
               <button 
                 onClick={() => handleNavigation('main')}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                   activeTab === 'main' 
                     ? 'text-foreground scale-105 font-semibold' 
                     : 'text-muted-foreground hover:text-foreground'
@@ -259,7 +259,7 @@ export const GlobalHeader = ({
               </button>
               <button 
                 onClick={() => handleNavigation('coach')}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                   activeTab === 'coach' 
                     ? 'text-foreground scale-105 font-semibold' 
                     : 'text-muted-foreground hover:text-foreground'
@@ -273,7 +273,7 @@ export const GlobalHeader = ({
               </button>
               <button 
                 onClick={() => handleNavigation('history')}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
                   activeTab === 'history' 
                     ? 'text-foreground scale-105 font-semibold' 
                     : 'text-muted-foreground hover:text-foreground'
@@ -287,7 +287,7 @@ export const GlobalHeader = ({
               </button>
               <button 
                 onClick={() => handleNavigation('profile')}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center profile-button ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center profile-button ${
                   activeTab === 'profile' 
                     ? 'text-foreground scale-105 font-semibold' 
                     : 'text-muted-foreground hover:text-foreground'
