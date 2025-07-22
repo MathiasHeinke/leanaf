@@ -32,36 +32,74 @@ serve(async (req) => {
       imageUrls: images ? images.map((url: string) => url.substring(0, 50) + '...') : 'NO IMAGES'
     });
     
-    // Get user profile for coach personality
+    // Get user profile and check usage limits
     let coachPersonality = 'motivierend';
+    let userTier = 'free';
+    let userId = null;
+    
     try {
       const authHeader = req.headers.get('Authorization');
       if (authHeader) {
         const supabaseClient = createClient(
           Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-          {
-            global: {
-              headers: { Authorization: authHeader },
-            },
-          }
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+          { auth: { persistSession: false } }
         );
         
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
+        
         if (user) {
-          const { data: profileData } = await supabaseClient
+          userId = user.id;
+          
+          // Check if user has active subscription
+          const { data: subscriber } = await supabaseClient
+            .from('subscribers')
+            .select('subscribed, subscription_tier')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (subscriber?.subscribed) {
+            userTier = 'pro';
+          }
+          
+          // For free users, check usage limits
+          if (userTier === 'free') {
+            const { data: usageResult } = await supabaseClient.rpc('check_ai_usage_limit', {
+              p_user_id: user.id,
+              p_feature_type: 'meal_analysis',
+              p_daily_limit: 5,
+              p_monthly_limit: 150
+            });
+            
+            if (!usageResult?.can_use) {
+              console.log('⛔ [ANALYZE-MEAL] Usage limit exceeded for user:', user.id);
+              return new Response(JSON.stringify({ 
+                error: 'Daily usage limit exceeded. Upgrade to Pro for unlimited access.',
+                code: 'USAGE_LIMIT_EXCEEDED',
+                daily_remaining: usageResult?.daily_remaining || 0,
+                monthly_remaining: usageResult?.monthly_remaining || 0
+              }), {
+                status: 429,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+          }
+          
+          // Get coach personality
+          const { data: profile } = await supabaseClient
             .from('profiles')
             .select('coach_personality')
             .eq('user_id', user.id)
             .single();
-          
-          if (profileData?.coach_personality) {
-            coachPersonality = profileData.coach_personality;
+            
+          if (profile?.coach_personality) {
+            coachPersonality = profile.coach_personality;
           }
         }
       }
     } catch (error) {
-      console.log('Could not fetch coach personality, using default');
+      console.error('⚠️ [ANALYZE-MEAL] Error checking user/limits:', error);
+      // Continue without authentication for backwards compatibility
     }
     
     // Validate input - allow either text OR images OR both
@@ -194,6 +232,10 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     console.log('📤 [ANALYZE-MEAL] Sending request to OpenAI...');
     const openAIStartTime = Date.now();
     
+    // Select AI model based on user tier
+    const aiModel = userTier === 'pro' ? 'gpt-4o' : 'gpt-4o-mini';
+    console.log(`🤖 [ANALYZE-MEAL] Using AI model: ${aiModel} for ${userTier} user`);
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -201,7 +243,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: aiModel,
         messages,
         max_tokens: 1500,
         temperature: 0.1,

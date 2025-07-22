@@ -82,7 +82,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
 
   const getPlanPrice = (base: string, monthlyPrice: number) => {
     if (billingPeriod === 'yearly') {
-      return base === 'basic' ? '47,94€' : '119,94€';
+      return base === 'pro' ? '77,40€' : '0€';
     }
     if (billingPeriod === 'sixmonths') {
       const sixMonthPrice = (monthlyPrice * 6 * 0.67); // 33% discount
@@ -99,59 +99,63 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
 
   const getSavings = (planName: string) => {
     if (billingPeriod === 'yearly') {
-      return planName === 'Basic' ? '47,94€' : '119,94€';
+      return planName === 'Pro' ? '77,40€' : '0€';
     }
     if (billingPeriod === 'sixmonths') {
-      return planName === 'Basic' ? '15,98€' : '39,98€';
+      return planName === 'Pro' ? '25,80€' : '0€';
     }
     return null;
   };
 
   const getOriginalPrice = (planName: string) => {
     if (billingPeriod === 'yearly') {
-      return planName === 'Basic' ? '95,88€' : '239,88€';
+      return planName === 'Pro' ? '154,80€' : '0€';
     }
     if (billingPeriod === 'sixmonths') {
-      return planName === 'Basic' ? '47,94€' : '119,94€';
+      return planName === 'Pro' ? '77,40€' : '0€';
     }
     return null;
   };
 
   const plans = [
     {
-      id: getPlanId('basic'),
-      name: 'Basic',
-      price: getPlanPrice('basic', 799),
-      period: getPlanPeriod(),
-      originalPrice: getOriginalPrice('Basic'),
+      id: 'free',
+      name: 'Free',
+      price: '0€',
+      period: '',
+      originalPrice: null,
       icon: <Star className="h-6 w-6 text-blue-600" />,
       color: 'bg-blue-50 border-blue-200 dark:bg-blue-950/20',
       features: [
-        'Basis KI-Coaching',
         'Meal Tracking',
-        'Basic Insights', 
         'Weight Tracking',
-        'Sleep Tracking'
-      ]
+        'Basic Dashboard', 
+        'Points & Badges System',
+        '5 AI Meal Analysen/Tag (GPT-4o-mini)',
+        'Basic Charts'
+      ],
+      isFree: true
     },
     {
-      id: getPlanId('premium'),
-      name: 'Premium',
-      price: getPlanPrice('premium', 1999),
+      id: getPlanId('pro'),
+      name: 'Pro',
+      price: getPlanPrice('pro', 1290),
       period: getPlanPeriod(),
-      originalPrice: getOriginalPrice('Premium'),
+      originalPrice: getOriginalPrice('Pro'),
       icon: <Crown className="h-6 w-6 text-yellow-600" />,
       color: 'bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20',
       popular: true,
       features: [
-        '2-3x schnellere Zielerreichung',
-        'Geringere Abbruchrate',
-        'Erweiterte KI-Analyse',
-        'Smart Insights Dashboard',
-        'Transformation Tracking',
-        'Custom Meal Plans',
-        'Priority Support',
-        'Alle Basic Features'
+        'Alle Free Features',
+        'Unlimited AI mit GPT-4.1',
+        'Advanced Coach Chat',
+        'Coach Recipes',
+        'Daily Analysis',
+        'Workout & Sleep Tracking',
+        'Body Measurements',
+        'Transformation Dashboard',
+        'Premium Insights',
+        'Priority Support'
       ]
     }
   ];
@@ -279,7 +283,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
             
             <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
               {plans.map((plan) => {
-                const isCurrentPlan = isPremium && subscriptionTier === plan.name;
+                const isCurrentPlan = plan.isFree ? !isPremium : (isPremium && subscriptionTier?.toLowerCase() === 'pro');
                 
                 return (
                   <Card 
@@ -309,7 +313,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                       <div>
                         <CardTitle className="text-2xl">{plan.name}</CardTitle>
                          <div className="flex flex-col items-center space-y-2">
-                           {billingPeriod !== 'monthly' && (
+                           {!plan.isFree && billingPeriod !== 'monthly' && plan.originalPrice && (
                              <div className="text-sm text-muted-foreground">
                                <span className="line-through">{plan.originalPrice}</span>
                                <span className="ml-2 text-green-600 font-semibold">
@@ -321,7 +325,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                              <span className="text-3xl font-bold">{plan.price}</span>
                              <span className="text-sm text-muted-foreground">{plan.period}</span>
                            </div>
-                           {billingPeriod !== 'monthly' && (
+                           {!plan.isFree && billingPeriod !== 'monthly' && getSavings(plan.name) && getSavings(plan.name) !== '0€' && (
                              <div className="text-xs text-green-600 font-medium">
                                Du sparst {getSavings(plan.name)} {billingPeriod === 'yearly' ? 'pro Jahr' : 'alle 6 Monate'}
                              </div>
@@ -340,20 +344,30 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                         ))}
                       </ul>
                       
-                      <Button 
-                        className="w-full" 
-                        variant={plan.popular && !isCurrentPlan ? "default" : "outline"}
-                        onClick={() => handleSubscribe(plan.id)}
-                        disabled={subscribing || isCurrentPlan}
-                      >
-                        {isCurrentPlan ? (
-                          "Aktueller Plan"
-                        ) : subscribing ? (
-                          "Loading..."
-                        ) : (
-                          `${plan.name} wählen`
-                        )}
-                      </Button>
+                      {plan.isFree ? (
+                        <Button 
+                          className="w-full" 
+                          variant="outline"
+                          disabled={true}
+                        >
+                          {isCurrentPlan ? "Aktueller Plan" : "Kostenlos"}
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="w-full" 
+                          variant={plan.popular && !isCurrentPlan ? "default" : "outline"}
+                          onClick={() => handleSubscribe(plan.id)}
+                          disabled={subscribing || isCurrentPlan}
+                        >
+                          {isCurrentPlan ? (
+                            "Aktueller Plan"
+                          ) : subscribing ? (
+                            "Loading..."
+                          ) : (
+                            `${plan.name} wählen`
+                          )}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 );

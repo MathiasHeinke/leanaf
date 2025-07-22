@@ -59,47 +59,28 @@ serve(async (req) => {
 
     // Plan pricing configuration with 6-month and yearly options
     const planPricing = {
-      basic: {
-        amount: 799, // €7.99
-        name: "KI Coach Basic",
-        features: ["Basis KI-Coaching", "Meal Tracking", "Basic Insights"],
+      pro: {
+        amount: 1290, // €12.90
+        name: "KI Coach Pro",
+        features: ["Unlimited AI mit GPT-4.1", "Advanced Coach Chat", "Coach Recipes", "Priority Support"],
         interval: "month" as const
       },
-      "basic-sixmonths": {
-        amount: 3197, // €31.97 (6 months with 33% discount)
-        name: "KI Coach Basic (6 Monate)",
-        features: ["Basis KI-Coaching", "Meal Tracking", "Basic Insights", "33% Rabatt"],
+      "pro-sixmonths": {
+        amount: 5165, // €51.65 (6 months with 33% discount from €77.40)
+        name: "KI Coach Pro (6 Monate)",
+        features: ["Unlimited AI mit GPT-4.1", "Advanced Coach Chat", "Coach Recipes", "Priority Support", "33% Rabatt"],
         interval: "month" as const,
         interval_count: 6
       },
-      "basic-yearly": {
-        amount: 4794, // €47.94 (50% discount from €95.88)
-        name: "KI Coach Basic (Jährlich)",
-        features: ["Basis KI-Coaching", "Meal Tracking", "Basic Insights", "50% Jahresrabatt"],
-        interval: "year" as const
-      },
-      premium: {
-        amount: 1999, // €19.99  
-        name: "KI Coach Premium",
-        features: ["Erweiterte KI-Analyse", "Alle Features", "Priority Support", "Transformation Dashboard"],
-        interval: "month" as const
-      },
-      "premium-sixmonths": {
-        amount: 8036, // €80.36 (6 months with 33% discount)
-        name: "KI Coach Premium (6 Monate)",
-        features: ["Erweiterte KI-Analyse", "Alle Features", "Priority Support", "Transformation Dashboard", "33% Rabatt"],
-        interval: "month" as const,
-        interval_count: 6
-      },
-      "premium-yearly": {
-        amount: 11994, // €119.94 (50% discount from €239.88)
-        name: "KI Coach Premium (Jährlich)", 
-        features: ["Erweiterte KI-Analyse", "Alle Features", "Priority Support", "Transformation Dashboard", "50% Jahresrabatt"],
+      "pro-yearly": {
+        amount: 7740, // €77.40 (50% discount from €154.80)
+        name: "KI Coach Pro (Jährlich)",
+        features: ["Unlimited AI mit GPT-4.1", "Advanced Coach Chat", "Coach Recipes", "Priority Support", "50% Jahresrabatt"],
         interval: "year" as const
       }
     };
 
-    const selectedPlan = planPricing[plan as keyof typeof planPricing] || planPricing.premium;
+    const selectedPlan = planPricing[plan as keyof typeof planPricing] || planPricing.pro;
     logStep("Selected plan configuration", selectedPlan);
 
     const origin = req.headers.get("origin") || "http://localhost:3000";

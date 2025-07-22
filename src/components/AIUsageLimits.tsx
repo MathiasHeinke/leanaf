@@ -1,0 +1,124 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Brain, Zap, Crown, Lock } from 'lucide-react';
+import { useAIUsageLimits } from '@/hooks/useAIUsageLimits';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useNavigate } from 'react-router-dom';
+
+interface AIUsageLimitsProps {
+  featureType: 'meal_analysis' | 'coach_chat' | 'coach_recipes' | 'daily_analysis';
+  className?: string;
+}
+
+export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, className }) => {
+  const { getCurrentUsage } = useAIUsageLimits();
+  const { isPremium } = useSubscription();
+  const navigate = useNavigate();
+  const [usage, setUsage] = useState<{ daily_count: number; monthly_count: number } | null>(null);
+
+  useEffect(() => {
+    if (!isPremium) {
+      getCurrentUsage(featureType).then(setUsage);
+    }
+  }, [featureType, isPremium, getCurrentUsage]);
+
+  if (isPremium) {
+    return (
+      <Card className={`border-primary/20 bg-primary/5 ${className}`}>
+        <CardContent className="pt-4">
+          <div className="flex items-center gap-2">
+            <Crown className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Pro - Unlimited AI</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getFeatureInfo = () => {
+    switch (featureType) {
+      case 'meal_analysis':
+        return { name: 'AI Meal Analysen', dailyLimit: 5, icon: Brain };
+      case 'coach_chat':
+        return { name: 'Coach Chat', dailyLimit: 0, icon: Zap };
+      case 'coach_recipes':
+        return { name: 'Coach Recipes', dailyLimit: 0, icon: Zap };
+      case 'daily_analysis':
+        return { name: 'Daily Analysis', dailyLimit: 0, icon: Zap };
+      default:
+        return { name: 'AI Feature', dailyLimit: 0, icon: Brain };
+    }
+  };
+
+  const featureInfo = getFeatureInfo();
+  const IconComponent = featureInfo.icon;
+  const dailyUsed = usage?.daily_count || 0;
+  const dailyRemaining = Math.max(0, featureInfo.dailyLimit - dailyUsed);
+  const progressPercent = featureInfo.dailyLimit > 0 ? (dailyUsed / featureInfo.dailyLimit) * 100 : 0;
+
+  const isProOnly = featureInfo.dailyLimit === 0;
+
+  return (
+    <Card className={`${className} ${isProOnly ? 'border-orange-200 bg-orange-50' : ''}`}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <IconComponent className="h-4 w-4" />
+          {featureInfo.name}
+          {isProOnly && <Lock className="h-3 w-3 text-orange-600" />}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isProOnly ? (
+          <div className="space-y-2">
+            <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+              Pro Feature
+            </Badge>
+            <p className="text-xs text-muted-foreground">
+              Upgrade zu Pro für unbegrenzten Zugang
+            </p>
+            <Button 
+              size="sm" 
+              onClick={() => navigate('/subscription')}
+              className="w-full"
+            >
+              Jetzt upgraden
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span>Heute verwendet:</span>
+              <span className={dailyRemaining <= 1 ? 'text-red-600 font-medium' : ''}>
+                {dailyUsed}/{featureInfo.dailyLimit}
+              </span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                {dailyRemaining} verbleibend
+              </span>
+              {dailyRemaining <= 1 && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => navigate('/subscription')}
+                  className="text-xs px-2 py-1 h-6"
+                >
+                  Upgrade
+                </Button>
+              )}
+            </div>
+            {dailyRemaining === 0 && (
+              <div className="text-xs text-red-600 font-medium">
+                Tageslimit erreicht. Morgen verfügbar oder jetzt upgraden.
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

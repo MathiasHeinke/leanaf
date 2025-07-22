@@ -2,26 +2,30 @@ import { useSubscription } from './useSubscription';
 
 // Define which features are available for each tier
 export const FEATURE_TIERS = {
-  // Basic/Free features - always available
-  meal_tracking: 'basic',
-  weight_tracking: 'basic',
-  points_system: 'basic',
-  badge_system: 'basic',
-  basic_dashboard: 'basic',
-  profile: 'basic',
-  basic_charts: 'basic',
+  // Free features - always available
+  meal_tracking: 'free',
+  weight_tracking: 'free',
+  points_system: 'free',
+  badge_system: 'free',
+  basic_dashboard: 'free',
+  profile: 'free',
+  basic_charts: 'free',
+  meal_analysis_limited: 'free', // 5 per day with GPT-4o-mini
   
-  // Premium features
-  workout_tracking: 'premium',
-  sleep_tracking: 'premium',
-  body_measurements: 'premium',
-  advanced_coach: 'premium',
-  detailed_analytics: 'premium',
-  advanced_charts: 'premium',
-  meal_verification: 'premium',
-  premium_insights: 'premium',
-  coach_recipes: 'premium',
-  transformation_dashboard: 'premium',
+  // Pro features - require subscription
+  workout_tracking: 'pro',
+  sleep_tracking: 'pro',
+  body_measurements: 'pro',
+  advanced_coach: 'pro',
+  detailed_analytics: 'pro',
+  advanced_charts: 'pro',
+  meal_verification: 'pro',
+  premium_insights: 'pro',
+  coach_recipes: 'pro',
+  coach_chat: 'pro',
+  daily_analysis: 'pro',
+  transformation_dashboard: 'pro',
+  unlimited_ai: 'pro', // Unlimited AI with GPT-4.1
 } as const;
 
 export type FeatureName = keyof typeof FEATURE_TIERS;
@@ -33,12 +37,12 @@ export const useFeatureAccess = () => {
   const hasFeatureAccess = (feature: FeatureName): boolean => {
     const requiredTier = FEATURE_TIERS[feature];
     
-    if (requiredTier === 'basic') {
-      return true; // Basic features are always available
+    if (requiredTier === 'free') {
+      return true; // Free features are always available
     }
     
-    if (requiredTier === 'premium') {
-      return isPremium; // Premium features require subscription or trial
+    if (requiredTier === 'pro') {
+      return isPremium; // Pro features require subscription or trial
     }
     
     return false;
@@ -51,7 +55,7 @@ export const useFeatureAccess = () => {
     return {
       hasAccess,
       requiredTier,
-      isTrialFeature: requiredTier === 'premium' && trial.hasActiveTrial,
+      isTrialFeature: requiredTier === 'pro' && trial.hasActiveTrial,
       trialDaysLeft: trial.trialDaysLeft,
     };
   };
