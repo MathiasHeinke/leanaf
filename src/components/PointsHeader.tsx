@@ -22,17 +22,10 @@ export const PointsHeader = () => {
     );
   }
 
-  // Calculate current level progress correctly
-  // If points_to_next_level represents remaining points to next level,
-  // then we need to calculate how many points we have in current level
-  const getLevelRequiredPoints = (level: number) => {
-    return level * 100; // Each level requires 100 * level number points total
-  };
-  
-  const currentLevelRequiredPoints = getLevelRequiredPoints(userPoints.current_level);
-  const nextLevelRequiredPoints = getLevelRequiredPoints(userPoints.current_level + 1);
-  const pointsInCurrentLevel = nextLevelRequiredPoints - userPoints.points_to_next_level;
-  const levelMaxPoints = nextLevelRequiredPoints - currentLevelRequiredPoints;
+  // Simplified calculation - just use the points_to_next_level directly
+  // Since it represents how many points are needed to reach next level
+  const maxPointsForCurrentLevel = 100; // Each level requires 100 points
+  const currentLevelProgress = maxPointsForCurrentLevel - userPoints.points_to_next_level;
   
   const getLevelIcon = (levelName: string) => {
     switch (levelName) {
@@ -48,15 +41,13 @@ export const PointsHeader = () => {
     }
   };
 
-  const levelProgress = (pointsInCurrentLevel / levelMaxPoints) * 100;
+  const levelProgress = (currentLevelProgress / maxPointsForCurrentLevel) * 100;
   const isLevelUp = levelProgress >= 100;
 
   const displayLevelColor = getLevelColor(userPoints.level_name);
 
-  // Use outline variant for better readability on Rookie and Bronze levels
-  const getBadgeVariant = (levelName: string) => {
-    return (levelName === 'Rookie' || levelName === 'Bronze') ? 'outline' : 'secondary';
-  };
+  // Always use outline variant for transparent backgrounds
+  const getBadgeVariant = () => 'outline';
 
   return (
     <div className="border-b border-border/30 py-1">
@@ -100,15 +91,12 @@ export const PointsHeader = () => {
           <div className="flex flex-col">
             <div className="flex items-center space-x-1.5 sm:space-x-2">
               <Badge 
-                variant={getBadgeVariant(userPoints.level_name)}
-                className="text-xs font-semibold px-2 py-0.5 sm:py-0"
-                style={getBadgeVariant(userPoints.level_name) === 'outline' ? { 
+                variant="outline"
+                className="text-xs font-semibold px-2 py-0.5 sm:py-0 bg-transparent"
+                style={{ 
                   color: displayLevelColor,
-                  borderColor: displayLevelColor
-                } : { 
-                  backgroundColor: `${displayLevelColor}20`,
-                  color: displayLevelColor,
-                  border: `1px solid ${displayLevelColor}40`
+                  borderColor: displayLevelColor,
+                  backgroundColor: 'transparent'
                 }}
               >
                 {userPoints.level_name}
@@ -130,7 +118,7 @@ export const PointsHeader = () => {
             }}
           />
           <span className="font-medium text-xs sm:text-xs text-foreground whitespace-nowrap">
-            {Math.max(0, pointsInCurrentLevel)}/{levelMaxPoints}
+            {Math.max(0, currentLevelProgress)}/{maxPointsForCurrentLevel}
           </span>
         </div>
       </div>
