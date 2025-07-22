@@ -127,8 +127,12 @@ export const TransformationDashboard = () => {
       const targetMuscle = Math.min(60, startMuscle * 1.15); // Target: 15% increase, max 60%
 
       // Progress photos
-      const latestPhotos = latestWeight?.photo_urls || [];
-      const firstPhotos = firstWeight?.photo_urls || [];
+      const latestPhotos = Array.isArray(latestWeight?.photo_urls) 
+        ? latestWeight.photo_urls.filter((url): url is string => typeof url === 'string') 
+        : [];
+      const firstPhotos = Array.isArray(firstWeight?.photo_urls) 
+        ? firstWeight.photo_urls.filter((url): url is string => typeof url === 'string') 
+        : [];
       
       setStats({
         currentWeight,
