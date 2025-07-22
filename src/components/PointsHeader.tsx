@@ -22,7 +22,17 @@ export const PointsHeader = () => {
     );
   }
 
-  const currentLevelProgress = userPoints.total_points - (userPoints.points_to_next_level - 100);
+  // Calculate current level progress correctly
+  // If points_to_next_level represents remaining points to next level,
+  // then we need to calculate how many points we have in current level
+  const getLevelRequiredPoints = (level: number) => {
+    return level * 100; // Each level requires 100 * level number points total
+  };
+  
+  const currentLevelRequiredPoints = getLevelRequiredPoints(userPoints.current_level);
+  const nextLevelRequiredPoints = getLevelRequiredPoints(userPoints.current_level + 1);
+  const pointsInCurrentLevel = nextLevelRequiredPoints - userPoints.points_to_next_level;
+  const levelMaxPoints = nextLevelRequiredPoints - currentLevelRequiredPoints;
   
   const getLevelIcon = (levelName: string) => {
     switch (levelName) {
@@ -38,7 +48,7 @@ export const PointsHeader = () => {
     }
   };
 
-  const levelProgress = (currentLevelProgress / userPoints.points_to_next_level) * 100;
+  const levelProgress = (pointsInCurrentLevel / levelMaxPoints) * 100;
   const isLevelUp = levelProgress >= 100;
 
   const displayLevelColor = getLevelColor(userPoints.level_name);
@@ -113,14 +123,14 @@ export const PointsHeader = () => {
         {/* Right Side - Progress Bar + Points in same line */}
         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
           <Progress 
-            value={(currentLevelProgress / userPoints.points_to_next_level) * 100} 
+            value={levelProgress} 
             className="h-2.5 sm:h-2 w-16 sm:w-20"
             style={{
               background: `${displayLevelColor}20`
             }}
           />
           <span className="font-medium text-xs sm:text-xs text-foreground whitespace-nowrap">
-            {currentLevelProgress}/{userPoints.points_to_next_level}
+            {Math.max(0, pointsInCurrentLevel)}/{levelMaxPoints}
           </span>
         </div>
       </div>
