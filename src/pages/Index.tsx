@@ -11,7 +11,7 @@ import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { MealInput } from "@/components/MealInput";
 import { MealList } from "@/components/MealList";
 import { SmartInsights } from "@/components/SmartInsights";
-import BMIProgress from "@/components/BMIProgress";
+import { BMIProgress } from "@/components/BMIProgress";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,7 +149,7 @@ export default function Index() {
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
-        .from('sleep_tracking')
+        .from('sleep_history')
         .select('*')
         .eq('user_id', user.id)
         .eq('date', today)
@@ -168,14 +168,13 @@ export default function Index() {
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
-        .from('workouts')
+        .from('workout_history')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
+        .eq('date', today);
       
       if (error) throw error;
-      setTodaysWorkouts(data ? [data] : []);
+      setTodaysWorkouts(data || []);
     } catch (error) {
       console.error('Error loading workout data:', error);
     }
@@ -291,7 +290,11 @@ export default function Index() {
     <div className="container mx-auto p-4 space-y-6 max-w-4xl">
       {/* Greeting Section */}
       <OptimizedGreeting 
-        userProfile={profile} 
+        profile={profile} 
+        todaysWeight={todaysWeight}
+        todaysSleep={todaysSleep}
+        todaysWorkouts={todaysWorkouts}
+        meals={meals}
         key={`greeting-${refreshKey}`}
       />
 
@@ -324,36 +327,19 @@ export default function Index() {
           />
           <WeightHistory 
             weightHistory={weightHistory}
-            loading={isLoading}
-            onDataUpdate={handleWeightAdded}
             key={`weight-history-${refreshKey}`}
           />
         </TabsContent>
 
         <TabsContent value="meals" className="space-y-6">
-          <MealInput 
-            inputText=""
-            setInputText={() => {}}
-            onSubmitMeal={handleMealAdded}
-            onPhotoUpload={() => {}}
-            onVoiceRecord={() => {}}
-            isAnalyzing={false}
-            isRecording={false}
-            isProcessing={false}
-            uploadedImages={[]}
-            onRemoveImage={() => {}}
-          />
-          <MealList 
-            meals={meals} 
-            onMealUpdate={handleMealAdded}
-            selectedDate={new Date().toISOString().split('T')[0]}
-          />
+          <MealInput onMealAdded={handleMealAdded} />
+          <MealList meals={meals} onMealUpdated={handleMealAdded} />
         </TabsContent>
 
         <TabsContent value="workout" className="space-y-6">
           <QuickWorkoutInput 
             onWorkoutAdded={handleWorkoutAdded}
-            todaysWorkout={todaysWorkouts[0] || null}
+            todaysWorkouts={todaysWorkouts}
           />
         </TabsContent>
 
@@ -370,29 +356,15 @@ export default function Index() {
       {/* Progress and Analysis Section */}
       <div className="grid gap-6 md:grid-cols-2">
         <DailyProgress 
-          dailyTotals={{
-            calories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
-            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0),
-          }}
-          dailyGoal={{
-            calories: dailyGoals?.calories || 2000,
-            protein: dailyGoals?.protein || 150,
-            carbs: dailyGoals?.carbs || 250,
-            fats: dailyGoals?.fats || 65,
-          }}
-          userGoal={profile?.goal || 'maintain'}
-          currentDate={new Date()}
-          onDateChange={() => {}}
-          userProfile={profile}
+          meals={meals}
+          dailyGoals={dailyGoals}
+          profile={profile}
           key={`progress-${refreshKey}`}
         />
         
         <div className="space-y-6">
           {profile && (
             <BMIProgress 
-              startWeight={profile.start_weight || profile.weight}
               currentWeight={todaysWeight?.weight || profile.weight} 
               targetWeight={profile.target_weight}
               height={profile.height}
@@ -406,23 +378,9 @@ export default function Index() {
 
       {/* Smart Insights */}
       <SmartInsights 
-        todaysTotals={{
-          calories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
-          protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-          carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-          fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0),
-        }}
-        dailyGoals={dailyGoals}
-        averages={{
-          calories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
-          protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-          carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-          fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0),
-        }}
-        historyData={[]}
-        trendData={null}
+        meals={meals}
         weightHistory={weightHistory}
-        onWeightAdded={handleWeightAdded}
+        profile={profile}
         key={`insights-${refreshKey}`}
       />
     </div>
