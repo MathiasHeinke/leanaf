@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -113,7 +112,7 @@ export const usePointsSystem = () => {
     }
   };
 
-  // Award points for activity with automatic trial boost
+  // Award points for activity with automatic trial boost and badge checking
   const awardPoints = async (
     activityType: string,
     basePoints: number,
@@ -166,9 +165,19 @@ export const usePointsSystem = () => {
           duration: 5000,
           position: "top-center",
         });
+        
+        // Trigger badge check for level achievements
+        setTimeout(async () => {
+          try {
+            const { ExtendedBadgeManager } = await import('@/utils/extendedBadgeManager');
+            const badgeManager = new ExtendedBadgeManager(user.id);
+            await badgeManager.checkAndAwardAllBadges();
+          } catch (error) {
+            console.error('Error checking badges after level up:', error);
+          }
+        }, 1000);
       } else if (result.points_earned > 0) {
         console.log(`🎉 Points earned: ${result.points_earned}`);
-        // Don't show additional toast here as it's handled in the calling component
       }
 
       return result;
@@ -527,9 +536,40 @@ export const usePointsSystem = () => {
     evaluateMeal,
     evaluateWorkout,
     evaluateSleep,
-    getPointsForActivity,
-    getStreakMultiplier,
-    getLevelColor,
+    getPointsForActivity: (activityType: string, data?: any): number => {
+      switch (activityType) {
+        case 'meal_tracked_with_photo': return 5;
+        case 'meal_tracked': return 3;
+        case 'meal_quality_bonus': return data?.bonus_points || 0;
+        case 'workout_completed': return data?.intensity ? data.intensity * 2 : 8;
+        case 'weight_measured': return 3;
+        case 'body_measurements': return 4;
+        case 'sleep_tracked': return 4;
+        case 'calorie_deficit_met': return 10;
+        case 'protein_goal_met': return 8;
+        case 'daily_login': return 1;
+        case 'goal_updated': return 2;
+        default: return 1;
+      }
+    },
+    getStreakMultiplier: (streakCount: number): number => {
+      if (streakCount >= 7) return 2.0;
+      if (streakCount >= 3) return 1.5;
+      return 1.0;
+    },
+    getLevelColor: (levelName: string): string => {
+      switch (levelName) {
+        case 'Rookie': return 'hsl(210, 70%, 55%)';
+        case 'Bronze': return 'hsl(30, 50%, 45%)';
+        case 'Silver': return 'hsl(210, 20%, 70%)';
+        case 'Gold': return 'hsl(45, 100%, 50%)';
+        case 'Platinum': return 'hsl(200, 30%, 80%)';
+        case 'Diamond': return 'hsl(220, 100%, 70%)';
+        case 'Master': return 'hsl(280, 100%, 60%)';
+        case 'Grandmaster': return 'hsl(315, 100%, 45%)';
+        default: return 'hsl(var(--primary))';
+      }
+    },
     refreshData: () => {
       loadUserPoints();
       loadDepartmentProgress();

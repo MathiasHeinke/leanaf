@@ -1,5 +1,6 @@
+
 import { useEffect } from "react";
-import { BadgeManager } from "@/utils/badgeManager";
+import { ExtendedBadgeManager } from "@/utils/extendedBadgeManager";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -10,14 +11,18 @@ export const useBadgeChecker = () => {
     if (!user) return;
 
     try {
-      const badgeManager = new BadgeManager(user.id);
-      const newBadges = await badgeManager.checkAndAwardBadges();
+      const badgeManager = new ExtendedBadgeManager(user.id);
+      const newBadges = await badgeManager.checkAndAwardAllBadges();
 
-      // Show toast for new badges
+      // Show toast for new badges with enhanced styling
       newBadges.forEach(badge => {
-        toast.success(`🏆 Neuer Badge: ${badge.badge_name}`, {
+        // Extract emoji from badge name for toast
+        const emojiMatch = badge.badge_name.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu);
+        const emoji = emojiMatch ? emojiMatch[0] : '🏆';
+        
+        toast.success(`${emoji} Neuer Badge: ${badge.badge_name}`, {
           description: badge.badge_description,
-          duration: 5000,
+          duration: 6000,
         });
       });
 
