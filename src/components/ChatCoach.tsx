@@ -100,7 +100,7 @@ export const ChatCoach = ({
         return { 
           name: 'Sascha', 
           emoji: '🎯', 
-          profession: 'Fitness-Coach',
+          profession: 'Fitness Drill-Instructor',
           greeting: 'Hey {name}, Sascha hier. Keine Zeit für Smalltalk - was ist dein Ziel heute?',
           accentColor: 'from-red-500 to-red-600',
           imageUrl: '/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png'
@@ -511,25 +511,25 @@ export const ChatCoach = ({
           <div className={`h-10 w-10 bg-gradient-to-br ${coachInfo.accentColor} rounded-xl flex items-center justify-center shadow-lg`}>
             <Brain className="h-5 w-5 text-white" />
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">{coachInfo.name} {coachInfo.emoji}</span>
-              <Badge variant="secondary" className="text-xs">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-lg font-bold whitespace-nowrap">{coachInfo.name} {coachInfo.emoji}</span>
+              <Badge variant="secondary" className="text-xs flex-shrink-0">
                 {coachInfo.profession}
               </Badge>
               {currentTime && (
-                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                <Badge variant="outline" className="text-xs flex items-center gap-1 flex-shrink-0">
                   <Clock className="h-3 w-3" />
                   {currentTime}
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <p className="text-sm text-muted-foreground font-normal">
                 Für {firstName} • {remainingCalories}kcal übrig heute
               </p>
               {remainingCalories > 0 && (
-                <Zap className="h-3 w-3 text-green-500" />
+                <Zap className="h-3 w-3 text-green-500 flex-shrink-0" />
               )}
             </div>
           </div>
@@ -538,7 +538,7 @@ export const ChatCoach = ({
               variant="ghost"
               size="sm"
               onClick={clearChat}
-              className="text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:text-destructive flex-shrink-0"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -577,7 +577,7 @@ export const ChatCoach = ({
                               {coachInfo.emoji}
                             </div>
                           </div>
-                          <span className="text-xs font-medium text-primary">
+                          <span className="text-xs font-medium text-primary truncate">
                             {coachInfo.name} • {coachInfo.profession}
                           </span>
                         </div>

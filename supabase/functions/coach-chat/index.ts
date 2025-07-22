@@ -59,13 +59,15 @@ serve(async (req) => {
       dailyGoals = goalsData;
     }
 
-    // Get recent workouts with enhanced data for weekly analysis
+    // Get recent workouts with correct field names
     const { data: recentWorkouts } = await supabase
       .from('workouts')
-      .select('exercise_name, sets, reps, weight, date, created_at')
+      .select('workout_type, duration_minutes, intensity, did_workout, date, created_at, distance_km, steps, notes')
       .eq('user_id', userId)
       .order('date', { ascending: false })
       .limit(20);
+
+    console.log('Found workouts:', recentWorkouts?.length || 0);
 
     // Get recent sleep data
     const { data: recentSleep } = await supabase
@@ -83,7 +85,7 @@ serve(async (req) => {
             name: 'Sascha', 
             emoji: '🎯', 
             temp: 0.4, 
-            profession: 'Fitness-Coach',
+            profession: 'Fitness Drill-Instructor',
             style: 'direkt und kompromisslos'
           };
         case 'soft': 
@@ -136,7 +138,7 @@ serve(async (req) => {
     // Calculate remaining calories
     const remainingCalories = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
     
-    // Weekly workout analysis
+    // Weekly workout analysis with correct data structure
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
@@ -145,7 +147,10 @@ serve(async (req) => {
     ) || [];
     
     const workoutDays = [...new Set(weeklyWorkouts.map(w => w.date))].length;
-    const totalSets = weeklyWorkouts.reduce((sum, w) => sum + (w.sets || 0), 0);
+    const totalWorkouts = weeklyWorkouts.length;
+    const totalDuration = weeklyWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
+
+    console.log('Weekly analysis:', { workoutDays, totalWorkouts, totalDuration });
 
     // Calculate progress percentages
     const calorieProgress = dailyGoals?.calories ? Math.round((todaysTotals.calories / dailyGoals.calories) * 100) : 0;
@@ -163,7 +168,7 @@ Der Benutzer hat ${images.length} Bild(er) gesendet. Analysiere diese Bilder im 
 
     // Enhanced personality prompts
     const personalityPrompts = {
-      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness-Coach. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
+      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness Drill-Instructor. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
       soft: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Ernährungsberaterin. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
       motivierend: `Du bist Kai 💪, ein begeisternder, positiver Personal Trainer. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`
     };
@@ -204,7 +209,8 @@ DURCHSCHNITTSWERTE (letzte Tage):
 
 WÖCHENTLICHE WORKOUT-ANALYSE:
 - Trainingstage diese Woche: ${workoutDays} Tage
-- Gesamte Sets diese Woche: ${totalSets}
+- Gesamte Workouts: ${totalWorkouts}
+- Gesamtdauer: ${totalDuration} Minuten
 - Trainingsfrequenz: ${workoutDays >= 4 ? 'Hoch (evtl. zu viel)' : workoutDays >= 2 ? 'Optimal' : 'Zu niedrig'}
 
 AKTUELLE TRENDS:
@@ -219,7 +225,16 @@ GEWICHTSVERLAUF (letzte Einträge):
 ${weightHistory.length > 0 ? weightHistory.slice(0, 3).map((w: any) => `- ${w.date}: ${w.weight}kg`).join('\n') : '- Noch keine Gewichtsdaten'}
 
 LETZTE WORKOUTS:
-${recentWorkouts?.length ? recentWorkouts.slice(0, 3).map((w: any) => `- ${w.date}: ${w.exercise_name} (${w.sets}x${w.reps}@${w.weight}kg)`).join('\n') : '- Noch keine Workouts eingetragen'}
+${recentWorkouts?.length ? recentWorkouts.slice(0, 5).map((w: any) => {
+  const workoutType = w.workout_type || 'Training';
+  const duration = w.duration_minutes ? `${w.duration_minutes}min` : '';
+  const intensity = w.intensity ? `Intensität: ${w.intensity}/10` : '';
+  const distance = w.distance_km ? `${w.distance_km}km` : '';
+  const steps = w.steps ? `${w.steps} Schritte` : '';
+  
+  const details = [duration, intensity, distance, steps].filter(Boolean).join(', ');
+  return `- ${w.date}: ${workoutType}${details ? ` (${details})` : ''}`;
+}).join('\n') : '- Noch keine Workouts eingetragen'}
 
 SCHLAF (letzte 7 Tage):
 ${recentSleep?.length ? recentSleep.slice(0, 3).map((s: any) => `- ${s.date}: ${s.sleep_hours}h (Qualität: ${s.sleep_quality}/10)`).join('\n') : '- Keine Schlafdaten verfügbar'}
@@ -246,7 +261,7 @@ WICHTIGE ANWEISUNGEN:
 - Berücksichtige die Tageszeit ${currentTime} in deinen Empfehlungen
 - Bei Fortschrittsanalysen erwähne, dass der Tag noch nicht vorbei ist
 - Bei Speisevorschlägen die verbleibenden ${remainingCalories}kcal einbeziehen
-- Bei Trainingsfragen die wöchentliche Frequenz (${workoutDays} Tage) berücksichtigen
+- Bei Trainingsfragen die wöchentliche Frequenz (${workoutDays} Tage, ${totalWorkouts} Workouts) berücksichtigen
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
@@ -302,6 +317,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
     return new Response(JSON.stringify({ 
       response: reply,
+      reply,
       personality,
       coachName: coachInfo.name,
       coachProfession: coachInfo.profession,
@@ -310,6 +326,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         timeOfDay,
         remainingCalories,
         workoutDays,
+        totalWorkouts,
         todaysTotals,
         dailyGoals,
         progressPercentages: { calories: calorieProgress, protein: proteinProgress },
@@ -327,7 +344,8 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
     console.error('Error in enhanced coach-chat function:', error);
     return new Response(JSON.stringify({ 
       error: error.message || 'Internal server error',
-      response: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.' 
+      response: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.',
+      reply: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
