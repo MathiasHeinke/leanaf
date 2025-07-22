@@ -149,7 +149,13 @@ export const ChatCoach = ({
       }
 
       setCoachPersonality(data?.coach_personality || 'motivierend');
-      setUserName(data?.display_name || user.email?.split('@')[0] || 'User');
+      
+      // Improved username handling
+      let displayName = data?.display_name;
+      if (!displayName || displayName.trim() === '') {
+        displayName = user.email?.split('@')[0] || 'User';
+      }
+      setUserName(displayName);
     } catch (error) {
       console.error('Error in loadUserData:', error);
     }
@@ -390,7 +396,7 @@ export const ChatCoach = ({
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">Coach {coachInfo.name} {coachInfo.emoji}</span>
+              <span className="text-lg font-bold">{coachInfo.name} {coachInfo.emoji}</span>
               <Badge variant="secondary" className="text-xs">
                 getLeanAI
               </Badge>
@@ -418,7 +424,7 @@ export const ChatCoach = ({
         {/* Chat Messages - Fixed height container for scrolling */}
         <div className="flex-1 relative overflow-hidden">
           <ScrollArea className="h-full px-4">
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 min-h-full">
               {messages.map((message, index) => (
                 <div key={message.id || index} className="space-y-2">
                   <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -431,7 +437,7 @@ export const ChatCoach = ({
                         <div className="flex items-center gap-2 mb-2">
                           <Brain className="h-4 w-4 text-primary" />
                           <span className="text-xs font-medium text-primary">
-                            Coach {coachInfo.name} {coachInfo.emoji}
+                            {coachInfo.name}
                           </span>
                         </div>
                       )}
@@ -448,7 +454,7 @@ export const ChatCoach = ({
                   <div className="max-w-[85%] bg-muted border rounded-2xl px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Brain className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-medium text-primary">Coach {coachInfo.name} denkt nach...</span>
+                      <span className="text-xs font-medium text-primary">{coachInfo.name} schreibt...</span>
                     </div>
                     <div className="flex gap-1">
                       <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />

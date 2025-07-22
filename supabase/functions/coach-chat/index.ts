@@ -75,7 +75,7 @@ serve(async (req) => {
       .order('date', { ascending: false })
       .limit(7);
 
-    // Coach personality mapping with names
+    // Coach personality mapping with correct names
     const getCoachInfo = (personality: string) => {
       switch (personality) {
         case 'hart': 
@@ -90,15 +90,22 @@ serve(async (req) => {
 
     // Create personality-based system message
     const personalityPrompts = {
-      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness-Coach bei getLeanAI. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig.`,
-      liebevoll: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Coach bei getLeanAI. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend.`,
-      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Coach bei getLeanAI. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend.`
+      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness-Coach bei getLeanAI. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
+      liebevoll: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Coach bei getLeanAI. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
+      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Coach bei getLeanAI. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`
     };
 
     const personality = profile?.coach_personality || 'motivierend';
     const coachInfo = getCoachInfo(personality);
     const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
-    const userName = profile?.display_name || 'User';
+    
+    // Improved username handling
+    let userName = profile?.display_name;
+    if (!userName || userName.trim() === '') {
+      // Extract from email if display_name is empty
+      const userEmail = await supabase.auth.admin.getUserById(userId);
+      userName = userEmail.data.user?.email?.split('@')[0] || 'User';
+    }
 
     // Calculate progress percentages
     const calorieProgress = dailyGoals?.calories ? Math.round((todaysTotals.calories / dailyGoals.calories) * 100) : 0;
@@ -152,6 +159,7 @@ ${recentHistory.length > 0 ? recentHistory.slice(0, 3).map((day: any) => `- ${da
 
 WICHTIGE ANWEISUNGEN:
 - Du bist ${coachInfo.name} ${coachInfo.emoji} und bleibst IMMER in dieser Rolle
+- Stellst dich IMMER mit deinem richtigen Namen vor (${coachInfo.name})
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
@@ -159,6 +167,8 @@ WICHTIGE ANWEISUNGEN:
 - Nutze die verfügbaren Daten für personalisierte Insights
 - Bei Fragen nach spezifischen Plänen, erstelle konkrete Vorschläge
 - Verwende ${userName}'s Namen gelegentlich für persönlichen Touch
+- Verwende KEINE Markdown-Zeichen (*,**,#) sondern strukturiere mit normalen Absätzen
+- Verwende Emojis sparsam aber passend zu deiner Persönlichkeit
 
 Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
