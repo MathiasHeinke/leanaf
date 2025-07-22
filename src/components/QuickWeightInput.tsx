@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
-import { Badge } from "@/components/ui/badge";
+import { PointsBadge } from "@/components/PointsBadge";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -110,12 +109,6 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge 
-              variant="secondary" 
-              className={`bg-green-100 text-green-700 border-green-300 ${showPointsAnimation ? 'animate-pulse' : ''}`}
-            >
-              ⚖️ +3P
-            </Badge>
             <InfoButton
               title="Gewichts-Tracking"
               description="Regelmäßiges Wiegen hilft dir dabei, deinen Fortschritt zu verfolgen und deine Ziele zu erreichen."
@@ -135,6 +128,15 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <PointsBadge 
+            points={3} 
+            icon="⚖️"
+            animated={showPointsAnimation}
+            variant="secondary"
+          />
         </div>
         
         <div className="bg-green-100/50 dark:bg-green-900/30 rounded-lg p-3">

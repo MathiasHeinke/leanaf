@@ -9,7 +9,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
-import { Badge } from "@/components/ui/badge";
+import { PointsBadge } from "@/components/PointsBadge";
 
 interface QuickSleepInputProps {
   onSleepAdded?: () => void;
@@ -130,12 +130,6 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge 
-              variant="secondary" 
-              className={`bg-blue-100 text-blue-700 border-blue-300 ${showPointsAnimation ? 'animate-pulse' : ''}`}
-            >
-              😴 +4P
-            </Badge>
             <InfoButton
               title="Schlaf Tracking"
               description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
@@ -155,6 +149,16 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               <Edit className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        
+        {/* Points badges in separate row for better responsive layout */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <PointsBadge 
+            points={4} 
+            icon="😴"
+            animated={showPointsAnimation}
+            variant="secondary"
+          />
         </div>
         
         <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">

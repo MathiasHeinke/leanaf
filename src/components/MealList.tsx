@@ -1,354 +1,230 @@
 
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Edit2, Trash2, Heart, ImageIcon, Star, ChevronDown, ChevronUp } from "lucide-react";
-import { useTranslation } from "@/hooks/useTranslation";
-import { MealEditForm } from "@/components/MealEditForm";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Trash2, Edit, Clock, Camera } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { MealEditDialog } from '@/components/MealEditDialog';
+import { PointsBadge } from '@/components/PointsBadge';
+import { calculateMealBonusPoints, getMealPointsIcon, getMealBasePoints } from '@/utils/mealPointsHelper';
 
-interface MealImage {
+interface Meal {
   id: string;
-  image_url: string;
-}
-
-interface MealData {
-  id: string;
-  text: string;
+  meal_type: string;
+  food_items: string;
   calories: number;
   protein: number;
   carbs: number;
   fats: number;
-  timestamp: Date;
-  meal_type?: string;
-  images?: MealImage[];
+  created_at: string;
+  images?: string[];
   quality_score?: number;
   bonus_points?: number;
   ai_feedback?: string;
-  evaluation_criteria?: any;
 }
 
 interface MealListProps {
-  dailyMeals: MealData[];
-  onEditMeal: (meal: MealData) => void;
-  onDeleteMeal: (mealId: string) => void;
-  onUpdateMeal: () => void;
+  meals: Meal[];
+  onMealUpdate: () => void;
+  selectedDate: string;
 }
 
-export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }: MealListProps) => {
-  const { t } = useTranslation();
+export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) => {
   const { user } = useAuth();
-  const [editingMealId, setEditingMealId] = useState<string | null>(null);
-  const [mealsWithImages, setMealsWithImages] = useState<MealData[]>([]);
-  const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null);
 
-  // Load images for meals
-  useEffect(() => {
-    const loadMealImages = async () => {
-      if (!user?.id || dailyMeals.length === 0) {
-        setMealsWithImages(dailyMeals);
-        return;
-      }
+  const deleteMeal = async (mealId: string) => {
+    if (!user) return;
 
-      try {
-        const mealIds = dailyMeals.map(meal => meal.id);
-        
-        const { data: imagesData, error } = await supabase
-          .from('meal_images')
-          .select('id, meal_id, image_url')
-          .in('meal_id', mealIds);
+    try {
+      const { error } = await supabase
+        .from('meals')
+        .delete()
+        .eq('id', mealId)
+        .eq('user_id', user.id);
 
-        if (error) {
-          console.error('Error loading meal images:', error);
-          setMealsWithImages(dailyMeals);
-          return;
-        }
-
-        // Group images by meal_id
-        const imagesByMeal = imagesData.reduce((acc: any, image: any) => {
-          if (!acc[image.meal_id]) {
-            acc[image.meal_id] = [];
-          }
-          acc[image.meal_id].push({
-            id: image.id,
-            image_url: image.image_url
-          });
-          return acc;
-        }, {});
-
-        // Add images to meals
-        const mealsWithImagesData = dailyMeals.map(meal => ({
-          ...meal,
-          images: imagesByMeal[meal.id] || []
-        }));
-
-        setMealsWithImages(mealsWithImagesData);
-      } catch (error) {
-        console.error('Error loading meal images:', error);
-        setMealsWithImages(dailyMeals);
-      }
-    };
-
-    loadMealImages();
-  }, [dailyMeals, user?.id]);
-
-  const getMealTypeDisplay = (mealType?: string) => {
-    switch (mealType) {
-      case 'breakfast': 
-        return { 
-          label: t('mealTypes.breakfast'), 
-          color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200' 
-        };
-      case 'lunch': 
-        return { 
-          label: t('mealTypes.lunch'), 
-          color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
-        };
-      case 'dinner': 
-        return { 
-          label: t('mealTypes.dinner'), 
-          color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200' 
-        };
-      case 'snack': 
-        return { 
-          label: t('mealTypes.snack'), 
-          color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200' 
-        };
-      default: 
-        return { 
-          label: t('mealTypes.other'), 
-          color: 'bg-muted/50 text-muted-foreground' 
-        };
+      if (error) throw error;
+      
+      toast.success('Mahlzeit gelöscht');
+      onMealUpdate();
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+      toast.error('Fehler beim Löschen der Mahlzeit');
     }
   };
 
-  if (mealsWithImages.length === 0) {
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getMealTypeLabel = (type: string) => {
+    const labels = {
+      breakfast: 'Frühstück',
+      lunch: 'Mittagessen', 
+      dinner: 'Abendessen',
+      snack: 'Snack'
+    };
+    return labels[type as keyof typeof labels] || type;
+  };
+
+  const getMealTypeEmoji = (type: string) => {
+    const emojis = {
+      breakfast: '🌅',
+      lunch: '☀️',
+      dinner: '🌙', 
+      snack: '🍎'
+    };
+    return emojis[type as keyof typeof emojis] || '🍽️';
+  };
+
+  if (meals.length === 0) {
     return (
-      <Card className="p-8 text-center border-dashed border-2 border-muted">
-        <Heart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-        <h3 className="font-semibold mb-2">{t('meal.noMealsToday')}</h3>
-        <p className="text-muted-foreground text-sm">
-          {t('meal.addFirstMeal')}
-        </p>
-      </Card>
+      <div className="text-center py-8 text-muted-foreground">
+        <p>Noch keine Mahlzeiten für diesen Tag erfasst.</p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="font-semibold text-lg mb-3">{t('meal.todaysMeals')}</h3>
-      {mealsWithImages.map((meal) => {
-        const mealDisplay = getMealTypeDisplay(meal.meal_type);
-        
-        // Show edit form if this meal is being edited
-        if (editingMealId === meal.id) {
-          return (
-            <MealEditForm
-              key={meal.id}
-              meal={meal}
-              onSave={() => {
-                setEditingMealId(null);
-                onUpdateMeal();
-              }}
-              onCancel={() => setEditingMealId(null)}
-            />
-          );
-        }
+    <div className="space-y-4">
+      {meals.map((meal) => {
+        const hasImages = meal.images && meal.images.length > 0;
+        const basePoints = getMealBasePoints(hasImages);
+        const bonusPoints = calculateMealBonusPoints(meal.quality_score);
+        const pointsIcon = getMealPointsIcon(hasImages);
         
         return (
-          <Card key={meal.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className={mealDisplay.color}>
-                    {mealDisplay.label}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {meal.timestamp.toLocaleTimeString('de-DE', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
-                   {meal.images && meal.images.length > 0 && (
-                     <Badge variant="outline" className="text-xs">
-                       <ImageIcon className="h-3 w-3 mr-1" />
-                       {meal.images.length}
-                     </Badge>
-                   )}
-                   
-                   {/* Compact Points Badge */}
-                   <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
-                     📊 +{meal.images && meal.images.length > 0 ? '5' : '3'}P
-                   </Badge>
-                   
-                   {/* Quality Score Badge */}
-                   {meal.quality_score !== undefined && meal.quality_score !== null && (
-                     <Badge 
-                       variant={
-                         meal.quality_score >= 8 ? "default" : 
-                         meal.quality_score >= 6 ? "secondary" : 
-                         "destructive"
-                       }
-                       className="text-xs"
-                     >
-                       <Star className="h-3 w-3 mr-1" />
-                       {meal.quality_score}/10
-                     </Badge>
-                   )}
-                   
-                   {/* Bonus Points Badge */}
-                   {meal.bonus_points && meal.bonus_points > 0 && (
-                     <Badge 
-                       variant="outline" 
-                       className="text-xs bg-secondary/20 text-secondary-foreground border-secondary/30"
-                     >
-                       ⭐ +{meal.bonus_points}BP
-                     </Badge>
-                   )}
-                 </div>
-                <p className="text-sm font-medium mb-2 line-clamp-2">
-                  {meal.text}
-                </p>
-              </div>
-              <div className="flex gap-1 ml-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setEditingMealId(meal.id)}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  onClick={() => onDeleteMeal(meal.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            {/* Meal images */}
-            {meal.images && meal.images.length > 0 && (
-              <div className="mb-3">
-                <div className="flex gap-2 flex-wrap">
-                  {meal.images.map((image) => (
-                    <img
-                      key={image.id}
-                      src={image.image_url}
-                      alt="Mahlzeit"
-                      className="w-16 h-16 object-cover rounded-lg border border-border/20 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => {
-                        // Open image in new tab for full view
-                        window.open(image.image_url, '_blank');
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Nutritional info display */}
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
-                <div className="font-semibold text-orange-600 dark:text-orange-400">
-                  {meal.calories}
-                </div>
-                <div className="text-orange-500 dark:text-orange-300">{t('ui.kcal')}</div>
-              </div>
-              <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-                <div className="font-semibold text-blue-600 dark:text-blue-400">
-                  {meal.protein}g
-                </div>
-                <div className="text-blue-500 dark:text-blue-300">{t('macros.protein')}</div>
-              </div>
-              <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
-                <div className="font-semibold text-green-600 dark:text-green-400">
-                  {meal.carbs}g
-                </div>
-                <div className="text-green-500 dark:text-green-300">{t('macros.carbs')}</div>
-              </div>
-              <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
-                <div className="font-semibold text-purple-600 dark:text-purple-400">
-                  {meal.fats}g
-                </div>
-                <div className="text-purple-500 dark:text-purple-300">{t('macros.fats')}</div>
-              </div>
-            </div>
-
-            {/* AI Feedback and Quality Score Details */}
-            {meal.ai_feedback && (
-              <div className="mt-3 border-t pt-3">
-                <div 
-                  className="flex items-center justify-between cursor-pointer"
-                  onClick={() => setExpandedFeedback(expandedFeedback === meal.id ? null : meal.id)}
-                >
-                   <div className="flex items-center gap-2">
-                     <span className="text-sm font-medium text-muted-foreground">🤖 Coach Feedback</span>
-                     {meal.quality_score !== undefined && (
-                       <Badge 
-                         variant="outline"
-                         className={`text-xs ${
-                           meal.quality_score >= 8 ? 'bg-green-50 text-green-700 border-green-200' :
-                           meal.quality_score >= 6 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                           'bg-red-50 text-red-700 border-red-200'
-                         }`}
-                       >
-                         Qualität: {meal.quality_score}/10
-                       </Badge>
-                     )}
-                   </div>
-                  {expandedFeedback === meal.id ? 
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" /> : 
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  }
+          <Card key={meal.id} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{getMealTypeEmoji(meal.meal_type)}</span>
+                  <div>
+                    <h3 className="font-semibold text-sm">
+                      {getMealTypeLabel(meal.meal_type)}
+                    </h3>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {formatTime(meal.created_at)}
+                      {hasImages && (
+                        <>
+                          <span className="mx-1">•</span>
+                          <Camera className="h-3 w-3" />
+                          <span>Foto</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
-                 {expandedFeedback === meal.id && (
-                   <div className="mt-2 space-y-2">
-                     <div className="p-3 bg-gradient-to-r from-muted/30 to-muted/10 rounded-lg border border-border/30">
-                       <p className="text-sm text-foreground/90 italic">
-                         "{meal.ai_feedback}"
-                       </p>
-                     </div>
-                    
-                    {meal.evaluation_criteria && (
-                      <div className="text-xs text-muted-foreground">
-                        <div className="grid grid-cols-2 gap-1">
-                          {meal.evaluation_criteria.macro_balance && (
-                            <div>
-                              <span className="font-medium">Makros:</span> {meal.evaluation_criteria.macro_balance.score?.toFixed(1) || 'N/A'}/3
-                            </div>
-                          )}
-                          {meal.evaluation_criteria.goal_alignment && (
-                            <div>
-                              <span className="font-medium">Ziel:</span> {meal.evaluation_criteria.goal_alignment.score?.toFixed(1) || 'N/A'}/3
-                            </div>
-                          )}
-                          {meal.evaluation_criteria.nutritional_quality && (
-                            <div>
-                              <span className="font-medium">Qualität:</span> {meal.evaluation_criteria.nutritional_quality.score?.toFixed(1) || 'N/A'}/2
-                            </div>
-                          )}
-                          {meal.evaluation_criteria.meal_timing && (
-                            <div>
-                              <span className="font-medium">Timing:</span> {meal.evaluation_criteria.meal_timing.score?.toFixed(1) || 'N/A'}/2
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingMeal(meal)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteMeal(meal.id)}
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-3">
+                <p className="text-sm font-medium">{meal.food_items}</p>
+                
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="text-center p-2 bg-muted/50 rounded">
+                    <div className="font-semibold">{meal.calories}</div>
+                    <div className="text-muted-foreground">kcal</div>
+                  </div>
+                  <div className="text-center p-2 bg-muted/50 rounded">
+                    <div className="font-semibold">{meal.protein}g</div>
+                    <div className="text-muted-foreground">Protein</div>
+                  </div>
+                  <div className="text-center p-2 bg-muted/50 rounded">
+                    <div className="font-semibold">{meal.carbs}g</div>
+                    <div className="text-muted-foreground">Kohlenhydrate</div>
+                  </div>
+                  <div className="text-center p-2 bg-muted/50 rounded">
+                    <div className="font-semibold">{meal.fats}g</div>
+                    <div className="text-muted-foreground">Fett</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Points badges in same row for meals */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <PointsBadge 
+                  points={basePoints} 
+                  icon={pointsIcon}
+                  variant="secondary"
+                />
+                {bonusPoints > 0 && (
+                  <PointsBadge 
+                    points={0}
+                    bonusPoints={bonusPoints}
+                    icon="⭐"
+                    variant="outline"
+                  />
+                )}
+                {meal.quality_score && (
+                  <div className="text-xs text-muted-foreground ml-1">
+                    Qualität: {meal.quality_score}/10
                   </div>
                 )}
               </div>
-            )}
+
+              {/* Show images if available */}
+              {hasImages && (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {meal.images?.slice(0, 2).map((imageUrl, index) => (
+                    <img
+                      key={index}
+                      src={imageUrl}
+                      alt={`Mahlzeit ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-md"
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* AI Feedback if available */}
+              {meal.ai_feedback && (
+                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    <strong>🤖 Coach-Feedback:</strong> {meal.ai_feedback}
+                  </p>
+                </div>
+              )}
+            </CardContent>
           </Card>
         );
       })}
+
+      {editingMeal && (
+        <MealEditDialog
+          meal={editingMeal}
+          isOpen={!!editingMeal}
+          onClose={() => setEditingMeal(null)}
+          onUpdate={() => {
+            onMealUpdate();
+            setEditingMeal(null);
+          }}
+        />
+      )}
     </div>
   );
 };
