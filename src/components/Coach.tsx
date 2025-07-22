@@ -1,13 +1,12 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FloatingCoachChat } from "@/components/FloatingCoachChat";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Overview } from "@/components/Overview";
 import { InsightsAnalysis } from "@/components/InsightsAnalysis";
+import { ChatCoach } from "@/components/ChatCoach";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useGlobalCoachChat } from "@/hooks/useGlobalCoachChat";
 import { supabase } from "@/integrations/supabase/client";
 import { debounce, clearCache } from "@/utils/supabaseHelpers";
 import { 
@@ -83,9 +82,6 @@ const Coach = ({ onClose }: CoachProps) => {
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const { user } = useAuth();
   const { t } = useTranslation();
-
-  // Use global coach chat hook
-  const coachChatHook = useGlobalCoachChat();
 
   const loadWeightHistoryData = useCallback(async () => {
     if (!user?.id) return;
@@ -204,59 +200,6 @@ const Coach = ({ onClose }: CoachProps) => {
     } catch (error: any) {
       console.error('Error loading today\'s meals:', error);
       setTodaysMeals([]); // Set empty array on error
-    }
-  };
-
-  // Time-based greeting when entering coach
-  const generateTimeBasedGreeting = async () => {
-    if (!user || greetingLoading) return;
-    
-    setGreetingLoading(true);
-    try {
-      const now = new Date();
-      const hour = now.getHours();
-      const date = now.toLocaleDateString('de-DE', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
-      const time = now.toLocaleTimeString('de-DE', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-      
-      let timeOfDay = 'day';
-      if (hour < 11) timeOfDay = 'morning';
-      else if (hour < 17) timeOfDay = 'noon';
-      else timeOfDay = 'evening';
-
-      const { data, error } = await supabase.functions.invoke('coach-analysis', {
-        body: {
-          timeBasedGreeting: true,
-          timeOfDay,
-          currentDate: date,
-          currentTime: time,
-          dailyTotals: todaysTotals,
-          dailyGoal: dailyGoals?.calories,
-          userData: { 
-            averages,
-            historyDays: historyData.length,
-            weightHistory,
-            recentProgress: trendData
-          },
-          userId: user.id
-        }
-      });
-
-      if (error) throw error;
-      if (data?.greeting) {
-        setCoachGreeting(data.greeting);
-      }
-    } catch (error: any) {
-      console.error('Error generating greeting:', error);
-    } finally {
-      setGreetingLoading(false);
     }
   };
 
@@ -390,60 +333,44 @@ const Coach = ({ onClose }: CoachProps) => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Coach Greeting */}
-      {coachGreeting && (
-        <Card className="glass-card shadow-lg border border-primary/20">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
-                <Brain className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  {new Date().getHours() < 11 ? 'Guten Morgen!' : new Date().getHours() < 17 ? 'Hallo!' : 'Guten Abend!'}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">{coachGreeting}</p>
-              </div>
-              {greetingLoading && (
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Tabs defaultValue="analyse" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="analyse">Analyse</TabsTrigger>
+          <TabsTrigger value="coach">Coach</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="analyse" className="space-y-6 mt-6">
+          {/* Überblick - grundlegende Statistiken */}
+          <Overview 
+            todaysTotals={todaysTotals}
+            dailyGoals={dailyGoals}
+            averages={averages}
+            weightHistory={weightHistory}
+          />
 
-      {/* Überblick - grundlegende Statistiken */}
-      <Overview 
-        todaysTotals={todaysTotals}
-        dailyGoals={dailyGoals}
-        averages={averages}
-        weightHistory={weightHistory}
-      />
-
-      {/* Insights Analysis - tiefere Einsichten */}
-      <InsightsAnalysis 
-        todaysTotals={todaysTotals}
-        dailyGoals={dailyGoals}
-        averages={averages}
-        historyData={historyData}
-        trendData={trendData}
-        weightHistory={weightHistory}
-        onWeightAdded={loadWeightHistoryData}
-      />
-
-      {/* FloatingCoachChat - nur auf Coach Seite */}
-      <FloatingCoachChat
-        inputText={coachChatHook.inputText}
-        setInputText={coachChatHook.setInputText}
-        onSubmitMessage={coachChatHook.handleSubmitMessage}
-        onVoiceRecord={coachChatHook.handleVoiceRecord}
-        isThinking={coachChatHook.isThinking}
-        isRecording={coachChatHook.isRecording}
-        isProcessing={coachChatHook.isProcessing}
-        chatHistory={coachChatHook.chatHistory}
-        onClearChat={coachChatHook.clearChat}
-      />
+          {/* Insights Analysis - tiefere Einsichten */}
+          <InsightsAnalysis 
+            todaysTotals={todaysTotals}
+            dailyGoals={dailyGoals}
+            averages={averages}
+            historyData={historyData}
+            trendData={trendData}
+            weightHistory={weightHistory}
+            onWeightAdded={loadWeightHistoryData}
+          />
+        </TabsContent>
+        
+        <TabsContent value="coach" className="mt-6">
+          <ChatCoach 
+            todaysTotals={todaysTotals}
+            dailyGoals={dailyGoals}
+            averages={averages}
+            historyData={historyData}
+            trendData={trendData}
+            weightHistory={weightHistory}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

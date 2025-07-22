@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -268,7 +269,7 @@ export const GlobalHeader = ({
                 <MessageCircle className={`h-4 w-4 mr-2 transition-all duration-300 ${
                   activeTab === 'coach' ? 'animate-pulse text-primary' : ''
                 }`} style={{ animationDuration: activeTab === 'coach' ? '2s' : undefined }} />
-                {t('header.coach')}
+                Coach
               </button>
               <button 
                 onClick={() => handleNavigation('history')}
