@@ -62,7 +62,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="space-y-4">
         {coachProfiles.map((coach) => (
           <CoachCard
             key={coach.id}
