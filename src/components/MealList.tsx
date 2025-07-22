@@ -216,10 +216,21 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
 
       {editingMeal && (
         <MealEditDialog
-          meal={editingMeal}
-          isOpen={!!editingMeal}
+          meal={{
+            id: editingMeal.id,
+            text: editingMeal.food_items,
+            calories: editingMeal.calories,
+            protein: editingMeal.protein,
+            carbs: editingMeal.carbs,
+            fats: editingMeal.fats,
+            created_at: editingMeal.created_at,
+            meal_type: editingMeal.meal_type,
+            images: editingMeal.images
+          }}
+          open={!!editingMeal}
           onClose={() => setEditingMeal(null)}
-          onUpdate={() => {
+          onUpdate={(mealId, updates) => {
+            // Convert back from text to food_items for update
             onMealUpdate();
             setEditingMeal(null);
           }}

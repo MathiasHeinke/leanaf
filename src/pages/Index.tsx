@@ -404,47 +404,11 @@ const Index = () => {
               </div>
             ) : (
               <MealList 
-                dailyMeals={meals.map((meal: any) => ({
-                  id: meal.id,
-                  text: meal.text,
-                  calories: meal.calories,
-                  protein: meal.protein,
-                  carbs: meal.carbs,
-                  fats: meal.fats,
-                  timestamp: new Date(meal.created_at),
-                  meal_type: meal.meal_type
-                }))} 
-                onEditMeal={(meal: any) => {
-                  // Handled by MealEditForm component
+                meals={meals}
+                onMealUpdate={() => {
+                  fetchMealsForDate(currentDate);
                 }}
-                onDeleteMeal={async (mealId: string) => {
-                  try {
-                    // Delete meal images first
-                    await supabase
-                      .from('meal_images')
-                      .delete()
-                      .eq('meal_id', mealId);
-
-                    // Then delete the meal
-                    const { error } = await supabase
-                      .from('meals')
-                      .delete()
-                      .eq('id', mealId);
-
-                    if (error) {
-                      console.error('Error deleting meal:', error);
-                      toast.error('Fehler beim Löschen der Mahlzeit');
-                      return;
-                    }
-
-                    toast.success('Mahlzeit gelöscht');
-                    await fetchMealsForDate(currentDate);
-                  } catch (error) {
-                    console.error('Error deleting meal:', error);
-                    toast.error('Fehler beim Löschen der Mahlzeit');
-                  }
-                }}
-                onUpdateMeal={handleMealUpdated}
+                selectedDate={currentDate.toISOString().split('T')[0]}
               />
             )}
           </div>
