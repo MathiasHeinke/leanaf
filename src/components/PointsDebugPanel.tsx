@@ -69,6 +69,46 @@ export const PointsDebugPanel = ({ isOpen, onClose }: PointsDebugPanelProps) => 
     }
   };
 
+  const handleResetToLevel1 = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    try {
+      // First, reset to 0 points
+      const currentPoints = userPoints?.total_points || 0;
+      if (currentPoints > 0) {
+        await supabase.rpc('update_user_points_and_level', {
+          p_user_id: user.id,
+          p_points: -currentPoints,
+          p_activity_type: 'debug_reset',
+          p_description: 'Debug: Kompletter Reset auf Level 1',
+          p_multiplier: 1.0,
+          p_trial_multiplier: 1.0
+        });
+      }
+      
+      // Then manually set level data to ensure proper reset
+      await supabase
+        .from('user_points')
+        .update({
+          total_points: 0,
+          current_level: 1,
+          level_name: 'Rookie',
+          points_to_next_level: 100,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+      
+      toast.success('Erfolgreich auf Level 1 zurückgesetzt!');
+      refreshData();
+    } catch (error) {
+      console.error('Fehler beim Reset:', error);
+      toast.error('Fehler beim Zurücksetzen');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleQuickAction = (action: string) => {
     const currentPoints = userPoints?.total_points || 0;
     
@@ -92,7 +132,7 @@ export const PointsDebugPanel = ({ isOpen, onClose }: PointsDebugPanelProps) => 
         }
         break;
       case 'reset':
-        handleSetPoints(0);
+        handleResetToLevel1();
         break;
     }
   };
