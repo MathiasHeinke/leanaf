@@ -15,7 +15,7 @@ import { de } from "date-fns/locale";
 
 interface MealEntry {
   id: string;
-  meal_name: string;
+  text: string;
   meal_type: string;
   calories: number;
   protein: number;
@@ -23,7 +23,7 @@ interface MealEntry {
   fats: number;
   quality_score: number;
   created_at: string;
-  date: string;
+  user_id: string;
 }
 
 interface WeightEntry {
@@ -75,7 +75,7 @@ const History = () => {
         .from('meals')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', format(startDate, 'yyyy-MM-dd'))
+        .gte('created_at', format(startDate, 'yyyy-MM-dd'))
         .order('created_at', { ascending: false });
 
       if (mealsError) throw mealsError;
@@ -139,13 +139,12 @@ const History = () => {
 
   const handleDuplicateMeal = async (meal: MealEntry) => {
     try {
-      const { id, created_at, ...mealData } = meal;
+      const { id, created_at, user_id, ...mealData } = meal;
       const { error } = await supabase
         .from('meals')
         .insert({
           ...mealData,
-          user_id: user?.id,
-          date: format(new Date(), 'yyyy-MM-dd')
+          user_id: user?.id
         });
 
       if (error) throw error;
@@ -155,6 +154,49 @@ const History = () => {
     } catch (error) {
       console.error('Error duplicating meal:', error);
     }
+  };
+
+  // Transform meal data to DailyData format for charts
+  const transformToDailyData = (meals: MealEntry[]) => {
+    const dailyMap = new Map();
+    
+    meals.forEach(meal => {
+      const date = format(new Date(meal.created_at), 'yyyy-MM-dd');
+      const displayDate = format(new Date(meal.created_at), 'dd.MM', { locale: de });
+      
+      if (!dailyMap.has(date)) {
+        dailyMap.set(date, {
+          date,
+          displayDate,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          meals: []
+        });
+      }
+      
+      const dayData = dailyMap.get(date);
+      dayData.calories += Number(meal.calories) || 0;
+      dayData.protein += Number(meal.protein) || 0;
+      dayData.carbs += Number(meal.carbs) || 0;
+      dayData.fats += Number(meal.fats) || 0;
+      dayData.meals.push({
+        ...meal,
+        meal_name: meal.text,
+        date
+      });
+    });
+    
+    return Array.from(dailyMap.values());
+  };
+
+  // Transform weight data to add displayDate
+  const transformWeightData = (weights: WeightEntry[]) => {
+    return weights.map(weight => ({
+      ...weight,
+      displayDate: format(new Date(weight.date), 'dd.MM', { locale: de })
+    }));
   };
 
   return (
@@ -211,8 +253,8 @@ const History = () => {
         
         <TabsContent value="charts" className="space-y-6">
           <HistoryCharts 
-            data={mealData}
-            weightHistory={weightHistory}
+            data={transformToDailyData(mealData)}
+            weightHistory={transformWeightData(weightHistory)}
             timeRange={timeRange}
             loading={loading}
           />
@@ -220,7 +262,7 @@ const History = () => {
         
         <TabsContent value="table" className="space-y-6">
           <HistoryTable 
-            data={mealData}
+            data={transformToDailyData(mealData)}
             timeRange={timeRange}
             dailyGoal={dailyGoal}
             userGoal="lose"
