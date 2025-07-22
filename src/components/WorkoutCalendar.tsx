@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -174,8 +173,8 @@ export const WorkoutCalendar = () => {
     <>
       <Card className="p-6">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+          <div className="flex flex-col items-center gap-3">
+            <CardTitle className="flex items-center gap-2 text-center">
               <Calendar className="h-5 w-5" />
               Trainings-Kalender
             </CardTitle>
