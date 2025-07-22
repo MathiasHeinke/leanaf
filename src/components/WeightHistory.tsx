@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { toast } from "sonner";
-import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
+import { uploadFilesWithProgress, UploadProgress } from "@/utils/uploadHelpers";
 
 interface WeightEntry {
   id?: string;
@@ -54,6 +54,11 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastTap, setLastTap] = useState<number>(0);
   
+  // New states for inline photo management
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [deletingPhotoUrl, setDeletingPhotoUrl] = useState<string | null>(null);
+  
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
 
@@ -71,6 +76,114 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
 
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // New function to handle inline photo upload for existing entries
+  const handleInlinePhotoUpload = async (entryId: string, files: File[]) => {
+    if (!user || !entryId || files.length === 0) return;
+
+    setUploadingPhotoFor(entryId);
+    
+    try {
+      console.log(`📸 [WeightHistory] Starting inline photo upload for entry: ${entryId}`);
+      
+      const uploadResult = await uploadFilesWithProgress(files, user.id, setUploadProgress);
+      
+      if (!uploadResult.success || uploadResult.urls.length === 0) {
+        throw new Error('Upload fehlgeschlagen');
+      }
+
+      // Get current entry photos
+      const currentEntry = weightHistory.find(entry => entry.id === entryId);
+      const currentPhotos = currentEntry?.photo_urls || [];
+      
+      // Combine existing and new photos (max 3 total)
+      const allPhotos = [...currentPhotos, ...uploadResult.urls].slice(0, 3);
+      
+      // Update database
+      const { error } = await supabase
+        .from('weight_history')
+        .update({ 
+          photo_urls: allPhotos,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      console.log('✅ [WeightHistory] Inline photos uploaded successfully');
+      toast.success(`${uploadResult.urls.length} Foto(s) erfolgreich hinzugefügt`);
+      onDataUpdate();
+    } catch (error: any) {
+      console.error('❌ [WeightHistory] Inline photo upload failed:', error);
+      toast.error('Fehler beim Hochladen der Bilder');
+    } finally {
+      setUploadingPhotoFor(null);
+      setUploadProgress([]);
+    }
+  };
+
+  // New function to delete individual photos
+  const deletePhoto = async (entryId: string, photoUrl: string) => {
+    if (!user || !entryId) return;
+
+    setDeletingPhotoUrl(photoUrl);
+    
+    try {
+      console.log(`🗑️ [WeightHistory] Deleting photo: ${photoUrl} from entry: ${entryId}`);
+      
+      // Get current entry photos
+      const currentEntry = weightHistory.find(entry => entry.id === entryId);
+      const currentPhotos = currentEntry?.photo_urls || [];
+      
+      // Remove the photo from the array
+      const updatedPhotos = currentPhotos.filter(url => url !== photoUrl);
+      
+      // Update database
+      const { error } = await supabase
+        .from('weight_history')
+        .update({ 
+          photo_urls: updatedPhotos,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      console.log('✅ [WeightHistory] Photo deleted successfully');
+      toast.success('Foto erfolgreich gelöscht');
+      onDataUpdate();
+    } catch (error: any) {
+      console.error('❌ [WeightHistory] Photo deletion failed:', error);
+      toast.error('Fehler beim Löschen des Fotos');
+    } finally {
+      setDeletingPhotoUrl(null);
+    }
+  };
+
+  // Trigger file input for inline upload
+  const triggerInlineUpload = (entryId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const files = Array.from((e.target as HTMLInputElement).files || []);
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      
+      if (imageFiles.length > 0) {
+        const currentEntry = weightHistory.find(entry => entry.id === entryId);
+        const currentPhotoCount = currentEntry?.photo_urls?.length || 0;
+        
+        if (currentPhotoCount + imageFiles.length > 3) {
+          toast.error(`Du kannst nur ${3 - currentPhotoCount} weitere Foto(s) hinzufügen`);
+          return;
+        }
+        
+        handleInlinePhotoUpload(entryId, imageFiles);
+      }
+    };
+    input.click();
   };
 
   // Enhanced inline editing functions with debugging
@@ -446,6 +559,76 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     );
   };
 
+  // New component for rendering photo section with inline upload/delete
+  const renderPhotoSection = (entry: WeightEntry) => {
+    const photos = entry.photo_urls || [];
+    const isUploading = uploadingPhotoFor === entry.id;
+    const canAddMore = photos.length < 3;
+
+    return (
+      <div className="flex gap-1 mt-2 flex-wrap items-center">
+        {/* Existing photos */}
+        {photos.map((url, index) => (
+          <div key={index} className="relative group">
+            <button
+              onClick={() => setSelectedImageUrl(url)}
+              className="relative"
+            >
+              <img
+                src={url}
+                alt={`Progress ${index + 1}`}
+                className="w-12 h-12 object-cover rounded border hover:opacity-80 transition-opacity"
+              />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                <Eye className="h-4 w-4 text-white" />
+              </div>
+            </button>
+            
+            {/* Delete button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deletePhoto(entry.id!, url);
+              }}
+              disabled={deletingPhotoUrl === url}
+              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Foto löschen"
+            >
+              {deletingPhotoUrl === url ? (
+                <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+              ) : (
+                <X className="h-3 w-3" />
+              )}
+            </button>
+          </div>
+        ))}
+
+        {/* Add photo button */}
+        {canAddMore && (
+          <button
+            onClick={() => triggerInlineUpload(entry.id!)}
+            disabled={isUploading}
+            className="w-12 h-12 border-2 border-dashed border-muted-foreground/30 rounded flex items-center justify-center hover:border-primary/50 hover:bg-muted/20 transition-colors group"
+            title="Foto hinzufügen"
+          >
+            {isUploading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b border-primary"></div>
+            ) : (
+              <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+            )}
+          </button>
+        )}
+
+        {/* Upload progress */}
+        {isUploading && uploadProgress.length > 0 && (
+          <div className="text-xs text-muted-foreground ml-2">
+            Uploading...
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -693,27 +876,10 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                   </div>
                 </div>
 
-                {/* Photos */}
-                {weightHistory[0].photo_urls && weightHistory[0].photo_urls.length > 0 && (
-                  <div className="flex gap-1 mt-2">
-                    {weightHistory[0].photo_urls.slice(0, 3).map((url, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedImageUrl(url)}
-                        className="relative group"
-                      >
-                        <img
-                          src={url}
-                          alt={`Progress ${index + 1}`}
-                          className="w-12 h-12 object-cover rounded border hover:opacity-80 transition-opacity"
-                        />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                          <Eye className="h-4 w-4 text-white" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* Photos with inline management */}
+                {(weightHistory[0].photo_urls && weightHistory[0].photo_urls.length > 0) || weightHistory[0].id ? (
+                  renderPhotoSection(weightHistory[0])
+                ) : null}
 
                 {/* Notes */}
                 {weightHistory[0].notes && (
@@ -807,32 +973,10 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
                       </div>
                     </div>
 
-                    {/* Photos */}
-                    {entry.photo_urls && entry.photo_urls.length > 0 && (
-                      <div className="flex gap-1 mt-2">
-                        {entry.photo_urls.slice(0, 3).map((url, photoIndex) => (
-                          <button
-                            key={photoIndex}
-                            onClick={() => setSelectedImageUrl(url)}
-                            className="relative group"
-                          >
-                            <img
-                              src={url}
-                              alt={`Progress ${photoIndex + 1}`}
-                              className="w-10 h-10 object-cover rounded border hover:opacity-80 transition-opacity"
-                            />
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                              <Eye className="h-3 w-3 text-white" />
-                            </div>
-                          </button>
-                        ))}
-                        {entry.photo_urls.length > 3 && (
-                          <div className="w-10 h-10 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground">
-                            +{entry.photo_urls.length - 3}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Photos with inline management */}
+                    {(entry.photo_urls && entry.photo_urls.length > 0) || entry.id ? (
+                      renderPhotoSection(entry)
+                    ) : null}
 
                     {/* Notes */}
                     {entry.notes && (
