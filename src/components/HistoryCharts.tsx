@@ -37,7 +37,7 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
 
   // Prepare chart data
   const chartData = data
-    .filter(day => day.meals.length > 0)
+    .filter(day => day && day.meals && Array.isArray(day.meals) && day.meals.length > 0)
     .map(day => ({
       date: day.displayDate,
       Kalorien: day.calories,
