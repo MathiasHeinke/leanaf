@@ -171,12 +171,19 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                       minute: '2-digit' 
                     })}
                   </span>
-                  {meal.images && meal.images.length > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      <ImageIcon className="h-3 w-3 mr-1" />
-                   {meal.images.length}
+                   {meal.images && meal.images.length > 0 && (
+                     <Badge variant="outline" className="text-xs">
+                       <ImageIcon className="h-3 w-3 mr-1" />
+                       {meal.images.length}
                      </Badge>
                    )}
+                   
+                   {/* Compact Points Badge */}
+                   <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                     📊 +{meal.images && meal.images.length > 0 ? '5' : '3'}P
+                   </Badge>
+                   
+                   {/* Quality Score Badge */}
                    {meal.quality_score !== undefined && meal.quality_score !== null && (
                      <Badge 
                        variant={
@@ -188,6 +195,16 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                      >
                        <Star className="h-3 w-3 mr-1" />
                        {meal.quality_score}/10
+                     </Badge>
+                   )}
+                   
+                   {/* Bonus Points Badge */}
+                   {meal.bonus_points && meal.bonus_points > 0 && (
+                     <Badge 
+                       variant="outline" 
+                       className="text-xs bg-secondary/20 text-secondary-foreground border-secondary/30"
+                     >
+                       ⭐ +{meal.bonus_points}BP
                      </Badge>
                    )}
                  </div>
@@ -270,25 +287,34 @@ export const MealList = ({ dailyMeals, onEditMeal, onDeleteMeal, onUpdateMeal }:
                   className="flex items-center justify-between cursor-pointer"
                   onClick={() => setExpandedFeedback(expandedFeedback === meal.id ? null : meal.id)}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">Coach Feedback</span>
-                    {meal.bonus_points && meal.bonus_points > 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{meal.bonus_points} Bonus Punkte
-                      </Badge>
-                    )}
-                  </div>
+                   <div className="flex items-center gap-2">
+                     <span className="text-sm font-medium text-muted-foreground">🤖 Coach Feedback</span>
+                     {meal.quality_score !== undefined && (
+                       <Badge 
+                         variant="outline"
+                         className={`text-xs ${
+                           meal.quality_score >= 8 ? 'bg-green-50 text-green-700 border-green-200' :
+                           meal.quality_score >= 6 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                           'bg-red-50 text-red-700 border-red-200'
+                         }`}
+                       >
+                         Qualität: {meal.quality_score}/10
+                       </Badge>
+                     )}
+                   </div>
                   {expandedFeedback === meal.id ? 
                     <ChevronUp className="h-4 w-4 text-muted-foreground" /> : 
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   }
                 </div>
                 
-                {expandedFeedback === meal.id && (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-sm text-muted-foreground bg-muted/30 p-2 rounded">
-                      {meal.ai_feedback}
-                    </p>
+                 {expandedFeedback === meal.id && (
+                   <div className="mt-2 space-y-2">
+                     <div className="p-3 bg-gradient-to-r from-muted/30 to-muted/10 rounded-lg border border-border/30">
+                       <p className="text-sm text-foreground/90 italic">
+                         "{meal.ai_feedback}"
+                       </p>
+                     </div>
                     
                     {meal.evaluation_criteria && (
                       <div className="text-xs text-muted-foreground">

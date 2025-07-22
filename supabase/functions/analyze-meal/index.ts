@@ -1,6 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -30,6 +31,38 @@ serve(async (req) => {
       imageCount: images?.length || 0,
       imageUrls: images ? images.map((url: string) => url.substring(0, 50) + '...') : 'NO IMAGES'
     });
+    
+    // Get user profile for coach personality
+    let coachPersonality = 'motivierend';
+    try {
+      const authHeader = req.headers.get('Authorization');
+      if (authHeader) {
+        const supabaseClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+          {
+            global: {
+              headers: { Authorization: authHeader },
+            },
+          }
+        );
+        
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+          const { data: profileData } = await supabaseClient
+            .from('profiles')
+            .select('coach_personality')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (profileData?.coach_personality) {
+            coachPersonality = profileData.coach_personality;
+          }
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch coach personality, using default');
+    }
     
     // Validate input - allow either text OR images OR both
     if (!text && (!images || images.length === 0)) {
@@ -63,7 +96,18 @@ serve(async (req) => {
     const userValues = text ? extractUserValues(text) : {};
     const hasUserValues = Object.keys(userValues).length > 0;
 
-    let prompt = `Du bist ein präziser Ernährungsexperte mit Zugang zu aktuellen Nährwertdatenbanken (USDA, BLS). 
+    const getPersonalityPrompt = (personality: string): string => {
+      switch (personality) {
+        case 'streng':
+          return "Du bist ein strenger, direkter Ernährungsexperte. Sei präzise und ehrlich in deinen Schätzungen.";
+        case 'liebevoll':
+          return "Du bist ein liebevoller Ernährungsberater. Sei unterstützend und ermutigend in deinen Anmerkungen.";
+        default:
+          return "Du bist ein motivierender Ernährungsexperte. Sei konstruktiv und hilfreich.";
+      }
+    };
+
+    let prompt = `${getPersonalityPrompt(coachPersonality)} Du bist ein präziser Ernährungsexperte mit Zugang zu aktuellen Nährwertdatenbanken (USDA, BLS).
 
 WICHTIGE ANWEISUNGEN:
 - Analysiere Bilder genau auf Portionsgrößen und Lebensmittel

@@ -294,11 +294,24 @@ export const usePointsSystem = () => {
           const basePoints = hasPhoto ? 5 : 3;
           const totalPoints = basePoints + evaluationData.bonus_points;
           
-          toast.success(`🎯 ${totalPoints} Punkte! (${basePoints} fürs Tracken + ${evaluationData.bonus_points} Qualitätsbonus)`, {
-            duration: 5000,
+          // Enhanced toast with quality score
+          const qualityEmoji = evaluationData.quality_score >= 8 ? '🏆' : 
+                              evaluationData.quality_score >= 6 ? '🥈' : '🥉';
+          
+          toast.success(`${qualityEmoji} ${totalPoints} Punkte! (${basePoints}P Tracking + ${evaluationData.bonus_points}BP Qualität ${evaluationData.quality_score}/10)`, {
+            duration: 6000,
             position: "top-center",
           });
         }
+      } else {
+        // Show basic points when no bonus
+        const hasPhoto = mealData.images && mealData.images.length > 0;
+        const basePoints = hasPhoto ? 5 : 3;
+        
+        toast.success(`📊 ${basePoints} Punkte fürs Tracking! ${evaluationData.ai_feedback ? '🤖 ' + evaluationData.ai_feedback.slice(0, 50) + '...' : ''}`, {
+          duration: 4000,
+          position: "top-center",
+        });
       }
 
       return evaluationData;
