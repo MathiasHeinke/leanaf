@@ -1,481 +1,388 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useTranslation } from "@/hooks/useTranslation";
-import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
-import { useSubscription } from "@/hooks/useSubscription";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
-import { MealList } from "@/components/MealList";
-import { DailyProgress } from "@/components/DailyProgress";
-import { QuickWeightInput } from "@/components/QuickWeightInput";
-import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
-import { QuickSleepInput } from "@/components/QuickSleepInput";
-import { BodyMeasurements } from "@/components/BodyMeasurements";
-import { BadgeSystem } from "@/components/BadgeSystem";
-import { SmartCoachInsights } from "@/components/SmartCoachInsights";
-import { DepartmentProgress } from "@/components/DepartmentProgress";
-import { usePointsSystem } from "@/hooks/usePointsSystem";
-import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
-import { ProgressCharts } from "@/components/ProgressCharts";
-import { TrialBanner } from "@/components/TrialBanner";
-import { useBadgeChecker } from "@/hooks/useBadgeChecker";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import { DailyProgress } from "@/components/DailyProgress";
+import { OptimizedGreeting } from "@/components/OptimizedGreeting";
+import { WeightHistory } from "@/components/WeightHistory";
+import { QuickWeightInput } from "@/components/QuickWeightInput";
+import { QuickSleepInput } from "@/components/QuickSleepInput";
+import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { MealInput } from "@/components/MealInput";
+import { MealList } from "@/components/MealList";
+import { SmartInsights } from "@/components/SmartInsights";
+import { BMIProgress } from "@/components/BMIProgress";
+import { BodyMeasurements } from "@/components/BodyMeasurements";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Scale, Activity, Moon, Utensils } from "lucide-react";
 import { toast } from "sonner";
+import { supabaseRequest } from "@/utils/supabaseHelpers";
 
-const Index = () => {
-  const { t } = useTranslation();
-  const { user, loading: authLoading } = useAuth();
-  const { isPremium, trial } = useSubscription();
-  const { hasFeatureAccess } = useFeatureAccess();
-  const navigate = useNavigate();
-  const mealInputHook = useGlobalMealInput();
-  const { checkBadges } = useBadgeChecker();
-  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
-  
-  // State management
-  const [meals, setMeals] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [calorieSummary, setCalorieSummary] = useState<{ consumed: number; burned: number }>({ consumed: 0, burned: 0 });
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [dailyGoals, setDailyGoals] = useState<any>(null);
-  const [dataLoading, setDataLoading] = useState(true);
-  
-  // New state for today's data
-  const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
-  const [todaysSleep, setTodaysSleep] = useState<any>(null);
-  const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
-  const [todaysWeight, setTodaysWeight] = useState<any>(null);
+export default function Index() {
+  const { user } = useAuth();
+  const [weightHistory, setWeightHistory] = useState([]);
+  const [todaysWeight, setTodaysWeight] = useState(null);
+  const [todaysSleep, setTodaysSleep] = useState(null);
+  const [todaysWorkouts, setTodaysWorkouts] = useState([]);
+  const [meals, setMeals] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [dailyGoals, setDailyGoals] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Check authentication and redirect if needed
-  useEffect(() => {
-    if (!authLoading && !user) {
-      console.log('No user found, redirecting to auth page');
-      navigate('/auth');
-      return;
-    }
-  }, [user, authLoading, navigate]);
-
-  // If still loading auth or no user, show loading state
-  if (authLoading || !user) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  // Load user data
-  useEffect(() => {
-    if (user) {
-      loadUserData();
-    }
-  }, [user]);
-
-  // Load meals when date changes
-  useEffect(() => {
-    if (user && dailyGoals) {
-      fetchMealsForDate(currentDate);
-      loadTodaysData(currentDate);
-    }
-  }, [user, currentDate, dailyGoals]);
-
-  const loadUserData = async () => {
+  // Enhanced weight data loading with debug logging
+  const loadWeightData = async () => {
     if (!user) return;
     
-    setDataLoading(true);
     try {
-      // Load user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('Error loading profile:', profileError);
-      } else {
-        setUserProfile(profileData);
-      }
-
-      // Load daily goals
-      const { data: goalsData, error: goalsError } = await supabase
-        .from('daily_goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (goalsError) {
-        console.error('Error loading daily goals:', goalsError);
-        setDailyGoals({
-          calories: 2000,
-          protein: 150,
-          carbs: 250,
-          fats: 65
-        });
-      } else {
-        setDailyGoals(goalsData || {
-          calories: 2000,
-          protein: 150,
-          carbs: 250,
-          fats: 65
-        });
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    } finally {
-      setDataLoading(false);
-    }
-  };
-
-  const loadTodaysData = async (date: Date) => {
-    if (!user) return;
-
-    console.log('Loading todays data for date:', date);
-
-    try {
-      const dateString = date.toISOString().split('T')[0];
-      console.log('Date string:', dateString);
-
-      // Load today's workout
-      const { data: workoutData, error: workoutError } = await supabase
-        .from('workouts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', dateString)
-        .maybeSingle();
-
-      if (workoutError) {
-        console.error('Error loading workout:', workoutError);
-      } else {
-        console.log('Loaded workout data:', workoutData);
-        setTodaysWorkout(workoutData);
-      }
-
-      // Load today's sleep
-      const { data: sleepData, error: sleepError } = await supabase
-        .from('sleep_tracking')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', dateString)
-        .maybeSingle();
-
-      if (sleepError) {
-        console.error('Error loading sleep:', sleepError);
-      } else {
-        console.log('Loaded sleep data:', sleepData);
-        setTodaysSleep(sleepData);
-      }
-
-      // Load today's weight
-      const { data: weightData, error: weightError } = await supabase
+      console.log('🔧 [INDEX] Loading weight data for user:', user.id);
+      
+      const { data, error } = await supabase
         .from('weight_history')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', dateString)
-        .maybeSingle();
-
-      if (weightError) {
-        console.error('Error loading weight:', weightError);
-      } else {
-        console.log('Loaded weight data:', weightData);
-        setTodaysWeight(weightData);
+        .order('date', { ascending: false });
+      
+      if (error) {
+        console.error('🔧 [INDEX] Weight data load error:', error);
+        throw error;
       }
+      
+      console.log('🔧 [INDEX] Weight data loaded:', data?.length || 0, 'entries');
+      setWeightHistory(data || []);
+      
+      // Find today's weight entry
+      const today = new Date().toISOString().split('T')[0];
+      const todayWeight = data?.find(entry => entry.date === today) || null;
+      
+      console.log('🔧 [INDEX] Today\'s weight entry:', todayWeight);
+      setTodaysWeight(todayWeight);
+      
+    } catch (error) {
+      console.error('🔧 [INDEX] Failed to load weight data:', error);
+      toast.error('Fehler beim Laden der Gewichtsdaten');
+    }
+  };
 
-      // Load this week's measurements (within last 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  // Enhanced data loading function
+  const loadData = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    console.log('🔧 [INDEX] Starting data load for user:', user.id);
+    
+    try {
+      // Load weight data first (most important for the user's issue)
+      await loadWeightData();
+      
+      // Load other data in parallel
+      await Promise.all([
+        loadProfile(),
+        loadDailyGoals(),
+        loadSleepData(),
+        loadWorkoutData(),
+        loadMealData()
+      ]);
+      
+      console.log('🔧 [INDEX] All data loaded successfully');
+    } catch (error) {
+      console.error('🔧 [INDEX] Data loading failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      const { data: measurementsData, error: measurementsError } = await supabase
-        .from('body_measurements')
+  const loadProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await supabaseRequest(
+        `profile-${user.id}`,
+        async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (error) throw error;
+          return data;
+        }
+      );
+      
+      setProfile(data);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
+  const loadDailyGoals = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await supabaseRequest(
+        `daily-goals-${user.id}`,
+        async () => {
+          const { data, error } = await supabase
+            .from('daily_goals')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (error) throw error;
+          return data;
+        }
+      );
+      
+      setDailyGoals(data);
+    } catch (error) {
+      console.error('Error loading daily goals:', error);
+    }
+  };
+
+  const loadSleepData = async () => {
+    if (!user) return;
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('sleep_history')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
-        .order('date', { ascending: false })
-        .limit(1)
+        .eq('date', today)
         .maybeSingle();
-
-      if (measurementsError) {
-        console.error('Error loading measurements:', measurementsError);
-      } else {
-        console.log('Loaded measurements data:', measurementsData);
-        setTodaysMeasurements(measurementsData);
-      }
+      
+      if (error) throw error;
+      setTodaysSleep(data);
     } catch (error) {
-      console.error('Error loading today\'s data:', error);
+      console.error('Error loading sleep data:', error);
     }
   };
 
-  const fetchMealsForDate = async (date: Date) => {
-    setLoading(true);
+  const loadWorkoutData = async () => {
+    if (!user) return;
+    
     try {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // Fetch meals
-      const { data: mealsData, error: mealsError } = await supabase
-        .from('meals')
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('workout_history')
         .select('*')
-        .eq('user_id', user?.id)
-        .gte('created_at', startOfDay.toISOString())
-        .lte('created_at', endOfDay.toISOString())
-        .order('created_at', { ascending: false });
-
-      if (mealsError) throw mealsError;
+        .eq('user_id', user.id)
+        .eq('date', today);
       
-      if (!mealsData || mealsData.length === 0) {
-        setMeals([]);
-        updateCalorieSummary([]);
-        return;
-      }
-
-      // Fetch images for all meals
-      const mealIds = mealsData.map(meal => meal.id);
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('meal_images')
-        .select('meal_id, image_url')
-        .in('meal_id', mealIds);
-
-      if (imagesError) {
-        console.error('Error fetching meal images:', imagesError);
-      }
-
-      // Group images by meal_id
-      const imagesByMeal = (imagesData || []).reduce((acc, img) => {
-        if (!acc[img.meal_id]) {
-          acc[img.meal_id] = [];
-        }
-        acc[img.meal_id].push(img.image_url);
-        return acc;
-      }, {} as Record<string, string[]>);
-
-      // Combine meals with their images
-      const mealsWithImages = mealsData.map(meal => ({
-        ...meal,
-        images: imagesByMeal[meal.id] || []
-      }));
-      
-      setMeals(mealsWithImages);
-      updateCalorieSummary(mealsWithImages);
+      if (error) throw error;
+      setTodaysWorkouts(data || []);
     } catch (error) {
-      console.error('Error fetching meals:', error);
-      setMeals([]);
-      updateCalorieSummary([]);
-    } finally {
-      setLoading(false);
+      console.error('Error loading workout data:', error);
     }
   };
 
-  const updateCalorieSummary = (meals: any[]) => {
-    const consumed = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
-    setCalorieSummary({ consumed, burned: 0 });
-  };
-
-  const handleDateChange = (date: Date) => {
-    setCurrentDate(new Date(date));
-  };
-
-  const handleMealDeleted = async () => {
-    await fetchMealsForDate(currentDate);
-  };
-
-  const handleMealUpdated = async () => {
-    await fetchMealsForDate(currentDate);
-  };
-
-  const handleWeightAdded = async (newWeightData?: any) => {
-    console.log('Weight added callback triggered - immediate state update');
+  const loadMealData = async () => {
+    if (!user) return;
     
-    // Immediately update todaysWeight state with the new data
-    if (newWeightData) {
-      console.log('Updating todaysWeight state with new data:', newWeightData);
-      setTodaysWeight(newWeightData);
+    try {
+      const data = await supabaseRequest(
+        `meals-${user.id}-${new Date().toDateString()}`,
+        async () => {
+          const today = new Date();
+          const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const startOfNextDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+          
+          const { data, error } = await supabase
+            .from('meals')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('created_at', startOfDay.toISOString())
+            .lt('created_at', startOfNextDay.toISOString())
+            .order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          return data || [];
+        }
+      );
+      
+      setMeals(data);
+    } catch (error) {
+      console.error('Error loading meal data:', error);
     }
-    
-    // Then reload all data to ensure consistency
-    await loadTodaysData(currentDate);
-    await loadUserData();
   };
 
-  const handleWorkoutAdded = async (workoutData?: any) => {
-    console.log('Workout added callback triggered - reloading data');
+  // Enhanced refresh handler with better cache management
+  const handleWeightAdded = async () => {
+    console.log('🔧 [INDEX] Weight added callback triggered, refreshing data...');
     
-    // Evaluate workout quality if data provided
-    if (workoutData && workoutData.id) {
-      await evaluateWorkout(workoutData.id, workoutData);
+    // Clear cache for weight-related queries
+    const cacheKeysToInvalidate = [
+      `weight-history-${user?.id}`,
+      `profile-${user?.id}`,
+    ];
+    
+    // Force refresh weight data immediately
+    await loadWeightData();
+    await loadProfile();
+    
+    // Increment refresh key to trigger re-renders
+    setRefreshKey(prev => prev + 1);
+    
+    console.log('🔧 [INDEX] Weight data refreshed successfully');
+    toast.success('Daten wurden aktualisiert!');
+  };
+
+  const handleMealAdded = async () => {
+    console.log('🔧 [INDEX] Meal added, refreshing meal data...');
+    await loadMealData();
+    await loadProfile();
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleSleepAdded = async () => {
+    console.log('🔧 [INDEX] Sleep added, refreshing sleep data...');
+    await loadSleepData();
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleWorkoutAdded = async () => {
+    console.log('🔧 [INDEX] Workout added, refreshing workout data...');
+    await loadWorkoutData();
+    setRefreshKey(prev => prev + 1);
+  };
+
+  // Load data on mount and user change
+  useEffect(() => {
+    if (user) {
+      console.log('🔧 [INDEX] User changed, loading data...');
+      loadData();
     }
-    
-    loadTodaysData(currentDate);
-  };
+  }, [user]);
 
-  const handleSleepAdded = async (sleepData?: any) => {
-    console.log('Sleep added callback triggered - reloading data');
-    
-    // Evaluate sleep quality if data provided
-    if (sleepData && sleepData.id) {
-      await evaluateSleep(sleepData.id, sleepData);
-    }
-    
-    loadTodaysData(currentDate);
-  };
+  // Debug logging for key state changes
+  useEffect(() => {
+    console.log('🔧 [INDEX] State updated:', {
+      todaysWeight: todaysWeight?.weight,
+      weightHistoryCount: weightHistory.length,
+      refreshKey,
+      isLoading
+    });
+  }, [todaysWeight, weightHistory, refreshKey, isLoading]);
 
-  const handleMeasurementsAdded = () => {
-    console.log('Measurements added callback triggered - reloading data');
-    loadTodaysData(currentDate);
-  };
-
-  const handleMealSuccess = async () => {
-    await fetchMealsForDate(currentDate);
-    mealInputHook.resetForm();
-    
-    // Award points for meal tracking
-    if (user?.id && mealInputHook.uploadedImages.length > 0) {
-      await awardPoints('meal_tracked_with_photo', getPointsForActivity('meal_tracked_with_photo'), 'Mahlzeit mit Foto getrackt');
-    } else if (user?.id) {
-      await awardPoints('meal_tracked', getPointsForActivity('meal_tracked'), 'Mahlzeit getrackt');
-    }
-    
-    // Update meal tracking streak
-    if (user?.id) {
-      await updateStreak('meal_tracking');
-    }
-    
-    // Check for new badges after meal submission
-    setTimeout(() => checkBadges(), 1000);
-  };
-
-  if (dataLoading) {
+  if (!user) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-2xl font-semibold mb-4">Willkommen bei KaloAI</h2>
+            <p className="text-muted-foreground mb-6">
+              Bitte melde dich an, um deine Gesundheitsdaten zu verwalten.
+            </p>
+            <Button onClick={() => window.location.href = '/auth'} className="w-full">
+              Anmelden
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="space-y-5">
-        {/* Trial Banner */}
-        <TrialBanner />
-        
-        <DailyProgress
-          dailyTotals={{
-            calories: calorieSummary.consumed,
-            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
-          }}
-          userProfile={userProfile}
-          dailyGoal={{
-            calories: dailyGoals?.calories || 2000,
-            protein: dailyGoals?.protein || 150,
-            carbs: dailyGoals?.carbs || 250,
-            fats: dailyGoals?.fats || 65
-          }}
-          userGoal={userProfile?.goal || 'maintain'}
-          currentDate={currentDate}
-          onDateChange={handleDateChange}
-        />
+    <div className="container mx-auto p-4 space-y-6 max-w-4xl">
+      {/* Greeting Section */}
+      <OptimizedGreeting 
+        profile={profile} 
+        todaysWeight={todaysWeight}
+        todaysSleep={todaysSleep}
+        todaysWorkouts={todaysWorkouts}
+        meals={meals}
+        key={`greeting-${refreshKey}`}
+      />
 
-        {/* Weight Tracking - Always available (Basic/Free feature) */}
-        <QuickWeightInput 
-          onWeightAdded={handleWeightAdded}
-          todaysWeight={todaysWeight}
-        />
+      {/* Quick Actions Tabs */}
+      <Tabs defaultValue="weight" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="weight" className="flex items-center gap-2">
+            <Scale className="h-4 w-4" />
+            <span className="hidden sm:inline">Gewicht</span>
+          </TabsTrigger>
+          <TabsTrigger value="meals" className="flex items-center gap-2">
+            <Utensils className="h-4 w-4" />
+            <span className="hidden sm:inline">Mahlzeit</span>
+          </TabsTrigger>
+          <TabsTrigger value="workout" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            <span className="hidden sm:inline">Training</span>
+          </TabsTrigger>
+          <TabsTrigger value="sleep" className="flex items-center gap-2">
+            <Moon className="h-4 w-4" />
+            <span className="hidden sm:inline">Schlaf</span>
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Premium Workout and Sleep Features */}
-        <div className="grid grid-cols-1 gap-4">
+        <TabsContent value="weight" className="space-y-6">
+          <QuickWeightInput 
+            onWeightAdded={handleWeightAdded} 
+            todaysWeight={todaysWeight}
+            key={`weight-input-${refreshKey}`}
+          />
+          <WeightHistory 
+            weightHistory={weightHistory}
+            key={`weight-history-${refreshKey}`}
+          />
+        </TabsContent>
+
+        <TabsContent value="meals" className="space-y-6">
+          <MealInput onMealAdded={handleMealAdded} />
+          <MealList meals={meals} onMealUpdated={handleMealAdded} />
+        </TabsContent>
+
+        <TabsContent value="workout" className="space-y-6">
           <QuickWorkoutInput 
             onWorkoutAdded={handleWorkoutAdded}
-            todaysWorkout={todaysWorkout}
+            todaysWorkouts={todaysWorkouts}
           />
+        </TabsContent>
+
+        <TabsContent value="sleep" className="space-y-6">
           <QuickSleepInput 
             onSleepAdded={handleSleepAdded}
             todaysSleep={todaysSleep}
           />
-        </div>
+        </TabsContent>
+      </Tabs>
 
-        {/* Premium Body Measurements */}
-        <BodyMeasurements 
-          onMeasurementsAdded={handleMeasurementsAdded}
-          todaysMeasurements={todaysMeasurements}
+      <Separator />
+
+      {/* Progress and Analysis Section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <DailyProgress 
+          meals={meals}
+          dailyGoals={dailyGoals}
+          profile={profile}
+          key={`progress-${refreshKey}`}
         />
         
-        {/* Department Progress - Always available */}
-        <DepartmentProgress />
-        
-        
-        <BadgeSystem />
-
-        <div>
-          <div className="mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <Badge className="opacity-80">{meals.length} Mahlzeiten</Badge>
-            </div>
-            {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : (
-              <MealList 
-                meals={meals}
-                onMealUpdate={() => {
-                  fetchMealsForDate(currentDate);
-                }}
-                selectedDate={currentDate.toISOString().split('T')[0]}
-              />
-            )}
-          </div>
+        <div className="space-y-6">
+          {profile && (
+            <BMIProgress 
+              currentWeight={todaysWeight?.weight || profile.weight} 
+              targetWeight={profile.target_weight}
+              height={profile.height}
+              key={`bmi-${refreshKey}`}
+            />
+          )}
+          
+          <BodyMeasurements />
         </div>
       </div>
 
-      {/* Floating Meal Input */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent">
-        <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
-          <MealInput 
-            inputText={mealInputHook.inputText}
-            setInputText={mealInputHook.setInputText}
-            onSubmitMeal={mealInputHook.handleSubmitMeal}
-            onPhotoUpload={mealInputHook.handlePhotoUpload}
-            onVoiceRecord={mealInputHook.handleVoiceRecord}
-            isAnalyzing={mealInputHook.isAnalyzing}
-            isRecording={mealInputHook.isRecording}
-            isProcessing={mealInputHook.isProcessing}
-            uploadedImages={mealInputHook.uploadedImages}
-            onRemoveImage={mealInputHook.removeImage}
-            uploadProgress={mealInputHook.uploadProgress}
-            isUploading={mealInputHook.isUploading}
-          />
-        </div>
-      </div>
-
-      {/* Meal Confirmation Dialog */}
-      {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
-        <MealConfirmationDialog
-          isOpen={mealInputHook.showConfirmationDialog}
-          onClose={mealInputHook.closeDialog}
-          analyzedMealData={mealInputHook.analyzedMealData}
-          selectedMealType={mealInputHook.selectedMealType}
-          onMealTypeChange={mealInputHook.setSelectedMealType}
-          onSuccess={handleMealSuccess}
-          uploadedImages={mealInputHook.uploadedImages}
-        />
-      )}
-    </>
+      {/* Smart Insights */}
+      <SmartInsights 
+        meals={meals}
+        weightHistory={weightHistory}
+        profile={profile}
+        key={`insights-${refreshKey}`}
+      />
+    </div>
   );
-};
-
-export default Index;
+}
