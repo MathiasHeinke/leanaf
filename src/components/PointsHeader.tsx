@@ -22,11 +22,26 @@ export const PointsHeader = () => {
     );
   }
 
-  // Simplified calculation - just use the points_to_next_level directly
-  // Since it represents how many points are needed to reach next level
-  const maxPointsForCurrentLevel = 100; // Each level requires 100 points
-  const currentLevelProgress = maxPointsForCurrentLevel - userPoints.points_to_next_level;
+  // Calculate level progression based on actual level requirements
+  const getMaxPointsForLevel = (level: number): number => {
+    // The points required for each level, based on the database logic
+    switch (level) {
+      case 1: return 100;  // Rookie: 0-99 points (100 to reach level 2)
+      case 2: return 200;  // Bronze: 100-299 points (200 to reach level 3)
+      case 3: return 350;  // Silver: 300-649 points (350 to reach level 4)
+      case 4: return 550;  // Gold: 650-1199 points (550 to reach level 5)
+      case 5: return 800;  // Platinum: 1200-1999 points (800 to reach level 6)
+      case 6: return 1100; // Diamond: 2000-3099 points (1100 to reach level 7)
+      case 7: return 1500; // Master: 3100-4599 points (1500 to reach level 8)
+      default: return 500; // Grandmaster: Level 8+ requires 500 points per level
+    }
+  };
   
+  // Get the maximum points needed for the current level
+  const maxPointsForCurrentLevel = getMaxPointsForLevel(userPoints.current_level);
+  
+  // Calculate progress in the current level based on points_to_next_level
+  const currentLevelProgress = maxPointsForCurrentLevel - userPoints.points_to_next_level;
   const getLevelIcon = (levelName: string) => {
     switch (levelName) {
       case 'Rookie': return <Star className="w-4 h-4" />;
