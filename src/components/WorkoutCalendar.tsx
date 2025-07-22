@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import {
   ChevronRight,
   Plus,
   Edit,
-  XCircle,
   Trash2
 } from "lucide-react";
 import { WorkoutEditModal } from "./WorkoutEditModal";
@@ -282,7 +280,7 @@ export const WorkoutCalendar = () => {
                       </div>
                     ) : workout && !workout.did_workout ? (
                       <div className="absolute inset-1 flex items-center justify-center">
-                        <XCircle className="h-3 w-3 text-gray-400" />
+                        <span className="text-lg">🏝️</span>
                         {canEdit && (
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                             <Button
