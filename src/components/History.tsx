@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,8 +43,13 @@ interface DailyData {
 }
 
 interface WeightEntry {
+  id: string;
   date: string;
   weight: number;
+  body_fat_percentage?: number;
+  muscle_percentage?: number;
+  photo_urls?: string[];
+  notes?: string;
   displayDate: string;
 }
 
@@ -267,7 +273,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       const { data: weightData, error } = await supabase
         .from('weight_history')
-        .select('id, date, weight')
+        .select('id, date, weight, body_fat_percentage, muscle_percentage, photo_urls, notes')
         .eq('user_id', user.id)
         .gte('date', startDate.toISOString().split('T')[0])
         .order('date', { ascending: false });
@@ -278,6 +284,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         id: entry.id,
         date: entry.date,
         weight: Number(entry.weight),
+        body_fat_percentage: entry.body_fat_percentage ? Number(entry.body_fat_percentage) : undefined,
+        muscle_percentage: entry.muscle_percentage ? Number(entry.muscle_percentage) : undefined,
+        photo_urls: entry.photo_urls || [],
+        notes: entry.notes || undefined,
         displayDate: new Date(entry.date).toLocaleDateString('de-DE', { 
           day: '2-digit', 
           month: '2-digit' 
