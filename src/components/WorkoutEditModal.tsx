@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { toDateString } from "@/utils/dateHelpers";
 
 interface WorkoutEditModalProps {
   isOpen: boolean;
@@ -64,9 +65,22 @@ export const WorkoutEditModal = ({
     e.preventDefault();
     if (!user || !selectedDate) return;
 
+    // Validate workout type
+    const validWorkoutTypes = ['kraft', 'cardio', 'pause', 'other'];
+    if (!validWorkoutTypes.includes(workoutType)) {
+      toast.error('Ungültiger Workout-Typ');
+      return;
+    }
+
+    // Validate intensity for non-pause workouts
+    if (workoutType !== 'pause' && (intensity[0] < 1 || intensity[0] > 10)) {
+      toast.error('Intensität muss zwischen 1 und 10 liegen');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      const dateStr = toDateString(selectedDate);
       const workoutData = {
         user_id: user.id,
         workout_type: workoutType,
@@ -101,7 +115,8 @@ export const WorkoutEditModal = ({
 
         // Award points for new workout (only for actual workouts, not rest days)
         if (workoutType !== 'pause') {
-          const isToday = dateStr === new Date().toISOString().split('T')[0];
+          const currentDateStr = toDateString(new Date());
+          const isToday = dateStr === currentDateStr;
           if (!isToday) {
             // For past dates, still award points but with lower multiplier
             await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Nachträgliches Workout eingetragen', 0.8);
@@ -118,8 +133,16 @@ export const WorkoutEditModal = ({
       onClose();
     } catch (error) {
       console.error('Error saving workout:', error);
-      if (error instanceof Error && error.message.includes('check constraint')) {
-        toast.error('Ungültige Workout-Daten. Bitte überprüfe deine Eingaben.');
+      if (error instanceof Error) {
+        if (error.message.includes('check constraint')) {
+          toast.error('Ungültige Workout-Daten. Bitte überprüfe Workout-Typ und Intensität.');
+        } else if (error.message.includes('workout_type')) {
+          toast.error('Ungültiger Workout-Typ. Wähle einen anderen Typ aus.');
+        } else if (error.message.includes('intensity')) {
+          toast.error('Intensität muss zwischen 1 und 10 liegen.');
+        } else {
+          toast.error(`Fehler beim Speichern: ${error.message}`);
+        }
       } else {
         toast.error('Fehler beim Speichern des Workouts');
       }

@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  Footprints
 } from "lucide-react";
 import { WorkoutEditModal } from "./WorkoutEditModal";
 import { toast } from "sonner";
@@ -117,22 +118,33 @@ export const WorkoutCalendar = () => {
     setCurrentWeekStart(getCurrentWeekBounds().start);
   };
 
-  const getIntensityColor = (intensity: number) => {
-    if (intensity >= 8) return 'bg-red-500';
-    if (intensity >= 6) return 'bg-orange-500';
-    if (intensity >= 4) return 'bg-yellow-500';
-    return 'bg-green-500';
-  };
-
   const getWorkoutTypeEmoji = (type: string) => {
     switch (type) {
       case 'kraft': return '💪';
       case 'cardio': return '🏃';
       case 'yoga': return '🧘';
       case 'stretching': return '🤸';
-      case 'pause': return '😴';
+      case 'pause': return '🏝️';
       default: return '🏋️';
     }
+  };
+
+  const getWorkoutTypeName = (type: string) => {
+    switch (type) {
+      case 'kraft': return 'Krafttraining';
+      case 'cardio': return 'Cardio';
+      case 'yoga': return 'Yoga';
+      case 'stretching': return 'Stretching';
+      case 'pause': return 'Ruhetag';
+      default: return 'Training';
+    }
+  };
+
+  const getIntensityColor = (intensity: number) => {
+    if (intensity >= 8) return 'text-red-600';
+    if (intensity >= 6) return 'text-orange-600';
+    if (intensity >= 4) return 'text-yellow-600';
+    return 'text-green-600';
   };
 
   const handleDateClick = (date: Date, workout?: WorkoutEntry) => {
@@ -219,137 +231,148 @@ export const WorkoutCalendar = () => {
             </div>
           </div>
 
-          {/* Weekly Calendar Grid */}
+          {/* Daily List */}
           <div className="space-y-3">
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-muted-foreground">
-              {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(day => (
-                <div key={day} className="p-2">{day}</div>
-              ))}
-            </div>
-            
-            {/* Calendar days */}
-            <div className="grid grid-cols-7 gap-2">
-              {weekDays.map((day, index) => {
-                const workout = getWorkoutForDate(day);
-                const isToday = isDateToday(toDateString(day));
-                const isPast = isDatePast(toDateString(day));
-                const canEdit = isPast || isToday;
-                
-                return (
-                  <div 
-                    key={day.toISOString()} 
-                    className={`
-                      relative p-3 h-20 border rounded-xl text-center text-sm group transition-all
-                      ${isToday ? 'border-primary bg-primary/10 ring-2 ring-primary/20' : 'border-gray-200 hover:border-gray-300'}
-                      ${canEdit && !workout ? 'hover:bg-gray-50 cursor-pointer' : ''}
-                    `}
-                  >
-                    <div className={`font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
-                      {day.getDate()}
-                    </div>
-                    
-                    {workout && workout.did_workout ? (
-                      <div className="flex flex-col items-center justify-center space-y-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-lg">{getWorkoutTypeEmoji(workout.workout_type)}</span>
-                          {workout.workout_type !== 'pause' && (
-                            <div 
-                              className={`w-2 h-2 rounded-full ${getIntensityColor(workout.intensity)}`}
-                            />
+            {weekDays.map((day, index) => {
+              const workout = getWorkoutForDate(day);
+              const isToday = isDateToday(toDateString(day));
+              const isPast = isDatePast(toDateString(day));
+              const canEdit = isPast || isToday;
+              
+              return (
+                <div 
+                  key={day.toISOString()} 
+                  className={`
+                    border rounded-lg p-4 transition-all
+                    ${isToday ? 'border-primary bg-primary/5 shadow-md' : 'border-gray-200 hover:border-gray-300'}
+                  `}
+                >
+                  {/* Date Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className={`font-medium ${isToday ? 'text-primary' : ''}`}>
+                      {formatDisplayDate(day, 'EEEE, d. MMMM')}
+                    </h3>
+                    {isToday && (
+                      <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                        Heute
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Workout Content */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      {workout && workout.did_workout ? (
+                        <div className="space-y-2">
+                          {/* Workout Info */}
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{getWorkoutTypeEmoji(workout.workout_type)}</span>
+                            <div>
+                              <div className="font-medium">
+                                {getWorkoutTypeName(workout.workout_type)}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {workout.duration_minutes} Min • Intensität: <span className={getIntensityColor(workout.intensity)}>{workout.intensity}/10</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Steps & Distance */}
+                          {(workout.steps || workout.distance_km) && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Footprints className="h-4 w-4 text-green-600" />
+                              <span>
+                                {workout.steps && `${workout.steps.toLocaleString()} Schritte`}
+                                {workout.steps && workout.distance_km && ' • '}
+                                {workout.distance_km && `${workout.distance_km} km`}
+                              </span>
+                            </div>
                           )}
                         </div>
-                        
-                        {canEdit && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      ) : workout && !workout.did_workout ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">🏝️</span>
+                          <div>
+                            <div className="font-medium">Ruhetag</div>
+                            {(workout.steps || workout.distance_km) && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Footprints className="h-4 w-4 text-green-600" />
+                                <span>
+                                  {workout.steps && `${workout.steps.toLocaleString()} Schritte`}
+                                  {workout.steps && workout.distance_km && ' • '}
+                                  {workout.distance_km && `${workout.distance_km} km`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-muted-foreground italic">
+                          Noch kein Eintrag
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    {canEdit && (
+                      <div className="flex gap-2 ml-4">
+                        {workout ? (
+                          <>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 hover:bg-blue-100"
                               onClick={() => handleDateClick(day, workout)}
+                              className="h-8 w-8 p-0"
                             >
-                              <Edit className="h-3 w-3" />
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteWorkout(workout.id, workout.date);
                               }}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </div>
+                          </>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDateClick(day)}
+                            className="h-8 w-8 p-0 border border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
                         )}
-                      </div>
-                    ) : workout && !workout.did_workout ? (
-                      <div className="flex flex-col items-center justify-center space-y-1">
-                        <span className="text-lg">🏝️</span>
-                        {canEdit && (
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 hover:bg-blue-100"
-                              onClick={() => handleDateClick(day, workout)}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteWorkout(workout.id, workout.date);
-                              }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : canEdit ? (
-                      <div className="flex items-center justify-center h-full">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity border border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5"
-                          onClick={() => handleDateClick(day)}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-400">
-                        {formatDisplayDate(day, 'd')}
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Legend */}
           <div className="text-xs text-muted-foreground space-y-2 pt-2 border-t">
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <div className="w-2 h-2 rounded-full bg-green-600"></div>
                 <span>Leicht (1-3)</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <div className="w-2 h-2 rounded-full bg-yellow-600"></div>
                 <span>Mittel (4-5)</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                <div className="w-2 h-2 rounded-full bg-orange-600"></div>
                 <span>Schwer (6-7)</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <div className="w-2 h-2 rounded-full bg-red-600"></div>
                 <span>Extrem (8-10)</span>
               </div>
             </div>
@@ -357,7 +380,7 @@ export const WorkoutCalendar = () => {
               <Plus className="h-3 w-3 inline mr-1" />
               Klicke auf vergangene/heutige Tage um Workouts einzutragen •
               <Edit className="h-3 w-3 inline mx-1" />
-              Hover über Einträge zum Bearbeiten
+              Bearbeiten-Button zum Ändern bestehender Einträge
             </p>
           </div>
         </CardContent>
