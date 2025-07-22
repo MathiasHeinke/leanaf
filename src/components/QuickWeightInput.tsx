@@ -18,6 +18,26 @@ interface QuickWeightInputProps {
   todaysWeight?: any;
 }
 
+// Utility function to safely parse photo_urls
+const parsePhotoUrls = (photoUrls: any): string[] => {
+  if (!photoUrls) return [];
+  
+  try {
+    if (typeof photoUrls === 'string') {
+      const parsed = JSON.parse(photoUrls);
+      return Array.isArray(parsed) ? parsed.filter(url => typeof url === 'string') : [];
+    }
+    
+    if (Array.isArray(photoUrls)) {
+      return photoUrls.filter(url => typeof url === 'string');
+    }
+  } catch (e) {
+    console.error('Failed to parse photo_urls:', e);
+  }
+  
+  return [];
+};
+
 export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
@@ -41,19 +61,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       setBodyFat(todaysWeight.body_fat_percentage?.toString() || "");
       setMuscleMass(todaysWeight.muscle_percentage?.toString() || "");
       setNotes(todaysWeight.notes || "");
-      // Parse photo_urls if it's a JSON string
-      let photos = [];
-      if (todaysWeight.photo_urls) {
-        try {
-          photos = typeof todaysWeight.photo_urls === 'string' 
-            ? JSON.parse(todaysWeight.photo_urls) 
-            : todaysWeight.photo_urls;
-        } catch (e) {
-          console.error('Failed to parse photo_urls:', e);
-          photos = [];
-        }
-      }
-      setExistingPhotos(Array.isArray(photos) ? photos : []);
+      setExistingPhotos(parsePhotoUrls(todaysWeight.photo_urls));
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
 
@@ -222,18 +230,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         
         {/* Progress Photos */}
         {(() => {
-          let photos = [];
-          if (todaysWeight.photo_urls) {
-            try {
-              photos = typeof todaysWeight.photo_urls === 'string' 
-                ? JSON.parse(todaysWeight.photo_urls) 
-                : todaysWeight.photo_urls;
-            } catch (e) {
-              console.error('Failed to parse photo_urls:', e);
-              photos = [];
-            }
-          }
-          return Array.isArray(photos) && photos.length > 0 ? (
+          const photos = parsePhotoUrls(todaysWeight.photo_urls);
+          return photos.length > 0 ? (
             <div className="mb-3">
               <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">Progress Fotos:</p>
               <div className="flex gap-2">
