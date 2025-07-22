@@ -120,25 +120,6 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                       )}
                     </div>
                   </div>
-                  
-                  {/* Miniature images */}
-                  {hasImages && (
-                    <div className="flex gap-1 ml-2">
-                      {meal.images?.slice(0, 3).map((imageUrl, index) => (
-                        <img
-                          key={index}
-                          src={imageUrl}
-                          alt={`Miniatur ${index + 1}`}
-                          className="w-10 h-10 object-cover rounded border"
-                        />
-                      ))}
-                      {meal.images && meal.images.length > 3 && (
-                        <div className="w-10 h-10 bg-muted rounded border flex items-center justify-center text-xs text-muted-foreground">
-                          +{meal.images.length - 3}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
                 
                 <div className="flex items-center gap-2 ml-2">
