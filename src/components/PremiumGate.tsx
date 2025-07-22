@@ -1,11 +1,13 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Crown, Lock, Sparkles, Clock } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess, FeatureName } from '@/hooks/useFeatureAccess';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PremiumGateProps {
   children: ReactNode;
@@ -13,6 +15,7 @@ interface PremiumGateProps {
   fallbackMessage?: string;
   showUpgrade?: boolean;
   showTrialPrompt?: boolean;
+  hideable?: boolean;
 }
 
 export const PremiumGate = ({ 
@@ -20,16 +23,48 @@ export const PremiumGate = ({
   feature = "workout_tracking", 
   fallbackMessage,
   showUpgrade = true,
-  showTrialPrompt = true
+  showTrialPrompt = true,
+  hideable = false
 }: PremiumGateProps) => {
   const { trial, startPremiumTrial, isPremium } = useSubscription();
   const { hasFeatureAccess, getFeatureStatus } = useFeatureAccess();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [hidePremiumFeatures, setHidePremiumFeatures] = useState(false);
+
+  useEffect(() => {
+    if (user && hideable) {
+      fetchHidePreference();
+    }
+  }, [user, hideable]);
+
+  const fetchHidePreference = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('hide_premium_features')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data) {
+        setHidePremiumFeatures(data.hide_premium_features || false);
+      }
+    } catch (error) {
+      console.error('Error fetching hide preference:', error);
+    }
+  };
 
   const featureStatus = getFeatureStatus(feature);
   
   if (featureStatus.hasAccess) {
     return <>{children}</>;
+  }
+
+  // If user wants to hide premium features and this gate is hideable, don't show anything
+  if (hideable && hidePremiumFeatures) {
+    return null;
   }
 
   const handleStartTrial = async () => {

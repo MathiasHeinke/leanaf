@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock, Globe } from "lucide-react";
+import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock, Globe, EyeOff } from "lucide-react";
 import { getUserTimezone, setUserTimezone, TIMEZONE_OPTIONS } from "@/utils/dateHelpers";
 
 interface DailyGoal {
@@ -30,10 +30,36 @@ interface SettingsProps {
 const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const [goal, setGoal] = useState(dailyGoal.calories.toString());
   const [selectedTimezone, setSelectedTimezone] = useState(getUserTimezone());
+  const [hidePremiumFeatures, setHidePremiumFeatures] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useTranslation();
   const { autoSettings, saveSettings, toggleTheme, getThemeStatus, isWithinDarkModeHours } = useAutoDarkMode();
+
+  // Load hide premium features preference
+  useEffect(() => {
+    if (user) {
+      loadHidePreference();
+    }
+  }, [user]);
+
+  const loadHidePreference = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('hide_premium_features')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data) {
+        setHidePremiumFeatures(data.hide_premium_features || false);
+      }
+    } catch (error) {
+      console.error('Error loading hide preference:', error);
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -64,6 +90,16 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
         });
 
       if (error) throw error;
+
+      // Save hide premium features preference
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          hide_premium_features: hidePremiumFeatures
+        })
+        .eq('user_id', user.id);
+
+      if (profileError) throw profileError;
 
       // Update local state
       onGoalChange({
@@ -153,6 +189,25 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
             <p className="text-xs text-muted-foreground mt-1">
               Derzeit: {selectedTimezone} • Beeinflusst Workouts und Kalender-Anzeige
             </p>
+          </div>
+        </div>
+
+        {/* Hide Premium Features Setting */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-orange-500 to-red-500 p-2 rounded-lg">
+                <EyeOff className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <Label className="text-base font-medium">Nur kostenlose Features anzeigen</Label>
+                <p className="text-sm text-muted-foreground">Premium-Features werden ausgeblendet</p>
+              </div>
+            </div>
+            <Switch
+              checked={hidePremiumFeatures}
+              onCheckedChange={setHidePremiumFeatures}
+            />
           </div>
         </div>
 

@@ -94,6 +94,7 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
   return (
     <PremiumGate 
       feature="advanced_charts"
+      hideable={true}
       fallbackMessage="Detaillierte Charts und Verlaufsanalysen sind ein Premium Feature. Upgrade für tiefere Einblicke in deine Fortschritte!"
     >
       <div className="space-y-6">

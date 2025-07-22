@@ -19,6 +19,7 @@ import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { TrialBanner } from "@/components/TrialBanner";
+import { WeeklyCoachRecommendation } from "@/components/WeeklyCoachRecommendation";
 import { useBadgeChecker } from "@/hooks/useBadgeChecker";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -368,6 +369,9 @@ const Index = () => {
       <div className="space-y-5">
         {/* Trial Banner */}
         <TrialBanner />
+        
+        {/* Weekly Coach Recommendation for Free Users */}
+        <WeeklyCoachRecommendation />
         
         <DailyProgress
           dailyTotals={{

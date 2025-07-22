@@ -281,6 +281,7 @@ export const InsightsAnalysis = ({
   return (
     <PremiumGate 
       feature="premium_insights"
+      hideable={true}
       fallbackMessage="Die intelligente Ernährungsanalyse ist ein Premium Feature. Upgrade für detaillierte KI-gestützte Insights!"
     >
       <Card className="glass-card shadow-xl border-2 border-dashed border-primary/30">

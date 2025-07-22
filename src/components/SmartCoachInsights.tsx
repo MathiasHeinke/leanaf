@@ -149,6 +149,7 @@ export const SmartCoachInsights = () => {
         ) : (
           <PremiumGate 
             feature="premium_insights"
+            hideable={true}
             fallbackMessage="KI-Coach Insights sind ein Premium Feature. Upgrade für erweiterte KI-gestützte Analyse!"
           >
             <div className="text-center py-8">

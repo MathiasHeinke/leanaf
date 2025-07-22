@@ -164,6 +164,36 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_recommendations: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          last_recommendation_sent: string | null
+          recommendation_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          last_recommendation_sent?: string | null
+          recommendation_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          last_recommendation_sent?: string | null
+          recommendation_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_goals: {
         Row: {
           bmr: number | null
@@ -408,6 +438,7 @@ export type Database = {
           gender: string | null
           goal: string | null
           height: number | null
+          hide_premium_features: boolean | null
           id: string
           macro_strategy: string | null
           muscle_maintenance_priority: boolean | null
@@ -436,6 +467,7 @@ export type Database = {
           gender?: string | null
           goal?: string | null
           height?: number | null
+          hide_premium_features?: boolean | null
           id?: string
           macro_strategy?: string | null
           muscle_maintenance_priority?: boolean | null
@@ -464,6 +496,7 @@ export type Database = {
           gender?: string | null
           goal?: string | null
           height?: number | null
+          hide_premium_features?: boolean | null
           id?: string
           macro_strategy?: string | null
           muscle_maintenance_priority?: boolean | null
