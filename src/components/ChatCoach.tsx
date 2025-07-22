@@ -18,11 +18,15 @@ import {
   Target,
   TrendingUp,
   Apple,
-  Paperclip
+  Paperclip,
+  X
 } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { UploadProgress } from "@/components/UploadProgress";
+import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -31,6 +35,7 @@ interface ChatMessage {
   content: string;
   created_at: string;
   coach_personality: string;
+  images?: string[];
 }
 
 interface ChatCoachProps {
@@ -73,6 +78,9 @@ export const ChatCoach = ({
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
   const [userName, setUserName] = useState('');
   const [quickActionsShown, setQuickActionsShown] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgressType[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -129,7 +137,9 @@ export const ChatCoach = ({
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => {
+        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     }
   };
 
@@ -183,7 +193,8 @@ export const ChatCoach = ({
         role: msg.message_role,
         content: msg.message_content,
         created_at: msg.created_at,
-        coach_personality: msg.coach_personality
+        coach_personality: msg.coach_personality,
+        images: msg.context_data?.images || []
       })) as ChatMessage[];
       
       setMessages(mappedMessages);
@@ -223,7 +234,7 @@ export const ChatCoach = ({
     }
   };
 
-  const saveMessage = async (role: 'user' | 'assistant', content: string) => {
+  const saveMessage = async (role: 'user' | 'assistant', content: string, images?: string[]) => {
     if (!user?.id) return null;
 
     try {
@@ -234,7 +245,7 @@ export const ChatCoach = ({
           message_role: role,
           message_content: content,
           coach_personality: coachPersonality,
-          context_data: {}
+          context_data: images ? { images } : {}
         })
         .select()
         .single();
@@ -251,24 +262,67 @@ export const ChatCoach = ({
     }
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0 || !user?.id) return;
+
+    console.log('📸 Starting photo upload for coach chat...', files.length, 'files');
+    
+    setIsUploading(true);
+    setUploadProgress([]);
+
+    try {
+      const result = await uploadFilesWithProgress(
+        files,
+        user.id,
+        (progress) => setUploadProgress(progress)
+      );
+
+      if (result.success && result.urls.length > 0) {
+        setUploadedImages(prev => [...prev, ...result.urls]);
+        toast.success(`${result.urls.length} Bild(er) hochgeladen`);
+      }
+
+      if (result.errors.length > 0) {
+        result.errors.forEach(error => toast.error(error));
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Fehler beim Upload der Bilder');
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendMessage = async (messageText?: string) => {
     const userMessage = messageText || inputText.trim();
-    if (!userMessage || isThinking || !user?.id) return;
+    if ((!userMessage && uploadedImages.length === 0) || isThinking || !user?.id) return;
 
+    const imagesToSend = [...uploadedImages];
     setInputText("");
+    setUploadedImages([]);
     setIsThinking(true);
     setQuickActionsShown(false);
 
     try {
       // Save user message and add to UI
-      const savedUserMessage = await saveMessage('user', userMessage);
+      const savedUserMessage = await saveMessage('user', userMessage, imagesToSend);
       if (savedUserMessage) {
         const mappedMessage: ChatMessage = {
           id: savedUserMessage.id,
           role: savedUserMessage.message_role as 'user' | 'assistant',
           content: savedUserMessage.message_content,
           created_at: savedUserMessage.created_at,
-          coach_personality: savedUserMessage.coach_personality
+          coach_personality: savedUserMessage.coach_personality,
+          images: imagesToSend
         };
         setMessages(prev => [...prev, mappedMessage]);
       }
@@ -279,6 +333,7 @@ export const ChatCoach = ({
           message: userMessage,
           userId: user.id,
           chatHistory: messages.slice(-10),
+          images: imagesToSend,
           userData: {
             todaysTotals,
             dailyGoals,
@@ -378,7 +433,7 @@ export const ChatCoach = ({
 
   if (isLoading) {
     return (
-      <Card className="h-[700px] flex items-center justify-center">
+      <Card className="h-[calc(100vh-160px)] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Lade Chat-Verlauf...</p>
@@ -388,15 +443,15 @@ export const ChatCoach = ({
   }
 
   return (
-    <Card className="h-[700px] flex flex-col">
-      <CardHeader className="pb-3">
+    <Card className="h-[calc(100vh-160px)] flex flex-col">
+      <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="flex items-center gap-3">
           <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
             <Brain className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">{coachInfo.name} {coachInfo.emoji}</span>
+              <span className="text-lg font-bold">{coachInfo.name}</span>
               <Badge variant="secondary" className="text-xs">
                 getLeanAI
               </Badge>
@@ -418,13 +473,13 @@ export const ChatCoach = ({
         </CardTitle>
       </CardHeader>
       
-      <Separator />
+      <Separator className="flex-shrink-0" />
       
-      <CardContent className="flex-1 flex flex-col p-0 gap-0">
-        {/* Chat Messages - Fixed height container for scrolling */}
-        <div className="flex-1 relative overflow-hidden">
-          <ScrollArea className="h-full px-4">
-            <div className="space-y-4 py-4 min-h-full">
+      <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+        {/* Chat Messages - Scrollable area */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
               {messages.map((message, index) => (
                 <div key={message.id || index} className="space-y-2">
                   <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -441,9 +496,30 @@ export const ChatCoach = ({
                           </span>
                         </div>
                       )}
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {message.content}
-                      </p>
+                      
+                      {/* Show images if available */}
+                      {message.images && message.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.images.map((imageUrl, imgIndex) => (
+                            <img
+                              key={imgIndex}
+                              src={imageUrl}
+                              alt={`Message image ${imgIndex + 1}`}
+                              className="w-16 h-16 object-cover rounded-lg border"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {message.role === 'assistant' ? (
+                        <ReactMarkdown className="text-sm leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
+                          {message.content}
+                        </ReactMarkdown>
+                      ) : (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {message.content}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -496,8 +572,36 @@ export const ChatCoach = ({
           </ScrollArea>
         </div>
 
-        {/* Input Area - MealInput style */}
-        <div className="p-4 border-t bg-background">
+        {/* Input Area - Fixed at bottom */}
+        <div className="flex-shrink-0 p-4 border-t bg-background">
+          {/* Upload Progress */}
+          <UploadProgress 
+            progress={uploadProgress} 
+            isVisible={isUploading && uploadProgress.length > 0} 
+          />
+
+          {/* Image Thumbnails */}
+          {uploadedImages.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
+              {uploadedImages.map((imageUrl, index) => (
+                <div key={index} className="relative group animate-scale-in">
+                  <img
+                    src={imageUrl}
+                    alt={`Uploaded ${index + 1}`}
+                    className="w-14 h-14 object-cover rounded-xl border-2 border-border/20 shadow-md hover:scale-105 transition-all duration-300"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute -top-2 -right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110 z-10"
+                    disabled={isThinking || isUploading}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
           {(isRecording || isProcessing) && (
             <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
               <div className="flex gap-1">
@@ -524,20 +628,42 @@ export const ChatCoach = ({
                     handleSendMessage();
                   }
                 }}
-                disabled={isThinking}
+                disabled={isThinking || isUploading}
               />
               
-              {/* Left Action Button - Paperclip (disabled for now) */}
+              {/* Left Action Button - Photo Upload */}
               <div className="absolute left-4 bottom-2 flex items-center">
                 <Button
                   variant="ghost"
                   size="sm"
                   type="button"
-                  className="h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 opacity-50 cursor-not-allowed"
-                  disabled={true}
+                  className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${
+                    isUploading || isThinking ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
+                  }`}
+                  onClick={() => {
+                    if (!isUploading && !isThinking) {
+                      document.getElementById('coach-gallery-upload')?.click();
+                    }
+                  }}
+                  disabled={isUploading || isThinking}
                 >
-                  <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  {isUploading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  )}
                 </Button>
+                
+                {/* Hidden file input */}
+                <input
+                  id="coach-gallery-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  multiple
+                  disabled={isUploading || isThinking}
+                />
               </div>
               
               {/* Right Action Buttons - Voice + Send */}
@@ -569,12 +695,12 @@ export const ChatCoach = ({
                   size="sm"
                   type="button"
                   className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
-                    (!inputText.trim() || isThinking)
+                    ((!inputText.trim() && uploadedImages.length === 0) || isThinking)
                       ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
                       : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
                   }`}
                   onClick={() => handleSendMessage()}
-                  disabled={!inputText.trim() || isThinking}
+                  disabled={(!inputText.trim() && uploadedImages.length === 0) || isThinking}
                 >
                   {isThinking ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>

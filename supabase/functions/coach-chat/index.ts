@@ -21,7 +21,7 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { message, userId, chatHistory = [], userData = {} } = await req.json();
+    const { message, userId, chatHistory = [], userData = {}, images = [] } = await req.json();
     
     if (!userId) {
       throw new Error('User ID is required');
@@ -111,6 +111,13 @@ serve(async (req) => {
     const calorieProgress = dailyGoals?.calories ? Math.round((todaysTotals.calories / dailyGoals.calories) * 100) : 0;
     const proteinProgress = dailyGoals?.protein ? Math.round((todaysTotals.protein / dailyGoals.protein) * 100) : 0;
 
+    // Add image context if images are provided
+    let imageContext = '';
+    if (images && images.length > 0) {
+      imageContext = `\n\nBILDER IN DIESER NACHRICHT:
+Der Benutzer hat ${images.length} Bild(er) gesendet. Analysiere diese Bilder im Kontext der Ernährungs- und Fitness-Beratung. Gib spezifische Tipps und Feedback basierend auf dem, was du auf den Bildern siehst.`;
+    }
+
     const systemMessage = `${personalityPrompt}
 
 Du hilfst ${userName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
@@ -157,6 +164,8 @@ ${recentSleep?.length ? recentSleep.slice(0, 3).map((s: any) => `- ${s.date}: ${
 ERNÄHRUNGSHISTORIE (letzte Tage):
 ${recentHistory.length > 0 ? recentHistory.slice(0, 3).map((day: any) => `- ${day.date}: ${day.totals.calories}kcal (${day.meals.length} Mahlzeiten)`).join('\n') : '- Noch keine Ernährungshistorie'}
 
+${imageContext}
+
 WICHTIGE ANWEISUNGEN:
 - Du bist ${coachInfo.name} ${coachInfo.emoji} und bleibst IMMER in dieser Rolle
 - Stellst dich IMMER mit deinem richtigen Namen vor (${coachInfo.name})
@@ -167,7 +176,7 @@ WICHTIGE ANWEISUNGEN:
 - Nutze die verfügbaren Daten für personalisierte Insights
 - Bei Fragen nach spezifischen Plänen, erstelle konkrete Vorschläge
 - Verwende ${userName}'s Namen gelegentlich für persönlichen Touch
-- Verwende KEINE Markdown-Zeichen (*,**,#) sondern strukturiere mit normalen Absätzen
+- Strukturiere deine Antworten mit Absätzen, Listen und Formatierung für bessere Lesbarkeit
 - Verwende Emojis sparsam aber passend zu deiner Persönlichkeit
 
 Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
@@ -195,7 +204,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         model: 'gpt-4o-mini',
         messages: messages,
         temperature: coachInfo.temp,
-        max_tokens: 300,
+        max_tokens: 400,
         frequency_penalty: 0.3,
         presence_penalty: 0.1,
       }),
@@ -226,7 +235,8 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         progressPercentages: { calories: calorieProgress, protein: proteinProgress },
         hasWorkouts: recentWorkouts?.length > 0,
         hasSleepData: recentSleep?.length > 0,
-        hasWeightData: weightHistory.length > 0
+        hasWeightData: weightHistory.length > 0,
+        hasImages: images.length > 0
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
