@@ -58,19 +58,33 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
     }))
     .reverse();
 
-  // Custom tooltip for weight chart
+  // Enhanced tooltip for weight chart showing all three values
   const WeightTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0]?.payload;
       return (
-        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.dataKey === 'weight' && `Gewicht: ${entry.value} kg`}
-              {entry.dataKey === 'bodyFat' && entry.value && `Körperfett: ${entry.value}%`}
-              {entry.dataKey === 'muscle' && entry.value && `Muskelmasse: ${entry.value}%`}
-            </p>
-          ))}
+        <div className="bg-card border border-border rounded-lg p-4 shadow-lg">
+          <p className="font-semibold text-foreground mb-2">{label}</p>
+          <div className="space-y-1">
+            {data?.weight && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-[hsl(221,83%,53%)]"></div>
+                <span className="text-sm">Gewicht: <span className="font-medium">{data.weight} kg</span></span>
+              </div>
+            )}
+            {data?.bodyFat && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-[hsl(25,95%,53%)] border-dashed border-b-2"></div>
+                <span className="text-sm">Körperfett: <span className="font-medium">{data.bodyFat}%</span></span>
+              </div>
+            )}
+            {data?.muscle && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-0.5 bg-[hsl(142,76%,36%)] border-dotted border-b-2"></div>
+                <span className="text-sm">Muskelmasse: <span className="font-medium">{data.muscle}%</span></span>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -153,19 +167,13 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
           </div>
         </div>
 
-        {/* Enhanced Weight Chart with Body Composition */}
+        {/* Enhanced Weight Chart with Optimized 3-Line Overlap */}
         {weightChartData.length > 0 && (
           <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
             <h3 className="text-lg font-semibold mb-4">Gewicht & Body Composition</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={weightChartData}>
-                  <defs>
-                    <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="date" 
@@ -194,57 +202,67 @@ export const HistoryCharts = ({ data, weightHistory, timeRange, loading }: Histo
                   
                   <Tooltip content={<WeightTooltip />} />
                   
-                  {/* Weight line */}
+                  {/* Weight line - Primary blue, thickest */}
                   <Line 
                     yAxisId="weight"
                     type="monotone" 
                     dataKey="weight" 
                     stroke="hsl(221, 83%, 53%)" 
-                    strokeWidth={3}
-                    dot={{ fill: 'hsl(221, 83%, 53%)', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: 'hsl(221, 83%, 53%)', stroke: 'white', strokeWidth: 2 }}
+                    strokeWidth={4}
+                    dot={{ fill: 'hsl(221, 83%, 53%)', strokeWidth: 0, r: 0, fillOpacity: 0 }}
+                    activeDot={{ r: 8, fill: 'hsl(221, 83%, 53%)', stroke: 'white', strokeWidth: 3 }}
                   />
                   
-                  {/* Body Fat line */}
+                  {/* Body Fat line - Orange, dashed pattern */}
                   <Line 
                     yAxisId="percentage"
                     type="monotone" 
                     dataKey="bodyFat" 
-                    stroke="hsl(0, 84%, 60%)" 
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 2, r: 3 }}
+                    stroke="hsl(25, 95%, 53%)" 
+                    strokeWidth={3}
+                    strokeDasharray="8 4"
+                    dot={{ fill: 'hsl(25, 95%, 53%)', strokeWidth: 0, r: 0, fillOpacity: 0 }}
+                    activeDot={{ r: 6, fill: 'hsl(25, 95%, 53%)', stroke: 'white', strokeWidth: 2 }}
                     connectNulls={false}
                   />
                   
-                  {/* Muscle Mass line */}
+                  {/* Muscle Mass line - Green, dotted pattern */}
                   <Line 
                     yAxisId="percentage"
                     type="monotone" 
                     dataKey="muscle" 
                     stroke="hsl(142, 76%, 36%)" 
-                    strokeWidth={2}
-                    strokeDasharray="10 5"
-                    dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 2, r: 3 }}
+                    strokeWidth={3}
+                    strokeDasharray="2 6"
+                    dot={{ fill: 'hsl(142, 76%, 36%)', strokeWidth: 0, r: 0, fillOpacity: 0 }}
+                    activeDot={{ r: 6, fill: 'hsl(142, 76%, 36%)', stroke: 'white', strokeWidth: 2 }}
                     connectNulls={false}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
             
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-4 mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 bg-[hsl(221,83%,53%)]"></div>
-                <span>Gewicht (kg)</span>
+            {/* Enhanced Legend with visual line styles */}
+            <div className="flex flex-wrap justify-center gap-6 mt-4 text-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-1 bg-[hsl(221,83%,53%)] rounded-full"></div>
+                <span className="font-medium">Gewicht (kg)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 bg-[hsl(0,84%,60%)] border-dashed border-b-2"></div>
-                <span>Körperfett (%)</span>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-1 bg-[hsl(25,95%,53%)] rounded-full relative">
+                  <div className="absolute inset-0 bg-background" style={{
+                    backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 4px, hsl(25,95%,53%) 4px, hsl(25,95%,53%) 8px)'
+                  }}></div>
+                </div>
+                <span className="font-medium">Körperfett (%)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 bg-[hsl(142,76%,36%)] border-dashed border-b-2"></div>
-                <span>Muskelmasse (%)</span>
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-1 bg-[hsl(142,76%,36%)] rounded-full relative">
+                  <div className="absolute inset-0 bg-background" style={{
+                    backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 1px, hsl(142,76%,36%) 1px, hsl(142,76%,36%) 2px, transparent 2px, transparent 8px)'
+                  }}></div>
+                </div>
+                <span className="font-medium">Muskelmasse (%)</span>
               </div>
             </div>
           </div>
