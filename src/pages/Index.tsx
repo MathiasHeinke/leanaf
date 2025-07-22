@@ -34,7 +34,7 @@ const Index = () => {
   const navigate = useNavigate();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
-  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
+  const { awardPoints, updateStreak, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -274,25 +274,13 @@ const Index = () => {
     await loadUserData();
   };
 
-  const handleWorkoutAdded = async (workoutData?: any) => {
+  const handleWorkoutAdded = () => {
     console.log('Workout added callback triggered - reloading data');
-    
-    // Evaluate workout quality if data provided
-    if (workoutData && workoutData.id) {
-      await evaluateWorkout(workoutData.id, workoutData);
-    }
-    
     loadTodaysData(currentDate);
   };
 
-  const handleSleepAdded = async (sleepData?: any) => {
+  const handleSleepAdded = () => {
     console.log('Sleep added callback triggered - reloading data');
-    
-    // Evaluate sleep quality if data provided
-    if (sleepData && sleepData.id) {
-      await evaluateSleep(sleepData.id, sleepData);
-    }
-    
     loadTodaysData(currentDate);
   };
 
@@ -413,12 +401,8 @@ const Index = () => {
                   carbs: meal.carbs,
                   fats: meal.fats,
                   timestamp: new Date(meal.created_at),
-                  created_at: meal.created_at,
-                  meal_type: meal.meal_type,
-                  quality_score: meal.quality_score,
-                  bonus_points: meal.bonus_points,
-                  ai_feedback: meal.ai_feedback
-                }))}
+                  meal_type: meal.meal_type
+                }))} 
                 onEditMeal={(meal: any) => {
                   // Handled by MealEditForm component
                 }}

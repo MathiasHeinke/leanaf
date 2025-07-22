@@ -118,9 +118,7 @@ export const usePointsSystem = () => {
     activityType: string,
     basePoints: number,
     description?: string,
-    multiplier: number = 1.0,
-    bonusReason?: string,
-    streakLength?: number
+    multiplier: number = 1.0
   ) => {
     if (!user?.id) {
       console.warn('❌ Cannot award points: No user ID');
@@ -284,9 +282,7 @@ export const usePointsSystem = () => {
         const bonusResult = await awardPoints(
           'meal_quality_bonus',
           evaluationData.bonus_points,
-          `Qualitätsbonus für Mahlzeit (${evaluationData.quality_score}/10)`,
-          1.0,
-          'quality_bonus'
+          `Qualitätsbonus für Mahlzeit (${evaluationData.quality_score}/10)`
         );
 
         if (bonusResult) {
@@ -305,151 +301,6 @@ export const usePointsSystem = () => {
 
     } catch (error) {
       console.error('❌ Error in evaluateMeal:', error);
-    }
-  };
-
-  // Evaluate workout quality and award bonus points
-  const evaluateWorkout = async (workoutId: string, workoutData: any) => {
-    if (!user?.id || !workoutData.intensity || !workoutData.duration_minutes) {
-      return;
-    }
-
-    try {
-      // Calculate intensity/duration ratio (optimal: high intensity, shorter duration)
-      const intensityDurationRatio = workoutData.intensity / Math.max(1, workoutData.duration_minutes / 30); // Normalize to 30min blocks
-      let qualityScore = 0;
-      let bonusPoints = 0;
-
-      // Optimal workout: High intensity (7-10) with reasonable duration (20-60min)
-      if (workoutData.intensity >= 7 && workoutData.duration_minutes >= 20 && workoutData.duration_minutes <= 60) {
-        qualityScore = Math.min(10, Math.round(8 + (workoutData.intensity - 7) * 0.5));
-        bonusPoints = Math.floor(qualityScore / 2); // 3-5 bonus points for excellent workouts
-      } else if (workoutData.intensity >= 5 && workoutData.duration_minutes >= 15) {
-        qualityScore = Math.min(7, Math.round(5 + (workoutData.intensity - 5) * 0.5));
-        bonusPoints = Math.floor(qualityScore / 3); // 1-2 bonus points for good workouts
-      } else {
-        qualityScore = Math.max(1, Math.min(5, workoutData.intensity));
-        bonusPoints = 0;
-      }
-
-      // Check workout frequency (award bonus for consistency)
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      
-      const { data: recentWorkouts } = await supabase
-        .from('workouts')
-        .select('date')
-        .eq('user_id', user.id)
-        .eq('did_workout', true)
-        .gte('date', weekAgo.toISOString().split('T')[0]);
-
-      const workoutFrequency = (recentWorkouts || []).length;
-      let consistencyBonus = 0;
-      let bonusReason = '';
-
-      if (workoutFrequency >= 3) {
-        consistencyBonus = 2;
-        bonusReason = 'consistency_bonus';
-        bonusPoints += consistencyBonus;
-      }
-
-      // Update workout with quality data
-      await supabase
-        .from('workouts')
-        .update({
-          quality_score: qualityScore,
-          bonus_points: bonusPoints
-        })
-        .eq('id', workoutId);
-
-      // Award bonus points if earned
-      if (bonusPoints > 0) {
-        await awardPoints(
-          'workout_quality_bonus',
-          bonusPoints,
-          `Workout-Qualitätsbonus (${qualityScore}/10)`,
-          1.0,
-          bonusReason,
-          workoutFrequency
-        );
-      }
-
-      return { qualityScore, bonusPoints, consistencyBonus };
-    } catch (error) {
-      console.error('❌ Error evaluating workout:', error);
-    }
-  };
-
-  // Evaluate sleep quality and award bonus points
-  const evaluateSleep = async (sleepId: string, sleepData: any) => {
-    if (!user?.id || !sleepData.sleep_hours) {
-      return;
-    }
-
-    try {
-      const hours = sleepData.sleep_hours;
-      let qualityScore = 0;
-      let bonusPoints = 0;
-
-      // Optimal sleep: 7-9 hours
-      if (hours >= 7 && hours <= 9) {
-        qualityScore = 8 + Math.random() * 2; // 8-10 for optimal sleep
-        bonusPoints = 3;
-      } else if (hours >= 6 && hours <= 10) {
-        qualityScore = 5 + Math.random() * 2; // 5-7 for acceptable sleep  
-        bonusPoints = 1;
-      } else {
-        qualityScore = Math.max(1, 5 - Math.abs(hours - 7.5)); // Penalty for too little/much sleep
-        bonusPoints = 0;
-      }
-
-      qualityScore = Math.round(qualityScore);
-
-      // Check sleep consistency (streak bonus)
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      
-      const { data: recentSleep } = await supabase
-        .from('sleep_tracking')
-        .select('sleep_hours')
-        .eq('user_id', user.id)
-        .gte('date', weekAgo.toISOString().split('T')[0])
-        .not('sleep_hours', 'is', null);
-
-      const consistentSleepDays = (recentSleep || []).filter(s => s.sleep_hours >= 6 && s.sleep_hours <= 10).length;
-      let consistencyBonus = 0;
-      let bonusReason = '';
-
-      if (consistentSleepDays >= 5) {
-        consistencyBonus = 2;
-        bonusReason = 'sleep_consistency_bonus';
-        bonusPoints += consistencyBonus;
-      }
-
-      // Update sleep with quality data
-      await supabase
-        .from('sleep_tracking')
-        .update({
-          quality_score: qualityScore,
-          bonus_points: bonusPoints
-        })
-        .eq('id', sleepId);
-
-      // Award bonus points if earned
-      if (bonusPoints > 0) {
-        await awardPoints(
-          'sleep_quality_bonus',
-          bonusPoints,
-          `Schlaf-Qualitätsbonus (${qualityScore}/10)`,
-          1.0,
-          bonusReason,
-          consistentSleepDays
-        );
-      }
-
-      return { qualityScore, bonusPoints, consistencyBonus };
-    } catch (error) {
-      console.error('❌ Error evaluating sleep:', error);
     }
   };
 
@@ -504,7 +355,7 @@ export const usePointsSystem = () => {
     }
   }, [user?.id]);
 
-    return {
+  return {
     userPoints,
     departmentProgress,
     streaks,
@@ -512,8 +363,6 @@ export const usePointsSystem = () => {
     awardPoints,
     updateStreak,
     evaluateMeal,
-    evaluateWorkout,
-    evaluateSleep,
     getPointsForActivity,
     getStreakMultiplier,
     getLevelColor,
