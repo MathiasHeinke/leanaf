@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Brain, Zap, Crown, Lock, Clock } from 'lucide-react';
+import { Brain, Zap, Crown, Lock } from 'lucide-react';
 import { useAIUsageLimits } from '@/hooks/useAIUsageLimits';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
@@ -19,33 +18,12 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
   const { isPremium } = useSubscription();
   const navigate = useNavigate();
   const [usage, setUsage] = useState<{ daily_count: number; monthly_count: number } | null>(null);
-  const [timeUntilReset, setTimeUntilReset] = useState<string>('');
 
   useEffect(() => {
     if (!isPremium) {
       getCurrentUsage(featureType).then(setUsage);
     }
   }, [featureType, isPremium, getCurrentUsage]);
-
-  useEffect(() => {
-    const updateTimeUntilReset = () => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      
-      const diff = tomorrow.getTime() - now.getTime();
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      
-      setTimeUntilReset(`${hours}h ${minutes}m`);
-    };
-
-    updateTimeUntilReset();
-    const interval = setInterval(updateTimeUntilReset, 60000); // Update every minute
-    
-    return () => clearInterval(interval);
-  }, []);
 
   if (isPremium) {
     return (
@@ -63,15 +41,15 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
   const getFeatureInfo = () => {
     switch (featureType) {
       case 'meal_analysis':
-        return { name: 'AI Meal Analysen', dailyLimit: 5, icon: Brain, emoji: '🍽️' };
+        return { name: 'AI Meal Analysen', dailyLimit: 5, icon: Brain };
       case 'coach_chat':
-        return { name: 'Coach Chat', dailyLimit: 2, icon: Zap, emoji: '💬' };
+        return { name: 'Coach Chat', dailyLimit: 2, icon: Zap };
       case 'coach_recipes':
-        return { name: 'Coach Recipes', dailyLimit: 1, icon: Zap, emoji: '👨‍🍳' };
+        return { name: 'Coach Recipes', dailyLimit: 1, icon: Zap };
       case 'daily_analysis':
-        return { name: 'Daily Analysis', dailyLimit: 0, weeklyLimit: 1, icon: Zap, emoji: '📊' };
+        return { name: 'Daily Analysis', dailyLimit: 0, weeklyLimit: 1, icon: Zap };
       default:
-        return { name: 'AI Feature', dailyLimit: 0, icon: Brain, emoji: '🤖' };
+        return { name: 'AI Feature', dailyLimit: 0, icon: Brain };
     }
   };
 
@@ -83,26 +61,14 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
 
   const isWeeklyFeature = featureType === 'daily_analysis';
   const isProOnly = featureInfo.dailyLimit === 0 && !isWeeklyFeature;
-  const isLowUsage = dailyRemaining <= 1 && dailyRemaining > 0;
-  const isLimitReached = dailyRemaining === 0 && featureInfo.dailyLimit > 0;
-
-  const getCardClassName = () => {
-    if (isProOnly) return 'border-orange-200 bg-orange-50';
-    if (isLimitReached) return 'border-red-200 bg-red-50';
-    if (isLowUsage) return 'border-yellow-200 bg-yellow-50';
-    return '';
-  };
 
   return (
-    <Card className={`${className} ${getCardClassName()}`}>
+    <Card className={`${className} ${isProOnly ? 'border-orange-200 bg-orange-50' : ''}`}>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <IconComponent className="h-4 w-4" />
           {featureInfo.name}
-          <span className="text-xs">{featureInfo.emoji}</span>
           {isProOnly && <Lock className="h-3 w-3 text-orange-600" />}
-          {isLimitReached && <span className="text-xs text-red-600 font-bold">LIMIT</span>}
-          {isLowUsage && <span className="text-xs text-yellow-600 font-bold">FAST LEER</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -117,10 +83,9 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
             <Button 
               size="sm" 
               onClick={() => navigate('/subscription')}
-              className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+              className="w-full"
             >
-              <Crown className="h-3 w-3 mr-1" />
-              Pro - 33% Rabatt!
+              Jetzt upgraden
             </Button>
           </div>
         ) : isWeeklyFeature ? (
@@ -132,86 +97,50 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
               </span>
             </div>
             <Progress value={0} className="h-2" />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>1 pro Woche verfügbar</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                1 pro Woche verfügbar
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => navigate('/subscription')}
+                className="text-xs px-2 py-1 h-6"
+              >
+                Upgrade
+              </Button>
             </div>
-            <Button 
-              size="sm" 
-              onClick={() => navigate('/subscription')}
-              className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
-            >
-              <Crown className="h-3 w-3 mr-1" />
-              Pro - 33% Rabatt!
-            </Button>
+            <div className="text-xs text-blue-600">
+              Wöchentliches Feature - Upgrade für tägliche Nutzung
+            </div>
           </div>
         ) : (
           <div className="space-y-2">
             <div className="flex justify-between text-xs">
               <span>Heute verwendet:</span>
-              <span className={`font-medium ${
-                isLimitReached ? 'text-red-600' : 
-                isLowUsage ? 'text-yellow-600' : 
-                'text-foreground'
-              }`}>
+              <span className={dailyRemaining <= 1 ? 'text-red-600 font-medium' : ''}>
                 {dailyUsed}/{featureInfo.dailyLimit}
               </span>
             </div>
-            <Progress 
-              value={progressPercent} 
-              className={`h-2 ${
-                isLimitReached ? '[&>div]:bg-red-500' : 
-                isLowUsage ? '[&>div]:bg-yellow-500' : ''
-              }`} 
-            />
-            
-            {isLimitReached ? (
-              <div className="space-y-2">
-                <div className="text-xs text-red-600 font-medium">
-                  Tageslimit erreicht! {featureInfo.emoji}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>Reset in {timeUntilReset}</span>
-                </div>
+            <Progress value={progressPercent} className="h-2" />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">
+                {dailyRemaining} verbleibend
+              </span>
+              {dailyRemaining <= 1 && (
                 <Button 
                   size="sm" 
+                  variant="outline" 
                   onClick={() => navigate('/subscription')}
-                  className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90"
+                  className="text-xs px-2 py-1 h-6"
                 >
-                  <Crown className="h-3 w-3 mr-1" />
-                  Pro - 33% Rabatt!
+                  Upgrade
                 </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">
-                    {dailyRemaining} verbleibend
-                  </span>
-                  {isLowUsage && (
-                    <span className="text-xs text-yellow-600 font-medium">
-                      Bald aufgebraucht!
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>Reset in {timeUntilReset}</span>
-                </div>
-                
-                {(isLowUsage || dailyRemaining <= 2) && (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => navigate('/subscription')}
-                    className="w-full border-primary/20 hover:bg-primary/5"
-                  >
-                    <Crown className="h-3 w-3 mr-1" />
-                    Pro - 33% Rabatt!
-                  </Button>
-                )}
+              )}
+            </div>
+            {dailyRemaining === 0 && (
+              <div className="text-xs text-red-600 font-medium">
+                Tageslimit erreicht. Morgen verfügbar oder jetzt upgraden.
               </div>
             )}
           </div>

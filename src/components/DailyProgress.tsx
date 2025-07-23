@@ -1,11 +1,8 @@
-import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, Target, Calendar, Flame, TrendingUp, TrendingDown, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { getGoalStatus, getGoalBasedProgressMessage, UserGoal } from "@/utils/goalBasedMessaging";
 import { RandomQuote } from "@/components/RandomQuote";
 import { format } from 'date-fns';
@@ -27,7 +24,12 @@ interface DailyGoal {
 }
 
 interface DailyProgressProps {
-  // Empty - component will be self-contained
+  dailyTotals: DailyTotals;
+  dailyGoal: DailyGoal;
+  userGoal?: UserGoal;
+  currentDate: Date;
+  onDateChange: (date: Date) => void;
+  userProfile?: any;
 }
 
 interface OverallStatus {
@@ -96,50 +98,18 @@ const getOverallStatus = (
   };
 };
 
-export const DailyProgress = ({}: DailyProgressProps) => {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  
-  // State management
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [dailyTotals, setDailyTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fats: 0 });
-  const [dailyGoal, setDailyGoal] = useState<DailyGoal>({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
-  const [userGoal, setUserGoal] = useState<UserGoal>('lose');
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch data function
-  const fetchData = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      
-      // For now, use mock data to avoid the infinite type issue
-      setDailyTotals({ calories: 1500, protein: 120, carbs: 180, fats: 50 });
-      setDailyGoal({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
-      setUserGoal('lose');
-      setUserProfile({ gender: 'female', goal: 'lose' });
-      
-    } catch (error) {
-      console.error('Error fetching daily progress data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch data on mount and when date changes
-  useEffect(() => {
-    fetchData();
-  }, [user, currentDate]);
-
-  const onDateChange = (date: Date) => {
-    setCurrentDate(date);
-  };
+export const DailyProgress = ({ 
+  dailyTotals, 
+  dailyGoal, 
+  userGoal = 'maintain',
+  currentDate,
+  onDateChange,
+  userProfile
+}: DailyProgressProps) => {
+  const { t, language } = useTranslation();
 
   const formatDate = (date: Date): string => {
-    const locale = de; // Always use German for now
+    const locale = language === 'de' ? de : enUS;
     return format(date, 'EEEE, d. MMMM', { locale });
   };
 
@@ -178,19 +148,6 @@ export const DailyProgress = ({}: DailyProgressProps) => {
 
   const goalStatus = getGoalStatus(dailyTotals.calories, dailyGoal.calories, userGoal);
   const overallStatus = getOverallStatus(dailyTotals, dailyGoal, userGoal, t);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="p-6 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-3xl border border-primary/10 backdrop-blur-sm">
-          <div className="animate-pulse space-y-4">
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

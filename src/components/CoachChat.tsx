@@ -20,7 +20,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
-import { useCoachLimitHandler } from "@/components/CoachLimitHandler";
 import { toast } from "sonner";
 
 interface ChatMessage {
@@ -37,7 +36,6 @@ interface CoachChatProps {
 
 export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) => {
   const { user } = useAuth();
-  const { handleLimitError } = useCoachLimitHandler();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -322,28 +320,22 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
         setMessages(prev => [...prev, mappedMessage]);
       }
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending message to coach:', error);
+      toast.error('Fehler beim Senden der Nachricht an den Coach');
       
-      // Use the new limit handler
-      if (error.message?.includes('limit') || error.message?.includes('429')) {
-        handleLimitError(error, 'coach_chat', currentCoachPersonality);
-      } else {
-        toast.error('Fehler beim Senden der Nachricht an den Coach');
-        
-        // Add error message to chat
-        const errorMessage = "Entschuldigung, es gab einen technischen Fehler. Bitte versuche es noch einmal.";
-        const savedErrorMessage = await saveMessage('assistant', errorMessage);
-        if (savedErrorMessage) {
-          const mappedMessage: ChatMessage = {
-            id: savedErrorMessage.id,
-            role: savedErrorMessage.message_role as 'user' | 'assistant',
-            content: savedErrorMessage.message_content,
-            created_at: savedErrorMessage.created_at,
-            coach_personality: savedErrorMessage.coach_personality
-          };
-          setMessages(prev => [...prev, mappedMessage]);
-        }
+      // Add error message to chat
+      const errorMessage = "Entschuldigung, es gab einen technischen Fehler. Bitte versuche es noch einmal.";
+      const savedErrorMessage = await saveMessage('assistant', errorMessage);
+      if (savedErrorMessage) {
+        const mappedMessage: ChatMessage = {
+          id: savedErrorMessage.id,
+          role: savedErrorMessage.message_role as 'user' | 'assistant',
+          content: savedErrorMessage.message_content,
+          created_at: savedErrorMessage.created_at,
+          coach_personality: savedErrorMessage.coach_personality
+        };
+        setMessages(prev => [...prev, mappedMessage]);
       }
     } finally {
       setIsThinking(false);
