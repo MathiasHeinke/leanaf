@@ -102,7 +102,7 @@ export const ChatCoach = ({
           profession: 'Fitness Drill-Instructor',
           greeting: 'Hey {name}, Sascha hier. Keine Zeit für Smalltalk - was ist dein Ziel heute?',
           accentColor: 'from-red-500 to-red-600',
-          imageUrl: '/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png'
+          imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png'
         };
       case 'soft': 
         return { 
@@ -111,7 +111,7 @@ export const ChatCoach = ({
           profession: 'Ernährungsberaterin',
           greeting: 'Hey {name}, Lucy hier. Wie geht\'s dir denn heute - wie kann ich dir helfen?',
           accentColor: 'from-pink-500 to-rose-500',
-          imageUrl: '/lovable-uploads/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
+          imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
         };
       case 'motivierend':
       default:
@@ -121,7 +121,7 @@ export const ChatCoach = ({
           profession: 'Personal Trainer',
           greeting: 'Hey {name}, Kai hier! Bereit durchzustarten? Wie kann ich dir heute helfen?',
           accentColor: 'from-blue-500 to-blue-600',
-          imageUrl: '/lovable-uploads/2c06031d-707a-400d-aaa0-a46decdddfe2.png'
+          imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png'
         };
     }
   };
