@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -12,6 +13,9 @@ const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
+
+// Define manual subscription tiers that should not be overwritten by Stripe
+const MANUAL_SUBSCRIPTION_TIERS = ['Enterprise', 'Admin', 'Premium', 'Pro'];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -45,11 +49,60 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Check existing subscription status before Stripe query
+    const { data: existingSubscription, error: dbError } = await supabaseClient
+      .from("subscribers")
+      .select("subscription_tier, subscribed, subscription_end, stripe_customer_id")
+      .eq("email", user.email)
+      .maybeSingle();
+
+    if (dbError && dbError.code !== 'PGRST116') {
+      logStep("Database error checking existing subscription", { error: dbError });
+    }
+
+    // If user has a manual subscription tier, respect it and skip Stripe query
+    if (existingSubscription?.subscription_tier && 
+        MANUAL_SUBSCRIPTION_TIERS.includes(existingSubscription.subscription_tier)) {
+      logStep("Manual subscription tier detected, skipping Stripe query", { 
+        tier: existingSubscription.subscription_tier 
+      });
+      
+      // Update only the timestamp to track last check
+      await supabaseClient.from("subscribers").upsert({
+        email: user.email,
+        user_id: user.id,
+        stripe_customer_id: existingSubscription.stripe_customer_id,
+        subscribed: existingSubscription.subscribed,
+        subscription_tier: existingSubscription.subscription_tier,
+        subscription_end: existingSubscription.subscription_end,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'email' });
+
+      logStep("Manual subscription preserved", { 
+        tier: existingSubscription.subscription_tier,
+        subscribed: existingSubscription.subscribed 
+      });
+
+      return new Response(JSON.stringify({
+        subscribed: existingSubscription.subscribed,
+        subscription_tier: existingSubscription.subscription_tier,
+        subscription_end: existingSubscription.subscription_end
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Proceed with Stripe query for non-manual subscriptions
+    logStep("Proceeding with Stripe query", { 
+      existingTier: existingSubscription?.subscription_tier || 'none' 
+    });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
     if (customers.data.length === 0) {
-      logStep("No customer found, updating unsubscribed state");
+      logStep("No Stripe customer found, updating unsubscribed state");
       await supabaseClient.from("subscribers").upsert({
         email: user.email,
         user_id: user.id,
@@ -80,7 +133,7 @@ serve(async (req) => {
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      logStep("Active Stripe subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
       // Determine subscription tier from price
       const priceId = subscription.items.data[0].price.id;
       const price = await stripe.prices.retrieve(priceId);
@@ -92,9 +145,9 @@ serve(async (req) => {
       } else {
         subscriptionTier = "Enterprise";
       }
-      logStep("Determined subscription tier", { priceId, amount, subscriptionTier });
+      logStep("Determined Stripe subscription tier", { priceId, amount, subscriptionTier });
     } else {
-      logStep("No active subscription found");
+      logStep("No active Stripe subscription found");
     }
 
     await supabaseClient.from("subscribers").upsert({
@@ -107,7 +160,7 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'email' });
 
-    logStep("Updated database with subscription info", { subscribed: hasActiveSub, subscriptionTier });
+    logStep("Updated database with Stripe subscription info", { subscribed: hasActiveSub, subscriptionTier });
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       subscription_tier: subscriptionTier,
