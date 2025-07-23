@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -512,11 +513,12 @@ export const MealConfirmationDialog = ({
                 <div className="space-y-2">
                   <Label htmlFor="calories">{t('meal.calories')}</Label>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <NumericInput
                       id="calories"
-                      type="number"
                       value={editableValues.calories}
-                      onChange={(e) => handleValueChange('calories', e.target.value)}
+                      onChange={(value) => handleValueChange('calories', value)}
+                      allowDecimals={false}
+                      min={0}
                       className="flex-1"
                     />
                     <span className="text-sm text-muted-foreground">kcal</span>
@@ -526,12 +528,12 @@ export const MealConfirmationDialog = ({
                 <div className="space-y-2">
                   <Label htmlFor="protein">{t('meal.protein')}</Label>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <NumericInput
                       id="protein"
-                      type="number"
-                      step="0.1"
                       value={editableValues.protein}
-                      onChange={(e) => handleValueChange('protein', e.target.value)}
+                      onChange={(value) => handleValueChange('protein', value)}
+                      allowDecimals={true}
+                      min={0}
                       className="flex-1"
                     />
                     <span className="text-sm text-muted-foreground">g</span>
@@ -541,12 +543,12 @@ export const MealConfirmationDialog = ({
                 <div className="space-y-2">
                   <Label htmlFor="carbs">{t('meal.carbs')}</Label>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <NumericInput
                       id="carbs"
-                      type="number"
-                      step="0.1"
                       value={editableValues.carbs}
-                      onChange={(e) => handleValueChange('carbs', e.target.value)}
+                      onChange={(value) => handleValueChange('carbs', value)}
+                      allowDecimals={true}
+                      min={0}
                       className="flex-1"
                     />
                     <span className="text-sm text-muted-foreground">g</span>
@@ -556,12 +558,12 @@ export const MealConfirmationDialog = ({
                 <div className="space-y-2">
                   <Label htmlFor="fats">{t('meal.fats')}</Label>
                   <div className="flex items-center gap-2">
-                    <Input
+                    <NumericInput
                       id="fats"
-                      type="number"
-                      step="0.1"
                       value={editableValues.fats}
-                      onChange={(e) => handleValueChange('fats', e.target.value)}
+                      onChange={(value) => handleValueChange('fats', value)}
+                      allowDecimals={true}
+                      min={0}
                       className="flex-1"
                     />
                     <span className="text-sm text-muted-foreground">g</span>

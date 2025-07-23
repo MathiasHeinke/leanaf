@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -143,13 +144,12 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           </Label>
           <div className="flex items-center gap-3 mt-2">
             <Target className="h-5 w-5 text-primary" />
-            <Input
-              id="daily-goal"
-              type="number"
+            <NumericInput
               value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              min="800"
-              max="5000"
+              onChange={(value) => setGoal(value)}
+              allowDecimals={false}
+              min={800}
+              max={5000}
               className="flex-1"
             />
             <span className="text-sm text-muted-foreground">{t('ui.kcal')}</span>

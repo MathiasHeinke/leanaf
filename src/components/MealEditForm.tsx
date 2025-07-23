@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -158,41 +159,38 @@ export const MealEditForm = ({ meal, onSave, onCancel }: MealEditFormProps) => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="calories">Kalorien</Label>
-            <Input
-              id="calories"
-              type="number"
+            <NumericInput
               value={editValues.calories}
-              onChange={(e) => setEditValues(prev => ({ ...prev, calories: e.target.value }))}
+              onChange={(value) => setEditValues(prev => ({ ...prev, calories: value }))}
+              allowDecimals={false}
+              min={0}
             />
           </div>
           <div>
             <Label htmlFor="protein">Protein (g)</Label>
-            <Input
-              id="protein"
-              type="number"
-              step="0.1"
+            <NumericInput
               value={editValues.protein}
-              onChange={(e) => setEditValues(prev => ({ ...prev, protein: e.target.value }))}
+              onChange={(value) => setEditValues(prev => ({ ...prev, protein: value }))}
+              allowDecimals={true}
+              min={0}
             />
           </div>
           <div>
             <Label htmlFor="carbs">Kohlenhydrate (g)</Label>
-            <Input
-              id="carbs"
-              type="number"
-              step="0.1"
+            <NumericInput
               value={editValues.carbs}
-              onChange={(e) => setEditValues(prev => ({ ...prev, carbs: e.target.value }))}
+              onChange={(value) => setEditValues(prev => ({ ...prev, carbs: value }))}
+              allowDecimals={true}
+              min={0}
             />
           </div>
           <div>
             <Label htmlFor="fats">Fette (g)</Label>
-            <Input
-              id="fats"
-              type="number"
-              step="0.1"
+            <NumericInput
               value={editValues.fats}
-              onChange={(e) => setEditValues(prev => ({ ...prev, fats: e.target.value }))}
+              onChange={(value) => setEditValues(prev => ({ ...prev, fats: value }))}
+              allowDecimals={true}
+              min={0}
             />
           </div>
         </div>

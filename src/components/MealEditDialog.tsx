@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -165,12 +166,10 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="base_calories" className="text-xs">Kalorien</Label>
-                      <Input
-                        id="base_calories"
-                        type="number"
+                      <NumericInput
                         value={baseNutrition.calories}
-                        onChange={(e) => {
-                          const newBase = {...baseNutrition, calories: Number(e.target.value)};
+                        onChange={(value) => {
+                          const newBase = {...baseNutrition, calories: Number(value)};
                           setBaseNutrition(newBase);
                           const multiplier = portionAmount / 100;
                           setEditingMeal({
@@ -178,18 +177,17 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                             calories: Math.round(newBase.calories * multiplier)
                           });
                         }}
+                        allowDecimals={false}
+                        min={0}
                         className="mt-1 text-sm"
                       />
                     </div>
                     <div>
                       <Label htmlFor="base_protein" className="text-xs">Protein (g)</Label>
-                      <Input
-                        id="base_protein"
-                        type="number"
-                        step="0.1"
+                      <NumericInput
                         value={baseNutrition.protein}
-                        onChange={(e) => {
-                          const newBase = {...baseNutrition, protein: Number(e.target.value)};
+                        onChange={(value) => {
+                          const newBase = {...baseNutrition, protein: Number(value)};
                           setBaseNutrition(newBase);
                           const multiplier = portionAmount / 100;
                           setEditingMeal({
@@ -197,18 +195,17 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                             protein: Math.round(newBase.protein * multiplier * 10) / 10
                           });
                         }}
+                        allowDecimals={true}
+                        min={0}
                         className="mt-1 text-sm"
                       />
                     </div>
                     <div>
                       <Label htmlFor="base_carbs" className="text-xs">Kohlenhydrate (g)</Label>
-                      <Input
-                        id="base_carbs"
-                        type="number"
-                        step="0.1"
+                      <NumericInput
                         value={baseNutrition.carbs}
-                        onChange={(e) => {
-                          const newBase = {...baseNutrition, carbs: Number(e.target.value)};
+                        onChange={(value) => {
+                          const newBase = {...baseNutrition, carbs: Number(value)};
                           setBaseNutrition(newBase);
                           const multiplier = portionAmount / 100;
                           setEditingMeal({
@@ -216,18 +213,17 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                             carbs: Math.round(newBase.carbs * multiplier * 10) / 10
                           });
                         }}
+                        allowDecimals={true}
+                        min={0}
                         className="mt-1 text-sm"
                       />
                     </div>
                     <div>
                       <Label htmlFor="base_fats" className="text-xs">Fette (g)</Label>
-                      <Input
-                        id="base_fats"
-                        type="number"
-                        step="0.1"
+                      <NumericInput
                         value={baseNutrition.fats}
-                        onChange={(e) => {
-                          const newBase = {...baseNutrition, fats: Number(e.target.value)};
+                        onChange={(value) => {
+                          const newBase = {...baseNutrition, fats: Number(value)};
                           setBaseNutrition(newBase);
                           const multiplier = portionAmount / 100;
                           setEditingMeal({
@@ -235,6 +231,8 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                             fats: Math.round(newBase.fats * multiplier * 10) / 10
                           });
                         }}
+                        allowDecimals={true}
+                        min={0}
                         className="mt-1 text-sm"
                       />
                     </div>
@@ -244,12 +242,10 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                 {/* Portion Size */}
                 <div>
                   <Label htmlFor="portion" className="text-sm font-medium">Portionsgröße (g)</Label>
-                  <Input
-                    id="portion"
-                    type="number"
+                  <NumericInput
                     value={portionAmount}
-                    onChange={(e) => {
-                      const newPortion = Number(e.target.value);
+                    onChange={(value) => {
+                      const newPortion = Number(value);
                       setPortionAmount(newPortion);
                       const multiplier = newPortion / 100;
                       setEditingMeal({
@@ -260,6 +256,8 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                         fats: Math.round(baseNutrition.fats * multiplier * 10) / 10
                       });
                     }}
+                    allowDecimals={false}
+                    min={1}
                     className="mt-2"
                     placeholder="100"
                   />
@@ -271,47 +269,44 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="calories" className="text-sm font-medium">Kalorien</Label>
-                <Input
-                  id="calories"
-                  type="number"
+                <NumericInput
                   value={editingMeal.calories}
-                  onChange={(e) => setEditingMeal({...editingMeal, calories: Number(e.target.value)})}
+                  onChange={(value) => setEditingMeal({...editingMeal, calories: Number(value)})}
+                  allowDecimals={false}
+                  min={0}
                   className="mt-2"
                   disabled={editMode === 'portion'}
                 />
               </div>
               <div>
                 <Label htmlFor="protein" className="text-sm font-medium">Protein (g)</Label>
-                <Input
-                  id="protein"
-                  type="number"
-                  step="0.1"
+                <NumericInput
                   value={editingMeal.protein}
-                  onChange={(e) => setEditingMeal({...editingMeal, protein: Number(e.target.value)})}
+                  onChange={(value) => setEditingMeal({...editingMeal, protein: Number(value)})}
+                  allowDecimals={true}
+                  min={0}
                   className="mt-2"
                   disabled={editMode === 'portion'}
                 />
               </div>
               <div>
                 <Label htmlFor="carbs" className="text-sm font-medium">Kohlenhydrate (g)</Label>
-                <Input
-                  id="carbs"
-                  type="number"
-                  step="0.1"
+                <NumericInput
                   value={editingMeal.carbs}
-                  onChange={(e) => setEditingMeal({...editingMeal, carbs: Number(e.target.value)})}
+                  onChange={(value) => setEditingMeal({...editingMeal, carbs: Number(value)})}
+                  allowDecimals={true}
+                  min={0}
                   className="mt-2"
                   disabled={editMode === 'portion'}
                 />
               </div>
               <div>
                 <Label htmlFor="fats" className="text-sm font-medium">Fette (g)</Label>
-                <Input
-                  id="fats"
-                  type="number"
-                  step="0.1"
+                <NumericInput
                   value={editingMeal.fats}
-                  onChange={(e) => setEditingMeal({...editingMeal, fats: Number(e.target.value)})}
+                  onChange={(value) => setEditingMeal({...editingMeal, fats: Number(value)})}
+                  allowDecimals={true}
+                  min={0}
                   className="mt-2"
                   disabled={editMode === 'portion'}
                 />

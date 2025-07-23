@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -278,20 +279,22 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
                   {index + 1}.
                 </div>
                 <div>
-                  <Input
-                    type="number"
+                  <NumericInput
                     placeholder="kg"
                     value={set.weight_kg || ''}
-                    onChange={(e) => updateSet(index, 'weight_kg', parseFloat(e.target.value) || null)}
+                    onChange={(value) => updateSet(index, 'weight_kg', parseFloat(value) || null)}
+                    allowDecimals={true}
+                    min={0}
                     className="text-center"
                   />
                 </div>
                 <div>
-                  <Input
-                    type="number"
+                  <NumericInput
                     placeholder="Wdh"
                     value={set.reps || ''}
-                    onChange={(e) => updateSet(index, 'reps', parseInt(e.target.value) || null)}
+                    onChange={(value) => updateSet(index, 'reps', parseInt(value) || null)}
+                    allowDecimals={false}
+                    min={0}
                     className="text-center"
                   />
                 </div>

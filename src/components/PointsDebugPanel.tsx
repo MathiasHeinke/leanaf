@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -247,12 +248,12 @@ export const PointsDebugPanel = ({ isOpen, onClose }: PointsDebugPanelProps) => 
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">Punkte manuell setzen</h3>
             <div className="flex gap-2">
-              <Input
-                type="number"
+              <NumericInput
                 placeholder="Neue Punktezahl eingeben..."
                 value={newPoints}
-                onChange={(e) => setNewPoints(e.target.value)}
-                min="0"
+                onChange={(value) => setNewPoints(value)}
+                allowDecimals={false}
+                min={0}
               />
               <Button
                 onClick={handleCustomSetPoints}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -202,31 +203,32 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
                       
                       <div>
                         <Label className="text-xs">Gewicht (kg)</Label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           value={set.weight_kg || ''}
-                          onChange={(e) => updateSet(set.id, 'weight_kg', parseFloat(e.target.value) || 0)}
-                          step="0.5"
+                          onChange={(value) => updateSet(set.id, 'weight_kg', parseFloat(value) || 0)}
+                          allowDecimals={true}
+                          min={0}
                         />
                       </div>
                       
                       <div>
                         <Label className="text-xs">Wiederholungen</Label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           value={set.reps || ''}
-                          onChange={(e) => updateSet(set.id, 'reps', parseInt(e.target.value) || 0)}
+                          onChange={(value) => updateSet(set.id, 'reps', parseInt(value) || 0)}
+                          allowDecimals={false}
+                          min={0}
                         />
                       </div>
                       
                       <div>
                         <Label className="text-xs">RPE</Label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           value={set.rpe || ''}
-                          onChange={(e) => updateSet(set.id, 'rpe', parseInt(e.target.value) || undefined)}
-                          min="1"
-                          max="10"
+                          onChange={(value) => updateSet(set.id, 'rpe', parseInt(value) || undefined)}
+                          allowDecimals={false}
+                          min={1}
+                          max={10}
                         />
                       </div>
                       

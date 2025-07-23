@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Ruler, Plus, Edit, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -223,12 +224,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
                 Hals (cm)
               </label>
-              <Input
-                type="number"
-                step="0.1"
+              <NumericInput
                 placeholder="32.0"
                 value={measurements.neck}
-                onChange={(e) => handleInputChange('neck', e.target.value)}
+                onChange={(value) => handleInputChange('neck', value)}
+                allowDecimals={true}
+                min={0}
+                max={100}
                 className="text-sm"
               />
             </div>
@@ -236,12 +238,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
                 Brust (cm)
               </label>
-              <Input
-                type="number"
-                step="0.1"
+              <NumericInput
                 placeholder="95.0"
                 value={measurements.chest}
-                onChange={(e) => handleInputChange('chest', e.target.value)}
+                onChange={(value) => handleInputChange('chest', value)}
+                allowDecimals={true}
+                min={0}
+                max={200}
                 className="text-sm"
               />
             </div>
@@ -249,12 +252,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
                 Taille (cm)
               </label>
-              <Input
-                type="number"
-                step="0.1"
+              <NumericInput
                 placeholder="85.0"
                 value={measurements.waist}
-                onChange={(e) => handleInputChange('waist', e.target.value)}
+                onChange={(value) => handleInputChange('waist', value)}
+                allowDecimals={true}
+                min={0}
+                max={200}
                 className="text-sm"
               />
             </div>
@@ -262,12 +266,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
                 Bauch (cm)
               </label>
-              <Input
-                type="number"
-                step="0.1"
+              <NumericInput
                 placeholder="90.0"
                 value={measurements.belly}
-                onChange={(e) => handleInputChange('belly', e.target.value)}
+                onChange={(value) => handleInputChange('belly', value)}
+                allowDecimals={true}
+                min={0}
+                max={200}
                 className="text-sm"
               />
             </div>
@@ -275,12 +280,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
                 Hüfte (cm)
               </label>
-              <Input
-                type="number"
-                step="0.1"
+              <NumericInput
                 placeholder="95.0"
                 value={measurements.hips}
-                onChange={(e) => handleInputChange('hips', e.target.value)}
+                onChange={(value) => handleInputChange('hips', value)}
+                allowDecimals={true}
+                min={0}
+                max={200}
                 className="text-sm"
               />
             </div>
@@ -288,12 +294,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
                 Arme (cm)
               </label>
-              <Input
-                type="number"
-                step="0.1"
+              <NumericInput
                 placeholder="30.0"
                 value={measurements.arms}
-                onChange={(e) => handleInputChange('arms', e.target.value)}
+                onChange={(value) => handleInputChange('arms', value)}
+                allowDecimals={true}
+                min={0}
+                max={100}
                 className="text-sm"
               />
             </div>
@@ -303,12 +310,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1 block">
               Oberschenkel (cm)
             </label>
-            <Input
-              type="number"
-              step="0.1"
+            <NumericInput
               placeholder="55.0"
               value={measurements.thigh}
-              onChange={(e) => handleInputChange('thigh', e.target.value)}
+              onChange={(value) => handleInputChange('thigh', value)}
+              allowDecimals={true}
+              min={0}
+              max={150}
               className="text-sm"
             />
           </div>
