@@ -8,9 +8,9 @@ enable_confirmations = true
 enable_email_confirmations = true
 enable_phone_confirmations = false
 
-# OTP expiry settings (in seconds)
-# Email OTP expires in 1 hour (3600 seconds)
-email_otp_exp = 3600
+# OTP expiry settings (in seconds) - Security Enhancement
+# Email OTP expires in 10 minutes (600 seconds) - Reduced from 1 hour for security
+email_otp_exp = 600
 # SMS OTP expires in 10 minutes (600 seconds) 
 sms_otp_exp = 600
 
@@ -21,10 +21,12 @@ password_min_length = 8
 rate_limit_email_sent = 60
 rate_limit_sms_sent = 60
 
-# Security features
+# Security features - Enhanced
 enable_anonymous_sign_ins = false
 enable_manual_linking = false
 security_update_password_require_reauthentication = true
+# Enhanced security: Enable leaked password protection
+security_password_change_require_reauthentication = true
 
 [auth.external.google]
 enabled = false
