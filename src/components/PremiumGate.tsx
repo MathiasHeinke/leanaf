@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Crown, Lock, Sparkles, Clock } from 'lucide-react';
+import { Crown, Lock, Sparkles, Clock, X } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeatureAccess, FeatureName } from '@/hooks/useFeatureAccess';
 import { useAuth } from '@/hooks/useAuth';
@@ -78,12 +78,41 @@ export const PremiumGate = ({
     }
   };
 
+  const handleHideFeatures = async () => {
+    if (!user || !hideable) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ hide_premium_features: true })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      setHidePremiumFeatures(true);
+      toast.success('Premium-Features ausgeblendet. Du kannst sie in den Einstellungen wieder einblenden.');
+    } catch (error) {
+      console.error('Error hiding premium features:', error);
+      toast.error('Fehler beim Ausblenden der Premium-Features.');
+    }
+  };
+
   if (!showUpgrade) {
     return null;
   }
 
   return (
-    <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+    <Card className="relative border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+      {hideable && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+          onClick={handleHideFeatures}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
       <CardHeader className="text-center space-y-3">
         <div className="flex justify-center">
           <div className="p-3 rounded-full bg-primary/10">
