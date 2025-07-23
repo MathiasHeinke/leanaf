@@ -4,132 +4,142 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
-interface ExerciseSet {
+interface WorkoutEntry {
   id: string;
-  exercise_id: string;
-  set_number: number;
-  weight_kg: number;
-  reps: number;
-  rpe?: number;
-  exercises: {
-    name: string;
-    category: string;
-  };
-}
-
-interface ExerciseSession {
-  id: string;
-  session_name: string;
   date: string;
-  start_time: string;
-  end_time: string;
-  notes: string;
-  exercise_sets: ExerciseSet[];
+  did_workout: boolean;
+  workout_type: string;
+  duration_minutes: number;
+  intensity: number;
+  distance_km?: number;
+  steps?: number;
+  walking_notes?: string;
+  notes?: string;
 }
 
 interface WorkoutEditModalProps {
-  session: ExerciseSession | null;
   isOpen: boolean;
   onClose: () => void;
-  onSessionUpdated: () => void;
+  selectedDate: Date;
+  existingWorkout: WorkoutEntry | null;
+  onWorkoutSaved: () => Promise<void>;
 }
 
 export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
-  session,
   isOpen,
   onClose,
-  onSessionUpdated
+  selectedDate,
+  existingWorkout,
+  onWorkoutSaved
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [sessionName, setSessionName] = useState('');
-  const [notes, setNotes] = useState('');
-  const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Form states
+  const [didWorkout, setDidWorkout] = useState(false);
+  const [workoutType, setWorkoutType] = useState('kraft');
+  const [duration, setDuration] = useState<number>(0);
+  const [intensity, setIntensity] = useState<number>(5);
+  const [distance, setDistance] = useState<number>(0);
+  const [steps, setSteps] = useState<number>(0);
+  const [walkingNotes, setWalkingNotes] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const workoutTypes = [
+    { value: 'kraft', label: 'Krafttraining' },
+    { value: 'cardio', label: 'Cardio' },
+    { value: 'walking', label: 'Spazieren' },
+    { value: 'running', label: 'Laufen' },
+    { value: 'cycling', label: 'Radfahren' },
+    { value: 'swimming', label: 'Schwimmen' },
+    { value: 'yoga', label: 'Yoga' },
+    { value: 'other', label: 'Sonstiges' }
+  ];
 
   useEffect(() => {
-    if (session) {
-      setSessionName(session.session_name || '');
-      setNotes(session.notes || '');
-      setSets(session.exercise_sets || []);
+    if (existingWorkout) {
+      setDidWorkout(existingWorkout.did_workout);
+      setWorkoutType(existingWorkout.workout_type);
+      setDuration(existingWorkout.duration_minutes);
+      setIntensity(existingWorkout.intensity);
+      setDistance(existingWorkout.distance_km || 0);
+      setSteps(existingWorkout.steps || 0);
+      setWalkingNotes(existingWorkout.walking_notes || '');
+      setNotes(existingWorkout.notes || '');
+    } else {
+      // Reset form for new workout
+      setDidWorkout(true);
+      setWorkoutType('kraft');
+      setDuration(0);
+      setIntensity(5);
+      setDistance(0);
+      setSteps(0);
+      setWalkingNotes('');
+      setNotes('');
     }
-  }, [session]);
-
-  const updateSet = (setId: string, field: keyof ExerciseSet, value: any) => {
-    setSets(prev => prev.map(set => 
-      set.id === setId ? { ...set, [field]: value } : set
-    ));
-  };
-
-  const removeSet = (setId: string) => {
-    setSets(prev => prev.filter(set => set.id !== setId));
-  };
+  }, [existingWorkout, isOpen]);
 
   const handleSave = async () => {
-    if (!user || !session) return;
+    if (!user) return;
 
     try {
       setIsLoading(true);
+      
+      const workoutData = {
+        user_id: user.id,
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        did_workout: didWorkout,
+        workout_type: workoutType,
+        duration_minutes: duration,
+        intensity: intensity,
+        distance_km: workoutType === 'walking' || workoutType === 'running' || workoutType === 'cycling' ? distance : null,
+        steps: workoutType === 'walking' ? steps : null,
+        walking_notes: workoutType === 'walking' ? walkingNotes : null,
+        notes: notes || null
+      };
 
-      // Update session details
-      const { error: sessionError } = await supabase
-        .from('exercise_sessions')
-        .update({
-          session_name: sessionName,
-          notes: notes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', session.id);
+      if (existingWorkout) {
+        // Update existing workout
+        const { error } = await supabase
+          .from('workouts')
+          .update(workoutData)
+          .eq('id', existingWorkout.id);
 
-      if (sessionError) throw sessionError;
+        if (error) throw error;
+        
+        toast({
+          title: "Workout aktualisiert",
+          description: "Dein Workout wurde erfolgreich aktualisiert."
+        });
+      } else {
+        // Create new workout
+        const { error } = await supabase
+          .from('workouts')
+          .insert([workoutData]);
 
-      // Update sets
-      for (const set of sets) {
-        const { error: setError } = await supabase
-          .from('exercise_sets')
-          .update({
-            weight_kg: set.weight_kg,
-            reps: set.reps,
-            rpe: set.rpe,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', set.id);
-
-        if (setError) throw setError;
+        if (error) throw error;
+        
+        toast({
+          title: "Workout gespeichert",
+          description: "Dein Workout wurde erfolgreich gespeichert."
+        });
       }
 
-      // Delete removed sets
-      const originalSetIds = session.exercise_sets.map(s => s.id);
-      const currentSetIds = sets.map(s => s.id);
-      const removedSetIds = originalSetIds.filter(id => !currentSetIds.includes(id));
-
-      if (removedSetIds.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('exercise_sets')
-          .delete()
-          .in('id', removedSetIds);
-
-        if (deleteError) throw deleteError;
-      }
-
-      toast({
-        title: "Training aktualisiert",
-        description: "Deine Änderungen wurden erfolgreich gespeichert."
-      });
-
-      onSessionUpdated();
+      await onWorkoutSaved();
       onClose();
     } catch (error) {
-      console.error('Error updating session:', error);
+      console.error('Error saving workout:', error);
       toast({
         title: "Fehler",
-        description: "Training konnte nicht aktualisiert werden.",
+        description: "Workout konnte nicht gespeichert werden.",
         variant: "destructive"
       });
     } finally {
@@ -137,121 +147,179 @@ export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
     }
   };
 
-  if (!session) return null;
+  const handleDelete = async () => {
+    if (!user || !existingWorkout) return;
+
+    if (!confirm('Möchtest du dieses Workout wirklich löschen?')) return;
+
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', existingWorkout.id);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Workout gelöscht",
+        description: "Dein Workout wurde erfolgreich gelöscht."
+      });
+
+      await onWorkoutSaved();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting workout:', error);
+      toast({
+        title: "Fehler",
+        description: "Workout konnte nicht gelöscht werden.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Training bearbeiten</DialogTitle>
+          <DialogTitle>
+            {existingWorkout ? 'Workout bearbeiten' : 'Neues Workout'} - {format(selectedDate, 'dd.MM.yyyy')}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="sessionName">Trainingsname</Label>
-              <Input
-                id="sessionName"
-                value={sessionName}
-                onChange={(e) => setSessionName(e.target.value)}
-                placeholder="z.B. Push-Tag, Beine, etc."
-              />
-            </div>
-            <div>
-              <Label>Datum</Label>
-              <Input value={session.date} disabled />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Notizen</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Trainingsnotizen..."
-              rows={3}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="did_workout"
+              checked={didWorkout}
+              onCheckedChange={setDidWorkout}
             />
+            <Label htmlFor="did_workout">Workout absolviert</Label>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Übungen & Sätze</h3>
-            
-            {Object.entries(
-              sets.reduce((acc, set) => {
-                const exerciseName = set.exercises.name;
-                if (!acc[exerciseName]) {
-                  acc[exerciseName] = [];
-                }
-                acc[exerciseName].push(set);
-                return acc;
-              }, {} as Record<string, ExerciseSet[]>)
-            ).map(([exerciseName, exerciseSets]) => (
-              <div key={exerciseName} className="p-4 border rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">{exerciseName}</h4>
-                  <Badge variant="secondary">{exerciseSets.length} Sätze</Badge>
+          {didWorkout && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="workout_type">Workout-Art</Label>
+                  <Select value={workoutType} onValueChange={setWorkoutType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workoutTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                <div className="space-y-2">
-                  {exerciseSets.map((set) => (
-                    <div key={set.id} className="grid grid-cols-5 gap-2 items-center">
-                      <div className="text-sm text-muted-foreground">
-                        Satz {set.set_number}
-                      </div>
-                      
-                      <div>
-                        <Label className="text-xs">Gewicht (kg)</Label>
-                        <Input
-                          type="number"
-                          value={set.weight_kg || ''}
-                          onChange={(e) => updateSet(set.id, 'weight_kg', parseFloat(e.target.value) || 0)}
-                          step="0.5"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label className="text-xs">Wiederholungen</Label>
-                        <Input
-                          type="number"
-                          value={set.reps || ''}
-                          onChange={(e) => updateSet(set.id, 'reps', parseInt(e.target.value) || 0)}
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label className="text-xs">RPE</Label>
-                        <Input
-                          type="number"
-                          value={set.rpe || ''}
-                          onChange={(e) => updateSet(set.id, 'rpe', parseInt(e.target.value) || undefined)}
-                          min="1"
-                          max="10"
-                        />
-                      </div>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeSet(set.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+
+                <div>
+                  <Label htmlFor="duration">Dauer (Minuten)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
+                    min="0"
+                  />
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Abbrechen
-            </Button>
-            <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? 'Speichern...' : 'Änderungen speichern'}
-            </Button>
+              <div>
+                <Label htmlFor="intensity">Intensität (1-10)</Label>
+                <Select value={intensity.toString()} onValueChange={(v) => setIntensity(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <SelectItem key={i + 1} value={(i + 1).toString()}>
+                        {i + 1} - {i < 3 ? 'Leicht' : i < 7 ? 'Mittel' : 'Intensiv'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(workoutType === 'walking' || workoutType === 'running' || workoutType === 'cycling') && (
+                <div>
+                  <Label htmlFor="distance">Distanz (km)</Label>
+                  <Input
+                    id="distance"
+                    type="number"
+                    step="0.1"
+                    value={distance}
+                    onChange={(e) => setDistance(parseFloat(e.target.value) || 0)}
+                    min="0"
+                  />
+                </div>
+              )}
+
+              {workoutType === 'walking' && (
+                <>
+                  <div>
+                    <Label htmlFor="steps">Schritte</Label>
+                    <Input
+                      id="steps"
+                      type="number"
+                      value={steps}
+                      onChange={(e) => setSteps(parseInt(e.target.value) || 0)}
+                      min="0"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="walking_notes">Spazier-Notizen</Label>
+                    <Textarea
+                      id="walking_notes"
+                      value={walkingNotes}
+                      onChange={(e) => setWalkingNotes(e.target.value)}
+                      placeholder="Wo warst du spazieren? Wie war es?"
+                      rows={2}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <Label htmlFor="notes">Allgemeine Notizen</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Zusätzliche Notizen zum Workout..."
+                  rows={3}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex justify-between pt-4 border-t">
+            <div>
+              {existingWorkout && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                >
+                  Löschen
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleSave} disabled={isLoading}>
+                {isLoading ? 'Speichern...' : 'Speichern'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
