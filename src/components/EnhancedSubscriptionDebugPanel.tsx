@@ -511,7 +511,7 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button
-                    onClick={subscription.refreshSubscription}
+                    onClick={() => subscription.refreshSubscription(true)}
                     variant="outline"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
