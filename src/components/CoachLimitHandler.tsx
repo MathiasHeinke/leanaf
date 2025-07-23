@@ -77,7 +77,7 @@ export const CoachLimitHandler: React.FC<CoachLimitHandlerProps> = ({ error, fea
     const defaultMessage = "Limit erreicht! Morgen wieder verfügbar oder Pro für unlimited Features!";
     
     return {
-      toast: messageMap[feature as keyof typeof messageMap]?.[personality as keyof typeof messageMap[feature]] || defaultMessage
+      toast: messageMap[feature as keyof typeof messageMap]?.[personality as keyof typeof messageMap[keyof typeof messageMap]] || defaultMessage
     };
   };
 
