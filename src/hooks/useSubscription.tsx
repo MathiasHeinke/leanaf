@@ -16,7 +16,7 @@ interface SubscriptionContextType {
   subscriptionEnd: string | null;
   loading: boolean;
   trial: TrialData;
-  refreshSubscription: () => Promise<void>;
+  refreshSubscription: (forceRefresh?: boolean) => Promise<void>;
   createCheckoutSession: () => Promise<void>;
   createPortalSession: () => Promise<void>;
   startPremiumTrial: () => Promise<boolean>;
@@ -28,6 +28,8 @@ interface SubscriptionContextType {
   // New debug functions for Edge Functions
   createDebugSubscription: () => Promise<void>;
   clearDebugSubscription: () => Promise<void>;
+  // Force refresh function
+  forceRefreshSubscription: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -58,7 +60,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   
   const { user } = useAuth();
 
-  const refreshSubscription = async () => {
+  const refreshSubscription = async (forceRefresh = false) => {
     if (!user) {
       setIsPremium(false);
       setIsBasic(true);
@@ -75,15 +77,69 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
     try {
       setLoading(true);
-      
-      // Check subscription status
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
+      console.log('[Subscription] Refreshing subscription status...', { 
+        userId: user.id, 
+        email: user.email,
+        forceRefresh 
       });
+      
+      // Level 1: Try Edge Function first
+      let subscriptionData = null;
+      let edgeFunctionError = null;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          headers: {
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            'Cache-Control': forceRefresh ? 'no-cache' : 'max-age=60'
+          }
+        });
 
-      if (error) throw error;
+        if (error) {
+          edgeFunctionError = error;
+          console.error('[Subscription] Edge function error:', error);
+        } else {
+          subscriptionData = data;
+          console.log('[Subscription] Edge function response:', data);
+        }
+      } catch (error) {
+        edgeFunctionError = error;
+        console.error('[Subscription] Edge function failed:', error);
+      }
+
+      // Level 2: Fallback to direct database query if Edge Function fails
+      if (!subscriptionData && edgeFunctionError) {
+        console.log('[Subscription] Falling back to direct database query...');
+        
+        try {
+          const { data: dbData, error: dbError } = await supabase
+            .from('subscribers')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (dbError && dbError.code !== 'PGRST116') {
+            console.error('[Subscription] Database fallback error:', dbError);
+          } else if (dbData) {
+            subscriptionData = {
+              subscribed: dbData.subscribed,
+              subscription_tier: dbData.subscription_tier,
+              subscription_end: dbData.subscription_end
+            };
+            console.log('[Subscription] Database fallback successful:', subscriptionData);
+          } else {
+            console.log('[Subscription] No subscription found in database');
+            subscriptionData = {
+              subscribed: false,
+              subscription_tier: null,
+              subscription_end: null
+            };
+          }
+        } catch (dbError) {
+          console.error('[Subscription] Database fallback failed:', dbError);
+          throw dbError;
+        }
+      }
 
       // Check trial status
       const { data: trialData, error: trialError } = await supabase
@@ -109,14 +165,22 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         trialDaysLeft = Math.ceil((trialExpiry.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
       }
 
-      const isSubscribed = data?.subscribed || false;
+      const isSubscribed = subscriptionData?.subscribed || false;
       const premium = isSubscribed || hasActiveTrial;
       const basic = !premium;
 
+      console.log('[Subscription] Final status:', {
+        isSubscribed,
+        subscriptionTier: subscriptionData?.subscription_tier,
+        hasActiveTrial,
+        premium,
+        basic
+      });
+
       setIsPremium(premium);
       setIsBasic(basic);
-      setSubscriptionTier(data?.subscription_tier || (hasActiveTrial ? 'premium' : null));
-      setSubscriptionEnd(data?.subscription_end || null);
+      setSubscriptionTier(subscriptionData?.subscription_tier || (hasActiveTrial ? 'premium' : null));
+      setSubscriptionEnd(subscriptionData?.subscription_end || null);
       setTrial({
         hasActiveTrial,
         trialExpiry,
@@ -291,6 +355,12 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     }
   }, [debugTier, user]);
 
+  // Force refresh function for admin use
+  const forceRefreshSubscription = async () => {
+    console.log('[Subscription] Force refreshing subscription...');
+    await refreshSubscription(true);
+  };
+
   // Clear debug mode on logout
   useEffect(() => {
     if (!user) {
@@ -300,6 +370,18 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     refreshSubscription();
+  }, [user]);
+
+  // Auto-refresh subscription every 30 seconds when user is logged in
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      console.log('[Subscription] Auto-refreshing subscription...');
+      refreshSubscription();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [user]);
 
   // Override values when in debug mode
@@ -336,6 +418,8 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     // New debug functions
     createDebugSubscription,
     clearDebugSubscription,
+    // Force refresh
+    forceRefreshSubscription,
   };
 
   return (
