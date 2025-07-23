@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CoachCard } from './CoachCard';
 
@@ -8,7 +9,7 @@ const coachProfiles = [
     age: 52,
     role: 'Fitness Drill-Instructor',
     avatar: '🎯',
-    imageUrl: '/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
+    imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
     personality: 'Hart & Direkt',
     description: 'Keine Ausreden, nur Resultate. Sascha bringt dich mit klaren Ansagen und kompromissloser Disziplin zu deinen Zielen.',
     strengths: ['Disziplin', 'Klare Ansagen', 'Schnelle Resultate', 'Effizienz'],
@@ -22,7 +23,7 @@ const coachProfiles = [
     age: 23,
     role: 'Ernährungsberaterin',
     avatar: '❤️',
-    imageUrl: '/lovable-uploads/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
+    imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
     personality: 'Liebevoll & Unterstützend',
     description: 'Mit Verständnis und Geduld hilft Lucy dir dabei, nachhaltige und gesunde Gewohnheiten zu entwickeln.',
     strengths: ['Empathie', 'Geduld', 'Nachhaltigkeit', 'Verständnis'],
@@ -36,7 +37,7 @@ const coachProfiles = [
     age: 30,
     role: 'Personal Trainer',
     avatar: '💪',
-    imageUrl: '/lovable-uploads/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
+    imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
     personality: 'Motivierend & Energisch',
     description: 'Kai bringt die Energie! Mit positivem Spirit und ansteckender Begeisterung macht Fitness richtig Spaß.',
     strengths: ['Energie', 'Positive Verstärkung', 'Spaß', 'Motivation'],

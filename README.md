@@ -1,73 +1,146 @@
-# Welcome to your Lovable project
 
-## Project info
+# leanAF - get lean as fcuk
 
-**URL**: https://lovable.dev/projects/4bc21b02-4be5-4a0d-89ed-241550f56ca8
+Eine gamifizierte Fitness-App mit AI-gestütztem Kalorien- und Makrotracking. Level up und erreiche deine Ziele!
 
-## How can I edit this code?
+## 🎯 Features
 
-There are several ways of editing your application.
+- **AI-gestütztes Tracking**: Intelligente Kalorien- und Makronährstoff-Verfolgung
+- **Gamification**: Levelsystem und Belohnungen für mehr Motivation
+- **Persönlicher Coach**: Wähle zwischen verschiedenen Coach-Persönlichkeiten
+- **Meal Tracking**: Fotografiere deine Mahlzeiten für automatische Nährwertanalyse
+- **Fortschrittsverfolgung**: Umfassende Statistiken und Verlaufsdaten
+- **Responsive Design**: Optimiert für alle Geräte
 
-**Use Lovable**
+## 🚀 Installation & Entwicklung
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4bc21b02-4be5-4a0d-89ed-241550f56ca8) and start prompting.
+### Voraussetzungen
+- Node.js (Version 18 oder höher)
+- npm oder yarn
 
-Changes made via Lovable will be committed automatically to this repo.
+### Erste Schritte
 
-**Use your preferred IDE**
+1. **Repository klonen**
+   ```bash
+   git clone <YOUR_GIT_URL>
+   cd leanAF
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. **Dependencies installieren**
+   ```bash
+   npm install
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+3. **Entwicklungsserver starten**
+   ```bash
+   npm run dev
+   ```
 
-Follow these steps:
+4. **App öffnen**
+   Die App ist nun unter `http://localhost:8080` verfügbar.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🛠️ Technologie-Stack
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- **Frontend**: React + TypeScript + Vite
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Backend**: Supabase (Datenbank, Auth, Edge Functions)
+- **AI**: OpenAI GPT für Meal-Analyse und Coach-Interaktionen
+- **Deployment**: Vercel/Netlify ready
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 📁 Projektstruktur
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/         # React Komponenten
+├── hooks/             # Custom React Hooks
+├── pages/             # Seiten-Komponenten
+├── integrations/      # Supabase Integration
+├── utils/             # Utility-Funktionen
+└── lib/               # Bibliotheken und Konfiguration
 ```
 
-**Edit a file directly in GitHub**
+## 🔧 Konfiguration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Umgebungsvariablen
+Erstelle eine `.env.local` Datei mit folgenden Variablen:
 
-**Use GitHub Codespaces**
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Supabase Setup
+1. Erstelle ein neues Supabase Projekt
+2. Führe die Migrationen aus: `npm run db:migrate`
+3. Konfiguriere die Edge Functions für AI-Features
 
-## What technologies are used for this project?
+## 🎨 Design System
 
-This project is built with:
+Das Projekt verwendet ein konsistentes Design System basierend auf:
+- Tailwind CSS für Styling
+- shadcn/ui für UI-Komponenten
+- Responsive Design Prinzipien
+- Dark/Light Mode Support
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📱 Features im Detail
 
-## How can I deploy this project?
+### AI Coach System
+- Verschiedene Coach-Persönlichkeiten (Hart, Liebevoll, Motivierend)
+- Personalisierte Empfehlungen basierend auf Fortschritt
+- Intelligente Meal-Analyse über Bildverarbeitung
 
-Simply open [Lovable](https://lovable.dev/projects/4bc21b02-4be5-4a0d-89ed-241550f56ca8) and click on Share -> Publish.
+### Gamification
+- Erfahrungspunkte für verschiedene Aktivitäten
+- Levelaufstieg und Belohnungen
+- Badge-System für Achievements
+- Streak-Verfolgung
 
-## Can I connect a custom domain to my Lovable project?
+### Meal Tracking
+- Foto-basierte Meal-Erkennung
+- Automatische Nährwertberechnung
+- Makronährstoff-Tracking
+- Meal-Historie und -Analysen
 
-Yes, you can!
+## 🚀 Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Automatisches Deployment
+Das Projekt ist für automatisches Deployment konfiguriert:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```bash
+npm run build
+npm run preview
+```
+
+### Manuelle Deployment-Optionen
+- **Vercel**: Einfach Repository verknüpfen
+- **Netlify**: Drag & Drop des `dist` Ordners
+- **Eigener Server**: Build-Dateien auf Server uploaden
+
+## 📊 Monitoring & Analytics
+
+- Performance-Monitoring über Web Vitals
+- Error-Tracking und Logging
+- User-Analytics für Feature-Nutzung
+- A/B Testing für UI-Optimierungen
+
+## 🤝 Beitragen
+
+1. Fork das Repository
+2. Erstelle einen Feature-Branch (`git checkout -b feature/AmazingFeature`)
+3. Committe deine Änderungen (`git commit -m 'Add AmazingFeature'`)
+4. Push den Branch (`git push origin feature/AmazingFeature`)
+5. Öffne einen Pull Request
+
+## 📄 Lizenz
+
+Dieses Projekt ist unter der MIT Lizenz lizenziert - siehe die [LICENSE](LICENSE) Datei für Details.
+
+## 🔗 Links
+
+- [Demo](https://leanaf-demo.vercel.app)
+- [Documentation](https://docs.leanaf.app)
+- [Support](mailto:support@leanaf.app)
+
+---
+
+**Entwickelt mit ❤️ für die Fitness-Community**

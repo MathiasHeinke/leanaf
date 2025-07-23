@@ -17,15 +17,15 @@ interface CoachRecommendation {
 const COACH_DATA = {
   sascha: {
     name: "Sascha",
-    avatar: "/lovable-uploads/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
+    avatar: "/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
   },
   lucy: {
     name: "Lucy", 
-    avatar: "/lovable-uploads/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
+    avatar: "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
   },
   kai: {
     name: "Kai",
-    avatar: "/lovable-uploads/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+    avatar: "/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
   }
 };
 
