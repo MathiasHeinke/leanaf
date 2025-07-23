@@ -1,135 +1,121 @@
-import { ReactNode, useEffect, useState } from 'react';
+
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Crown, Lock, Sparkles, Clock } from 'lucide-react';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useFeatureAccess, FeatureName } from '@/hooks/useFeatureAccess';
-import { useAuth } from '@/hooks/useAuth';
+import { Crown, X, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PremiumGateProps {
-  children: ReactNode;
-  feature?: FeatureName;
-  fallbackMessage?: string;
-  showUpgrade?: boolean;
-  showTrialPrompt?: boolean;
-  hideable?: boolean;
+  title: string;
+  description: string;
+  features?: string[];
+  className?: string;
 }
 
-export const PremiumGate = ({ 
-  children, 
-  feature = "workout_tracking", 
-  fallbackMessage,
-  showUpgrade = true,
-  showTrialPrompt = true,
-  hideable = false
-}: PremiumGateProps) => {
-  const { trial, startPremiumTrial, isPremium } = useSubscription();
-  const { hasFeatureAccess, getFeatureStatus } = useFeatureAccess();
-  const { user } = useAuth();
+export const PremiumGate: React.FC<PremiumGateProps> = ({ 
+  title, 
+  description, 
+  features = [], 
+  className = '' 
+}) => {
   const navigate = useNavigate();
-  const [hidePremiumFeatures, setHidePremiumFeatures] = useState(false);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    if (user && hideable) {
-      fetchHidePreference();
-    }
-  }, [user, hideable]);
+  const handleUpgrade = () => {
+    navigate('/subscription');
+  };
 
-  const fetchHidePreference = async () => {
+  const hideFeature = async () => {
     if (!user) return;
     
     try {
-      const { data } = await supabase
+      await supabase
         .from('profiles')
-        .select('hide_premium_features')
-        .eq('user_id', user.id)
-        .single();
+        .update({ hide_premium_features: true })
+        .eq('user_id', user.id);
       
-      if (data) {
-        setHidePremiumFeatures(data.hide_premium_features || false);
-      }
-    } catch (error) {
-      console.error('Error fetching hide preference:', error);
-    }
-  };
-
-  const featureStatus = getFeatureStatus(feature);
-  
-  if (featureStatus.hasAccess) {
-    return <>{children}</>;
-  }
-
-  // If user wants to hide premium features and this gate is hideable, don't show anything
-  if (hideable && hidePremiumFeatures) {
-    return null;
-  }
-
-  const handleStartTrial = async () => {
-    const success = await startPremiumTrial();
-    if (success) {
-      toast.success('🎉 Premium Trial gestartet! 3 Tage kostenloses Premium.', {
+      toast.success('Premium-Features ausgeblendet. In Settings wieder einblendbar.', {
         duration: 5000,
+        action: {
+          label: "Settings",
+          onClick: () => navigate('/profile')
+        }
       });
-    } else {
-      toast.error('Fehler beim Starten des Trials. Bitte versuche es erneut.');
+      
+      // Trigger a page refresh to hide the component immediately
+      window.location.reload();
+    } catch (error) {
+      console.error('Error hiding premium features:', error);
+      toast.error('Fehler beim Ausblenden der Premium-Features');
     }
   };
-
-  if (!showUpgrade) {
-    return null;
-  }
 
   return (
-    <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
-      <CardHeader className="text-center space-y-3">
-        <div className="flex justify-center">
-          <div className="p-3 rounded-full bg-primary/10">
-            <Crown className="h-5 w-5 text-primary" />
+    <Card className={`border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 ${className}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2 text-orange-800 dark:text-orange-200">
+            <Crown className="h-5 w-5" />
+            {title}
+          </CardTitle>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={hideFeature}
+              className="h-6 w-6 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-100 dark:text-orange-400 dark:hover:text-orange-200"
+              title="Premium-Features ausblenden"
+            >
+              <Settings className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={hideFeature}
+              className="h-6 w-6 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-100 dark:text-orange-400 dark:hover:text-orange-200"
+              title="Ausblenden"
+            >
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         </div>
-        <CardTitle className="flex items-center justify-center gap-2">
-          <Lock className="h-4 w-4" />
-          Premium Feature
-        </CardTitle>
       </CardHeader>
-      <CardContent className="text-center space-y-4">
-        <p className="text-muted-foreground">
-          {fallbackMessage || 'Dieses Feature ist nur für Premium-Nutzer verfügbar.'}
+      <CardContent className="space-y-4">
+        <p className="text-orange-700 dark:text-orange-300">
+          {description}
         </p>
         
-        {showTrialPrompt && !trial.hasActiveTrial && !isPremium && (
-          <div className="space-y-3">
-            <Button 
-              onClick={handleStartTrial}
-              className="w-full"
-              variant="default"
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              3 Tage Premium kostenlos testen
-            </Button>
-            <div className="text-xs text-muted-foreground">
-              Oder direkt zu Premium upgraden:
-            </div>
-          </div>
+        {features.length > 0 && (
+          <ul className="space-y-2">
+            {features.map((feature, index) => (
+              <li key={index} className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
+                <Crown className="h-3 w-3" />
+                {feature}
+              </li>
+            ))}
+          </ul>
         )}
         
-        <Button 
-          onClick={() => navigate('/subscription')}
-          className="w-full"
-          variant={showTrialPrompt && !trial.hasActiveTrial ? "outline" : "default"}
-        >
-          <Crown className="h-4 w-4 mr-2" />
-          Zu Premium upgraden
-        </Button>
-        
-        {trial.hasActiveTrial && (
-          <div className="text-sm text-muted-foreground">
-            Trial läuft noch {trial.trialDaysLeft} Tag{trial.trialDaysLeft !== 1 ? 'e' : ''}
-          </div>
-        )}
+        <div className="flex gap-2 pt-2">
+          <Button 
+            onClick={handleUpgrade}
+            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Pro holen - 33% Rabatt!
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={hideFeature}
+            className="border-orange-300 text-orange-600 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-400"
+          >
+            Ausblenden
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
