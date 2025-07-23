@@ -116,40 +116,22 @@ export const DayCard: React.FC<DayCardProps> = ({ date, sessions, onEditSession 
             ) : (
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             )}
-            <div>
-              <h3 className="font-semibold flex items-center gap-2">
-                <Dumbbell className="h-4 w-4 text-primary" />
+            <div className="flex-1">
+              <h3 className="font-semibold">
                 {format(new Date(date), 'EEEE, d. MMMM yyyy', { locale: de })}
               </h3>
-              <div className="space-y-1 mt-1">
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span>{stats.totalExercises} Übungen</span>
-                  <span>•</span>
-                  <span>{stats.totalWeight.toLocaleString()} kg</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  {stats.averageRPE > 0 && (
-                    <span>Ø RPE: {stats.averageRPE}</span>
-                  )}
-                  {stats.totalDuration > 0 && (
-                    <>
-                      {stats.averageRPE > 0 && <span>•</span>}
-                      <span>{stats.totalDuration} Min</span>
-                    </>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">
-              {sessions.reduce((sum, s) => sum + s.exercise_sets.length, 0)} Sätze
-            </Badge>
-            {stats.sessionCount > 1 && (
-              <Badge variant="outline">
-                {stats.sessionCount} Sessions
-              </Badge>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>{stats.totalExercises} Übungen</span>
+            <span>•</span>
+            <span>{stats.totalWeight.toLocaleString()} kg</span>
+            {stats.averageRPE > 0 && (
+              <>
+                <span>•</span>
+                <span>Ø RPE: {stats.averageRPE}</span>
+              </>
             )}
           </div>
         </div>
