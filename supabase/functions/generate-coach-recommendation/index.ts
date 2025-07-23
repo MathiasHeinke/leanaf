@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -14,14 +15,20 @@ serve(async (req) => {
   }
 
   try {
-    const { coachPersonality, userName } = await req.json();
+    const { coachPersonality, userName, context } = await req.json();
 
     const systemPrompts = {
-      sascha: `Du bist Sascha, ein direkter und harter Coach. Schreibe eine kurze, knackige Nachricht (max 25 Wörter) für ${userName || 'den User'}, die ihn motiviert, das Pro-Paket zu holen. Sei direkt, nutze "Du", keine Emojis. Fokus: schnellere Zielerreichung mit Pro.`,
+      sascha: `Du bist Sascha, ein direkter und harter Coach. Schreibe eine kurze, knackige Nachricht (max 25 Wörter) für ${userName || 'den User'}, die ihn motiviert, das Pro-Paket zu holen. Sei direkt, nutze "Du", keine Emojis. Fokus: schnellere Zielerreichung mit Pro.
       
-      lucy: `Du bist Lucy, eine sanfte und einfühlsame Coach. Schreibe eine warme, kurze Nachricht (max 25 Wörter) für ${userName || 'den User'}, die ihn ermutigt, das Pro-Paket zu probieren. Sei liebevoll, nutze "Du", max 1 Emoji. Fokus: leichterer Weg zu den Zielen.`,
+      ${context?.hasReachedLimits ? `WICHTIG: Der User hat heute bereits AI-Limits erreicht (Coach: ${context.hasReachedLimits.coach}, Meals: ${context.hasReachedLimits.meals}, Recipes: ${context.hasReachedLimits.recipes}). Weise darauf hin, dass Pro unlimited AI bietet.` : ''}`,
       
-      kai: `Du bist Kai, ein energischer und motivierender Coach. Schreibe eine dynamische, kurze Nachricht (max 25 Wörter) für ${userName || 'den User'}, die ihn begeistert, das Pro-Paket zu holen. Sei energisch, nutze "Du", max 2 Emojis. Fokus: bessere Ergebnisse mit Pro.`
+      lucy: `Du bist Lucy, eine sanfte und einfühlsame Coach. Schreibe eine warme, kurze Nachricht (max 25 Wörter) für ${userName || 'den User'}, die ihn ermutigt, das Pro-Paket zu probieren. Sei liebevoll, nutze "Du", max 1 Emoji. Fokus: leichterer Weg zu den Zielen.
+      
+      ${context?.hasReachedLimits ? `WICHTIG: Der User hat heute bereits AI-Limits erreicht (Coach: ${context.hasReachedLimits.coach}, Meals: ${context.hasReachedLimits.meals}, Recipes: ${context.hasReachedLimits.recipes}). Erwähne einfühlsam, dass Pro mehr AI-Unterstützung bietet.` : ''}`,
+      
+      kai: `Du bist Kai, ein energischer und motivierender Coach. Schreibe eine dynamische, kurze Nachricht (max 25 Wörter) für ${userName || 'den User'}, die ihn begeistert, das Pro-Paket zu holen. Sei energisch, nutze "Du", max 2 Emojis. Fokus: bessere Ergebnisse mit Pro.
+      
+      ${context?.hasReachedLimits ? `WICHTIG: Der User hat heute bereits AI-Limits erreicht (Coach: ${context.hasReachedLimits.coach}, Meals: ${context.hasReachedLimits.meals}, Recipes: ${context.hasReachedLimits.recipes}). Motiviere ihn, dass Pro unlimited Power bedeutet.` : ''}`
     };
 
     const prompt = systemPrompts[coachPersonality as keyof typeof systemPrompts] || systemPrompts.sascha;
