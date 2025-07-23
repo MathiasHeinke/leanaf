@@ -453,12 +453,14 @@ export type Database = {
         Row: {
           category: string
           created_at: string
+          created_by: string | null
           description: string | null
           difficulty_level: number | null
           equipment: string | null
           id: string
           instructions: string | null
           is_compound: boolean | null
+          is_public: boolean | null
           muscle_groups: string[]
           name: string
           updated_at: string
@@ -466,12 +468,14 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           difficulty_level?: number | null
           equipment?: string | null
           id?: string
           instructions?: string | null
           is_compound?: boolean | null
+          is_public?: boolean | null
           muscle_groups?: string[]
           name: string
           updated_at?: string
@@ -479,12 +483,14 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string
+          created_by?: string | null
           description?: string | null
           difficulty_level?: number | null
           equipment?: string | null
           id?: string
           instructions?: string | null
           is_compound?: boolean | null
+          is_public?: boolean | null
           muscle_groups?: string[]
           name?: string
           updated_at?: string

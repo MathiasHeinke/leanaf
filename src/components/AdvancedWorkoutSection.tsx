@@ -190,7 +190,12 @@ export const AdvancedWorkoutSection: React.FC = () => {
         </TabsList>
 
         <TabsContent value="add" className="space-y-4">
-          <ExerciseQuickAdd onSessionSaved={loadSessions} />
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Training hinzufügen</h3>
+            </div>
+            <ExerciseQuickAdd onSessionSaved={loadSessions} />
+          </div>
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-4">

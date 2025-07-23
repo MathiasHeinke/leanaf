@@ -352,7 +352,9 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
             <h3 className="text-lg font-semibold">Deine Übungen</h3>
             
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {customExercises.filter(ex => (ex as any).created_by === user?.id).map((exercise) => (
+              {customExercises
+                .filter(ex => (ex as any).created_by === user?.id)
+                .map((exercise) => (
                 <div key={exercise.id} className="p-3 border rounded-lg flex justify-between items-start">
                   <div className="flex-1">
                     <h4 className="font-medium">{exercise.name}</h4>
@@ -383,7 +385,9 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
                 </div>
               ))}
               
-              {customExercises.filter(ex => (ex as any).created_by === user?.id).length === 0 && (
+              {customExercises
+                .filter(ex => (ex as any).created_by === user?.id)
+                .length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   Noch keine eigenen Übungen erstellt.
                 </div>
