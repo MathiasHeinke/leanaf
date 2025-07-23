@@ -218,11 +218,16 @@ export const WeeklyCoachRecommendation = () => {
             <div className="flex gap-2">
               <Button
                 onClick={handleUpgrade}
-                size="sm"
-                className="flex-1 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground font-semibold shadow-md"
+                variant="hero"
+                size="lg"
+                className="flex-1 relative overflow-hidden group hover:shadow-xl hover:shadow-primary/25 transition-all duration-300"
               >
-                <Crown className="h-4 w-4 mr-2" />
-                Pro holen - 33% Rabatt!
+                <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary-glow to-secondary opacity-90 group-hover:opacity-100 transition-opacity" />
+                <div className="relative flex items-center justify-center">
+                  <Crown className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
+                  <span className="font-bold tracking-wide">Pro holen - 33% Rabatt!</span>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
               </Button>
               
               <Button
