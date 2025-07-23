@@ -42,6 +42,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   });
   const [profileExists, setProfileExists] = useState(false);
   const [intelligentCalories, setIntelligentCalories] = useState<CalorieCalculationResult | null>(null);
+  const [hasUserModifiedMacros, setHasUserModifiedMacros] = useState(false);
   
   // Coach Settings State
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
@@ -124,12 +125,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setTargetDate(data.target_date || '');
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
-        setMacroStrategy(data.macro_strategy || 'standard');
+        setMacroStrategy(data.macro_strategy || 'high_protein');
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
       } else {
         setProfileExists(false);
+        // Set default strategy to high_protein for new users
+        setMacroStrategy('high_protein');
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -158,6 +161,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           fats: data.fats_percentage || 30,
           calorieDeficit: data.calorie_deficit || 300
         });
+      } else {
+        // Set High Protein as fallback for new users
+        setDailyGoals({
+          calories: 2000,
+          protein: 50,
+          carbs: 20,
+          fats: 30,
+          calorieDeficit: 300
+        });
       }
     } catch (error: any) {
       console.error('Error loading daily goals:', error);
@@ -180,11 +192,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       
       setIntelligentCalories(result);
       
-      // Update daily goals with intelligent calculation
-      setDailyGoals({
-        ...dailyGoals,
+      // Update daily goals with intelligent calculation (but don't override user-modified macros)
+      setDailyGoals(prev => ({
+        ...prev,
         calories: result.targetCalories
-      });
+      }));
     } catch (error) {
       console.error('Error calculating intelligent calories:', error);
     }
@@ -261,6 +273,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   };
 
   const applyMacroStrategy = (strategy: string) => {
+    // Only apply strategy if user hasn't manually modified macros
+    if (hasUserModifiedMacros) {
+      return;
+    }
+    
     const strategies = {
       high_protein: { protein: 50, carbs: 20, fats: 30 },
       high_carb: { protein: 20, carbs: 50, fats: 30 },
@@ -269,12 +286,12 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     
     const macros = strategies[strategy as keyof typeof strategies];
     if (macros) {
-      setDailyGoals({
-        ...dailyGoals,
+      setDailyGoals(prev => ({
+        ...prev,
         protein: macros.protein,
         carbs: macros.carbs,  
         fats: macros.fats
-      });
+      }));
     }
   };
 
@@ -608,7 +625,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <Input
                   type="number"
                   value={dailyGoals.protein}
-                  onChange={(e) => setDailyGoals({...dailyGoals, protein: parseInt(e.target.value) || 0})}
+                  onChange={(e) => {
+                    setDailyGoals(prev => ({...prev, protein: parseInt(e.target.value) || 0}));
+                    setHasUserModifiedMacros(true);
+                  }}
                   className="h-8 text-sm mt-1"
                   disabled={macroStrategy !== 'custom'}
                 />
@@ -618,7 +638,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <Input
                   type="number"
                   value={dailyGoals.carbs}
-                  onChange={(e) => setDailyGoals({...dailyGoals, carbs: parseInt(e.target.value) || 0})}
+                  onChange={(e) => {
+                    setDailyGoals(prev => ({...prev, carbs: parseInt(e.target.value) || 0}));
+                    setHasUserModifiedMacros(true);
+                  }}
                   className="h-8 text-sm mt-1"
                   disabled={macroStrategy !== 'custom'}
                 />
@@ -628,7 +651,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <Input
                   type="number"
                   value={dailyGoals.fats}
-                  onChange={(e) => setDailyGoals({...dailyGoals, fats: parseInt(e.target.value) || 0})}
+                  onChange={(e) => {
+                    setDailyGoals(prev => ({...prev, fats: parseInt(e.target.value) || 0}));
+                    setHasUserModifiedMacros(true);
+                  }}
                   className="h-8 text-sm mt-1"
                   disabled={macroStrategy !== 'custom'}
                 />
