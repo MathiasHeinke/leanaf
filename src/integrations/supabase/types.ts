@@ -113,6 +113,36 @@ export type Database = {
         }
         Relationships: []
       }
+      badges_backup: {
+        Row: {
+          badge_description: string | null
+          badge_name: string | null
+          badge_type: string | null
+          earned_at: string | null
+          id: string | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          badge_description?: string | null
+          badge_name?: string | null
+          badge_type?: string | null
+          earned_at?: string | null
+          id?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          badge_description?: string | null
+          badge_name?: string | null
+          badge_type?: string | null
+          earned_at?: string | null
+          id?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       body_measurements: {
         Row: {
           arms: number | null

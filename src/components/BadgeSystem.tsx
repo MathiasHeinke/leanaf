@@ -26,6 +26,7 @@ export const BadgeSystem = () => {
   const [badges, setBadges] = useState<UserBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showAllBadges, setShowAllBadges] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -171,53 +172,73 @@ export const BadgeSystem = () => {
         )}
 
         {displayBadges.length > 0 ? (
-          <div className="space-y-3">
-            {displayBadges.map((badge) => {
-              const badgeColor = getBadgeColor(badge.badge_type);
-              return (
-                <div 
-                  key={badge.id}
-                  className="p-4 rounded-xl border-2 bg-background/90 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg"
-                  style={{
-                    borderColor: `${badgeColor}50`
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="flex-shrink-0 p-3 rounded-lg border-2 flex items-center justify-center"
-                      style={{
-                        backgroundColor: `${badgeColor}15`,
-                        borderColor: `${badgeColor}30`,
-                        color: badgeColor
-                      }}
-                    >
-                      {getBadgeIcon(badge.badge_name, badge.badge_type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-foreground text-lg">{badge.badge_name}</div>
-                      <div className="text-sm text-muted-foreground">{badge.badge_description}</div>
-                      <div className="text-xs text-muted-foreground/70 mt-1">
-                        Verdient am {new Date(badge.earned_at).toLocaleDateString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit', 
-                          year: 'numeric'
-                        })}
+          <div className="space-y-4">
+            {/* Badge Grid - Max 3 per row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(showAllBadges ? displayBadges : displayBadges.slice(0, 3)).map((badge) => {
+                const badgeColor = getBadgeColor(badge.badge_type);
+                return (
+                  <div 
+                    key={badge.id}
+                    className="p-4 rounded-xl border-2 bg-background/90 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg"
+                    style={{
+                      borderColor: `${badgeColor}50`
+                    }}
+                  >
+                    <div className="flex flex-col items-center text-center gap-3">
+                      <div 
+                        className="flex-shrink-0 p-3 rounded-lg border-2 flex items-center justify-center"
+                        style={{
+                          backgroundColor: `${badgeColor}15`,
+                          borderColor: `${badgeColor}30`,
+                          color: badgeColor
+                        }}
+                      >
+                        {getBadgeIcon(badge.badge_name, badge.badge_type)}
                       </div>
+                      <div className="space-y-1">
+                        <div className="font-medium text-foreground text-sm">{badge.badge_name}</div>
+                        <div className="text-xs text-muted-foreground">{badge.badge_description}</div>
+                        <div className="text-xs text-muted-foreground/70">
+                          {new Date(badge.earned_at).toLocaleDateString('de-DE', {
+                            day: '2-digit',
+                            month: '2-digit', 
+                            year: 'numeric'
+                          })}
+                        </div>
+                      </div>
+                      <Badge 
+                        variant="outline"
+                        className="bg-background/90 font-semibold border-2 px-2 py-1 text-xs"
+                        style={{
+                          color: badgeColor,
+                          borderColor: `${badgeColor}50`
+                        }}
+                      >
+                        ✓
+                      </Badge>
                     </div>
-                    <Badge 
-                      variant="outline"
-                      className="bg-background/90 font-semibold border-2 px-3 py-1"
-                      style={{
-                        color: badgeColor,
-                        borderColor: `${badgeColor}50`
-                      }}
-                    >
-                      ✓
-                    </Badge>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Show More/Less Button */}
+            {displayBadges.length > 3 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setShowAllBadges(!showAllBadges)}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                >
+                  <span className="text-sm font-medium">
+                    {showAllBadges ? 'Weniger anzeigen' : `${displayBadges.length - 3} weitere anzeigen`}
+                  </span>
+                  <ChevronRight 
+                    className={`h-4 w-4 transition-transform ${showAllBadges ? 'rotate-90' : ''}`} 
+                  />
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-8">

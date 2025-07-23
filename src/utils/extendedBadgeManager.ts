@@ -11,7 +11,7 @@ export class ExtendedBadgeManager extends BadgeManager {
       const existingBadges = await super.checkAndAwardBadges();
       newBadges.push(...existingBadges);
 
-      // New extended badges
+      // New extended badges - check each type individually
       const levelBadge = await this.checkLevelAchievementBadges();
       if (levelBadge) newBadges.push(levelBadge);
 
@@ -24,14 +24,19 @@ export class ExtendedBadgeManager extends BadgeManager {
       const specialBadges = await this.checkSpecialAchievementBadges();
       newBadges.push(...specialBadges);
 
-      // Award all new badges
+      // Award only truly new badges (not already in database)
+      const actuallyNewBadges: BadgeCheck[] = [];
       for (const badge of newBadges) {
-        if (!existingBadges.includes(badge)) {
+        try {
           await this.awardBadge(badge);
+          actuallyNewBadges.push(badge);
+        } catch (error) {
+          // Badge might already exist due to unique constraints, which is fine
+          console.log('Badge already exists, skipping:', badge.badge_name);
         }
       }
 
-      return newBadges;
+      return actuallyNewBadges;
     } catch (error) {
       console.error('Error checking extended badges:', error);
       return [];
