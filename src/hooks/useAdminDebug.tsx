@@ -13,6 +13,25 @@ interface User {
   subscription_end: string | null;
   profile_created: string;
   subscription_created: string | null;
+  // Aktivitätsstatistiken
+  meals_count: number;
+  workouts_count: number;
+  weight_entries_count: number;
+  sleep_entries_count: number;
+  body_measurements_count: number;
+  // Punkte & Level
+  total_points: number;
+  current_level: number;
+  level_name: string;
+  // Trial Info
+  has_active_trial: boolean;
+  trial_expires_at: string | null;
+  trial_type: string | null;
+  // Letzte Aktivität
+  last_meal_date: string | null;
+  last_workout_date: string | null;
+  last_weight_date: string | null;
+  last_login_approximate: string | null;
 }
 
 interface AdminAction {
@@ -61,7 +80,7 @@ export const useAdminDebug = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // First get profiles
+      // Get profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, display_name, email, created_at')
@@ -69,15 +88,102 @@ export const useAdminDebug = () => {
 
       if (profilesError) throw profilesError;
 
-      // Then get subscribers for each profile
+      // Get subscribers
       const { data: subscribersData, error: subscribersError } = await supabase
         .from('subscribers')
         .select('user_id, subscribed, subscription_tier, subscription_end, created_at');
 
       if (subscribersError) throw subscribersError;
 
-      const formattedUsers = profilesData?.map(profile => {
+      // Get user trials
+      const { data: trialsData, error: trialsError } = await supabase
+        .from('user_trials')
+        .select('user_id, is_active, expires_at, trial_type, created_at')
+        .eq('is_active', true);
+
+      if (trialsError) throw trialsError;
+
+      // Get user points
+      const { data: pointsData, error: pointsError } = await supabase
+        .from('user_points')
+        .select('user_id, total_points, current_level, level_name');
+
+      if (pointsError) throw pointsError;
+
+      // Sammle alle Benutzer-IDs für Bulk-Abfragen
+      const userIds = profilesData?.map(p => p.user_id) || [];
+
+      // Parallel Abfragen für Aktivitätsstatistiken
+      const [mealsCount, workoutsCount, weightCount, sleepCount, measurementsCount] = await Promise.all([
+        // Meals Count + Latest
+        supabase
+          .from('meals')
+          .select('user_id, created_at')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Workouts Count + Latest  
+        supabase
+          .from('workouts')
+          .select('user_id, created_at, date')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Weight entries count + Latest
+        supabase
+          .from('weight_history')
+          .select('user_id, created_at, date')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Sleep entries count + Latest
+        supabase
+          .from('sleep_tracking')
+          .select('user_id, created_at, date')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Body measurements count
+        supabase
+          .from('body_measurements')
+          .select('user_id, created_at')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false })
+      ]);
+
+      // Verarbeite Statistiken
+      const getUserStats = (userId: string) => {
+        const userMeals = mealsCount.data?.filter(m => m.user_id === userId) || [];
+        const userWorkouts = workoutsCount.data?.filter(w => w.user_id === userId) || [];
+        const userWeights = weightCount.data?.filter(w => w.user_id === userId) || [];
+        const userSleep = sleepCount.data?.filter(s => s.user_id === userId) || [];
+        const userMeasurements = measurementsCount.data?.filter(m => m.user_id === userId) || [];
+
+        return {
+          meals_count: userMeals.length,
+          workouts_count: userWorkouts.length,
+          weight_entries_count: userWeights.length,
+          sleep_entries_count: userSleep.length,
+          body_measurements_count: userMeasurements.length,
+          last_meal_date: userMeals[0]?.created_at || null,
+          last_workout_date: userWorkouts[0]?.created_at || null,
+          last_weight_date: userWeights[0]?.created_at || null,
+          // Approximate last login from most recent activity
+          last_login_approximate: [
+            ...userMeals.map(m => m.created_at),
+            ...userWorkouts.map(w => w.created_at),
+            ...userWeights.map(w => w.created_at),
+            ...userSleep.map(s => s.created_at)
+          ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
+        };
+      };
+
+      const formattedUsers: User[] = profilesData?.map(profile => {
         const subscriber = subscribersData?.find(s => s.user_id === profile.user_id);
+        const trial = trialsData?.find(t => t.user_id === profile.user_id);
+        const points = pointsData?.find(p => p.user_id === profile.user_id);
+        const stats = getUserStats(profile.user_id);
+
         return {
           user_id: profile.user_id,
           display_name: profile.display_name,
@@ -86,7 +192,26 @@ export const useAdminDebug = () => {
           subscription_tier: subscriber?.subscription_tier || null,
           subscription_end: subscriber?.subscription_end || null,
           profile_created: profile.created_at,
-          subscription_created: subscriber?.created_at || null
+          subscription_created: subscriber?.created_at || null,
+          // Aktivitätsstatistiken
+          meals_count: stats.meals_count,
+          workouts_count: stats.workouts_count,
+          weight_entries_count: stats.weight_entries_count,
+          sleep_entries_count: stats.sleep_entries_count,
+          body_measurements_count: stats.body_measurements_count,
+          // Punkte & Level
+          total_points: points?.total_points || 0,
+          current_level: points?.current_level || 1,
+          level_name: points?.level_name || 'Rookie',
+          // Trial Info
+          has_active_trial: !!trial?.is_active,
+          trial_expires_at: trial?.expires_at || null,
+          trial_type: trial?.trial_type || null,
+          // Letzte Aktivität
+          last_meal_date: stats.last_meal_date,
+          last_workout_date: stats.last_workout_date,
+          last_weight_date: stats.last_weight_date,
+          last_login_approximate: stats.last_login_approximate
         };
       }) || [];
 

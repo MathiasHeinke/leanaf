@@ -31,7 +31,15 @@ import {
   Zap,
   Check,
   ChevronsUpDown,
-  Building2
+  Building2,
+  Target,
+  Utensils,
+  Dumbbell,
+  Scale,
+  Moon,
+  Ruler,
+  TrendingUp,
+  LogIn
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -272,70 +280,157 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
                                 {status.status}
                               </Badge>
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              <div>Email: {userData.email || 'Nicht gesetzt'}</div>
-                              <div>ID: {userData.user_id}</div>
-                              {userData.subscription_end && (
-                                <div>Endet: {formatDate(userData.subscription_end)}</div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-center gap-2">
-                            <Select
-                              value={selectedDuration}
-                              onValueChange={setSelectedDuration}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1week">1 Woche</SelectItem>
-                                <SelectItem value="1month">1 Monat</SelectItem>
-                                <SelectItem value="3months">3 Monate</SelectItem>
-                                <SelectItem value="6months">6 Monate</SelectItem>
-                                <SelectItem value="12months">12 Monate</SelectItem>
-                                <SelectItem value="permanent">Permanent</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              onClick={() => adminDebug.grantPremium(selectedUser, selectedDuration)}
-                              size="sm"
-                              variant="default"
-                            >
-                              <Crown className="h-4 w-4 mr-2" />
-                              Premium
-                            </Button>
-                            <Button
-                              onClick={() => grantEnterprise(selectedUser, selectedDuration)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              <Building2 className="h-4 w-4 mr-2" />
-                              Enterprise
-                            </Button>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => adminDebug.revokePremium(selectedUser)}
-                              size="sm"
-                              variant="destructive"
-                            >
-                              <UserX className="h-4 w-4 mr-2" />
-                              Widerrufen
-                            </Button>
-                            <Button
-                              onClick={() => adminDebug.switchToUser(selectedUser)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              <Users className="h-4 w-4 mr-2" />
-                              Wechseln
-                            </Button>
-                          </div>
-                        </div>
+                             <div className="text-sm text-muted-foreground">
+                               <div>Email: {userData.email || 'Nicht gesetzt'}</div>
+                               <div>ID: {userData.user_id}</div>
+                               {userData.subscription_end && (
+                                 <div>Endet: {formatDate(userData.subscription_end)}</div>
+                               )}
+                             </div>
+                           </div>
+                         </div>
+
+                         {/* Benutzerstatistiken */}
+                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
+                           <div className="text-center">
+                             <div className="flex items-center justify-center gap-1 mb-1">
+                               <TrendingUp className="h-4 w-4 text-primary" />
+                               <span className="text-sm font-medium">Punkte</span>
+                             </div>
+                             <div className="text-lg font-bold">{userData.total_points}</div>
+                             <div className="text-xs text-muted-foreground">
+                               Level {userData.current_level} ({userData.level_name})
+                             </div>
+                           </div>
+                           <div className="text-center">
+                             <div className="flex items-center justify-center gap-1 mb-1">
+                               <Utensils className="h-4 w-4 text-green-600" />
+                               <span className="text-sm font-medium">Mahlzeiten</span>
+                             </div>
+                             <div className="text-lg font-bold">{userData.meals_count}</div>
+                             <div className="text-xs text-muted-foreground">
+                               {userData.last_meal_date ? `Zuletzt: ${format(new Date(userData.last_meal_date), 'dd.MM.yy')}` : 'Keine'}
+                             </div>
+                           </div>
+                           <div className="text-center">
+                             <div className="flex items-center justify-center gap-1 mb-1">
+                               <Dumbbell className="h-4 w-4 text-blue-600" />
+                               <span className="text-sm font-medium">Workouts</span>
+                             </div>
+                             <div className="text-lg font-bold">{userData.workouts_count}</div>
+                             <div className="text-xs text-muted-foreground">
+                               {userData.last_workout_date ? `Zuletzt: ${format(new Date(userData.last_workout_date), 'dd.MM.yy')}` : 'Keine'}
+                             </div>
+                           </div>
+                           <div className="text-center">
+                             <div className="flex items-center justify-center gap-1 mb-1">
+                               <Scale className="h-4 w-4 text-purple-600" />
+                               <span className="text-sm font-medium">Gewicht</span>
+                             </div>
+                             <div className="text-lg font-bold">{userData.weight_entries_count}</div>
+                             <div className="text-xs text-muted-foreground">
+                               {userData.last_weight_date ? `Zuletzt: ${format(new Date(userData.last_weight_date), 'dd.MM.yy')}` : 'Keine'}
+                             </div>
+                           </div>
+                         </div>
+
+                         {/* Weitere Statistiken */}
+                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                           <div className="flex items-center gap-2 p-3 border rounded-lg">
+                             <Moon className="h-4 w-4 text-indigo-600" />
+                             <div>
+                               <div className="font-medium text-sm">Schlaf</div>
+                               <div className="text-xs text-muted-foreground">{userData.sleep_entries_count} Einträge</div>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-2 p-3 border rounded-lg">
+                             <Ruler className="h-4 w-4 text-orange-600" />
+                             <div>
+                               <div className="font-medium text-sm">Messungen</div>
+                               <div className="text-xs text-muted-foreground">{userData.body_measurements_count} Einträge</div>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-2 p-3 border rounded-lg">
+                             <LogIn className="h-4 w-4 text-gray-600" />
+                             <div>
+                               <div className="font-medium text-sm">Letzte Aktivität</div>
+                               <div className="text-xs text-muted-foreground">
+                                 {userData.last_login_approximate ? format(new Date(userData.last_login_approximate), 'dd.MM.yy HH:mm') : 'Nie'}
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+
+                         {/* Trial Status falls vorhanden */}
+                         {userData.has_active_trial && (
+                           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                             <div className="flex items-center gap-2 mb-1">
+                               <Clock className="h-4 w-4 text-blue-600" />
+                               <span className="font-medium text-blue-900">Aktiver Trial</span>
+                               <Badge variant="outline" className="text-blue-700">
+                                 {userData.trial_type || 'Premium'}
+                               </Badge>
+                             </div>
+                             <div className="text-sm text-blue-700">
+                               {userData.trial_expires_at ? `Läuft ab: ${formatDate(userData.trial_expires_at)}` : 'Kein Ablaufdatum'}
+                             </div>
+                           </div>
+                         )}
+                         
+                         <div className="flex flex-col gap-3">
+                           <div className="flex items-center gap-2">
+                             <Select
+                               value={selectedDuration}
+                               onValueChange={setSelectedDuration}
+                             >
+                               <SelectTrigger className="w-32">
+                                 <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="1week">1 Woche</SelectItem>
+                                 <SelectItem value="1month">1 Monat</SelectItem>
+                                 <SelectItem value="3months">3 Monate</SelectItem>
+                                 <SelectItem value="6months">6 Monate</SelectItem>
+                                 <SelectItem value="12months">12 Monate</SelectItem>
+                                 <SelectItem value="permanent">Permanent</SelectItem>
+                               </SelectContent>
+                             </Select>
+                             <Button
+                               onClick={() => adminDebug.grantPremium(selectedUser, selectedDuration)}
+                               size="sm"
+                               variant="default"
+                             >
+                               <Crown className="h-4 w-4 mr-2" />
+                               Premium
+                             </Button>
+                             <Button
+                               onClick={() => grantEnterprise(selectedUser, selectedDuration)}
+                               size="sm"
+                               variant="outline"
+                             >
+                               <Building2 className="h-4 w-4 mr-2" />
+                               Enterprise
+                             </Button>
+                           </div>
+                           <div className="flex gap-2">
+                             <Button
+                               onClick={() => adminDebug.revokePremium(selectedUser)}
+                               size="sm"
+                               variant="destructive"
+                             >
+                               <UserX className="h-4 w-4 mr-2" />
+                               Widerrufen
+                             </Button>
+                             <Button
+                               onClick={() => adminDebug.switchToUser(selectedUser)}
+                               size="sm"
+                               variant="outline"
+                             >
+                               <Users className="h-4 w-4 mr-2" />
+                               Wechseln
+                             </Button>
+                           </div>
+                         </div>
                       </div>
                     );
                   })()}
@@ -357,35 +452,71 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
                     {adminDebug.users.map((user) => {
                       const status = getSubscriptionStatus(user);
                       return (
-                        <div key={user.user_id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(user.subscribed)}
-                                <span className="font-medium">
-                                  {user.display_name || 'Unbekannt'}
-                                </span>
-                                <Badge variant={status.color as any}>
-                                  {status.status}
-                                </Badge>
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                <div>Email: {user.email || 'Nicht gesetzt'}</div>
-                                <div>ID: {user.user_id}</div>
-                                {user.subscription_end && (
-                                  <div>Endet: {formatDate(user.subscription_end)}</div>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              onClick={() => handleUserSelect(user.user_id)}
-                              size="sm"
-                              variant="outline"
-                            >
-                              Auswählen
-                            </Button>
-                          </div>
-                        </div>
+                         <div key={user.user_id} className="border rounded-lg p-4">
+                           <div className="flex justify-between items-start">
+                             <div className="space-y-3 flex-1">
+                               <div className="flex items-center gap-2">
+                                 {getStatusIcon(user.subscribed)}
+                                 <span className="font-medium">
+                                   {user.display_name || 'Unbekannt'}
+                                 </span>
+                                 <Badge variant={status.color as any}>
+                                   {status.status}
+                                 </Badge>
+                                 {user.has_active_trial && (
+                                   <Badge variant="outline" className="text-blue-600">
+                                     Trial
+                                   </Badge>
+                                 )}
+                               </div>
+                               
+                               <div className="text-sm text-muted-foreground">
+                                 <div>Email: {user.email || 'Nicht gesetzt'}</div>
+                                 <div>ID: {user.user_id.slice(0, 8)}...</div>
+                                 {user.subscription_end && (
+                                   <div>Endet: {formatDate(user.subscription_end)}</div>
+                                 )}
+                               </div>
+
+                               {/* Kompakte Statistiken */}
+                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                                 <div className="flex items-center gap-1">
+                                   <TrendingUp className="h-3 w-3 text-primary" />
+                                   <span>{user.total_points} P. (L{user.current_level})</span>
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                   <Utensils className="h-3 w-3 text-green-600" />
+                                   <span>{user.meals_count} Mahlz.</span>
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                   <Dumbbell className="h-3 w-3 text-blue-600" />
+                                   <span>{user.workouts_count} Work.</span>
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                   <Scale className="h-3 w-3 text-purple-600" />
+                                   <span>{user.weight_entries_count} Gew.</span>
+                                 </div>
+                               </div>
+
+                               {/* Letzte Aktivität */}
+                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                 <LogIn className="h-3 w-3" />
+                                 <span>
+                                   Letzte Aktivität: {user.last_login_approximate 
+                                     ? format(new Date(user.last_login_approximate), 'dd.MM.yy HH:mm') 
+                                     : 'Nie'}
+                                 </span>
+                               </div>
+                             </div>
+                             <Button
+                               onClick={() => handleUserSelect(user.user_id)}
+                               size="sm"
+                               variant="outline"
+                             >
+                               Auswählen
+                             </Button>
+                           </div>
+                         </div>
                       );
                     })}
                   </div>
