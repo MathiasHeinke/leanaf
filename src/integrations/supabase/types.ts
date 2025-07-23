@@ -889,6 +889,14 @@ export type Database = {
         }
         Returns: Json
       }
+      is_enterprise_or_super_admin: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
+      is_super_admin: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
       update_user_points_and_level: {
         Args:
           | {
