@@ -25,6 +25,9 @@ interface SubscriptionContextType {
   debugTier: string | null;
   setDebugTier: (tier: string) => void;
   clearDebugMode: () => void;
+  // New debug functions for Edge Functions
+  createDebugSubscription: () => Promise<void>;
+  clearDebugSubscription: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -218,7 +221,76 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     setDebugMode(false);
     setDebugTierState(null);
   };
-  
+
+  // NEW: Create debug subscription entry for Edge Functions
+  const createDebugSubscription = async () => {
+    if (!user || !debugTier) return;
+
+    try {
+      console.log(`[Subscription Debug] Creating debug subscription entry for tier: ${debugTier}`);
+      
+      const isPremiumTier = ['basic', 'premium', 'enterprise'].includes(debugTier.toLowerCase());
+      
+      // Insert or update debug subscription entry
+      const { error } = await supabase
+        .from('subscribers')
+        .upsert({
+          user_id: user.id,
+          email: user.email || '',
+          subscribed: isPremiumTier,
+          subscription_tier: isPremiumTier ? debugTier : null,
+          subscription_end: isPremiumTier ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        console.error('Error creating debug subscription:', error);
+      } else {
+        console.log('[Subscription Debug] Debug subscription created successfully');
+      }
+    } catch (error) {
+      console.error('Error in createDebugSubscription:', error);
+    }
+  };
+
+  // NEW: Clear debug subscription entry
+  const clearDebugSubscription = async () => {
+    if (!user) return;
+
+    try {
+      console.log('[Subscription Debug] Clearing debug subscription entry');
+      
+      // Reset subscription to free tier
+      const { error } = await supabase
+        .from('subscribers')
+        .upsert({
+          user_id: user.id,
+          email: user.email || '',
+          subscribed: false,
+          subscription_tier: null,
+          subscription_end: null,
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        console.error('Error clearing debug subscription:', error);
+      } else {
+        console.log('[Subscription Debug] Debug subscription cleared successfully');
+      }
+    } catch (error) {
+      console.error('Error in clearDebugSubscription:', error);
+    }
+  };
+
+  // Auto-create debug subscription when debug tier changes
+  useEffect(() => {
+    if (isInDebugMode() && user) {
+      createDebugSubscription();
+    }
+  }, [debugTier, user]);
+
   // Clear debug mode on logout
   useEffect(() => {
     if (!user) {
@@ -261,6 +333,9 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     debugTier,
     setDebugTier,
     clearDebugMode,
+    // New debug functions
+    createDebugSubscription,
+    clearDebugSubscription,
   };
 
   return (

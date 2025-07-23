@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -308,10 +307,34 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
       });
 
       if (error) {
-        // Handle rate limit and other errors with personalized coach messages
-        const errorMessage = handleError({ 
-          status: error.message?.includes('429') || error.message?.includes('limit') ? 429 : 500,
-          message: error.message 
+        console.error('Coach chat error:', error);
+        
+        // Enhanced error handling with better detection
+        let errorMessage = '';
+        let isRateLimit = false;
+        
+        // Check for rate limit indicators
+        if (error.message?.includes('429') || 
+            error.message?.includes('limit') || 
+            error.message?.includes('Tägliches Limit') ||
+            error.message?.includes('USAGE_LIMIT_EXCEEDED')) {
+          isRateLimit = true;
+          errorMessage = handleError({ status: 429, message: error.message });
+        } else {
+          // Generic error handling
+          errorMessage = handleError({ 
+            status: 500, 
+            message: error.message 
+          });
+        }
+        
+        // Log the error for debugging
+        console.log('[CoachChat] Error details:', {
+          error: error.message,
+          isRateLimit,
+          currentPersonality: currentCoachPersonality,
+          userId: user.id,
+          timestamp: new Date().toISOString()
         });
         
         // Save coach's error message to chat

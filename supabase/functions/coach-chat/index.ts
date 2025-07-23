@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
@@ -29,32 +28,65 @@ serve(async (req) => {
 
     console.log('Processing enhanced coach chat for user:', userId);
 
-    // Check if user has active subscription
+    // Check if user has active subscription with improved logging
     let userTier = 'free';
-    const { data: subscriber } = await supabase
+    let subscriptionDetails = null;
+    
+    const { data: subscriber, error: subError } = await supabase
       .from('subscribers')
-      .select('subscribed, subscription_tier')
+      .select('subscribed, subscription_tier, subscription_end')
       .eq('user_id', userId)
       .single();
-      
+    
+    if (subError && subError.code !== 'PGRST116') {
+      console.error('Error checking subscription:', subError);
+    }
+    
+    subscriptionDetails = subscriber;
+    
     if (subscriber?.subscribed) {
       userTier = 'pro';
+      console.log(`✅ [COACH-CHAT] User ${userId} has active subscription:`, {
+        tier: subscriber.subscription_tier,
+        subscribed: subscriber.subscribed,
+        expires: subscriber.subscription_end
+      });
+    } else {
+      console.log(`ℹ️ [COACH-CHAT] User ${userId} on free tier:`, {
+        subscribed: subscriber?.subscribed || false,
+        tier: subscriber?.subscription_tier || 'none'
+      });
     }
     
     // For free users, check usage limits
     if (userTier === 'free') {
-      const { data: usageResult } = await supabase.rpc('check_ai_usage_limit', {
+      const { data: usageResult, error: usageError } = await supabase.rpc('check_ai_usage_limit', {
         p_user_id: userId,
         p_feature_type: 'coach_chat'
       });
       
-      if (!usageResult?.can_use) {
-        console.log('⛔ [COACH-CHAT] Usage limit exceeded for user:', userId);
+      if (usageError) {
+        console.error('Error checking usage limit:', usageError);
+        // Don't fail completely, just log the error
+      }
+      
+      if (usageResult && !usageResult.can_use) {
+        console.log('⛔ [COACH-CHAT] Usage limit exceeded for user:', userId, {
+          dailyCount: usageResult.daily_count,
+          dailyLimit: usageResult.daily_limit,
+          dailyRemaining: usageResult.daily_remaining
+        });
+        
         return new Response(JSON.stringify({ 
           error: 'Tägliches Limit für Coach-Chat erreicht. Upgrade zu Pro für unbegrenzte Nutzung.',
           code: 'USAGE_LIMIT_EXCEEDED',
           daily_remaining: usageResult?.daily_remaining || 0,
-          monthly_remaining: usageResult?.monthly_remaining || 0
+          monthly_remaining: usageResult?.monthly_remaining || 0,
+          subscription_status: {
+            tier: userTier,
+            subscribed: subscriber?.subscribed || false,
+            details: subscriptionDetails
+          }
         }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -218,6 +250,12 @@ Der Benutzer hat ${images.length} Bild(er) gesendet. Analysiere diese Bilder im 
 
 Du hilfst ${firstName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
 
+SUBSCRIPTION STATUS (für interne Referenz):
+- Tier: ${userTier}
+- Subscribed: ${subscriber?.subscribed || false}
+- Subscription Tier: ${subscriber?.subscription_tier || 'none'}
+- Expires: ${subscriber?.subscription_end || 'none'}
+
 ZEITKONTEXT & TAGESZEIT:
 - Aktuelle Uhrzeit: ${currentTime} (${timeOfDay})
 - Der Tag ist noch nicht vorbei - berücksichtige verbleibende Zeit für weitere Mahlzeiten und Aktivitäten
@@ -378,7 +416,12 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         hasSleepData: recentSleep?.length > 0,
         hasWeightData: weightHistory.length > 0,
         hasImages: images.length > 0,
-        firstName
+        firstName,
+        subscriptionStatus: {
+          tier: userTier,
+          subscribed: subscriber?.subscribed || false,
+          details: subscriptionDetails
+        }
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -386,11 +429,20 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
   } catch (error: any) {
     console.error('Error in enhanced coach-chat function:', error);
-    return new Response(JSON.stringify({ 
+    
+    // Enhanced error response with more context
+    const errorResponse = {
       error: error.message || 'Internal server error',
       response: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.',
-      reply: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.'
-    }), {
+      reply: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.',
+      timestamp: new Date().toISOString(),
+      context: {
+        errorType: error.constructor.name,
+        userId: req.headers.get('x-user-id') || 'unknown'
+      }
+    };
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

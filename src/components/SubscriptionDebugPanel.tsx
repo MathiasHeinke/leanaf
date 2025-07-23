@@ -1,8 +1,12 @@
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSubscription } from "@/hooks/useSubscription";
-import { Crown, Shield, Sparkles, X, User, AlertTriangle } from "lucide-react";
+import { Crown, Shield, Sparkles, X, User, AlertTriangle, Database, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SubscriptionDebugPanelProps {
   isOpen: boolean;
@@ -19,8 +23,39 @@ export const SubscriptionDebugPanel = ({ isOpen, onClose }: SubscriptionDebugPan
     isInDebugMode,
     debugTier,
     setDebugTier,
-    clearDebugMode 
+    clearDebugMode,
+    clearDebugSubscription
   } = useSubscription();
+
+  const { user } = useAuth();
+  const [realDbStatus, setRealDbStatus] = useState<any>(null);
+
+  // Check real database status
+  useEffect(() => {
+    const checkRealStatus = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('subscribers')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking real subscription:', error);
+        }
+        
+        setRealDbStatus(data);
+      } catch (error) {
+        console.error('Error in checkRealStatus:', error);
+      }
+    };
+
+    if (isOpen) {
+      checkRealStatus();
+    }
+  }, [user, isOpen, debugTier]);
 
   if (!isOpen) return null;
 
@@ -61,8 +96,13 @@ export const SubscriptionDebugPanel = ({ isOpen, onClose }: SubscriptionDebugPan
     { id: 'enterprise', name: 'Enterprise', description: 'All features unlocked' }
   ];
 
+  const handleClearDebugMode = async () => {
+    await clearDebugSubscription();
+    clearDebugMode();
+  };
+
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm">
+    <div className="fixed top-4 right-4 z-50 max-w-md">
       <Card className="p-4 bg-card/95 backdrop-blur border shadow-lg">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm">Subscription Debug</h3>
@@ -85,26 +125,80 @@ export const SubscriptionDebugPanel = ({ isOpen, onClose }: SubscriptionDebugPan
             </div>
           )}
           
-          {/* Current Status */}
-          <div className="flex items-center justify-between">
-            <span>Display Status:</span>
-            <div className="flex items-center gap-1">
-              {getTierIcon(getCurrentDisplayTier())}
-              <Badge className={getTierColor(getCurrentDisplayTier())}>
-                {getCurrentDisplayTier().toUpperCase()}
-              </Badge>
+          {/* Frontend Status */}
+          <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 mb-2">
+              <User className="h-3 w-3" />
+              <span className="font-semibold">Frontend Status</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span>Display Tier:</span>
+                <div className="flex items-center gap-1">
+                  {getTierIcon(getCurrentDisplayTier())}
+                  <Badge className={getTierColor(getCurrentDisplayTier())}>
+                    {getCurrentDisplayTier().toUpperCase()}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Premium Access:</span>
+                <Badge variant={getCurrentIsPremium() ? "default" : "secondary"}>
+                  {getCurrentIsPremium() ? 'YES' : 'NO'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Database Status */}
+          <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
+            <div className="flex items-center gap-1 text-green-600 dark:text-green-400 mb-2">
+              <Database className="h-3 w-3" />
+              <span className="font-semibold">Database Status (Edge Functions)</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span>DB Subscribed:</span>
+                <Badge variant={realDbStatus?.subscribed ? "default" : "secondary"}>
+                  {realDbStatus?.subscribed ? 'YES' : 'NO'}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>DB Tier:</span>
+                <span className="capitalize">{realDbStatus?.subscription_tier || 'free'}</span>
+              </div>
+              {realDbStatus?.subscription_end && (
+                <div className="flex items-center justify-between">
+                  <span>DB Expires:</span>
+                  <span className="text-xs">{new Date(realDbStatus.subscription_end).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Edge Function Status */}
+          <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 mb-2">
+              <Zap className="h-3 w-3" />
+              <span className="font-semibold">Edge Function Behavior</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span>Will Use:</span>
+                <Badge variant={realDbStatus?.subscribed ? "default" : "secondary"}>
+                  {realDbStatus?.subscribed ? 'PRO LIMITS' : 'FREE LIMITS'}
+                </Badge>
+              </div>
+              <div className="text-xs text-purple-600/80 dark:text-purple-400/80">
+                {isInDebugMode() 
+                  ? 'Debug mode creates real DB entries for Edge Functions' 
+                  : 'Edge Functions use real database subscription status'
+                }
+              </div>
             </div>
           </div>
           
-          {/* Premium Status */}
-          <div className="flex items-center justify-between">
-            <span>Premium Access:</span>
-            <Badge variant={getCurrentIsPremium() ? "default" : "secondary"}>
-              {getCurrentIsPremium() ? 'YES' : 'NO'}
-            </Badge>
-          </div>
-          
-          {/* Real Subscription Info */}
+          {/* Real Subscription Info (only when not in debug mode) */}
           {!isInDebugMode() && (
             <>
               <div className="flex items-center justify-between">
@@ -153,7 +247,7 @@ export const SubscriptionDebugPanel = ({ isOpen, onClose }: SubscriptionDebugPan
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={clearDebugMode}
+              onClick={handleClearDebugMode}
               className="w-full text-xs"
             >
               Reset to Real Status
@@ -161,8 +255,17 @@ export const SubscriptionDebugPanel = ({ isOpen, onClose }: SubscriptionDebugPan
           )}
         </div>
         
-        {/* Keyboard Shortcut Info */}
+        {/* Warning */}
         <div className="mt-3 pt-2 border-t text-xs text-muted-foreground">
+          <div className="flex items-center gap-1 mb-1">
+            <AlertTriangle className="h-3 w-3" />
+            <span className="font-semibold">Important</span>
+          </div>
+          <div>Debug mode creates real database entries that affect Edge Functions. Use "Reset" to clear.</div>
+        </div>
+        
+        {/* Keyboard Shortcut Info */}
+        <div className="mt-2 text-xs text-muted-foreground">
           Shortcut: Ctrl+Shift+S
         </div>
       </Card>
