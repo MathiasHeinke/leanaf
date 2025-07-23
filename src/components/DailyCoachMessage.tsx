@@ -13,9 +13,11 @@ import { toast } from 'sonner';
 interface CoachMessage {
   id: string;
   coach_id: string;
-  last_shown_date: string;
-  message_count: number;
-  dismissed_today: boolean;
+  last_recommendation_sent: string;
+  recommendation_count: number;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const COACH_DATA = {
