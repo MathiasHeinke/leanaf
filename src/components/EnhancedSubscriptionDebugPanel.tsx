@@ -101,7 +101,7 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="status" className="flex flex-col flex-1 overflow-hidden">
+        <Tabs defaultValue="status" className="flex flex-col flex-1 min-h-0">
           <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
             <TabsTrigger value="status">Status</TabsTrigger>
             <TabsTrigger value="users">Benutzer</TabsTrigger>
@@ -111,9 +111,9 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
           </TabsList>
 
           {/* Status Tab */}
-          <TabsContent value="status" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="space-y-6 p-1">
+          <TabsContent value="status" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(90vh-8rem)]">
+              <div className="space-y-6 pr-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Frontend Status */}
                   <Card>
@@ -202,9 +202,9 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
           </TabsContent>
 
           {/* Users Tab */}
-          <TabsContent value="users" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="space-y-4 p-1">
+          <TabsContent value="users" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(90vh-8rem)]">
+              <div className="space-y-4 pr-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <Search className="h-4 w-4" />
@@ -491,9 +491,9 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
           </TabsContent>
 
           {/* Database Tab */}
-          <TabsContent value="database" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="space-y-4 p-1">
+          <TabsContent value="database" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(90vh-8rem)]">
+              <div className="space-y-4 pr-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -557,9 +557,9 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
           </TabsContent>
 
           {/* Logs Tab */}
-          <TabsContent value="logs" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="space-y-4 p-1">
+          <TabsContent value="logs" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(90vh-8rem)]">
+              <div className="space-y-4 pr-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-medium">Admin Aktionen</h3>
                   <Button onClick={adminDebug.fetchAdminLogs} variant="outline" size="sm">
@@ -605,9 +605,9 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
           </TabsContent>
 
           {/* Debug Tab */}
-          <TabsContent value="debug" className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="space-y-4 p-1">
+          <TabsContent value="debug" className="flex-1 min-h-0 mt-4">
+            <ScrollArea className="h-[calc(90vh-8rem)]">
+              <div className="space-y-4 pr-4">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
