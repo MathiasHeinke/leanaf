@@ -130,6 +130,13 @@ export const useAdminDebug = () => {
         return;
       }
 
+      console.log('Granting premium to user:', {
+        targetUserId,
+        email: profile.email,
+        duration,
+        tier
+      });
+
       // Calculate end date
       const calculateEndDate = (duration: string): Date | null => {
         if (duration === 'permanent') return null;
@@ -152,34 +159,60 @@ export const useAdminDebug = () => {
       const { data: existingSubscriber } = await supabase
         .from('subscribers')
         .select('*')
-        .eq('user_id', targetUserId)
-        .single();
+        .eq('email', profile.email)
+        .maybeSingle();
 
-      // Use UPSERT with email as conflict resolution
-      const { data, error } = await supabase
-        .from('subscribers')
-        .upsert({
-          user_id: targetUserId,
-          email: profile.email,
-          subscribed: true,
-          subscription_tier: tier,
-          subscription_end: endDate?.toISOString() || null,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'email'
-        });
+      let result;
+      
+      // Level 1: Try UPDATE first (if subscription exists)
+      if (existingSubscriber) {
+        console.log('Existing subscription found, attempting UPDATE...');
+        const { data: updateData, error: updateError } = await supabase
+          .from('subscribers')
+          .update({
+            user_id: targetUserId,
+            subscribed: true,
+            subscription_tier: tier,
+            subscription_end: endDate?.toISOString() || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('email', profile.email)
+          .select()
+          .single();
 
-      if (error) {
-        console.error('Error granting subscription:', error);
-        
-        // Handle specific error cases
-        if (error.code === '23505') {
-          toast.error(`Benutzer hat bereits ein Abonnement. Verwende UPSERT oder Update.`);
-        } else {
-          toast.error(`Datenbankfehler: ${error.message}`);
+        if (updateError) {
+          console.error('UPDATE failed:', updateError);
+          throw updateError;
         }
-        return;
+        
+        result = updateData;
+        console.log('UPDATE successful:', result);
+      } else {
+        // Level 2: Try INSERT (if no existing subscription)
+        console.log('No existing subscription found, attempting INSERT...');
+        const { data: insertData, error: insertError } = await supabase
+          .from('subscribers')
+          .insert({
+            user_id: targetUserId,
+            email: profile.email,
+            subscribed: true,
+            subscription_tier: tier,
+            subscription_end: endDate?.toISOString() || null,
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('INSERT failed:', insertError);
+          throw insertError;
+        }
+        
+        result = insertData;
+        console.log('INSERT successful:', result);
       }
+
+      console.log('Premium granted successfully:', result);
 
       // Log the action with detailed information
       await logAdminAction(
@@ -194,11 +227,7 @@ export const useAdminDebug = () => {
           userName: profile.display_name
         },
         existingSubscriber || {},
-        {
-          subscribed: true,
-          subscription_tier: tier,
-          subscription_end: endDate?.toISOString() || null
-        }
+        result
       );
 
       const action = existingSubscriber ? 'aktualisiert' : 'vergeben';
