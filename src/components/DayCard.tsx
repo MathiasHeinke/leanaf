@@ -126,18 +126,18 @@ export const DayCard: React.FC<DayCardProps> = ({ date, sessions, onEditSession 
                   <span>{stats.totalExercises} Übungen</span>
                   <span>•</span>
                   <span>{stats.totalWeight.toLocaleString()} kg</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   {stats.averageRPE > 0 && (
+                    <span>Ø RPE: {stats.averageRPE}</span>
+                  )}
+                  {stats.totalDuration > 0 && (
                     <>
-                      <span>•</span>
-                      <span>Ø RPE: {stats.averageRPE}</span>
+                      {stats.averageRPE > 0 && <span>•</span>}
+                      <span>{stats.totalDuration} Min</span>
                     </>
                   )}
                 </div>
-                {stats.totalDuration > 0 && (
-                  <div className="text-sm text-muted-foreground">
-                    {stats.totalDuration} Min
-                  </div>
-                )}
               </div>
             </div>
           </div>
