@@ -118,83 +118,100 @@ export const useAdminDebug = () => {
     if (!user?.id) return;
 
     try {
-      const durationMap: Record<string, string> = {
-        '1week': '7 days',
-        '1month': '1 month',
-        '3months': '3 months',
-        '6months': '6 months',
-        '12months': '12 months',
-        'permanent': '100 years'
+      // Get user profile to check email
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, display_name')
+        .eq('user_id', targetUserId)
+        .single();
+
+      if (profileError || !profile?.email) {
+        toast.error('Benutzer nicht gefunden oder keine E-Mail vorhanden');
+        return;
+      }
+
+      // Calculate end date
+      const calculateEndDate = (duration: string): Date | null => {
+        if (duration === 'permanent') return null;
+        
+        const durationMap: Record<string, number> = {
+          '1week': 7 * 24 * 60 * 60 * 1000,
+          '1month': 30 * 24 * 60 * 60 * 1000,
+          '3months': 90 * 24 * 60 * 60 * 1000,
+          '6months': 180 * 24 * 60 * 60 * 1000,
+          '12months': 365 * 24 * 60 * 60 * 1000
+        };
+        
+        const milliseconds = durationMap[duration] || durationMap['1month'];
+        return new Date(Date.now() + milliseconds);
       };
 
-      const interval = durationMap[duration] || '1 month';
+      const endDate = calculateEndDate(duration);
 
-      // Check if subscriber exists
+      // Check current subscription status
       const { data: existingSubscriber } = await supabase
         .from('subscribers')
         .select('*')
         .eq('user_id', targetUserId)
         .single();
 
-      const newValues = {
-        subscribed: true,
-        subscription_tier: tier,
-        subscription_end: duration === 'permanent' ? null : `now() + interval '${interval}'`
-      };
+      // Use UPSERT with email as conflict resolution
+      const { data, error } = await supabase
+        .from('subscribers')
+        .upsert({
+          user_id: targetUserId,
+          email: profile.email,
+          subscribed: true,
+          subscription_tier: tier,
+          subscription_end: endDate?.toISOString() || null,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'email'
+        });
 
-      let result;
-      if (existingSubscriber) {
-        result = await supabase
-          .from('subscribers')
-          .update({
-            subscribed: true,
-            subscription_tier: tier,
-            subscription_end: duration === 'permanent' ? null : new Date(Date.now() + (duration === '1week' ? 7 * 24 * 60 * 60 * 1000 : 
-              duration === '1month' ? 30 * 24 * 60 * 60 * 1000 :
-              duration === '3months' ? 90 * 24 * 60 * 60 * 1000 :
-              duration === '6months' ? 180 * 24 * 60 * 60 * 1000 :
-              duration === '12months' ? 365 * 24 * 60 * 60 * 1000 : 0)).toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', targetUserId);
-      } else {
-        // Get user email from profiles
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('user_id', targetUserId)
-          .single();
-
-        result = await supabase
-          .from('subscribers')
-          .insert({
-            user_id: targetUserId,
-            email: profile?.email || '',
-            subscribed: true,
-            subscription_tier: tier,
-            subscription_end: duration === 'permanent' ? null : new Date(Date.now() + (duration === '1week' ? 7 * 24 * 60 * 60 * 1000 : 
-              duration === '1month' ? 30 * 24 * 60 * 60 * 1000 :
-              duration === '3months' ? 90 * 24 * 60 * 60 * 1000 :
-              duration === '6months' ? 180 * 24 * 60 * 60 * 1000 :
-              duration === '12months' ? 365 * 24 * 60 * 60 * 1000 : 0)).toISOString()
-          });
+      if (error) {
+        console.error('Error granting subscription:', error);
+        
+        // Handle specific error cases
+        if (error.code === '23505') {
+          toast.error(`Benutzer hat bereits ein Abonnement. Verwende UPSERT oder Update.`);
+        } else {
+          toast.error(`Datenbankfehler: ${error.message}`);
+        }
+        return;
       }
 
-      if (result.error) throw result.error;
-
+      // Log the action with detailed information
       await logAdminAction(
         tier === 'Enterprise' ? 'GRANT_ENTERPRISE' : 'GRANT_PREMIUM',
         targetUserId,
-        { duration, tier, method: existingSubscriber ? 'update' : 'create' },
+        { 
+          duration, 
+          tier, 
+          endDate: endDate?.toISOString() || 'permanent',
+          method: existingSubscriber ? 'update' : 'create',
+          userEmail: profile.email,
+          userName: profile.display_name
+        },
         existingSubscriber || {},
-        newValues
+        {
+          subscribed: true,
+          subscription_tier: tier,
+          subscription_end: endDate?.toISOString() || null
+        }
       );
 
-      toast.success(`${tier} für ${duration} vergeben`);
+      const action = existingSubscriber ? 'aktualisiert' : 'vergeben';
+      toast.success(`${tier} für ${duration} ${action} (${profile.display_name || profile.email})`);
+      
       await fetchUsers();
-    } catch (error) {
+      await fetchAdminLogs();
+    } catch (error: any) {
       console.error('Error granting subscription:', error);
-      toast.error(`Fehler beim Vergeben von ${tier}`);
+      
+      // Provide detailed error information
+      const errorMessage = error?.message || 'Unbekannter Fehler';
+      toast.error(`Fehler beim Vergeben von ${tier}: ${errorMessage}`);
     }
   };
 
