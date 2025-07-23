@@ -121,21 +121,22 @@ export const DayCard: React.FC<DayCardProps> = ({ date, sessions, onEditSession 
                 <Dumbbell className="h-4 w-4 text-primary" />
                 {format(new Date(date), 'EEEE, d. MMMM yyyy', { locale: de })}
               </h3>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                <span>{stats.totalExercises} Übungen</span>
-                <span>•</span>
-                <span>{stats.totalWeight.toLocaleString()} kg</span>
-                {stats.averageRPE > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>Ø RPE: {stats.averageRPE}</span>
-                  </>
-                )}
+              <div className="space-y-1 mt-1">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <span>{stats.totalExercises} Übungen</span>
+                  <span>•</span>
+                  <span>{stats.totalWeight.toLocaleString()} kg</span>
+                  {stats.averageRPE > 0 && (
+                    <>
+                      <span>•</span>
+                      <span>Ø RPE: {stats.averageRPE}</span>
+                    </>
+                  )}
+                </div>
                 {stats.totalDuration > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>{stats.totalDuration} Min</span>
-                  </>
+                  <div className="text-sm text-muted-foreground">
+                    {stats.totalDuration} Min
+                  </div>
                 )}
               </div>
             </div>
