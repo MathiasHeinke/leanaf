@@ -188,8 +188,8 @@ export const GlobalHeader = ({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Refresh Button with Debug functionality - Only for Enterprise */}
-            {subscriptionTier === 'enterprise' && (
+            {/* Refresh Button with Debug functionality - Only for Enterprise (case-insensitive) */}
+            {subscriptionTier?.toLowerCase() === 'enterprise' && (
               <Button
                 variant="ghost"
                 size="sm"
