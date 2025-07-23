@@ -27,7 +27,7 @@ interface WorkoutEntry {
 interface WorkoutEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedDate: Date;
+  selectedDate: Date | null;
   existingWorkout: WorkoutEntry | null;
   onWorkoutSaved: () => Promise<void>;
 }
@@ -88,7 +88,7 @@ export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
   }, [existingWorkout, isOpen]);
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || !selectedDate) return;
 
     try {
       setIsLoading(true);
@@ -180,6 +180,11 @@ export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Don't render if selectedDate is null
+  if (!selectedDate) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
