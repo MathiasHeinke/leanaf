@@ -20,12 +20,16 @@ import {
   Paperclip,
   X,
   Clock,
-  Zap
+  Zap,
+  Dumbbell,
+  Activity,
+  BarChart3
 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { UploadProgress } from "@/components/UploadProgress";
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 import { toast } from "sonner";
@@ -72,6 +76,7 @@ export const ChatCoach = ({
   weightHistory 
 }: ChatCoachProps) => {
   const { user } = useAuth();
+  const { hasFeatureAccess } = useFeatureAccess();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isThinking, setIsThinking] = useState(false);
@@ -126,13 +131,13 @@ export const ChatCoach = ({
     }
   };
 
-  // Enhanced quick actions with time and calorie awareness
+  // Enhanced quick actions with time and calorie awareness + Training+ features
   const getQuickActions = () => {
     const now = new Date();
     const currentHour = now.getHours();
     const timeOfDay = currentHour < 12 ? 'Morgen' : currentHour < 18 ? 'Mittag' : 'Abend';
     
-    return [
+    const baseActions = [
       {
         icon: Target,
         text: `Fortschritt-Analyse (${timeOfDay})`,
@@ -149,6 +154,36 @@ export const ChatCoach = ({
         prompt: "Analysiere meine Trainingsfrequenz und -intensität dieser Woche. Wie oft habe ich trainiert, wie war die Qualität und was empfiehlst du mir für die kommenden Tage? Beachte dabei die optimale Trainingsfrequenz."
       }
     ];
+
+    // Add Training+ specific actions for premium users
+    if (hasFeatureAccess('advanced_exercise_tracking')) {
+      const trainingPlusActions = [
+        {
+          icon: Dumbbell,
+          text: "💪 Krafttraining-Progression",
+          prompt: "Analysiere meine detaillierte Krafttraining-Progression basierend auf meinen Exercise-Tracking Daten. Wie entwickeln sich meine Gewichte, Wiederholungen und mein Volumen? Welche Übungen sollte ich fokussieren und wo sehe ich Stagnation? Gib mir spezifische Empfehlungen für Progressive Overload."
+        },
+        {
+          icon: Activity,
+          text: "🎯 RPE & Belastungssteuerung",
+          prompt: "Bewerte meine RPE-Werte (Rate of Perceived Exertion) und die Belastungssteuerung meiner letzten Trainings. Bin ich zu hart oder zu weich trainiert? Wie kann ich meine Intensität optimal anpassen für bessere Ergebnisse und Regeneration?"
+        },
+        {
+          icon: BarChart3,
+          text: "📊 Volumen & Periodisierung",
+          prompt: "Analysiere mein Trainingsvolumen (Sätze × Wiederholungen × Gewicht) und gib mir Empfehlungen für die Periodisierung. Soll ich das Volumen erhöhen, reduzieren oder anders strukturieren? Wie kann ich Übertraining vermeiden und trotzdem Fortschritte machen?"
+        }
+      ];
+
+      // Insert Training+ actions after the first base action
+      return [
+        baseActions[0], // Fortschritt-Analyse
+        ...trainingPlusActions,
+        ...baseActions.slice(1) // Meal-Vorschläge und Trainings-Analyse
+      ];
+    }
+
+    return baseActions;
   };
 
   // Load user data and coach personality

@@ -134,6 +134,108 @@ serve(async (req) => {
 
     console.log('Found workouts:', recentWorkouts?.length || 0);
 
+    // Get detailed exercise data for Training+ users
+    let detailedExerciseData = null;
+    let hasTrainingPlusAccess = false;
+
+    // Check if user has Training+ access (premium subscription)
+    if (userTier === 'pro') {
+      hasTrainingPlusAccess = true;
+      
+      // Get recent exercise sessions with detailed data
+      const { data: exerciseSessions } = await supabase
+        .from('exercise_sessions')
+        .select(`
+          id, session_name, workout_type, date, start_time, end_time, notes,
+          exercise_sets (
+            id, set_number, weight_kg, reps, rpe, duration_seconds, distance_m, rest_seconds, notes,
+            exercises (
+              name, category, muscle_groups, difficulty_level, is_compound
+            )
+          )
+        `)
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      if (exerciseSessions && exerciseSessions.length > 0) {
+        // Calculate detailed metrics
+        const totalSessions = exerciseSessions.length;
+        const totalSets = exerciseSessions.reduce((sum, session) => 
+          sum + (session.exercise_sets?.length || 0), 0);
+        
+        // Calculate total volume (weight * reps)
+        const totalVolume = exerciseSessions.reduce((sessionSum, session) => 
+          sessionSum + (session.exercise_sets?.reduce((setSum, set) => 
+            setSum + ((set.weight_kg || 0) * (set.reps || 0)), 0) || 0), 0);
+        
+        // Get unique exercises
+        const uniqueExercises = new Set();
+        exerciseSessions.forEach(session => {
+          session.exercise_sets?.forEach(set => {
+            if (set.exercises?.name) uniqueExercises.add(set.exercises.name);
+          });
+        });
+
+        // Calculate average RPE
+        const rpeValues = exerciseSessions.flatMap(session => 
+          session.exercise_sets?.map(set => set.rpe).filter(rpe => rpe !== null) || []);
+        const avgRPE = rpeValues.length > 0 ? 
+          rpeValues.reduce((sum, rpe) => sum + rpe, 0) / rpeValues.length : 0;
+
+        // Get most trained exercises
+        const exerciseFrequency = new Map();
+        exerciseSessions.forEach(session => {
+          session.exercise_sets?.forEach(set => {
+            if (set.exercises?.name) {
+              const exercise = set.exercises.name;
+              exerciseFrequency.set(exercise, (exerciseFrequency.get(exercise) || 0) + 1);
+            }
+          });
+        });
+
+        const topExercises = Array.from(exerciseFrequency.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+
+        detailedExerciseData = {
+          totalSessions,
+          totalSets,
+          totalVolume,
+          uniqueExerciseCount: uniqueExercises.size,
+          avgRPE: Math.round(avgRPE * 10) / 10,
+          topExercises,
+          recentSessions: exerciseSessions.slice(0, 5).map(session => ({
+            date: session.date,
+            name: session.session_name || 'Training',
+            workoutType: session.workout_type,
+            duration: session.start_time && session.end_time ? 
+              Math.round((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 60000) : null,
+            exercises: session.exercise_sets?.reduce((acc, set) => {
+              const exerciseName = set.exercises?.name;
+              if (exerciseName && !acc.find(e => e.name === exerciseName)) {
+                acc.push({
+                  name: exerciseName,
+                  category: set.exercises?.category,
+                  sets: session.exercise_sets?.filter(s => s.exercises?.name === exerciseName).length || 0,
+                  maxWeight: Math.max(...(session.exercise_sets?.filter(s => s.exercises?.name === exerciseName).map(s => s.weight_kg || 0) || [0])),
+                  totalReps: session.exercise_sets?.filter(s => s.exercises?.name === exerciseName).reduce((sum, s) => sum + (s.reps || 0), 0) || 0
+                });
+              }
+              return acc;
+            }, [] as any[]) || []
+          }))
+        };
+
+        console.log('Training+ data loaded:', {
+          sessions: totalSessions,
+          sets: totalSets,
+          volume: totalVolume,
+          exercises: uniqueExercises.size
+        });
+      }
+    }
+
     // Get recent sleep data
     const { data: recentSleep } = await supabase
       .from('sleep_tracking')
@@ -321,6 +423,43 @@ ${recentSleep?.length ? recentSleep.slice(0, 3).map((s: any) => `- ${s.date}: ${
 ERNÄHRUNGSHISTORIE (letzte Tage):
 ${recentHistory.length > 0 ? recentHistory.slice(0, 3).map((day: any) => `- ${day.date}: ${day.totals.calories}kcal (${day.meals.length} Mahlzeiten)`).join('\n') : '- Noch keine Ernährungshistorie'}
 
+${hasTrainingPlusAccess && detailedExerciseData ? `
+🏋️ TRAINING+ DETAILANALYSE (PREMIUM FEATURE):
+📊 GESAMTSTATISTIKEN:
+- Trainingssessions (letzten 10): ${detailedExerciseData.totalSessions}
+- Gesamte Sätze: ${detailedExerciseData.totalSets}
+- Gesamtvolumen: ${Math.round(detailedExerciseData.totalVolume)}kg (Gewicht × Wiederholungen)
+- Einzigartige Übungen: ${detailedExerciseData.uniqueExerciseCount}
+- Durchschnittliche RPE: ${detailedExerciseData.avgRPE}/10 (Anstrengungsgrad)
+
+🔥 TOP ÜBUNGEN (nach Häufigkeit):
+${detailedExerciseData.topExercises.slice(0, 3).map(([exercise, count]: [string, number]) => `- ${exercise}: ${count} Sätze`).join('\n')}
+
+📅 LETZTE DETAILLIERTE TRAININGS:
+${detailedExerciseData.recentSessions.slice(0, 3).map((session: any) => `
+- ${session.date}: ${session.name} (${session.workoutType || 'Krafttraining'})${session.duration ? ` - ${session.duration}min` : ''}
+  Übungen: ${session.exercises.map((ex: any) => `${ex.name} (${ex.sets}×${ex.totalReps}, max ${ex.maxWeight}kg)`).join(', ') || 'Keine Details'}
+`).join('')}
+
+💡 TRAINING+ ANALYSE-FÄHIGKEITEN:
+Du kannst jetzt DETAILLIERTE Krafttraining-Analysen durchführen:
+- Progression pro Übung bewerten (Gewicht/Wiederholungen über Zeit)
+- RPE-basierte Belastungssteuerung empfehlen
+- Volumen-Tracking und Periodisierung vorschlagen
+- Spezifische Übungsauswahl basierend auf Trainingsdaten
+- 1RM Schätzungen und Kraftentwicklung analysieren
+- Muskelgruppen-Balance überprüfen
+- Regenerationsempfehlungen basierend auf Trainingsvolumen
+
+` : hasTrainingPlusAccess ? `
+🏋️ TRAINING+ VERFÜGBAR:
+${firstName} hat Zugang zu Training+ Features, aber noch keine detaillierten Trainingsdaten erfasst.
+EMPFEHLUNG: Motiviere zur Nutzung der erweiterten Exercise-Tracking Funktionen für präzisere Trainingsanalysen.
+` : `
+💪 BASIC TRAINING-MODUS:
+Nutze die Standard-Workout Daten. Für detaillierte Exercise-Analysen empfehle ein Upgrade zu Pro für Training+ Features.
+`}
+
 ${imageContext}
 
 WICHTIGE TRAININGS-RICHTLINIEN:
@@ -349,6 +488,44 @@ WICHTIGE ANWEISUNGEN:
 - Halte Antworten prägnant aber hilfreich (max. 2-3 Absätze)
 - Strukturiere deine Antworten mit Absätzen, Listen und Formatierung für bessere Lesbarkeit
 - Verwende Emojis sparsam aber passend zu deiner Persönlichkeit
+
+${hasTrainingPlusAccess ? `
+🏋️ TRAINING+ COACHING-FÄHIGKEITEN (NUR FÜR PREMIUM):
+Als Premium-Coach mit Training+ Zugang kannst du ERWEITERTE Krafttraining-Analysen durchführen:
+
+📊 PROGRESSION-ANALYSE:
+- Bewerte Kraftzuwächse pro Übung über Zeit
+- Identifiziere Plateaus und Stagnation
+- Empfehle Progressive Overload Strategien
+- Berechne geschätzte 1RM Werte aus RPE und Wiederholungen
+
+🎯 RPE-BASIERTE BERATUNG:
+- Analysiere Belastungssteuerung anhand RPE-Werte
+- Empfehle Intensitätsanpassungen
+- Warne vor Übertraining oder Untertraining
+- Optimiere Trainingsintensität für Ziele
+
+💪 VOLUMEN-OPTIMIERUNG:
+- Berechne und analysiere Trainingsvolumen
+- Empfehle Periodisierung und Volumenphasen
+- Balance zwischen Volumen und Regeneration
+- Muskelgruppen-spezifische Volumenempfehlungen
+
+🔄 PERIODISIERUNG:
+- Plane Trainingszyklen (Kraft, Hypertrophie, Deload)
+- Strukturiere Mikro- und Mesozyklus-Empfehlungen
+- Integriere Regenerationsphasen
+- Anpassung an Lebensstil und Ziele
+
+Nutze diese Daten AKTIV wenn der User nach Training, Krafttraining, Progression oder ähnlichem fragt!
+` : ''}
+
+COACHING-PRIORITÄTEN:
+1. Sicherheit und Gesundheit stehen immer an erster Stelle
+2. Realistische, umsetzbare Empfehlungen geben
+3. Positive Verstärkung und Motivation
+4. Datenbasierte, personalisierte Ratschläge
+5. ${hasTrainingPlusAccess ? 'Bei Krafttraining: Detailanalyse nutzen' : 'Bei Training: Upgrade zu Training+ empfehlen'}
 
 Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
@@ -421,6 +598,11 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
           tier: userTier,
           subscribed: subscriber?.subscribed || false,
           details: subscriptionDetails
+        },
+        trainingPlusAccess: {
+          hasAccess: hasTrainingPlusAccess,
+          hasData: detailedExerciseData !== null,
+          exerciseData: detailedExerciseData
         }
       }
     }), {

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 
 export const useGlobalCoachChat = () => {
   const [inputText, setInputText] = useState("");
@@ -10,6 +11,7 @@ export const useGlobalCoachChat = () => {
   const [chatHistory, setChatHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   
   const { user } = useAuth();
+  const { hasFeatureAccess } = useFeatureAccess();
   const voiceHook = useVoiceRecording();
   const isRecording = voiceHook?.isRecording || false;
   const isProcessing = voiceHook?.isProcessing || false;
