@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Plus, Minus, Save, Dumbbell } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { CustomExerciseManager } from './CustomExerciseManager';
 
 interface Exercise {
   id: string;
@@ -15,6 +17,7 @@ interface Exercise {
   category: string;
   muscle_groups: string[];
   is_compound: boolean;
+  created_by?: string;
 }
 
 interface ExerciseSet {
@@ -34,6 +37,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
   const { user } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
+  const [workoutType, setWorkoutType] = useState<string>('strength');
   const [sessionName, setSessionName] = useState('');
   const [sets, setSets] = useState<ExerciseSet[]>([
     { exercise_id: '', set_number: 1, weight_kg: null, reps: null, rpe: null, notes: '' }
@@ -62,6 +66,14 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
       setIsLoading(false);
     }
   };
+
+  const workoutTypes = [
+    { value: 'strength', label: 'Krafttraining' },
+    { value: 'cardio', label: 'Cardio' },
+    { value: 'stretching', label: 'Stretching' },
+    { value: 'functional', label: 'Functional Training' },
+    { value: 'custom', label: 'Sonstiges' }
+  ];
 
   const addSet = () => {
     const newSet: ExerciseSet = {
@@ -111,6 +123,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
         .insert({
           user_id: user.id,
           session_name: sessionName || 'Quick Training',
+          workout_type: workoutType,
           date: new Date().toISOString().split('T')[0],
           start_time: new Date().toISOString(),
           end_time: new Date().toISOString()
@@ -142,6 +155,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
       
       // Reset form
       setSelectedExercise('');
+      setWorkoutType('strength');
       setSessionName('');
       setSets([{ exercise_id: '', set_number: 1, weight_kg: null, reps: null, rpe: null, notes: '' }]);
       
@@ -157,6 +171,10 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
 
   const selectedExerciseData = exercises.find(ex => ex.id === selectedExercise);
 
+  // Group exercises by type
+  const systemExercises = exercises.filter(ex => !ex.created_by);
+  const customExercises = exercises.filter(ex => ex.created_by);
+
   return (
     <Card className="border-gradient-primary">
       <CardHeader>
@@ -166,7 +184,22 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="workoutType">Trainingstyp</Label>
+            <Select value={workoutType} onValueChange={setWorkoutType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Typ wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {workoutTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label htmlFor="sessionName">Trainingsname (optional)</Label>
             <Input
@@ -183,26 +216,46 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
                 <SelectValue placeholder="Übung wählen" />
               </SelectTrigger>
               <SelectContent>
-                {exercises.map((exercise) => (
-                  <SelectItem key={exercise.id} value={exercise.id}>
-                    {exercise.name} ({exercise.category})
-                  </SelectItem>
-                ))}
+                {systemExercises.length > 0 && (
+                  <>
+                    {systemExercises.map((exercise) => (
+                      <SelectItem key={exercise.id} value={exercise.id}>
+                        {exercise.name} ({exercise.category})
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {customExercises.length > 0 && (
+                  <>
+                    {systemExercises.length > 0 && <Separator className="my-1" />}
+                    {customExercises.map((exercise) => (
+                      <SelectItem key={exercise.id} value={exercise.id}>
+                        <span className="text-primary">★</span> {exercise.name} ({exercise.category})
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {selectedExerciseData && (
-          <div className="p-3 bg-secondary/20 rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              <strong>Muskelgruppen:</strong> {selectedExerciseData.muscle_groups.join(', ')}
-            </p>
-            {selectedExerciseData.is_compound && (
-              <p className="text-sm text-primary font-medium">✓ Grundübung</p>
-            )}
-          </div>
-        )}
+        <div className="flex justify-between items-center">
+          {selectedExerciseData && (
+            <div className="p-3 bg-secondary/20 rounded-lg flex-1 mr-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>Muskelgruppen:</strong> {selectedExerciseData.muscle_groups.join(', ')}
+              </p>
+              {selectedExerciseData.is_compound && (
+                <p className="text-sm text-primary font-medium">✓ Grundübung</p>
+              )}
+              {selectedExerciseData.created_by && (
+                <p className="text-sm text-primary font-medium">★ Eigene Übung</p>
+              )}
+            </div>
+          )}
+          <CustomExerciseManager onExerciseAdded={loadExercises} />
+        </div>
 
         {selectedExercise && (
           <div className="space-y-3">
