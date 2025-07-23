@@ -171,9 +171,13 @@ export const GlobalHeader = ({
         {/* Header - Restructured logo with icon on left */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            {/* Icon positioned further left */}
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center shadow-lg">
-              <Zap className="h-6 w-6 text-white" />
+            {/* GetleanAI Logo Icon */}
+            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-lg">
+              <img 
+                src="/lovable-uploads/216a2d4a-9390-4203-bb1d-cba4ff7d4cc6.png" 
+                alt="GetleanAI Logo" 
+                className="w-8 h-8 object-contain"
+              />
             </div>
             
             {/* Logo text with subtext */}

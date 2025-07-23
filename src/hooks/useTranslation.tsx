@@ -28,8 +28,8 @@ const translations = {
     'nav.logout': 'Abmelden',
     
     // Main App
-    'app.title': 'getleanAI',
-    'app.welcome': 'Willkommen bei getleanAI',
+    'app.title': 'GetleanAI',
+    'app.welcome': 'Willkommen bei GetleanAI',
     'app.dailyProgress': 'Täglicher Fortschritt',
     'app.calories': 'Kalorien',
     'app.protein': 'Protein',
@@ -42,7 +42,7 @@ const translations = {
     'app.mealAdded': 'Mahlzeit erfolgreich hinzugefügt!',
     'app.error': 'Fehler beim Hinzufügen der Mahlzeit',
     'app.refresh': 'Aktualisieren',
-    'app.letsGetLean': 'get lean as fcuk',
+    'app.letsGetLean': 'Dein intelligenter KI-Coach',
     'app.menu': 'Menü',
     
     // Input modes
@@ -253,7 +253,7 @@ const translations = {
     'coach.close': 'Schließen',
     'coach.recording': 'Aufnahme läuft...',
     'coach.processing': 'Verarbeitung...',
-    'coach.kaloaiCoach': 'getleanAI Coach',
+    'coach.kaloaiCoach': 'GetleanAI Coach',
     
     // Profile
     'profile.title': 'Profil',
@@ -524,8 +524,8 @@ const translations = {
     'nav.logout': 'Logout',
     
     // Main App
-    'app.title': 'getleanAI',
-    'app.welcome': 'Welcome to getleanAI',
+    'app.title': 'GetleanAI',
+    'app.welcome': 'Welcome to GetleanAI',
     'app.dailyProgress': 'Daily Progress',
     'app.calories': 'Calories',
     'app.protein': 'Protein',
@@ -538,7 +538,7 @@ const translations = {
     'app.mealAdded': 'Meal added successfully!',
     'app.error': 'Error adding meal',
     'app.refresh': 'Refresh',
-    'app.letsGetLean': 'get lean as fcuk',
+    'app.letsGetLean': 'Your intelligent AI Coach',
     'app.menu': 'Menu',
     
     // Input modes
@@ -749,7 +749,7 @@ const translations = {
     'coach.close': 'Close',
     'coach.recording': 'Recording...',
     'coach.processing': 'Processing...',
-    'coach.kaloaiCoach': 'getleanAI Coach',
+    'coach.kaloaiCoach': 'GetleanAI Coach',
     
     // Profile
     'profile.title': 'Profile',
