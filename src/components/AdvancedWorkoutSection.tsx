@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { ExerciseProgressCharts } from '@/components/ExerciseProgressCharts';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
+import { DayCard } from '@/components/DayCard';
+import { MonthCard } from '@/components/MonthCard';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Dumbbell, TrendingUp, Calendar, Target, Edit } from 'lucide-react';
-import { format } from 'date-fns';
+import { Dumbbell, TrendingUp, Calendar, Target, RotateCcw } from 'lucide-react';
+import { format, startOfMonth, subMonths, isThisMonth, isSameMonth } from 'date-fns';
 import { de } from 'date-fns/locale';
 
 interface ExerciseSession {
@@ -40,9 +42,20 @@ interface WeeklyStats {
   exercisesCount: number;
 }
 
+interface GroupedSessions {
+  currentWeek: Record<string, ExerciseSession[]>;
+  previousWeeks: Record<string, ExerciseSession[]>;
+  completeMonths: Record<string, Record<string, ExerciseSession[]>>;
+}
+
 export const AdvancedWorkoutSection: React.FC = () => {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
+  const [groupedSessions, setGroupedSessions] = useState<GroupedSessions>({
+    currentWeek: {},
+    previousWeeks: {},
+    completeMonths: {}
+  });
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
     totalSets: 0,
     totalVolume: 0,
@@ -52,6 +65,7 @@ export const AdvancedWorkoutSection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingSession, setEditingSession] = useState<ExerciseSession | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [allExpanded, setAllExpanded] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -65,9 +79,9 @@ export const AdvancedWorkoutSection: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Get sessions from the last 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // Get sessions from the last 90 days to have enough data for grouping
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       
       const { data, error } = await supabase
         .from('exercise_sessions')
@@ -92,18 +106,75 @@ export const AdvancedWorkoutSection: React.FC = () => {
           )
         `)
         .eq('user_id', user.id)
-        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        .gte('date', ninetyDaysAgo.toISOString().split('T')[0])
         .order('date', { ascending: false });
 
       if (error) throw error;
 
-      setSessions(data || []);
-      calculateWeeklyStats(data || []);
+      const sessionsData = data || [];
+      setSessions(sessionsData);
+      
+      // Calculate stats for the last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentSessions = sessionsData.filter(session => 
+        new Date(session.date) >= sevenDaysAgo
+      );
+      calculateWeeklyStats(recentSessions);
+      
+      // Group sessions by time periods
+      groupSessionsByTime(sessionsData);
     } catch (error) {
       console.error('Error loading sessions:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const groupSessionsByTime = (sessionsData: ExerciseSession[]) => {
+    const now = new Date();
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+    
+    const twoWeeksAgo = new Date(currentWeekStart);
+    twoWeeksAgo.setDate(currentWeekStart.getDate() - 14);
+
+    const grouped: GroupedSessions = {
+      currentWeek: {},
+      previousWeeks: {},
+      completeMonths: {}
+    };
+
+    sessionsData.forEach(session => {
+      const sessionDate = new Date(session.date);
+      const dateKey = session.date;
+      
+      if (sessionDate >= currentWeekStart) {
+        // Current week
+        if (!grouped.currentWeek[dateKey]) {
+          grouped.currentWeek[dateKey] = [];
+        }
+        grouped.currentWeek[dateKey].push(session);
+      } else if (sessionDate >= twoWeeksAgo) {
+        // Previous 2 weeks
+        if (!grouped.previousWeeks[dateKey]) {
+          grouped.previousWeeks[dateKey] = [];
+        }
+        grouped.previousWeeks[dateKey].push(session);
+      } else {
+        // Older data - group by months
+        const monthKey = format(sessionDate, 'yyyy-MM');
+        if (!grouped.completeMonths[monthKey]) {
+          grouped.completeMonths[monthKey] = {};
+        }
+        if (!grouped.completeMonths[monthKey][dateKey]) {
+          grouped.completeMonths[monthKey][dateKey] = [];
+        }
+        grouped.completeMonths[monthKey][dateKey].push(session);
+      }
+    });
+
+    setGroupedSessions(grouped);
   };
 
   const calculateWeeklyStats = (sessionsData: ExerciseSession[]) => {
@@ -205,7 +276,19 @@ export const AdvancedWorkoutSection: React.FC = () => {
         <TabsContent value="history" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Trainingshistorie</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Trainingshistorie</CardTitle>
+                {sessions.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllExpanded(!allExpanded)}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    {allExpanded ? 'Alle zuklappen' : 'Alle aufklappen'}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -217,69 +300,66 @@ export const AdvancedWorkoutSection: React.FC = () => {
                   Noch keine Trainings aufgezeichnet. Starte mit deinem ersten Training!
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {sessions.map((session) => (
-                    <Card key={session.id} className="border-l-4 border-l-primary">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h4 className="font-semibold">{session.session_name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(session.date), 'EEEE, d. MMMM yyyy', { locale: de })}
-                            </p>
-                            {session.start_time && session.end_time && (
-                              <p className="text-sm text-muted-foreground">
-                                Dauer: {formatDuration(session.start_time, session.end_time)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Badge variant="secondary">
-                              {session.exercise_sets.length} Sätze
-                            </Badge>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingSession(session);
-                                setIsEditModalOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          {Object.entries(
-                            session.exercise_sets.reduce((acc, set) => {
-                              const exerciseName = set.exercises.name;
-                              if (!acc[exerciseName]) {
-                                acc[exerciseName] = [];
-                              }
-                              acc[exerciseName].push(set);
-                              return acc;
-                            }, {} as Record<string, typeof session.exercise_sets[0][]>)
-                          ).map(([exerciseName, sets]) => (
-                            <div key={exerciseName} className="p-3 bg-secondary/20 rounded-lg">
-                              <h5 className="font-medium mb-2">{exerciseName}</h5>
-                              <div className="grid grid-cols-3 gap-2 text-sm">
-                                {sets.map((set, index) => (
-                                  <div key={set.id} className="text-center">
-                                    <span className="text-muted-foreground">Satz {set.set_number}: </span>
-                                    <span className="font-medium">
-                                      {set.weight_kg}kg × {set.reps}
-                                      {set.rpe && ` (RPE: ${set.rpe})`}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="space-y-6">
+                  {/* Current Week */}
+                  {Object.keys(groupedSessions.currentWeek).length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-semibold text-primary">Diese Woche</h3>
+                      {Object.keys(groupedSessions.currentWeek)
+                        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+                        .map(date => (
+                          <DayCard
+                            key={date}
+                            date={date}
+                            sessions={groupedSessions.currentWeek[date]}
+                            onEditSession={(session) => {
+                              setEditingSession(session);
+                              setIsEditModalOpen(true);
+                            }}
+                          />
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Previous Weeks */}
+                  {Object.keys(groupedSessions.previousWeeks).length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-semibold text-secondary">Letzte Wochen</h3>
+                      {Object.keys(groupedSessions.previousWeeks)
+                        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+                        .map(date => (
+                          <DayCard
+                            key={date}
+                            date={date}
+                            sessions={groupedSessions.previousWeeks[date]}
+                            onEditSession={(session) => {
+                              setEditingSession(session);
+                              setIsEditModalOpen(true);
+                            }}
+                          />
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Complete Months */}
+                  {Object.keys(groupedSessions.completeMonths).length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-semibold text-accent">Ältere Monate</h3>
+                      {Object.keys(groupedSessions.completeMonths)
+                        .sort((a, b) => b.localeCompare(a))
+                        .map(monthKey => (
+                          <MonthCard
+                            key={monthKey}
+                            month={monthKey}
+                            sessionsByDay={groupedSessions.completeMonths[monthKey]}
+                            onEditSession={(session) => {
+                              setEditingSession(session);
+                              setIsEditModalOpen(true);
+                            }}
+                          />
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
