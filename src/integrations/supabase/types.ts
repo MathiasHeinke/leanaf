@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_logs: {
+        Row: {
+          action_details: Json | null
+          action_type: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action_details?: Json | null
+          action_type: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action_details?: Json | null
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_usage_limits: {
         Row: {
           created_at: string
