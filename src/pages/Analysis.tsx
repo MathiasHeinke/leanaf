@@ -6,7 +6,7 @@ import { Brain, BarChart3, TrendingUp, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { InsightsAnalysis } from "@/components/InsightsAnalysis";
-import CoachChat from "@/components/CoachChat";
+import { CoachChat } from "@/components/CoachChat";
 import { PremiumGate } from "@/components/PremiumGate";
 import { HistoryCharts } from "@/components/HistoryCharts";
 import { WeightHistory } from "@/components/WeightHistory";
@@ -354,12 +354,10 @@ const Analysis = () => {
 
         <TabsContent value="coach">
           <PremiumGate 
-            title="Premium Coach"
-            description="Der persönliche KaloAI Coach ist ein Premium Feature. Upgrade für unbegrenzten Zugang zu deinem persönlichen Fitness- und Ernährungscoach!"
             feature="premium_insights"
             fallbackMessage="Der persönliche KaloAI Coach ist ein Premium Feature. Upgrade für unbegrenzten Zugang zu deinem persönlichen Fitness- und Ernährungscoach!"
           >
-            <CoachChat />
+            <CoachChat coachPersonality={coachPersonality} />
           </PremiumGate>
         </TabsContent>
       </Tabs>
