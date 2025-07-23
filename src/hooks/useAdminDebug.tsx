@@ -78,6 +78,7 @@ export const useAdminDebug = () => {
   };
 
   const fetchUsers = async () => {
+    console.log("🔍 [Admin Debug] Starting fetchUsers...");
     setLoading(true);
     try {
       // Get profiles
@@ -86,14 +87,22 @@ export const useAdminDebug = () => {
         .select('user_id, display_name, email, created_at')
         .order('display_name', { ascending: true });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error("❌ [Admin Debug] Profiles error:", profilesError);
+        throw profilesError;
+      }
+      console.log("✅ [Admin Debug] Profiles loaded:", profilesData?.length, "users");
 
       // Get subscribers
       const { data: subscribersData, error: subscribersError } = await supabase
         .from('subscribers')
         .select('user_id, subscribed, subscription_tier, subscription_end, created_at');
 
-      if (subscribersError) throw subscribersError;
+      if (subscribersError) {
+        console.error("❌ [Admin Debug] Subscribers error:", subscribersError);
+        throw subscribersError;
+      }
+      console.log("✅ [Admin Debug] Subscribers loaded:", subscribersData?.length, "entries");
 
       // Get user trials
       const { data: trialsData, error: trialsError } = await supabase
@@ -101,19 +110,29 @@ export const useAdminDebug = () => {
         .select('user_id, is_active, expires_at, trial_type, created_at')
         .eq('is_active', true);
 
-      if (trialsError) throw trialsError;
+      if (trialsError) {
+        console.error("❌ [Admin Debug] Trials error:", trialsError);
+        throw trialsError;
+      }
+      console.log("✅ [Admin Debug] Active trials loaded:", trialsData?.length, "entries");
 
       // Get user points
       const { data: pointsData, error: pointsError } = await supabase
         .from('user_points')
         .select('user_id, total_points, current_level, level_name');
 
-      if (pointsError) throw pointsError;
+      if (pointsError) {
+        console.error("❌ [Admin Debug] Points error:", pointsError);
+        throw pointsError;
+      }
+      console.log("✅ [Admin Debug] User points loaded:", pointsData?.length, "entries");
 
       // Sammle alle Benutzer-IDs für Bulk-Abfragen
       const userIds = profilesData?.map(p => p.user_id) || [];
+      console.log("📊 [Admin Debug] User IDs for bulk queries:", userIds.length);
 
       // Parallel Abfragen für Aktivitätsstatistiken
+      console.log("🔄 [Admin Debug] Starting parallel activity queries...");
       const [mealsCount, workoutsCount, weightCount, sleepCount, measurementsCount] = await Promise.all([
         // Meals Count + Latest
         supabase
@@ -151,6 +170,14 @@ export const useAdminDebug = () => {
           .order('created_at', { ascending: false })
       ]);
 
+      // Log the results of each query
+      console.log("📈 [Admin Debug] Activity queries results:");
+      console.log("  • Meals:", mealsCount.data?.length, "entries", mealsCount.error ? "ERROR:" + JSON.stringify(mealsCount.error) : "✅");
+      console.log("  • Workouts:", workoutsCount.data?.length, "entries", workoutsCount.error ? "ERROR:" + JSON.stringify(workoutsCount.error) : "✅");
+      console.log("  • Weight:", weightCount.data?.length, "entries", weightCount.error ? "ERROR:" + JSON.stringify(weightCount.error) : "✅");
+      console.log("  • Sleep:", sleepCount.data?.length, "entries", sleepCount.error ? "ERROR:" + JSON.stringify(sleepCount.error) : "✅");
+      console.log("  • Measurements:", measurementsCount.data?.length, "entries", measurementsCount.error ? "ERROR:" + JSON.stringify(measurementsCount.error) : "✅");
+
       // Verarbeite Statistiken
       const getUserStats = (userId: string) => {
         const userMeals = mealsCount.data?.filter(m => m.user_id === userId) || [];
@@ -158,6 +185,16 @@ export const useAdminDebug = () => {
         const userWeights = weightCount.data?.filter(w => w.user_id === userId) || [];
         const userSleep = sleepCount.data?.filter(s => s.user_id === userId) || [];
         const userMeasurements = measurementsCount.data?.filter(m => m.user_id === userId) || [];
+
+        // Debug für spezifischen User
+        if (userId === '84b0664f-0934-49ce-9c35-c99546b792bf') {
+          console.log("🔍 [Admin Debug] Stats for mi.brandl78 (84b0664f-0934-49ce-9c35-c99546b792bf):");
+          console.log("  • Raw meals data:", mealsCount.data?.filter(m => m.user_id === userId));
+          console.log("  • Filtered meals:", userMeals.length);
+          console.log("  • Filtered workouts:", userWorkouts.length);
+          console.log("  • Filtered weights:", userWeights.length);
+          console.log("  • Filtered sleep:", userSleep.length);
+        }
 
         return {
           meals_count: userMeals.length,
@@ -184,7 +221,7 @@ export const useAdminDebug = () => {
         const points = pointsData?.find(p => p.user_id === profile.user_id);
         const stats = getUserStats(profile.user_id);
 
-        return {
+        const user = {
           user_id: profile.user_id,
           display_name: profile.display_name,
           email: profile.email,
@@ -213,8 +250,22 @@ export const useAdminDebug = () => {
           last_weight_date: stats.last_weight_date,
           last_login_approximate: stats.last_login_approximate
         };
+
+        // Debug für spezifischen User
+        if (profile.user_id === '84b0664f-0934-49ce-9c35-c99546b792bf') {
+          console.log("👤 [Admin Debug] Final user object for mi.brandl78:");
+          console.log("  • Final meals_count:", user.meals_count);
+          console.log("  • Final workouts_count:", user.workouts_count);
+          console.log("  • Final total_points:", user.total_points);
+          console.log("  • Subscriber data:", subscriber);
+          console.log("  • Points data:", points);
+          console.log("  • Stats data:", stats);
+        }
+
+        return user;
       }) || [];
 
+      console.log("✅ [Admin Debug] Final users array:", formattedUsers.length, "users processed");
       setUsers(formattedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
