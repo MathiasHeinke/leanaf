@@ -215,24 +215,27 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
                       <CommandEmpty>Kein Benutzer gefunden.</CommandEmpty>
                       <CommandGroup>
                         <CommandList>
-                          {adminDebug.users.map((user) => (
-                            <CommandItem
-                              key={user.user_id}
-                              value={user.user_id}
-                              onSelect={() => handleUserSelect(user.user_id)}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  selectedUser === user.user_id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(user.subscribed)}
-                                <span>{user.display_name || user.email}</span>
-                              </div>
-                            </CommandItem>
-                          ))}
+                      {adminDebug.users.map((user) => (
+                        <CommandItem
+                          key={user.user_id}
+                          value={user.email || user.user_id}
+                          onSelect={() => {
+                            handleUserSelect(user.user_id);
+                            setUserDropdownOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedUser === user.user_id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(user.subscribed)}
+                            <span>{user.display_name || user.email}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
                         </CommandList>
                       </CommandGroup>
                     </Command>

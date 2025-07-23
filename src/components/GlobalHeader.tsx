@@ -5,6 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
+import { useSubscription } from "@/hooks/useSubscription";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 
 import { 
@@ -41,6 +42,7 @@ export const GlobalHeader = ({
   const [clickCount, setClickCount] = useState(0);
   
   const { signOut } = useAuth();
+  const { subscriptionTier } = useSubscription();
   const navigate = useNavigate();
   const location = useLocation();
   const { language, setLanguage, t } = useTranslation();
@@ -186,24 +188,26 @@ export const GlobalHeader = ({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Refresh Button with Debug functionality */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2"
-              title={clickCount > 0 ? `Debug: ${clickCount}/3 Klicks` : t('app.refresh')}
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''} ${clickCount > 0 ? 'text-primary' : ''}`} />
-              {clickCount > 0 && (
-                <span className="text-xs text-primary font-bold">{clickCount}</span>
-              )}
-            </Button>
+            {/* Refresh Button with Debug functionality - Only for Enterprise */}
+            {subscriptionTier === 'enterprise' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2"
+                title={clickCount > 0 ? `Debug: ${clickCount}/3 Klicks` : t('app.refresh')}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''} ${clickCount > 0 ? 'text-primary' : ''}`} />
+                {clickCount > 0 && (
+                  <span className="text-xs text-primary font-bold">{clickCount}</span>
+                )}
+              </Button>
+            )}
             
             {/* Dark Mode Toggle */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={toggleTheme}
               className="flex items-center gap-2"
@@ -214,7 +218,7 @@ export const GlobalHeader = ({
             
             {/* Language Toggle */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
               className="flex items-center gap-2 text-sm"
@@ -227,7 +231,7 @@ export const GlobalHeader = ({
             {/* Menu Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" title={t('app.menu')}>
+                <Button variant="ghost" size="sm" title={t('app.menu')}>
                   <Menu className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
