@@ -184,8 +184,8 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
+        <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-2">
             <Label htmlFor="workoutType">Trainingstyp</Label>
             <Select value={workoutType} onValueChange={setWorkoutType}>
               <SelectTrigger>
@@ -200,7 +200,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="sessionName">Trainingsname (optional)</Label>
             <Input
               id="sessionName"
@@ -209,7 +209,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
               placeholder="z.B. Push Day"
             />
           </div>
-          <div>
+          <div className="space-y-2 md:col-span-2 lg:col-span-1">
             <Label htmlFor="exercise">Übung</Label>
             <Select value={selectedExercise} onValueChange={setSelectedExercise}>
               <SelectTrigger>
