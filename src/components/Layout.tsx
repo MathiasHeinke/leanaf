@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 
 import { PointsHeader } from "@/components/PointsHeader";
 import { DarkModeDebugPanel } from "@/components/DarkModeDebugPanel";
-import { SubscriptionDebugPanel } from "@/components/SubscriptionDebugPanel";
+import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -57,7 +57,7 @@ export const Layout = ({ children }: LayoutProps) => {
       
       
       {/* Debug Panels */}
-      <SubscriptionDebugPanel 
+      <EnhancedSubscriptionDebugPanel 
         isOpen={showSubscriptionDebug} 
         onClose={() => setShowSubscriptionDebug(false)} 
       />
