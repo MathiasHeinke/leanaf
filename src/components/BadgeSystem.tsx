@@ -127,29 +127,35 @@ export const BadgeSystem = () => {
   }
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-amber-50/50 via-amber-25/30 to-amber-50/20 dark:from-amber-950/20 dark:via-amber-950/10 dark:to-amber-950/5 border-amber-200/30 dark:border-amber-800/30">
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-500/10 rounded-xl">
-            <Trophy className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+    <Card className="p-6 bg-gradient-to-br from-amber-50/80 via-amber-25/40 to-amber-50/30 dark:from-amber-950/30 dark:via-amber-950/15 dark:to-amber-950/10 border-amber-200/40 dark:border-amber-800/40 shadow-xl shadow-amber-500/10">
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="p-3 bg-gradient-to-br from-amber-500/20 to-amber-600/30 rounded-2xl shadow-lg">
+              <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            {/* Sparkle decoration */}
+            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 animate-pulse" />
           </div>
           <div>
-            <h3 className="font-semibold text-lg">Deine Erfolge</h3>
-            <p className="text-sm text-muted-foreground">
-              {badges.length > 0 ? `${badges.length} Badges verdient` : 'Sammle deine ersten Badges!'}
+            <h3 className="font-bold text-xl bg-gradient-to-r from-amber-700 to-amber-600 dark:from-amber-300 dark:to-amber-200 bg-clip-text text-transparent">
+              Deine Erfolge
+            </h3>
+            <p className="text-sm text-muted-foreground font-medium">
+              {badges.length > 0 ? `🏆 ${badges.length} Badges verdient!` : 'Sammle deine ersten Badges!'}
             </p>
           </div>
         </div>
 
         {/* Category Filter */}
         {categories.length > 1 && (
-          <div className="flex flex-wrap gap-2 p-2 bg-background/50 rounded-lg">
+          <div className="flex flex-wrap gap-2 p-3 bg-gradient-to-r from-background/60 via-background/80 to-background/60 rounded-2xl border border-border/50 backdrop-blur-sm">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-3 py-1 rounded-full text-sm transition-colors ${
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                 selectedCategory === 'all' 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-background/80 hover:bg-background'
+                  ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
+                  : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
               }`}
             >
               Alle ({badges.length})
@@ -158,10 +164,10 @@ export const BadgeSystem = () => {
               <button
                 key={category.name}
                 onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                className={`px-3 py-1 rounded-full text-sm transition-colors flex items-center gap-1 ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
                   selectedCategory === category.name.toLowerCase() 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-background/80 hover:bg-background'
+                    ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
+                    : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
                 }`}
               >
                 {category.icon}
@@ -174,49 +180,82 @@ export const BadgeSystem = () => {
         {displayBadges.length > 0 ? (
           <div className="space-y-4">
             {/* Badge Grid - Max 3 per row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {(showAllBadges ? displayBadges : displayBadges.slice(0, 3)).map((badge) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(showAllBadges ? displayBadges : displayBadges.slice(0, 3)).map((badge, index) => {
                 const badgeColor = getBadgeColor(badge.badge_type);
                 return (
                   <div 
                     key={badge.id}
-                    className="p-4 rounded-xl border-2 bg-background/90 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg"
+                    className="group relative p-5 rounded-2xl border-2 bg-gradient-to-br from-background/95 via-background/90 to-background/80 backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20 animate-fade-in"
                     style={{
-                      borderColor: `${badgeColor}50`
+                      borderColor: `${badgeColor}60`,
+                      animationDelay: `${index * 100}ms`
                     }}
                   >
-                    <div className="flex flex-col items-center text-center gap-3">
+                    {/* Glow effect */}
+                    <div 
+                      className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-sm"
+                      style={{
+                        background: `linear-gradient(45deg, ${badgeColor}40, ${badgeColor}20)`
+                      }}
+                    />
+                    
+                    {/* Badge content */}
+                    <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                      {/* Icon with gradient background */}
                       <div 
-                        className="flex-shrink-0 p-3 rounded-lg border-2 flex items-center justify-center"
+                        className="relative flex-shrink-0 p-4 rounded-2xl border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
                         style={{
-                          backgroundColor: `${badgeColor}15`,
-                          borderColor: `${badgeColor}30`,
-                          color: badgeColor
+                          background: `linear-gradient(135deg, ${badgeColor}25, ${badgeColor}10)`,
+                          borderColor: `${badgeColor}50`,
+                          color: badgeColor,
+                          boxShadow: `0 8px 32px ${badgeColor}30`
                         }}
                       >
+                        {/* Sparkle effect */}
+                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse" />
+                        
                         {getBadgeIcon(badge.badge_name, badge.badge_type)}
                       </div>
-                      <div className="space-y-1">
-                        <div className="font-medium text-foreground text-sm">{badge.badge_name}</div>
-                        <div className="text-xs text-muted-foreground">{badge.badge_description}</div>
-                        <div className="text-xs text-muted-foreground/70">
+                      
+                      {/* Badge info */}
+                      <div className="space-y-2">
+                        <div className="font-bold text-lg text-foreground group-hover:text-primary transition-colors duration-300">
+                          {badge.badge_name}
+                        </div>
+                        <div className="text-sm text-muted-foreground leading-relaxed">
+                          {badge.badge_description}
+                        </div>
+                        <div className="text-xs text-muted-foreground/80 font-medium">
                           {new Date(badge.earned_at).toLocaleDateString('de-DE', {
                             day: '2-digit',
-                            month: '2-digit', 
+                            month: 'short', 
                             year: 'numeric'
                           })}
                         </div>
                       </div>
-                      <Badge 
-                        variant="outline"
-                        className="bg-background/90 font-semibold border-2 px-2 py-1 text-xs"
+                      
+                      {/* Achievement checkmark */}
+                      <div className="absolute top-3 right-3">
+                        <div 
+                          className="w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
+                          style={{
+                            background: `linear-gradient(135deg, ${badgeColor}, ${badgeColor}80)`,
+                            borderColor: `${badgeColor}`,
+                            boxShadow: `0 4px 16px ${badgeColor}40`
+                          }}
+                        >
+                          <span className="text-white text-sm font-bold">✓</span>
+                        </div>
+                      </div>
+                      
+                      {/* Bottom gradient line */}
+                      <div 
+                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-16 h-1 rounded-full opacity-60 group-hover:opacity-100 group-hover:w-24 transition-all duration-300"
                         style={{
-                          color: badgeColor,
-                          borderColor: `${badgeColor}50`
+                          background: `linear-gradient(90deg, transparent, ${badgeColor}, transparent)`
                         }}
-                      >
-                        ✓
-                      </Badge>
+                      />
                     </div>
                   </div>
                 );
@@ -225,44 +264,55 @@ export const BadgeSystem = () => {
 
             {/* Show More/Less Button */}
             {displayBadges.length > 3 && (
-              <div className="flex justify-center">
+              <div className="flex justify-center pt-2">
                 <button
                   onClick={() => setShowAllBadges(!showAllBadges)}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                  className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-primary/10 via-primary/15 to-primary/10 hover:from-primary/20 hover:via-primary/25 hover:to-primary/20 text-primary rounded-xl border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/20"
                 >
-                  <span className="text-sm font-medium">
-                    {showAllBadges ? 'Weniger anzeigen' : `${displayBadges.length - 3} weitere anzeigen`}
+                  <span className="font-medium">
+                    {showAllBadges ? 'Weniger anzeigen' : `${displayBadges.length - 3} weitere Erfolge anzeigen`}
                   </span>
                   <ChevronRight 
-                    className={`h-4 w-4 transition-transform ${showAllBadges ? 'rotate-90' : ''}`} 
+                    className={`h-4 w-4 transition-all duration-300 group-hover:scale-110 ${showAllBadges ? 'rotate-90' : 'group-hover:translate-x-1'}`} 
                   />
                 </button>
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">🏆</div>
-            <h4 className="font-medium mb-2">Noch keine Badges</h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              Verdiene deine ersten Badges durch:
-            </p>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
-                <span className="text-xl">📏</span>
-                <span>Regelmäßige Körpermaße (4 Wochen)</span>
-              </div>
-              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
-                <span className="text-xl">💪</span>
-                <span>Training-Streak (7 Tage)</span>
-              </div>
-              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
-                <span className="text-xl">🎯</span>
-                <span>Kaloriendefizit halten (1 Woche)</span>
-              </div>
-              <div className="flex items-center gap-2 justify-center bg-background/60 px-3 py-2 rounded-lg backdrop-blur-sm">
-                <span className="text-xl">🌱</span>
-                <span>Level-Aufstieg erreichen</span>
+          <div className="text-center py-12 relative">
+            {/* Animated background elements */}
+            <div className="absolute inset-0 overflow-hidden rounded-2xl">
+              <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full opacity-20 animate-pulse"></div>
+              <div className="absolute top-3/4 right-1/4 w-3 h-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full opacity-30 animate-pulse" style={{animationDelay: '1s'}}></div>
+              <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-gradient-to-br from-yellow-400 to-amber-400 rounded-full opacity-25 animate-pulse" style={{animationDelay: '2s'}}></div>
+            </div>
+            
+            <div className="relative z-10">
+              <div className="text-8xl mb-6 animate-bounce">🏆</div>
+              <h4 className="font-bold text-xl mb-3 bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+                Deine Erfolgsreise beginnt hier!
+              </h4>
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                Verdiene deine ersten Badges durch kontinuierliche Aktivität und erreiche deine Ziele:
+              </p>
+              <div className="space-y-3 max-w-md mx-auto">
+                <div className="flex items-center gap-3 justify-start bg-gradient-to-r from-purple-50/80 to-purple-100/60 dark:from-purple-950/30 dark:to-purple-900/20 px-4 py-3 rounded-xl backdrop-blur-sm border border-purple-200/40 dark:border-purple-800/40 hover:scale-105 transition-all duration-300">
+                  <span className="text-2xl">📏</span>
+                  <span className="text-sm font-medium">Regelmäßige Körpermaße (4 Wochen)</span>
+                </div>
+                <div className="flex items-center gap-3 justify-start bg-gradient-to-r from-orange-50/80 to-red-100/60 dark:from-orange-950/30 dark:to-red-900/20 px-4 py-3 rounded-xl backdrop-blur-sm border border-orange-200/40 dark:border-orange-800/40 hover:scale-105 transition-all duration-300">
+                  <span className="text-2xl">💪</span>
+                  <span className="text-sm font-medium">Training-Streak (7 Tage)</span>
+                </div>
+                <div className="flex items-center gap-3 justify-start bg-gradient-to-r from-blue-50/80 to-blue-100/60 dark:from-blue-950/30 dark:to-blue-900/20 px-4 py-3 rounded-xl backdrop-blur-sm border border-blue-200/40 dark:border-blue-800/40 hover:scale-105 transition-all duration-300">
+                  <span className="text-2xl">🎯</span>
+                  <span className="text-sm font-medium">Kaloriendefizit halten (1 Woche)</span>
+                </div>
+                <div className="flex items-center gap-3 justify-start bg-gradient-to-r from-green-50/80 to-emerald-100/60 dark:from-green-950/30 dark:to-emerald-900/20 px-4 py-3 rounded-xl backdrop-blur-sm border border-green-200/40 dark:border-green-800/40 hover:scale-105 transition-all duration-300">
+                  <span className="text-2xl">🌱</span>
+                  <span className="text-sm font-medium">Level-Aufstieg erreichen</span>
+                </div>
               </div>
             </div>
           </div>
