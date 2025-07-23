@@ -26,6 +26,14 @@ export const FEATURE_TIERS = {
   premium_insights: 'pro',
   transformation_dashboard: 'pro',
   unlimited_ai: 'pro', // Unlimited AI with GPT-4.1
+  
+  // getleanAI+ features - advanced fitness tracking
+  advanced_exercise_tracking: 'getleanai_plus',
+  exercise_templates: 'getleanai_plus',
+  progressive_overload_tracking: 'getleanai_plus',
+  one_rep_max_calculation: 'getleanai_plus',
+  volume_load_tracking: 'getleanai_plus',
+  periodization_planning: 'getleanai_plus',
 } as const;
 
 export type FeatureName = keyof typeof FEATURE_TIERS;
@@ -43,6 +51,10 @@ export const useFeatureAccess = () => {
     
     if (requiredTier === 'pro') {
       return isPremium; // Pro features require subscription or trial
+    }
+    
+    if (requiredTier === 'getleanai_plus') {
+      return isPremium; // For now, getleanAI+ features available to premium users
     }
     
     return false;

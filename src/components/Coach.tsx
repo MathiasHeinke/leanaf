@@ -5,7 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Overview } from "@/components/Overview";
 import { InsightsAnalysis } from "@/components/InsightsAnalysis";
 import { ChatCoach } from "@/components/ChatCoach";
+import { AdvancedWorkoutSection } from "@/components/AdvancedWorkoutSection";
+import { PremiumGate } from "@/components/PremiumGate";
 import { useAuth } from "@/hooks/useAuth";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
 import { debounce, clearCache } from "@/utils/supabaseHelpers";
@@ -81,6 +84,7 @@ const Coach = ({ onClose }: CoachProps) => {
   const [dailyGoals, setDailyGoals] = useState<DailyGoal | null>(null);
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const { user } = useAuth();
+  const { hasFeatureAccess } = useFeatureAccess();
   const { t } = useTranslation();
 
   const loadWeightHistoryData = useCallback(async () => {
@@ -330,13 +334,15 @@ const Coach = ({ onClose }: CoachProps) => {
   };
 
   const averages = calculateAverages();
+  const showAdvancedWorkout = hasFeatureAccess('advanced_exercise_tracking');
 
   return (
     <div className="space-y-4 animate-fade-in">
       <Tabs defaultValue="analyse" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={`grid w-full ${showAdvancedWorkout ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="analyse">Analyse</TabsTrigger>
           <TabsTrigger value="coach">Coach</TabsTrigger>
+          {showAdvancedWorkout && <TabsTrigger value="training">Training+</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="analyse" className="space-y-4 mt-3">
@@ -370,6 +376,25 @@ const Coach = ({ onClose }: CoachProps) => {
             weightHistory={weightHistory}
           />
         </TabsContent>
+
+        {showAdvancedWorkout && (
+          <TabsContent value="training" className="mt-3">
+            <AdvancedWorkoutSection />
+          </TabsContent>
+        )}
+
+        {/* Hidden premium gate for non-premium users who might access this via URL */}
+        {!showAdvancedWorkout && (
+          <TabsContent value="training" className="mt-3">
+            <PremiumGate 
+              feature="advanced_exercise_tracking"
+              fallbackMessage="Detailliertes Krafttraining-Tracking ist Teil von getleanAI+. Upgrade für erweiterte Fitnessfunktionen."
+              showUpgrade={true}
+            >
+              <AdvancedWorkoutSection />
+            </PremiumGate>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

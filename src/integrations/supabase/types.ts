@@ -308,6 +308,189 @@ export type Database = {
         }
         Relationships: []
       }
+      exercise_sessions: {
+        Row: {
+          created_at: string
+          date: string
+          end_time: string | null
+          id: string
+          notes: string | null
+          session_name: string | null
+          start_time: string | null
+          updated_at: string
+          user_id: string
+          workout_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          session_name?: string | null
+          start_time?: string | null
+          updated_at?: string
+          user_id: string
+          workout_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          session_name?: string | null
+          start_time?: string | null
+          updated_at?: string
+          user_id?: string
+          workout_id?: string | null
+        }
+        Relationships: []
+      }
+      exercise_sets: {
+        Row: {
+          created_at: string
+          distance_m: number | null
+          duration_seconds: number | null
+          exercise_id: string
+          id: string
+          notes: string | null
+          reps: number | null
+          rest_seconds: number | null
+          rpe: number | null
+          session_id: string
+          set_number: number
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          created_at?: string
+          distance_m?: number | null
+          duration_seconds?: number | null
+          exercise_id: string
+          id?: string
+          notes?: string | null
+          reps?: number | null
+          rest_seconds?: number | null
+          rpe?: number | null
+          session_id: string
+          set_number: number
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          created_at?: string
+          distance_m?: number | null
+          duration_seconds?: number | null
+          exercise_id?: string
+          id?: string
+          notes?: string | null
+          reps?: number | null
+          rest_seconds?: number | null
+          rpe?: number | null
+          session_id?: string
+          set_number?: number
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_sets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          exercises: Json
+          id: string
+          is_public: boolean | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          exercises?: Json
+          id?: string
+          is_public?: boolean | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          exercises?: Json
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      exercises: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          difficulty_level: number | null
+          equipment: string | null
+          id: string
+          instructions: string | null
+          is_compound: boolean | null
+          muscle_groups: string[]
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          equipment?: string | null
+          id?: string
+          instructions?: string | null
+          is_compound?: boolean | null
+          muscle_groups?: string[]
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          equipment?: string | null
+          id?: string
+          instructions?: string | null
+          is_compound?: boolean | null
+          muscle_groups?: string[]
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meal_images: {
         Row: {
           created_at: string
