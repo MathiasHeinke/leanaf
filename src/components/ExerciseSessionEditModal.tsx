@@ -33,14 +33,14 @@ interface ExerciseSession {
   exercise_sets: ExerciseSet[];
 }
 
-interface WorkoutEditModalProps {
+interface ExerciseSessionEditModalProps {
   session: ExerciseSession | null;
   isOpen: boolean;
   onClose: () => void;
   onSessionUpdated: () => void;
 }
 
-export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
+export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> = ({
   session,
   isOpen,
   onClose,

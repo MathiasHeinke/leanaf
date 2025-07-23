@@ -4,9 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { ExerciseProgressCharts } from '@/components/ExerciseProgressCharts';
+import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Dumbbell, TrendingUp, Calendar, Target } from 'lucide-react';
+import { Dumbbell, TrendingUp, Calendar, Target, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
@@ -48,6 +49,8 @@ export const AdvancedWorkoutSection: React.FC = () => {
     exercisesCount: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [editingSession, setEditingSession] = useState<ExerciseSession | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -224,9 +227,21 @@ export const AdvancedWorkoutSection: React.FC = () => {
                               </p>
                             )}
                           </div>
-                          <Badge variant="secondary">
-                            {session.exercise_sets.length} Sätze
-                          </Badge>
+                          <div className="flex gap-2">
+                            <Badge variant="secondary">
+                              {session.exercise_sets.length} Sätze
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingSession(session);
+                                setIsEditModalOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         
                         <div className="space-y-2">
@@ -265,6 +280,16 @@ export const AdvancedWorkoutSection: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ExerciseSessionEditModal
+        session={editingSession}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingSession(null);
+        }}
+        onSessionUpdated={loadSessions}
+      />
     </div>
   );
 };
