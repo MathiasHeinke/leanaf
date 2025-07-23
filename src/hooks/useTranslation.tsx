@@ -42,7 +42,7 @@ const translations = {
     'app.mealAdded': 'Mahlzeit erfolgreich hinzugefügt!',
     'app.error': 'Fehler beim Hinzufügen der Mahlzeit',
     'app.refresh': 'Aktualisieren',
-    'app.letsGetLean': 'Dein intelligenter KI-Coach',
+    'app.letsGetLean': 'Your 6-Pack Maker',
     'app.menu': 'Menü',
     
     // Input modes
@@ -538,7 +538,7 @@ const translations = {
     'app.mealAdded': 'Meal added successfully!',
     'app.error': 'Error adding meal',
     'app.refresh': 'Refresh',
-    'app.letsGetLean': 'Your intelligent AI Coach',
+    'app.letsGetLean': 'Your 6-Pack Maker',
     'app.menu': 'Menu',
     
     // Input modes
