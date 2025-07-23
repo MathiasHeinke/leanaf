@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { toast } from "sonner";
+import { useCoachLimitHandler } from "./CoachLimitHandler";
 
 interface ChatMessage {
   id: string;
@@ -42,6 +43,11 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
   const [isLoading, setIsLoading] = useState(true);
   const [currentCoachPersonality, setCurrentCoachPersonality] = useState(coachPersonality);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { handleError } = useCoachLimitHandler({ 
+    coachPersonality: currentCoachPersonality, 
+    feature: 'coach_chat' 
+  });
 
   const {
     isRecording,
@@ -302,7 +308,25 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
       });
 
       if (error) {
-        throw error;
+        // Handle rate limit and other errors with personalized coach messages
+        const errorMessage = handleError({ 
+          status: error.message?.includes('429') || error.message?.includes('limit') ? 429 : 500,
+          message: error.message 
+        });
+        
+        // Save coach's error message to chat
+        const savedErrorMessage = await saveMessage('assistant', errorMessage);
+        if (savedErrorMessage) {
+          const mappedMessage: ChatMessage = {
+            id: savedErrorMessage.id,
+            role: savedErrorMessage.message_role as 'user' | 'assistant',
+            content: savedErrorMessage.message_content,
+            created_at: savedErrorMessage.created_at,
+            coach_personality: savedErrorMessage.coach_personality
+          };
+          setMessages(prev => [...prev, mappedMessage]);
+        }
+        return; // Don't throw, we handled it gracefully
       }
 
       const assistantMessage = coachResponse.response;
@@ -320,12 +344,16 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
         setMessages(prev => [...prev, mappedMessage]);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message to coach:', error);
-      toast.error('Fehler beim Senden der Nachricht an den Coach');
       
-      // Add error message to chat
-      const errorMessage = "Entschuldigung, es gab einen technischen Fehler. Bitte versuche es noch einmal.";
+      // Use the coach limit handler for consistent error messaging
+      const errorMessage = handleError({ 
+        status: error.status || (error.message?.includes('429') || error.message?.includes('limit') ? 429 : 500),
+        message: error.message 
+      });
+      
+      // Save coach's error message to chat
       const savedErrorMessage = await saveMessage('assistant', errorMessage);
       if (savedErrorMessage) {
         const mappedMessage: ChatMessage = {
