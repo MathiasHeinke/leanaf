@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -322,13 +322,12 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                 <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
                   Distanz (km)
                 </label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={distanceKm}
-                  onChange={(e) => setDistanceKm(e.target.value)}
+                  onChange={(value) => setDistanceKm(value)}
                   placeholder="z.B. 3.5"
-                  step="0.1"
-                  min="0"
+                  step={0.1}
+                  min={0}
                   className="text-sm border-green-300 focus:border-green-500"
                 />
               </div>
@@ -337,12 +336,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                 <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
                   Schritte
                 </label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={steps}
-                  onChange={(e) => setSteps(e.target.value)}
+                  onChange={(value) => setSteps(value)}
                   placeholder="z.B. 8000"
-                  min="0"
+                  min={0}
                   className="text-sm border-green-300 focus:border-green-500"
                 />
               </div>

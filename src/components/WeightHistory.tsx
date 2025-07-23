@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -500,11 +500,10 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     if (isEditing) {
       return (
         <div className="flex items-center gap-1 min-w-0">
-          <Input
-            type="number"
-            step="0.1"
+          <NumericInput
+            step={0.1}
             value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
+            onChange={(value) => setEditValue(value)}
             onKeyDown={handleKeyPress}
             onBlur={saveInlineEdit}
             className="w-20 h-7 text-xs p-1 border-primary/50 focus:border-primary"
@@ -671,12 +670,11 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             {/* Weight */}
             <div>
               <Label htmlFor="weight">Gewicht (kg) *</Label>
-              <Input
+              <NumericInput
                 id="weight"
-                type="number"
-                step="0.1"
+                step={0.1}
                 value={newWeight}
-                onChange={(e) => setNewWeight(e.target.value)}
+                onChange={(value) => setNewWeight(value)}
                 placeholder="75.5"
                 className="mt-2"
               />
@@ -686,28 +684,26 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="bodyFat">Körperfett (%)</Label>
-                <Input
+                <NumericInput
                   id="bodyFat"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
+                  step={0.1}
+                  min={0}
+                  max={100}
                   value={newBodyFat}
-                  onChange={(e) => setNewBodyFat(e.target.value)}
+                  onChange={(value) => setNewBodyFat(value)}
                   placeholder="15.5"
                   className="mt-2"
                 />
               </div>
               <div>
                 <Label htmlFor="muscleMass">Muskelmasse (%)</Label>
-                <Input
+                <NumericInput
                   id="muscleMass"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
+                  step={0.1}
+                  min={0}
+                  max={100}
                   value={newMuscleMass}
-                  onChange={(e) => setNewMuscleMass(e.target.value)}
+                  onChange={(value) => setNewMuscleMass(value)}
                   placeholder="45.0"
                   className="mt-2"
                 />

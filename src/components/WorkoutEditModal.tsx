@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -226,12 +226,11 @@ export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
 
                 <div>
                   <Label htmlFor="duration">Dauer (Minuten)</Label>
-                  <Input
+                  <NumericInput
                     id="duration"
-                    type="number"
                     value={duration}
-                    onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
-                    min="0"
+                    onChange={(value) => setDuration(parseInt(value) || 0)}
+                    min={0}
                   />
                 </div>
               </div>
@@ -255,13 +254,12 @@ export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
               {(workoutType === 'walking' || workoutType === 'running' || workoutType === 'cycling') && (
                 <div>
                   <Label htmlFor="distance">Distanz (km)</Label>
-                  <Input
+                  <NumericInput
                     id="distance"
-                    type="number"
-                    step="0.1"
+                    step={0.1}
                     value={distance}
-                    onChange={(e) => setDistance(parseFloat(e.target.value) || 0)}
-                    min="0"
+                    onChange={(value) => setDistance(parseFloat(value) || 0)}
+                    min={0}
                   />
                 </div>
               )}
@@ -270,12 +268,11 @@ export const WorkoutEditModal: React.FC<WorkoutEditModalProps> = ({
                 <>
                   <div>
                     <Label htmlFor="steps">Schritte</Label>
-                    <Input
+                    <NumericInput
                       id="steps"
-                      type="number"
                       value={steps}
-                      onChange={(e) => setSteps(parseInt(e.target.value) || 0)}
-                      min="0"
+                      onChange={(value) => setSteps(parseInt(value) || 0)}
+                      min={0}
                     />
                   </div>
 

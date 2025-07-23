@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -403,11 +404,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm">{t('profile.startWeight')}</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={startWeight}
-                  onChange={(e) => {
-                    const newStartWeight = e.target.value;
+                  onChange={(value) => {
+                    const newStartWeight = value;
                     setStartWeight(newStartWeight);
                     // Auto-set current weight if it's empty
                     if (!weight && newStartWeight) {
@@ -439,20 +439,18 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label className="text-sm">{t('profile.height')}</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={height}
-                  onChange={(e) => setHeight(e.target.value)}
+                  onChange={(value) => setHeight(value)}
                   placeholder="175"
                   className="mt-1"
                 />
               </div>
               <div>
                 <Label className="text-sm">{t('profile.age')}</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={age}
-                  onChange={(e) => setAge(e.target.value)}
+                  onChange={(value) => setAge(value)}
                   placeholder="30"
                   className="mt-1"
                 />
@@ -516,10 +514,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm">{t('profile.targetWeight')}</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={targetWeight}
-                  onChange={(e) => setTargetWeight(e.target.value)}
+                  onChange={(value) => setTargetWeight(value)}
                   placeholder="65"
                   className="mt-1"
                 />
@@ -622,11 +619,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             }`}>
               <div>
                 <Label className="text-xs">{t('macros.protein')} %</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={dailyGoals.protein}
-                  onChange={(e) => {
-                    setDailyGoals(prev => ({...prev, protein: parseInt(e.target.value) || 0}));
+                  onChange={(value) => {
+                    setDailyGoals(prev => ({...prev, protein: parseInt(value) || 0}));
                     setHasUserModifiedMacros(true);
                   }}
                   className="h-8 text-sm mt-1"
@@ -635,11 +631,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
               <div>
                 <Label className="text-xs">{t('macros.carbs')} %</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={dailyGoals.carbs}
-                  onChange={(e) => {
-                    setDailyGoals(prev => ({...prev, carbs: parseInt(e.target.value) || 0}));
+                  onChange={(value) => {
+                    setDailyGoals(prev => ({...prev, carbs: parseInt(value) || 0}));
                     setHasUserModifiedMacros(true);
                   }}
                   className="h-8 text-sm mt-1"
@@ -648,11 +643,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
               <div>
                 <Label className="text-xs">{t('macros.fats')} %</Label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={dailyGoals.fats}
-                  onChange={(e) => {
-                    setDailyGoals(prev => ({...prev, fats: parseInt(e.target.value) || 0}));
+                  onChange={(value) => {
+                    setDailyGoals(prev => ({...prev, fats: parseInt(value) || 0}));
                     setHasUserModifiedMacros(true);
                   }}
                   className="h-8 text-sm mt-1"

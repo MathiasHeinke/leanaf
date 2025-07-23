@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -169,13 +169,12 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
           {/* Weight Input */}
           <div>
             <Label htmlFor="weight" className="text-sm font-medium">Gewicht (kg) *</Label>
-            <Input
+            <NumericInput
               id="weight"
-              type="number"
               value={newWeight}
-              onChange={(e) => setNewWeight(e.target.value)}
+              onChange={(value) => setNewWeight(value)}
               placeholder="z.B. 72.5"
-              step="0.1"
+              step={0.1}
               className="mt-1"
             />
           </div>
@@ -184,29 +183,27 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="bodyFat" className="text-sm font-medium">Körperfett (%)</Label>
-              <Input
+              <NumericInput
                 id="bodyFat"
-                type="number"
                 value={bodyFat}
-                onChange={(e) => setBodyFat(e.target.value)}
+                onChange={(value) => setBodyFat(value)}
                 placeholder="z.B. 15.5"
-                step="0.1"
-                min="0"
-                max="100"
+                step={0.1}
+                min={0}
+                max={100}
                 className="mt-1"
               />
             </div>
             <div>
               <Label htmlFor="muscleMass" className="text-sm font-medium">Muskelmasse (%)</Label>
-              <Input
+              <NumericInput
                 id="muscleMass"
-                type="number"
                 value={muscleMass}
-                onChange={(e) => setMuscleMass(e.target.value)}
+                onChange={(value) => setMuscleMass(value)}
                 placeholder="z.B. 45.0"
-                step="0.1"
-                min="0"
-                max="100"
+                step={0.1}
+                min={0}
+                max={100}
                 className="mt-1"
               />
             </div>

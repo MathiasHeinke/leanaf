@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Scale, Plus, Edit, CheckCircle, Upload, X, TrendingUp, TrendingDown, Camera } from "lucide-react";
@@ -404,15 +404,14 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <Label htmlFor="weight" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
             Gewicht (kg) *
           </Label>
-          <Input
+          <NumericInput
             id="weight"
-            type="number"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(value) => setWeight(value)}
             placeholder="z.B. 75.5"
-            step="0.1"
-            min="1"
-            max="500"
+            step={0.1}
+            min={1}
+            max={500}
             className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
             required
           />
@@ -424,15 +423,14 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             <Label htmlFor="bodyFat" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
               Körperfett (%)
             </Label>
-            <Input
+            <NumericInput
               id="bodyFat"
-              type="number"
               value={bodyFat}
-              onChange={(e) => setBodyFat(e.target.value)}
+              onChange={(value) => setBodyFat(value)}
               placeholder="z.B. 15.5"
-              step="0.1"
-              min="0"
-              max="100"
+              step={0.1}
+              min={0}
+              max={100}
               className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
             />
           </div>
@@ -440,15 +438,14 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             <Label htmlFor="muscleMass" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
               Muskelmasse (%)
             </Label>
-            <Input
+            <NumericInput
               id="muscleMass"
-              type="number"
               value={muscleMass}
-              onChange={(e) => setMuscleMass(e.target.value)}
+              onChange={(value) => setMuscleMass(value)}
               placeholder="z.B. 45.0"
-              step="0.1"
-              min="0"
-              max="100"
+              step={0.1}
+              min={0}
+              max={100}
               className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
             />
           </div>
