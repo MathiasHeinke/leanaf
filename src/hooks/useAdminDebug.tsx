@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -113,7 +114,7 @@ export const useAdminDebug = () => {
     }
   };
 
-  const grantPremium = async (targetUserId: string, duration: string) => {
+  const grantPremium = async (targetUserId: string, duration: string, tier: string = 'Premium') => {
     if (!user?.id) return;
 
     try {
@@ -137,7 +138,7 @@ export const useAdminDebug = () => {
 
       const newValues = {
         subscribed: true,
-        subscription_tier: 'Premium',
+        subscription_tier: tier,
         subscription_end: duration === 'permanent' ? null : `now() + interval '${interval}'`
       };
 
@@ -147,7 +148,7 @@ export const useAdminDebug = () => {
           .from('subscribers')
           .update({
             subscribed: true,
-            subscription_tier: 'Premium',
+            subscription_tier: tier,
             subscription_end: duration === 'permanent' ? null : new Date(Date.now() + (duration === '1week' ? 7 * 24 * 60 * 60 * 1000 : 
               duration === '1month' ? 30 * 24 * 60 * 60 * 1000 :
               duration === '3months' ? 90 * 24 * 60 * 60 * 1000 :
@@ -170,7 +171,7 @@ export const useAdminDebug = () => {
             user_id: targetUserId,
             email: profile?.email || '',
             subscribed: true,
-            subscription_tier: 'Premium',
+            subscription_tier: tier,
             subscription_end: duration === 'permanent' ? null : new Date(Date.now() + (duration === '1week' ? 7 * 24 * 60 * 60 * 1000 : 
               duration === '1month' ? 30 * 24 * 60 * 60 * 1000 :
               duration === '3months' ? 90 * 24 * 60 * 60 * 1000 :
@@ -182,18 +183,18 @@ export const useAdminDebug = () => {
       if (result.error) throw result.error;
 
       await logAdminAction(
-        'GRANT_PREMIUM',
+        tier === 'Enterprise' ? 'GRANT_ENTERPRISE' : 'GRANT_PREMIUM',
         targetUserId,
-        { duration, method: existingSubscriber ? 'update' : 'create' },
+        { duration, tier, method: existingSubscriber ? 'update' : 'create' },
         existingSubscriber || {},
         newValues
       );
 
-      toast.success(`Premium für ${duration} vergeben`);
+      toast.success(`${tier} für ${duration} vergeben`);
       await fetchUsers();
     } catch (error) {
-      console.error('Error granting premium:', error);
-      toast.error('Fehler beim Vergeben von Premium');
+      console.error('Error granting subscription:', error);
+      toast.error(`Fehler beim Vergeben von ${tier}`);
     }
   };
 
@@ -220,18 +221,18 @@ export const useAdminDebug = () => {
       if (error) throw error;
 
       await logAdminAction(
-        'REVOKE_PREMIUM',
+        'REVOKE_SUBSCRIPTION',
         targetUserId,
         {},
         oldData || {},
         { subscribed: false, subscription_tier: null, subscription_end: null }
       );
 
-      toast.success('Premium widerrufen');
+      toast.success('Subscription widerrufen');
       await fetchUsers();
     } catch (error) {
-      console.error('Error revoking premium:', error);
-      toast.error('Fehler beim Widerrufen von Premium');
+      console.error('Error revoking subscription:', error);
+      toast.error('Fehler beim Widerrufen der Subscription');
     }
   };
 

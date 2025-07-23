@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useAdminDebug } from '@/hooks/useAdminDebug';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,10 +28,14 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Zap
+  Zap,
+  Check,
+  ChevronsUpDown,
+  Building2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface EnhancedSubscriptionDebugPanelProps {
   isOpen: boolean;
@@ -43,6 +50,8 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
   const subscription = useSubscription();
   const adminDebug = useAdminDebug();
   const [selectedDuration, setSelectedDuration] = useState('1month');
+  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const getStatusIcon = (subscribed: boolean | null) => {
     if (subscribed) return <Crown className="h-4 w-4 text-warning" />;
@@ -60,6 +69,19 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
       return { status: 'Abgelaufen', color: 'destructive' };
     }
     return { status: user.subscription_tier || 'Premium', color: 'default' };
+  };
+
+  const getSelectedUserData = () => {
+    return adminDebug.users.find(u => u.user_id === selectedUser);
+  };
+
+  const handleUserSelect = (userId: string) => {
+    setSelectedUser(userId);
+    setUserDropdownOpen(false);
+  };
+
+  const grantEnterprise = async (userId: string, duration: string) => {
+    await adminDebug.grantPremium(userId, duration, 'Enterprise');
   };
 
   return (
@@ -173,23 +195,157 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                <Input
-                  placeholder="Suche nach Name, Email oder ID..."
-                  value={adminDebug.searchTerm}
-                  onChange={(e) => adminDebug.setSearchTerm(e.target.value)}
-                  className="w-64"
-                />
+                <Popover open={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={userDropdownOpen}
+                      className="w-64 justify-between"
+                    >
+                      {selectedUser
+                        ? adminDebug.users.find(u => u.user_id === selectedUser)?.display_name || adminDebug.users.find(u => u.user_id === selectedUser)?.email
+                        : "Benutzer auswählen..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0">
+                    <Command>
+                      <CommandInput placeholder="Benutzer suchen..." />
+                      <CommandEmpty>Kein Benutzer gefunden.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandList>
+                          {adminDebug.users.map((user) => (
+                            <CommandItem
+                              key={user.user_id}
+                              value={user.user_id}
+                              onSelect={() => handleUserSelect(user.user_id)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedUser === user.user_id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              <div className="flex items-center gap-2">
+                                {getStatusIcon(user.subscribed)}
+                                <span>{user.display_name || user.email}</span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandList>
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <Button onClick={adminDebug.fetchUsers} variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
 
+            {/* Selected User Details */}
+            {selectedUser && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ausgewählter Benutzer</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const userData = getSelectedUserData();
+                    if (!userData) return null;
+                    
+                    const status = getSubscriptionStatus(userData);
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(userData.subscribed)}
+                              <span className="font-medium">
+                                {userData.display_name || 'Unbekannt'}
+                              </span>
+                              <Badge variant={status.color as any}>
+                                {status.status}
+                              </Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              <div>Email: {userData.email || 'Nicht gesetzt'}</div>
+                              <div>ID: {userData.user_id}</div>
+                              {userData.subscription_end && (
+                                <div>Endet: {formatDate(userData.subscription_end)}</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={selectedDuration}
+                              onValueChange={setSelectedDuration}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1week">1 Woche</SelectItem>
+                                <SelectItem value="1month">1 Monat</SelectItem>
+                                <SelectItem value="3months">3 Monate</SelectItem>
+                                <SelectItem value="6months">6 Monate</SelectItem>
+                                <SelectItem value="12months">12 Monate</SelectItem>
+                                <SelectItem value="permanent">Permanent</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              onClick={() => adminDebug.grantPremium(selectedUser, selectedDuration)}
+                              size="sm"
+                              variant="default"
+                            >
+                              <Crown className="h-4 w-4 mr-2" />
+                              Premium
+                            </Button>
+                            <Button
+                              onClick={() => grantEnterprise(selectedUser, selectedDuration)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              <Building2 className="h-4 w-4 mr-2" />
+                              Enterprise
+                            </Button>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => adminDebug.revokePremium(selectedUser)}
+                              size="sm"
+                              variant="destructive"
+                            >
+                              <UserX className="h-4 w-4 mr-2" />
+                              Widerrufen
+                            </Button>
+                            <Button
+                              onClick={() => adminDebug.switchToUser(selectedUser)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              <Users className="h-4 w-4 mr-2" />
+                              Wechseln
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* All Users List */}
             <Card>
               <CardHeader>
                 <CardTitle>Alle Benutzer ({adminDebug.users.length})</CardTitle>
                 <CardDescription>
-                  Verwalte Subscriptions und Account-Zugriffe
+                  Wähle einen Benutzer aus dem Dropdown aus oder verwalte hier
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -218,49 +374,13 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
                                 )}
                               </div>
                             </div>
-                            <div className="flex flex-col gap-2">
-                              <div className="flex gap-2">
-                                <Select
-                                  value={selectedDuration}
-                                  onValueChange={setSelectedDuration}
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="1week">1 Woche</SelectItem>
-                                    <SelectItem value="1month">1 Monat</SelectItem>
-                                    <SelectItem value="3months">3 Monate</SelectItem>
-                                    <SelectItem value="6months">6 Monate</SelectItem>
-                                    <SelectItem value="12months">12 Monate</SelectItem>
-                                    <SelectItem value="permanent">Permanent</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  onClick={() => adminDebug.grantPremium(user.user_id, selectedDuration)}
-                                  size="sm"
-                                  variant="default"
-                                >
-                                  <Crown className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => adminDebug.revokePremium(user.user_id)}
-                                  size="sm"
-                                  variant="destructive"
-                                >
-                                  <UserX className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  onClick={() => adminDebug.switchToUser(user.user_id)}
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  <Users className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
+                            <Button
+                              onClick={() => handleUserSelect(user.user_id)}
+                              size="sm"
+                              variant="outline"
+                            >
+                              Auswählen
+                            </Button>
                           </div>
                         </div>
                       );
