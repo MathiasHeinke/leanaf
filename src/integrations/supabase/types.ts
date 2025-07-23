@@ -897,6 +897,10 @@ export type Database = {
         Args: { user_uuid?: string }
         Returns: boolean
       }
+      is_super_admin_by_email: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_user_points_and_level: {
         Args:
           | {
