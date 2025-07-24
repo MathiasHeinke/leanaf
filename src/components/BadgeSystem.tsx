@@ -228,80 +228,57 @@ export const BadgeSystem = () => {
               {(showAllBadges ? displayBadges : displayBadges.slice(0, isDesktop ? 8 : 3)).map((badge, index) => {
                 const badgeColor = getBadgeColor(badge.badge_type);
                 return (
-                  <div 
-                    key={badge.id}
-                    className="group relative p-4 sm:p-5 rounded-2xl border-2 bg-gradient-to-br from-background/95 via-background/90 to-background/80 backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20 animate-fade-in"
-                    style={{
-                      borderColor: `${badgeColor}60`,
-                      animationDelay: `${index * 100}ms`
-                    }}
-                  >
-                    {/* Glow effect */}
+                <div 
+                  key={badge.id}
+                  className="group relative p-4 sm:p-6 rounded-xl bg-background/50 border border-border/20 transition-all duration-200 hover:bg-background/80 hover:border-border/40 animate-fade-in"
+                  style={{
+                    animationDelay: `${index * 100}ms`
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Simplified Badge Icon */}
                     <div 
-                      className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-sm"
+                      className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl border border-border/30 flex items-center justify-center bg-background/80"
                       style={{
-                        background: `linear-gradient(45deg, ${badgeColor}40, ${badgeColor}20)`
+                        borderColor: `${getBadgeColor(badge.badge_type)}40`,
+                        color: getBadgeColor(badge.badge_type)
                       }}
-                    />
+                    >
+                      {getBadgeIcon(badge.badge_name, badge.badge_type)}
+                    </div>
                     
-                    {/* Badge content */}
-                    <div className="relative z-10 flex flex-col items-center text-center gap-3 sm:gap-4">
-                      {/* Icon with gradient background */}
-                      <div 
-                        className="relative flex-shrink-0 p-3 sm:p-4 rounded-2xl border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
-                        style={{
-                          background: `linear-gradient(135deg, ${badgeColor}25, ${badgeColor}10)`,
-                          borderColor: `${badgeColor}50`,
-                          color: badgeColor,
-                          boxShadow: `0 8px 32px ${badgeColor}30`
-                        }}
-                      >
-                        {/* Sparkle effect */}
-                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse" />
+                    {/* Badge Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm sm:text-base text-foreground mb-1 break-words">
+                            {badge.badge_name}
+                          </h4>
+                          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-2 break-words">
+                            {badge.badge_description}
+                          </p>
+                          <time className="text-xs text-muted-foreground/70">
+                            {new Date(badge.earned_at).toLocaleDateString('de-DE', {
+                              day: '2-digit',
+                              month: 'short', 
+                              year: 'numeric'
+                            })}
+                          </time>
+                        </div>
                         
-                        {getBadgeIcon(badge.badge_name, badge.badge_type)}
-                      </div>
-                      
-                      {/* Badge info */}
-                      <div className="space-y-1 sm:space-y-2 min-w-0 w-full">
-                        <div className="font-bold text-base sm:text-lg text-foreground group-hover:text-primary transition-colors duration-300 break-words hyphens-auto">
-                          {badge.badge_name}
-                        </div>
-                        <div className="text-xs sm:text-sm text-muted-foreground leading-relaxed break-words">
-                          {badge.badge_description}
-                        </div>
-                        <div className="text-xs text-muted-foreground/80 font-medium">
-                          {new Date(badge.earned_at).toLocaleDateString('de-DE', {
-                            day: '2-digit',
-                            month: 'short', 
-                            year: 'numeric'
-                          })}
-                        </div>
-                      </div>
-                      
-                      {/* Achievement checkmark */}
-                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                        {/* Simple Check Mark */}
                         <div 
-                          className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
+                          className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
                           style={{
-                            background: `linear-gradient(135deg, ${badgeColor}, ${badgeColor}80)`,
-                            borderColor: `${badgeColor}`,
-                            boxShadow: `0 4px 16px ${badgeColor}40`
+                            backgroundColor: getBadgeColor(badge.badge_type),
                           }}
                         >
-                          <span className="text-white text-xs sm:text-sm font-bold">✓</span>
+                          <span className="text-white text-xs font-bold">✓</span>
                         </div>
                       </div>
-                      
-                      {/* Bottom gradient line */}
-                      <div 
-                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 sm:w-16 h-0.5 sm:h-1 rounded-full opacity-60 group-hover:opacity-100 group-hover:w-16 sm:group-hover:w-24 transition-all duration-300"
-                        style={{
-                          background: `linear-gradient(90deg, transparent, ${badgeColor}, transparent)`
-                        }}
-                      />
                     </div>
                   </div>
+                </div>
                 );
               })}
             </div>
