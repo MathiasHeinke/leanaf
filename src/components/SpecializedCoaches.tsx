@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Check, Heart, Target, Brain } from 'lucide-react';
 import { SpecializedCoachChat } from './SpecializedCoachChat';
+import { CoachInfoButton } from './CoachInfoButton';
 
 const coachProfiles = [
   {
@@ -16,15 +17,28 @@ const coachProfiles = [
     icon: Heart,
     imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
     personality: 'Liebevoll & Unterstützend',
-    description: 'RAG-Expertin für Chrononutrition, anti-inflammatorische Ernährung und metabolische Flexibilität.',
-    expertise: ['Chrononutrition', 'Intervallfasten', 'Anti-Inflammation', 'Metabolismus'],
+    description: 'Spezialisiert auf optimales Meal-Timing, Intervallfasten und gesunde Gewohnheiten für nachhaltigen Erfolg.',
+    expertise: ['Optimales Timing', 'Intervallfasten', 'Gesunde Gewohnheiten', 'Stoffwechsel'],
     color: 'pink',
     accentColor: 'from-pink-500 to-pink-600',
+    coachInfo: {
+      id: 'lucy',
+      name: 'Lucy',
+      role: '80/20+ Ernährungs- & Lifestyle-Expertin',
+      color: 'pink',
+      philosophy: 'Gesunde Ernährung sollte Freude machen und sich natürlich in deinen Alltag integrieren. Mit der 80/20-Regel und wissenschaftlich fundiertem Meal-Timing findest du die perfekte Balance.',
+      scientificFoundation: 'Expertise in Chrononutrition, metabolischer Flexibilität und evidenzbasierter Ernährungsoptimierung für langfristigen Erfolg.',
+      specializations: ['Chrononutrition & Meal-Timing', 'Intervallfasten-Strategien', 'Anti-inflammatorische Ernährung', 'Metabolische Flexibilität', '80/20-Prinzip', 'Gewohnheitsbildung'],
+      keyMethods: ['Biorhythmus-optimiertes Essen', 'Personalisierte IF-Protokolle', 'Entzündungshemmende Lebensmittel', 'Flexible Ernährungsansätze'],
+      evidence: 'Studien zu Chrononutrition, Time-restricted Eating, metabolischer Gesundheit und nachhaltiger Verhaltensänderung',
+      evidenceBase: 'Studien zu Chrononutrition, Time-restricted Eating, metabolischer Gesundheit und nachhaltiger Verhaltensänderung',
+      interventions: ['Meal-Timing-Optimierung', 'IF-Protokoll-Anpassung', 'Anti-Inflammation-Pläne', 'Gewohnheits-Coaching']
+    },
     quickActions: [
-      { text: 'Chrononutrition optimieren', prompt: 'Wie kann ich mein Meal-Timing nach meinem Biorhythmus optimieren für bessere Glukosetoleranz?' },
+      { text: 'Optimales Meal-Timing', prompt: 'Wie kann ich mein Meal-Timing nach meinem Biorhythmus optimieren für bessere Glukosetoleranz?' },
       { text: 'Intervallfasten starten', prompt: 'Welche IF-Strategie passt zu meinem Chronotyp und wie starte ich richtig?' },
-      { text: 'Anti-Inflammation Plan', prompt: 'Erstelle mir einen anti-inflammatorischen Ernährungsplan basierend auf aktueller Forschung.' },
-      { text: 'Metabolische Flexibilität', prompt: 'Wie kann ich meine metabolische Flexibilität verbessern für optimale Fettverbrennung?' }
+      { text: 'Gesunde Gewohnheiten', prompt: 'Erstelle mir einen nachhaltigen Plan für gesunde Ernährungsgewohnheiten.' },
+      { text: 'Stoffwechsel optimieren', prompt: 'Wie kann ich meinen Stoffwechsel für optimale Fettverbrennung verbessern?' }
     ]
   },
   {
@@ -36,15 +50,28 @@ const coachProfiles = [
     icon: Target,
     imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
     personality: 'Hart & Direkt',
-    description: 'RAG-basierte Trainingsplanung mit evidenzbasierten Methoden für maximale Performance.',
-    expertise: ['Periodisierung', 'Progressive Overload', 'Biomechanik', 'Kraftaufbau'],
+    description: 'Evidenzbasiertes Training mit systematischer Progression für maximale Kraft und Performance.',
+    expertise: ['Intelligente Planung', 'Progression', 'Kraftaufbau', 'Performance'],
     color: 'red',
     accentColor: 'from-red-500 to-red-600',
+    coachInfo: {
+      id: 'sascha',
+      name: 'Sascha',
+      role: 'Performance- & Trainingsexperte',
+      color: 'red',
+      philosophy: 'Erfolg im Training kommt durch systematische Progression und intelligente Planung. Jede Wiederholung muss einen Zweck haben.',
+      scientificFoundation: 'Basiert auf Trainingswissenschaft, Biomechanik und evidenzbasierten Methoden für optimale Kraftentwicklung und Performance.',
+      specializations: ['Periodisierung', 'Progressive Overload', 'Biomechanik-Optimierung', 'Kraftaufbau-Strategien', 'Performance-Training', 'Plateau-Durchbruch'],
+      keyMethods: ['Wissenschaftliche Periodisierung', 'Biomechanische Analyse', 'Progressive Overload-Systeme', 'Individualisierte Trainingsplanung'],
+      evidence: 'Studien zu Krafttraining, Periodisierung, Biomechanik und Performance-Optimierung',
+      evidenceBase: 'Studien zu Krafttraining, Periodisierung, Biomechanik und Performance-Optimierung',
+      interventions: ['Periodisierte Trainingspläne', 'Bewegungsanalyse', 'Progressive Overload-Anpassung', 'Performance-Tests']
+    },
     quickActions: [
-      { text: 'Periodisierung planen', prompt: 'Erstelle mir einen wissenschaftlich fundierten, periodisierten Trainingsplan für meine Ziele.' },
+      { text: 'Intelligente Planung', prompt: 'Erstelle mir einen wissenschaftlich fundierten, periodisierten Trainingsplan für meine Ziele.' },
       { text: 'Progressive Overload', prompt: 'Analysiere meine aktuellen Lifts und optimiere meine Progressive Overload-Strategie.' },
-      { text: 'Biomechanik verbessern', prompt: 'Welche biomechanischen Anpassungen können meine Trainingseffizienz steigern?' },
-      { text: 'Plateau durchbrechen', prompt: 'Ich stagniere. Welche evidenzbasierten Strategien helfen mir beim Plateau-Durchbruch?' }
+      { text: 'Kraftaufbau maximieren', prompt: 'Welche evidenzbasierten Strategien maximieren meinen Kraftaufbau?' },
+      { text: 'Plateau durchbrechen', prompt: 'Ich stagniere. Welche Strategien helfen mir beim Plateau-Durchbruch?' }
     ]
   },
   {
@@ -56,15 +83,28 @@ const coachProfiles = [
     icon: Brain,
     imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
     personality: 'Motivierend & Energisch',
-    description: 'RAG-gestützte Neuroplastizität, HRV-Training und evidenzbasierte Recovery-Optimierung.',
-    expertise: ['Neuroplastizität', 'HRV-Training', 'Schlafoptimierung', 'Stress-Management'],
+    description: 'Mentale Stärke und optimale Regeneration für nachhaltige Motivation und bessere Performance.',
+    expertise: ['Mentale Stärke', 'Regeneration', 'Schlafqualität', 'Motivation'],
     color: 'green',
     accentColor: 'from-green-500 to-green-600',
+    coachInfo: {
+      id: 'kai',
+      name: 'Kai',
+      role: 'Mindset- & Recovery-Spezialist',
+      color: 'green',
+      philosophy: 'Erfolg entsteht im Kopf und regeneriert sich im Schlaf. Mentale Stärke und optimale Recovery sind die Basis für langfristige Fortschritte.',
+      scientificFoundation: 'Expertise in Neuroplastizität, HRV-Training und evidenzbasierter Recovery-Optimierung für mentale und körperliche Performance.',
+      specializations: ['Neuroplastizität & Gewohnheitsbildung', 'HRV-Training', 'Schlafoptimierung', 'Stressresilienz', 'Motivationspsychologie', 'Recovery-Strategien'],
+      keyMethods: ['Neuroplastizitäts-Training', 'HRV-basierte Recovery', 'Schlafhygiene-Optimierung', 'Stressmanagement-Techniken'],
+      evidence: 'Studien zu Neuroplastizität, HRV, Schlafforschung und Stressmanagement',
+      evidenceBase: 'Studien zu Neuroplastizität, HRV, Schlafforschung und Stressmanagement',
+      interventions: ['Gewohnheits-Coaching', 'HRV-Training', 'Schlaf-Optimierung', 'Stressresilienz-Aufbau']
+    },
     quickActions: [
-      { text: 'Neuroplastizität nutzen', prompt: 'Wie kann ich Neuroplastizität für bessere Gewohnheitsbildung und Motivation nutzen?' },
-      { text: 'HRV-Training starten', prompt: 'Erkläre mir HRV-Training und wie ich es für optimale Recovery einsetzen kann.' },
-      { text: 'Schlaf optimieren', prompt: 'Analysiere meine Schlafgewohnheiten und erstelle einen evidenzbasierten Optimierungsplan.' },
-      { text: 'Stressresilienz aufbauen', prompt: 'Welche wissenschaftlich bewährten Methoden helfen mir beim Aufbau von Stressresilienz?' }
+      { text: 'Mentale Stärke aufbauen', prompt: 'Wie kann ich mentale Stärke für bessere Gewohnheitsbildung und Motivation nutzen?' },
+      { text: 'Regeneration optimieren', prompt: 'Erkläre mir HRV-Training und wie ich es für optimale Recovery einsetzen kann.' },
+      { text: 'Schlaf verbessern', prompt: 'Analysiere meine Schlafgewohnheiten und erstelle einen Optimierungsplan.' },
+      { text: 'Motivation aufbauen', prompt: 'Welche wissenschaftlich bewährten Methoden helfen mir beim Aufbau von dauerhafter Motivation?' }
     ]
   }
 ];
@@ -202,7 +242,10 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
             <p className="text-xs text-muted-foreground truncate">{coach.role}</p>
           </div>
           
-          <coach.icon className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center space-x-2">
+            {coach.coachInfo && <CoachInfoButton coach={coach.coachInfo} />}
+            <coach.icon className="h-5 w-5 text-muted-foreground" />
+          </div>
         </div>
       </CardHeader>
       
