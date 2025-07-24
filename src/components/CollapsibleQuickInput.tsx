@@ -15,44 +15,44 @@ interface CollapsibleQuickInputProps {
 
 const themeStyles = {
   blue: {
-    header: "bg-blue-50 border-blue-200 hover:bg-blue-100/50",
-    headerCompleted: "bg-blue-100 border-blue-300",
-    icon: "bg-blue-500",
-    iconCompleted: "bg-blue-600",
-    completedText: "text-blue-700",
-    completedDot: "bg-blue-500"
+    header: "bg-blue-50 border-blue-200 hover:bg-blue-100/50 dark:bg-blue-950/50 dark:border-blue-800 dark:hover:bg-blue-900/50",
+    headerCompleted: "bg-blue-100 border-blue-300 dark:bg-blue-900/70 dark:border-blue-700",
+    icon: "bg-blue-500 dark:bg-blue-600",
+    iconCompleted: "bg-blue-600 dark:bg-blue-500",
+    completedText: "text-blue-700 dark:text-blue-300",
+    completedDot: "bg-blue-500 dark:bg-blue-400"
   },
   purple: {
-    header: "bg-purple-50 border-purple-200 hover:bg-purple-100/50",
-    headerCompleted: "bg-purple-100 border-purple-300",
-    icon: "bg-purple-500",
-    iconCompleted: "bg-purple-600",
-    completedText: "text-purple-700",
-    completedDot: "bg-purple-500"
+    header: "bg-purple-50 border-purple-200 hover:bg-purple-100/50 dark:bg-purple-950/50 dark:border-purple-800 dark:hover:bg-purple-900/50",
+    headerCompleted: "bg-purple-100 border-purple-300 dark:bg-purple-900/70 dark:border-purple-700",
+    icon: "bg-purple-500 dark:bg-purple-600",
+    iconCompleted: "bg-purple-600 dark:bg-purple-500",
+    completedText: "text-purple-700 dark:text-purple-300",
+    completedDot: "bg-purple-500 dark:bg-purple-400"
   },
   green: {
-    header: "bg-green-50 border-green-200 hover:bg-green-100/50",
-    headerCompleted: "bg-green-100 border-green-300",
-    icon: "bg-green-500",
-    iconCompleted: "bg-green-600",
-    completedText: "text-green-700",
-    completedDot: "bg-green-500"
+    header: "bg-green-50 border-green-200 hover:bg-green-100/50 dark:bg-green-950/50 dark:border-green-800 dark:hover:bg-green-900/50",
+    headerCompleted: "bg-green-100 border-green-300 dark:bg-green-900/70 dark:border-green-700",
+    icon: "bg-green-500 dark:bg-green-600",
+    iconCompleted: "bg-green-600 dark:bg-green-500",
+    completedText: "text-green-700 dark:text-green-300",
+    completedDot: "bg-green-500 dark:bg-green-400"
   },
   orange: {
-    header: "bg-orange-50 border-orange-200 hover:bg-orange-100/50",
-    headerCompleted: "bg-orange-100 border-orange-300",
-    icon: "bg-orange-500",
-    iconCompleted: "bg-orange-600",
-    completedText: "text-orange-700",
-    completedDot: "bg-orange-500"
+    header: "bg-orange-50 border-orange-200 hover:bg-orange-100/50 dark:bg-orange-950/50 dark:border-orange-800 dark:hover:bg-orange-900/50",
+    headerCompleted: "bg-orange-100 border-orange-300 dark:bg-orange-900/70 dark:border-orange-700",
+    icon: "bg-orange-500 dark:bg-orange-600",
+    iconCompleted: "bg-orange-600 dark:bg-orange-500",
+    completedText: "text-orange-700 dark:text-orange-300",
+    completedDot: "bg-orange-500 dark:bg-orange-400"
   },
   teal: {
-    header: "bg-teal-50 border-teal-200 hover:bg-teal-100/50",
-    headerCompleted: "bg-teal-100 border-teal-300",
-    icon: "bg-teal-500",
-    iconCompleted: "bg-teal-600",
-    completedText: "text-teal-700",
-    completedDot: "bg-teal-500"
+    header: "bg-teal-50 border-teal-200 hover:bg-teal-100/50 dark:bg-teal-950/50 dark:border-teal-800 dark:hover:bg-teal-900/50",
+    headerCompleted: "bg-teal-100 border-teal-300 dark:bg-teal-900/70 dark:border-teal-700",
+    icon: "bg-teal-500 dark:bg-teal-600",
+    iconCompleted: "bg-teal-600 dark:bg-teal-500",
+    completedText: "text-teal-700 dark:text-teal-300",
+    completedDot: "bg-teal-500 dark:bg-teal-400"
   }
 };
 
