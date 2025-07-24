@@ -160,6 +160,9 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 {todaysMeasurements?.waist && (
                   <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
                 )}
+                {todaysMeasurements?.belly && (
+                  <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
+                )}
                 {todaysMeasurements?.hips && (
                   <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
                 )}
@@ -278,6 +281,19 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Bauch (cm)</label>
+                  <NumericInput
+                    placeholder="90.0"
+                    value={measurements.belly}
+                    onChange={(value) => handleInputChange('belly', value)}
+                    allowDecimals={true}
+                    min={0}
+                    max={200}
+                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                  />
+                </div>
               
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Hüfte (cm)</label>
@@ -303,17 +319,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     max={100}
                     className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
                   />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Notizen</label>
-                <textarea
-                  value={measurements.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="Zusätzliche Notizen..."
-                  className="w-full p-2 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/50 text-purple-900 dark:text-purple-100 placeholder-purple-400 dark:placeholder-purple-500 resize-none h-20"
-                />
-              </div>
+                </div>
                 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Oberschenkel (cm)</label>
@@ -327,6 +333,16 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Notizen</label>
+                <textarea
+                  value={measurements.notes}
+                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  placeholder="Zusätzliche Notizen..."
+                  className="w-full p-2 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/50 text-purple-900 dark:text-purple-100 placeholder-purple-400 dark:placeholder-purple-500 resize-none h-20"
+                />
               </div>
 
               <div className="flex gap-2">
