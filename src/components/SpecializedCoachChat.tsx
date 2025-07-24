@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   ArrowLeft,
   Send, 
@@ -19,7 +20,8 @@ import {
   Paperclip,
   X,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -812,33 +814,54 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           </ScrollArea>
         </CardContent>
         
-        {/* Dynamic Quick Actions */}
+        {/* Dynamic Quick Actions - Collapsible */}
         {quickActionsShown && !isThinking && (
-          <div className="border-t p-4">
-            {isLoadingSuggestions && (
-              <div className="flex items-center justify-center mb-3">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span className="text-xs text-muted-foreground">Generiere Vorschläge...</span>
-                </div>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              {(dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions).map((action, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-auto py-2 px-3 text-left justify-start"
-                  onClick={() => handleSendMessage(action.prompt)}
-                  disabled={isLoadingSuggestions}
+          <Collapsible>
+            <div className="border-t">
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-between p-4 rounded-none border-none"
                 >
-                  {action.text}
+                  <div className="flex items-center space-x-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Vorschläge {dynamicSuggestions.length > 0 ? `(${dynamicSuggestions.length})` : `(${coach.quickActions.length})`}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
                 </Button>
-              ))}
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <div className="px-4 pb-4">
+                  {isLoadingSuggestions && (
+                    <div className="flex items-center justify-center mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span className="text-xs text-muted-foreground">Generiere Vorschläge...</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    {(dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions).map((action, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-auto py-2 px-3 text-left justify-start w-full"
+                        onClick={() => handleSendMessage(action.prompt)}
+                        disabled={isLoadingSuggestions}
+                      >
+                        {action.text}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
             </div>
-          </div>
+          </Collapsible>
         )}
         
         
