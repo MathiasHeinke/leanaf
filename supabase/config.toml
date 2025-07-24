@@ -9,10 +9,10 @@ enable_email_confirmations = true
 enable_phone_confirmations = false
 
 # OTP expiry settings (in seconds) - Enhanced Security
-# Email OTP expires in 5 minutes (300 seconds) - Better balance of security and usability
-email_otp_exp = 300
-# SMS OTP expires in 5 minutes (300 seconds) 
-sms_otp_exp = 300
+# Email OTP expires in 2 minutes (120 seconds) - Enhanced security with shorter expiry
+email_otp_exp = 120
+# SMS OTP expires in 2 minutes (120 seconds) 
+sms_otp_exp = 120
 
 # Password requirements - Enhanced
 password_min_length = 12
