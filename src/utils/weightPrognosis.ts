@@ -145,8 +145,12 @@ export const calculateWeightPrognosis = ({
   
   // Generate factor analysis
   const factors = {
-    calories: dailyCalorieBalance < 0 ? 'Gutes Kaloriendefizit' : 
-             dailyCalorieBalance > 0 ? 'Kalorienüberschuss' : 'Ausgeglichen',
+    calories: dailyCalorieBalance < -1000 ? 'Starkes Kaloriendefizit' :
+              dailyCalorieBalance < -500 ? 'Moderates Kaloriendefizit' :
+              dailyCalorieBalance < -200 ? 'Leichtes Kaloriendefizit' :
+              dailyCalorieBalance < 200 ? 'Ausgeglichen' :
+              dailyCalorieBalance < 500 ? 'Leichter Überschuss' :
+              dailyCalorieBalance < 800 ? 'Moderater Überschuss' : 'Starker Überschuss',
     activity: workoutsPerWeek >= 4 ? 'Sehr aktiv' :
              workoutsPerWeek >= 2 ? 'Moderat aktiv' : 'Wenig aktiv',
     sleep: averageSleepHours >= 7 ? 'Ausreichend Schlaf' :
