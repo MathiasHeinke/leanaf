@@ -12,6 +12,7 @@ import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
+import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -288,303 +289,241 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
     }
   };
 
-  // Show read-only summary if weight exists and not editing
-  if (hasWeightToday && !isEditing) {
-    return (
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200 dark:border-green-800">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
-            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-green-800 dark:text-green-200">Gewicht eingetragen! ⚖️</h3>
-            <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
-              <p><strong>Gewicht:</strong> {todaysWeight.weight || 0} kg</p>
-              {todaysWeight.body_fat_percentage && (
-                <p><strong>Körperfett:</strong> {todaysWeight.body_fat_percentage}%</p>
-              )}
-              {todaysWeight.muscle_percentage && (
-                <p><strong>Muskelmasse:</strong> {todaysWeight.muscle_percentage}%</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <InfoButton
-              title="Gewichts-Tracking"
-              description="Regelmäßiges Wiegen mit Body Composition hilft dir dabei, deinen Fortschritt detailliert zu verfolgen."
-              scientificBasis="Studien zeigen: Tägliches Wiegen kombiniert mit Körperfettmessung gibt bessere Einblicke in echte Fortschritte."
-              tips={[
-                "Wiege dich immer zur gleichen Zeit",
-                "Am besten morgens nach dem Aufstehen",
-                "Nutze die gleiche Waage für Konsistenz",
-                "Körperfettmessungen am Morgen sind am genauesten"
-              ]}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(true)}
-              className="text-green-600 border-green-300 hover:bg-green-50"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Progress Photos */}
-        {(() => {
-          const photos = parsePhotoUrls(todaysWeight.photo_urls);
-          return photos.length > 0 ? (
-            <div className="mb-3">
-              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">Progress Fotos:</p>
-              <div className="flex gap-2">
-                {photos.map((url: string, index: number) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Progress ${index + 1}`}
-                    className="w-16 h-16 object-cover rounded border border-green-200"
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null;
-        })()}
-        
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+  const isCompleted = hasWeightToday && !isEditing;
+
+  return (
+    <CollapsibleQuickInput
+      title="Gewicht & Body Composition"
+      icon={<Scale className="h-4 w-4 text-white" />}
+      isCompleted={isCompleted}
+      defaultOpen={!isCompleted}
+    >
+      <div className="space-y-4">
+        {showPointsAnimation && (
           <PointsBadge 
             points={3} 
             icon="⚖️"
             animated={showPointsAnimation}
             variant="secondary"
           />
-        </div>
+        )}
         
-        <div className="bg-green-100/50 dark:bg-green-900/30 rounded-lg p-3">
-          <p className="text-xs text-green-700 dark:text-green-300 mb-2">
-            <strong>Tipp:</strong> Konsistenz ist der Schlüssel zum Erfolg!
-          </p>
-          <p className="text-xs text-green-600 dark:text-green-400">
-            • Schwankungen von ±1kg sind völlig normal
-            • Der Trend über mehrere Tage ist wichtiger
-            • Körperfett und Muskelmasse geben bessere Einblicke
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/20 p-4 rounded-2xl border border-green-200 dark:border-green-800">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-green-100 dark:bg-green-900 rounded-xl">
-          <Scale className="h-5 w-5 text-green-600 dark:text-green-400" />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-green-800 dark:text-green-200">
-            {hasWeightToday ? 'Gewicht bearbeiten' : 'Gewicht & Body Composition eintragen'}
-          </h3>
-        </div>
-        <InfoButton
-          title="Gewichts-Tracking"
-          description="Regelmäßiges Wiegen mit Body Composition hilft dir dabei, deinen Fortschritt detailliert zu verfolgen."
-          scientificBasis="Studien zeigen: Tägliches Wiegen kombiniert mit Körperfettmessung gibt bessere Einblicke in echte Fortschritte."
-          tips={[
-            "Wiege dich immer zur gleichen Zeit",
-            "Am besten morgens nach dem Aufstehen",
-            "Nutze die gleiche Waage für Konsistenz",
-            "Körperfettmessungen am Morgen sind am genauesten"
-          ]}
-        />
-      </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Weight */}
-        <div>
-          <Label htmlFor="weight" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
-            Gewicht (kg) *
-          </Label>
-          <NumericInput
-            id="weight"
-            value={weight}
-            onChange={(value) => setWeight(value)}
-            placeholder="z.B. 75.5"
-            step={0.1}
-            min={1}
-            max={500}
-            className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
-            required
-          />
-        </div>
-
-        {/* Body Composition */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="bodyFat" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
-              Körperfett (%)
-            </Label>
-            <NumericInput
-              id="bodyFat"
-              value={bodyFat}
-              onChange={(value) => setBodyFat(value)}
-              placeholder="z.B. 15.5"
-              step={0.1}
-              min={0}
-              max={100}
-              className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
-            />
-          </div>
-          <div>
-            <Label htmlFor="muscleMass" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
-              Muskelmasse (%)
-            </Label>
-            <NumericInput
-              id="muscleMass"
-              value={muscleMass}
-              onChange={(value) => setMuscleMass(value)}
-              placeholder="z.B. 45.0"
-              step={0.1}
-              min={0}
-              max={100}
-              className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500"
-            />
-          </div>
-        </div>
-
-        {/* Photo Upload Toggle */}
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPhotoUpload(!showPhotoUpload)}
-            className="w-full mb-2 border-green-300 text-green-600 hover:bg-green-50"
-          >
-            <Camera className="h-4 w-4 mr-2" />
-            {showPhotoUpload ? 'Progress Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
-          </Button>
-          
-          {showPhotoUpload && (
-            <>
-              {/* Existing Photos */}
-              {existingPhotos.length > 0 && (
-                <div className="mb-2">
-                  <p className="text-xs text-green-600 dark:text-green-400 mb-1">Vorhandene Fotos:</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {existingPhotos.map((url, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={url}
-                          alt={`Existing ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded border"
-                        />
-                        {isEditing && (
-                          <button
-                            type="button"
-                            onClick={() => removeExistingPhoto(index)}
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* New Photos Upload */}
-              <div>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="photo-upload"
-                />
-                <label
-                  htmlFor="photo-upload"
-                  className="flex items-center justify-center w-full p-3 border-2 border-dashed border-green-300 dark:border-green-700 rounded-lg cursor-pointer hover:border-green-500 transition-colors"
-                >
-                  <Upload className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
-                  <span className="text-sm text-green-600 dark:text-green-400">Neue Bilder hinzufügen</span>
-                </label>
+        {hasWeightToday && !isEditing ? (
+          <div className="space-y-4">
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <h3 className="font-medium text-green-800 mb-2">✅ Gewicht bereits eingetragen</h3>
+              <div className="space-y-2 text-sm text-green-700">
+                <div><strong>Gewicht:</strong> {todaysWeight.weight} kg</div>
+                {todaysWeight.body_fat_percentage && (
+                  <div><strong>Körperfett:</strong> {todaysWeight.body_fat_percentage}%</div>
+                )}
+                {todaysWeight.muscle_percentage && (
+                  <div><strong>Muskelmasse:</strong> {todaysWeight.muscle_percentage}%</div>
+                )}
               </div>
               
-              {/* Selected New Files */}
-              {selectedFiles.length > 0 && (
-                <div className="mt-2">
-                  <p className="text-xs text-green-600 dark:text-green-400 mb-1">Neue Fotos:</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="relative">
+              {/* Progress Photos */}
+              {(() => {
+                const photos = parsePhotoUrls(todaysWeight.photo_urls);
+                return photos.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-green-700 mb-2">Progress Fotos:</p>
+                    <div className="flex gap-2">
+                      {photos.map((url: string, index: number) => (
                         <img
-                          src={URL.createObjectURL(file)}
-                          alt={`New Preview ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded border"
+                          key={index}
+                          src={url}
+                          alt={`Progress ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded border border-green-200"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Notes */}
-        <div>
-          <Label htmlFor="notes" className="text-sm font-medium text-green-700 dark:text-green-300 mb-2 block">
-            Notizen (optional)
-          </Label>
-          <Textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="z.B. Training heute, gute Form..."
-            className="bg-white dark:bg-green-950/50 border-green-200 dark:border-green-700 focus:border-green-500 min-h-[60px]"
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <Button 
-            type="submit" 
-            disabled={isSubmitting || !weight}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isSubmitting ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Speichern...
-        </div>
-      ) : (
-              <div className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                {hasWeightToday ? 'Aktualisieren' : 'Eintragen'}
-              </div>
-            )}
-          </Button>
-          
-          {hasWeightToday && isEditing && (
-            <Button
-              type="button"
+                ) : null;
+              })()}
+            </div>
+            <Button 
+              onClick={() => setIsEditing(true)}
               variant="outline"
-              onClick={() => setIsEditing(false)}
-              className="border-green-300 text-green-600"
+              className="w-full"
             >
-              Abbrechen
+              <Edit className="h-4 w-4 mr-2" />
+              Bearbeiten
             </Button>
-          )}
-        </div>
-      </form>
-    </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="weight">Gewicht (kg) *</Label>
+                <NumericInput
+                  id="weight"
+                  value={weight}
+                  onChange={(value) => setWeight(value)}
+                  placeholder="75.5"
+                  step={0.1}
+                  min={1}
+                  max={500}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bodyFat">Körperfett (%)</Label>
+                <NumericInput
+                  id="bodyFat"
+                  value={bodyFat}
+                  onChange={(value) => setBodyFat(value)}
+                  placeholder="15.0"
+                  step={0.1}
+                  min={0}
+                  max={100}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="muscleMass">Muskelmasse (%)</Label>
+                <NumericInput
+                  id="muscleMass"
+                  value={muscleMass}
+                  onChange={(value) => setMuscleMass(value)}
+                  placeholder="40.0"
+                  step={0.1}
+                  min={0}
+                  max={100}
+                />
+              </div>
+            </div>
+
+            {/* Photo Upload Toggle */}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+                className="w-full mb-2"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                {showPhotoUpload ? 'Progress Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
+              </Button>
+              
+              {showPhotoUpload && (
+                <>
+                  {/* Existing Photos */}
+                  {existingPhotos.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-600 mb-1">Vorhandene Fotos:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {existingPhotos.map((url, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={url}
+                              alt={`Existing ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            {isEditing && (
+                              <button
+                                type="button"
+                                onClick={() => removeExistingPhoto(index)}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New Photos Upload */}
+                  <div>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="photo-upload"
+                    />
+                    <label
+                      htmlFor="photo-upload"
+                      className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-500 transition-colors"
+                    >
+                      <Upload className="h-4 w-4 mr-2 text-gray-600" />
+                      <span className="text-sm text-gray-600">Neue Bilder hinzufügen</span>
+                    </label>
+                  </div>
+                  
+                  {/* Selected New Files */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600 mb-1">Neue Fotos:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`New Preview ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeFile(index)}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notizen</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notizen..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !weight}
+                className="flex-1"
+              >
+                {isSubmitting ? 'Speichere...' : (isEditing ? 'Aktualisieren' : 'Gewicht hinzufügen')}
+              </Button>
+              
+              {isEditing && (
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setWeight('');
+                    setBodyFat('');
+                    setMuscleMass('');
+                    setNotes('');
+                    setSelectedFiles([]);
+                  }}
+                >
+                  Abbrechen
+                </Button>
+              )}
+            </div>
+          </form>
+        )}
+      </div>
+    </CollapsibleQuickInput>
   );
 };
