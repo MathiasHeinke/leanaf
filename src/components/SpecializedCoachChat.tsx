@@ -269,6 +269,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         return `Hi ${firstName}! 🎯 Ich bin Sascha, dein Personal Trainer. Was ist dein aktuelles Trainingsziel?`;
       case 'kai':
         return `Hey ${firstName}! 💪 Ich bin Kai, dein Mindset- und Recovery-Spezialist. Woran arbeitest du gerade?`;
+      case 'markus':
+        return `Hey ${firstName}! 🏋️‍♂️ Markus hier - The German Beast! Bock auf echtes Hardcore-Training? Lass uns Masse aufbauen!`;
       default:
         return `Hey ${firstName}! Schön, dich kennenzulernen. Wie kann ich dir helfen?`;
     }
@@ -628,6 +630,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         return 'from-pink-500 to-pink-600';
       case 'green':
         return 'from-green-500 to-green-600';
+      case 'orange':
+        return 'from-orange-500 to-orange-600';
       default:
         return 'from-gray-500 to-gray-600';
     }
