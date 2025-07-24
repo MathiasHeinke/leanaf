@@ -178,14 +178,14 @@ export const BadgeSystem = () => {
                   <button
                     key={category.name}
                     onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                    className={`px-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 flex items-center justify-center gap-1 ${
+                    className={`px-1 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 flex flex-col items-center justify-center gap-0.5 ${
                       selectedCategory === category.name.toLowerCase() 
                         ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
                         : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
                     }`}
                   >
                     {category.icon}
-                    <span className="truncate text-xs">{category.name} ({category.badges.length})</span>
+                    <span className="text-xs text-center">{category.name} ({category.badges.length})</span>
                   </button>
                 ))}
               </div>
