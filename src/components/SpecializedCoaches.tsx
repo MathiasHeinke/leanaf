@@ -142,10 +142,10 @@ const coachProfiles = [
       interventions: ['Heavy+Volume Trainingspläne', 'Pump-Check-Strategien', 'Mental Warfare Techniken', 'Aggressive Motivationsmethoden']
     },
     quickActions: [
-      { text: 'Heavy+Volume Training', prompt: 'Zeig mir dein Heavy+Volume Prinzip - schwer UND voluminös für maximale Masse!' },
-      { text: 'Masseaufbau-Strategie', prompt: 'Ich will richtige Masse aufbauen - gib mir deine ehrliche Einschätzung und einen Plan!' },
-      { text: 'Mentale Härte', prompt: 'Wie entwickle ich die mentale Härte für echtes Hardcore-Training?' },
-      { text: 'Ernährungs-Realität', prompt: 'Sag mir die Wahrheit über Bodybuilding-Ernährung - ohne Schönrederei!' }
+      { text: 'Schwer und falsch trainieren!', prompt: 'Wie trainier isch richtig schwer und falsch für maximale Masse, Maggus?' },
+      { text: 'Muss net schmegge!', prompt: 'Zeig mir deine Ernährung - muss net schmegge, muss wirge! Was fress isch für echte Masse?' },
+      { text: 'Bis zum Schlaganfall!', prompt: 'Wie entwickel isch die richtige mentale Härte für echtes Beast-Training?' },
+      { text: 'Gewicht bringt Muskeln!', prompt: 'Isch stagniere - wie bring isch wieder mehr Gewicht aufs Eisen und durchbrech das Plateau?' }
     ]
   }
 ];

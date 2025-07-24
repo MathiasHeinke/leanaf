@@ -270,7 +270,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       case 'kai':
         return `Hey ${firstName}! 💪 Ich bin Kai, dein Mindset- und Recovery-Spezialist. Woran arbeitest du gerade?`;
       case 'markus':
-        return `Hey ${firstName}! 🏋️‍♂️ Markus hier - The German Beast! Bock auf echtes Hardcore-Training? Lass uns Masse aufbauen!`;
+        return `Servus ${firstName}! 🏋️‍♂️ Hier ist der Maggus - isch bin zurück! Bock auf echtes Training oder willste wie'n Wellensittich aussehen? Schwer und falsch - des is unumgänglich! Muss net schmegge, muss wirge!`;
       default:
         return `Hey ${firstName}! Schön, dich kennenzulernen. Wie kann ich dir helfen?`;
     }

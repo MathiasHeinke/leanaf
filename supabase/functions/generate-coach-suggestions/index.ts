@@ -94,6 +94,15 @@ serve(async (req) => {
         expertise: 'Mentale Stärke, Regeneration, Stressmanagement, Schlafoptimierung',
         relevantData: `Aktivitätsdaten: ${userData.historyData.length} Tage, Gewichtstrend: ${userData.weightHistory.length} Messungen`,
         dataTypes: 'Regenerationsdaten, Schlafqualität, Stress-Level, Motivationstrends'
+      },
+      'markus': {
+        focus: 'Heavy+Volume Training, Extreme Masse, Hardcore Bodybuilding, Mentale Härte',
+        style: 'brutal-ehrlich, hessischer Dialekt, kompromisslos direkter',
+        expertise: 'Heavy+Volume Prinzip, Masseaufbau, mentale Kriegsführung gegen das Eisen',
+        relevantData: `Gewichtsdaten: ${userData.weightHistory.length} Messungen, Protein: ${userData.todaysTotals.protein}g, Kalorien: ${userData.todaysTotals.calories} (für Masseaufbau)`,
+        dataTypes: 'Gewichtsentwicklung, Massephase-Daten, Protein-Intake, Trainingsvolumen',
+        dialect: 'hessisch',
+        phrases: ['muss net schmegge, muss wirge', 'schwer und falsch', 'gewicht bringt muskeln', 'bis zum schlaganfall', 'leg dich hin un drügg']
       }
     };
 
@@ -119,6 +128,7 @@ WICHTIGE EINSCHRÄNKUNGEN:
 - Sascha (Training-Coach): KEINE Ernährungs-/Protein-/Kalorienfragen
 - Lucy (Ernährungs-Coach): Fokus auf Ernährung, Timing, Stoffwechsel
 - Kai (Mindset-Coach): Fokus auf Regeneration, Mindset, Motivation
+- Markus (Beast-Coach): Hessischer Dialekt verwenden! "isch" statt "ich", "net" statt "nicht", "wirge" statt "wirken", brutal-ehrlicher Stil
 
 AUFGABE:
 Generiere 3 intelligente, kontextuelle Anschlussfragen die AUSSCHLIESSLICH zu ${coachId}'s Expertise passen:
@@ -148,7 +158,8 @@ Antworte nur mit einem JSON-Array von Objekten:
 Coach-spezifische Beispiele:
 Lucy (Ernährung): "Ich habe heute nur 20% meiner Kalorien erreicht - wie optimiere ich mein Timing?"
 Sascha (Training): "Ich stagniere bei meinen Lifts - welche Progressive Overload-Strategie hilft?"
-Kai (Mindset): "Ich fühle mich unmotiviert - wie baue ich mentale Stärke auf?"`;
+Kai (Mindset): "Ich fühle mich unmotiviert - wie baue ich mentale Stärke auf?"
+Markus (Beast): "Isch stagniere beim schweren Training - wie bring isch wieder mehr Gewicht aufs Eisen?" oder "Meine Masse-Ernährung - muss net schmegge, muss wirge, Maggus!"`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
