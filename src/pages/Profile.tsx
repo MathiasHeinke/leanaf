@@ -428,10 +428,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   return (
     <>
-      {/* Onboarding Overlays */}
+      {/* Onboarding Overlays - Only show if profile is not complete */}
       <ProfileOnboardingOverlay 
-        isOpen={showProfileOnboarding}
-        onClose={() => {}}
+        isOpen={showProfileOnboarding && !isProfileComplete}
+        onClose={completeProfileOnboarding}
         userName={displayName || user?.email?.split('@')[0] || 'Champion'}
       />
       

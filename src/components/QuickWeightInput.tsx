@@ -41,6 +41,7 @@ const parsePhotoUrls = (photoUrls: any): string[] => {
 
 export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
+  const [debouncedWeight, setDebouncedWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [muscleMass, setMuscleMass] = useState("");
   const [notes, setNotes] = useState("");
@@ -59,7 +60,9 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   useEffect(() => {
     if (hasWeightToday && !isEditing) {
-      setWeight(todaysWeight.weight?.toString() || "");
+      const weightValue = todaysWeight.weight?.toString() || "";
+      setWeight(weightValue);
+      setDebouncedWeight(weightValue);
       setBodyFat(todaysWeight.body_fat_percentage?.toString() || "");
       setMuscleMass(todaysWeight.muscle_percentage?.toString() || "");
       setNotes(todaysWeight.notes || "");
@@ -67,6 +70,15 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       setShowPhotoUpload(parsePhotoUrls(todaysWeight.photo_urls).length > 0);
     }
   }, [hasWeightToday, todaysWeight, isEditing]);
+
+  // Debounce weight input for processing (500ms delay)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedWeight(weight);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [weight]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -91,12 +103,12 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !weight) return;
+    if (!user || !debouncedWeight) return;
 
     setIsSubmitting(true);
     try {
       // Parse and validate input with locale-safe number parsing
-      const weightValue = parseFloat(weight.replace(',', '.'));
+      const weightValue = parseFloat(debouncedWeight.replace(',', '.'));
       const bodyFatValue = bodyFat ? parseFloat(bodyFat.replace(',', '.')) : null;
       const muscleMassValue = muscleMass ? parseFloat(muscleMass.replace(',', '.')) : null;
 
@@ -498,7 +510,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             <div className="flex gap-2">
               <Button 
                 type="submit" 
-                disabled={isSubmitting || !weight}
+                disabled={isSubmitting || !debouncedWeight}
                 className="flex-1"
               >
                 {isSubmitting ? 'Speichere...' : (isEditing ? 'Aktualisieren' : 'Gewicht hinzufügen')}
