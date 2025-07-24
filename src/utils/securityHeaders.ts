@@ -3,11 +3,11 @@ export const getEnhancedSecurityHeaders = () => {
   return {
     'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https: http:",
-      "connect-src 'self' https://gzczjscctgyxjyodhnhk.supabase.co https://api.openai.com https://api.ipify.org wss://gzczjscctgyxjyodhnhk.supabase.co",
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https://gzczjscctgyxjyodhnhk.supabase.co https://api.openai.com https://api.ipify.org wss://gzczjscctgyxjyodhnhk.supabase.co",
       "media-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",

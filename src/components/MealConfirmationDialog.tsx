@@ -26,6 +26,7 @@ import { CalendarIcon, MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
+import { secureLogger } from "@/utils/secureLogger";
 
 interface MealConfirmationDialogProps {
   isOpen: boolean;
@@ -203,15 +204,16 @@ export const MealConfirmationDialog = ({
   };
 
   const handleConfirmMeal = async () => {
-    console.log('🔧 [DEBUG] handleConfirmMeal started');
-    console.log('🔧 [DEBUG] User ID:', user?.id);
-    console.log('🔧 [DEBUG] Selected meal type:', selectedMealType);
-    console.log('🔧 [DEBUG] Editable values:', editableValues);
-    console.log('🔧 [DEBUG] Meal date:', mealDate);
-    console.log('🔧 [DEBUG] Uploaded images count:', uploadedImages.length);
+    secureLogger.debug('handleConfirmMeal started');
+    secureLogger.debug('Meal confirmation data', {
+      hasUserId: !!user?.id,
+      mealType: selectedMealType,
+      mealDate: mealDate,
+      imageCount: uploadedImages.length
+    });
     
     if (!user?.id) {
-      console.error('🔧 [DEBUG] No user ID found');
+      secureLogger.error('Authentication error: No user ID found');
       toast.error('Benutzer nicht authentifiziert');
       return;
     }
@@ -228,8 +230,8 @@ export const MealConfirmationDialog = ({
         fats: Number(editableValues.fats) || 0
       };
 
-      console.log('🔧 [DEBUG] Meal payload prepared:', mealPayload);
-      console.log('🔧 [DEBUG] About to insert meal...');
+      secureLogger.debug('Meal payload prepared');
+      secureLogger.debug('About to insert meal');
       
       // Insert meal with retry mechanism
       let mealData = null;
@@ -237,7 +239,7 @@ export const MealConfirmationDialog = ({
       
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          console.log(`🔧 [DEBUG] Insert attempt ${attempt}/3`);
+          secureLogger.debug(`Insert attempt ${attempt}/3`);
           
           const { data, error } = await supabase
             .from('meals')
@@ -246,7 +248,7 @@ export const MealConfirmationDialog = ({
             .single();
 
           if (error) {
-            console.error(`🔧 [DEBUG] Insert error (attempt ${attempt}):`, error);
+            secureLogger.error(`Insert error (attempt ${attempt})`, error);
             insertError = error;
             
             if (attempt === 3) {
@@ -258,12 +260,12 @@ export const MealConfirmationDialog = ({
             continue;
           }
 
-          console.log('🔧 [DEBUG] Meal insert successful:', data);
+          secureLogger.debug('Meal insert successful');
           mealData = data;
           break;
           
         } catch (networkError) {
-          console.error(`🔧 [DEBUG] Network error (attempt ${attempt}):`, networkError);
+          secureLogger.error(`Network error (attempt ${attempt})`, networkError);
           insertError = networkError;
           
           if (attempt === 3) {
@@ -278,11 +280,11 @@ export const MealConfirmationDialog = ({
         throw insertError || new Error('Failed to insert meal after retries');
       }
 
-      console.log('🔧 [DEBUG] Meal saved successfully, ID:', mealData.id);
+      secureLogger.debug('Meal saved successfully', { mealId: mealData.id });
 
       // Save uploaded images if any
       if (uploadedImages.length > 0) {
-        console.log('🔧 [DEBUG] Processing uploaded images:', uploadedImages.length);
+        secureLogger.debug('Processing uploaded images', { imageCount: uploadedImages.length });
         
         const imageInserts = uploadedImages.map(imageUrl => ({
           user_id: user.id,
@@ -290,7 +292,7 @@ export const MealConfirmationDialog = ({
           image_url: imageUrl
         }));
 
-        console.log('🔧 [DEBUG] Image inserts prepared:', imageInserts);
+        secureLogger.debug('Image inserts prepared');
 
         try {
           const { error: imagesError } = await supabase
@@ -298,19 +300,19 @@ export const MealConfirmationDialog = ({
             .insert(imageInserts);
 
           if (imagesError) {
-            console.error('🔧 [DEBUG] Error saving meal images:', imagesError);
+            secureLogger.error('Error saving meal images', imagesError);
             toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
           } else {
-      console.log('🔧 [DEBUG] Images saved successfully');
+            secureLogger.debug('Images saved successfully');
           }
         } catch (imageNetworkError) {
-          console.error('🔧 [DEBUG] Network error saving images:', imageNetworkError);
+          secureLogger.error('Network error saving images', imageNetworkError);
           toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
         }
       }
 
       // Evaluate meal quality and award bonus points
-      console.log('🔧 [DEBUG] Starting meal evaluation...');
+      secureLogger.debug('Starting meal evaluation');
       setIsEvaluating(true);
       
       if (evaluateMeal) {
@@ -327,10 +329,10 @@ export const MealConfirmationDialog = ({
           
           if (evaluationResult) {
             setMealEvaluation(evaluationResult);
-            console.log('🔧 [DEBUG] Meal evaluation completed:', evaluationResult);
+            secureLogger.debug('Meal evaluation completed', { hasResult: !!evaluationResult });
           }
         } catch (evaluationError) {
-          console.warn('🔧 [DEBUG] Meal evaluation failed:', evaluationError);
+          secureLogger.warn('Meal evaluation failed', evaluationError);
           // Show fallback success message if evaluation fails
           const fallbackMessage = uploadedImages.length > 0 
             ? `Mahlzeit gespeichert! (+${uploadedImages.length > 0 ? '5' : '3'} Punkte)` 
@@ -341,33 +343,26 @@ export const MealConfirmationDialog = ({
         }
       }
 
-      console.log('🔧 [DEBUG] Triggering data refresh...');
+      secureLogger.debug('Triggering data refresh');
       triggerDataRefresh();
       
-      console.log('🔧 [DEBUG] Showing success message...');
+      secureLogger.debug('Showing success message');
       const successMessage = uploadedImages.length > 0 
         ? `Mahlzeit erfolgreich gespeichert mit ${uploadedImages.length} Bild(ern)` 
         : 'Mahlzeit erfolgreich gespeichert';
       
       toast.success(successMessage);
       
-      console.log('🔧 [DEBUG] Calling onSuccess callback...');
+      secureLogger.debug('Calling onSuccess callback');
       onSuccess();
       
-      console.log('🔧 [DEBUG] Closing dialog...');
+      secureLogger.debug('Closing dialog');
       onClose();
       
-      console.log('🔧 [DEBUG] handleConfirmMeal completed successfully');
+      secureLogger.debug('handleConfirmMeal completed successfully');
       
     } catch (error: any) {
-      console.error('🔧 [DEBUG] Critical error in handleConfirmMeal:', error);
-      console.error('🔧 [DEBUG] Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        stack: error.stack
-      });
+      secureLogger.error('Critical error in handleConfirmMeal', error);
       
       let errorMessage = 'Fehler beim Speichern der Mahlzeit';
       
@@ -384,7 +379,7 @@ export const MealConfirmationDialog = ({
         errorMessage = `Fehler: ${error.message}`;
       }
       
-      console.log('🔧 [DEBUG] Showing error toast:', errorMessage);
+      secureLogger.debug('Showing error toast', { errorMessage });
       toast.error(errorMessage);
     }
   };

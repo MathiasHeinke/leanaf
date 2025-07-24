@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { secureLogger } from '@/utils/secureLogger';
 
 interface TrialData {
   hasActiveTrial: boolean;
@@ -77,9 +78,9 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
     try {
       setLoading(true);
-      console.log('[Subscription] Refreshing subscription status...', { 
-        userId: user.id, 
-        email: user.email,
+      secureLogger.info('Refreshing subscription status', { 
+        hasUserId: !!user.id, 
+        hasEmail: !!user.email,
         forceRefresh 
       });
       
@@ -97,19 +98,19 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
         if (error) {
           edgeFunctionError = error;
-          console.error('[Subscription] Edge function error:', error);
+          secureLogger.error('Subscription Edge function error', error);
         } else {
           subscriptionData = data;
-          console.log('[Subscription] Edge function response:', data);
+          secureLogger.info('Subscription Edge function response received');
         }
       } catch (error) {
         edgeFunctionError = error;
-        console.error('[Subscription] Edge function failed:', error);
+        secureLogger.error('Subscription Edge function failed', error);
       }
 
       // Level 2: Fallback to direct database query if Edge Function fails
       if (!subscriptionData && edgeFunctionError) {
-        console.log('[Subscription] Falling back to direct database query...');
+        secureLogger.info('Falling back to direct database query');
         
         try {
           const { data: dbData, error: dbError } = await supabase
@@ -119,16 +120,20 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
             .maybeSingle();
 
           if (dbError && dbError.code !== 'PGRST116') {
-            console.error('[Subscription] Database fallback error:', dbError);
+            secureLogger.error('Database fallback error', dbError);
           } else if (dbData) {
             subscriptionData = {
               subscribed: dbData.subscribed,
               subscription_tier: dbData.subscription_tier,
               subscription_end: dbData.subscription_end
             };
-            console.log('[Subscription] Database fallback successful:', subscriptionData);
+            secureLogger.info('Database fallback successful', {
+              subscribed: dbData.subscribed,
+              subscription_tier: dbData.subscription_tier,
+              subscription_end: dbData.subscription_end
+            });
           } else {
-            console.log('[Subscription] No subscription found in database');
+            secureLogger.info('No subscription found in database');
             subscriptionData = {
               subscribed: false,
               subscription_tier: null,
@@ -136,7 +141,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
             };
           }
         } catch (dbError) {
-          console.error('[Subscription] Database fallback failed:', dbError);
+          secureLogger.error('Database fallback failed', dbError);
           throw dbError;
         }
       }
@@ -151,7 +156,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         .maybeSingle();
 
       if (trialError && trialError.code !== 'PGRST116') {
-        console.error('Error checking trial:', trialError);
+        secureLogger.error('Error checking trial', trialError);
       }
 
       // Calculate trial status
@@ -169,7 +174,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       const premium = isSubscribed || hasActiveTrial;
       const basic = !premium;
 
-      console.log('[Subscription] Final status:', {
+      secureLogger.info('Subscription Final status', {
         isSubscribed,
         subscriptionTier: subscriptionData?.subscription_tier,
         hasActiveTrial,
@@ -187,7 +192,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         trialDaysLeft,
       });
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      secureLogger.error('Error checking subscription', error);
       setIsPremium(false);
       setIsBasic(true);
       setSubscriptionTier(null);
@@ -217,14 +222,14 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         });
 
       if (error) {
-        console.error('Error starting trial:', error);
+        secureLogger.error('Error starting trial', error);
         return false;
       }
 
       await refreshSubscription();
       return true;
     } catch (error) {
-      console.error('Error starting premium trial:', error);
+      secureLogger.error('Error starting premium trial', error);
       return false;
     }
   };
@@ -246,7 +251,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         window.open(data.url, '_blank');
       }
     } catch (error) {
-      console.error('Error creating checkout session:', error);
+      secureLogger.error('Error creating checkout session', error);
     }
   };
 
@@ -267,7 +272,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         window.open(data.url, '_blank');
       }
     } catch (error) {
-      console.error('Error creating portal session:', error);
+      secureLogger.error('Error creating portal session', error);
     }
   };
 
@@ -275,13 +280,13 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const isInDebugMode = () => debugMode && debugTier !== null;
   
   const setDebugTier = (tier: string) => {
-    console.log(`[Subscription Debug] Switching to tier: ${tier}`);
+    secureLogger.debug('Subscription Debug: Switching to tier', { tier });
     setDebugMode(true);
     setDebugTierState(tier);
   };
   
   const clearDebugMode = () => {
-    console.log('[Subscription Debug] Clearing debug mode, returning to real subscription status');
+    secureLogger.debug('Subscription Debug: Clearing debug mode, returning to real subscription status');
     setDebugMode(false);
     setDebugTierState(null);
   };
@@ -291,7 +296,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     if (!user || !debugTier) return;
 
     try {
-      console.log(`[Subscription Debug] Creating debug subscription entry for tier: ${debugTier}`);
+      secureLogger.debug('Subscription Debug: Creating debug subscription entry', { debugTier });
       
       const isPremiumTier = ['basic', 'premium', 'enterprise'].includes(debugTier.toLowerCase());
       
@@ -309,12 +314,12 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         });
 
       if (error) {
-        console.error('Error creating debug subscription:', error);
+        secureLogger.error('Error creating debug subscription', error);
       } else {
-        console.log('[Subscription Debug] Debug subscription created successfully');
+        secureLogger.debug('Subscription Debug: Debug subscription created successfully');
       }
     } catch (error) {
-      console.error('Error in createDebugSubscription:', error);
+      secureLogger.error('Error in createDebugSubscription', error);
     }
   };
 
@@ -323,7 +328,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     if (!user) return;
 
     try {
-      console.log('[Subscription Debug] Clearing debug subscription entry');
+      secureLogger.debug('Subscription Debug: Clearing debug subscription entry');
       
       // Reset subscription to free tier
       const { error } = await supabase
@@ -339,12 +344,12 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         });
 
       if (error) {
-        console.error('Error clearing debug subscription:', error);
+        secureLogger.error('Error clearing debug subscription', error);
       } else {
-        console.log('[Subscription Debug] Debug subscription cleared successfully');
+        secureLogger.debug('Subscription Debug: Debug subscription cleared successfully');
       }
     } catch (error) {
-      console.error('Error in clearDebugSubscription:', error);
+      secureLogger.error('Error in clearDebugSubscription', error);
     }
   };
 
@@ -357,7 +362,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
 
   // Force refresh function for admin use
   const forceRefreshSubscription = async () => {
-    console.log('[Subscription] Force refreshing subscription...');
+    secureLogger.debug('Force refreshing subscription');
     await refreshSubscription(true);
   };
 
@@ -377,7 +382,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     if (!user) return;
     
     const interval = setInterval(() => {
-      console.log('[Subscription] Auto-refreshing subscription...');
+      secureLogger.debug('Auto-refreshing subscription');
       refreshSubscription();
     }, 30000);
 

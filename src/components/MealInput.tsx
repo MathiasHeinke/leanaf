@@ -8,6 +8,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { UploadProgress } from "@/components/UploadProgress";
 import { UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 import { sanitizeInput } from "@/utils/securityHelpers";
+import { secureLogger } from "@/utils/secureLogger";
 
 interface MealInputProps {
   inputText: string;
@@ -56,7 +57,7 @@ export const MealInput = ({
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
     
-    console.log('🔄 Submit button clicked');
+    secureLogger.debug('Submit button clicked');
     setIsSubmitting(true);
     
     try {
@@ -68,7 +69,7 @@ export const MealInput = ({
 
   // Handle photo upload with event isolation
   const handlePhotoUploadClick = (event: React.MouseEvent) => {
-    console.log('📷 Photo upload button clicked');
+    secureLogger.debug('Photo upload button clicked');
     event.preventDefault();
     event.stopPropagation();
     
@@ -82,7 +83,7 @@ export const MealInput = ({
 
   // Handle voice recording with event isolation
   const handleVoiceClick = (event: React.MouseEvent) => {
-    console.log('🎙️ Voice button clicked');
+    secureLogger.debug('Voice button clicked');
     event.preventDefault();
     event.stopPropagation();
     
