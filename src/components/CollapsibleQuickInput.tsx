@@ -91,8 +91,10 @@ export const CollapsibleQuickInput = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isCompleted && (
+          {isCompleted ? (
             <span className={cn("text-xs font-medium", styles.completedText)}>✓ Erledigt</span>
+          ) : (
+            <span className="text-xs font-medium text-muted-foreground">jetzt ausfüllen</span>
           )}
           {isOpen ? (
             <ChevronDown className="h-4 w-4 transition-transform" />
