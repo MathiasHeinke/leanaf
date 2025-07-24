@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Minus, TrendingDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { InsightsAnalysis } from "@/components/InsightsAnalysis";
 import { HistoryCharts } from "@/components/HistoryCharts";
-import { WeightProgressCard } from "@/components/WeightProgressCard";
-import { TransformationCards } from "@/components/TransformationCards";
 import { Overview } from "@/components/Overview";
 
 const Analysis = () => {
@@ -219,10 +214,7 @@ const Analysis = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Transformation Cards */}
-      <TransformationCards />
-      
-      {/* Wichtige Überblick Card - von Coach hierher verschoben */}
+      {/* Wichtige Überblick Card - sauber und übersichtlich */}
       <Overview 
         todaysTotals={todaysTotals}
         dailyGoals={dailyGoals}
@@ -230,24 +222,7 @@ const Analysis = () => {
         weightHistory={weightHistory}
       />
 
-      {/* Smart Insights */}
-      <InsightsAnalysis
-        todaysTotals={todaysTotals}
-        dailyGoals={dailyGoals}
-        averages={averages}
-        historyData={historyData}
-        trendData={trendData}
-        weightHistory={weightHistory}
-        onWeightAdded={() => loadAnalysisData()}
-      />
-
-      {/* Weight Progress Card */}
-      <WeightProgressCard 
-        weightHistory={weightHistory}
-        onWeightAdded={loadAnalysisData}
-      />
-
-      {/* History Charts */}
+      {/* History Charts - nur die Charts behalten */}
       <HistoryCharts 
         data={historyData}
         weightHistory={weightHistory}
