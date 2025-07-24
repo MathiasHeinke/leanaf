@@ -44,6 +44,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
     new Date();
 
   useEffect(() => {
+    console.log("🔍 BodyMeasurements received props:", { 
+      todaysMeasurements, 
+      hasId: !!todaysMeasurements?.id,
+      isEditing 
+    });
+    
     if (todaysMeasurements && !isEditing) {
       // Pre-fill form with existing data
       console.log("📊 Loading existing measurements:", todaysMeasurements);
@@ -57,6 +63,8 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         thigh: todaysMeasurements.thigh?.toString() || "",
         notes: todaysMeasurements.notes || ""
       });
+    } else {
+      console.log("❌ No measurements to load or in editing mode");
     }
   }, [todaysMeasurements, isEditing]);
 
