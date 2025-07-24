@@ -48,7 +48,40 @@ serve(async (req) => {
       imageUrls: images ? images.map((url: string) => url.substring(0, 50) + '...') : 'NO IMAGES'
     });
     
-    // Authentication and user verification - REQUIRED
+    // Rate limiting check
+    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+    
+    // Check rate limit for unauthenticated requests (by IP)
+    const { data: rateLimitResult } = await supabaseClient.rpc('check_and_update_rate_limit', {
+      p_identifier: clientIP,
+      p_endpoint: 'analyze-meal',
+      p_window_minutes: 60,
+      p_max_requests: 100 // 100 requests per hour per IP
+    });
+    
+    if (!rateLimitResult?.allowed) {
+      console.log('🚫 [ANALYZE-MEAL] Rate limit exceeded for IP:', clientIP);
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded. Please try again later.',
+        code: 'RATE_LIMIT_EXCEEDED',
+        retry_after: rateLimitResult?.retry_after_seconds || 3600
+      }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Retry-After': String(rateLimitResult?.retry_after_seconds || 3600)
+        }
+      });
+    }
+
+    // Authentication verification - REQUIRED
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('🚫 [ANALYZE-MEAL] Missing or invalid authorization header');
@@ -60,12 +93,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    );
     
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
     
