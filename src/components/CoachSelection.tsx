@@ -1,34 +1,13 @@
 
 import React from 'react';
 import { CoachCard } from './CoachCard';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Button } from '@/components/ui/button';
+import { Crown, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
+// Erweiterte Coach-Profile mit neuen Experten
 const coachProfiles = [
-  {
-    id: 'hart',
-    name: 'Sascha',
-    age: 32,
-    role: 'Performance & Training Coach',
-    avatar: '🎯',
-    imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-    personality: 'Performance-fokussiert',
-    description: 'Dein Experte für effektives Krafttraining und Leistungssteigerung. Hilft dir dabei, deine Fitnessziele systematisch und nachhaltig zu erreichen.',
-    strengths: ['Trainingsplanung', 'Kraftaufbau', 'Technikverbesserung', 'Fortschrittsmessung'],
-    quote: 'Fortschritt entsteht durch intelligente Progression und messbare Anpassungen.',
-    color: 'blue',
-    accentColor: 'from-blue-500 to-blue-600',
-    coachInfo: {
-      id: 'hart',
-      name: 'Sascha Weber',
-      role: 'Performance & Training Coach',
-      scientificFoundation: 'Sportwissenschaft (M.Sc.) mit Spezialisierung auf Leistungsphysiologie und biomechanische Bewegungsanalyse. Basiert auf aktueller Forschung zu Kraftentwicklung, Hypertrophie und neuronalen Adaptationen.',
-      keyMethods: ['Periodisierte Trainingsplanung', 'Progressive Overload Prinzipien', 'Bewegungsanalyse & Korrektur', 'Leistungsdiagnostik'],
-      specializations: ['Krafttraining & Hypertrophie', 'Sportspezifische Konditionierung', 'Verletzungsprävention', 'Wettkampfvorbereitung'],
-      evidence: 'Wissenschaftlich fundierte Methoden basierend auf Studien zu Kraftentwicklung, neuronaler Adaptation und optimaler Trainingsfrequenz für verschiedene Populationen.',
-      interventions: ['Individualisierte Trainingsprogramme', 'Technikoptimierung', 'Progressions-Tracking', 'Regenerationsmanagement'],
-      philosophy: 'Maximale Leistungssteigerung durch systematische, evidenzbasierte Trainingsplanung und kontinuierliche Anpassung an individuelle Fortschritte.',
-      color: 'blue'
-    }
-  },
   {
     id: 'soft',
     name: 'Lucy',
@@ -42,6 +21,7 @@ const coachProfiles = [
     quote: 'Nachhaltiger Erfolg entsteht durch Balance, nicht durch Perfektion.',
     color: 'green',
     accentColor: 'from-green-500 to-green-600',
+    isFree: true,
     coachInfo: {
       id: 'soft',
       name: 'Dr. Lucy Martinez',
@@ -53,6 +33,33 @@ const coachProfiles = [
       interventions: ['Personalisierte Ernährungspläne', 'Habit-Coaching', 'Meal-Timing Optimierung', 'Stress-Management'],
       philosophy: 'Nachhaltiger Lifestyle-Wandel durch Balance, Flexibilität und die Integration gesunder Gewohnheiten in den Alltag.',
       color: 'green'
+    }
+  },
+  {
+    id: 'hart',
+    name: 'Sascha',
+    age: 32,
+    role: 'Performance & Training Coach',
+    avatar: '🎯',
+    imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
+    personality: 'Performance-fokussiert',
+    description: 'Dein Experte für effektives Krafttraining und Leistungssteigerung. Hilft dir dabei, deine Fitnessziele systematisch und nachhaltig zu erreichen.',
+    strengths: ['Trainingsplanung', 'Kraftaufbau', 'Technikverbesserung', 'Fortschrittsmessung'],
+    quote: 'Fortschritt entsteht durch intelligente Progression und messbare Anpassungen.',
+    color: 'blue',
+    accentColor: 'from-blue-500 to-blue-600',
+    isPremium: true,
+    coachInfo: {
+      id: 'hart',
+      name: 'Sascha Weber',
+      role: 'Performance & Training Coach',
+      scientificFoundation: 'Sportwissenschaft (M.Sc.) mit Spezialisierung auf Leistungsphysiologie und biomechanische Bewegungsanalyse. Basiert auf aktueller Forschung zu Kraftentwicklung, Hypertrophie und neuronalen Adaptationen.',
+      keyMethods: ['Periodisierte Trainingsplanung', 'Progressive Overload Prinzipien', 'Bewegungsanalyse & Korrektur', 'Leistungsdiagnostik'],
+      specializations: ['Krafttraining & Hypertrophie', 'Sportspezifische Konditionierung', 'Verletzungsprävention', 'Wettkampfvorbereitung'],
+      evidence: 'Wissenschaftlich fundierte Methoden basierend auf Studien zu Kraftentwicklung, neuronaler Adaptation und optimaler Trainingsfrequenz für verschiedene Populationen.',
+      interventions: ['Individualisierte Trainingsprogramme', 'Technikoptimierung', 'Progressions-Tracking', 'Regenerationsmanagement'],
+      philosophy: 'Maximale Leistungssteigerung durch systematische, evidenzbasierte Trainingsplanung und kontinuierliche Anpassung an individuelle Fortschritte.',
+      color: 'blue'
     }
   },
   {
@@ -68,6 +75,7 @@ const coachProfiles = [
     quote: 'Der Geist formt den Körper - mentale Stärke ist der Schlüssel zum Erfolg.',
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
+    isPremium: true,
     coachInfo: {
       id: 'motivierend',
       name: 'Dr. Kai Nakamura',
@@ -80,6 +88,89 @@ const coachProfiles = [
       philosophy: 'Ganzheitliche Optimierung durch die Verbindung von Geist und Körper, mit Fokus auf nachhaltige mentale Stärke und Resilienz.',
       color: 'purple'
     }
+  },
+  {
+    id: 'markus',
+    name: 'Markus',
+    age: 42,
+    role: 'Bodybuilding & Transformation Coach',
+    avatar: '🏆',
+    imageUrl: '/coach-images/markus-ruehl.jpg',
+    personality: 'Direkt & Motivierend',
+    description: 'Legendärer Bodybuilder und Transformations-Experte. Bringt dich mit seiner direkten Art und jahrzehntelanger Erfahrung zu neuen Höchstleistungen.',
+    strengths: ['Muskelaufbau', 'Wettkampfvorbereitung', 'Körpertransformation', 'Mentale Stärke'],
+    quote: 'Erfolg ist kein Zufall - es ist harte Arbeit, Disziplin und die richtige Einstellung.',
+    color: 'red',
+    accentColor: 'from-red-500 to-red-600',
+    isPremium: true,
+    coachInfo: {
+      id: 'markus',
+      name: 'Markus Rühl',
+      role: 'Bodybuilding & Transformation Coach',
+      scientificFoundation: 'Über 30 Jahre Wettkampferfahrung, IFBB Pro, Mr. Olympia Teilnehmer. Expertise in Hypertrophie, Wettkampfvorbereitung und mentaler Stärke.',
+      keyMethods: ['High-Volume Training', 'Periodisierung', 'Wettkampf-Dieting', 'Mentale Konditionierung'],
+      specializations: ['Muskelaufbau', 'Contest Prep', 'Transformation Coaching', 'Supplements & Timing'],
+      evidence: 'Jahrzehntelange Wettkampferfahrung und erfolgreiche Transformation von hunderten Athleten.',
+      interventions: ['Personalisierte Trainingspläne', 'Diät-Coaching', 'Posing-Training', 'Mentale Vorbereitung'],
+      philosophy: 'Maximale Ergebnisse durch kompromisslose Disziplin, intelligente Trainingsplanung und mentale Stärke.',
+      color: 'red'
+    }
+  },
+  {
+    id: 'maria',
+    name: 'Dr. Maria',
+    age: 36,
+    role: 'Metabolismus & Hormon-Expertin',
+    avatar: '🧬',
+    personality: 'Wissenschaftlich & Präzise',
+    description: 'Spezialistin für Stoffwechsel und Hormonoptimierung. Hilft dir dabei, deinen Körper auf biochemischer Ebene zu verstehen und zu optimieren.',
+    strengths: ['Hormonbalance', 'Metabolismus', 'Laborwerte', 'Biohacking'],
+    quote: 'Dein Körper ist ein komplexes System - verstehe es, und du kontrollierst es.',
+    color: 'teal',
+    accentColor: 'from-teal-500 to-teal-600',
+    isPremium: true
+  },
+  {
+    id: 'alex',
+    name: 'Alex',
+    age: 28,
+    role: 'Functional Training & Mobility Coach',
+    avatar: '⚡',
+    personality: 'Dynamisch & Funktionell',
+    description: 'Experte für funktionelles Training und Beweglichkeit. Macht dich stark, beweglich und verletzungsresistent für den Alltag.',
+    strengths: ['Functional Training', 'Mobility', 'Verletzungsprävention', 'Alltagsfitness'],
+    quote: 'Wahre Stärke zeigt sich in der Bewegung - nicht nur im Studio.',
+    color: 'orange',
+    accentColor: 'from-orange-500 to-orange-600',
+    isPremium: true
+  },
+  {
+    id: 'sofia',
+    name: 'Sofia',
+    age: 31,
+    role: 'Women\'s Health & Hormones Coach',
+    avatar: '🌸',
+    personality: 'Einfühlsam & Spezialisiert',
+    description: 'Spezialistin für Frauengesundheit und hormonelle Balance. Versteht die einzigartigen Bedürfnisse des weiblichen Körpers.',
+    strengths: ['Zyklusbasiertes Training', 'Hormonbalance', 'Frauengesundheit', 'PCOS & Endometriose'],
+    quote: 'Jede Frau ist einzigartig - dein Training sollte es auch sein.',
+    color: 'pink',
+    accentColor: 'from-pink-500 to-pink-600',
+    isPremium: true
+  },
+  {
+    id: 'david',
+    name: 'David',
+    age: 39,
+    role: 'Keto & Low-Carb Experte',
+    avatar: '🥩',
+    personality: 'Fokussiert & Erfahren',
+    description: 'Spezialist für ketogene Ernährung und Low-Carb Lifestyle. Zeigt dir, wie du Fett als Energiequelle optimal nutzt.',
+    strengths: ['Ketogene Ernährung', 'Intermittent Fasting', 'Metabolische Flexibilität', 'Fettverbrennung'],
+    quote: 'Fett ist nicht der Feind - es ist der Schlüssel zu deiner Energie.',
+    color: 'amber',
+    accentColor: 'from-amber-500 to-amber-600',
+    isPremium: true
   }
 ];
 
@@ -92,24 +183,78 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
   selectedCoach, 
   onCoachChange 
 }) => {
+  const { isPremium } = useSubscription();
+  const navigate = useNavigate();
+
+  const handleUpgrade = () => {
+    navigate('/subscription');
+  };
+
   return (
     <div className="space-y-4">
       <div className="text-center mb-6">
         <h3 className="text-lg font-semibold mb-2">Wähle deinen Coach</h3>
         <p className="text-sm text-muted-foreground">
-          Jeder Coach hat seinen eigenen Stil - finde den, der am besten zu dir passt!
+          {isPremium 
+            ? 'Alle Experten-Coaches stehen dir zur Verfügung!' 
+            : 'Lucy ist dein kostenloser Coach - oder upgrade für alle Experten!'
+          }
         </p>
       </div>
+
+      {/* Premium Upgrade Banner for Free Users */}
+      {!isPremium && (
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Crown className="h-8 w-8 text-yellow-600" />
+              <div>
+                <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                  🚀 Über 7+ Experten-Coaches verfügbar
+                </h4>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Upgrade zu Pro für Zugang zu allen Coaches mit einzigartiger Persönlichkeit und tiefem Fachwissen
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleUpgrade} 
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg"
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Upgrade
+            </Button>
+          </div>
+        </div>
+      )}
       
       <div className="space-y-4">
-        {coachProfiles.map((coach) => (
-          <CoachCard
-            key={coach.id}
-            coach={coach}
-            isSelected={selectedCoach === coach.id}
-            onSelect={onCoachChange}
-          />
-        ))}
+        {coachProfiles.map((coach) => {
+          const isLocked = coach.isPremium && !isPremium;
+          const isDisabled = isLocked;
+
+          return (
+            <CoachCard
+              key={coach.id}
+              coach={coach}
+              isSelected={selectedCoach === coach.id}
+              onSelect={onCoachChange}
+              disabled={isDisabled}
+              requiresPremium={coach.isPremium}
+            />
+          );
+        })}
+      </div>
+
+      {/* Coach Coming Soon Section */}
+      <div className="mt-8 p-4 bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg border border-dashed">
+        <div className="text-center">
+          <Plus className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <h4 className="font-semibold text-muted-foreground mb-1">Weitere Coaches kommen bald!</h4>
+          <p className="text-xs text-muted-foreground">
+            Regelmäßig neue Experten mit einzigartigen Persönlichkeiten und Fachbereichen
+          </p>
+        </div>
       </div>
     </div>
   );

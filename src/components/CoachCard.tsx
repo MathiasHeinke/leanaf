@@ -36,9 +36,17 @@ interface CoachCardProps {
   coach: CoachProfile;
   isSelected: boolean;
   onSelect: (coachId: string) => void;
+  disabled?: boolean;
+  requiresPremium?: boolean;
 }
 
-export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelect }) => {
+export const CoachCard: React.FC<CoachCardProps> = ({ 
+  coach, 
+  isSelected, 
+  onSelect, 
+  disabled = false, 
+  requiresPremium = false 
+}) => {
   const [imageError, setImageError] = useState(false);
 
   const handleImageError = () => {
@@ -48,6 +56,12 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
 
   const handleImageLoad = () => {
     console.log(`✅ Successfully loaded image for ${coach.name}: ${coach.imageUrl}`);
+  };
+
+  const handleCardClick = () => {
+    if (!disabled) {
+      onSelect(coach.id);
+    }
   };
 
   // Uniform color mapping for consistent card appearance
@@ -102,16 +116,36 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
 
   return (
     <Card 
-      className={`relative cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg ${colors.card} ${
+      className={`relative transition-all duration-300 ${
+        disabled 
+          ? 'opacity-50 cursor-not-allowed grayscale' 
+          : 'cursor-pointer hover:scale-105 hover:shadow-lg'
+      } ${colors.card} ${
         isSelected 
           ? 'ring-2 ring-green-500 shadow-lg dark:ring-green-400' 
-          : 'hover:shadow-md'
+          : !disabled ? 'hover:shadow-md' : ''
       }`}
-      onClick={() => onSelect(coach.id)}
+      onClick={handleCardClick}
     >
-      {isSelected && (
+      {isSelected && !disabled && (
         <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 dark:bg-green-400 rounded-full flex items-center justify-center z-10">
           <Check className="h-4 w-4 text-white dark:text-green-900" />
+        </div>
+      )}
+
+      {requiresPremium && disabled && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg">
+            👑 Pro
+          </Badge>
+        </div>
+      )}
+
+      {disabled && (
+        <div className="absolute inset-0 bg-black/10 dark:bg-white/10 rounded-lg flex items-center justify-center z-20">
+          <div className="bg-black/80 dark:bg-white/80 text-white dark:text-black px-3 py-2 rounded-lg text-sm font-medium">
+            {requiresPremium ? 'Pro Feature' : 'Nicht verfügbar'}
+          </div>
         </div>
       )}
       
@@ -144,7 +178,7 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
         {/* Name & Role with Info Button */}
         <div className="flex items-center justify-center gap-2 mb-1">
           <h3 className="text-xl font-bold text-foreground">{coach.name}</h3>
-          {coach.coachInfo && (
+          {coach.coachInfo && !disabled && (
             <CoachInfoButton coach={coach.coachInfo} />
           )}
         </div>
@@ -179,6 +213,15 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
             "{coach.quote}"
           </p>
         </div>
+
+        {/* Premium Upgrade Hint */}
+        {requiresPremium && disabled && (
+          <div className="mt-4 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800/30">
+            <p className="text-xs text-yellow-700 dark:text-yellow-300 font-medium">
+              👑 Upgrade zu Pro für Zugang zu allen Experten-Coaches
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
