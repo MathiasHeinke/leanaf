@@ -227,6 +227,51 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_knowledge_base: {
+        Row: {
+          coach_id: string
+          content: string
+          created_at: string
+          expertise_area: string
+          id: string
+          knowledge_type: string
+          priority_level: number | null
+          scientific_paper_doi: string | null
+          source_url: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          content: string
+          created_at?: string
+          expertise_area: string
+          id?: string
+          knowledge_type: string
+          priority_level?: number | null
+          scientific_paper_doi?: string | null
+          source_url?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          content?: string
+          created_at?: string
+          expertise_area?: string
+          id?: string
+          knowledge_type?: string
+          priority_level?: number | null
+          scientific_paper_doi?: string | null
+          source_url?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_recommendations: {
         Row: {
           coach_id: string
@@ -254,6 +299,45 @@ export type Database = {
           recommendation_count?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      coach_specializations: {
+        Row: {
+          coach_id: string
+          core_philosophy: string
+          created_at: string
+          expertise_areas: string[]
+          id: string
+          knowledge_focus: string[] | null
+          methodology: string | null
+          name: string
+          specialization_description: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          core_philosophy: string
+          created_at?: string
+          expertise_areas: string[]
+          id?: string
+          knowledge_focus?: string[] | null
+          methodology?: string | null
+          name: string
+          specialization_description: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          core_philosophy?: string
+          created_at?: string
+          expertise_areas?: string[]
+          id?: string
+          knowledge_focus?: string[] | null
+          methodology?: string | null
+          name?: string
+          specialization_description?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -800,6 +884,57 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      scientific_papers: {
+        Row: {
+          abstract: string | null
+          authors: string[] | null
+          coach_relevance: Json | null
+          created_at: string
+          doi: string | null
+          full_text: string | null
+          id: string
+          journal: string | null
+          key_findings: string[] | null
+          keywords: string[] | null
+          practical_applications: string[] | null
+          publication_year: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          abstract?: string | null
+          authors?: string[] | null
+          coach_relevance?: Json | null
+          created_at?: string
+          doi?: string | null
+          full_text?: string | null
+          id?: string
+          journal?: string | null
+          key_findings?: string[] | null
+          keywords?: string[] | null
+          practical_applications?: string[] | null
+          publication_year?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          abstract?: string | null
+          authors?: string[] | null
+          coach_relevance?: Json | null
+          created_at?: string
+          doi?: string | null
+          full_text?: string | null
+          id?: string
+          journal?: string | null
+          key_findings?: string[] | null
+          keywords?: string[] | null
+          practical_applications?: string[] | null
+          publication_year?: number | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -106,6 +106,22 @@ serve(async (req) => {
       throw new Error('Could not load user profile');
     }
 
+    // Fetch coach specialization and knowledge base
+    const coachPersonality = profile?.coach_personality || 'motivierend';
+    
+    const { data: coachSpecialization } = await supabase
+      .from('coach_specializations')
+      .select('*')
+      .eq('coach_id', coachPersonality)
+      .single();
+
+    const { data: coachKnowledge } = await supabase
+      .from('coach_knowledge_base')
+      .select('*')
+      .eq('coach_id', coachPersonality)
+      .order('priority_level', { ascending: true })
+      .limit(10);
+
     // Get comprehensive data if not provided in userData
     let todaysTotals = userData.todaysTotals || { calories: 0, protein: 0, carbs: 0, fats: 0 };
     let dailyGoals = userData.dailyGoals;
@@ -348,7 +364,31 @@ Der Benutzer hat ${images.length} Bild(er) gesendet. Analysiere diese Bilder im 
 
     const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
 
-    const systemMessage = `${personalityPrompt}
+    // Build coach knowledge context
+    const coachKnowledgeContext = coachKnowledge?.length > 0 ? `
+
+🧠 DEINE SPEZIALISIERTE WISSENSBASIS:
+${coachKnowledge.map((knowledge: any) => `
+📚 ${knowledge.knowledge_type.toUpperCase()}: ${knowledge.title}
+${knowledge.content}
+${knowledge.tags?.length > 0 ? `Tags: ${knowledge.tags.join(', ')}` : ''}
+`).join('\n')}
+` : '';
+
+    const coachSpecializationContext = coachSpecialization ? `
+
+🎯 DEINE COACH-SPEZIALISIERUNG:
+Name: ${coachSpecialization.name}
+Philosophie: ${coachSpecialization.core_philosophy}
+Beschreibung: ${coachSpecialization.specialization_description}
+Expertise-Bereiche: ${coachSpecialization.expertise_areas?.join(', ')}
+Wissens-Fokus: ${coachSpecialization.knowledge_focus?.join(', ')}
+Methodik: ${coachSpecialization.methodology}
+
+WICHTIG: Alle deine Antworten sollten diese Spezialisierung widerspiegeln!
+` : '';
+
+    const systemMessage = `${personalityPrompt}${coachSpecializationContext}${coachKnowledgeContext}
 
 Du hilfst ${firstName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
 
