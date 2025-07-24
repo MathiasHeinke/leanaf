@@ -9,8 +9,8 @@ import { toast } from "sonner";
 import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { HistoryTable } from "./HistoryTable";
-import { HistoryCharts } from "./HistoryCharts";
 import { WeightHistory } from "./WeightHistory";
+import { Utensils, Scale } from "lucide-react";
 
 interface DailyGoal {
   calories: number;
@@ -495,10 +495,15 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       {/* Tabs */}
       <Tabs defaultValue="table" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="table">Verlauf</TabsTrigger>
-          <TabsTrigger value="chart">Grafik</TabsTrigger>
-          <TabsTrigger value="weight">Gewicht</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="table" className="flex items-center gap-2">
+            <Utensils className="h-4 w-4" />
+            Mahlzeiten
+          </TabsTrigger>
+          <TabsTrigger value="weight" className="flex items-center gap-2">
+            <Scale className="h-4 w-4" />
+            Gewicht
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="table" className="space-y-3 mt-4">
@@ -511,15 +516,6 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
             onDeleteMeal={deleteMeal}
             onUpdateMeal={updateMeal}
             onDuplicateMeal={duplicateMeal}
-          />
-        </TabsContent>
-        
-        <TabsContent value="chart" className="mt-4">
-          <HistoryCharts
-            data={currentData}
-            weightHistory={weightHistory}
-            timeRange={timeRange}
-            loading={loading}
           />
         </TabsContent>
         
