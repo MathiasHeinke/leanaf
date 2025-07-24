@@ -311,6 +311,59 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const splitMessage = (message: string): string[] => {
+    // Split message into max 3 parts at sentence boundaries
+    const sentences = message.split(/(?<=[.!?])\s+/);
+    const parts: string[] = [];
+    let currentPart = '';
+    
+    for (const sentence of sentences) {
+      // If adding this sentence would make the part too long, start a new part
+      if (currentPart && (currentPart + ' ' + sentence).length > 150) {
+        parts.push(currentPart.trim());
+        currentPart = sentence;
+        
+        // Limit to max 3 parts
+        if (parts.length === 2) {
+          // Add remaining sentences to the last part
+          const remainingSentences = sentences.slice(sentences.indexOf(sentence));
+          currentPart = remainingSentences.join(' ');
+          break;
+        }
+      } else {
+        currentPart = currentPart ? currentPart + ' ' + sentence : sentence;
+      }
+    }
+    
+    if (currentPart) {
+      parts.push(currentPart.trim());
+    }
+    
+    return parts.length > 1 ? parts : [message];
+  };
+
+  const sendMessageParts = async (messageParts: string[]) => {
+    for (let i = 0; i < messageParts.length; i++) {
+      if (i > 0) {
+        // Show typing indicator for 1-3 seconds between parts
+        setIsThinking(true);
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
+      }
+
+      const savedAssistantMessage = await saveMessage('assistant', messageParts[i]);
+      if (savedAssistantMessage) {
+        const mappedMessage: ChatMessage = {
+          id: savedAssistantMessage.id,
+          role: savedAssistantMessage.message_role as 'user' | 'assistant',
+          content: savedAssistantMessage.message_content,
+          created_at: savedAssistantMessage.created_at,
+          coach_personality: savedAssistantMessage.coach_personality
+        };
+        setMessages(prev => [...prev, mappedMessage]);
+      }
+    }
+  };
+
   const handleSendMessage = async (messageText?: string) => {
     const userMessage = messageText || inputText.trim();
     if ((!userMessage && uploadedImages.length === 0) || isThinking || !user?.id) return;
@@ -358,22 +411,17 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       }
 
       const assistantMessage = coachResponse.response || coachResponse.reply;
-
-      const savedAssistantMessage = await saveMessage('assistant', assistantMessage);
-      if (savedAssistantMessage) {
-        const mappedMessage: ChatMessage = {
-          id: savedAssistantMessage.id,
-          role: savedAssistantMessage.message_role as 'user' | 'assistant',
-          content: savedAssistantMessage.message_content,
-          created_at: savedAssistantMessage.created_at,
-          coach_personality: savedAssistantMessage.coach_personality
-        };
-        setMessages(prev => [...prev, mappedMessage]);
-        setQuickActionsShown(true);
-        
-        // Generate dynamic suggestions after assistant responds
-        generateDynamicSuggestions();
-      }
+      
+      // Split long messages into parts
+      const messageParts = splitMessage(assistantMessage);
+      
+      // Send message parts with delays
+      await sendMessageParts(messageParts);
+      
+      setQuickActionsShown(true);
+      
+      // Generate dynamic suggestions after all parts are sent
+      generateDynamicSuggestions();
 
     } catch (error) {
       console.error('Error sending message to coach:', error);
