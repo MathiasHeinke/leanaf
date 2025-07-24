@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
+import { PointsBadge } from "@/components/PointsBadge";
 import { PremiumGate } from "@/components/PremiumGate";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
@@ -174,38 +175,16 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-teal-800 dark:text-teal-200">Maße erfasst! 📏</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-teal-600 dark:text-teal-400">
-                {todaysMeasurements?.neck && (
-                  <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
-                )}
-                {todaysMeasurements?.chest && (
-                  <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
-                )}
-                {todaysMeasurements?.waist && (
-                  <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
-                )}
-                {todaysMeasurements?.belly && (
-                  <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
-                )}
-                {todaysMeasurements?.hips && (
-                  <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
-                )}
-                {todaysMeasurements?.arms && (
-                  <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
-                )}
-                {todaysMeasurements?.thigh && (
-                  <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
-                )}
-              </div>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
-                title="Körpermaß-Tracking"
-                description="Körpermaße geben dir einen detaillierten Einblick in deine körperlichen Veränderungen, auch wenn sich das Gewicht nicht verändert."
-                scientificBasis="Körpermaße sind oft aussagekräftiger als das Gewicht, da sie Muskelaufbau und Fettabbau separat erfassen können."
+                title="Körpermaße"
+                description="Regelmäßige Körpermaße-Messungen helfen dir, Fortschritte zu verfolgen, die die Waage nicht anzeigt. Besonders beim Muskelaufbau!"
+                scientificBasis="Studien zeigen: Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht."
                 tips={[
-                  "Miss immer zur gleichen Tageszeit",
-                  "Halte das Maßband parallel zum Boden",
+                  "Miss zur gleichen Tageszeit für beste Vergleichbarkeit!",
+                  "Morgens vor dem Essen für konsistente Werte",
+                  "Maßband parallel zum Boden halten",
                   "Nicht zu fest anziehen, aber auch nicht zu locker",
                   "Wöchentliche Messungen reichen meist aus"
                 ]}
@@ -219,6 +198,40 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 <Edit className="h-4 w-4" />
               </Button>
             </div>
+          </div>
+          
+          {/* Points badges directly under title */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <PointsBadge 
+              points={5} 
+              icon="📏"
+              animated={false}
+              variant="secondary"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-teal-600 dark:text-teal-400 mb-3">
+            {todaysMeasurements?.neck && (
+              <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
+            )}
+            {todaysMeasurements?.chest && (
+              <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
+            )}
+            {todaysMeasurements?.waist && (
+              <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
+            )}
+            {todaysMeasurements?.belly && (
+              <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
+            )}
+            {todaysMeasurements?.hips && (
+              <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
+            )}
+            {todaysMeasurements?.arms && (
+              <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
+            )}
+            {todaysMeasurements?.thigh && (
+              <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
+            )}
           </div>
           
           <div className="bg-teal-100/50 dark:bg-teal-900/30 rounded-lg p-3">

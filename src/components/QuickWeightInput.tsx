@@ -319,11 +319,6 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-blue-800 dark:text-blue-200">Gewicht erfasst! 📊</h3>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                {parseFloat(todaysWeight.weight).toFixed(1)} kg
-                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
-                {todaysWeight.muscle_percentage && ` • ${parseFloat(todaysWeight.muscle_percentage).toFixed(1)}% Muskeln`}
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -348,7 +343,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </div>
           </div>
           
-          {/* Points badges in separate row for better responsive layout */}
+          {/* Points badges directly under title */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <PointsBadge 
               points={2} 
@@ -366,6 +361,12 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               />
             )}
           </div>
+          
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
+            {parseFloat(todaysWeight.weight).toFixed(1)} kg
+            {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
+            {todaysWeight.muscle_percentage && ` • ${parseFloat(todaysWeight.muscle_percentage).toFixed(1)}% Muskeln`}
+          </p>
           
           {showPointsAnimation && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
