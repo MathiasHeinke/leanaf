@@ -29,17 +29,68 @@ export const LevelBadge = () => {
 
   const displayLevelColor = getLevelColor(userPoints.level_name);
 
+  // Calculate progress for the ring - same logic as LevelOverlay
+  const getMaxPointsForLevel = (level: number): number => {
+    if (level === 1) return 100;
+    if (level === 2) return 200;
+    if (level === 3) return 350;
+    if (level === 4) return 550;
+    if (level === 5) return 800;
+    if (level === 6) return 1100;
+    if (level === 7) return 1500;
+    if (level >= 8) return 2000 + ((level - 8) * 500);
+    return 100;
+  };
+
+  const maxPointsForCurrentLevel = getMaxPointsForLevel(userPoints.current_level);
+  
+  let minPointsForCurrentLevel = 0;
+  if (userPoints.current_level === 1) {
+    minPointsForCurrentLevel = 0;
+  } else if (userPoints.current_level === 2) {
+    minPointsForCurrentLevel = 100;
+  } else if (userPoints.current_level === 3) {
+    minPointsForCurrentLevel = 300;
+  } else if (userPoints.current_level === 4) {
+    minPointsForCurrentLevel = 650;
+  } else if (userPoints.current_level === 5) {
+    minPointsForCurrentLevel = 1200;
+  } else if (userPoints.current_level === 6) {
+    minPointsForCurrentLevel = 2000;
+  } else if (userPoints.current_level === 7) {
+    minPointsForCurrentLevel = 3100;
+  } else if (userPoints.current_level >= 8) {
+    minPointsForCurrentLevel = 4600 + ((userPoints.current_level - 8) * 500);
+  }
+  
+  const pointsEarnedInCurrentLevel = userPoints.total_points - minPointsForCurrentLevel;
+  const currentLevelProgress = Math.max(0, Math.min(pointsEarnedInCurrentLevel, maxPointsForCurrentLevel));
+  const levelProgress = (currentLevelProgress / maxPointsForCurrentLevel) * 100;
+
   return (
     <>
       <button
         onClick={() => setIsOverlayOpen(true)}
-        className="relative flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-300 hover:scale-110"
-        style={{ 
-          borderColor: displayLevelColor,
-          backgroundColor: `${displayLevelColor}15`
-        }}
-        title={`Level ${userPoints.current_level} - ${userPoints.level_name}`}
+        className="relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 hover:scale-110"
+        title={`Level ${userPoints.current_level} - ${userPoints.level_name} (${Math.round(levelProgress)}%)`}
       >
+        {/* Progress Ring */}
+        <div 
+          className="absolute inset-0 w-8 h-8 rounded-full transition-all duration-500"
+          style={{
+            background: `conic-gradient(from 0deg, #FFD700 0deg ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg 360deg)`,
+            padding: '1px'
+          }}
+        >
+          <div 
+            className="w-full h-full rounded-full"
+            style={{ 
+              backgroundColor: `${displayLevelColor}15`,
+              border: `1px solid ${displayLevelColor}40`
+            }}
+          />
+        </div>
+
         {/* Level Icon */}
         <div 
           className="relative z-10 font-bold transition-all duration-300"
