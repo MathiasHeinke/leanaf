@@ -11,8 +11,12 @@ const HistoryPage = () => {
   
   return (
     <div className="space-y-4 animate-fade-in">
-      <Tabs defaultValue="kalender" className="w-full">
+      <Tabs defaultValue="analysis" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="analysis" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analyse
+          </TabsTrigger>
           <TabsTrigger value="kalender" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
             Kalender
@@ -21,22 +25,18 @@ const HistoryPage = () => {
             <HistoryIcon className="h-4 w-4" />
             Verlauf
           </TabsTrigger>
-          <TabsTrigger value="analysis" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analyse
-          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="history" className="mt-3">
-          <History />
+        <TabsContent value="analysis" className="mt-3">
+          <Analysis />
         </TabsContent>
         
         <TabsContent value="kalender" className="mt-3">
           <WorkoutCalendar />
         </TabsContent>
         
-        <TabsContent value="analysis" className="mt-3">
-          <Analysis />
+        <TabsContent value="history" className="mt-3">
+          <History />
         </TabsContent>
       </Tabs>
     </div>
