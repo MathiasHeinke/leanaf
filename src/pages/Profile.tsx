@@ -342,10 +342,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     const totalCalorieDeficit = weightDiff * 7700;
     const dailyCalorieDeficit = Math.round(totalCalorieDeficit / timeDiff);
     
+    // Check if user wants to gain weight (goal === 'gain' or goalWeight > currentWeight)
+    const isGaining = goal === 'gain' || goalWeight > currentWeight;
+    
     return {
       daily: dailyCalorieDeficit,
       weekly: Math.round(dailyCalorieDeficit * 7),
-      total: Math.round(totalCalorieDeficit)
+      total: Math.round(totalCalorieDeficit),
+      isGaining: isGaining
     };
   };
 
@@ -982,7 +986,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     </div>
 
                     {/* Warnungen und Empfehlungen */}
-                    {(calculateRequiredCalorieDeficit()?.daily || 0) > 1000 && (
+                    {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 1000 && (
                       <div className="bg-gradient-to-br from-red-500/10 to-red-600/10 backdrop-blur-sm rounded-xl p-4 border border-red-200/30 shadow-sm">
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-red-500/20 rounded-lg">
@@ -999,7 +1003,24 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       </div>
                     )}
 
-                    {(calculateRequiredCalorieDeficit()?.daily || 0) < 500 && (calculateRequiredCalorieDeficit()?.daily || 0) > 0 && (
+                    {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 800 && (
+                      <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 backdrop-blur-sm rounded-xl p-4 border border-orange-200/30 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-orange-500/20 rounded-lg">
+                            <AlertTriangle className="h-5 w-5 text-orange-500" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-orange-700 dark:text-orange-300 mb-1">Sehr schnelle Gewichtszunahme ⚡</div>
+                            <div className="text-sm text-orange-600 dark:text-orange-400">
+                              Ein Überschuss von über 800 Kalorien täglich kann zu verstärkter Fetteinlagerung führen. 
+                              Empfehlung: Verlängere den Zeitraum für kontrollierte Gewichtszunahme.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) < 500 && (calculateRequiredCalorieDeficit()?.daily || 0) > 0 && (
                       <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-sm rounded-xl p-4 border border-green-200/30 shadow-sm">
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-green-500/20 rounded-lg">
@@ -1015,6 +1036,22 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       </div>
                     )}
 
+                    {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) >= 200 && (calculateRequiredCalorieDeficit()?.daily || 0) <= 500 && (
+                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-sm rounded-xl p-4 border border-green-200/30 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2 bg-green-500/20 rounded-lg">
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-green-700 dark:text-green-300 mb-1">Optimaler Muskelaufbau-Überschuss 💪</div>
+                            <div className="text-sm text-green-600 dark:text-green-400">
+                              Perfekt für kontrollierten Muskelaufbau! Dieser Kalorienüberschuss minimiert Fettaufbau und maximiert Muskelzuwächse.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-sm rounded-xl p-4 border border-blue-200/30 shadow-sm">
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -1022,12 +1059,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                         </div>
                         <div className="flex-1">
                           <div className="font-medium text-blue-700 dark:text-blue-300 mb-2">Wissenschaftliche Grundlage 🧮</div>
-                          <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-                            <div>• 1 kg Körperfett = ca. 7.700 kcal Energieinhalt</div>
-                            <div>• Empfohlenes Defizit: 300-500 kcal/Tag für nachhaltigen Fettabbau</div>
-                            <div>• Bei Muskelaufbau: 200-500 kcal/Tag Überschuss optimal</div>
-                            <div>• Deine Kalorienziele werden automatisch an dein Ziel angepasst</div>
-                          </div>
+                           <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                             <div>• 1 kg Körperfett = ca. 7.700 kcal Energieinhalt</div>
+                             {goal === 'lose' && <div>• Empfohlenes Defizit: 300-500 kcal/Tag für nachhaltigen Fettabbau</div>}
+                             {goal === 'gain' && <div>• Bei Muskelaufbau: 200-500 kcal/Tag Überschuss optimal</div>}
+                             {goal === 'maintain' && <div>• Für Gewichtserhaltung: Kalorienbilanz ausgleichen</div>}
+                             <div>• Deine Kalorienziele werden automatisch an dein Ziel angepasst</div>
+                           </div>
                         </div>
                       </div>
                     </div>
