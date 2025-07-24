@@ -71,6 +71,15 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
   };
 
   const getSubscriptionStatus = (user: any) => {
+    // Debug specific users
+    if (user.user_id === '84b0664f-0934-49ce-9c35-c99546b792bf') {
+      console.log("🔍 [Debug Panel] Subscription status for mi.brandl78:", {
+        subscribed: user.subscribed,
+        subscription_tier: user.subscription_tier,
+        subscription_end: user.subscription_end
+      });
+    }
+
     if (!user.subscribed) return { status: 'Free', color: 'secondary' };
     if (user.subscription_end && new Date(user.subscription_end) < new Date()) {
       return { status: 'Abgelaufen', color: 'destructive' };
@@ -281,9 +290,14 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
                                   <span className="font-medium">
                                     {userData.display_name || 'Unbekannt'}
                                   </span>
-                                  <Badge variant={status.color as any}>
-                                    {status.status}
-                                  </Badge>
+                                   <Badge variant={status.color as any}>
+                                     {status.status}
+                                   </Badge>
+                                   {userData.has_active_trial && (
+                                     <Badge variant="outline" className="ml-2">
+                                       Trial
+                                     </Badge>
+                                   )}
                                 </div>
                                 <div className="text-sm text-muted-foreground">
                                   <div>Email: {userData.email || 'Nicht gesetzt'}</div>

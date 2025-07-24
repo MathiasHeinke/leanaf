@@ -93,10 +93,10 @@ export const useAdminDebug = () => {
       }
       console.log("✅ [Admin Debug] Profiles loaded:", profilesData?.length, "users");
 
-      // Get subscribers
+      // Get subscribers - also check by email as fallback
       const { data: subscribersData, error: subscribersError } = await supabase
         .from('subscribers')
-        .select('user_id, subscribed, subscription_tier, subscription_end, created_at');
+        .select('user_id, email, subscribed, subscription_tier, subscription_end, created_at');
 
       if (subscribersError) {
         console.error("❌ [Admin Debug] Subscribers error:", subscribersError);
@@ -215,21 +215,36 @@ export const useAdminDebug = () => {
         };
       };
 
-      const formattedUsers: User[] = profilesData?.map(profile => {
-        const subscriber = subscribersData?.find(s => s.user_id === profile.user_id);
+        const formattedUsers: User[] = profilesData?.map(profile => {
+        // Try to find subscriber by user_id first, then by email as fallback
+        let subscriber = subscribersData?.find(s => s.user_id === profile.user_id);
+        if (!subscriber && profile.email) {
+          subscriber = subscribersData?.find(s => s.email === profile.email);
+        }
+        
         const trial = trialsData?.find(t => t.user_id === profile.user_id);
         const points = pointsData?.find(p => p.user_id === profile.user_id);
         const stats = getUserStats(profile.user_id);
+
+        // Debug specific users subscription mapping
+        if (profile.user_id === '84b0664f-0934-49ce-9c35-c99546b792bf') {
+          console.log("🔍 [Admin Debug] Subscription mapping for mi.brandl78:");
+          console.log("  • Profile user_id:", profile.user_id);
+          console.log("  • Profile email:", profile.email);
+          console.log("  • Found subscriber by user_id:", subscribersData?.find(s => s.user_id === profile.user_id));
+          console.log("  • Found subscriber by email:", profile.email ? subscribersData?.find(s => s.email === profile.email) : 'no email');
+          console.log("  • Final subscriber:", subscriber);
+        }
 
         const user = {
           user_id: profile.user_id,
           display_name: profile.display_name,
           email: profile.email,
-          subscribed: subscriber?.subscribed || false,
-          subscription_tier: subscriber?.subscription_tier || null,
-          subscription_end: subscriber?.subscription_end || null,
+          subscribed: subscriber?.subscribed ?? false,
+          subscription_tier: subscriber?.subscription_tier ?? null,
+          subscription_end: subscriber?.subscription_end ?? null,
           profile_created: profile.created_at,
-          subscription_created: subscriber?.created_at || null,
+          subscription_created: subscriber?.created_at ?? null,
           // Aktivitätsstatistiken
           meals_count: stats.meals_count,
           workouts_count: stats.workouts_count,
