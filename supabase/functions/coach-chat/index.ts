@@ -20,7 +20,7 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { message, userId, chatHistory = [], userData = {}, images = [] } = await req.json();
+    const { message, userId, chatHistory = [], userData = {}, images = [], coachPersonality = null } = await req.json();
     
     if (!userId) {
       throw new Error('User ID is required');
@@ -106,21 +106,34 @@ serve(async (req) => {
       throw new Error('Could not load user profile');
     }
 
-    // Fetch coach specialization and knowledge base
-    const coachPersonality = profile?.coach_personality || 'motivierend';
-    
+    // Use provided coach personality or fall back to user's preference
+    const userCoachPersonality = coachPersonality || profile?.coach_personality || 'motivierend';
+
+    // Map coach personality to coach ID
+    const coachIdMap: { [key: string]: string } = {
+      'hart': 'sascha',
+      'soft': 'lucy', 
+      'motivierend': 'kai',
+      'lucy': 'lucy',
+      'sascha': 'sascha',
+      'kai': 'kai'
+    };
+
+    const actualCoachId = coachIdMap[userCoachPersonality] || 'kai';
+
+    // Get coach specialization and knowledge
     const { data: coachSpecialization } = await supabase
       .from('coach_specializations')
       .select('*')
-      .eq('coach_id', coachPersonality)
+      .eq('coach_id', actualCoachId)
       .single();
 
     const { data: coachKnowledge } = await supabase
       .from('coach_knowledge_base')
       .select('*')
-      .eq('coach_id', coachPersonality)
-      .order('priority_level', { ascending: true })
-      .limit(10);
+      .eq('coach_id', actualCoachId)
+      .order('priority_level', { ascending: false })
+      .limit(5);
 
     // Get comprehensive data if not provided in userData
     let todaysTotals = userData.todaysTotals || { calories: 0, protein: 0, carbs: 0, fats: 0 };
@@ -260,32 +273,35 @@ serve(async (req) => {
       .order('date', { ascending: false })
       .limit(7);
 
-    // Enhanced coach personality mapping with professions
+    // Enhanced coach personality mapping with specializations
     const getCoachInfo = (personality: string) => {
       switch (personality) {
         case 'hart': 
+        case 'sascha':
           return { 
             name: 'Sascha', 
             emoji: '🎯', 
             temp: 0.4, 
-            profession: 'Fitness Drill-Instructor',
+            profession: 'Performance- & Trainingsexperte',
             style: 'direkt und kompromisslos'
           };
         case 'soft': 
+        case 'lucy':
           return { 
             name: 'Lucy', 
             emoji: '❤️', 
             temp: 0.8, 
-            profession: 'Ernährungsberaterin',
+            profession: 'Ernährungs- & Lifestyle-Expertin',
             style: 'einfühlsam und verständnisvoll'
           };
         case 'motivierend':
+        case 'kai':
         default:
           return { 
             name: 'Kai', 
             emoji: '💪', 
             temp: 0.7, 
-            profession: 'Personal Trainer',
+            profession: 'Mindset- & Recovery-Spezialist',
             style: 'motivierend und energiegeladen'
           };
       }
@@ -352,14 +368,17 @@ serve(async (req) => {
 Der Benutzer hat ${images.length} Bild(er) gesendet. Analysiere diese Bilder im Kontext der Ernährungs- und Fitness-Beratung. Gib spezifische Tipps und Feedback basierend auf dem, was du auf den Bildern siehst.`;
     }
 
-    const personality = profile?.coach_personality || 'motivierend';
+    const personality = userCoachPersonality;
     const coachInfo = getCoachInfo(personality);
 
-    // Enhanced personality prompts
+    // Enhanced personality prompts for specialized coaches
     const personalityPrompts = {
-      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Fitness Drill-Instructor. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
-      soft: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Ernährungsberaterin. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
-      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Personal Trainer. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`
+      hart: `Du bist Sascha 🎯, ein direkter, kompromissloser Performance- & Trainingsexperte. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
+      sascha: `Du bist Sascha 🎯, ein direkter, kompromissloser Performance- & Trainingsexperte. Du sagst die Wahrheit ohne Umschweife und forderst Disziplin. Keine Ausreden werden akzeptiert. Du sprichst kurz und knackig. Du stellst dich immer als Sascha vor.`,
+      soft: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Ernährungs- & Lifestyle-Expertin. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
+      lucy: `Du bist Lucy ❤️, eine einfühlsame, verständnisvolle Ernährungs- & Lifestyle-Expertin. Du motivierst sanft, zeigst Empathie und unterstützt mit positiven Worten. Du bist warmherzig und ermutigend. Du stellst dich immer als Lucy vor.`,
+      motivierend: `Du bist Kai 💪, ein begeisternder, positiver Mindset- & Recovery-Spezialist. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`,
+      kai: `Du bist Kai 💪, ein begeisternder, positiver Mindset- & Recovery-Spezialist. Du feuerst an, motivierst mit Energie und siehst immer das Positive. Du bist enthusiastisch und inspirierend. Du stellst dich immer als Kai vor.`
     };
 
     const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];

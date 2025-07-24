@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Overview } from "@/components/Overview";
 import { InsightsAnalysis } from "@/components/InsightsAnalysis";
-import { ChatCoach } from "@/components/ChatCoach";
+import { SpecializedCoaches } from "@/components/SpecializedCoaches";
 import { AdvancedWorkoutSection } from "@/components/AdvancedWorkoutSection";
 import { PremiumGate } from "@/components/PremiumGate";
 import { useAuth } from "@/hooks/useAuth";
@@ -367,7 +367,7 @@ const Coach = ({ onClose }: CoachProps) => {
         </TabsContent>
         
         <TabsContent value="coach" className="mt-3">
-          <ChatCoach 
+          <SpecializedCoaches 
             todaysTotals={todaysTotals}
             dailyGoals={dailyGoals}
             averages={averages}
