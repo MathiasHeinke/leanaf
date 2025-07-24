@@ -195,7 +195,17 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
 
           <div className="space-y-8">
             {/* Current Plan Status */}
-            <Card className={isPremium ? "border-primary bg-primary/5" : ""}>
+            <Card className={`relative ${isPremium ? "border-primary bg-primary/5" : ""}`}>
+              {/* Refresh Icon in der rechten oberen Ecke */}
+              <button
+                onClick={() => refreshSubscription(true)}
+                disabled={loading}
+                className="absolute top-4 right-4 p-2 hover:bg-muted rounded-full transition-colors"
+                title="Abo-Status aktualisieren"
+              >
+                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''} text-muted-foreground hover:text-foreground`} />
+              </button>
+
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Crown className="h-5 w-5" />
@@ -207,7 +217,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="space-y-2">
                     <Badge variant={isPremium ? 'default' : 'secondary'} className="text-sm w-fit">
-                      {isPremium ? `KI Coach ${subscriptionTier || 'Premium'}` : 'Free Plan'}
+                      {isPremium ? 'Pro' : 'Free'}
                     </Badge>
                     {isPremium && subscriptionEnd && (
                       <p className="text-sm text-muted-foreground">
@@ -216,16 +226,6 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                     )}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => refreshSubscription(true)}
-                      disabled={loading}
-                      className="flex items-center gap-2"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                      Aktualisieren
-                    </Button>
                     {isPremium && (
                       <Button onClick={createPortalSession} variant="outline" size="sm" className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
