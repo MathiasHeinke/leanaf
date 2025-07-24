@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TranslationProvider } from "@/hooks/useTranslation";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
+import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
 import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -30,23 +31,25 @@ const App = () => (
       <TranslationProvider>
         <AuthProvider>
           <SubscriptionProvider>
-            <Sonner />
-            <BrowserRouter>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/account" element={<Account />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/subscription" element={<Subscription />} />
-                  <Route path="/coach" element={<CoachPage />} />
-                  <Route path="/history" element={<HistoryPage />} />
-                  <Route path="/science" element={<Science />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Layout>
-            </BrowserRouter>
+            <EnhancedSecurityManager>
+              <Sonner />
+              <BrowserRouter>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/account" element={<Account />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/subscription" element={<Subscription />} />
+                    <Route path="/coach" element={<CoachPage />} />
+                    <Route path="/history" element={<HistoryPage />} />
+                    <Route path="/science" element={<Science />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Layout>
+              </BrowserRouter>
+            </EnhancedSecurityManager>
           </SubscriptionProvider>
         </AuthProvider>
       </TranslationProvider>

@@ -67,6 +67,36 @@ export const useSecurityMonitoring = () => {
         ...additionalData,
       },
     });
+
+    // Also log failed login attempts in the dedicated table
+    if (!success && (action === 'sign_in' || action === 'sign_up')) {
+      try {
+        const userAgent = navigator.userAgent;
+        let ipAddress = null;
+        
+        try {
+          const response = await fetch('https://api.ipify.org?format=json');
+          const data = await response.json();
+          ipAddress = data.ip;
+        } catch (error) {
+          console.warn('Could not fetch IP address for failed login tracking:', error);
+        }
+
+        await supabase.rpc('log_failed_login_attempt', {
+          p_email: additionalData?.email || null,
+          p_ip_address: ipAddress,
+          p_user_agent: userAgent,
+          p_failure_reason: additionalData?.error_message || 'Authentication failed',
+          p_metadata: {
+            action,
+            timestamp: new Date().toISOString(),
+            ...additionalData,
+          }
+        });
+      } catch (error) {
+        console.error('Failed to log failed login attempt:', error);
+      }
+    }
   }, [logSecurityEvent]);
 
   const logSuspiciousActivity = useCallback(async (
@@ -128,6 +158,32 @@ export const useSecurityMonitoring = () => {
     });
   }, [logSecurityEvent]);
 
+  const checkProgressiveRateLimit = useCallback(async (
+    identifier: string,
+    action: string,
+    maxAttempts: number = 5,
+    windowMinutes: number = 15
+  ) => {
+    try {
+      const { data, error } = await supabase.rpc('check_rate_limit_progressive', {
+        p_identifier: identifier,
+        p_action: action,
+        p_max_attempts: maxAttempts,
+        p_window_minutes: windowMinutes
+      });
+
+      if (error) {
+        console.error('Failed to check progressive rate limit:', error);
+        return { allowed: true, delay_seconds: 0 }; // Fail open for availability
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in progressive rate limit check:', error);
+      return { allowed: true, delay_seconds: 0 }; // Fail open for availability
+    }
+  }, []);
+
   return {
     logSecurityEvent,
     logAuthAttempt,
@@ -135,5 +191,6 @@ export const useSecurityMonitoring = () => {
     logPasswordChange,
     logDataAccess,
     logRateLimitExceeded,
+    checkProgressiveRateLimit,
   };
 };

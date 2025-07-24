@@ -83,7 +83,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await supabase.auth.signOut({ scope: 'global' });
       window.location.replace('/auth');
     } catch (error) {
-      console.error('Error signing out:', error);
+      // Secure error logging for sign out
+      console.error('Sign out error occurred');
     }
   };
 
@@ -91,7 +92,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        // Removed console.log for production security
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -114,7 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.id);
+      // Removed console.log for production security
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

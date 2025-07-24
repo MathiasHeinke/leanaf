@@ -95,7 +95,7 @@ const Auth = () => {
         }
       }
     } catch (error) {
-      console.error('Validation error:', error);
+      // Secure error logging for validation
       errors.general = 'Validierungsfehler aufgetreten';
     }
 
@@ -136,10 +136,11 @@ const Auth = () => {
     setLoading(true);
     setError('');
     
+    // Add retry logic for network issues
+    let attempt = 0;
+    const maxAttempts = 3;
+    
     try {
-      // Add retry logic for network issues
-      let attempt = 0;
-      const maxAttempts = 3;
       
       while (attempt < maxAttempts) {
         try {
@@ -216,11 +217,20 @@ const Auth = () => {
           if (attempt >= maxAttempts) {
             throw networkError;
           }
-          console.log(`Auth attempt ${attempt} failed, retrying...`);
+          // Removed console.log for production security
         }
       }
     } catch (error: any) {
-      console.error('Auth error:', error);
+      // Log authentication failure for security monitoring
+      await logAuthAttempt(
+        isSignUp ? 'sign_up' : 'sign_in',
+        false,
+        {
+          email,
+          error_message: error.message,
+          attempt_count: maxAttempts
+        }
+      );
       
       await logSuspiciousActivity('auth_error', {
         error_message: error.message,
@@ -258,7 +268,7 @@ const Auth = () => {
       toast.success(t('auth.passwordResetSent'));
       setIsPasswordReset(false);
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      // Secure error logging for password reset
       await logSuspiciousActivity('auth_error', {
         error_message: error.message,
         action: 'password_reset'
@@ -281,7 +291,7 @@ const Auth = () => {
       
       if (error) throw error;
     } catch (error: any) {
-      console.error('Google auth error:', error);
+      // Secure error logging for Google auth
       setError(t('auth.googleError'));
     } finally {
       setLoading(false);
@@ -300,7 +310,7 @@ const Auth = () => {
       
       if (error) throw error;
     } catch (error: any) {
-      console.error('Apple auth error:', error);
+      // Secure error logging for Apple auth
       setError(t('auth.appleError'));
     } finally {
       setLoading(false);

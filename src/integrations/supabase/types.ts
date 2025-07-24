@@ -707,6 +707,36 @@ export type Database = {
         }
         Relationships: []
       }
+      failed_login_attempts: {
+        Row: {
+          attempt_time: string | null
+          email: string | null
+          failure_reason: string | null
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          user_agent: string | null
+        }
+        Insert: {
+          attempt_time?: string | null
+          email?: string | null
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Update: {
+          attempt_time?: string | null
+          email?: string | null
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       meal_images: {
         Row: {
           created_at: string
@@ -1411,6 +1441,15 @@ export type Database = {
         }
         Returns: Json
       }
+      check_rate_limit_progressive: {
+        Args: {
+          p_identifier: string
+          p_action: string
+          p_max_attempts?: number
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
       is_admin_by_email: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -1426,6 +1465,16 @@ export type Database = {
       is_super_admin_by_email: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      log_failed_login_attempt: {
+        Args: {
+          p_email?: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+          p_failure_reason?: string
+          p_metadata?: Json
+        }
+        Returns: undefined
       }
       log_security_event: {
         Args: {

@@ -31,10 +31,12 @@ rate_limit_token_refresh = 30
 enable_anonymous_sign_ins = false
 enable_manual_linking = false
 security_update_password_require_reauthentication = true
-# Enhanced security: Enable leaked password protection
+# Enhanced security: Enable leaked password protection  
 security_password_change_require_reauthentication = true
 # Enable leaked password detection (CRITICAL SECURITY)
 security_enable_leak_protection = true
+# Enable additional password security checks
+security_enable_leaked_password_protection = true
 # Enable CAPTCHA for registration
 security_captcha_enabled = true
 # Enhanced session security - shorter session duration for better security
