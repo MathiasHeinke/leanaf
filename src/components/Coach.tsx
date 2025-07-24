@@ -346,16 +346,6 @@ const Coach = ({ onClose }: CoachProps) => {
         
         
         <TabsContent value="coach" className="mt-3">
-          {/* Wichtige Überblick Card wieder hinzufügen */}
-          <div className="mb-6">
-            <Overview 
-              todaysTotals={todaysTotals}
-              dailyGoals={dailyGoals}
-              averages={averages}
-              weightHistory={weightHistory}
-            />
-          </div>
-          
           <SpecializedCoaches 
             todaysTotals={todaysTotals}
             dailyGoals={dailyGoals}

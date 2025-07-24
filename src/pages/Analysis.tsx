@@ -7,6 +7,7 @@ import { InsightsAnalysis } from "@/components/InsightsAnalysis";
 import { HistoryCharts } from "@/components/HistoryCharts";
 import { WeightProgressCard } from "@/components/WeightProgressCard";
 import { TransformationCards } from "@/components/TransformationCards";
+import { Overview } from "@/components/Overview";
 
 const Analysis = () => {
   const { user } = useAuth();
@@ -221,91 +222,13 @@ const Analysis = () => {
       {/* Transformation Cards */}
       <TransformationCards />
       
-      {/* Analytics Cards - Vertical Layout */}
-      <div className="space-y-4">
-        {/* Today's Summary */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Heute</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Kalorien</span>
-                <span className="font-medium">{todaysTotals.calories}{dailyGoals ? ` / ${dailyGoals.calories}` : ''}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Protein</span>
-                <span className="font-medium">{todaysTotals.protein}g{dailyGoals ? ` / ${dailyGoals.protein}g` : ''}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Kohlenhydrate</span>
-                <span className="font-medium">{todaysTotals.carbs}g{dailyGoals ? ` / ${dailyGoals.carbs}g` : ''}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Fette</span>
-                <span className="font-medium">{todaysTotals.fats}g{dailyGoals ? ` / ${dailyGoals.fats}g` : ''}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 7-Day Average */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">7-Tage Durchschnitt</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Kalorien</span>
-                <span className="font-medium">{averages.calories}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Protein</span>
-                <span className="font-medium">{averages.protein}g</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Kohlenhydrate</span>
-                <span className="font-medium">{averages.carbs}g</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Fette</span>
-                <span className="font-medium">{averages.fats}g</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Trend Analysis */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {trendData ? (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Kalorientrend</span>
-                  <div className="flex items-center gap-2">
-                    {trendData.trend === 'up' && <TrendingUp className="h-4 w-4 text-red-500" />}
-                    {trendData.trend === 'down' && <TrendingDown className="h-4 w-4 text-green-500" />}
-                    {trendData.trend === 'stable' && <Minus className="h-4 w-4 text-gray-500" />}
-                    <span className="font-medium">{trendData.change > 0 ? '+' : ''}{trendData.change}</span>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {trendData.trend === 'up' && 'Kalorien steigen an'}
-                  {trendData.trend === 'down' && 'Kalorien sinken'}
-                  {trendData.trend === 'stable' && 'Kalorien stabil'}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sammle mehr Daten...</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Wichtige Überblick Card - von Coach hierher verschoben */}
+      <Overview 
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        weightHistory={weightHistory}
+      />
 
       {/* Smart Insights */}
       <InsightsAnalysis
