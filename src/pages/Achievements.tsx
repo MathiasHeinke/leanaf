@@ -1,8 +1,7 @@
 import { BadgeSystem } from "@/components/BadgeSystem";
-import { TransformationDashboard } from "@/components/TransformationDashboard";
 import { LevelBadge } from "@/components/LevelBadge";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Trophy, Target, Award } from "lucide-react";
+import { Trophy, Award } from "lucide-react";
 
 export default function Achievements() {
   const { t } = useTranslation();
@@ -36,15 +35,6 @@ export default function Achievements() {
           <h2 className="text-xl font-semibold">Deine Badges</h2>
         </div>
         <BadgeSystem />
-      </div>
-
-      {/* Transformation Dashboard - Shows progress charts and insights */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Transformation Dashboard</h2>
-        </div>
-        <TransformationDashboard />
       </div>
     </div>
   );
