@@ -394,7 +394,13 @@ const Index = () => {
     };
 
     return (
-      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+      <div ref={setNodeRef} style={style} className="relative">
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute top-2 left-2 w-6 h-6 cursor-grab active:cursor-grabbing opacity-30 hover:opacity-60 transition-opacity z-10 bg-muted/20 hover:bg-muted/40 rounded"
+          aria-label="Karte verschieben"
+        />
         {children}
       </div>
     );
