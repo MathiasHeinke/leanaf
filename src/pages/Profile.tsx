@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
-import { CoachSelection } from '@/components/CoachSelection';
+
 
 interface ProfilePageProps {
   onClose?: () => void;
@@ -873,22 +873,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           )}
         </div>
 
-        {/* 5. Coach Settings */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
-              <Bot className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-xl font-bold">{t('profile.coachSettings')}</h2>
-          </div>
-
-          <div className="bg-background rounded-xl p-4 shadow-sm border">
-            <CoachSelection 
-              selectedCoach={coachPersonality}
-              onCoachChange={setCoachPersonality}
-            />
-          </div>
-        </div>
 
         {/* Save Status */}
         <div className="fixed bottom-4 left-4 right-4 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg">
