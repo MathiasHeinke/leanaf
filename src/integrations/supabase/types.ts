@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_emails: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          is_active: boolean
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_logs: {
         Row: {
           action_details: Json | null
@@ -1281,6 +1311,10 @@ export type Database = {
           p_monthly_limit?: number
         }
         Returns: Json
+      }
+      is_admin_by_email: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       is_enterprise_or_super_admin: {
         Args: { user_uuid?: string }

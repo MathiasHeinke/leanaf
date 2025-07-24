@@ -1,57 +1,128 @@
 /**
- * Enhanced security helpers for comprehensive input validation, 
- * sanitization, and error handling
+ * Enhanced Security Helpers - Production-Ready Security Implementation
+ * 
+ * This file provides comprehensive security utilities for:
+ * - Input sanitization and validation
+ * - Error message sanitization  
+ * - Rate limiting
+ * - Content Security Policy
+ * - Enhanced authentication checks
  */
 
-// Enhanced input sanitization utilities
-export const sanitizeInput = {
-  text: (input: string, maxLength: number = 1000): string => {
+// Enhanced Content Security Policy headers for maximum security
+export const getEnhancedSecurityHeaders = () => ({
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Content-Security-Policy': `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    img-src 'self' data: https: blob:;
+    font-src 'self' data: https://fonts.gstatic.com;
+    connect-src 'self' https: wss:;
+    frame-ancestors 'none';
+    base-uri 'self';
+    form-action 'self';
+    upgrade-insecure-requests;
+  `.replace(/\s+/g, ' ').trim()
+});
+
+// Enhanced input sanitization with comprehensive validation
+export const enhancedSanitizeInput = {
+  text: (input: string, maxLength: number = 1000, allowHtml: boolean = false): string => {
     if (!input || typeof input !== 'string') return '';
-    // Remove potential XSS patterns and trim
-    return input
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/javascript:/gi, '')
-      .replace(/on\w+\s*=/gi, '')
-      .trim()
-      .slice(0, maxLength);
+    
+    let sanitized = input.trim();
+    
+    // Remove null bytes and control characters except newlines and tabs
+    sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    
+    if (!allowHtml) {
+      // Escape HTML entities
+      sanitized = sanitized
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+    }
+    
+    return sanitized.slice(0, maxLength);
   },
   
   number: (input: any, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number => {
     const num = parseFloat(input);
-    if (isNaN(num)) return min;
+    if (isNaN(num) || !isFinite(num)) return min;
     return Math.max(min, Math.min(max, num));
   },
   
   array: (input: any, maxLength: number = 100, itemValidator?: (item: any) => boolean): any[] => {
     if (!Array.isArray(input)) return [];
+    
     let sanitized = input.slice(0, maxLength);
+    
     if (itemValidator) {
       sanitized = sanitized.filter(itemValidator);
     }
+    
     return sanitized;
   },
   
-  object: (input: any, allowedKeys: string[]): any => {
-    if (!input || typeof input !== 'object') return {};
+  object: (input: any, allowedKeys: string[], maxDepth: number = 3): any => {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+    if (maxDepth <= 0) return {};
+    
     const sanitized: any = {};
     allowedKeys.forEach(key => {
       if (input.hasOwnProperty(key)) {
-        sanitized[key] = input[key];
+        const value = input[key];
+        
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          // Recursively sanitize nested objects
+          sanitized[key] = enhancedSanitizeInput.object(value, allowedKeys, maxDepth - 1);
+        } else {
+          sanitized[key] = value;
+        }
       }
     });
+    
     return sanitized;
   },
 
-  email: (input: string): string => {
-    if (!input || typeof input !== 'string') return '';
-    return input.toLowerCase().trim().slice(0, 254); // RFC 5321 limit
+  email: (email: string): string => {
+    if (!email || typeof email !== 'string') return '';
+    
+    const sanitized = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    return emailRegex.test(sanitized) ? sanitized : '';
+  },
+
+  url: (url: string): string => {
+    if (!url || typeof url !== 'string') return '';
+    
+    try {
+      const parsed = new URL(url);
+      // Only allow http and https protocols
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return '';
+      }
+      return parsed.toString();
+    } catch {
+      return '';
+    }
   }
 };
 
-// Enhanced input validation utilities
-export const validateInput = {
+// Enhanced validation utilities
+export const enhancedValidateInput = {
   email: (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     return emailRegex.test(email) && email.length <= 254;
   },
   
@@ -62,8 +133,8 @@ export const validateInput = {
   
   url: (url: string): boolean => {
     try {
-      const urlObj = new URL(url);
-      return ['http:', 'https:'].includes(urlObj.protocol);
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
     } catch {
       return false;
     }
@@ -73,30 +144,30 @@ export const validateInput = {
     return typeof num === 'number' && num > 0 && isFinite(num);
   },
 
-  phoneNumber: (phone: string): boolean => {
-    const phoneRegex = /^\+?[\d\s\-\(\)]{7,15}$/;
-    return phoneRegex.test(phone);
-  },
-
-  strongPassword: (password: string): boolean => {
-    return password.length >= 10 &&
-           /[A-Z]/.test(password) &&
-           /[a-z]/.test(password) &&
-           /\d/.test(password) &&
-           /[^A-Za-z0-9]/.test(password);
-  },
-
-  fileName: (fileName: string): boolean => {
-    const dangerous = /[<>:"/\\|?*\x00-\x1f]/;
-    return !dangerous.test(fileName) && fileName.length <= 255;
+  safeString: (str: string, maxLength: number = 1000): boolean => {
+    if (typeof str !== 'string') return false;
+    if (str.length > maxLength) return false;
+    
+    // Check for potentially dangerous patterns
+    const dangerousPatterns = [
+      /<script/i,
+      /javascript:/i,
+      /vbscript:/i,
+      /data:text\/html/i,
+      /onclick=/i,
+      /onerror=/i,
+      /onload=/i
+    ];
+    
+    return !dangerousPatterns.some(pattern => pattern.test(str));
   }
 };
 
-// Error message sanitization - never expose sensitive info
-export const sanitizeErrorMessage = (error: Error | string): string => {
-  const message = typeof error === 'string' ? error : error.message;
+// Enhanced error message sanitization for production
+export const enhancedSanitizeErrorMessage = (error: Error | string): string => {
+  const message = typeof error === 'string' ? error : error.message || 'Unknown error';
   
-  // Remove potentially sensitive information
+  // Comprehensive list of sensitive patterns to redact
   const sensitivePatterns = [
     /password/gi,
     /token/gi,
@@ -108,11 +179,20 @@ export const sanitizeErrorMessage = (error: Error | string): string => {
     /database/gi,
     /connection/gi,
     /internal/gi,
+    /supabase_url/gi,
+    /anon_key/gi,
+    /service_role/gi,
+    /jwt/gi,
+    /env\./gi,
+    /process\.env/gi,
+    /deno\.env/gi,
+    /\.env/gi,
+    /credentials/gi,
+    /config/gi,
     /localhost/gi,
     /127\.0\.0\.1/gi,
-    /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, // IP addresses
-    /postgres:\/\/[^\s]+/gi, // Database URLs
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/gi // Email addresses
+    /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, // IP addresses
+    /[a-f0-9]{32,}/gi // Long hex strings (potential tokens)
   ];
   
   let sanitized = message;
@@ -120,23 +200,33 @@ export const sanitizeErrorMessage = (error: Error | string): string => {
     sanitized = sanitized.replace(pattern, '[REDACTED]');
   });
   
-  // Limit message length and add helpful context
-  const truncated = sanitized.slice(0, 200);
-  return truncated + (sanitized.length > 200 ? '...' : '');
+  // Remove any remaining sensitive-looking patterns
+  sanitized = sanitized.replace(/([a-zA-Z0-9_-]{20,})/g, '[REDACTED]');
+  
+  // Limit message length and ensure it's safe for JSON
+  return sanitized.slice(0, 200).replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
 };
 
-// Rate limiting helper (client-side)
-export class ClientRateLimit {
+// Enhanced rate limiting with memory cleanup
+export class EnhancedClientRateLimit {
   private requests: Map<string, number[]> = new Map();
+  private cleanupInterval: NodeJS.Timeout | null = null;
   
   constructor(
     private maxRequests: number = 10, 
-    private windowMs: number = 60000
-  ) {}
+    private windowMs: number = 60000,
+    private cleanupIntervalMs: number = 300000 // 5 minutes
+  ) {
+    // Periodic cleanup to prevent memory leaks
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, this.cleanupIntervalMs);
+  }
   
-  isAllowed(key: string): boolean {
+  isAllowed(key: string, customLimit?: number): boolean {
     const now = Date.now();
     const windowStart = now - this.windowMs;
+    const limit = customLimit || this.maxRequests;
     
     if (!this.requests.has(key)) {
       this.requests.set(key, []);
@@ -148,7 +238,7 @@ export class ClientRateLimit {
     const validRequests = keyRequests.filter(time => time > windowStart);
     this.requests.set(key, validRequests);
     
-    if (validRequests.length >= this.maxRequests) {
+    if (validRequests.length >= limit) {
       return false;
     }
     
@@ -157,135 +247,82 @@ export class ClientRateLimit {
     return true;
   }
   
-  getRemainingRequests(key: string): number {
+  getRemainingRequests(key: string, customLimit?: number): number {
     const now = Date.now();
     const windowStart = now - this.windowMs;
+    const limit = customLimit || this.maxRequests;
     
     if (!this.requests.has(key)) {
-      return this.maxRequests;
+      return limit;
     }
     
     const validRequests = this.requests.get(key)!.filter(time => time > windowStart);
-    return Math.max(0, this.maxRequests - validRequests.length);
+    return Math.max(0, limit - validRequests.length);
   }
   
-  getTimeUntilReset(key: string): number {
+  private cleanup(): void {
     const now = Date.now();
     const windowStart = now - this.windowMs;
     
-    if (!this.requests.has(key)) {
-      return 0;
+    for (const [key, requests] of this.requests.entries()) {
+      const validRequests = requests.filter(time => time > windowStart);
+      
+      if (validRequests.length === 0) {
+        this.requests.delete(key);
+      } else {
+        this.requests.set(key, validRequests);
+      }
     }
-    
-    const validRequests = this.requests.get(key)!.filter(time => time > windowStart);
-    if (validRequests.length === 0) {
-      return 0;
+  }
+  
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
     }
-    
-    const oldestRequest = Math.min(...validRequests);
-    return Math.max(0, (oldestRequest + this.windowMs) - now);
+    this.requests.clear();
   }
 }
 
-// Security headers for enhanced protection
-export const getSecurityHeaders = () => ({
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
-});
-
-// Enhanced request validation
-export const validateRequest = {
-  hasRequiredFields: (body: any, requiredFields: string[]): string | null => {
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return `Missing required field: ${field}`;
-      }
-    }
-    return null;
-  },
-
-  isValidContentType: (contentType: string | null): boolean => {
-    return contentType === 'application/json';
-  },
-
-  isValidMethod: (method: string, allowedMethods: string[]): boolean => {
-    return allowedMethods.includes(method.toUpperCase());
-  },
-
-  hasValidAuthHeader: (authHeader: string | null): boolean => {
-    return authHeader !== null && authHeader.startsWith('Bearer ');
+// Enhanced authentication context validation
+export const validateAuthContext = (authHeader: string | null): { isValid: boolean; error?: string } => {
+  if (!authHeader) {
+    return { isValid: false, error: 'Missing authorization header' };
   }
+  
+  if (!authHeader.startsWith('Bearer ')) {
+    return { isValid: false, error: 'Invalid authorization format' };
+  }
+  
+  const token = authHeader.replace('Bearer ', '');
+  
+  // Basic JWT format validation (without decoding)
+  const jwtParts = token.split('.');
+  if (jwtParts.length !== 3) {
+    return { isValid: false, error: 'Invalid token format' };
+  }
+  
+  // Check for reasonable token length
+  if (token.length < 100 || token.length > 2000) {
+    return { isValid: false, error: 'Invalid token length' };
+  }
+  
+  return { isValid: true };
 };
 
-// File upload validation
-export const validateFileUpload = {
-  isValidImageType: (mimeType: string): boolean => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    return allowedTypes.includes(mimeType.toLowerCase());
-  },
+// Legacy compatibility exports
+export const sanitizeErrorMessage = enhancedSanitizeErrorMessage;
+export const getSecurityHeaders = getEnhancedSecurityHeaders;
+export const validateInput = enhancedValidateInput;
 
-  isValidFileSize: (size: number, maxSize: number = 10 * 1024 * 1024): boolean => {
-    return size > 0 && size <= maxSize; // Default 10MB limit
-  },
-
-  sanitizeFileName: (fileName: string): string => {
-    return fileName
-      .replace(/[^a-zA-Z0-9.-]/g, '_')
-      .replace(/_{2,}/g, '_')
-      .slice(0, 100);
-  }
-};
-
-// SQL injection prevention helpers
-export const sqlSafe = {
-  escapeString: (input: string): string => {
-    return input.replace(/'/g, "''").replace(/\\/g, '\\\\');
-  },
-
-  isValidTableName: (tableName: string): boolean => {
-    const tableRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-    return tableRegex.test(tableName) && tableName.length <= 63;
-  },
-
-  isValidColumnName: (columnName: string): boolean => {
-    const columnRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-    return columnRegex.test(columnName) && columnName.length <= 63;
-  }
-};
-
-// Logging helpers for security events
+// Security logger for monitoring
 export const securityLogger = {
-  logAttempt: (type: string, details: any = {}) => {
-    console.log(`[SECURITY-LOG] ${type}:`, {
-      timestamp: new Date().toISOString(),
-      type,
-      ...details
-    });
+  logSecurityEvent: (event: string, details: any = {}) => {
+    console.log(`[SECURITY] ${event}:`, details);
   },
-
-  logSuspiciousActivity: (activity: string, request: any, details: any = {}) => {
-    console.warn(`[SECURITY-ALERT] ${activity}:`, {
-      timestamp: new Date().toISOString(),
-      activity,
-      userAgent: request.headers?.get('user-agent'),
-      origin: request.headers?.get('origin'),
-      ...details
-    });
+  logAuthAttempt: (success: boolean, details: any = {}) => {
+    console.log(`[AUTH] ${success ? 'SUCCESS' : 'FAILED'}:`, details);
   },
-
-  logBlockedRequest: (reason: string, request: any) => {
-    console.error(`[SECURITY-BLOCK] ${reason}:`, {
-      timestamp: new Date().toISOString(),
-      reason,
-      method: request.method,
-      url: request.url,
-      userAgent: request.headers?.get('user-agent'),
-      origin: request.headers?.get('origin')
-    });
+  logSuspiciousActivity: (activity: string, details: any = {}) => {
+    console.warn(`[SECURITY ALERT] ${activity}:`, details);
   }
 };
