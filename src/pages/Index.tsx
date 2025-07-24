@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+
 
 const Index = () => {
   const { t } = useTranslation();
@@ -394,15 +394,7 @@ const Index = () => {
     };
 
     return (
-      <div ref={setNodeRef} style={style} className="relative">
-        <div
-          {...attributes}
-          {...listeners}
-          className="absolute top-3 right-3 z-10 cursor-grab active:cursor-grabbing p-1 hover:bg-muted/50 rounded-sm transition-colors"
-          aria-label="Karte verschieben"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </div>
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
         {children}
       </div>
     );
