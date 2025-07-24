@@ -305,65 +305,130 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   return (
     <CollapsibleQuickInput
-      title="Gewicht & Body Composition"
+      title="Gewichtsmessung"
       icon={<Scale className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
       defaultOpen={!isCompleted}
     >
-      <div className="space-y-4">
-        {showPointsAnimation && (
-          <PointsBadge 
-            points={3} 
-            icon="⚖️"
-            animated={showPointsAnimation}
-            variant="secondary"
-          />
-        )}
-        
-        {hasWeightToday && !isEditing ? (
-          <div className="space-y-4">
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <h3 className="font-medium text-green-800 mb-2">✅ Gewicht bereits eingetragen</h3>
-              <div className="space-y-2 text-sm text-green-700">
-                <div><strong>Gewicht:</strong> {todaysWeight.weight} kg</div>
-                {todaysWeight.body_fat_percentage && (
-                  <div><strong>Körperfett:</strong> {todaysWeight.body_fat_percentage}%</div>
-                )}
-                {todaysWeight.muscle_percentage && (
-                  <div><strong>Muskelmasse:</strong> {todaysWeight.muscle_percentage}%</div>
-                )}
-              </div>
-              
-              {/* Progress Photos */}
-              {(() => {
-                const photos = parsePhotoUrls(todaysWeight.photo_urls);
-                return photos.length > 0 ? (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium text-green-700 mb-2">Progress Fotos:</p>
-                    <div className="flex gap-2">
-                      {photos.map((url: string, index: number) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`Progress ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded border border-green-200"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : null;
-              })()}
+      {hasWeightToday && !isEditing ? (
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <Button 
-              onClick={() => setIsEditing(true)}
-              variant="outline"
-              className="w-full"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Bearbeiten
-            </Button>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200">Gewicht erfasst! 📊</h3>
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                {parseFloat(todaysWeight.weight).toFixed(1)} kg
+                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
+                {todaysWeight.muscle_percentage && ` • ${parseFloat(todaysWeight.muscle_percentage).toFixed(1)}% Muskeln`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <InfoButton
+                title="Gewichts-Tracking"
+                description="Regelmäßige Gewichtsmessungen helfen dir, deine Fortschritte zu verfolgen und deine Ziele zu erreichen."
+                scientificBasis="Studien zeigen: Tägliches Wiegen kann beim Abnehmen doppelt so effektiv sein wie wöchentliches Wiegen."
+                tips={[
+                  "Wiege dich immer zur gleichen Tageszeit",
+                  "Am besten morgens nach dem Aufstehen",
+                  "Natürliche Schwankungen sind völlig normal",
+                  "Der Wochentrend ist wichtiger als Einzelwerte"
+                ]}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        ) : (
+          
+          {showPointsAnimation && (
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <PointsBadge 
+                points={5} 
+                icon="⚖️"
+                animated={showPointsAnimation}
+                variant="secondary"
+              />
+              {todaysWeight.bonus_points && todaysWeight.bonus_points > 0 && (
+                <PointsBadge 
+                  points={0}
+                  bonusPoints={todaysWeight.bonus_points}
+                  icon="⭐"
+                  animated={showPointsAnimation}
+                  variant="outline"
+                />
+              )}
+            </div>
+          )}
+          
+          {(() => {
+            const photos = parsePhotoUrls(todaysWeight.photo_urls);
+            return photos.length > 0 ? (
+              <div className="mb-3">
+                <div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
+                  Fortschrittsfotos:
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {photos.map((photo, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={photo} 
+                        alt={`Fortschrittsfoto ${index + 1}`}
+                        className="w-16 h-16 object-cover rounded-lg border border-blue-200 dark:border-blue-700 cursor-pointer"
+                        onClick={() => window.open(photo, '_blank')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
+          
+          <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
+            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+              <strong>Tipp:</strong> Wiege dich zur gleichen Tageszeit für beste Vergleichbarkeit!
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              • Morgens nach dem Aufstehen und Toilettengang
+              • Vor dem Frühstück und ohne Kleidung
+              • Natürliche Schwankungen von ±1kg sind normal
+              • Der Trend über mehrere Wochen ist wichtiger als einzelne Werte
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              <strong>Nächste Messung:</strong> Morgen 📅
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+              <Scale className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                {hasWeightToday ? 'Gewicht bearbeiten' : 'Gewicht erfassen'}
+              </h3>
+            </div>
+            <InfoButton
+              title="Gewichts-Tracking"
+              description="Regelmäßige Gewichtsmessungen helfen dir, deine Fortschritte zu verfolgen und deine Ziele zu erreichen."
+              scientificBasis="Studien zeigen: Tägliches Wiegen kann beim Abnehmen doppelt so effektiv sein wie wöchentliches Wiegen."
+              tips={[
+                "Wiege dich immer zur gleichen Tageszeit",
+                "Am besten morgens nach dem Aufstehen",
+                "Natürliche Schwankungen sind völlig normal",
+                "Der Wochentrend ist wichtiger als Einzelwerte"
+              ]}
+            />
+          </div>
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -534,8 +599,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               )}
             </div>
           </form>
-        )}
-      </div>
+        </div>
+      )}
     </CollapsibleQuickInput>
   );
 };
