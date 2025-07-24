@@ -141,6 +141,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     if (user) {
       loadProfile();
       loadDailyGoals();
+      loadCurrentWeight(); // Load current weight from weight_history
       calculateIntelligentCalories();
     }
   }, [user]);
@@ -226,6 +227,29 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       }
     } catch (error: any) {
       console.error('Error loading daily goals:', error);
+    }
+  };
+
+  const loadCurrentWeight = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('weight, date')
+        .eq('user_id', user?.id)
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading weight history:', error);
+        return;
+      }
+
+      if (data && data.weight) {
+        setWeight(data.weight.toString());
+      }
+    } catch (error: any) {
+      console.error('Error loading current weight:', error);
     }
   };
 
