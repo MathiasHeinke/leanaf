@@ -46,43 +46,8 @@ export const EnhancedSecurityManager: React.FC<SecurityManagerProps> = ({ childr
       // Listen for navigation events
       window.addEventListener('popstate', handleNavigation);
       
-      // Monitor for console tampering attempts
-      const originalConsole = {
-        log: console.log,
-        warn: console.warn,
-        error: console.error
-      };
-      
-      let consoleAccessCount = 0;
-      const consoleMonitor = () => {
-        consoleAccessCount++;
-        if (consoleAccessCount > 5) {
-          logSecurityEvent({
-            event_type: 'console_tampering_attempt',
-            event_category: 'security',
-            severity: 'warning',
-            metadata: {
-              access_count: consoleAccessCount,
-              timestamp: new Date().toISOString()
-            }
-          });
-        }
-      };
-      
-      // Override console methods to detect tampering
-      Object.defineProperty(console, 'log', {
-        get: () => {
-          consoleMonitor();
-          return originalConsole.log;
-        }
-      });
-      
       return () => {
         window.removeEventListener('popstate', handleNavigation);
-        // Restore original console methods
-        console.log = originalConsole.log;
-        console.warn = originalConsole.warn;
-        console.error = originalConsole.error;
       };
     };
     
