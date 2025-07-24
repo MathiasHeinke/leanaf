@@ -525,19 +525,22 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
               <div>
                 <Label className="text-sm">Aktuelles Gewicht</Label>
-                <div className="mt-1 flex items-center justify-between h-10 px-3 py-2">
-                  <span className="text-lg font-bold">{weight || '-'} kg</span>
-                  {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
-                    <span className="text-xs">
-                      {parseFloat(weight) < parseFloat(startWeight) && (
-                        <span className="text-green-500">↓ -{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)} kg</span>
-                      )}
-                      {parseFloat(weight) > parseFloat(startWeight) && (
-                        <span className="text-red-500">↑ +{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)} kg</span>
-                      )}
-                    </span>
-                  )}
-                </div>
+                <NumericInput
+                  value={weight}
+                  onChange={setWeight}
+                  placeholder="75"
+                  className={cn("mt-1", validationErrors.weight && "border-red-500")}
+                />
+                {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
+                  <div className="text-xs mt-1">
+                    {parseFloat(weight) < parseFloat(startWeight) && (
+                      <span className="text-green-500">↓ -{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)} kg</span>
+                    )}
+                    {parseFloat(weight) > parseFloat(startWeight) && (
+                      <span className="text-red-500">↑ +{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)} kg</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -634,27 +637,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   onChange={(e) => setTargetDate(e.target.value)}
                   className="mt-1"
                 />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-sm">Sprache</Label>
-              <div className="relative">
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="de">Deutsch</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  🌍
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Sprache für die Benutzeroberfläche
               </div>
             </div>
           </div>
