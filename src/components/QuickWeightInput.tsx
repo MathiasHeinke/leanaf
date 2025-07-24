@@ -564,8 +564,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               <div className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 Speichern...
-              </div>
-            ) : (
+        </div>
+      ) : (
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 {hasWeightToday ? 'Aktualisieren' : 'Eintragen'}

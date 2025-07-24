@@ -12,6 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
+import { ProfileOnboardingOverlay } from '@/components/ProfileOnboardingOverlay';
+import { CompletionSuccessCard } from '@/components/CompletionSuccessCard';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { cn } from '@/lib/utils';
 
 
 interface ProfilePageProps {
@@ -54,6 +58,27 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const { user } = useAuth();
   const { language, setLanguage } = useTranslation();
   const navigate = useNavigate();
+  const { showProfileOnboarding, completeProfileOnboarding, showIndexOnboarding } = useOnboardingState();
+
+  // State for profile completion validation and success dialog
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
+
+  // Check if profile is complete for validation
+  const isProfileComplete = weight && startWeight && height && age && gender && activityLevel && goal;
+
+  // Validate required fields and update visual feedback
+  useEffect(() => {
+    const errors: Record<string, boolean> = {};
+    if (!startWeight) errors.startWeight = true;
+    if (!height) errors.height = true;
+    if (!age) errors.age = true;
+    if (!gender) errors.gender = true;
+    if (!activityLevel) errors.activityLevel = true;
+    if (!goal) errors.goal = true;
+    
+    setValidationErrors(errors);
+  }, [startWeight, height, age, gender, activityLevel, goal]);
 
   // Auto-save function
   const autoSave = async () => {
@@ -371,12 +396,23 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       await performSave();
       toast.success(t('toast.success.profileSaved'));
       setLastSaved(new Date());
+      
+      // Check if profile is complete and show success dialog
+      if (isProfileComplete && !showSuccessDialog) {
+        setShowSuccessDialog(true);
+      }
     } catch (error: any) {
       console.error('Error saving profile:', error);
       toast.error(t('toast.error.savingProfile'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuccessDialogContinue = () => {
+    setShowSuccessDialog(false);
+    completeProfileOnboarding();
+    navigate('/');
   };
 
   if (initialLoading) {
@@ -391,8 +427,22 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   }
 
   return (
-    <div className="p-4 max-w-lg mx-auto">
-      <div className="space-y-6 pb-20">
+    <>
+      {/* Onboarding Overlays */}
+      <ProfileOnboardingOverlay 
+        isOpen={showProfileOnboarding}
+        onClose={() => {}}
+        userName={displayName || user?.email?.split('@')[0] || 'Champion'}
+      />
+      
+      <CompletionSuccessCard
+        isOpen={showSuccessDialog}
+        onClose={() => setShowSuccessDialog(false)}
+        onContinue={handleSuccessDialogContinue}
+      />
+
+      <div className="p-4 max-w-lg mx-auto">
+        <div className="space-y-6 pb-20">
         
         {/* 1. Personal Data */}
         <div className="space-y-4">
@@ -431,7 +481,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     }
                   }}
                   placeholder="75"
-                  className="mt-1"
+                  className={cn("mt-1", validationErrors.startWeight && "border-red-500")}
                 />
               </div>
               <div>
@@ -459,7 +509,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   value={height}
                   onChange={(value) => setHeight(value)}
                   placeholder="175"
-                  className="mt-1"
+                  className={cn("mt-1", validationErrors.height && "border-red-500")}
                 />
               </div>
               <div>
@@ -468,13 +518,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   value={age}
                   onChange={(value) => setAge(value)}
                   placeholder="30"
-                  className="mt-1"
+                  className={cn("mt-1", validationErrors.age && "border-red-500")}
                 />
               </div>
               <div>
                 <Label className="text-sm">{t('profile.gender')}</Label>
                 <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className={cn("mt-1", validationErrors.gender && "border-red-500")}>
                     <SelectValue placeholder={t('common.select')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -488,7 +538,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="profile-activity-level">
               <Label className="text-sm">{t('profile.activityLevel')}</Label>
               <Select value={activityLevel} onValueChange={setActivityLevel}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -516,7 +566,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div>
               <Label className="text-sm">{t('profile.goal')}</Label>
               <Select value={goal} onValueChange={setGoal}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className={cn("mt-1", validationErrors.goal && "border-red-500")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -922,7 +972,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

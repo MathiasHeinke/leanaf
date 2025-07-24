@@ -16,6 +16,7 @@ import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
+import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
@@ -115,10 +116,17 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
     }
   };
 
-  // Show read-only summary if workout exists and not editing
-  if (hasWorkoutToday && !isEditing) {
-    return (
-      <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">
+  const isCompleted = !!hasWorkoutToday;
+
+  return (
+    <CollapsibleQuickInput
+      title="Training & Bewegung"
+      icon={<Dumbbell className="h-4 w-4 text-white" />}
+      isCompleted={isCompleted}
+      defaultOpen={!isCompleted}
+    >
+      {hasWorkoutToday && !isEditing ? (
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-xl">
             <CheckCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -203,17 +211,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             <strong>Nächste Eintragung:</strong> Morgen 📅
           </p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <PremiumGate 
-      feature="workout_tracking"
-      hideable={true}
-      fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
-    >
-      <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">
+      ) : (
+        <PremiumGate 
+          feature="workout_tracking"
+          hideable={true}
+          fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
+        >
+          <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-xl">
             <Dumbbell className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -390,8 +394,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               </Button>
             )}
           </div>
-        </form>
-      </div>
-    </PremiumGate>
+          </form>
+          </div>
+        </PremiumGate>
+      )}
+    </CollapsibleQuickInput>
   );
 };

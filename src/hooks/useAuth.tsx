@@ -59,7 +59,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         !profile.gender;
 
       if (isIncomplete) {
-        // New user - redirect to profile
+        // New user - start premium trial and redirect to profile
+        await startPremiumTrialForNewUser(user.id);
         setTimeout(() => {
           window.location.href = '/profile';
         }, 100);
@@ -75,6 +76,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setTimeout(() => {
         window.location.href = '/';
       }, 100);
+    }
+  };
+
+  const startPremiumTrialForNewUser = async (userId: string) => {
+    try {
+      // Check if user already has a trial
+      const { data: existingTrial } = await supabase
+        .from('user_trials')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('trial_type', 'premium')
+        .maybeSingle();
+
+      if (existingTrial) return; // Trial already exists
+
+      // Create new 3-day premium trial
+      const { error } = await supabase
+        .from('user_trials')
+        .insert({
+          user_id: userId,
+          trial_type: 'premium',
+          is_active: true,
+          expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days
+        });
+
+      if (error) {
+        console.error('Error creating premium trial:', error);
+      }
+    } catch (error) {
+      console.error('Error starting premium trial:', error);
     }
   };
 

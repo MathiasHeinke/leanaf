@@ -10,6 +10,7 @@ import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
+import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 
 interface QuickSleepInputProps {
   onSleepAdded?: () => void;
@@ -114,10 +115,17 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
     }
   };
 
-  // Show read-only summary if sleep exists and not editing
-  if (hasSleepToday && !isEditing) {
-    return (
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+  const isCompleted = !!hasSleepToday;
+
+  return (
+    <CollapsibleQuickInput
+      title="Schlaf & Regeneration"
+      icon={<Moon className="h-4 w-4 text-white" />}
+      isCompleted={isCompleted}
+      defaultOpen={!isCompleted}
+    >
+      {hasSleepToday && !isEditing ? (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
             <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -174,99 +182,97 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             <strong>Nächste Eintragung:</strong> Morgen 📅
           </p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <PremiumGate 
-      feature="sleep_tracking"
-      hideable={true}
-      fallbackMessage="Schlaf-Tracking ist ein Premium Feature. Upgrade für detailliertes Schlaf-Monitoring!"
-    >
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-            <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-blue-800 dark:text-blue-200">
-              {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
-            </h3>
-          </div>
-          <InfoButton
-            title="Schlaf Tracking"
-            description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
-            scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
-            tips={[
-              "7-9 Stunden Schlaf für optimale Regeneration",
-              "Feste Schlafzeiten unterstützen den Biorhythmus",
-              "Bildschirme 1h vor dem Schlafen vermeiden"
-            ]}
-          />
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
-              Schlafdauer: {sleepHours[0]} Stunden
-            </label>
-            <Slider
-              value={sleepHours}
-              onValueChange={setSleepHours}
-              max={12}
-              min={3}
-              step={0.5}
-              className="w-full"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
-              Schlafqualität: {sleepQuality[0]}/10
-            </label>
-            <Slider
-              value={sleepQuality}
-              onValueChange={setSleepQuality}
-              max={10}
-              min={1}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Speichern...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  {hasSleepToday ? 'Aktualisieren' : 'Eintragen'}
-                </div>
-              )}
-            </Button>
+      ) : (
+        <PremiumGate 
+          feature="sleep_tracking"
+          hideable={true}
+          fallbackMessage="Schlaf-Tracking ist ein Premium Feature. Upgrade für detailliertes Schlaf-Monitoring!"
+        >
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+                <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                  {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
+                </h3>
+              </div>
+              <InfoButton
+                title="Schlaf Tracking"
+                description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
+                scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
+                tips={[
+                  "7-9 Stunden Schlaf für optimale Regeneration",
+                  "Feste Schlafzeiten unterstützen den Biorhythmus",
+                  "Bildschirme 1h vor dem Schlafen vermeiden"
+                ]}
+              />
+            </div>
             
-            {hasSleepToday && isEditing && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditing(false)}
-                className="border-blue-300 text-blue-600"
-              >
-                Abbrechen
-              </Button>
-            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
+                  Schlafdauer: {sleepHours[0]} Stunden
+                </label>
+                <Slider
+                  value={sleepHours}
+                  onValueChange={setSleepHours}
+                  max={12}
+                  min={3}
+                  step={0.5}
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
+                  Schlafqualität: {sleepQuality[0]}/10
+                </label>
+                <Slider
+                  value={sleepQuality}
+                  onValueChange={setSleepQuality}
+                  max={10}
+                  min={1}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Speichern...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      {hasSleepToday ? 'Aktualisieren' : 'Eintragen'}
+                    </div>
+                  )}
+                </Button>
+                
+                {hasSleepToday && isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                    className="border-blue-300 text-blue-600"
+                  >
+                    Abbrechen
+                  </Button>
+                )}
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
-    </PremiumGate>
+        </PremiumGate>
+      )}
+    </CollapsibleQuickInput>
   );
 };
