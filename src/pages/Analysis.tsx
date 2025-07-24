@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { InsightsAnalysis } from "@/components/InsightsAnalysis";
 import { HistoryCharts } from "@/components/HistoryCharts";
 import { WeightProgressCard } from "@/components/WeightProgressCard";
+import { TransformationCards } from "@/components/TransformationCards";
 
 const Analysis = () => {
   const { user } = useAuth();
@@ -217,6 +218,9 @@ const Analysis = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Transformation Cards */}
+      <TransformationCards />
+      
       {/* Analytics Cards - Vertical Layout */}
       <div className="space-y-4">
         {/* Today's Summary */}
