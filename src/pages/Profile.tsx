@@ -538,9 +538,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   onChange={(value) => {
                     const newStartWeight = value;
                     setStartWeight(newStartWeight);
-                    // Auto-set current weight if it's empty
+                    // Auto-set current weight after delay if it's empty (first time setup)
                     if (!weight && newStartWeight) {
-                      setWeight(newStartWeight);
+                      setTimeout(() => {
+                        setWeight(newStartWeight);
+                      }, 300);
                     }
                   }}
                   placeholder="75"
@@ -549,12 +551,20 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
               <div>
                 <Label className="text-sm">Aktuelles Gewicht</Label>
-                <NumericInput
-                  value={weight}
-                  onChange={setWeight}
-                  placeholder="75"
-                  className={cn("mt-1", validationErrors.weight && "border-red-500")}
-                />
+                <div className="relative">
+                  <Input
+                    value={weight}
+                    disabled={true}
+                    placeholder="75"
+                    className={cn("mt-1 bg-muted", validationErrors.weight && "border-red-500")}
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Wird automatisch aus der Gewichtsmessung geladen
+                </div>
                 {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
                   <div className="text-xs mt-1">
                     {parseFloat(weight) < parseFloat(startWeight) && (
@@ -607,13 +617,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
                   <SelectValue placeholder="Wählen..." />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sedentary">Sitzend (wenig/keine Bewegung)</SelectItem>
-                  <SelectItem value="light">Leicht aktiv (1-3 Tage/Woche Sport)</SelectItem>
-                  <SelectItem value="moderate">Moderat aktiv (3-5 Tage/Woche Sport)</SelectItem>
-                  <SelectItem value="active">Sehr aktiv (6-7 Tage/Woche Sport)</SelectItem>
-                  <SelectItem value="very_active">Extrem aktiv (2x täglich, intensive Workouts)</SelectItem>
-                </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="sedentary">Sitzend (wenig/keine Bewegung)</SelectItem>
+                    <SelectItem value="light">Leicht aktiv (1-2 Tage/Woche Sport, wenig Schritte)</SelectItem>
+                    <SelectItem value="moderate">Moderat aktiv (2-3 Tage/Woche Sport, 5-6k Schritte)</SelectItem>
+                    <SelectItem value="active">Sehr aktiv (3-5 Tage/Woche Sport, 6-8k Schritte)</SelectItem>
+                    <SelectItem value="very_active">Extrem aktiv (5+ Tage/Woche Sport, 8k+ Schritte)</SelectItem>
+                  </SelectContent>
               </Select>
             </div>
           </div>
