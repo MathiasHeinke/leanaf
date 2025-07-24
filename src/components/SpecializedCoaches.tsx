@@ -24,8 +24,7 @@ const coachProfiles = [
       { text: 'Meal-Timing optimieren', prompt: 'Wie kann ich meine Mahlzeiten besser über den Tag verteilen für optimale Energie und Sättigung?' },
       { text: 'Heißhunger bekämpfen', prompt: 'Ich habe oft Heißhunger. Was sind die Ursachen und wie kann ich dem vorbeugen?' },
       { text: 'Gesunde Snack-Ideen', prompt: 'Welche gesunden Snacks passen zu meinen Zielen und halten mich lange satt?' },
-      { text: 'Regeneration verbessern', prompt: 'Wie kann ich meine Regeneration durch Ernährung und Lifestyle unterstützen?' },
-      { text: 'Meal-Prep Strategien', prompt: 'Gib mir praktische Meal-Prep Ideen, die zu meinem Alltag und meinen Zielen passen.' }
+      { text: 'Regeneration verbessern', prompt: 'Wie kann ich meine Regeneration durch Ernährung und Lifestyle unterstützen?' }
     ]
   },
   {
@@ -45,8 +44,7 @@ const coachProfiles = [
       { text: 'Trainingsplan erstellen', prompt: 'Erstelle mir einen optimalen Trainingsplan basierend auf meinen Zielen, verfügbarer Zeit und Fortschritt.' },
       { text: 'Progressive Overload', prompt: 'Wie kann ich Progressive Overload richtig anwenden, um kontinuierlich stärker zu werden?' },
       { text: 'Plateau durchbrechen', prompt: 'Ich stagniere bei meinen Lifts. Welche Strategien helfen mir, das Plateau zu durchbrechen?' },
-      { text: 'Volumen optimieren', prompt: 'Ist mein aktuelles Trainingsvolumen optimal oder sollte ich es anpassen?' },
-      { text: 'Periodisierung planen', prompt: 'Wie sollte ich mein Training periodisieren für optimale Fortschritte über das Jahr?' }
+      { text: 'Volumen optimieren', prompt: 'Ist mein aktuelles Trainingsvolumen optimal oder sollte ich es anpassen?' }
     ]
   },
   {
@@ -66,8 +64,7 @@ const coachProfiles = [
       { text: 'Motivation steigern', prompt: 'Ich fühle mich unmotiviert. Wie kann ich meine Motivation für Training und gesunde Ernährung wieder finden?' },
       { text: 'Stress reduzieren', prompt: 'Stress beeinflusst meine Fortschritte negativ. Welche Strategien helfen mir beim Stressmanagement?' },
       { text: 'Schlaf optimieren', prompt: 'Mein Schlaf ist nicht optimal. Wie kann ich meine Schlafqualität und Regeneration verbessern?' },
-      { text: 'Durchhaltevermögen stärken', prompt: 'Wie kann ich mein Durchhaltevermögen stärken und langfristig bei meinen Zielen bleiben?' },
-      { text: 'Gewohnheiten etablieren', prompt: 'Welche Strategien helfen mir dabei, neue gesunde Gewohnheiten dauerhaft zu etablieren?' }
+      { text: 'Durchhaltevermögen stärken', prompt: 'Wie kann ich mein Durchhaltevermögen stärken und langfristig bei meinen Zielen bleiben?' }
     ]
   }
 ];

@@ -482,14 +482,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          
-          <div className="flex flex-wrap gap-2 mt-3">
-            {coach.expertise.map((skill, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {skill}
-              </Badge>
-            ))}
-          </div>
         </CardHeader>
       </Card>
 
