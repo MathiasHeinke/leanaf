@@ -1067,6 +1067,42 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          created_at: string
+          event_category: string
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          severity: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          severity?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       sleep_tracking: {
         Row: {
           bonus_points: number | null
@@ -1401,6 +1437,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_security_event_enhanced: {
+        Args: {
+          p_user_id?: string
+          p_event_type?: string
+          p_event_category?: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+          p_metadata?: Json
+          p_severity?: string
+        }
+        Returns: undefined
+      }
       update_user_points_and_level: {
         Args:
           | {
@@ -1427,6 +1475,10 @@ export type Database = {
           p_activity_date?: string
         }
         Returns: number
+      }
+      validate_password_strength: {
+        Args: { password: string }
+        Returns: Json
       }
     }
     Enums: {

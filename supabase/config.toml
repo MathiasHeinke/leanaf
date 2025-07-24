@@ -9,13 +9,13 @@ enable_email_confirmations = true
 enable_phone_confirmations = false
 
 # OTP expiry settings (in seconds) - Enhanced Security
-# Email OTP expires in 2 minutes (120 seconds) - Optimized for security
-email_otp_exp = 120
-# SMS OTP expires in 2 minutes (120 seconds) 
-sms_otp_exp = 120
+# Email OTP expires in 5 minutes (300 seconds) - Better balance of security and usability
+email_otp_exp = 300
+# SMS OTP expires in 5 minutes (300 seconds) 
+sms_otp_exp = 300
 
 # Password requirements - Enhanced
-password_min_length = 10
+password_min_length = 12
 enable_password_policy = true
 password_require_upper = true
 password_require_lower = true
@@ -23,9 +23,9 @@ password_require_numbers = true
 password_require_symbols = true
 
 # Rate limiting - Enhanced (requests per hour)
-rate_limit_email_sent = 30
-rate_limit_sms_sent = 20
-rate_limit_token_refresh = 50
+rate_limit_email_sent = 20
+rate_limit_sms_sent = 10
+rate_limit_token_refresh = 30
 
 # Security features - Enhanced
 enable_anonymous_sign_ins = false
@@ -37,12 +37,14 @@ security_password_change_require_reauthentication = true
 security_enable_leak_protection = true
 # Enable CAPTCHA for registration
 security_captcha_enabled = true
-# Enhanced session security - shorter session duration
-jwt_expiry = 1800
+# Enhanced session security - shorter session duration for better security
+jwt_expiry = 3600
 refresh_token_rotation_enabled = true
 # Additional security settings
 double_confirm_changes = true
 session_not_extensible = false
+# Maximum number of enrolled MFA factors
+max_enrolled_factors = 10
 
 [auth.external.google]
 enabled = false

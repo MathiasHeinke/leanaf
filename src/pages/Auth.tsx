@@ -8,9 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { signUpSchema, signInSchema, ClientRateLimit } from '@/utils/validationSchemas';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Shield } from 'lucide-react';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -22,16 +25,32 @@ const Auth = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000)); // 5 attempts per 15 minutes
   
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { logAuthAttempt, logSuspiciousActivity } = useSecurityMonitoring();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       navigate('/');
     }
-  }, [user, navigate]);
+    
+    // Check rate limiting on component mount
+    const clientId = `${navigator.userAgent}_${window.location.href}`;
+    if (!rateLimiter.isAllowed(clientId)) {
+      const remaining = rateLimiter.getRemainingAttempts(clientId);
+      if (remaining === 0) {
+        toast.error('Zu viele Anmeldeversuche. Bitte warten Sie 15 Minuten.');
+        logSuspiciousActivity('rate_limit_exceeded', { 
+          action: 'auth_attempt',
+          client_info: navigator.userAgent 
+        });
+      }
+    }
+  }, [user, navigate, rateLimiter, logSuspiciousActivity]);
 
   const cleanupAuthState = () => {
     Object.keys(localStorage).forEach((key) => {
@@ -48,32 +67,64 @@ const Auth = () => {
 
   const validateForm = () => {
     setError('');
+    const errors: Record<string, string> = {};
     
-    if (!email || !password) {
-      setError(t('auth.fillAllFields'));
+    try {
+      if (isSignUp) {
+        const result = signUpSchema.safeParse({
+          email,
+          password,
+          confirmPassword,
+        });
+        
+        if (!result.success) {
+          result.error.errors.forEach((error) => {
+            errors[error.path[0] as string] = error.message;
+          });
+        }
+      } else {
+        const result = signInSchema.safeParse({
+          email,
+          password,
+        });
+        
+        if (!result.success) {
+          result.error.errors.forEach((error) => {
+            errors[error.path[0] as string] = error.message;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      errors.general = 'Validierungsfehler aufgetreten';
+    }
+
+    setValidationErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      setError(firstError);
       return false;
     }
-    
-    if (!email.includes('@')) {
-      setError(t('auth.emailInvalid'));
-      return false;
-    }
-    
-    if (password.length < 6) {
-      setError(t('auth.passwordTooShort'));
-      return false;
-    }
-    
-    if (isSignUp && password !== confirmPassword) {
-      setError(t('auth.passwordsNoMatch'));
-      return false;
-    }
-    
+
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check rate limiting
+    const clientId = `${navigator.userAgent}_${window.location.href}`;
+    if (!rateLimiter.isAllowed(clientId)) {
+      const remaining = rateLimiter.getRemainingAttempts(clientId);
+      setError(`Zu viele Anmeldeversuche. Versuchen Sie es in 15 Minuten erneut. (${remaining} Versuche übrig)`);
+      await logSuspiciousActivity('rate_limit_exceeded', { 
+        action: 'auth_attempt',
+        client_info: navigator.userAgent,
+        remaining_attempts: remaining
+      });
+      return;
+    }
     
     if (isPasswordReset) {
       handlePasswordReset();
@@ -106,9 +157,22 @@ const Auth = () => {
               }
             });
             
+            await logAuthAttempt('sign_up', !error, { 
+              email_domain: email.split('@')[1] 
+            });
+            
             if (error) {
+              await logSuspiciousActivity('auth_failure', {
+                error_message: error.message,
+                email_domain: email.split('@')[1],
+                action: 'sign_up'
+              });
+              
               if (error.message.includes('already registered')) {
                 setError(t('auth.emailAlreadyRegistered'));
+                return;
+              } else if (error.message.includes('weak password') || error.message.includes('password_breach')) {
+                setError('Das Passwort ist zu schwach oder wurde bei Datenlecks gefunden. Bitte wählen Sie ein anderes.');
                 return;
               }
               throw error;
@@ -123,7 +187,17 @@ const Auth = () => {
               password,
             });
             
+            await logAuthAttempt('sign_in', !error, { 
+              email_domain: email.split('@')[1] 
+            });
+            
             if (error) {
+              await logSuspiciousActivity('auth_failure', {
+                error_message: error.message,
+                email_domain: email.split('@')[1],
+                action: 'sign_in'
+              });
+              
               if (error.message.includes('Invalid login credentials')) {
                 setError(t('auth.invalidCredentials'));
                 return;
@@ -147,6 +221,12 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error('Auth error:', error);
+      
+      await logSuspiciousActivity('auth_error', {
+        error_message: error.message,
+        action: isSignUp ? 'sign_up' : 'sign_in'
+      });
+      
       if (error.message.includes('Load failed') || error.message.includes('network')) {
         setError(t('auth.networkError'));
       } else {
@@ -171,12 +251,18 @@ const Auth = () => {
         redirectTo: `${window.location.origin}/auth`
       });
       
+      await logAuthAttempt('password_reset', !error);
+      
       if (error) throw error;
       
       toast.success(t('auth.passwordResetSent'));
       setIsPasswordReset(false);
     } catch (error: any) {
       console.error('Password reset error:', error);
+      await logSuspiciousActivity('auth_error', {
+        error_message: error.message,
+        action: 'password_reset'
+      });
       setError(t('auth.passwordResetError'));
     } finally {
       setLoading(false);
@@ -225,11 +311,12 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
+          <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
             {t('app.title')}
           </CardTitle>
           <CardDescription>
-            {isPasswordReset ? t('auth.passwordResetTitle') : (isSignUp ? t('auth.signUp') : t('auth.signIn'))}
+            {isPasswordReset ? t('auth.passwordResetTitle') : (isSignUp ? 'Sicheres Konto erstellen' : t('auth.signIn'))}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -246,10 +333,20 @@ const Auth = () => {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (validationErrors.email) {
+                    setValidationErrors(prev => ({ ...prev, email: '' }));
+                    setError('');
+                  }
+                }}
                 placeholder={t('auth.email')}
+                className={validationErrors.email ? 'border-destructive' : ''}
                 required
               />
+              {validationErrors.email && (
+                <p className="text-sm text-destructive">{validationErrors.email}</p>
+              )}
             </div>
             
             {!isPasswordReset && (
@@ -260,10 +357,16 @@ const Auth = () => {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t('auth.password')}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (validationErrors.password) {
+                        setValidationErrors(prev => ({ ...prev, password: '' }));
+                        setError('');
+                      }
+                    }}
+                    placeholder={isSignUp ? "Starkes Passwort erstellen" : t('auth.password')}
                     required
-                    className="pr-10"
+                    className={`pr-10 ${validationErrors.password ? 'border-destructive' : ''}`}
                   />
                   <Button
                     type="button"
@@ -279,6 +382,17 @@ const Auth = () => {
                     )}
                   </Button>
                 </div>
+                {validationErrors.password && (
+                  <p className="text-sm text-destructive">{validationErrors.password}</p>
+                )}
+                
+                {/* Password strength indicator for signup */}
+                {isSignUp && password && (
+                  <PasswordStrengthIndicator 
+                    password={password} 
+                    className="mt-2"
+                  />
+                )}
               </div>
             )}
             
@@ -290,10 +404,16 @@ const Auth = () => {
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (validationErrors.confirmPassword) {
+                        setValidationErrors(prev => ({ ...prev, confirmPassword: '' }));
+                        setError('');
+                      }
+                    }}
                     placeholder={t('auth.confirmPassword')}
                     required
-                    className="pr-10"
+                    className={`pr-10 ${validationErrors.confirmPassword ? 'border-destructive' : ''}`}
                   />
                   <Button
                     type="button"
@@ -309,6 +429,9 @@ const Auth = () => {
                     )}
                   </Button>
                 </div>
+                {validationErrors.confirmPassword && (
+                  <p className="text-sm text-destructive">{validationErrors.confirmPassword}</p>
+                )}
               </div>
             )}
             
