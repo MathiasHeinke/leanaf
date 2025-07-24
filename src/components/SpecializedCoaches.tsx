@@ -258,8 +258,7 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
 
   return (
     <Card 
-      className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg"
-      onClick={() => onSelect(coach.id)}
+      className="transition-all duration-300 hover:scale-105 hover:shadow-lg"
     >
       <CardHeader className="pb-3">
         <div className="flex items-center space-x-3">
@@ -327,7 +326,18 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
           <CoachRating 
             coachId={coach.id} 
             coachName={coach.name}
-            trigger={<Button size="sm" variant="outline">⭐</Button>}
+            trigger={
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Dialog wird vom CoachRating Component gehandelt
+                }}
+              >
+                ⭐
+              </Button>
+            }
           />
         </div>
       </CardContent>
