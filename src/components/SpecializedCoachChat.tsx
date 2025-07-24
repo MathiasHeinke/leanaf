@@ -658,7 +658,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                               </div>
                             </div>
                             <span className="text-sm font-medium text-primary">
-                              {coach.name} schreibt...
+                              {coach.name} schreibt
                             </span>
                           </div>
                           <div className="flex gap-1 mt-2">
