@@ -561,31 +561,31 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">{t('profile.gender')}</Label>
+                <Label className="text-sm">Geschlecht</Label>
                 <Select value={gender} onValueChange={setGender}>
                   <SelectTrigger className={cn("mt-1", validationErrors.gender && "border-red-500")}>
-                    <SelectValue />
+                    <SelectValue placeholder="Wählen..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">{t('profile.genderMale')}</SelectItem>
-                    <SelectItem value="female">{t('profile.genderFemale')}</SelectItem>
+                    <SelectItem value="male">Männlich</SelectItem>
+                    <SelectItem value="female">Weiblich</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="profile-activity-level">
-              <Label className="text-sm">{t('profile.activityLevel')}</Label>
+              <Label className="text-sm">Aktivitätslevel</Label>
               <Select value={activityLevel} onValueChange={setActivityLevel}>
                 <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
-                  <SelectValue />
+                  <SelectValue placeholder="Wählen..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sedentary">{t('activity.sedentary')}</SelectItem>
-                  <SelectItem value="light">{t('activity.light')}</SelectItem>
-                  <SelectItem value="moderate">{t('activity.moderate')}</SelectItem>
-                  <SelectItem value="active">{t('activity.active')}</SelectItem>
-                  <SelectItem value="very_active">{t('activity.veryActive')}</SelectItem>
+                  <SelectItem value="sedentary">Sitzend (wenig/keine Bewegung)</SelectItem>
+                  <SelectItem value="light">Leicht aktiv (1-3 Tage/Woche Sport)</SelectItem>
+                  <SelectItem value="moderate">Moderat aktiv (3-5 Tage/Woche Sport)</SelectItem>
+                  <SelectItem value="active">Sehr aktiv (6-7 Tage/Woche Sport)</SelectItem>
+                  <SelectItem value="very_active">Extrem aktiv (2x täglich, intensive Workouts)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -603,15 +603,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
             <div>
-              <Label className="text-sm">{t('profile.goal')}</Label>
+              <Label className="text-sm">Ziel</Label>
               <Select value={goal} onValueChange={setGoal}>
                 <SelectTrigger className={cn("mt-1", validationErrors.goal && "border-red-500")}>
-                  <SelectValue />
+                  <SelectValue placeholder="Wählen..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lose">{t('goals.lose')}</SelectItem>
-                  <SelectItem value="maintain">{t('goals.maintain')}</SelectItem>
-                  <SelectItem value="gain">{t('goals.gain')}</SelectItem>
+                  <SelectItem value="lose">Gewicht verlieren</SelectItem>
+                  <SelectItem value="maintain">Gewicht halten</SelectItem>
+                  <SelectItem value="gain">Gewicht zunehmen</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -983,25 +983,37 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </div>
 
-            {intelligentCalories && (
-              <div className="bg-background rounded-xl p-3 shadow-sm border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${
-                      (typeof intelligentCalories.confidence === 'number' ? intelligentCalories.confidence : parseFloat(intelligentCalories.confidence.toString())) >= 0.8 ? 'bg-green-500' : 
-                      (typeof intelligentCalories.confidence === 'number' ? intelligentCalories.confidence : parseFloat(intelligentCalories.confidence.toString())) >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className="text-xs text-muted-foreground">
-                      {Math.round((typeof intelligentCalories.confidence === 'number' ? intelligentCalories.confidence : parseFloat(intelligentCalories.confidence.toString())) * 100)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Basiert auf {intelligentCalories.dataQuality.daysOfData} Tagen Daten
+            <div className="bg-background rounded-xl p-3 shadow-sm border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isProfileComplete ? 'bg-green-500' : 
+                    (weight && height && age && gender) ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></div>
+                  <span className="text-xs text-muted-foreground">
+                    {isProfileComplete ? '95%' : 
+                     (weight && height && age && gender) ? '75%' : '25%'}
+                  </span>
                 </div>
               </div>
-            )}
+              <div className="text-xs text-muted-foreground">
+                {isProfileComplete ? 
+                  'Alle Daten vorhanden - sehr genaue Berechnung' :
+                  (weight && height && age && gender) ? 
+                    'Grunddaten vorhanden - gute Berechnung' :
+                    'Weitere Daten für genauere Berechnung erforderlich'
+                }
+              </div>
+              {intelligentCalories && intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-border">
+                  <div className="text-xs font-medium mb-1">Empfehlungen:</div>
+                  {intelligentCalories.recommendations.slice(0, 2).map((rec, index) => (
+                    <div key={index} className="text-xs text-muted-foreground">• {rec}</div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
