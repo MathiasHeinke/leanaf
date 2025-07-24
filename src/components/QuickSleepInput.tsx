@@ -223,7 +223,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                   max={12}
                   min={3}
                   step={0.5}
-                  className="w-full"
+                  className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
                 />
               </div>
 
@@ -237,7 +237,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                   max={10}
                   min={1}
                   step={1}
-                  className="w-full"
+                  className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
                 />
               </div>
 
