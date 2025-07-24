@@ -537,10 +537,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                           </div>
                         )}
                         
-                        <div className="text-sm prose prose-sm max-w-none">
-                          <ReactMarkdown>
-                            {message.content}
-                          </ReactMarkdown>
+                        <div className="text-sm">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
                         </div>
                       </div>
                       

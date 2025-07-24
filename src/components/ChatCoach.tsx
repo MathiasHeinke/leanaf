@@ -639,10 +639,8 @@ export const ChatCoach = ({
                         )}
                         
                         {message.role === 'assistant' ? (
-                          <div className="text-sm leading-relaxed prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-em:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
-                            <ReactMarkdown>
-                              {message.content}
-                            </ReactMarkdown>
+                          <div className="text-sm leading-relaxed">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
                         ) : (
                           <p className="text-sm leading-relaxed whitespace-pre-wrap">
