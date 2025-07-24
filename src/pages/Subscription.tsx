@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -172,247 +171,253 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
   }
 
   return (
-    <div className="p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Zurück
-          </Button>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-            getleanAI Pläne
-          </h1>
-        </div>
-
-        <div className="space-y-8">
-          {/* Current Plan Status */}
-          <Card className={isPremium ? "border-primary bg-primary/5" : ""}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Crown className="h-5 w-5" />
-                Aktueller Plan
-                {isPremium && <Sparkles className="h-4 w-4 text-primary" />}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <Badge variant={isPremium ? 'default' : 'secondary'} className="text-sm">
-                    {isPremium ? `KI Coach ${subscriptionTier || 'Premium'}` : 'Free Plan'}
-                  </Badge>
-                  {isPremium && subscriptionEnd && (
-                    <p className="text-sm text-muted-foreground">
-                      Erneuert sich am: {new Date(subscriptionEnd).toLocaleDateString('de-DE')}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => refreshSubscription(true)}
-                    disabled={loading}
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Aktualisieren
-                  </Button>
-                  {isPremium && (
-                    <Button onClick={createPortalSession} variant="outline">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Abo verwalten
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pricing Plans */}
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-center">3 Tage kostenlos testen</h2>
-            <p className="text-center text-muted-foreground mb-4">
-              Teste alle Features 3 Tage kostenlos • Dann wähle deinen Plan • Jederzeit kündbar
-            </p>
-            
-            {/* Billing Toggle */}
-            <div className="flex justify-center mb-8">
-              <div className="bg-muted p-1 rounded-lg grid grid-cols-3 w-fit">
-                <button
-                  onClick={() => setBillingPeriod('monthly')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    billingPeriod === 'monthly'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Monatlich
-                </button>
-                <button
-                  onClick={() => setBillingPeriod('sixmonths')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
-                    billingPeriod === 'sixmonths'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  6 Monate
-                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
-                    -33%
-                  </span>
-                </button>
-                <button
-                  onClick={() => setBillingPeriod('yearly')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors relative ${
-                    billingPeriod === 'yearly'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Jährlich
-                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-1 py-0.5 rounded">
-                    -50%
-                  </span>
-                </button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
-              {plans.map((plan) => {
-                const isCurrentPlan = plan.isFree ? !isPremium : (isPremium && subscriptionTier?.toLowerCase() === 'pro');
-                
-                return (
-                  <Card 
-                    key={plan.id} 
-                    className={`relative ${plan.color} ${plan.popular ? 'ring-2 ring-primary' : ''} ${isCurrentPlan ? 'ring-2 ring-green-500' : ''}`}
-                  >
-                    {plan.popular && !isCurrentPlan && (
-                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <Badge className="bg-primary text-primary-foreground">
-                          <Zap className="h-3 w-3 mr-1" />
-                          Beliebt
-                        </Badge>
-                      </div>
-                    )}
-                    
-                    {isCurrentPlan && (
-                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <Badge className="bg-green-600 text-white">
-                          <Check className="h-3 w-3 mr-1" />
-                          Aktiv
-                        </Badge>
-                      </div>
-                    )}
-                    
-                    <CardHeader className="text-center space-y-4">
-                      <div className="flex justify-center">{plan.icon}</div>
-                      <div>
-                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                         <div className="flex flex-col items-center space-y-2">
-                           {!plan.isFree && billingPeriod !== 'monthly' && plan.originalPrice && (
-                             <div className="text-sm text-muted-foreground">
-                               <span className="line-through">{plan.originalPrice}</span>
-                               <span className="ml-2 text-green-600 font-semibold">
-                                 {billingPeriod === 'yearly' ? '50%' : '33%'} Rabatt
-                               </span>
-                             </div>
-                           )}
-                           <div className="flex items-baseline justify-center space-x-1">
-                             <span className="text-3xl font-bold">{plan.price}</span>
-                             <span className="text-sm text-muted-foreground">{plan.period}</span>
-                           </div>
-                           {!plan.isFree && billingPeriod !== 'monthly' && getSavings(plan.name) && getSavings(plan.name) !== '0€' && (
-                             <div className="text-xs text-green-600 font-medium">
-                               Du sparst {getSavings(plan.name)} {billingPeriod === 'yearly' ? 'pro Jahr' : 'alle 6 Monate'}
-                             </div>
-                           )}
-                         </div>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-6">
-                      <ul className="space-y-3">
-                        {plan.features.map((feature, index) => (
-                          <li key={index} className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                            <span className="text-sm">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      
-                      {plan.isFree ? (
-                        <Button 
-                          className="w-full" 
-                          variant="outline"
-                          disabled={true}
-                        >
-                          {isCurrentPlan ? "Aktueller Plan" : "Kostenlos"}
-                        </Button>
-                      ) : (
-                        <Button 
-                          className="w-full" 
-                          variant={plan.popular && !isCurrentPlan ? "default" : "outline"}
-                          onClick={() => handleSubscribe(plan.id)}
-                          disabled={subscribing || isCurrentPlan}
-                        >
-                          {isCurrentPlan ? (
-                            "Aktueller Plan"
-                          ) : subscribing ? (
-                            "Loading..."
-                          ) : (
-                            `${plan.name} wählen`
-                          )}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      <div className="container mx-auto px-4 py-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Zurück
+            </Button>
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              getleanAI Pläne
+            </h1>
           </div>
 
-          {/* Management Section */}
-          {isPremium && (
-            <Card>
+          <div className="space-y-8">
+            {/* Current Plan Status */}
+            <Card className={isPremium ? "border-primary bg-primary/5" : ""}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Subscription verwalten
+                  <Crown className="h-5 w-5" />
+                  Aktueller Plan
+                  {isPremium && <Sparkles className="h-4 w-4 text-primary" />}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Verwalte deine Zahlungsmethoden, lade Rechnungen herunter oder kündige dein Abo.
-                </p>
-                <Button 
-                  onClick={createPortalSession}
-                  disabled={loading}
-                  className="flex items-center gap-2"
-                >
-                  <CreditCard className="h-4 w-4" />
-                  Customer Portal öffnen
-                </Button>
+              <CardContent>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-2">
+                    <Badge variant={isPremium ? 'default' : 'secondary'} className="text-sm w-fit">
+                      {isPremium ? `KI Coach ${subscriptionTier || 'Premium'}` : 'Free Plan'}
+                    </Badge>
+                    {isPremium && subscriptionEnd && (
+                      <p className="text-sm text-muted-foreground">
+                        Erneuert sich am: {new Date(subscriptionEnd).toLocaleDateString('de-DE')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => refreshSubscription(true)}
+                      disabled={loading}
+                      className="flex items-center gap-2"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                      Aktualisieren
+                    </Button>
+                    {isPremium && (
+                      <Button onClick={createPortalSession} variant="outline" size="sm" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Abo verwalten
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Features Comparison */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Warum getleanAI Premium?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center space-y-3 text-muted-foreground">
-                <p>🎯 <strong>Basic:</strong> Perfekt für den Einstieg in AI-gesteuertes Fitness Tracking</p>
-                <p>🚀 <strong>Premium:</strong> Nutzer erreichen ihre Ziele 2-3x schneller und brechen seltener ab</p>
-                <p>✨ <strong>3 Tage kostenlos:</strong> Teste alle Features unverbindlich vor deiner Entscheidung</p>
+            {/* Pricing Plans */}
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-center">3 Tage kostenlos testen</h2>
+              <p className="text-center text-muted-foreground mb-4">
+                Teste alle Features 3 Tage kostenlos • Dann wähle deinen Plan • Jederzeit kündbar
+              </p>
+              
+              {/* Billing Toggle */}
+              <div className="flex justify-center mb-8">
+                <div className="bg-muted/50 p-1 rounded-xl inline-flex border backdrop-blur-sm">
+                  <button
+                    onClick={() => setBillingPeriod('monthly')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      billingPeriod === 'monthly'
+                        ? 'bg-background text-foreground shadow-sm border'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Monatlich
+                  </button>
+                  <button
+                    onClick={() => setBillingPeriod('sixmonths')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative ${
+                      billingPeriod === 'sixmonths'
+                        ? 'bg-background text-foreground shadow-sm border'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    6 Monate
+                    <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      -33%
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setBillingPeriod('yearly')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 relative ${
+                      billingPeriod === 'yearly'
+                        ? 'bg-background text-foreground shadow-sm border'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Jährlich
+                    <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      -50%
+                    </span>
+                  </button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                {plans.map((plan) => {
+                  const isCurrentPlan = plan.isFree ? !isPremium : (isPremium && subscriptionTier?.toLowerCase() === 'pro');
+                  
+                  return (
+                    <Card 
+                      key={plan.id} 
+                      className={`relative transition-all duration-300 hover:shadow-lg ${plan.color} ${
+                        plan.popular ? 'ring-2 ring-primary shadow-lg' : ''
+                      } ${isCurrentPlan ? 'ring-2 ring-green-500 shadow-lg' : ''}`}
+                    >
+                      {plan.popular && !isCurrentPlan && (
+                        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                          <Badge className="bg-primary text-primary-foreground shadow-md">
+                            <Zap className="h-3 w-3 mr-1" />
+                            Beliebt
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      {isCurrentPlan && (
+                        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                          <Badge className="bg-green-600 text-white shadow-md">
+                            <Check className="h-3 w-3 mr-1" />
+                            Aktiv
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      <CardHeader className="text-center space-y-4 pb-4">
+                        <div className="flex justify-center">{plan.icon}</div>
+                        <div>
+                          <CardTitle className="text-xl sm:text-2xl">{plan.name}</CardTitle>
+                           <div className="flex flex-col items-center space-y-2 mt-4">
+                             {!plan.isFree && billingPeriod !== 'monthly' && plan.originalPrice && (
+                               <div className="text-sm text-muted-foreground">
+                                 <span className="line-through">{plan.originalPrice}</span>
+                                 <span className="ml-2 text-green-600 font-semibold">
+                                   {billingPeriod === 'yearly' ? '50%' : '33%'} Rabatt
+                                 </span>
+                               </div>
+                             )}
+                             <div className="flex items-baseline justify-center space-x-1">
+                               <span className="text-2xl sm:text-3xl font-bold">{plan.price}</span>
+                               <span className="text-sm text-muted-foreground">{plan.period}</span>
+                             </div>
+                             {!plan.isFree && billingPeriod !== 'monthly' && getSavings(plan.name) && getSavings(plan.name) !== '0€' && (
+                               <div className="text-xs text-green-600 font-medium">
+                                 Du sparst {getSavings(plan.name)} {billingPeriod === 'yearly' ? 'pro Jahr' : 'alle 6 Monate'}
+                               </div>
+                             )}
+                           </div>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-6">
+                        <ul className="space-y-2">
+                          {plan.features.map((feature, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                              <span className="text-sm">{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        
+                        {plan.isFree ? (
+                          <Button 
+                            className="w-full" 
+                            variant="outline"
+                            disabled={true}
+                          >
+                            {isCurrentPlan ? "Aktueller Plan" : "Kostenlos"}
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="w-full" 
+                            variant={plan.popular && !isCurrentPlan ? "default" : "outline"}
+                            onClick={() => handleSubscribe(plan.id)}
+                            disabled={subscribing || isCurrentPlan}
+                          >
+                            {isCurrentPlan ? (
+                              "Aktueller Plan"
+                            ) : subscribing ? (
+                              "Loading..."
+                            ) : (
+                              `${plan.name} wählen`
+                            )}
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Management Section */}
+            {isPremium && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Subscription verwalten
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-muted-foreground">
+                    Verwalte deine Zahlungsmethoden, lade Rechnungen herunter oder kündige dein Abo.
+                  </p>
+                  <Button 
+                    onClick={createPortalSession}
+                    disabled={loading}
+                    className="flex items-center gap-2"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Customer Portal öffnen
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Features Comparison */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Warum getleanAI Premium?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center space-y-3 text-muted-foreground">
+                  <p>🎯 <strong>Basic:</strong> Perfekt für den Einstieg in AI-gesteuertes Fitness Tracking</p>
+                  <p>🚀 <strong>Premium:</strong> Nutzer erreichen ihre Ziele 2-3x schneller und brechen seltener ab</p>
+                  <p>✨ <strong>3 Tage kostenlos:</strong> Teste alle Features unverbindlich vor deiner Entscheidung</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
