@@ -925,121 +925,182 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-        {/* 4. Calculated Values */}
-        <div className="space-y-6">
-          {/* Basic Calculations */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold">{t('profile.dailyTargets')}</h2>
+        {/* 5. Daily Macros */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-white" />
             </div>
-
-            <div className="bg-background rounded-xl p-4 shadow-sm border">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold">{calculateMacroGrams().protein}g</div>
-                  <div className="text-sm text-muted-foreground">{t('macros.protein')}</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
-                  <div className="text-sm text-muted-foreground">{t('macros.carbs')}</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{calculateMacroGrams().fats}g</div>
-                  <div className="text-sm text-muted-foreground">{t('macros.fats')}</div>
-                </div>
-              </div>
-            </div>
+            <h2 className="text-xl font-bold">Tägliche Makros</h2>
           </div>
 
-          {/* Intelligent Analysis */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                <Bot className="h-5 w-5 text-white" />
+          <div className="bg-background rounded-xl p-4 shadow-sm border">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold">{calculateMacroGrams().protein}g</div>
+                <div className="text-sm text-muted-foreground">Protein</div>
               </div>
-              <h2 className="text-xl font-bold">Intelligente Kalorien-Analyse</h2>
+              <div>
+                <div className="text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
+                <div className="text-sm text-muted-foreground">Kohlenhydrate</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{calculateMacroGrams().fats}g</div>
+                <div className="text-sm text-muted-foreground">Fette</div>
+              </div>
+            </div>
+            <div className="text-center mt-4 text-sm text-muted-foreground">
+              Basierend auf {targetCalories} kcal täglich
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Intelligent Calorie Analysis */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold">Intelligente Kalorien-Analyse</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
+                <div className="text-xs text-muted-foreground">BMR</div>
+                <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
+              </div>
+              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-lg font-bold">{tdee || '-'}</div>
+                <div className="text-xs text-muted-foreground">TDEE</div>
+                <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
+              </div>
+              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-lg font-bold">{targetCalories}</div>
+                <div className="text-xs text-muted-foreground">Ziel</div>
+                <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
+              </div>
             </div>
 
             {intelligentCalories && (
-              <div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                    <div className="text-lg font-bold">{intelligentCalories.bmr}</div>
-                    <div className="text-xs text-muted-foreground">{t('profile.bmr')}</div>
-                  </div>
-                  <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                    <div className="text-lg font-bold">{intelligentCalories.tdee}</div>
-                    <div className="text-xs text-muted-foreground">{t('profile.tdee')}</div>
-                  </div>
-                  <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                    <div className="text-lg font-bold">{intelligentCalories.targetCalories}</div>
-                    <div className="text-xs text-muted-foreground">{t('ui.goal')}</div>
+              <div className="bg-background rounded-xl p-3 shadow-sm border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      (typeof intelligentCalories.confidence === 'number' ? intelligentCalories.confidence : parseFloat(intelligentCalories.confidence.toString())) >= 0.8 ? 'bg-green-500' : 
+                      (typeof intelligentCalories.confidence === 'number' ? intelligentCalories.confidence : parseFloat(intelligentCalories.confidence.toString())) >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}></div>
+                    <span className="text-xs text-muted-foreground">
+                      {Math.round((typeof intelligentCalories.confidence === 'number' ? intelligentCalories.confidence : parseFloat(intelligentCalories.confidence.toString())) * 100)}%
+                    </span>
                   </div>
                 </div>
-
+                <div className="text-xs text-muted-foreground">
+                  Basiert auf {intelligentCalories.dataQuality.daysOfData} Tagen Daten
+                </div>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Target Analysis */}
+          {/* 7. Target Analysis */}
           {targetWeight && targetDate && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
                   <Activity className="h-5 w-5 text-white" />
                 </div>
-                <h2 className="text-xl font-bold">{t('profile.targetAnalysis')}</h2>
+                <h2 className="text-xl font-bold">Ziel-Analyse</h2>
               </div>
 
               <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
                 {calculateRequiredCalorieDeficit() && (
-                  <div>
-                    <div className="text-sm font-medium mb-3">{t('profile.requiredCalorieDeficit')}</div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.daily}</div>
-                        <div className="text-xs text-muted-foreground">täglich</div>
+                  <>
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium">Gewichtsziel Analyse</div>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-muted rounded-lg text-center">
+                          <div className="text-lg font-bold">
+                            {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
+                          </div>
+                          <div className="text-xs text-muted-foreground">Gewichtsunterschied</div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg text-center">
+                          <div className="text-lg font-bold">
+                            {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))} Wochen
+                          </div>
+                          <div className="text-xs text-muted-foreground">bis zum Ziel</div>
+                        </div>
                       </div>
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.weekly}</div>
-                        <div className="text-xs text-muted-foreground">wöchentlich</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
-                {calculateRequiredCalorieDeficit() && calculateRequiredCalorieDeficit()!.daily > 1000 && (
-                  <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="text-red-500 mt-0.5">⚠️</div>
-                      <div className="flex-1">
-                        <div className="font-medium text-red-700 dark:text-red-300">Zu aggressives Ziel</div>
-                        <div className="text-sm text-red-600 dark:text-red-400 mt-1">
-                          Ein Defizit von über 1000 Kalorien täglich ist schwer nachhaltig
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3 bg-muted rounded-lg text-center">
+                          <div className="text-lg font-bold">
+                            {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
+                              Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(0)}g
+                          </div>
+                          <div className="text-xs text-muted-foreground">pro Woche</div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg text-center">
+                          <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.daily}</div>
+                          <div className="text-xs text-muted-foreground">kcal täglich</div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg text-center">
+                          <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.weekly}</div>
+                          <div className="text-xs text-muted-foreground">kcal wöchentlich</div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
 
-                {calculateRequiredCalorieDeficit() && calculateRequiredCalorieDeficit()!.daily < 500 && (
-                  <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="text-blue-500 mt-0.5">💡</div>
-                      <div className="flex-1 text-sm text-blue-700 dark:text-blue-300">
-                        Moderates, nachhaltiges Defizit - sehr gut für langfristigen Erfolg!
+                    {(calculateRequiredCalorieDeficit()?.daily || 0) > 1000 && (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5" />
+                          <div className="text-sm">
+                            <div className="font-medium text-red-700 dark:text-red-300">Zu aggressives Ziel</div>
+                            <div className="text-red-600 dark:text-red-400">
+                              Ein Defizit von über 1000 Kalorien täglich ist schwer nachhaltig. Erwäge ein langsameres Tempo.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {(calculateRequiredCalorieDeficit()?.daily || 0) < 500 && (calculateRequiredCalorieDeficit()?.daily || 0) > 0 && (
+                      <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
+                          <div className="text-sm">
+                            <div className="font-medium text-green-700 dark:text-green-300">Moderates, nachhaltiges Ziel</div>
+                            <div className="text-green-600 dark:text-green-400">
+                              Sehr gut für langfristigen Erfolg! Dieses Tempo ist gesund und nachhaltig.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start gap-2">
+                        <Info className="h-4 w-4 text-blue-500 mt-0.5" />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                          <div className="font-medium mb-1">Automatische Kalorien-Berechnung</div>
+                          <div>
+                            Deine Kalorienziele werden automatisch basierend auf deinem Gewichtsziel und Zeitrahmen berechnet. 
+                            1 kg Körperfett entspricht etwa 7700 Kalorien.
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
           )}
         </div>
-
 
         {/* Save Status */}
         <div className="fixed bottom-4 left-4 right-4 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg">
@@ -1048,17 +1109,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               {autoSaving ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span>{t('profile.autoSaving')}</span>
+                  <span>Speichere automatisch...</span>
                 </>
               ) : lastSaved ? (
                 <>
                   <Check className="h-4 w-4 text-green-500" />
                   <span className="text-muted-foreground">
-                    {t('profile.saveStatus', { time: lastSaved.toLocaleTimeString() })}
+                    Gespeichert um {lastSaved.toLocaleTimeString()}
                   </span>
                 </>
               ) : (
-                <span className="text-muted-foreground">{t('profile.notSaved')}</span>
+                <span className="text-muted-foreground">Nicht gespeichert</span>
               )}
             </div>
             <Button 
@@ -1068,12 +1129,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               className="ml-2 profile-save-button"
             >
               <Save className="h-4 w-4 mr-1" />
-              {t('common.save')}
+              Speichern
             </Button>
           </div>
         </div>
       </div>
-    </div>
     </>
   );
 };
