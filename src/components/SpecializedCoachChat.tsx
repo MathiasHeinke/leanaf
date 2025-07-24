@@ -657,14 +657,16 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                                 <div className="w-9 h-9 bg-primary/30 rounded-full animate-ping"></div>
                               </div>
                             </div>
-                            <span className="text-sm font-medium text-primary">
-                              {coach.name} schreibt...
-                            </span>
-                          </div>
-                          <div className="flex gap-1 mt-2">
-                            <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                            <div className="w-2 h-2 bg-primary/70 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                            <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-primary">
+                                {coach.name} schreibt...
+                              </span>
+                              <div className="flex gap-1">
+                                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                                <div className="w-2 h-2 bg-primary/70 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
