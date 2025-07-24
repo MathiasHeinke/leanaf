@@ -74,21 +74,26 @@ export const LevelBadge = () => {
         className="relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 hover:scale-110"
         title={`Level ${userPoints.current_level} - ${userPoints.level_name} (${Math.round(levelProgress)}%)`}
       >
+        {/* Progress Background - filled circle */}
+        <div 
+          className="absolute inset-0 w-8 h-8 rounded-full transition-all duration-500"
+          style={{
+            background: `radial-gradient(circle, ${displayLevelColor}${Math.round(levelProgress * 0.4 + 10).toString(16).padStart(2, '0')} ${levelProgress}%, ${displayLevelColor}15 ${levelProgress}%)`,
+            border: `2px solid ${displayLevelColor}`,
+            boxShadow: `0 0 ${levelProgress * 0.1}px ${displayLevelColor}80`
+          }}
+        />
+        
         {/* Progress Ring */}
         <div 
           className="absolute inset-0 w-8 h-8 rounded-full transition-all duration-500"
           style={{
-            background: `conic-gradient(from 0deg, #FFD700 0deg ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg 360deg)`,
-            padding: '1px'
+            background: `conic-gradient(from -90deg, #FFD700 0deg ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg 360deg)`,
+            padding: '1px',
+            borderRadius: '50%'
           }}
         >
-          <div 
-            className="w-full h-full rounded-full"
-            style={{ 
-              backgroundColor: `${displayLevelColor}15`,
-              border: `1px solid ${displayLevelColor}40`
-            }}
-          />
+          <div className="w-full h-full rounded-full bg-transparent" />
         </div>
 
         {/* Level Icon */}
