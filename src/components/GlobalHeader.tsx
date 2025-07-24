@@ -23,6 +23,7 @@ import {
   Clock,
   Microscope
 } from "lucide-react";
+import { LevelBadge } from "./LevelBadge";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -192,6 +193,9 @@ export const GlobalHeader = ({
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Level Badge */}
+            <LevelBadge />
+            
             {/* Refresh Button with Debug functionality - For Enterprise and Super Admin */}
             {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
               <Button

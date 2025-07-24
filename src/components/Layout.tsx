@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-import { PointsHeader } from "@/components/PointsHeader";
+
 import { DarkModeDebugPanel } from "@/components/DarkModeDebugPanel";
 import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
 
@@ -50,7 +50,6 @@ export const Layout = ({ children }: LayoutProps) => {
       <GlobalHeader 
         onRefresh={() => setShowSubscriptionDebug(true)}
       />
-      <PointsHeader />
       <main className="container mx-auto px-3 pb-24 pt-2 max-w-md relative z-10">
         {children}
       </main>
