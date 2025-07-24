@@ -534,15 +534,22 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
               <div className="flex justify-start">
                 <div className="max-w-[80%] bg-muted border rounded-2xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <Brain className="h-4 w-4 text-primary" />
+                    <div className="relative">
+                      <div className="w-4 h-4 text-primary">✍️</div>
+                      <div className="absolute -inset-1">
+                        <div className="w-6 h-6 bg-primary/20 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
                     <span className="text-xs font-medium text-primary">
-                      {getCoachName(currentCoachPersonality)} denkt nach...
+                      {getCoachName(currentCoachPersonality)} schreibt...
                     </span>
                   </div>
                   <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-1 h-3 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
+                    <div className="w-1 h-4 bg-primary/70 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }} />
+                    <div className="w-1 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-1 h-3 bg-primary/80 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+                    <div className="w-1 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                   </div>
                 </div>
               </div>

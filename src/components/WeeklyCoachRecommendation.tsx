@@ -205,8 +205,15 @@ export const WeeklyCoachRecommendation = () => {
             <div className="mb-4">
               {generatingMessage ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="animate-pulse">💭</div>
-                  <span>Dein Coach denkt nach...</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-base">✍️</span>
+                    <div className="flex gap-1">
+                      <div className="w-1 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
+                      <div className="w-1 h-3 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.1s' }} />
+                      <div className="w-1 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                    </div>
+                  </div>
+                  <span>Dein Coach schreibt...</span>
                 </div>
               ) : (
                 <p className="text-sm font-medium text-foreground leading-relaxed">

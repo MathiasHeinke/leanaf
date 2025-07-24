@@ -638,10 +638,20 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                       <div className="max-w-[80%]">
                         <div className="bg-muted rounded-lg p-3">
                           <div className="flex items-center space-x-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <div className="relative">
+                              <div className="text-base">✍️</div>
+                              <div className="absolute -inset-1">
+                                <div className="w-6 h-6 bg-primary/20 rounded-full animate-pulse"></div>
+                              </div>
+                            </div>
                             <span className="text-sm text-muted-foreground">
-                              {coach.name} denkt nach...
+                              {coach.name} schreibt...
                             </span>
+                            <div className="flex gap-1 ml-2">
+                              <div className="w-1 h-3 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
+                              <div className="w-1 h-4 bg-primary/70 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }} />
+                              <div className="w-1 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                            </div>
                           </div>
                         </div>
                       </div>
