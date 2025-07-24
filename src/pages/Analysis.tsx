@@ -1,15 +1,11 @@
 import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Brain, BarChart3, TrendingUp, Calendar } from "lucide-react";
+import { TrendingUp, Minus, TrendingDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { InsightsAnalysis } from "@/components/InsightsAnalysis";
-import { CoachChat } from "@/components/CoachChat";
-import { PremiumGate } from "@/components/PremiumGate";
 import { HistoryCharts } from "@/components/HistoryCharts";
-import { WeightHistory } from "@/components/WeightHistory";
+import { WeightProgressCard } from "@/components/WeightProgressCard";
 
 const Analysis = () => {
   const { user } = useAuth();
@@ -219,155 +215,118 @@ const Analysis = () => {
     );
   }
 
-  const coachPersonality = userProfile?.coach_personality || 'motivierend';
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <BarChart3 className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Analyse</h1>
-          <p className="text-muted-foreground">Detaillierte Einblicke in deinen Fortschritt</p>
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      {/* Analytics Cards - Vertical Layout */}
+      <div className="space-y-4">
+        {/* Today's Summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Heute</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Kalorien</span>
+                <span className="font-medium">{todaysTotals.calories}{dailyGoals ? ` / ${dailyGoals.calories}` : ''}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Protein</span>
+                <span className="font-medium">{todaysTotals.protein}g{dailyGoals ? ` / ${dailyGoals.protein}g` : ''}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Kohlenhydrate</span>
+                <span className="font-medium">{todaysTotals.carbs}g{dailyGoals ? ` / ${dailyGoals.carbs}g` : ''}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Fette</span>
+                <span className="font-medium">{todaysTotals.fats}g{dailyGoals ? ` / ${dailyGoals.fats}g` : ''}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 7-Day Average */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">7-Tage Durchschnitt</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Kalorien</span>
+                <span className="font-medium">{averages.calories}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Protein</span>
+                <span className="font-medium">{averages.protein}g</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Kohlenhydrate</span>
+                <span className="font-medium">{averages.carbs}g</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Fette</span>
+                <span className="font-medium">{averages.fats}g</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Trend Analysis */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Trend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {trendData ? (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Kalorientrend</span>
+                  <div className="flex items-center gap-2">
+                    {trendData.trend === 'up' && <TrendingUp className="h-4 w-4 text-red-500" />}
+                    {trendData.trend === 'down' && <TrendingDown className="h-4 w-4 text-green-500" />}
+                    {trendData.trend === 'stable' && <Minus className="h-4 w-4 text-gray-500" />}
+                    <span className="font-medium">{trendData.change > 0 ? '+' : ''}{trendData.change}</span>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {trendData.trend === 'up' && 'Kalorien steigen an'}
+                  {trendData.trend === 'down' && 'Kalorien sinken'}
+                  {trendData.trend === 'stable' && 'Kalorien stabil'}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sammle mehr Daten...</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <Tabs defaultValue="insights" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="insights" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Analyse
-          </TabsTrigger>
-          <TabsTrigger value="coach" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Coach
-            <Badge variant="secondary" className="text-xs">
-              {coachPersonality === 'streng' ? '🎯' : coachPersonality === 'motivierend' ? '💪' : '😊'}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+      {/* Smart Insights */}
+      <InsightsAnalysis
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        historyData={historyData}
+        trendData={trendData}
+        weightHistory={weightHistory}
+        onWeightAdded={() => loadAnalysisData()}
+      />
 
-        <TabsContent value="insights" className="space-y-6">
-          {/* Current Analytics Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Heute</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Kalorien</span>
-                    <span className="font-medium">{todaysTotals.calories}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Protein</span>
-                    <span className="font-medium">{todaysTotals.protein}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Kohlenhydrate</span>
-                    <span className="font-medium">{todaysTotals.carbs}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Fette</span>
-                    <span className="font-medium">{todaysTotals.fats}g</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Weight Progress Card */}
+      <WeightProgressCard 
+        weightHistory={weightHistory}
+        onWeightAdded={loadAnalysisData}
+      />
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">7-Tage Durchschnitt</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Kalorien</span>
-                    <span className="font-medium">{averages.calories}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Protein</span>
-                    <span className="font-medium">{averages.protein}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Kohlenhydrate</span>
-                    <span className="font-medium">{averages.carbs}g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Fette</span>
-                    <span className="font-medium">{averages.fats}g</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Trend</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {trendData ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className={`h-4 w-4 ${
-                        trendData.trend === 'up' ? 'text-orange-500' : 
-                        trendData.trend === 'down' ? 'text-blue-500' : 'text-green-500'
-                      }`} />
-                      <span className="font-medium">
-                        {trendData.trend === 'up' ? 'Steigend' : 
-                         trendData.trend === 'down' ? 'Fallend' : 'Stabil'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {trendData.change > 0 ? '+' : ''}{trendData.change} Kalorien
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {Math.abs(trendData.percentChange)}% Veränderung
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Sammle mehr Daten...</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Smart Insights */}
-          <InsightsAnalysis
-            todaysTotals={todaysTotals}
-            dailyGoals={dailyGoals}
-            averages={averages}
-            historyData={historyData}
-            trendData={trendData}
-            weightHistory={weightHistory}
-            onWeightAdded={() => loadAnalysisData()}
-          />
-
-          {/* History Charts */}
-          <HistoryCharts 
-            data={historyData}
-            weightHistory={weightHistory}
-            timeRange="month"
-            loading={loading}
-          />
-
-          {/* Weight History */}
-          <WeightHistory 
-            weightHistory={weightHistory}
-            loading={loading}
-            onDataUpdate={() => loadAnalysisData()}
-          />
-        </TabsContent>
-
-        <TabsContent value="coach">
-          <PremiumGate 
-            feature="premium_insights"
-            fallbackMessage="Der persönliche KaloAI Coach ist ein Premium Feature. Upgrade für unbegrenzten Zugang zu deinem persönlichen Fitness- und Ernährungscoach!"
-          >
-            <CoachChat coachPersonality={coachPersonality} />
-          </PremiumGate>
-        </TabsContent>
-      </Tabs>
+      {/* History Charts */}
+      <HistoryCharts 
+        data={historyData}
+        weightHistory={weightHistory}
+        timeRange="month"
+        loading={loading}
+      />
     </div>
   );
 };
