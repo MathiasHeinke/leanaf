@@ -231,7 +231,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   const generateWelcomeMessage = async () => {
-    const welcomeText = getWelcomeMessage();
+    // Check if this is the first conversation with this coach
+    const isFirstConversation = messages.length === 0;
+    
+    const welcomeText = getWelcomeMessage(isFirstConversation);
     
     const savedMessage = await saveMessage('assistant', welcomeText);
     if (savedMessage) {
@@ -249,16 +252,22 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
   };
 
-  const getWelcomeMessage = () => {
+  const getWelcomeMessage = (isFirstConversation: boolean) => {
+    if (!isFirstConversation) {
+      // Returning user - more casual greeting
+      return `Hey ${firstName}! Was steht heute an?`;
+    }
+    
+    // First time meeting - introduce yourself
     switch (coach.id) {
       case 'lucy':
-        return `Hey ${firstName}! 💗 Lucy hier - deine Ernährungs- und Lifestyle-Expertin. Ich helfe dir dabei, eine nachhaltige und gesunde Beziehung zum Essen aufzubauen. Ob es um Meal-Timing, gesunde Gewohnheiten oder Regeneration geht - ich bin für dich da! Was beschäftigt dich heute?`;
+        return `Hey ${firstName}! 💗 Ich bin Lucy, deine Ernährungs- und Lifestyle-Expertin. Was beschäftigt dich im Moment beim Thema Ernährung oder Lifestyle?`;
       case 'sascha':
-        return `${firstName}! 🎯 Sascha hier - dein Performance-Coach. Keine Zeit für Spielchen - ich helfe dir dabei, deine Trainingsziele zu erreichen und stärker zu werden. Ob Trainingsplan, Progressive Overload oder Plateau-Durchbruch - lass uns direkt loslegen! Was ist dein Ziel?`;
+        return `Hi ${firstName}! 🎯 Ich bin Sascha, dein Personal Trainer. Was ist dein aktuelles Trainingsziel?`;
       case 'kai':
-        return `Hey ${firstName}! 💪 Kai hier - dein Mindset- und Recovery-Spezialist. Ich bringe die Energie und helfe dir dabei, mental stark zu bleiben und optimal zu regenerieren. Motivation, Stress oder Schlaf - wir packen das zusammen an! Womit kann ich dir helfen?`;
+        return `Hey ${firstName}! 💪 Ich bin Kai, dein Mindset- und Recovery-Spezialist. Woran arbeitest du gerade?`;
       default:
-        return `Hey ${firstName}! Schön, dich kennenzulernen. Wie kann ich dir heute helfen?`;
+        return `Hey ${firstName}! Schön, dich kennenzulernen. Wie kann ich dir helfen?`;
     }
   };
 
