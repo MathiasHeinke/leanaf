@@ -27,12 +27,23 @@ export const BadgeSystem = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAllBadges, setShowAllBadges] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     if (user) {
       loadBadges();
     }
   }, [user]);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const loadBadges = async () => {
     if (!user) return;
@@ -149,10 +160,10 @@ export const BadgeSystem = () => {
 
         {/* Category Filter */}
         {categories.length > 1 && (
-          <div className="flex flex-wrap gap-2 p-3 bg-gradient-to-r from-background/60 via-background/80 to-background/60 rounded-2xl border border-border/50 backdrop-blur-sm">
+          <div className="flex flex-wrap gap-2 lg:gap-3 p-3 lg:p-4 bg-gradient-to-r from-background/60 via-background/80 to-background/60 rounded-2xl border border-border/50 backdrop-blur-sm">
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+              className={`px-4 py-2 lg:px-6 lg:py-3 rounded-xl text-sm lg:text-base font-medium transition-all duration-300 ${
                 selectedCategory === 'all' 
                   ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
                   : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
@@ -164,7 +175,7 @@ export const BadgeSystem = () => {
               <button
                 key={category.name}
                 onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                className={`px-4 py-2 lg:px-6 lg:py-3 rounded-xl text-sm lg:text-base font-medium transition-all duration-300 flex items-center gap-2 ${
                   selectedCategory === category.name.toLowerCase() 
                     ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
                     : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
@@ -179,9 +190,9 @@ export const BadgeSystem = () => {
 
         {displayBadges.length > 0 ? (
           <div className="space-y-4">
-            {/* Badge Grid - Max 3 per row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(showAllBadges ? displayBadges : displayBadges.slice(0, 3)).map((badge, index) => {
+            {/* Badge Grid - Better desktop layout */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
+              {(showAllBadges ? displayBadges : displayBadges.slice(0, isDesktop ? 8 : 3)).map((badge, index) => {
                 const badgeColor = getBadgeColor(badge.badge_type);
                 return (
                   <div 
@@ -263,14 +274,14 @@ export const BadgeSystem = () => {
             </div>
 
             {/* Show More/Less Button */}
-            {displayBadges.length > 3 && (
+            {displayBadges.length > (isDesktop ? 8 : 3) && (
               <div className="flex justify-center pt-2">
                 <button
                   onClick={() => setShowAllBadges(!showAllBadges)}
                   className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-primary/10 via-primary/15 to-primary/10 hover:from-primary/20 hover:via-primary/25 hover:to-primary/20 text-primary rounded-xl border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/20"
                 >
                   <span className="font-medium">
-                    {showAllBadges ? 'Weniger anzeigen' : `${displayBadges.length - 3} weitere Erfolge anzeigen`}
+                    {showAllBadges ? 'Weniger anzeigen' : `${displayBadges.length - (isDesktop ? 8 : 3)} weitere Erfolge anzeigen`}
                   </span>
                   <ChevronRight 
                     className={`h-4 w-4 transition-all duration-300 group-hover:scale-110 ${showAllBadges ? 'rotate-90' : 'group-hover:translate-x-1'}`} 
