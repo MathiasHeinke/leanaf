@@ -80,7 +80,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     return () => clearTimeout(timeoutId);
   }, [
-    weight, startWeight, height, age, gender, 
+    displayName, weight, startWeight, height, age, gender, 
     activityLevel, goal, targetWeight, targetDate, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
@@ -116,6 +116,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
       if (data) {
         setProfileExists(true);
+        setDisplayName(data.display_name || '');
         setWeight(data.weight ? data.weight.toString() : '');
         setStartWeight(data.start_weight ? data.start_weight.toString() : '');
         setHeight(data.height ? data.height.toString() : '');
@@ -307,6 +308,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     const profileData = {
       user_id: user.id,
+      display_name: displayName,
       weight: weight ? parseFloat(weight) : null,
       start_weight: startWeight ? parseFloat(startWeight) : null,
       height: height ? parseInt(height) : null,

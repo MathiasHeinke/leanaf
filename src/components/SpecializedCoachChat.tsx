@@ -974,22 +974,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             />
             
             <div className="flex flex-col space-y-2">
-              <label htmlFor="photo-upload" className="cursor-pointer">
-                <Button variant="outline" size="sm" asChild disabled={isUploading}>
-                  <span>
-                    <Paperclip className="h-4 w-4" />
-                  </span>
-                </Button>
-                <input
-                  id="photo-upload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  disabled={isUploading}
-                />
-              </label>
               
               <Button
                 variant="outline"
