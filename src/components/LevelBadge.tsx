@@ -74,27 +74,22 @@ export const LevelBadge = () => {
         className="relative flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 hover:scale-110"
         title={`Level ${userPoints.current_level} - ${userPoints.level_name} (${Math.round(levelProgress)}%)`}
       >
-        {/* Progress Background - filled circle */}
+        {/* Base Circle - consistent with level badge styling */}
         <div 
-          className="absolute inset-0 w-8 h-8 rounded-full transition-all duration-500"
-          style={{
-            background: `radial-gradient(circle, ${displayLevelColor}${Math.round(levelProgress * 0.4 + 10).toString(16).padStart(2, '0')} ${levelProgress}%, ${displayLevelColor}15 ${levelProgress}%)`,
-            border: `2px solid ${displayLevelColor}`,
-            boxShadow: `0 0 ${levelProgress * 0.1}px ${displayLevelColor}80`
+          className="absolute inset-0 w-8 h-8 rounded-full border-2 transition-all duration-500"
+          style={{ 
+            borderColor: displayLevelColor,
+            backgroundColor: displayLevelColor
           }}
         />
         
-        {/* Progress Ring */}
+        {/* Progress Segment - yellow/gold fill from top */}
         <div 
-          className="absolute inset-0 w-8 h-8 rounded-full transition-all duration-500"
+          className="absolute inset-0 w-8 h-8 rounded-full overflow-hidden transition-all duration-500"
           style={{
-            background: `conic-gradient(from -90deg, #FFD700 0deg ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg 360deg)`,
-            padding: '1px',
-            borderRadius: '50%'
+            background: `conic-gradient(from -90deg, #FFD700 0deg ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg 360deg)`
           }}
-        >
-          <div className="w-full h-full rounded-full bg-transparent" />
-        </div>
+        />
 
         {/* Level Icon */}
         <div 
