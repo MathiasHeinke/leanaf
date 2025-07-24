@@ -29,9 +29,23 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         } 
       });
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // Try different audio formats based on browser support
+      let mimeType = '';
+      const possibleTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/wav'
+      ];
+      
+      for (const type of possibleTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          break;
+        }
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
