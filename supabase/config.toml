@@ -9,10 +9,10 @@ enable_email_confirmations = true
 enable_phone_confirmations = false
 
 # OTP expiry settings (in seconds) - Enhanced Security
-# Email OTP expires in 3 minutes (180 seconds) - Further reduced for better security
-email_otp_exp = 180
-# SMS OTP expires in 3 minutes (180 seconds) 
-sms_otp_exp = 180
+# Email OTP expires in 2 minutes (120 seconds) - Optimized for security
+email_otp_exp = 120
+# SMS OTP expires in 2 minutes (120 seconds) 
+sms_otp_exp = 120
 
 # Password requirements - Enhanced
 password_min_length = 10
@@ -33,7 +33,7 @@ enable_manual_linking = false
 security_update_password_require_reauthentication = true
 # Enhanced security: Enable leaked password protection
 security_password_change_require_reauthentication = true
-# Enable leaked password detection
+# Enable leaked password detection (CRITICAL SECURITY)
 security_enable_leak_protection = true
 # Enable CAPTCHA for registration
 security_captcha_enabled = true

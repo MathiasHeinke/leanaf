@@ -69,7 +69,7 @@ export const validateInput = {
   }
 };
 
-// Error message sanitization - never expose sensitive info
+// Enhanced error message sanitization for production safety
 export const sanitizeErrorMessage = (error: Error | string): string => {
   const message = typeof error === 'string' ? error : error.message;
   
@@ -84,7 +84,13 @@ export const sanitizeErrorMessage = (error: Error | string): string => {
     /authorization/gi,
     /database/gi,
     /connection/gi,
-    /internal/gi
+    /internal/gi,
+    /supabase_url/gi,
+    /anon_key/gi,
+    /service_role/gi,
+    /jwt/gi,
+    /env\./gi,
+    /process\.env/gi
   ];
   
   let sanitized = message;
@@ -92,8 +98,28 @@ export const sanitizeErrorMessage = (error: Error | string): string => {
     sanitized = sanitized.replace(pattern, '[REDACTED]');
   });
   
-  // Limit message length
+  // Limit message length for security
   return sanitized.slice(0, 200);
+};
+
+// Enhanced error response for edge functions
+export const createSecureErrorResponse = (error: any, statusCode: number = 500) => {
+  const sanitizedMessage = sanitizeErrorMessage(error);
+  
+  return new Response(
+    JSON.stringify({
+      error: sanitizedMessage,
+      timestamp: new Date().toISOString(),
+      code: statusCode
+    }),
+    {
+      status: statusCode,
+      headers: {
+        'Content-Type': 'application/json',
+        ...getSecurityHeaders()
+      }
+    }
+  );
 };
 
 // Rate limiting helper (client-side)

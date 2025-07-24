@@ -7,6 +7,7 @@ import { Camera, Mic, Send, StopCircle, ImagePlus, X, Paperclip } from "lucide-r
 import { useTranslation } from "@/hooks/useTranslation";
 import { UploadProgress } from "@/components/UploadProgress";
 import { UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
+import { sanitizeInput } from "@/utils/securityHelpers";
 
 interface MealInputProps {
   inputText: string;
@@ -154,7 +155,7 @@ export const MealInput = ({
           <div className="relative">
             <Textarea
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => setInputText(sanitizeInput.text(e.target.value, 2000))}
               placeholder={t('input.placeholder')}
               className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
               onKeyDown={handleKeyDown}
