@@ -494,89 +494,91 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       </Card>
 
       {/* Chat Area */}
-      <Card className="flex flex-col h-[500px]">
-        <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-full p-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Lade Chat-Verlauf...</span>
-                </div>
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="text-center py-8">
-                <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Noch keine Nachrichten. Starte das Gespräch!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
-                      <div
-                        className={`rounded-lg p-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {message.images && message.images.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            {message.images.map((imageUrl, index) => (
-                              <img
-                                key={index}
-                                src={imageUrl}
-                                alt={`Uploaded image ${index + 1}`}
-                                className="w-full h-24 object-cover rounded"
-                              />
-                            ))}
-                          </div>
-                        )}
-                        
-                        <div className="text-sm">
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
-                        </div>
-                      </div>
-                      
-                      <div className={`flex items-center mt-1 space-x-2 ${
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      }`}>
-                        {message.role === 'assistant' && (
-                          <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center`}>
-                            <span className="text-[8px] text-white">{coach.avatar}</span>
-                          </div>
-                        )}
-                        {message.role === 'user' && <User className="h-3 w-3 text-muted-foreground" />}
-                        <span className="text-xs text-muted-foreground">
-                          {formatMessageTime(message.created_at)}
-                        </span>
-                      </div>
-                    </div>
+      <Card className="flex flex-col h-[600px]">
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Lade Chat-Verlauf...</span>
                   </div>
-                ))}
-                
-                {isThinking && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%]">
-                      <div className="bg-muted rounded-lg p-3">
-                        <div className="flex items-center space-x-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm text-muted-foreground">
-                            {coach.name} denkt nach...
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Noch keine Nachrichten. Starte das Gespräch!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
+                        <div
+                          className={`rounded-lg p-3 ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {message.images && message.images.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              {message.images.map((imageUrl, index) => (
+                                <img
+                                  key={index}
+                                  src={imageUrl}
+                                  alt={`Uploaded image ${index + 1}`}
+                                  className="w-full h-24 object-cover rounded"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          
+                          <div className="text-sm">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        </div>
+                        
+                        <div className={`flex items-center mt-1 space-x-2 ${
+                          message.role === 'user' ? 'justify-end' : 'justify-start'
+                        }`}>
+                          {message.role === 'assistant' && (
+                            <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center`}>
+                              <span className="text-[8px] text-white">{coach.avatar}</span>
+                            </div>
+                          )}
+                          {message.role === 'user' && <User className="h-3 w-3 text-muted-foreground" />}
+                          <span className="text-xs text-muted-foreground">
+                            {formatMessageTime(message.created_at)}
                           </span>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                
-                <div ref={scrollRef} />
-              </div>
-            )}
+                  ))}
+                  
+                  {isThinking && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%]">
+                        <div className="bg-muted rounded-lg p-3">
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm text-muted-foreground">
+                              {coach.name} denkt nach...
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div ref={scrollRef} />
+                </div>
+              )}
+            </div>
           </ScrollArea>
         </CardContent>
         
