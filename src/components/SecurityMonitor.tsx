@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, ShieldCheck, ShieldAlert, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { sanitizeErrorMessage, getSecurityHeaders, validateInput } from '@/utils/securityHelpers';
+import { sanitizeErrorMessage, getSecurityHeaders, validateInput, securityLogger } from '@/utils/enhancedSecurityHelpers';
 
 interface SecurityEvent {
   id: string;

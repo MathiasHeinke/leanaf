@@ -2,6 +2,54 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
+// Enhanced security helpers
+const securityHelpers = {
+  sanitizeInput: {
+    text: (input: string, maxLength: number = 10000): string => {
+      if (!input || typeof input !== 'string') return '';
+      return input.trim().slice(0, maxLength);
+    },
+    
+    number: (input: any, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number => {
+      const num = parseFloat(input);
+      if (isNaN(num)) return min;
+      return Math.max(min, Math.min(max, num));
+    }
+  },
+
+  validateInput: {
+    uuid: (uuid: string): boolean => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(uuid);
+    },
+    
+    url: (url: string): boolean => {
+      try {
+        new URL(url);
+        return url.startsWith('http://') || url.startsWith('https://');
+      } catch {
+        return false;
+      }
+    }
+  },
+
+  sanitizeErrorMessage: (error: Error | string): string => {
+    const message = typeof error === 'string' ? error : error.message;
+    
+    const sensitivePatterns = [
+      /password/gi, /token/gi, /key/gi, /secret/gi, /api[_-]?key/gi,
+      /bearer/gi, /authorization/gi, /database/gi, /connection/gi, /internal/gi
+    ];
+    
+    let sanitized = message;
+    sensitivePatterns.forEach(pattern => {
+      sanitized = sanitized.replace(pattern, '[REDACTED]');
+    });
+    
+    return sanitized.slice(0, 200);
+  }
+};
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -53,13 +101,13 @@ serve(async (req) => {
     
     const body = await req.json();
     
-    // Validate and sanitize inputs
-    const message = sanitizeText(body.message);
+    // Enhanced input validation and sanitization
+    const message = securityHelpers.sanitizeInput.text(body.message);
     const userId = body.userId;
     const coachPersonality = validateCoachPersonality(body.coachPersonality || null);
     
-    // Validate user ID
-    if (!userId || typeof userId !== 'string') {
+    // Enhanced user ID validation
+    if (!userId || typeof userId !== 'string' || !securityHelpers.validateInput.uuid(userId)) {
       return new Response(
         JSON.stringify({ error: 'Valid user ID is required' }),
         { 
@@ -91,11 +139,11 @@ serve(async (req) => {
     // Sanitize user data
     const userData = sanitizeUserData(body.userData || {});
     
-    // Validate images
+    // Enhanced image validation using security helpers
     let images = [];
     if (Array.isArray(body.images)) {
       images = body.images.slice(0, 10).filter(url => 
-        typeof url === 'string' && url.startsWith('http')
+        typeof url === 'string' && securityHelpers.validateInput.url(url)
       );
     }
     
@@ -898,15 +946,17 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
   } catch (error: any) {
     console.error('Error in enhanced coach-chat function:', error);
     
-    // Enhanced error response with more context
+    // Enhanced error response with sanitized error messages
+    const sanitizedError = securityHelpers.sanitizeErrorMessage(error);
+    
     const errorResponse = {
-      error: error.message || 'Internal server error',
+      error: sanitizedError,
       response: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.',
       reply: 'Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später noch einmal.',
       timestamp: new Date().toISOString(),
       context: {
         errorType: error.constructor.name,
-        userId: req.headers.get('x-user-id') || 'unknown'
+        userId: 'unknown' // Don't log user ID in error response for privacy
       }
     };
     
