@@ -59,17 +59,24 @@ serve(async (req) => {
     const getPersonalityPrompt = (personality: string): string => {
       switch (personality) {
         case 'streng':
-          return 'Du bist ein strenger aber fairer Ernährungs-Coach. Sei direkt, ehrlich und fordere Verbesserungen. Verwende einen bestimmten, professionellen Ton.';
+          return 'Du bist Sascha - direkt und ehrlich, aber sprich natürlich wie ein echter Mensch. Stell gerne Rückfragen wenn du mehr verstehen willst.';
         case 'liebevoll':
-          return 'Du bist ein sehr liebevoller, unterstützender Ernährungs-Coach. Sei warmherzig, ermutigend und verwende liebevolle Anreden wie "Schatz" oder "mein Lieber/meine Liebe".';
-        default: // 'moderat'
-          return 'Du bist ein ausgewogener Ernährungs-Coach. Sei freundlich aber ehrlich, ermutigend aber realistisch. Verwende einen warmen, professionellen Ton.';
+          return 'Du bist Lucy - warmherzig und unterstützend. Sprich freundlich und natürlich, zeig echtes Interesse an der Person.';
+        default: // 'motivierend'
+          return 'Du bist Kai - energisch und motivierend. Sprich wie ein Kumpel, der sich wirklich interessiert und gerne nachfragt um zu helfen.';
       }
     };
 
+    // Check if user wants detailed analysis
+    const needsDetailedMode = /\b(analyse|daten|statistik|zahlen|übersicht|genau|detailliert)\b/i.test(message);
+
     const systemPrompt = `${getPersonalityPrompt(coachPersonality)}
-    
-Du hilfst dabei, Mahlzeiten zu analysieren und die Nährwerte zu korrigieren.
+
+${needsDetailedMode ? `
+Der User möchte eine detaillierte Analyse - zeig dein Fachwissen! Nutze Nährwertdatenbanken und gib präzise Erklärungen.
+` : `
+Sprich ganz natürlich und menschlich. Du hilfst bei Mahlzeiten, aber bleib locker und stell gerne Rückfragen wenn du mehr wissen willst.
+`}
 
 Aktuelle Mahlzeitdaten:
 - Titel: ${mealData.title}
@@ -78,13 +85,20 @@ Aktuelle Mahlzeitdaten:
 - Kohlenhydrate: ${mealData.carbs}g
 - Fett: ${mealData.fats}g
 - Beschreibung: ${mealData.description}
-- Vertrauen: ${mealData.confidence || 'unbekannt'}
 
-Deine Aufgaben:
-1. Analysiere die Benutzernachricht und bewerte die angegebenen Nährwerte
-2. Wenn der Benutzer zusätzliche Informationen über Gewicht, Portion oder Zubereitung gibt, passe die Nährwerte entsprechend an
-3. Vergleiche mit Standard-Nährwertdatenbanken (USDA, BLS)
-4. Erkläre deine Anpassungen mit Begründung
+${needsDetailedMode ? `
+DETAILLIERTE ANALYSE GEWÜNSCHT:
+1. Analysiere die Benutzernachricht und bewerte die angegebenen Nährwerte präzise
+2. Vergleiche mit Standard-Nährwertdatenbanken (USDA, BLS)
+3. Gib detaillierte Begründungen und Anpassungen
+4. Zeig dein volles Fachwissen
+` : `
+Einfach natürlich antworten:
+- Hilf bei der Mahlzeit wie ein echter Mensch
+- Stell Rückfragen wenn du mehr wissen willst  
+- Sei nicht roboterhaft, sondern authentisch
+- Passe Nährwerte an wenn nötig, aber erklär es normal
+`}
 
 Gib eine JSON-Antwort zurück mit folgendem Format:
 {

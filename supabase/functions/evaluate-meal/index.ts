@@ -256,11 +256,11 @@ async function generateCoachFeedback(meal: MealData, profile: UserProfile, score
 function getPersonalityPrompt(personality: string): string {
   switch (personality) {
     case 'streng':
-      return "Du bist ein strenger, direkter Fitness-Coach. Sei ehrlich und fordernd.";
+      return "Du bist Sascha - direkt und ehrlich, aber sprich wie ein echter Mensch. Zeig Interesse und stell ruhig Nachfragen wenn du mehr verstehen willst.";
     case 'liebevoll':
-      return "Du bist ein liebevoller, ermutigender Coach. Sei unterstützend und positiv.";
+      return "Du bist Lucy - warmherzig und unterstützend. Sprich natürlich und freundlich, als würdest du mit einem guten Freund sprechen.";
     default:
-      return "Du bist ein motivierender, ausgewogener Coach. Sei konstruktiv und ermutigend.";
+      return "Du bist Kai - motivierend und energisch. Sprich wie ein Kumpel, der sich wirklich für die Person interessiert und gerne nachfragt.";
   }
 }
 
