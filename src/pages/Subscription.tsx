@@ -124,14 +124,15 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
       period: '',
       originalPrice: null,
       icon: <Star className="h-6 w-6 text-blue-600" />,
-      color: 'bg-blue-50 border-blue-200 dark:bg-blue-950/20',
+      color: 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-950/20 dark:to-blue-900/30 shadow-lg',
       features: [
-        'Meal Tracking',
-        'Weight Tracking',
-        'Basic Dashboard', 
-        'Points & Badges System',
-        '5 AI Meal Analysen/Tag (GPT-4o-mini)',
-        'Basic Charts'
+        '✨ Meal Tracking',
+        '⚖️ Weight Tracking',
+        '📊 Basic Dashboard', 
+        '🏆 Points & Badges System',
+        '🧠 5 AI Meal Analysen/Tag (GPT-4o-mini)',
+        '📈 Basic Charts',
+        '🤖 1 KI Coach verfügbar'
       ],
       isFree: true
     },
@@ -142,19 +143,21 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
       period: getPlanPeriod(),
       originalPrice: getOriginalPrice('Pro'),
       icon: <Crown className="h-6 w-6 text-yellow-600" />,
-      color: 'bg-yellow-50 border-yellow-300 dark:bg-yellow-950/20',
+      color: 'bg-gradient-to-br from-yellow-50 via-orange-50 to-yellow-100 border-yellow-300 dark:from-yellow-950/20 dark:via-orange-950/30 dark:to-yellow-900/40 shadow-xl ring-2 ring-yellow-200/50',
       popular: true,
       features: [
-        'Alle Free Features',
-        'Unlimited AI mit GPT-4.1',
-        'Advanced Coach Chat',
-        'Coach Recipes',
-        'Daily Analysis',
-        'Workout & Sleep Tracking',
-        'Body Measurements',
-        'Transformation Dashboard',
-        'Premium Insights',
-        'Priority Support'
+        '🚀 Alle Free Features',
+        '🧠 Unlimited AI mit GPT-4.1',
+        '👥 Über 7+ Experten-Coaches zur Auswahl',
+        '🆕 Regelmäßig neue Coaches mit einzigartiger Persönlichkeit',
+        '🎯 Tiefes Fachwissen je Expertise-Bereich',
+        '💬 Advanced Coach Chat ohne Limits',
+        '🍽️ Personalisierte Coach Recipes',
+        '📈 Tägliche KI-Analysis & Insights',
+        '💪 Workout & Sleep Tracking',
+        '📏 Body Measurements & Transformation',
+        '🔮 Premium Insights & Prognosen',
+        '⚡ Priority Support'
       ]
     }
   ];
