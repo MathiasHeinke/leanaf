@@ -171,21 +171,21 @@ export const BadgeSystem = () => {
                     : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
                 }`}
               >
-                Alle ({badges.length})
+                <span className="text-xs">Alle ({badges.length})</span>
               </button>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 {categories.map(category => (
                   <button
                     key={category.name}
                     onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                    className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 flex items-center justify-center gap-1 ${
+                    className={`px-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 flex items-center justify-center gap-1 ${
                       selectedCategory === category.name.toLowerCase() 
                         ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
                         : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
                     }`}
                   >
                     {category.icon}
-                    <span className="truncate">{category.name} ({category.badges.length})</span>
+                    <span className="truncate text-xs">{category.name} ({category.badges.length})</span>
                   </button>
                 ))}
               </div>
