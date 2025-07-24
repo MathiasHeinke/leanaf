@@ -11,20 +11,20 @@ const coachProfiles = [
     id: 'lucy',
     name: 'Lucy',
     age: 23,
-    role: 'Ernährungs- & Lifestyle-Expertin',
+    role: '80/20+ Ernährungs- & Lifestyle-Expertin',
     avatar: '❤️',
     icon: Heart,
     imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
     personality: 'Liebevoll & Unterstützend',
-    description: 'Spezialisiert auf nachhaltige Ernährung, gesunde Gewohnheiten und Lifestyle-Optimierung.',
-    expertise: ['Ernährungsberatung', 'Lifestyle-Design', 'Gewohnheitsbildung', 'Regeneration'],
+    description: 'RAG-Expertin für Chrononutrition, anti-inflammatorische Ernährung und metabolische Flexibilität.',
+    expertise: ['Chrononutrition', 'Intervallfasten', 'Anti-Inflammation', 'Metabolismus'],
     color: 'pink',
     accentColor: 'from-pink-500 to-pink-600',
     quickActions: [
-      { text: 'Meal-Timing optimieren', prompt: 'Wie kann ich meine Mahlzeiten besser über den Tag verteilen für optimale Energie und Sättigung?' },
-      { text: 'Heißhunger bekämpfen', prompt: 'Ich habe oft Heißhunger. Was sind die Ursachen und wie kann ich dem vorbeugen?' },
-      { text: 'Gesunde Snack-Ideen', prompt: 'Welche gesunden Snacks passen zu meinen Zielen und halten mich lange satt?' },
-      { text: 'Regeneration verbessern', prompt: 'Wie kann ich meine Regeneration durch Ernährung und Lifestyle unterstützen?' }
+      { text: 'Chrononutrition optimieren', prompt: 'Wie kann ich mein Meal-Timing nach meinem Biorhythmus optimieren für bessere Glukosetoleranz?' },
+      { text: 'Intervallfasten starten', prompt: 'Welche IF-Strategie passt zu meinem Chronotyp und wie starte ich richtig?' },
+      { text: 'Anti-Inflammation Plan', prompt: 'Erstelle mir einen anti-inflammatorischen Ernährungsplan basierend auf aktueller Forschung.' },
+      { text: 'Metabolische Flexibilität', prompt: 'Wie kann ich meine metabolische Flexibilität verbessern für optimale Fettverbrennung?' }
     ]
   },
   {
@@ -36,15 +36,15 @@ const coachProfiles = [
     icon: Target,
     imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
     personality: 'Hart & Direkt',
-    description: 'Fokussiert auf optimale Trainingsplanung, Kraftaufbau und Performance-Steigerung.',
-    expertise: ['Trainingsplanung', 'Kraftaufbau', 'Performance', 'Periodisierung'],
+    description: 'RAG-basierte Trainingsplanung mit evidenzbasierten Methoden für maximale Performance.',
+    expertise: ['Periodisierung', 'Progressive Overload', 'Biomechanik', 'Kraftaufbau'],
     color: 'red',
     accentColor: 'from-red-500 to-red-600',
     quickActions: [
-      { text: 'Trainingsplan erstellen', prompt: 'Erstelle mir einen optimalen Trainingsplan basierend auf meinen Zielen, verfügbarer Zeit und Fortschritt.' },
-      { text: 'Progressive Overload', prompt: 'Wie kann ich Progressive Overload richtig anwenden, um kontinuierlich stärker zu werden?' },
-      { text: 'Plateau durchbrechen', prompt: 'Ich stagniere bei meinen Lifts. Welche Strategien helfen mir, das Plateau zu durchbrechen?' },
-      { text: 'Volumen optimieren', prompt: 'Ist mein aktuelles Trainingsvolumen optimal oder sollte ich es anpassen?' }
+      { text: 'Periodisierung planen', prompt: 'Erstelle mir einen wissenschaftlich fundierten, periodisierten Trainingsplan für meine Ziele.' },
+      { text: 'Progressive Overload', prompt: 'Analysiere meine aktuellen Lifts und optimiere meine Progressive Overload-Strategie.' },
+      { text: 'Biomechanik verbessern', prompt: 'Welche biomechanischen Anpassungen können meine Trainingseffizienz steigern?' },
+      { text: 'Plateau durchbrechen', prompt: 'Ich stagniere. Welche evidenzbasierten Strategien helfen mir beim Plateau-Durchbruch?' }
     ]
   },
   {
@@ -56,15 +56,15 @@ const coachProfiles = [
     icon: Brain,
     imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
     personality: 'Motivierend & Energisch',
-    description: 'Experte für mentale Stärke, Motivation und optimale Regeneration.',
-    expertise: ['Mindset-Training', 'Motivation', 'Recovery', 'Stressmanagement'],
+    description: 'RAG-gestützte Neuroplastizität, HRV-Training und evidenzbasierte Recovery-Optimierung.',
+    expertise: ['Neuroplastizität', 'HRV-Training', 'Schlafoptimierung', 'Stress-Management'],
     color: 'green',
     accentColor: 'from-green-500 to-green-600',
     quickActions: [
-      { text: 'Motivation steigern', prompt: 'Ich fühle mich unmotiviert. Wie kann ich meine Motivation für Training und gesunde Ernährung wieder finden?' },
-      { text: 'Stress reduzieren', prompt: 'Stress beeinflusst meine Fortschritte negativ. Welche Strategien helfen mir beim Stressmanagement?' },
-      { text: 'Schlaf optimieren', prompt: 'Mein Schlaf ist nicht optimal. Wie kann ich meine Schlafqualität und Regeneration verbessern?' },
-      { text: 'Durchhaltevermögen stärken', prompt: 'Wie kann ich mein Durchhaltevermögen stärken und langfristig bei meinen Zielen bleiben?' }
+      { text: 'Neuroplastizität nutzen', prompt: 'Wie kann ich Neuroplastizität für bessere Gewohnheitsbildung und Motivation nutzen?' },
+      { text: 'HRV-Training starten', prompt: 'Erkläre mir HRV-Training und wie ich es für optimale Recovery einsetzen kann.' },
+      { text: 'Schlaf optimieren', prompt: 'Analysiere meine Schlafgewohnheiten und erstelle einen evidenzbasierten Optimierungsplan.' },
+      { text: 'Stressresilienz aufbauen', prompt: 'Welche wissenschaftlich bewährten Methoden helfen mir beim Aufbau von Stressresilienz?' }
     ]
   }
 ];
