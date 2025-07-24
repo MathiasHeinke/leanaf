@@ -18,7 +18,8 @@ import {
   Apple,
   Paperclip,
   X,
-  MessageSquare
+  MessageSquare,
+  Sparkles
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -102,6 +103,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressType[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<Array<{text: string; prompt: string}>>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -200,6 +203,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         const lastMessage = mappedMessages[mappedMessages.length - 1];
         if (lastMessage?.role === 'assistant') {
           setQuickActionsShown(true);
+          // Generate dynamic suggestions for existing conversation
+          generateDynamicSuggestions();
         }
       }
     } catch (error) {
@@ -223,6 +228,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       };
       setMessages([mappedMessage]);
       setQuickActionsShown(true);
+      // Generate initial dynamic suggestions
+      generateDynamicSuggestions();
     }
   };
 
@@ -363,6 +370,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         };
         setMessages(prev => [...prev, mappedMessage]);
         setQuickActionsShown(true);
+        
+        // Generate dynamic suggestions after assistant responds
+        generateDynamicSuggestions();
       }
 
     } catch (error) {
@@ -381,6 +391,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         };
         setMessages(prev => [...prev, mappedMessage]);
         setQuickActionsShown(true);
+        
+        // Generate dynamic suggestions for error case too
+        generateDynamicSuggestions();
       }
     } finally {
       setIsThinking(false);
@@ -420,6 +433,42 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     } catch (error) {
       console.error('Error clearing chat:', error);
       toast.error('Fehler beim Leeren des Chats');
+    }
+  };
+
+  const generateDynamicSuggestions = async () => {
+    if (!user?.id || isLoadingSuggestions) return;
+
+    setIsLoadingSuggestions(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-coach-suggestions', {
+        body: {
+          coachId: coach.id,
+          chatHistory: messages.slice(-10), // Last 10 messages for context
+          userData: {
+            todaysTotals,
+            dailyGoals,
+            averages,
+            historyData: historyData.slice(0, 7),
+            trendData,
+            weightHistory: weightHistory.slice(0, 10)
+          },
+          userId: user.id
+        }
+      });
+
+      if (error) {
+        console.error('Error generating suggestions:', error);
+        return;
+      }
+
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setDynamicSuggestions(data.suggestions);
+      }
+    } catch (error) {
+      console.error('Error in generateDynamicSuggestions:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
     }
   };
 
@@ -606,17 +655,33 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           </ScrollArea>
         </CardContent>
         
-        {/* Quick Actions */}
+        {/* Dynamic Quick Actions */}
         {quickActionsShown && !isThinking && (
           <div className="border-t p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-muted-foreground">
+                  Intelligente Vorschläge
+                </span>
+              </div>
+              {isLoadingSuggestions && (
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="text-xs text-muted-foreground">Generiere Vorschläge...</span>
+                </div>
+              )}
+            </div>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {coach.quickActions.map((action, index) => (
+              {(dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions).map((action, index) => (
                 <Button
                   key={index}
                   variant="outline"
                   size="sm"
                   className="text-xs h-auto py-2 px-3 text-left justify-start"
                   onClick={() => handleSendMessage(action.prompt)}
+                  disabled={isLoadingSuggestions}
                 >
                   {action.text}
                 </Button>
