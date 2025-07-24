@@ -74,7 +74,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
     // Check if at least one measurement is provided
     const hasAnyMeasurement = Object.entries(measurements).some(([key, value]) => 
-      key !== 'notes' && value.trim() !== ''
+      key !== 'notes' && value && String(value).trim() !== ''
     );
 
     if (!hasAnyMeasurement) {
