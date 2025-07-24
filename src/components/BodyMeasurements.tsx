@@ -35,10 +35,8 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   const { t } = useTranslation();
   const { awardPoints, getPointsForActivity } = usePointsSystem();
 
-  // Check if measurements already exist for this week
-  const hasMeasurementsThisWeek = todaysMeasurements && Object.keys(todaysMeasurements).some(key => 
-    key !== 'id' && key !== 'user_id' && key !== 'date' && key !== 'created_at' && key !== 'updated_at' && key !== 'notes' && todaysMeasurements[key] !== null
-  );
+  // Check if measurements already exist for this week - simplified logic
+  const hasMeasurementsThisWeek = todaysMeasurements && todaysMeasurements.id;
 
   // Calculate next measurement date (7 days from last measurement)
   const nextMeasurementDate = todaysMeasurements?.date ? 
@@ -46,20 +44,21 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
     new Date();
 
   useEffect(() => {
-    if (hasMeasurementsThisWeek && !isEditing) {
+    if (todaysMeasurements && !isEditing) {
       // Pre-fill form with existing data
+      console.log("📊 Loading existing measurements:", todaysMeasurements);
       setMeasurements({
-        neck: todaysMeasurements.neck || "",
-        chest: todaysMeasurements.chest || "",
-        waist: todaysMeasurements.waist || "",
-        belly: todaysMeasurements.belly || "",
-        hips: todaysMeasurements.hips || "",
-        arms: todaysMeasurements.arms || "",
-        thigh: todaysMeasurements.thigh || "",
+        neck: todaysMeasurements.neck?.toString() || "",
+        chest: todaysMeasurements.chest?.toString() || "",
+        waist: todaysMeasurements.waist?.toString() || "",
+        belly: todaysMeasurements.belly?.toString() || "",
+        hips: todaysMeasurements.hips?.toString() || "",
+        arms: todaysMeasurements.arms?.toString() || "",
+        thigh: todaysMeasurements.thigh?.toString() || "",
         notes: todaysMeasurements.notes || ""
       });
     }
-  }, [hasMeasurementsThisWeek, todaysMeasurements, isEditing]);
+  }, [todaysMeasurements, isEditing]);
 
   const handleInputChange = (field: string, value: string) => {
     setMeasurements(prev => ({
@@ -140,7 +139,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
     }
   };
 
-  const isCompleted = hasMeasurementsThisWeek && !isEditing;
+  const isCompleted = !!hasMeasurementsThisWeek;
 
   return (
     <CollapsibleQuickInput
