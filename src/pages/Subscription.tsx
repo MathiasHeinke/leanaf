@@ -130,7 +130,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
         '⚖️ Weight Tracking',
         '📊 Basic Dashboard', 
         '🏆 Points & Badges System',
-        '🧠 5 AI Meal Analysen/Tag (GPT-4o-mini)',
+        '🧠 5 AI Meal Analysen/Tag (GPT-4.1)',
         '📈 Basic Charts',
         '🤖 1 KI Coach verfügbar'
       ],
