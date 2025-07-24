@@ -338,33 +338,11 @@ const Coach = ({ onClose }: CoachProps) => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <Tabs defaultValue="analyse" className="w-full">
-        <TabsList className={`grid w-full ${showAdvancedWorkout ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <TabsTrigger value="analyse">Analyse</TabsTrigger>
-          <TabsTrigger value="coach">Coach</TabsTrigger>
+      <Tabs defaultValue="coach" className="w-full">
+        <TabsList className={`grid w-full ${showAdvancedWorkout ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <TabsTrigger value="coach">Coach auswählen</TabsTrigger>
           {showAdvancedWorkout && <TabsTrigger value="training">Training+</TabsTrigger>}
         </TabsList>
-        
-        <TabsContent value="analyse" className="space-y-4 mt-3">
-          {/* Überblick - grundlegende Statistiken */}
-          <Overview 
-            todaysTotals={todaysTotals}
-            dailyGoals={dailyGoals}
-            averages={averages}
-            weightHistory={weightHistory}
-          />
-
-          {/* Insights Analysis - tiefere Einsichten */}
-          <InsightsAnalysis 
-            todaysTotals={todaysTotals}
-            dailyGoals={dailyGoals}
-            averages={averages}
-            historyData={historyData}
-            trendData={trendData}
-            weightHistory={weightHistory}
-            onWeightAdded={loadWeightHistoryData}
-          />
-        </TabsContent>
         
         <TabsContent value="coach" className="mt-3">
           <SpecializedCoaches 

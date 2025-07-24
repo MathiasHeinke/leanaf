@@ -320,7 +320,7 @@ export const GlobalHeader = ({
                 <TrendingUp className={`h-4 w-4 mr-2 transition-all duration-300 ${
                   activeTab === 'history' ? 'animate-pulse text-primary' : ''
                 }`} style={{ animationDuration: activeTab === 'history' ? '2s' : undefined }} />
-                {t('header.history')}
+                Insights
               </button>
               <button 
                 onClick={() => handleNavigation('profile')}
