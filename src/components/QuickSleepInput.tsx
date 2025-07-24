@@ -133,10 +133,6 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-purple-800 dark:text-purple-200">Schlaf eingetragen! 😴</h3>
-              <p className="text-sm text-purple-600 dark:text-purple-400">
-                {todaysSleep.sleep_hours || 0} Stunden • 
-                Qualität: {todaysSleep.sleep_quality || 0}/10
-              </p>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -160,7 +156,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
           </div>
           
-          {/* Points badges in separate row for better responsive layout */}
+          {/* Points badges directly under title */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <PointsBadge 
               points={4} 
@@ -169,6 +165,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               variant="secondary"
             />
           </div>
+          
+          <p className="text-sm text-purple-600 dark:text-purple-400 mb-3">
+            {todaysSleep.sleep_hours || 0} Stunden • 
+            Qualität: {todaysSleep.sleep_quality || 0}/10
+          </p>
           
           <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
             <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">

@@ -133,45 +133,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-orange-800 dark:text-orange-200">Workout erledigt! 💪</h3>
-              <p className="text-sm text-orange-600 dark:text-orange-400">
-                {todaysWorkout.workout_type === 'kraft' ? 'Krafttraining' : 
-                 todaysWorkout.workout_type === 'cardio' ? 'Cardio' : 
-                 todaysWorkout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'} • 
-                {todaysWorkout.workout_type === 'pause' ? (
-                  'Regeneration ist wichtig! 🛌'
-                ) : (
-                  <>
-                    {todaysWorkout.duration_minutes || 0} Min • 
-                    Intensität: {todaysWorkout.intensity || 0}/10
-                    {todaysWorkout.distance_km && (
-                      <> • {todaysWorkout.distance_km} km</>
-                    )}
-                    {todaysWorkout.steps && (
-                      <> • {todaysWorkout.steps} Schritte</>
-                    )}
-                  </>
-                )}
-              </p>
             </div>
-          
-          {/* Points badges in separate row for better responsive layout */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <PointsBadge 
-              points={3} 
-              icon="💪"
-              animated={false}
-              variant="secondary"
-            />
-            {todaysWorkout.bonus_points && todaysWorkout.bonus_points > 0 && (
-              <PointsBadge 
-                points={0}
-                bonusPoints={todaysWorkout.bonus_points}
-                icon="⭐"
-                animated={false}
-                variant="outline"
-              />
-            )}
-          </div>
             <div className="flex items-center gap-2">
               <InfoButton
                 title="Workout & Regeneration"
@@ -194,6 +156,45 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               </Button>
             </div>
           </div>
+          
+          {/* Points badges directly under title */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <PointsBadge 
+              points={3} 
+              icon="💪"
+              animated={false}
+              variant="secondary"
+            />
+            {todaysWorkout.bonus_points && todaysWorkout.bonus_points > 0 && (
+              <PointsBadge 
+                points={0}
+                bonusPoints={todaysWorkout.bonus_points}
+                icon="⭐"
+                animated={false}
+                variant="outline"
+              />
+            )}
+          </div>
+          
+          <p className="text-sm text-orange-600 dark:text-orange-400 mb-3">
+            {todaysWorkout.workout_type === 'kraft' ? 'Krafttraining' : 
+             todaysWorkout.workout_type === 'cardio' ? 'Cardio' : 
+             todaysWorkout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'} • 
+            {todaysWorkout.workout_type === 'pause' ? (
+              'Regeneration ist wichtig! 🛌'
+            ) : (
+              <>
+                {todaysWorkout.duration_minutes || 0} Min • 
+                Intensität: {todaysWorkout.intensity || 0}/10
+                {todaysWorkout.distance_km && (
+                  <> • {todaysWorkout.distance_km} km</>
+                )}
+                {todaysWorkout.steps && (
+                  <> • {todaysWorkout.steps} Schritte</>
+                )}
+              </>
+            )}
+          </p>
           
           <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3">
             <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
