@@ -153,7 +153,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                className="text-purple-600 border-purple-300 hover:bg-purple-50"
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -170,16 +170,16 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             />
           </div>
           
-          <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
-            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+          <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
+            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
               <strong>Tipp:</strong> Guter Schlaf = bessere Fettverbrennung!
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
+            <p className="text-xs text-purple-600 dark:text-purple-400">
               • Während des Schlafs produziert dein Körper Wachstumshormone
               • Schlechter Schlaf erhöht Cortisol und Heißhunger
               • 7-9 Stunden sind optimal für die Regeneration
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
               <strong>Nächste Eintragung:</strong> Morgen 📅
             </p>
           </div>
@@ -214,7 +214,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
+                <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
                   Schlafdauer: {sleepHours[0]} Stunden
                 </label>
                 <Slider
@@ -228,7 +228,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               </div>
 
               <div>
-                <label className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2 block">
+                <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
                   Schlafqualität: {sleepQuality[0]}/10
                 </label>
                 <Slider
@@ -245,7 +245,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
@@ -265,7 +265,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                     type="button"
                     variant="outline"
                     onClick={() => setIsEditing(false)}
-                    className="border-blue-300 text-blue-600"
+                    className="border-purple-300 text-purple-600"
                   >
                     Abbrechen
                   </Button>
