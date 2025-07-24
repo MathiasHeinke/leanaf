@@ -126,14 +126,14 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
       theme="purple"
     >
       {hasSleepToday && !isEditing ? (
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+        <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-800 dark:text-blue-200">Schlaf eingetragen! 😴</h3>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
+              <h3 className="font-semibold text-purple-800 dark:text-purple-200">Schlaf eingetragen! 😴</h3>
+              <p className="text-sm text-purple-600 dark:text-purple-400">
                 {todaysSleep.sleep_hours || 0} Stunden • 
                 Qualität: {todaysSleep.sleep_quality || 0}/10
               </p>
@@ -190,13 +190,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           hideable={true}
           fallbackMessage="Schlaf-Tracking ist ein Premium Feature. Upgrade für detailliertes Schlaf-Monitoring!"
         >
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
+          <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-                <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
+                <Moon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                <h3 className="font-semibold text-purple-800 dark:text-purple-200">
                   {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
                 </h3>
               </div>

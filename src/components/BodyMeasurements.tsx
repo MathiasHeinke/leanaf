@@ -167,14 +167,14 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
       theme="teal"
     >
       {hasMeasurementsThisWeek && !isEditing ? (
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
+        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-teal-600 dark:text-teal-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-purple-800 dark:text-purple-200">Maße erfasst! 📏</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-purple-600 dark:text-purple-400">
+              <h3 className="font-semibold text-teal-800 dark:text-teal-200">Maße erfasst! 📏</h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-teal-600 dark:text-teal-400">
                 {todaysMeasurements?.neck && (
                   <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
                 )}
@@ -214,24 +214,24 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                className="text-teal-600 border-teal-300 hover:bg-teal-50"
               >
                 <Edit className="h-4 w-4" />
               </Button>
             </div>
           </div>
           
-          <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
-            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
+          <div className="bg-teal-100/50 dark:bg-teal-900/30 rounded-lg p-3">
+            <p className="text-xs text-teal-700 dark:text-teal-300 mb-2">
               <strong>Tipp:</strong> Miss zur gleichen Tageszeit für beste Vergleichbarkeit!
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400">
+            <p className="text-xs text-teal-600 dark:text-teal-400">
               • Morgens vor dem Essen für konsistente Werte
               • Maßband parallel zum Boden halten
               • Nicht zu fest anziehen, aber auch nicht zu locker
               • Wöchentliche Messungen reichen meist aus
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+            <p className="text-xs text-teal-600 dark:text-teal-400 mt-2">
               <strong>Nächste Messung:</strong> {nextMeasurementDate.toLocaleDateString('de-DE')} 📅
             </p>
           </div>
@@ -242,13 +242,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           hideable={true}
           fallbackMessage="Körpermaße-Tracking ist ein Premium Feature. Upgrade für detaillierte Körpermaß-Aufzeichnung!"
         >
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
+          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
-                <Ruler className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-xl">
+                <Ruler className="h-5 w-5 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-purple-800 dark:text-purple-200">
+                <h3 className="font-semibold text-teal-800 dark:text-teal-200">
                   {hasMeasurementsThisWeek ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
                 </h3>
               </div>
@@ -268,7 +268,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Hals (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Hals (cm)</label>
                   <NumericInput
                     placeholder="32.0"
                     value={measurements.neck}
@@ -276,12 +276,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={100}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Brust (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Brust (cm)</label>
                   <NumericInput
                     placeholder="95.0"
                     value={measurements.chest}
@@ -289,12 +289,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Taille (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Taille (cm)</label>
                   <NumericInput
                     placeholder="85.0"
                     value={measurements.waist}
@@ -302,12 +302,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Bauch (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Bauch (cm)</label>
                   <NumericInput
                     placeholder="90.0"
                     value={measurements.belly}
@@ -315,12 +315,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
               
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Hüfte (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Hüfte (cm)</label>
                   <NumericInput
                     placeholder="95.0"
                     value={measurements.hips}
@@ -328,12 +328,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Arme (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Arme (cm)</label>
                   <NumericInput
                     placeholder="35.0"
                     value={measurements.arms}
@@ -341,12 +341,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={100}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Oberschenkel (cm)</label>
+                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Oberschenkel (cm)</label>
                   <NumericInput
                     placeholder="60.0"
                     value={measurements.thigh}
@@ -354,18 +354,18 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={150}
-                    className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
+                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Notizen</label>
+                <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Notizen</label>
                 <textarea
                   value={measurements.notes}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   placeholder="Zusätzliche Notizen..."
-                  className="w-full p-2 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/50 text-purple-900 dark:text-purple-100 placeholder-purple-400 dark:placeholder-purple-500 resize-none h-20"
+                  className="w-full p-2 rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-teal-950/50 text-teal-900 dark:text-teal-100 placeholder-teal-400 dark:placeholder-teal-500 resize-none h-20"
                 />
               </div>
 
@@ -373,7 +373,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 <Button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
                 >
                   {isSubmitting ? 'Speichere...' : (hasMeasurementsThisWeek ? 'Aktualisieren' : 'Maße hinzufügen')}
                 </Button>
@@ -383,7 +383,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     type="button"
                     variant="outline"
                     onClick={() => setIsEditing(false)}
-                    className="border-purple-300 text-purple-600"
+                    className="border-teal-300 text-teal-600"
                   >
                     Abbrechen
                   </Button>
