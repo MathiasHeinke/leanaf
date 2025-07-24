@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,23 +63,47 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   // State for profile completion validation and success dialog
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, boolean>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Individual macro percentages for custom strategy
+  const [proteinPercentage, setProteinPercentage] = useState(30);
+  const [carbsPercentage, setCarbsPercentage] = useState(40);
+  const [fatsPercentage, setFatsPercentage] = useState(30);
 
   // Check if profile is complete for validation
-  const isProfileComplete = weight && startWeight && height && age && gender && activityLevel && goal;
+  const isProfileComplete = weight && height && age && gender && activityLevel && goal;
 
   // Validate required fields and update visual feedback
   useEffect(() => {
-    const errors: Record<string, boolean> = {};
-    if (!startWeight) errors.startWeight = true;
-    if (!height) errors.height = true;
-    if (!age) errors.age = true;
-    if (!gender) errors.gender = true;
-    if (!activityLevel) errors.activityLevel = true;
-    if (!goal) errors.goal = true;
+    const errors: Record<string, string> = {};
+    if (!weight) errors.weight = 'Gewicht ist erforderlich';
+    if (!height) errors.height = 'Größe ist erforderlich';
+    if (!age) errors.age = 'Alter ist erforderlich';
+    if (!gender) errors.gender = 'Geschlecht ist erforderlich';
+    if (!activityLevel) errors.activityLevel = 'Aktivitätslevel ist erforderlich';
+    if (!goal) errors.goal = 'Ziel ist erforderlich';
     
     setValidationErrors(errors);
-  }, [startWeight, height, age, gender, activityLevel, goal]);
+  }, [weight, height, age, gender, activityLevel, goal]);
+
+  // Update macro percentages when strategy changes
+  useEffect(() => {
+    if (macroStrategy === 'high_protein') {
+      setProteinPercentage(40);
+      setCarbsPercentage(30);
+      setFatsPercentage(30);
+    } else if (macroStrategy === 'balanced') {
+      setProteinPercentage(30);
+      setCarbsPercentage(40);
+      setFatsPercentage(30);
+    } else if (macroStrategy === 'low_carb') {
+      setProteinPercentage(35);
+      setCarbsPercentage(20);
+      setFatsPercentage(45);
+    }
+  }, [macroStrategy]);
 
   // Auto-save function
   const autoSave = async () => {
@@ -391,23 +416,37 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const handleSave = async () => {
     if (!user) return;
 
-    setLoading(true);
+    setIsSaving(true);
+    setSaveSuccess(false);
     try {
       await performSave();
-      toast.success(t('toast.success.profileSaved'));
+      toast.success('Profil erfolgreich gespeichert');
       setLastSaved(new Date());
+      setSaveSuccess(true);
       
-      // Check if profile is complete and show success dialog
-      if (isProfileComplete && !showSuccessDialog) {
+      // Check if profile is complete and show success dialog for first-time users
+      if (isProfileComplete && !profileExists) {
         setShowSuccessDialog(true);
       }
+      
+      // Hide success indicator after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error(t('toast.error.savingProfile'));
+      toast.error('Fehler beim Speichern des Profils');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
+
+  // Calculate values for display
+  const bmr = calculateBMR();
+  const tdee = calculateMaintenanceCalories();
+  const targetCalories = calculateTargetCalories();
+  const calorieDeficit = calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit;
+  const proteinGrams = targetCalories ? (targetCalories * proteinPercentage / 100) / 4 : 0;
+  const carbsGrams = targetCalories ? (targetCalories * carbsPercentage / 100) / 4 : 0;
+  const fatsGrams = targetCalories ? (targetCalories * fatsPercentage / 100) / 9 : 0;
 
   const handleSuccessDialogContinue = () => {
     setShowSuccessDialog(false);
