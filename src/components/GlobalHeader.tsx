@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Sun, 
   Moon, 
-  Clock
+  Clock,
+  Trophy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -244,6 +245,10 @@ export const GlobalHeader = ({
                 <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
                   <CreditCard className="h-4 w-4 mr-2" />
                   {t('header.subscription')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/achievements')}>
+                  <Trophy className="h-4 w-4 mr-2" />
+                  Erfolge & Fortschritt
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/science')}>
                   <Microscope className="h-4 w-4 mr-2" />
