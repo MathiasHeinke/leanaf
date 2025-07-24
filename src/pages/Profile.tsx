@@ -19,6 +19,7 @@ interface ProfilePageProps {
 }
 
 const Profile = ({ onClose }: ProfilePageProps) => {
+  const [displayName, setDisplayName] = useState('');
   const { t } = useTranslation();
   
   const [weight, setWeight] = useState('');
@@ -399,6 +400,19 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
             <h2 className="text-xl font-bold">{t('profile.personalData')}</h2>
           </div>
+
+            <div>
+              <Label className="text-sm">Anzeigename für Coaches</Label>
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="z.B. Max, Sarah..."
+                className="mt-1"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                Wie sollen dich die Coaches ansprechen?
+              </div>
+            </div>
 
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
             <div className="grid grid-cols-2 gap-3">
