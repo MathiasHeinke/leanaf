@@ -673,7 +673,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               )}
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-2">
               {(dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions).map((action, index) => (
                 <Button
                   key={index}

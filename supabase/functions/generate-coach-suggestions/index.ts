@@ -112,7 +112,7 @@ Benutzer: "${lastUserMessage}"
 Coach: "${lastAssistantMessage}"
 
 AUFGABE:
-Generiere 4 intelligente, kontextuelle Anschlussfragen basierend auf:
+Generiere 3 intelligente, kontextuelle Anschlussfragen basierend auf:
 1. Den aktuellen Daten des Benutzers
 2. Dem Gesprächsverlauf
 3. Der Expertise des Coaches
@@ -158,7 +158,7 @@ Beispiele für korrekte ICH-Perspektive:
           { role: 'system', content: systemPrompt },
           { 
             role: 'user', 
-            content: `Generiere jetzt 4 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext. WICHTIG: Alle Fragen müssen aus der ICH-Perspektive des Benutzers formuliert werden.` 
+            content: `Generiere jetzt 3 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext. WICHTIG: Alle Fragen müssen aus der ICH-Perspektive des Benutzers formuliert werden.` 
           }
         ],
         temperature: 0.7,
@@ -189,8 +189,7 @@ Beispiele für korrekte ICH-Perspektive:
       suggestions = [
         { text: 'Meine Ernährung analysieren', prompt: 'Wie kann ich meine heutige Ernährung verbessern?' },
         { text: 'Meinen Fortschritt bewerten', prompt: 'Kannst du meinen aktuellen Fortschritt analysieren und mir Tipps geben?' },
-        { text: 'Meine nächsten Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' },
-        { text: 'Meine Motivation steigern', prompt: 'Wie kann ich meine Motivation aufrechterhalten?' }
+        { text: 'Meine nächsten Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' }
       ];
     }
 
@@ -203,7 +202,7 @@ Beispiele für korrekte ICH-Perspektive:
     const validatedSuggestions = suggestions.map((suggestion, index) => ({
       text: suggestion.text || `Frage ${index + 1}`,
       prompt: suggestion.prompt || `Hilf mir mit meiner Frage ${index + 1}.`
-    })).slice(0, 4); // Limit to 4 suggestions
+    })).slice(0, 3); // Limit to 3 suggestions
 
     console.log('Successfully generated coach suggestions:', validatedSuggestions);
 
@@ -221,7 +220,6 @@ Beispiele für korrekte ICH-Perspektive:
     const fallbackSuggestions = [
       { text: 'Meinen Tag analysieren', prompt: 'Kannst du meinen heutigen Fortschritt analysieren und mir Feedback geben?' },
       { text: 'Meine Ziele anpassen', prompt: 'Sollte ich meine aktuellen Ziele anpassen?' },
-      { text: 'Meine Motivation steigern', prompt: 'Wie kann ich meine Motivation aufrechterhalten?' },
       { text: 'Meine nächsten Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' }
     ];
 
