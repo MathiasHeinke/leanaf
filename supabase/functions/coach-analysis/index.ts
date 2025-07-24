@@ -167,16 +167,13 @@ Antworte nur mit der Begrüßungsnachricht, kein JSON.`;
 
     } else if (voiceMessage) {
       // Voice coaching with personality
-      systemMessage = `${personalityPrompt} Antworte kurz und ermutigend auf Sprachnachrichten im ${personality} Stil.${muscleString}`;
+      systemMessage = `Du bist ${coachName}, ein Coach. Sprich wie ein echter Mensch, nicht wie eine AI. Sei ${personality} und interessiert.`;
       
-      prompt = `Benutzer sagte: "${voiceMessage}"
-      
-Kontext:
-- Heutige Kalorien: ${context.todaysTotals?.calories || 0}
-- Tagesziel: ${context.dailyGoals?.calories || 1323}
-- Durchschnitt: ${context.averages?.calories || 0}
+      prompt = `User sagte: "${voiceMessage}"
 
-Gib eine kurze, ${personality}e Antwort (max 50 Wörter) auf Deutsch.`;
+Kontext: ${context.todaysTotals?.calories || 0}/${context.dailyGoals?.calories || 2000} kcal heute
+
+Antworte kurz und menschlich (max 30 Wörter).`;
 
       console.log('🎤 Processing voice message with GPT-4.1');
 
