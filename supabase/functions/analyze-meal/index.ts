@@ -21,7 +21,23 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    const { text, images } = requestBody;
+    
+    // Input validation and sanitization
+    const sanitizeText = (text: string): string => {
+      if (!text || typeof text !== 'string') return '';
+      return text.trim().slice(0, 5000); // Limit to 5k characters for meal descriptions
+    };
+    
+    const validateImages = (images: any[]): string[] => {
+      if (!Array.isArray(images)) return [];
+      return images
+        .slice(0, 5) // Limit to 5 images max
+        .filter(url => typeof url === 'string' && url.startsWith('http'))
+        .map(url => url.slice(0, 2000)); // Limit URL length
+    };
+    
+    const text = sanitizeText(requestBody.text);
+    const images = validateImages(requestBody.images || []);
     
     console.log('📋 [ANALYZE-MEAL] Request payload:', {
       hasText: !!text,

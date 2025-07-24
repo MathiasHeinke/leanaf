@@ -8,16 +8,17 @@ enable_confirmations = true
 enable_email_confirmations = true
 enable_phone_confirmations = false
 
-# OTP expiry settings (in seconds) - Security Enhancement
-# Email OTP expires in 10 minutes (600 seconds) - Reduced from 1 hour for security
-email_otp_exp = 600
-# SMS OTP expires in 10 minutes (600 seconds) 
-sms_otp_exp = 600
+# OTP expiry settings (in seconds) - Enhanced Security
+# Email OTP expires in 5 minutes (300 seconds) - Reduced for better security
+email_otp_exp = 300
+# SMS OTP expires in 5 minutes (300 seconds) 
+sms_otp_exp = 300
 
-# Password requirements
+# Password requirements - Enhanced
 password_min_length = 8
+enable_password_policy = true
 
-# Rate limiting
+# Rate limiting - Enhanced
 rate_limit_email_sent = 60
 rate_limit_sms_sent = 60
 
@@ -27,6 +28,13 @@ enable_manual_linking = false
 security_update_password_require_reauthentication = true
 # Enhanced security: Enable leaked password protection
 security_password_change_require_reauthentication = true
+# Enable leaked password detection
+security_enable_leak_protection = true
+# Enable CAPTCHA for registration
+security_captcha_enabled = true
+# Enhanced session security
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
 
 [auth.external.google]
 enabled = false
@@ -47,4 +55,16 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.verify-meal]
+verify_jwt = true
+
+[functions.generate-coach-suggestions]
+verify_jwt = true
+
+[functions.create-checkout-session]
+verify_jwt = true
+
+[functions.create-portal-session]
+verify_jwt = true
+
+[functions.check-subscription]
 verify_jwt = true

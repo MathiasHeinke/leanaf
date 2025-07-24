@@ -16,7 +16,57 @@ serve(async (req) => {
   }
 
   try {
-    const { message, mealData, conversationHistory } = await req.json();
+    const body = await req.json();
+    
+    // Input validation and sanitization
+    const sanitizeText = (text: string): string => {
+      if (!text || typeof text !== 'string') return '';
+      return text.trim().slice(0, 2000);
+    };
+    
+    const validateMealData = (mealData: any): any => {
+      if (!mealData || typeof mealData !== 'object') {
+        throw new Error('Valid meal data is required');
+      }
+      
+      return {
+        title: sanitizeText(mealData.title || ''),
+        calories: typeof mealData.calories === 'number' ? Math.max(0, Math.min(5000, mealData.calories)) : 0,
+        protein: typeof mealData.protein === 'number' ? Math.max(0, Math.min(500, mealData.protein)) : 0,
+        carbs: typeof mealData.carbs === 'number' ? Math.max(0, Math.min(1000, mealData.carbs)) : 0,
+        fats: typeof mealData.fats === 'number' ? Math.max(0, Math.min(500, mealData.fats)) : 0,
+        description: sanitizeText(mealData.description || '')
+      };
+    };
+    
+    const message = sanitizeText(body.message);
+    const mealData = validateMealData(body.mealData);
+    
+    if (!message) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Message is required',
+          message: 'Bitte geben Sie eine Nachricht ein.',
+          adjustments: {},
+          needsAdjustment: false,
+          confidence: 'low',
+          reasoning: 'Keine Nachricht erhalten'
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Validate conversation history
+    let conversationHistory = [];
+    if (Array.isArray(body.conversationHistory)) {
+      conversationHistory = body.conversationHistory.slice(-20).map((msg: any) => ({
+        role: msg.role === 'user' || msg.role === 'assistant' ? msg.role : 'user',
+        content: sanitizeText(msg.content || '')
+      })).filter(msg => msg.content);
+    }
     
     console.log('Received meal verification request:', { message, mealData });
 

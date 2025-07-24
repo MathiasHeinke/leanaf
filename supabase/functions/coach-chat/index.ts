@@ -11,7 +11,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation and sanitization
+const sanitizeText = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  return text.trim().slice(0, 10000); // Limit to 10k characters
+};
+
+const validateCoachPersonality = (personality: string): string => {
+  const validPersonalities = ['motivierend', 'sachlich', 'herausfordernd', 'unterstützend', 'hart', 'soft', 'lucy', 'sascha', 'kai'];
+  return validPersonalities.includes(personality) ? personality : 'motivierend';
+};
+
+const sanitizeUserData = (userData: any): any => {
+  if (!userData || typeof userData !== 'object') return {};
+  
+  return {
+    todaysTotals: userData.todaysTotals ? {
+      calories: typeof userData.todaysTotals.calories === 'number' ? userData.todaysTotals.calories : 0,
+      protein: typeof userData.todaysTotals.protein === 'number' ? userData.todaysTotals.protein : 0,
+      carbs: typeof userData.todaysTotals.carbs === 'number' ? userData.todaysTotals.carbs : 0,
+      fats: typeof userData.todaysTotals.fats === 'number' ? userData.todaysTotals.fats : 0
+    } : { calories: 0, protein: 0, carbs: 0, fats: 0 },
+    dailyGoals: userData.dailyGoals,
+    averages: userData.averages,
+    historyData: Array.isArray(userData.historyData) ? userData.historyData.slice(0, 50) : [],
+    trendData: userData.trendData,
+    weightHistory: Array.isArray(userData.weightHistory) ? userData.weightHistory.slice(0, 100) : []
+  };
+};
+
 serve(async (req) => {
+  console.log('Coach chat request received at:', new Date().toISOString());
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,7 +51,70 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { message, userId, chatHistory = [], userData = {}, images = [], coachPersonality = null } = await req.json();
+    const body = await req.json();
+    
+    // Validate and sanitize inputs
+    const message = sanitizeText(body.message);
+    const userId = body.userId;
+    const coachPersonality = validateCoachPersonality(body.coachPersonality || null);
+    
+    // Validate user ID
+    if (!userId || typeof userId !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Valid user ID is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    if (!message) {
+      return new Response(
+        JSON.stringify({ error: 'Message is required and cannot be empty' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Validate and sanitize chat history
+    let chatHistory = [];
+    if (Array.isArray(body.chatHistory)) {
+      chatHistory = body.chatHistory.slice(-50).map((msg: any) => ({
+        role: msg.role === 'user' || msg.role === 'assistant' ? msg.role : 'user',
+        content: sanitizeText(msg.content || '')
+      })).filter(msg => msg.content);
+    }
+    
+    // Sanitize user data
+    const userData = sanitizeUserData(body.userData || {});
+    
+    // Validate images
+    let images = [];
+    if (Array.isArray(body.images)) {
+      images = body.images.slice(0, 10).filter(url => 
+        typeof url === 'string' && url.startsWith('http')
+      );
+    }
+    
+    // Log security event
+    try {
+      await supabase.rpc('log_security_event', {
+        p_user_id: userId,
+        p_action: 'coach_chat_request',
+        p_resource_type: 'ai_service',
+        p_metadata: {
+          message_length: message.length,
+          chat_history_length: chatHistory.length,
+          has_images: images.length > 0,
+          personality: coachPersonality
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to log security event:', logError);
+    }
     
     if (!userId) {
       throw new Error('User ID is required');
