@@ -180,7 +180,7 @@ export const InsightsAnalysis = ({
 
     // Consistency Analysis
     const consistentDays = historyData.filter(day => {
-      const dayProgress = (day.totals.calories / dailyGoals.calories) * 100;
+      const dayProgress = (day.calories / dailyGoals.calories) * 100;
       return dayProgress >= 80 && dayProgress <= 120;
     }).length;
     
