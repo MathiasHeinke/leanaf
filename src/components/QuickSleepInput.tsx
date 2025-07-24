@@ -126,61 +126,62 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
     >
       {hasSleepToday && !isEditing ? (
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-            <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200">Schlaf eingetragen! 😴</h3>
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                {todaysSleep.sleep_hours || 0} Stunden • 
+                Qualität: {todaysSleep.sleep_quality || 0}/10
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <InfoButton
+                title="Schlaf Tracking"
+                description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
+                scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
+                tips={[
+                  "7-9 Stunden Schlaf für optimale Regeneration",
+                  "Feste Schlafzeiten unterstützen den Biorhythmus",
+                  "Bildschirme 1h vor dem Schlafen vermeiden"
+                ]}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-blue-800 dark:text-blue-200">Schlaf eingetragen! 😴</h3>
-            <p className="text-sm text-blue-600 dark:text-blue-400">
-              {todaysSleep.sleep_hours || 0} Stunden • 
-              Qualität: {todaysSleep.sleep_quality || 0}/10
+          
+          {/* Points badges in separate row for better responsive layout */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <PointsBadge 
+              points={4} 
+              icon="😴"
+              animated={showPointsAnimation}
+              variant="secondary"
+            />
+          </div>
+          
+          <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
+            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+              <strong>Tipp:</strong> Guter Schlaf = bessere Fettverbrennung!
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              • Während des Schlafs produziert dein Körper Wachstumshormone
+              • Schlechter Schlaf erhöht Cortisol und Heißhunger
+              • 7-9 Stunden sind optimal für die Regeneration
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+              <strong>Nächste Eintragung:</strong> Morgen 📅
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <InfoButton
-              title="Schlaf Tracking"
-              description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
-              scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
-              tips={[
-                "7-9 Stunden Schlaf für optimale Regeneration",
-                "Feste Schlafzeiten unterstützen den Biorhythmus",
-                "Bildschirme 1h vor dem Schlafen vermeiden"
-              ]}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(true)}
-              className="text-blue-600 border-blue-300 hover:bg-blue-50"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Points badges in separate row for better responsive layout */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <PointsBadge 
-            points={4} 
-            icon="😴"
-            animated={showPointsAnimation}
-            variant="secondary"
-          />
-        </div>
-        
-        <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
-          <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-            <strong>Tipp:</strong> Guter Schlaf = bessere Fettverbrennung!
-          </p>
-          <p className="text-xs text-blue-600 dark:text-blue-400">
-            • Während des Schlafs produziert dein Körper Wachstumshormone
-            • Schlechter Schlaf erhöht Cortisol und Heißhunger
-            • 7-9 Stunden sind optimal für die Regeneration
-          </p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-            <strong>Nächste Eintragung:</strong> Morgen 📅
-          </p>
         </div>
       ) : (
         <PremiumGate 
