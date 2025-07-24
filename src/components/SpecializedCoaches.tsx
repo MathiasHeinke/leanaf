@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Check, Heart, Target, Brain } from 'lucide-react';
+import { Check, Heart, Target, Brain, Dumbbell } from 'lucide-react';
 import { SpecializedCoachChat } from './SpecializedCoachChat';
 import { CoachInfoButton } from './CoachInfoButton';
 
@@ -112,6 +112,41 @@ const coachProfiles = [
       { text: 'Schlaf verbessern', prompt: 'Analysiere meine Schlafgewohnheiten und erstelle einen Optimierungsplan.' },
       { text: 'Motivation aufbauen', prompt: 'Welche wissenschaftlich bewährten Methoden helfen mir beim Aufbau von dauerhafter Motivation?' }
     ]
+  },
+  {
+    id: 'markus',
+    name: 'Markus Rühl',
+    age: 52,
+    role: 'The German Beast - Hardcore Bodybuilding',
+    avatar: '🏋️‍♂️',
+    icon: Dumbbell,
+    imageUrl: '/coach-images/markus-ruehl.jpg',
+    personality: 'Brutal-ehrlich & Motivierend',
+    description: 'Hardcore Bodybuilding mit kompromissloser Ehrlichkeit. Heavy+Volume Training für echte Masse - "Muss net schmegge, muss wirke!"',
+    expertise: ['Heavy+Volume Training', 'Extreme Hypertrophie', 'Mentale Härte', 'Masseaufbau'],
+    color: 'orange',
+    accentColor: 'from-orange-500 to-orange-600',
+    coachInfo: {
+      id: 'markus',
+      name: 'Markus Rühl',
+      role: 'The German Beast - Hardcore Bodybuilding',
+      color: 'orange',
+      imageUrl: '/coach-images/markus-ruehl.jpg',
+      avatar: '🏋️‍♂️',
+      philosophy: '"Wir machen den Sport nicht, weil wir gesund werden wollen, sondern weil wir Muskeln wollen." Bodybuilding ist Krieg gegen das Eisen - mit kompromissloser Ehrlichkeit und hessischer Direktheit.',
+      scientificFoundation: 'Jahrzehntelange Praxiserfahrung auf höchstem Niveau. Legacy Pro Practice mit Heavy+Volume Prinzip für extreme Hypertrophie und mentale Härte.',
+      specializations: ['Heavy+Volume Training', 'Extreme Hypertrophie-Methoden', 'Mentale Härte & Durchhaltevermögen', 'Masseaufbau-Strategien', '5er-/6er-Split-Systeme', 'Maschinen-dominiertes Training'],
+      keyMethods: ['Heavy+Volume Kombination (70-90% 1RM + 20+ Sätze)', 'Pump-basierte Trainingssteuerung', 'Autoregulative Gewichtswahl', 'Maschinen-Fokus für maximale Isolation'],
+      evidence: 'Jahrzehntelange Wettkampferfahrung, Mr. Olympia Teilnahmen, Night of Champions Sieger 2002. Legacy Pro Practice als evidenzbasierte Grundlage.',
+      evidenceBase: 'Jahrzehntelange Wettkampferfahrung, Mr. Olympia Teilnahmen, Night of Champions Sieger 2002. Legacy Pro Practice als evidenzbasierte Grundlage.',
+      interventions: ['Heavy+Volume Trainingspläne', 'Pump-Check-Strategien', 'Mental Warfare Techniken', 'Aggressive Motivationsmethoden']
+    },
+    quickActions: [
+      { text: 'Heavy+Volume Training', prompt: 'Zeig mir dein Heavy+Volume Prinzip - schwer UND voluminös für maximale Masse!' },
+      { text: 'Masseaufbau-Strategie', prompt: 'Ich will richtige Masse aufbauen - gib mir deine ehrliche Einschätzung und einen Plan!' },
+      { text: 'Mentale Härte', prompt: 'Wie entwickle ich die mentale Härte für echtes Hardcore-Training?' },
+      { text: 'Ernährungs-Realität', prompt: 'Sag mir die Wahrheit über Bodybuilding-Ernährung - ohne Schönrederei!' }
+    ]
   }
 ];
 
@@ -213,6 +248,8 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
         return 'from-pink-500 to-pink-600';
       case 'green':
         return 'from-green-500 to-green-600';
+      case 'orange':
+        return 'from-orange-500 to-orange-600';
       default:
         return 'from-gray-500 to-gray-600';
     }
