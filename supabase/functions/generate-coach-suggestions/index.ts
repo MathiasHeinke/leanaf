@@ -72,79 +72,83 @@ serve(async (req) => {
     const lastUserMessage = recentMessages.filter(m => m.role === 'user').pop()?.content || '';
     const lastAssistantMessage = recentMessages.filter(m => m.role === 'assistant').pop()?.content || '';
 
-    // Create coach-specific context
+    // Create coach-specific context and data filters
     const coachContexts = {
       'lucy': {
-        focus: 'Ernährung, Meal-Timing, Intervallfasten, Gewohnheiten',
+        focus: 'Ernährung, Meal-Timing, Intervallfasten, Gewohnheiten, Stoffwechsel',
         style: 'liebevoll, unterstützend, wissenschaftlich fundiert',
-        expertise: 'Chrononutrition, metabolische Flexibilität, Anti-inflammatorische Ernährung'
+        expertise: 'Chrononutrition, metabolische Flexibilität, Anti-inflammatorische Ernährung',
+        relevantData: `Kalorien: ${userData.todaysTotals.calories} (${calorieProgress}% des Ziels), Protein: ${userData.todaysTotals.protein}g (${proteinProgress}% des Ziels), Durchschnitt: ${userData.averages.calories} kcal`,
+        dataTypes: 'Ernährungsdaten, Kalorienbilanz, Makronährstoffe'
       },
       'sascha': {
-        focus: 'Training, Performance, Kraftaufbau, Progression',
+        focus: 'Training, Performance, Kraftaufbau, Progression, Biomechanik',
         style: 'direkt, ergebnisorientiert, evidenzbasiert',
-        expertise: 'Periodisierung, Progressive Overload, Biomechanik, Performance-Optimierung'
+        expertise: 'Periodisierung, Progressive Overload, Biomechanik, Performance-Optimierung',
+        relevantData: `Trainingsdaten verfügbar: ${userData.historyData.length} Tage, Gewichtsverlauf: ${userData.weightHistory.length} Einträge`,
+        dataTypes: 'Trainingsdaten, Leistungsmetriken, Kraftwerte, Progression'
       },
       'kai': {
-        focus: 'Mindset, Recovery, Schlaf, Motivation',
+        focus: 'Mindset, Recovery, Schlaf, Motivation, Stressmanagement',
         style: 'motivierend, energisch, ganzheitlich',
-        expertise: 'Mentale Stärke, Regeneration, Stressmanagement, Schlafoptimierung'
+        expertise: 'Mentale Stärke, Regeneration, Stressmanagement, Schlafoptimierung',
+        relevantData: `Aktivitätsdaten: ${userData.historyData.length} Tage, Gewichtstrend: ${userData.weightHistory.length} Messungen`,
+        dataTypes: 'Regenerationsdaten, Schlafqualität, Stress-Level, Motivationstrends'
       }
     };
 
     const coachContext = coachContexts[coachId as keyof typeof coachContexts] || coachContexts['lucy'];
 
-    const systemPrompt = `Du bist ein KI-Assistent, der intelligente Anschlussfragen für einen Fitness-Coach generiert.
+    const systemPrompt = `Du bist ein KI-Assistent, der intelligente Anschlussfragen für einen spezialisierten Fitness-Coach generiert.
 
 COACH-KONTEXT:
-- Coach: ${coachId}
-- Fokus: ${coachContext.focus}
+- Coach: ${coachId} (${coachContext.focus})
 - Stil: ${coachContext.style}
 - Expertise: ${coachContext.expertise}
 
-BENUTZER-DATEN:
-- Heutige Kalorien: ${userData.todaysTotals.calories} (${calorieProgress}% des Ziels)
-- Heutiges Protein: ${userData.todaysTotals.protein}g (${proteinProgress}% des Ziels)
-- Durchschnittliche Kalorien: ${userData.averages.calories}
-- Gewichtsverlauf: ${userData.weightHistory.length} Einträge
+RELEVANTE DATEN FÜR DIESEN COACH:
+${coachContext.relevantData}
 
 LETZTER GESPRÄCHSKONTEXT:
 Benutzer: "${lastUserMessage}"
 Coach: "${lastAssistantMessage}"
 
-AUFGABE:
-Generiere 3 intelligente, kontextuelle Anschlussfragen basierend auf:
-1. Den aktuellen Daten des Benutzers
-2. Dem Gesprächsverlauf
-3. Der Expertise des Coaches
-4. Erkennbaren Problemen oder Optimierungsmöglichkeiten
+WICHTIGE EINSCHRÄNKUNGEN:
+- Generiere NUR Fragen die zu ${coachId}'s Kerngebiet (${coachContext.focus}) passen
+- Ignoriere Daten die nicht zu diesem Coach gehören
+- Sascha (Training-Coach): KEINE Ernährungs-/Protein-/Kalorienfragen
+- Lucy (Ernährungs-Coach): Fokus auf Ernährung, Timing, Stoffwechsel
+- Kai (Mindset-Coach): Fokus auf Regeneration, Mindset, Motivation
 
-WICHTIG - PERSPEKTIVE:
-- Alle Fragen MÜSSEN aus der ICH-PERSPEKTIVE des Benutzers formuliert werden
+AUFGABE:
+Generiere 3 intelligente, kontextuelle Anschlussfragen die AUSSCHLIESSLICH zu ${coachId}'s Expertise passen:
+
+WICHTIG - PERSPEKTIVE & FOKUS:
+- Alle Fragen MÜSSEN aus der ICH-Perspektive des Benutzers formuliert werden
 - Der Benutzer stellt diese Fragen dem Coach
 - Verwende "ich", "mein", "meine" anstatt "du", "dein", "deine"
+- Nutze NUR Daten die für diesen Coach relevant sind
+- Stelle NUR Fragen zu ${coachContext.focus}
 
 REGELN:
 - Jede Frage sollte spezifisch und actionable sein
-- Berücksichtige die aktuellen Fortschritte und Herausforderungen
-- Stelle clevere Verbindungen zwischen den Daten her
-- Fragen sollten zur Coach-Expertise passen
+- Berücksichtige nur relevante Daten für diesen Coach
 - Kurz und prägnant (max. 8 Wörter für Button-Text)
-- Nutze echte Daten-Insights
-- IMMER aus ICH-Perspektive formulieren
+- Coach-spezifische Expertise beachten
 
 FORMAT:
 Antworte nur mit einem JSON-Array von Objekten:
 [
   {
     "text": "Kurzer Button-Text",
-    "prompt": "Vollständige Frage aus ICH-Perspektive mit Kontext und Daten"
+    "prompt": "Vollständige Frage aus ICH-Perspektive mit relevanten Daten"
   }
 ]
 
-Beispiele für korrekte ICH-Perspektive:
-- "Ich habe heute nur ${calorieProgress}% meiner Kalorien erreicht - was sollte ich tun?"
-- "Meine Proteinaufnahme liegt bei ${userData.todaysTotals.protein}g - wie optimiere ich das Timing?"
-- "Ich stagniere bei ${userData.weightHistory[userData.weightHistory.length-1]?.weight}kg - welche Strategien helfen mir?"`;
+Coach-spezifische Beispiele:
+Lucy (Ernährung): "Ich habe heute nur 20% meiner Kalorien erreicht - wie optimiere ich mein Timing?"
+Sascha (Training): "Ich stagniere bei meinen Lifts - welche Progressive Overload-Strategie hilft?"
+Kai (Mindset): "Ich fühle mich unmotiviert - wie baue ich mentale Stärke auf?"`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

@@ -658,20 +658,14 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         {/* Dynamic Quick Actions */}
         {quickActionsShown && !isThinking && (
           <div className="border-t p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Intelligente Vorschläge
-                </span>
-              </div>
-              {isLoadingSuggestions && (
+            {isLoadingSuggestions && (
+              <div className="flex items-center justify-center mb-3">
                 <div className="flex items-center space-x-2">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   <span className="text-xs text-muted-foreground">Generiere Vorschläge...</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
             
             <div className="space-y-2">
               {(dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions).map((action, index) => (
