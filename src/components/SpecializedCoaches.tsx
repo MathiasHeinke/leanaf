@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Check, Heart, Target, Brain, Dumbbell } from 'lucide-react';
 import { SpecializedCoachChat } from './SpecializedCoachChat';
 import { CoachInfoButton } from './CoachInfoButton';
+import { CoachRating, CoachRatingDisplay } from './CoachRating';
 
 const coachProfiles = [
   {
@@ -310,13 +311,25 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
           )}
         </div>
         
-        <Button 
-          size="sm" 
-          className="w-full"
-          onClick={() => onSelect(coach.id)}
-        >
-          Chat starten
-        </Button>
+        {/* Coach Rating Display */}
+        <div className="mb-3">
+          <CoachRatingDisplay coachId={coach.id} className="justify-center" />
+        </div>
+        
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onSelect(coach.id)}
+          >
+            Chat starten
+          </Button>
+          <CoachRating 
+            coachId={coach.id} 
+            coachName={coach.name}
+            trigger={<Button size="sm" variant="outline">⭐</Button>}
+          />
+        </div>
       </CardContent>
     </Card>
   );

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
+import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 
 interface WeightEntry {
   id: string;
@@ -58,9 +59,9 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
 
     setIsUploading(true);
     try {
-      const weightValue = parseFloat(newWeight);
-      const bodyFatValue = bodyFat ? parseFloat(bodyFat) : null;
-      const muscleMassValue = muscleMass ? parseFloat(muscleMass) : null;
+      const weightValue = parseLocaleFloat(newWeight);
+      const bodyFatValue = bodyFat ? parseLocaleFloat(bodyFat) : null;
+      const muscleMassValue = muscleMass ? parseLocaleFloat(muscleMass) : null;
 
       // Validate values
       if (isNaN(weightValue) || weightValue <= 0) {

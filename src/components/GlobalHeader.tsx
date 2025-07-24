@@ -1,5 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { 
+  Menu, 
+  RefreshCw, 
+  User as UserIcon, 
+  CreditCard, 
+  Microscope, 
+  Bug, 
+  LogOut, 
+  LayoutDashboard, 
+  MessageCircle, 
+  TrendingUp, 
+  Sun, 
+  Moon, 
+  Clock 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,22 +22,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PointsDebugPanel } from "./PointsDebugPanel";
-
-import { 
-  Zap, 
-  RefreshCw, 
-  Menu, 
-  LogOut, 
-  CreditCard, 
-  User as UserIcon, 
-  MessageCircle, 
-  LayoutDashboard,
-  TrendingUp,
-  Sun,
-  Moon,
-  Clock,
-  Microscope
-} from "lucide-react";
+import { BugReportDialog } from "./BugReportDialog";
 import { LevelBadge } from "./LevelBadge";
 
 interface GlobalHeaderProps {
@@ -249,6 +249,14 @@ export const GlobalHeader = ({
                   <Microscope className="h-4 w-4 mr-2" />
                   Wissenschaft & Methodik
                 </DropdownMenuItem>
+                <BugReportDialog 
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Bug className="h-4 w-4 mr-2" />
+                      Bug melden
+                    </DropdownMenuItem>
+                  }
+                />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   {t('header.logout')}
