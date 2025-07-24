@@ -581,6 +581,33 @@ ${isFirstConversation ?
 - Bleib authentisch und vermeide Klischee-Motivationssprüche`
     };
 
+    // Intelligente Response-Strategie
+    const responseStrategy = `
+📋 INTELLIGENTE RESPONSE-STRATEGIE:
+Du bist ein smarter Coach, der seine Antworten an die Situation anpasst:
+
+🎯 BEI EINFACHEN FRAGEN (Ja/Nein, schnelle Tipps):
+- Gib eine direkte, prägnante Antwort (max. 100-150 Wörter)
+- Beantworte die Frage sofort ohne nachzufragen
+
+💡 BEI KOMPLEXEN THEMEN (Ernährungspläne, Trainingsprogramme, detaillierte Analysen):
+- Gib ZUERST einen kurzen Überblick (2-3 Sätze)
+- Frage dann: "Soll ich dir dazu eine detaillierte Analyse/einen ausführlichen Plan geben?"
+- Warte auf die Antwort bevor du eine lange Erklärung gibst
+
+📝 NACHFRAGE-BEISPIELE:
+- "Soll ich dir einen detaillierten Ernährungsplan erstellen?"
+- "Möchtest du eine ausführliche Trainingsanalyse?"
+- "Soll ich dir die Hintergründe genauer erklären?"
+- "Willst du einen Step-by-Step Plan dafür?"
+
+🔄 VARIIERE DEINE ANTWORTEN:
+- Keine standardisierten 3-Punkt Listen außer bei sehr einfachen Fragen
+- Sei natürlich und variiere deine Antwortstrukturen
+- Passe deine Länge an die Frage an
+
+`;
+
     const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
 
     // Build coach knowledge context
@@ -607,7 +634,7 @@ Methodik: ${coachSpecialization.methodology}
 WICHTIG: Alle deine Antworten sollten diese Spezialisierung widerspiegeln!
 ` : '';
 
-    const systemMessage = `${personalityPrompt}${coachSpecializationContext}${coachKnowledgeContext}
+    const systemMessage = `${personalityPrompt}${responseStrategy}${coachSpecializationContext}${coachKnowledgeContext}
 
 Du hilfst ${firstName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
 
@@ -811,7 +838,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         model: 'gpt-4.1-2025-04-14',
         messages: messages,
         temperature: coachInfo.temp,
-        max_tokens: 500,
+        max_tokens: 800,
         frequency_penalty: 0.3,
         presence_penalty: 0.1,
       }),
