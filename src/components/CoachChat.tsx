@@ -533,11 +533,13 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
             {isThinking && (
               <div className="flex justify-start">
                 <div className="max-w-[80%] bg-muted border rounded-2xl px-4 py-3">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className="relative">
-                      <div className="w-4 h-4 text-primary">✍️</div>
-                      <div className="absolute -inset-1">
-                        <div className="w-6 h-6 bg-primary/20 rounded-full animate-pulse"></div>
+                      <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-white text-sm">
+                        {getCoachIcon(currentCoachPersonality)}
+                      </div>
+                      <div className="absolute -inset-0.5">
+                        <div className="w-9 h-9 bg-primary/30 rounded-full animate-ping"></div>
                       </div>
                     </div>
                     <span className="text-xs font-medium text-primary">
@@ -545,11 +547,9 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
                     </span>
                   </div>
                   <div className="flex gap-1">
-                    <div className="w-1 h-3 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
-                    <div className="w-1 h-4 bg-primary/70 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }} />
-                    <div className="w-1 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                    <div className="w-1 h-3 bg-primary/80 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
-                    <div className="w-1 h-2 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                    <div className="w-2 h-2 bg-primary/70 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                   </div>
                 </div>
               </div>
