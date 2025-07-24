@@ -468,9 +468,27 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               </Button>
               
               <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
-                  {coach.avatar}
-                </div>
+                {coach.imageUrl ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg">
+                    <img 
+                      src={coach.imageUrl} 
+                      alt={coach.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden`}>
+                      {coach.avatar}
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
+                    {coach.avatar}
+                  </div>
+                )}
                 <div>
                   <CardTitle className="text-lg">{coach.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">{coach.role}</p>
