@@ -14,7 +14,6 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { BadgeSystem } from "@/components/BadgeSystem";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
-import { DepartmentProgress } from "@/components/DepartmentProgress";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { ProgressCharts } from "@/components/ProgressCharts";
@@ -415,10 +414,6 @@ const Index = () => {
           onMeasurementsAdded={handleMeasurementsAdded}
           todaysMeasurements={todaysMeasurements}
         />
-        
-        {/* Department Progress - Always available */}
-        <DepartmentProgress />
-        
         
         <BadgeSystem />
 

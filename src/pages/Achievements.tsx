@@ -1,7 +1,8 @@
 import { BadgeSystem } from "@/components/BadgeSystem";
 import { LevelBadge } from "@/components/LevelBadge";
+import { DepartmentProgress } from "@/components/DepartmentProgress";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Trophy, Award } from "lucide-react";
+import { Trophy, Award, TrendingUp } from "lucide-react";
 
 export default function Achievements() {
   const { t } = useTranslation();
@@ -26,6 +27,15 @@ export default function Achievements() {
         <div className="scale-150">
           <LevelBadge />
         </div>
+      </div>
+
+      {/* Department Progress - Shows progress in different areas */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Bereichsfortschritt</h2>
+        </div>
+        <DepartmentProgress />
       </div>
 
       {/* Badge System - Shows all earned badges */}
