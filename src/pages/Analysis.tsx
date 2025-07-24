@@ -114,16 +114,23 @@ const Analysis = () => {
           if (!dailyData[date]) {
             dailyData[date] = {
               date,
-              totals: { calories: 0, protein: 0, carbs: 0, fats: 0 },
-              mealCount: 0
+              displayDate: new Date(date).toLocaleDateString('de-DE', {
+                day: '2-digit',
+                month: '2-digit'
+              }),
+              meals: [],
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fats: 0
             };
           }
           
-          dailyData[date].totals.calories += meal.calories || 0;
-          dailyData[date].totals.protein += meal.protein || 0;
-          dailyData[date].totals.carbs += meal.carbs || 0;
-          dailyData[date].totals.fats += meal.fats || 0;
-          dailyData[date].mealCount += 1;
+          dailyData[date].meals.push(meal);
+          dailyData[date].calories += meal.calories || 0;
+          dailyData[date].protein += meal.protein || 0;
+          dailyData[date].carbs += meal.carbs || 0;
+          dailyData[date].fats += meal.fats || 0;
         });
 
         const historyArray = Object.values(dailyData).sort((a: any, b: any) => 
@@ -136,10 +143,10 @@ const Analysis = () => {
         const lastWeekData = historyArray.slice(0, 7);
         if (lastWeekData.length > 0) {
           const weeklyAverages = lastWeekData.reduce((sum: any, day: any) => ({
-            calories: sum.calories + day.totals.calories,
-            protein: sum.protein + day.totals.protein,
-            carbs: sum.carbs + day.totals.carbs,
-            fats: sum.fats + day.totals.fats
+            calories: sum.calories + day.calories,
+            protein: sum.protein + day.protein,
+            carbs: sum.carbs + day.carbs,
+            fats: sum.fats + day.fats
           }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
           setAverages({
@@ -182,8 +189,8 @@ const Analysis = () => {
 
     if (previous3Days.length === 0) return null;
 
-    const recentAvg = recent3Days.reduce((sum, day) => sum + day.totals.calories, 0) / recent3Days.length;
-    const previousAvg = previous3Days.reduce((sum, day) => sum + day.totals.calories, 0) / previous3Days.length;
+    const recentAvg = recent3Days.reduce((sum, day) => sum + day.calories, 0) / recent3Days.length;
+    const previousAvg = previous3Days.reduce((sum, day) => sum + day.calories, 0) / previous3Days.length;
 
     const change = recentAvg - previousAvg;
     const percentChange = ((change / previousAvg) * 100);
