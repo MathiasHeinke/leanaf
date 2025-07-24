@@ -556,11 +556,25 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                         <div className={`flex items-center mt-1 space-x-2 ${
                           message.role === 'user' ? 'justify-end' : 'justify-start'
                         }`}>
-                          {message.role === 'assistant' && (
-                            <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center`}>
+                        {message.role === 'assistant' && (
+                          <div className="w-4 h-4 rounded-full overflow-hidden">
+                            {coach.imageUrl ? (
+                              <img 
+                                src={coach.imageUrl} 
+                                alt={coach.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center ${coach.imageUrl ? 'hidden' : ''}`}>
                               <span className="text-[8px] text-white">{coach.avatar}</span>
                             </div>
-                          )}
+                          </div>
+                        )}
                           {message.role === 'user' && <User className="h-3 w-3 text-muted-foreground" />}
                           <span className="text-xs text-muted-foreground">
                             {formatMessageTime(message.created_at)}
