@@ -12,8 +12,8 @@ interface CoachInfo {
   role: string;
   scientificFoundation: string;
   keyMethods: string[];
-  ragSpecializations: string[];
-  evidence: string[];
+  specializations: string[];
+  evidence: string;
   interventions: string[];
   philosophy: string;
   color: string;
@@ -173,11 +173,11 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
 
               <Separator />
 
-              {/* RAG Specializations */}
+              {/* Specializations */}
               <div>
-                <h4 className="font-semibold mb-3">RAG-Spezialisierungen</h4>
+                <h4 className="font-semibold mb-3">Spezialisierungen</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {coach.ragSpecializations.map((spec, index) => (
+                  {coach.specializations.map((spec, index) => (
                     <Badge key={index} className={colors.badge}>
                       {spec}
                     </Badge>
@@ -205,12 +205,8 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
               {/* Evidence Base */}
               <div>
                 <h4 className="font-semibold mb-3">Evidenzbasis</h4>
-                <div className="space-y-2">
-                  {coach.evidence.map((evidence, index) => (
-                    <div key={index} className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                      {evidence}
-                    </div>
-                  ))}
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded leading-relaxed">
+                  {coach.evidence}
                 </div>
               </div>
 

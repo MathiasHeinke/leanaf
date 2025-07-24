@@ -24,8 +24,8 @@ interface CoachProfile {
     role: string;
     scientificFoundation: string;
     keyMethods: string[];
-    ragSpecializations: string[];
-    evidence: string[];
+    specializations: string[];
+    evidence: string;
     interventions: string[];
     philosophy: string;
     color: string;
@@ -50,22 +50,15 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
     console.log(`✅ Successfully loaded image for ${coach.name}: ${coach.imageUrl}`);
   };
 
-  // Enhanced color mapping for distinctive coach personalities
+  // Uniform color mapping for consistent card appearance
   const getCoachColors = (color: string) => {
     switch (color) {
-      case 'red':
+      case 'blue':
         return {
-          badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-800/30',
-          quote: 'bg-red-50 border-red-500 dark:bg-red-950/20 dark:border-red-700',
-          card: 'border-red-200/50 dark:border-red-800/30',
-          icon: 'text-red-600 dark:text-red-400'
-        };
-      case 'pink':
-        return {
-          badge: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950/20 dark:text-pink-300 dark:border-pink-800/30',
-          quote: 'bg-pink-50 border-pink-500 dark:bg-pink-950/20 dark:border-pink-700',
-          card: 'border-pink-200/50 dark:border-pink-800/30',
-          icon: 'text-pink-600 dark:text-pink-400'
+          badge: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-800/30',
+          quote: 'bg-blue-50 border-blue-500 dark:bg-blue-950/20 dark:border-blue-700',
+          card: 'border-blue-200/50 dark:border-blue-800/30',
+          icon: 'text-blue-600 dark:text-blue-400'
         };
       case 'green':
         return {
@@ -74,12 +67,19 @@ export const CoachCard: React.FC<CoachCardProps> = ({ coach, isSelected, onSelec
           card: 'border-green-200/50 dark:border-green-800/30',
           icon: 'text-green-600 dark:text-green-400'
         };
+      case 'purple':
+        return {
+          badge: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/20 dark:text-purple-300 dark:border-purple-800/30',
+          quote: 'bg-purple-50 border-purple-500 dark:bg-purple-950/20 dark:border-purple-700',
+          card: 'border-purple-200/50 dark:border-purple-800/30',
+          icon: 'text-purple-600 dark:text-purple-400'
+        };
       default:
         return {
-          badge: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/20 dark:text-gray-300 dark:border-gray-800/30',
-          quote: 'bg-gray-50 border-gray-500 dark:bg-gray-950/20 dark:border-gray-700',
-          card: 'border-gray-200/50 dark:border-gray-800/30',
-          icon: 'text-gray-600 dark:text-gray-400'
+          badge: 'bg-muted text-muted-foreground border-muted',
+          quote: 'bg-muted border-muted',
+          card: 'border-muted',
+          icon: 'text-muted-foreground'
         };
     }
   };
