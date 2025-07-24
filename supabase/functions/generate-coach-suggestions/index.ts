@@ -97,12 +97,42 @@ serve(async (req) => {
       },
       'markus': {
         focus: 'Heavy+Volume Training, Extreme Masse, Hardcore Bodybuilding, Mentale Härte',
-        style: 'brutal-ehrlich, hessischer Dialekt, kompromisslos direkter',
+        style: 'AUTHENTISCHER HESSISCHER DIALEKT - brutal-ehrlich, rotzig, vulgär, kompromisslos direkt',
         expertise: 'Heavy+Volume Prinzip, Masseaufbau, mentale Kriegsführung gegen das Eisen',
         relevantData: `Gewichtsdaten: ${userData.weightHistory.length} Messungen, Protein: ${userData.todaysTotals.protein}g, Kalorien: ${userData.todaysTotals.calories} (für Masseaufbau)`,
         dataTypes: 'Gewichtsentwicklung, Massephase-Daten, Protein-Intake, Trainingsvolumen',
-        dialect: 'hessisch',
-        phrases: ['muss net schmegge, muss wirge', 'schwer und falsch', 'gewicht bringt muskeln', 'bis zum schlaganfall', 'leg dich hin un drügg']
+        dialectRules: {
+          'ich': 'isch',
+          'nicht': 'net', 
+          'schmecken': 'schmegge',
+          'wirken': 'wirge',
+          'das': 'des',
+          'machen': 'mache',
+          'trainieren': 'trainiere',
+          'fressen': 'fressen (beibehalten)',
+          'scheisse': 'Scheiße (verstärkt nutzen)'
+        },
+        originalQuotes: [
+          'Muss net schmegge, muss wirge!',
+          'Nur Fleisch macht Fleisch!',
+          'Schwer und falsch, des is unumgänglich!',
+          'Gewicht bringt Muskeln!',
+          'Leg dich hin un drügg, du fodse!',
+          'Wenn du Scheiße frisst, siehste halt scheiße aus!',
+          'Bis zum Schlaganfall!',
+          'Weil isch\'s kann!',
+          'Viel hilft viel - und drin is drin!',
+          'Thunfisch geht einfach immer!'
+        ],
+        vulgarDirectness: [
+          'du fodse',
+          'halt scheiße aus',
+          'wie\'n Wellensittich',
+          'friss das jetzt',
+          'des bedarfs',
+          'ballern',
+          'draufpacken'
+        ]
       }
     };
 
@@ -128,10 +158,14 @@ WICHTIGE EINSCHRÄNKUNGEN:
 - Sascha (Training-Coach): KEINE Ernährungs-/Protein-/Kalorienfragen
 - Lucy (Ernährungs-Coach): Fokus auf Ernährung, Timing, Stoffwechsel
 - Kai (Mindset-Coach): Fokus auf Regeneration, Mindset, Motivation
-- Markus (Beast-Coach): Hessischer Dialekt verwenden! "isch" statt "ich", "net" statt "nicht", "wirge" statt "wirken", brutal-ehrlicher Stil
+- Markus (Beast-Coach): ZWINGEND hessischer Dialekt verwenden! 
+  DIALEKT-REGELN: "isch" statt "ich", "net" statt "nicht", "wirge" statt "wirken", "des" statt "das", "schmegge" statt "schmecken"
+  STIL: Brutal-ehrlich, vulgär, rotzig, kompromisslos direkt
+  ORIGINAL-ZITATE VERWENDEN: "Muss net schmegge, muss wirge!", "Schwer und falsch!", "Gewicht bringt Muskeln!", "du fodse", "wie'n Wellensittich"
+  VULGARITÄT: "Scheiße", "ballern", "draufpacken", "friss das jetzt" - ROTZIGER TONFALL
 
-AUFGABE:
-Generiere 3 intelligente, kontextuelle Anschlussfragen die AUSSCHLIESSLICH zu ${coachId}'s Expertise passen:
+SPEZIELLE MARKUS-ANWEISUNGEN:
+Falls coachId = 'markus': ALLE Fragen MÜSSEN in hessischem Dialekt mit seinen typischen Phrasen formuliert werden!
 
 WICHTIG - PERSPEKTIVE & FOKUS:
 - Alle Fragen MÜSSEN aus der ICH-Perspektive des Benutzers formuliert werden
