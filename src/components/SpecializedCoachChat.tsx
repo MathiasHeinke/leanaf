@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { UploadProgress } from '@/components/UploadProgress';
+import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
 import { toast } from 'sonner';
 
@@ -103,6 +104,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgressType[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [analysisType, setAnalysisType] = useState<'exercise_form' | 'meal_analysis' | 'progress_photo' | 'general'>('general');
   const [dynamicSuggestions, setDynamicSuggestions] = useState<Array<{text: string; prompt: string}>>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -332,6 +335,61 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
   };
 
+  const handleMediaUploaded = (urls: string[]) => {
+    setUploadedImages(prev => [...prev, ...urls]);
+    setShowMediaUpload(false);
+  };
+
+  const analyzeMedia = async () => {
+    if (uploadedImages.length === 0 || !user?.id) return;
+
+    setIsThinking(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
+        body: {
+          userId: user.id,
+          mediaUrls: uploadedImages,
+          mediaType: 'image',
+          analysisType,
+          coachPersonality: coach.id,
+          userQuestion: inputText || `Analysiere bitte ${analysisType === 'exercise_form' ? 'meine Übungsausführung' : analysisType === 'meal_analysis' ? 'mein Essen' : 'das Bild'}`,
+          userProfile: {
+            goals: dailyGoals,
+            currentData: todaysTotals
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const analysis = data.analysis;
+      
+      // Save the analysis as assistant message
+      const savedAssistantMessage = await saveMessage('assistant', analysis);
+      if (savedAssistantMessage) {
+        const mappedMessage: ChatMessage = {
+          id: savedAssistantMessage.id,
+          role: savedAssistantMessage.message_role as 'user' | 'assistant',
+          content: savedAssistantMessage.message_content,
+          created_at: savedAssistantMessage.created_at,
+          coach_personality: savedAssistantMessage.coach_personality
+        };
+        setMessages(prev => [...prev, mappedMessage]);
+        setQuickActionsShown(true);
+        generateDynamicSuggestions();
+      }
+
+      toast.success('Medien-Analyse abgeschlossen');
+    } catch (error) {
+      console.error('Error analyzing media:', error);
+      toast.error('Fehler bei der Medien-Analyse');
+    } finally {
+      setIsThinking(false);
+    }
+  };
   const handleRemoveImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
@@ -782,6 +840,86 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           </div>
         )}
         
+        
+        {/* Media Upload Zone */}
+        {showMediaUpload && (
+          <div className="border-t p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Medien hochladen</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMediaUpload(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                <Button
+                  variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('exercise_form')}
+                  className="text-xs"
+                >
+                  🏋️ Übung
+                </Button>
+                <Button
+                  variant={analysisType === 'meal_analysis' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('meal_analysis')}
+                  className="text-xs"
+                >
+                  🍽️ Essen
+                </Button>
+                <Button
+                  variant={analysisType === 'progress_photo' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('progress_photo')}
+                  className="text-xs"
+                >
+                  📸 Fortschritt
+                </Button>
+                <Button
+                  variant={analysisType === 'general' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('general')}
+                  className="text-xs"
+                >
+                  💬 Allgemein
+                </Button>
+              </div>
+              
+              <MediaUploadZone
+                onMediaUploaded={handleMediaUploaded}
+                maxFiles={3}
+                className="max-h-64"
+              />
+              
+              {uploadedImages.length > 0 && (
+                <Button
+                  onClick={analyzeMedia}
+                  disabled={isThinking}
+                  className="w-full"
+                >
+                  {isThinking ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analysiere...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Medien analysieren
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Input Area */}
         <div className="border-t p-4">
           {uploadedImages.length > 0 && (
@@ -852,6 +990,16 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                   disabled={isUploading}
                 />
               </label>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMediaUpload(!showMediaUpload)}
+                disabled={isThinking}
+                className={showMediaUpload ? 'bg-primary/10 text-primary' : ''}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
               
               <Button
                 variant="outline"
