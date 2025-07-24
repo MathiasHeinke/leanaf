@@ -348,6 +348,25 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </div>
           </div>
           
+          {/* Points badges in separate row for better responsive layout */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <PointsBadge 
+              points={2} 
+              icon="⚖️"
+              animated={false}
+              variant="secondary"
+            />
+            {todaysWeight.bonus_points && todaysWeight.bonus_points > 0 && (
+              <PointsBadge 
+                points={0}
+                bonusPoints={todaysWeight.bonus_points}
+                icon="⭐"
+                animated={false}
+                variant="outline"
+              />
+            )}
+          </div>
+          
           {showPointsAnimation && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <PointsBadge 

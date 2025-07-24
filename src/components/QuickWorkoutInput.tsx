@@ -153,6 +153,25 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                 )}
               </p>
             </div>
+          
+          {/* Points badges in separate row for better responsive layout */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <PointsBadge 
+              points={3} 
+              icon="💪"
+              animated={false}
+              variant="secondary"
+            />
+            {todaysWorkout.bonus_points && todaysWorkout.bonus_points > 0 && (
+              <PointsBadge 
+                points={0}
+                bonusPoints={todaysWorkout.bonus_points}
+                icon="⭐"
+                animated={false}
+                variant="outline"
+              />
+            )}
+          </div>
             <div className="flex items-center gap-2">
               <InfoButton
                 title="Workout & Regeneration"
@@ -175,27 +194,6 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               </Button>
             </div>
           </div>
-          
-          {/* Points badges in separate row for better responsive layout */}
-          {todaysWorkout.workout_type !== 'pause' && (
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <PointsBadge 
-                points={8} 
-                icon="💪"
-                animated={showPointsAnimation}
-                variant="secondary"
-              />
-              {todaysWorkout.bonus_points && todaysWorkout.bonus_points > 0 && (
-                <PointsBadge 
-                  points={0}
-                  bonusPoints={todaysWorkout.bonus_points}
-                  icon="⭐"
-                  animated={showPointsAnimation}
-                  variant="outline"
-                />
-              )}
-            </div>
-          )}
           
           <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3">
             <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
