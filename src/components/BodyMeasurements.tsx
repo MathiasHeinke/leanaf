@@ -150,21 +150,26 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-purple-800 dark:text-purple-200">Maße erfasst! 📏</h3>
-              <p className="text-sm text-purple-600 dark:text-purple-400">
-                {Object.entries(todaysMeasurements)
-                  .filter(([key, value]) => key !== 'id' && key !== 'user_id' && key !== 'date' && key !== 'created_at' && value)
-                  .map(([key, value]) => {
-                    const label = key === 'neck' ? 'Hals' : 
-                                 key === 'chest' ? 'Brust' : 
-                                 key === 'waist' ? 'Taille' : 
-                                 key === 'hips' ? 'Hüfte' : 
-                                 key === 'arms' ? 'Arme' : 
-                                 key === 'thigh' ? 'Oberschenkel' : key;
-                    return `${label}: ${value}cm`;
-                  })
-                  .join(' • ')
-                }
-              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-purple-600 dark:text-purple-400">
+                {todaysMeasurements?.neck && (
+                  <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
+                )}
+                {todaysMeasurements?.chest && (
+                  <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
+                )}
+                {todaysMeasurements?.waist && (
+                  <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
+                )}
+                {todaysMeasurements?.hips && (
+                  <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
+                )}
+                {todaysMeasurements?.arms && (
+                  <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
+                )}
+                {todaysMeasurements?.thigh && (
+                  <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -298,7 +303,17 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     max={100}
                     className="bg-white dark:bg-purple-950/50 border-purple-200 dark:border-purple-700"
                   />
-                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Notizen</label>
+                <textarea
+                  value={measurements.notes}
+                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  placeholder="Zusätzliche Notizen..."
+                  className="w-full p-2 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/50 text-purple-900 dark:text-purple-100 placeholder-purple-400 dark:placeholder-purple-500 resize-none h-20"
+                />
+              </div>
                 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-purple-700 dark:text-purple-300">Oberschenkel (cm)</label>
