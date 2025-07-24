@@ -196,23 +196,6 @@ export const GlobalHeader = ({
             {/* Level Badge */}
             <LevelBadge />
             
-            {/* Refresh Button with Debug functionality - For Enterprise and Super Admin */}
-            {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-2"
-                title={clickCount > 0 ? `Debug: ${clickCount}/3 Klicks` : t('app.refresh')}
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''} ${clickCount > 0 ? 'text-primary' : ''}`} />
-                {clickCount > 0 && (
-                  <span className="text-xs text-primary font-bold">{clickCount}</span>
-                )}
-              </Button>
-            )}
-            
             {/* Dark Mode Toggle */}
             <Button
               variant="ghost"
@@ -243,7 +226,17 @@ export const GlobalHeader = ({
                   <Menu className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+               <DropdownMenuContent align="end">
+                {/* Refresh/Debug Button for Super Admin */}
+                {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
+                  <DropdownMenuItem onClick={handleRefresh} disabled={isRefreshing}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''} ${clickCount > 0 ? 'text-primary' : ''}`} />
+                    {clickCount > 0 ? `Debug (${clickCount}/3)` : 'Refresh & Debug'}
+                    {clickCount > 0 && (
+                      <span className="ml-2 text-xs text-primary font-bold">{clickCount}</span>
+                    )}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/account')}>
                   <UserIcon className="h-4 w-4 mr-2" />
                   {t('header.account')}
