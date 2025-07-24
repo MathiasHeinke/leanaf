@@ -12,7 +12,7 @@ const coachProfiles = [
     id: 'lucy',
     name: 'Lucy',
     age: 23,
-    role: '80/20+ Ernährungs- & Lifestyle-Expertin',
+    role: 'Ernährungs- & Lifestyle-Expertin',
     avatar: '❤️',
     icon: Heart,
     imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
@@ -24,7 +24,7 @@ const coachProfiles = [
     coachInfo: {
       id: 'lucy',
       name: 'Lucy',
-      role: '80/20+ Ernährungs- & Lifestyle-Expertin',
+      role: 'Ernährungs- & Lifestyle-Expertin',
       color: 'pink',
       philosophy: 'Gesunde Ernährung sollte Freude machen und sich natürlich in deinen Alltag integrieren. Mit der 80/20-Regel und wissenschaftlich fundiertem Meal-Timing findest du die perfekte Balance.',
       scientificFoundation: 'Expertise in Chrononutrition, metabolischer Flexibilität und evidenzbasierter Ernährungsoptimierung für langfristigen Erfolg.',
