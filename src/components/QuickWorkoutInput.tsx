@@ -119,10 +119,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
 
   return (
     <CollapsibleQuickInput
-      title="Training & Bewegung"
+      title={hasWorkoutToday && !isEditing ? "Workout erledigt! 💪" : "Training & Bewegung"}
       icon={<Dumbbell className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
-      defaultOpen={!isCompleted}
+      defaultOpen={false}
+      theme="orange"
     >
       {hasWorkoutToday && !isEditing ? (
         <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">

@@ -119,10 +119,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
   return (
     <CollapsibleQuickInput
-      title="Schlaf & Regeneration"
+      title={hasSleepToday && !isEditing ? "Schlaf erfasst! 😴" : "Schlaf & Regeneration"}
       icon={<Moon className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
-      defaultOpen={!isCompleted}
+      defaultOpen={false}
+      theme="purple"
     >
       {hasSleepToday && !isEditing ? (
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">

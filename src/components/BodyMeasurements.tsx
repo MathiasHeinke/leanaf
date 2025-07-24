@@ -160,10 +160,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
   return (
     <CollapsibleQuickInput
-      title="Körpermaße"
+      title={hasMeasurementsThisWeek && !isEditing ? "Maße erfasst! 📏" : "Körpermaße"}
       icon={<Ruler className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
-      defaultOpen={!isCompleted}
+      defaultOpen={false}
+      theme="teal"
     >
       {hasMeasurementsThisWeek && !isEditing ? (
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
