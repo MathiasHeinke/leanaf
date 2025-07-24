@@ -24,6 +24,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MealInput } from "@/components/MealInput";
 import { toast } from "sonner";
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -49,6 +53,12 @@ const Index = () => {
   const [todaysSleep, setTodaysSleep] = useState<any>(null);
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
+
+  // Card order state
+  const [cardOrder, setCardOrder] = useState<string[]>(() => {
+    const savedOrder = localStorage.getItem('quickInputCardOrder');
+    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements'];
+  });
 
   // Check authentication and redirect if needed
   useEffect(() => {
@@ -352,6 +362,95 @@ const Index = () => {
     setTimeout(() => checkBadges(), 1000);
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setCardOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
+        
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem('quickInputCardOrder', JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+  };
+
+  const SortableCard = ({ id, children }: { id: string; children: React.ReactNode }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <div ref={setNodeRef} style={style} className="relative">
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute top-3 right-3 z-10 cursor-grab active:cursor-grabbing p-1 hover:bg-muted/50 rounded-sm transition-colors"
+          aria-label="Karte verschieben"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        {children}
+      </div>
+    );
+  };
+
+  const renderCardByType = (cardType: string) => {
+    switch (cardType) {
+      case 'sleep':
+        return (
+          <SortableCard key="sleep" id="sleep">
+            <QuickSleepInput 
+              onSleepAdded={handleSleepAdded}
+              todaysSleep={todaysSleep}
+            />
+          </SortableCard>
+        );
+      case 'weight':
+        return (
+          <SortableCard key="weight" id="weight">
+            <QuickWeightInput 
+              onWeightAdded={handleWeightAdded}
+              todaysWeight={todaysWeight}
+            />
+          </SortableCard>
+        );
+      case 'workout':
+        return (
+          <SortableCard key="workout" id="workout">
+            <QuickWorkoutInput 
+              onWorkoutAdded={handleWorkoutAdded}
+              todaysWorkout={todaysWorkout}
+            />
+          </SortableCard>
+        );
+      case 'measurements':
+        return (
+          <SortableCard key="measurements" id="measurements">
+            <BodyMeasurements 
+              onMeasurementsAdded={handleMeasurementsAdded}
+              todaysMeasurements={todaysMeasurements}
+            />
+          </SortableCard>
+        );
+      default:
+        return null;
+    }
+  };
+
   if (dataLoading) {
     return (
       <div className="space-y-6">
@@ -390,29 +489,20 @@ const Index = () => {
           onDateChange={handleDateChange}
         />
 
-        {/* Weight Tracking - Always available (Basic/Free feature) */}
-        <QuickWeightInput 
-          onWeightAdded={handleWeightAdded}
-          todaysWeight={todaysWeight}
-        />
-
-        {/* Premium Workout and Sleep Features */}
-        <div className="grid grid-cols-1 gap-4">
-          <QuickWorkoutInput 
-            onWorkoutAdded={handleWorkoutAdded}
-            todaysWorkout={todaysWorkout}
-          />
-          <QuickSleepInput 
-            onSleepAdded={handleSleepAdded}
-            todaysSleep={todaysSleep}
-          />
-        </div>
-
-        {/* Premium Body Measurements */}
-        <BodyMeasurements 
-          onMeasurementsAdded={handleMeasurementsAdded}
-          todaysMeasurements={todaysMeasurements}
-        />
+        {/* Sortable Quick Input Cards */}
+        <DndContext 
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext 
+            items={cardOrder}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4">
+              {cardOrder.map(cardType => renderCardByType(cardType))}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         <div>
           <div className="mb-4">
