@@ -38,9 +38,18 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   // Check if measurements already exist for this week - simplified logic
   const hasMeasurementsThisWeek = todaysMeasurements && todaysMeasurements.id;
 
-  // Calculate next measurement date (4 days from last measurement)
+  // Calculate next measurement date - special case for 28.07.2025, then back to 7 days
   const nextMeasurementDate = todaysMeasurements?.date ? 
-    new Date(new Date(todaysMeasurements.date).getTime() + 4 * 24 * 60 * 60 * 1000) : 
+    (() => {
+      const lastMeasureDate = new Date(todaysMeasurements.date);
+      const today = new Date();
+      // Special case: if last measurement was on 24.07.2025, next should be 28.07.2025 (4 days)
+      if (lastMeasureDate.toISOString().split('T')[0] === '2025-07-24') {
+        return new Date(lastMeasureDate.getTime() + 4 * 24 * 60 * 60 * 1000);
+      }
+      // Otherwise normal 7-day rhythm
+      return new Date(lastMeasureDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    })() : 
     new Date();
 
   useEffect(() => {
