@@ -15,6 +15,7 @@ import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
+import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
@@ -64,7 +65,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         workout_type: workoutType,
         duration_minutes: workoutType === 'pause' ? 0 : duration[0],
         intensity: workoutType === 'pause' ? 0 : intensity[0],
-        distance_km: distanceKm ? parseFloat(distanceKm) : null,
+        distance_km: distanceKm ? parseLocaleFloat(distanceKm) : null,
         steps: steps ? parseInt(steps) : null,
         walking_notes: walkingNotes || null,
         did_workout: workoutType !== 'pause',

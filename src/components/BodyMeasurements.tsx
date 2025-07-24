@@ -10,6 +10,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
+import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 
 interface BodyMeasurementsProps {
   onMeasurementsAdded?: () => void;
@@ -85,13 +86,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
       const measurementData = {
         user_id: user.id,
         date: new Date().toISOString().split('T')[0],
-        neck: measurements.neck ? parseFloat(measurements.neck) : null,
-        chest: measurements.chest ? parseFloat(measurements.chest) : null,
-        waist: measurements.waist ? parseFloat(measurements.waist) : null,
-        belly: measurements.belly ? parseFloat(measurements.belly) : null,
-        hips: measurements.hips ? parseFloat(measurements.hips) : null,
-        arms: measurements.arms ? parseFloat(measurements.arms) : null,
-        thigh: measurements.thigh ? parseFloat(measurements.thigh) : null,
+        neck: measurements.neck ? parseLocaleFloat(measurements.neck) : null,
+        chest: measurements.chest ? parseLocaleFloat(measurements.chest) : null,
+        waist: measurements.waist ? parseLocaleFloat(measurements.waist) : null,
+        belly: measurements.belly ? parseLocaleFloat(measurements.belly) : null,
+        hips: measurements.hips ? parseLocaleFloat(measurements.hips) : null,
+        arms: measurements.arms ? parseLocaleFloat(measurements.arms) : null,
+        thigh: measurements.thigh ? parseLocaleFloat(measurements.thigh) : null,
         notes: measurements.notes || null
       };
 

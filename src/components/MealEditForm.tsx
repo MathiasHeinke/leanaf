@@ -11,6 +11,7 @@ import { Check, X, MessageSquare } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 
 interface MealData {
   id: string;
@@ -47,10 +48,10 @@ export const MealEditForm = ({ meal, onSave, onCancel }: MealEditFormProps) => {
       const updates = {
         text: editValues.text,
         meal_type: editValues.meal_type,
-        calories: parseFloat(editValues.calories) || 0,
-        protein: parseFloat(editValues.protein) || 0,
-        carbs: parseFloat(editValues.carbs) || 0,
-        fats: parseFloat(editValues.fats) || 0
+        calories: parseLocaleFloat(editValues.calories) || 0,
+        protein: parseLocaleFloat(editValues.protein) || 0,
+        carbs: parseLocaleFloat(editValues.carbs) || 0,
+        fats: parseLocaleFloat(editValues.fats) || 0
       };
 
       const { error } = await supabase
@@ -85,10 +86,10 @@ export const MealEditForm = ({ meal, onSave, onCancel }: MealEditFormProps) => {
           message: verificationMessage,
           mealData: {
             title: editValues.text,
-            calories: parseFloat(editValues.calories) || 0,
-            protein: parseFloat(editValues.protein) || 0,
-            carbs: parseFloat(editValues.carbs) || 0,
-            fats: parseFloat(editValues.fats) || 0,
+            calories: parseLocaleFloat(editValues.calories) || 0,
+            protein: parseLocaleFloat(editValues.protein) || 0,
+            carbs: parseLocaleFloat(editValues.carbs) || 0,
+            fats: parseLocaleFloat(editValues.fats) || 0,
             description: editValues.text
           }
         }

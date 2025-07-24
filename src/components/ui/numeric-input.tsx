@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { isValidLocaleNumber, normalizeDecimalSeparator, parseLocaleFloat } from "@/utils/localeNumberHelpers"
 
 interface NumericInputProps extends Omit<React.ComponentProps<"input">, 'type' | 'onChange'> {
   value?: string | number
@@ -20,13 +21,10 @@ const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps>(
         return
       }
       
-      // Create regex pattern based on allowDecimals
-      const pattern = allowDecimals ? /^[0-9]*\.?[0-9]*$/ : /^[0-9]*$/
-      
-      // Only allow valid numeric input
-      if (pattern.test(inputValue)) {
+      // Check if input is valid locale number format (supports both comma and period)
+      if (isValidLocaleNumber(inputValue, allowDecimals)) {
         // Check min/max constraints if provided
-        const numValue = parseFloat(inputValue)
+        const numValue = parseLocaleFloat(inputValue)
         if (!isNaN(numValue)) {
           if (min !== undefined && numValue < min) return
           if (max !== undefined && numValue > max) return
@@ -43,7 +41,7 @@ const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps>(
       <input
         type="text"
         inputMode="numeric"
-        pattern={allowDecimals ? "[0-9]*\\.?[0-9]*" : "[0-9]*"}
+        pattern={allowDecimals ? "[0-9]*[,.]?[0-9]*" : "[0-9]*"}
         className={cn(
           "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           className
