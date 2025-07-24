@@ -17,6 +17,8 @@ interface CoachInfo {
   interventions: string[];
   philosophy: string;
   color: string;
+  imageUrl?: string;
+  avatar?: string;
 }
 
 interface CoachInfoButtonProps {
@@ -26,6 +28,7 @@ interface CoachInfoButtonProps {
 
 export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, className }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -128,8 +131,21 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
           <Card className="coach-info-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="relative">
               <div className="flex items-center space-x-3">
-                <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${colors.gradient} flex items-center justify-center text-white shadow-lg`}>
-                  <Icon className="h-6 w-6" />
+                <div className="relative">
+                  {coach.imageUrl && !imageError ? (
+                    <div className="w-12 h-12 rounded-full overflow-hidden shadow-lg">
+                      <img 
+                        src={coach.imageUrl} 
+                        alt={coach.name}
+                        className="w-full h-full object-cover"
+                        onError={() => setImageError(true)}
+                      />
+                    </div>
+                  ) : (
+                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${colors.gradient} flex items-center justify-center text-white shadow-lg`}>
+                      {coach.avatar || <Icon className="h-6 w-6" />}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1">
                   <CardTitle className="text-xl">{coach.name}</CardTitle>
