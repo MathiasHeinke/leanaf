@@ -130,7 +130,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
         '⚖️ Weight Tracking',
         '📊 Basic Dashboard', 
         '🏆 Points & Badges System',
-        '🧠 5 AI Meal Analysen/Tag (GPT-4.1)',
+        '🧠 5 AI Meal Analysen/Tag (Wissenschaftlich trainierte KI)',
         '📈 Basic Charts',
         '🤖 1 KI Coach verfügbar'
       ],
@@ -147,7 +147,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
       popular: true,
       features: [
         '🚀 Alle Free Features',
-        '🧠 Unlimited AI mit GPT-4.1',
+        '🧠 Unlimited AI mit modernster KI-Technologie',
         '👥 Über 7+ Experten-Coaches zur Auswahl',
         '🆕 Regelmäßig neue Coaches mit einzigartiger Persönlichkeit',
         '🎯 Tiefes Fachwissen je Expertise-Bereich',
