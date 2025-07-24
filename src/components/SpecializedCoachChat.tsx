@@ -149,8 +149,24 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       }
 
       let displayName = data?.display_name;
-      if (!displayName || displayName.trim() === '') {
-        displayName = user.email?.split('@')[0] || 'User';
+      
+      // Check if display_name is a system name that should be replaced
+      const systemNames = ['super admin', 'admin', 'test user', 'test', 'user', 'administrator'];
+      const isSystemName = displayName && systemNames.some(name => 
+        displayName.toLowerCase().includes(name)
+      );
+      
+      if (!displayName || displayName.trim() === '' || isSystemName) {
+        // Extract real name from email (before @ symbol)
+        const emailName = user.email?.split('@')[0] || 'User';
+        // If email looks like a name (contains letters), use it
+        if (/^[a-zA-Z]/.test(emailName)) {
+          displayName = emailName.split('.').map(part => 
+            part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+          ).join(' ');
+        } else {
+          displayName = 'User';
+        }
       }
       
       const extractedFirstName = displayName.split(' ')[0] || displayName;
