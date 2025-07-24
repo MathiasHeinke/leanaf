@@ -127,7 +127,7 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
       </Button>
 
       {isOpen && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <Card className="coach-info-modal w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <CardHeader className="relative">
               <div className="flex items-center space-x-3">
