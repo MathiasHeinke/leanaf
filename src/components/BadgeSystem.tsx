@@ -165,7 +165,7 @@ export const BadgeSystem = () => {
             <div className="sm:hidden space-y-2">
               <button
                 onClick={() => setSelectedCategory('all')}
-                className={`w-full px-3 py-2 rounded-xl text-xs font-medium transition-all duration-300 ${
+                className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                   selectedCategory === 'all' 
                     ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
                     : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
@@ -178,7 +178,7 @@ export const BadgeSystem = () => {
                   <button
                     key={category.name}
                     onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium transition-all duration-300 flex items-center justify-center gap-1 ${
+                    className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 flex items-center justify-center gap-1 ${
                       selectedCategory === category.name.toLowerCase() 
                         ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
                         : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
@@ -195,7 +195,7 @@ export const BadgeSystem = () => {
             <div className="hidden sm:flex flex-wrap gap-2 lg:gap-3 p-3 lg:p-4 bg-gradient-to-r from-background/60 via-background/80 to-background/60 rounded-2xl border border-border/50 backdrop-blur-sm">
               <button
                 onClick={() => setSelectedCategory('all')}
-                className={`px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-medium transition-all duration-300 ${
+                className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-xs lg:text-sm font-medium transition-all duration-300 ${
                   selectedCategory === 'all' 
                     ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
                     : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
@@ -207,7 +207,7 @@ export const BadgeSystem = () => {
                 <button
                   key={category.name}
                   onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                  className={`px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
+                  className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-xs lg:text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
                     selectedCategory === category.name.toLowerCase() 
                       ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
                       : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
