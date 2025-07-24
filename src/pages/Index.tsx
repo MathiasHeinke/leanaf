@@ -12,7 +12,6 @@ import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
-import { BadgeSystem } from "@/components/BadgeSystem";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -414,8 +413,6 @@ const Index = () => {
           onMeasurementsAdded={handleMeasurementsAdded}
           todaysMeasurements={todaysMeasurements}
         />
-        
-        <BadgeSystem />
 
         <div>
           <div className="mb-4">
