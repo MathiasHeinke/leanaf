@@ -286,7 +286,7 @@ const Subscription = ({ onClose }: SubscriptionPageProps) => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 gap-6 max-w-2xl mx-auto">
                 {plans.map((plan) => {
                   const isCurrentPlan = plan.isFree ? !isPremium : (isPremium && subscriptionTier?.toLowerCase() === 'pro');
                   
