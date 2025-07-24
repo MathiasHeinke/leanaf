@@ -224,7 +224,7 @@ export const BadgeSystem = () => {
         {displayBadges.length > 0 ? (
           <div className="space-y-4">
             {/* Badge Grid - Better desktop layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
+            <div className="space-y-3 sm:space-y-4">
               {(showAllBadges ? displayBadges : displayBadges.slice(0, isDesktop ? 8 : 3)).map((badge, index) => {
                 const badgeColor = getBadgeColor(badge.badge_type);
                 return (
