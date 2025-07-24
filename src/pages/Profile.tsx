@@ -658,15 +658,57 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">{t('profile.coachPersonality')}</p>
-                <p className="text-xs text-muted-foreground">
-                  Wie soll dein Coach sein?
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-medium">{t('profile.coachPersonality')}</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Wie soll dein Coach mit dir kommunizieren?
                 </p>
-                <div className="text-xs text-muted-foreground">
-                  Gewählt: <span className="font-medium">{coachPersonality}</span>
-                </div>
+              </div>
+              
+              <div className="space-y-2">
+                {[
+                  { 
+                    id: 'motivierend',
+                    label: '🔥 Motivierend',
+                    desc: 'Pushend, energisch, feuernd dich an'
+                  },
+                  { 
+                    id: 'soft',
+                    label: '🤗 Sanft & Unterstützend',
+                    desc: 'Einfühlsam, geduldig, verständnisvoll'
+                  },
+                  {
+                    id: 'streng',
+                    label: '💪 Streng & Direkt',
+                    desc: 'Klare Ansagen, keine Ausreden, tough love'
+                  },
+                  {
+                    id: 'wissenschaftlich',
+                    label: '🧠 Wissenschaftlich',
+                    desc: 'Faktenbasiert, sachlich, präzise Erklärungen'
+                  }
+                ].map((personality) => (
+                  <div 
+                    key={personality.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      coachPersonality === personality.id 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => setCoachPersonality(personality.id)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-sm">{personality.label}</div>
+                        <div className="text-xs text-muted-foreground">{personality.desc}</div>
+                      </div>
+                      <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                        {coachPersonality === personality.id ? '✓' : '○'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
