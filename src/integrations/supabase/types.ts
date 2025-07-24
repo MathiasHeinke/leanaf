@@ -1499,22 +1499,14 @@ export type Database = {
         Returns: undefined
       }
       update_user_points_and_level: {
-        Args:
-          | {
-              p_user_id: string
-              p_points: number
-              p_activity_type: string
-              p_description?: string
-              p_multiplier?: number
-            }
-          | {
-              p_user_id: string
-              p_points: number
-              p_activity_type: string
-              p_description?: string
-              p_multiplier?: number
-              p_trial_multiplier?: number
-            }
+        Args: {
+          p_user_id: string
+          p_points: number
+          p_activity_type: string
+          p_description?: string
+          p_multiplier?: number
+          p_trial_multiplier?: number
+        }
         Returns: Json
       }
       update_user_streak: {

@@ -48,73 +48,79 @@ serve(async (req) => {
       imageUrls: images ? images.map((url: string) => url.substring(0, 50) + '...') : 'NO IMAGES'
     });
     
-    // Get user profile and check usage limits
-    let coachPersonality = 'motivierend';
-    let userTier = 'free';
-    let userId = null;
-    
-    try {
-      const authHeader = req.headers.get('Authorization');
-      if (authHeader) {
-        const supabaseClient = createClient(
-          Deno.env.get('SUPABASE_URL') ?? '',
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-          { auth: { persistSession: false } }
-        );
-        
-        const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
-        
-        if (user) {
-          userId = user.id;
-          
-          // Check if user has active subscription
-          const { data: subscriber } = await supabaseClient
-            .from('subscribers')
-            .select('subscribed, subscription_tier')
-            .eq('user_id', user.id)
-            .single();
-            
-          if (subscriber?.subscribed) {
-            userTier = 'pro';
-          }
-          
-          // For free users, check usage limits
-          if (userTier === 'free') {
-            const { data: usageResult } = await supabaseClient.rpc('check_ai_usage_limit', {
-              p_user_id: user.id,
-              p_feature_type: 'meal_analysis'
-            });
-            
-            if (!usageResult?.can_use) {
-              console.log('⛔ [ANALYZE-MEAL] Usage limit exceeded for user:', user.id);
-              return new Response(JSON.stringify({ 
-                error: 'Daily usage limit exceeded. Upgrade to Pro for unlimited access.',
-                code: 'USAGE_LIMIT_EXCEEDED',
-                daily_remaining: usageResult?.daily_remaining || 0,
-                monthly_remaining: usageResult?.monthly_remaining || 0
-              }), {
-                status: 429,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              });
-            }
-          }
-          
-          // Get coach personality
-          const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('coach_personality')
-            .eq('user_id', user.id)
-            .single();
-            
-          if (profile?.coach_personality) {
-            coachPersonality = profile.coach_personality;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('⚠️ [ANALYZE-MEAL] Error checking user/limits:', error);
-      // Continue without authentication for backwards compatibility
+    // Authentication and user verification - REQUIRED
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('🚫 [ANALYZE-MEAL] Missing or invalid authorization header');
+      return new Response(JSON.stringify({ 
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED'
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+    
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
+    
+    if (authError || !user) {
+      console.log('🚫 [ANALYZE-MEAL] Authentication failed:', authError?.message);
+      return new Response(JSON.stringify({ 
+        error: 'Authentication failed',
+        code: 'AUTH_FAILED'
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const userId = user.id;
+    console.log(`👤 [ANALYZE-MEAL] Authenticated user: ${userId}`);
+    
+    // Check if user has active subscription
+    const { data: subscriber } = await supabaseClient
+      .from('subscribers')
+      .select('subscribed, subscription_tier')
+      .eq('user_id', user.id)
+      .single();
+      
+    const userTier = subscriber?.subscribed ? 'pro' : 'free';
+    
+    // For free users, check usage limits
+    if (userTier === 'free') {
+      const { data: usageResult } = await supabaseClient.rpc('check_ai_usage_limit', {
+        p_user_id: user.id,
+        p_feature_type: 'meal_analysis'
+      });
+      
+      if (!usageResult?.can_use) {
+        console.log('⛔ [ANALYZE-MEAL] Usage limit exceeded for user:', user.id);
+        return new Response(JSON.stringify({ 
+          error: 'Daily usage limit exceeded. Upgrade to Pro for unlimited access.',
+          code: 'USAGE_LIMIT_EXCEEDED',
+          daily_remaining: usageResult?.daily_remaining || 0,
+          monthly_remaining: usageResult?.monthly_remaining || 0
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Get coach personality
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('coach_personality')
+      .eq('user_id', user.id)
+      .single();
+      
+    const coachPersonality = profile?.coach_personality || 'motivierend';
     
     // Validate input - allow either text OR images OR both
     if (!text && (!images || images.length === 0)) {
