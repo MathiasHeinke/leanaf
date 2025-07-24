@@ -714,13 +714,105 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-        {/* 3. Macro Strategy */}
+        {/* 3. Calorie Deficit/Surplus Calculation */}
+        {targetWeight && targetDate && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
+                <Calculator className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold">Kalorienbedarf Berechnung</h2>
+            </div>
+
+            <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+              {calculateRequiredCalorieDeficit() && (
+                <>
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium">
+                      Gewichtsveränderung: {weight && targetWeight ? 
+                        `${parseFloat(weight)} kg → ${parseFloat(targetWeight)} kg` : 
+                        'Zielgewicht eingeben'
+                      }
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <div className="text-lg font-bold">
+                          {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {goal === 'lose' ? 'zu verlieren' : goal === 'gain' ? 'zuzunehmen' : 'zu halten'}
+                        </div>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <div className="text-lg font-bold">
+                          {Math.max(0, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} Tage
+                        </div>
+                        <div className="text-xs text-muted-foreground">bis zum Ziel</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.daily}</div>
+                        <div className="text-xs text-muted-foreground">kcal täglich</div>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.weekly}</div>
+                        <div className="text-xs text-muted-foreground">kcal wöchentlich</div>
+                      </div>
+                      <div className="p-3 bg-muted rounded-lg text-center">
+                        <div className="text-lg font-bold">
+                          {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
+                            Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(0)}g
+                        </div>
+                        <div className="text-xs text-muted-foreground">pro Woche</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Heart className="h-4 w-4 text-blue-500" />
+                      <div>
+                        <div className="text-sm font-medium">Muskelmasse Priorität</div>
+                        <div className="text-xs text-muted-foreground">
+                          Langsamere, aber gesunde Gewichtsveränderung
+                        </div>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={muscleMaintenancePriority}
+                      onCheckedChange={setMuscleMaintenancePriority}
+                    />
+                  </div>
+
+                  {(calculateRequiredCalorieDeficit()?.daily || 0) > 800 && (
+                    <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
+                        <div className="text-sm">
+                          <div className="font-medium text-orange-700 dark:text-orange-300">Achtung: Sehr aggressives Ziel</div>
+                          <div className="text-orange-600 dark:text-orange-400">
+                            Das Kalorienziel ist sehr niedrig. Erwäge ein langsameres, nachhaltigeres Tempo.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Macro Strategy */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
-              <Dumbbell className="h-5 w-5 text-white" />
+            <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+              <PieChart className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">{t('profile.macroStrategy')}</h2>
+            <h2 className="text-xl font-bold">Makronährstoff-Strategie</h2>
           </div>
 
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
@@ -730,19 +822,25 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   id: 'high_protein',
                   label: 'High Protein (50/20/30)',
                   desc: 'Optimal für Muskelaufbau & Sättigung',
-                  macros: '50% Protein • 20% Kohlenhydrate • 30% Fette'
+                  protein: 50, carbs: 20, fats: 30
                 },
                 { 
                   id: 'high_carb',
                   label: 'High Carb (20/50/30)',
                   desc: 'Ideal für intensive Workouts',
-                  macros: '20% Protein • 50% Kohlenhydrate • 30% Fette'
+                  protein: 20, carbs: 50, fats: 30
                 },
                 {
                   id: 'low_carb',
                   label: 'Low Carb (30/20/50)',
                   desc: 'Ketogene Ernährung & Fettverbrennung',
-                  macros: '30% Protein • 20% Kohlenhydrate • 50% Fette'
+                  protein: 30, carbs: 20, fats: 50
+                },
+                {
+                  id: 'custom',
+                  label: 'Individuell',
+                  desc: 'Eigene Werte definieren',
+                  protein: dailyGoals.protein, carbs: dailyGoals.carbs, fats: dailyGoals.fats
                 }
               ].map((strategy) => (
                 <div 
@@ -754,7 +852,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   }`}
                   onClick={() => {
                     setMacroStrategy(strategy.id);
-                    applyMacroStrategy(strategy.id);
+                    if (strategy.id !== 'custom') {
+                      setDailyGoals(prev => ({
+                        ...prev,
+                        protein: strategy.protein,
+                        carbs: strategy.carbs,
+                        fats: strategy.fats
+                      }));
+                      setHasUserModifiedMacros(false);
+                    }
                   }}
                 >
                   <div className="flex justify-between items-center">
@@ -770,50 +876,52 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               ))}
             </div>
 
-            <div className={`grid grid-cols-3 gap-4 transition-opacity ${
-              hasUserModifiedMacros ? 'opacity-50' : ''
-            }`}>
-              <div>
-                <Label className="text-xs">Protein %</Label>
-                <NumericInput
-                  value={dailyGoals.protein.toString()}
-                  onChange={(value) => {
-                    setDailyGoals(prev => ({ ...prev, protein: parseInt(value) || 0 }));
-                    setHasUserModifiedMacros(true);
-                  }}
-                  className="mt-1 text-sm"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Kohlenhydrate %</Label>
-                <NumericInput
-                  value={dailyGoals.carbs.toString()}
-                  onChange={(value) => {
-                    setDailyGoals(prev => ({ ...prev, carbs: parseInt(value) || 0 }));
-                    setHasUserModifiedMacros(true);
-                  }}
-                  className="mt-1 text-sm"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Fette %</Label>
-                <NumericInput
-                  value={dailyGoals.fats.toString()}
-                  onChange={(value) => {
-                    setDailyGoals(prev => ({ ...prev, fats: parseInt(value) || 0 }));
-                    setHasUserModifiedMacros(true);
-                  }}
-                  className="mt-1 text-sm"
-                />
-              </div>
-            </div>
+            {macroStrategy === 'custom' && (
+              <>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs">Protein %</Label>
+                    <NumericInput
+                      value={dailyGoals.protein.toString()}
+                      onChange={(value) => {
+                        setDailyGoals(prev => ({ ...prev, protein: parseInt(value) || 0 }));
+                        setHasUserModifiedMacros(true);
+                      }}
+                      className="mt-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Kohlenhydrate %</Label>
+                    <NumericInput
+                      value={dailyGoals.carbs.toString()}
+                      onChange={(value) => {
+                        setDailyGoals(prev => ({ ...prev, carbs: parseInt(value) || 0 }));
+                        setHasUserModifiedMacros(true);
+                      }}
+                      className="mt-1 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Fette %</Label>
+                    <NumericInput
+                      value={dailyGoals.fats.toString()}
+                      onChange={(value) => {
+                        setDailyGoals(prev => ({ ...prev, fats: parseInt(value) || 0 }));
+                        setHasUserModifiedMacros(true);
+                      }}
+                      className="mt-1 text-sm"
+                    />
+                  </div>
+                </div>
 
-            <div className="text-center text-xs text-muted-foreground">
-              Summe: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
-              {(dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats) !== 100 && (
-                <span className="text-orange-500 ml-2">⚠️ Sollte 100% sein</span>
-              )}
-            </div>
+                <div className="text-center text-xs text-muted-foreground">
+                  Summe: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
+                  {(dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats) !== 100 && (
+                    <span className="text-orange-500 ml-2">⚠️ Sollte 100% sein</span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
