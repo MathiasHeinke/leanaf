@@ -176,7 +176,7 @@ export const GlobalHeader = ({
             {/* GetleanAI Logo Icon */}
             <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-lg">
               <img 
-                src="/lovable-uploads/fa896878-ee7e-4b4b-9e03-e10d55543ca2.png" 
+                src="/lovable-uploads/e6df9a5e-d320-4766-a9e2-335671d25923.png" 
                 alt="GetleanAI Logo" 
                 className="w-8 h-8 object-contain"
               />
