@@ -138,21 +138,21 @@ export const BadgeSystem = () => {
   }
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-amber-50/80 via-amber-25/40 to-amber-50/30 dark:from-amber-950/30 dark:via-amber-950/15 dark:to-amber-950/10 border-amber-200/40 dark:border-amber-800/40 shadow-xl shadow-amber-500/10">
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="p-3 bg-gradient-to-br from-amber-500/20 to-amber-600/30 rounded-2xl shadow-lg">
-              <Trophy className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+    <Card className="p-4 sm:p-6 bg-gradient-to-br from-amber-50/80 via-amber-25/40 to-amber-50/30 dark:from-amber-950/30 dark:via-amber-950/15 dark:to-amber-950/10 border-amber-200/40 dark:border-amber-800/40 shadow-xl shadow-amber-500/10">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="relative flex-shrink-0">
+            <div className="p-2 sm:p-3 bg-gradient-to-br from-amber-500/20 to-amber-600/30 rounded-2xl shadow-lg">
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-amber-400" />
             </div>
             {/* Sparkle decoration */}
-            <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 animate-pulse" />
+            <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 animate-pulse" />
           </div>
-          <div>
-            <h3 className="font-bold text-xl bg-gradient-to-r from-amber-700 to-amber-600 dark:from-amber-300 dark:to-amber-200 bg-clip-text text-transparent">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-lg sm:text-xl bg-gradient-to-r from-amber-700 to-amber-600 dark:from-amber-300 dark:to-amber-200 bg-clip-text text-transparent">
               Deine Erfolge
             </h3>
-            <p className="text-sm text-muted-foreground font-medium">
+            <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
               {badges.length > 0 ? `🏆 ${badges.length} Badges verdient!` : 'Sammle deine ersten Badges!'}
             </p>
           </div>
@@ -160,44 +160,77 @@ export const BadgeSystem = () => {
 
         {/* Category Filter */}
         {categories.length > 1 && (
-          <div className="flex flex-wrap gap-2 lg:gap-3 p-3 lg:p-4 bg-gradient-to-r from-background/60 via-background/80 to-background/60 rounded-2xl border border-border/50 backdrop-blur-sm">
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 lg:px-6 lg:py-3 rounded-xl text-sm lg:text-base font-medium transition-all duration-300 ${
-                selectedCategory === 'all' 
-                  ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
-                  : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
-              }`}
-            >
-              Alle ({badges.length})
-            </button>
-            {categories.map(category => (
+          <div className="space-y-2">
+            {/* Mobile: Vertical layout */}
+            <div className="sm:hidden space-y-2">
               <button
-                key={category.name}
-                onClick={() => setSelectedCategory(category.name.toLowerCase())}
-                className={`px-4 py-2 lg:px-6 lg:py-3 rounded-xl text-sm lg:text-base font-medium transition-all duration-300 flex items-center gap-2 ${
-                  selectedCategory === category.name.toLowerCase() 
+                onClick={() => setSelectedCategory('all')}
+                className={`w-full px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                  selectedCategory === 'all' 
+                    ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
+                    : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
+                }`}
+              >
+                Alle ({badges.length})
+              </button>
+              <div className="grid grid-cols-2 gap-2">
+                {categories.map(category => (
+                  <button
+                    key={category.name}
+                    onClick={() => setSelectedCategory(category.name.toLowerCase())}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium transition-all duration-300 flex items-center justify-center gap-1 ${
+                      selectedCategory === category.name.toLowerCase() 
+                        ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30' 
+                        : 'bg-background/60 hover:bg-background/90 text-foreground border border-border/30'
+                    }`}
+                  >
+                    {category.icon}
+                    <span className="truncate">{category.name} ({category.badges.length})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Desktop: Horizontal layout */}
+            <div className="hidden sm:flex flex-wrap gap-2 lg:gap-3 p-3 lg:p-4 bg-gradient-to-r from-background/60 via-background/80 to-background/60 rounded-2xl border border-border/50 backdrop-blur-sm">
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className={`px-4 py-2 lg:px-6 lg:py-3 rounded-xl text-sm lg:text-base font-medium transition-all duration-300 ${
+                  selectedCategory === 'all' 
                     ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
                     : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
                 }`}
               >
-                {category.icon}
-                {category.name} ({category.badges.length})
+                Alle ({badges.length})
               </button>
-            ))}
+              {categories.map(category => (
+                <button
+                  key={category.name}
+                  onClick={() => setSelectedCategory(category.name.toLowerCase())}
+                  className={`px-4 py-2 lg:px-6 lg:py-3 rounded-xl text-sm lg:text-base font-medium transition-all duration-300 flex items-center gap-2 ${
+                    selectedCategory === category.name.toLowerCase() 
+                      ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30 scale-105' 
+                      : 'bg-background/60 hover:bg-background/90 text-foreground hover:scale-105 border border-border/30'
+                  }`}
+                >
+                  {category.icon}
+                  {category.name} ({category.badges.length})
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {displayBadges.length > 0 ? (
           <div className="space-y-4">
             {/* Badge Grid - Better desktop layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
               {(showAllBadges ? displayBadges : displayBadges.slice(0, isDesktop ? 8 : 3)).map((badge, index) => {
                 const badgeColor = getBadgeColor(badge.badge_type);
                 return (
                   <div 
                     key={badge.id}
-                    className="group relative p-5 rounded-2xl border-2 bg-gradient-to-br from-background/95 via-background/90 to-background/80 backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20 animate-fade-in"
+                    className="group relative p-4 sm:p-5 rounded-2xl border-2 bg-gradient-to-br from-background/95 via-background/90 to-background/80 backdrop-blur-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20 animate-fade-in"
                     style={{
                       borderColor: `${badgeColor}60`,
                       animationDelay: `${index * 100}ms`
@@ -212,10 +245,10 @@ export const BadgeSystem = () => {
                     />
                     
                     {/* Badge content */}
-                    <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                    <div className="relative z-10 flex flex-col items-center text-center gap-3 sm:gap-4">
                       {/* Icon with gradient background */}
                       <div 
-                        className="relative flex-shrink-0 p-4 rounded-2xl border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
+                        className="relative flex-shrink-0 p-3 sm:p-4 rounded-2xl border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
                         style={{
                           background: `linear-gradient(135deg, ${badgeColor}25, ${badgeColor}10)`,
                           borderColor: `${badgeColor}50`,
@@ -224,17 +257,17 @@ export const BadgeSystem = () => {
                         }}
                       >
                         {/* Sparkle effect */}
-                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse" />
+                        <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gradient-to-br from-white to-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse" />
                         
                         {getBadgeIcon(badge.badge_name, badge.badge_type)}
                       </div>
                       
                       {/* Badge info */}
-                      <div className="space-y-2">
-                        <div className="font-bold text-lg text-foreground group-hover:text-primary transition-colors duration-300">
+                      <div className="space-y-1 sm:space-y-2 min-w-0 w-full">
+                        <div className="font-bold text-base sm:text-lg text-foreground group-hover:text-primary transition-colors duration-300 break-words hyphens-auto">
                           {badge.badge_name}
                         </div>
-                        <div className="text-sm text-muted-foreground leading-relaxed">
+                        <div className="text-xs sm:text-sm text-muted-foreground leading-relaxed break-words">
                           {badge.badge_description}
                         </div>
                         <div className="text-xs text-muted-foreground/80 font-medium">
@@ -247,22 +280,22 @@ export const BadgeSystem = () => {
                       </div>
                       
                       {/* Achievement checkmark */}
-                      <div className="absolute top-3 right-3">
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
                         <div 
-                          className="w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
+                          className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300"
                           style={{
                             background: `linear-gradient(135deg, ${badgeColor}, ${badgeColor}80)`,
                             borderColor: `${badgeColor}`,
                             boxShadow: `0 4px 16px ${badgeColor}40`
                           }}
                         >
-                          <span className="text-white text-sm font-bold">✓</span>
+                          <span className="text-white text-xs sm:text-sm font-bold">✓</span>
                         </div>
                       </div>
                       
                       {/* Bottom gradient line */}
                       <div 
-                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-16 h-1 rounded-full opacity-60 group-hover:opacity-100 group-hover:w-24 transition-all duration-300"
+                        className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 sm:w-16 h-0.5 sm:h-1 rounded-full opacity-60 group-hover:opacity-100 group-hover:w-16 sm:group-hover:w-24 transition-all duration-300"
                         style={{
                           background: `linear-gradient(90deg, transparent, ${badgeColor}, transparent)`
                         }}
@@ -275,12 +308,12 @@ export const BadgeSystem = () => {
 
             {/* Show More/Less Button */}
             {displayBadges.length > (isDesktop ? 8 : 3) && (
-              <div className="flex justify-center pt-2">
+              <div className="flex justify-center pt-2 sm:pt-4">
                 <button
                   onClick={() => setShowAllBadges(!showAllBadges)}
-                  className="group flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-primary/10 via-primary/15 to-primary/10 hover:from-primary/20 hover:via-primary/25 hover:to-primary/20 text-primary rounded-xl border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/20"
+                  className="group flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-primary/10 via-primary/15 to-primary/10 hover:from-primary/20 hover:via-primary/25 hover:to-primary/20 text-primary rounded-xl border border-primary/20 hover:border-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/20"
                 >
-                  <span className="font-medium">
+                  <span className="font-medium text-sm sm:text-base">
                     {showAllBadges ? 'Weniger anzeigen' : `${displayBadges.length - (isDesktop ? 8 : 3)} weitere Erfolge anzeigen`}
                   </span>
                   <ChevronRight 
