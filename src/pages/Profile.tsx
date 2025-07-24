@@ -459,7 +459,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>{t('profile.loading')}</p>
+          <p>Lädt...</p>
         </div>
       </div>
     );
@@ -489,7 +489,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Settings className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">{t('profile.personalData')}</h2>
+            <h2 className="text-xl font-bold">Persönliche Daten</h2>
           </div>
 
             <div>
@@ -508,7 +508,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm">{t('profile.startWeight')}</Label>
+                <Label className="text-sm">Startgewicht</Label>
                 <NumericInput
                   value={startWeight}
                   onChange={(value) => {
@@ -524,7 +524,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">{t('profile.currentWeightLabel')}</Label>
+                <Label className="text-sm">Aktuelles Gewicht</Label>
                 <div className="mt-1 flex items-center justify-between h-10 px-3 py-2">
                   <span className="text-lg font-bold">{weight || '-'} kg</span>
                   {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
@@ -543,7 +543,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label className="text-sm">{t('profile.height')}</Label>
+                <Label className="text-sm">Größe (cm)</Label>
                 <NumericInput
                   value={height}
                   onChange={setHeight}
@@ -552,7 +552,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">{t('profile.age')}</Label>
+                <Label className="text-sm">Alter</Label>
                 <NumericInput
                   value={age}
                   onChange={setAge}
@@ -598,7 +598,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
               <Target className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">{t('profile.goals')}</h2>
+            <h2 className="text-xl font-bold">Ziele</h2>
           </div>
 
           <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
@@ -609,16 +609,16 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   <SelectValue placeholder="Wählen..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lose">Gewicht verlieren</SelectItem>
+                  <SelectItem value="lose">Gewicht reduzieren</SelectItem>
                   <SelectItem value="maintain">Gewicht halten</SelectItem>
-                  <SelectItem value="gain">Gewicht zunehmen</SelectItem>
+                  <SelectItem value="gain">Gewicht aufbauen</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-sm">{t('profile.targetWeight')}</Label>
+                <Label className="text-sm">Zielgewicht</Label>
                 <NumericInput
                   value={targetWeight}
                   onChange={setTargetWeight}
@@ -627,7 +627,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 />
               </div>
               <div>
-                <Label className="text-sm">{t('profile.targetDate')}</Label>
+                <Label className="text-sm">Zieldatum</Label>
                 <Input
                   type="date"
                   value={targetDate}
@@ -638,7 +638,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
 
             <div>
-              <Label className="text-sm">{t('profile.language')}</Label>
+              <Label className="text-sm">Sprache</Label>
               <div className="relative">
                 <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="mt-1">
@@ -657,156 +657,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 Sprache für die Benutzeroberfläche
               </div>
             </div>
-
-            <div className="space-y-3">
-              <div>
-                <Label className="text-sm font-medium">{t('profile.coachPersonality')}</Label>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Wie soll dein Coach mit dir kommunizieren?
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                {[
-                  { 
-                    id: 'motivierend',
-                    label: '🔥 Motivierend',
-                    desc: 'Pushend, energisch, feuernd dich an'
-                  },
-                  { 
-                    id: 'soft',
-                    label: '🤗 Sanft & Unterstützend',
-                    desc: 'Einfühlsam, geduldig, verständnisvoll'
-                  },
-                  {
-                    id: 'streng',
-                    label: '💪 Streng & Direkt',
-                    desc: 'Klare Ansagen, keine Ausreden, tough love'
-                  },
-                  {
-                    id: 'wissenschaftlich',
-                    label: '🧠 Wissenschaftlich',
-                    desc: 'Faktenbasiert, sachlich, präzise Erklärungen'
-                  }
-                ].map((personality) => (
-                  <div 
-                    key={personality.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      coachPersonality === personality.id 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setCoachPersonality(personality.id)}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-medium text-sm">{personality.label}</div>
-                        <div className="text-xs text-muted-foreground">{personality.desc}</div>
-                      </div>
-                      <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                        {coachPersonality === personality.id ? '✓' : '○'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* 3. Calorie Deficit/Surplus Calculation */}
-        {targetWeight && targetDate && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-orange-500 rounded-xl flex items-center justify-center">
-                <Calculator className="h-5 w-5 text-white" />
-              </div>
-              <h2 className="text-xl font-bold">Kalorienbedarf Berechnung</h2>
-            </div>
-
-            <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
-              {calculateRequiredCalorieDeficit() && (
-                <>
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium">
-                      Gewichtsveränderung: {weight && targetWeight ? 
-                        `${parseFloat(weight)} kg → ${parseFloat(targetWeight)} kg` : 
-                        'Zielgewicht eingeben'
-                      }
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-muted rounded-lg text-center">
-                        <div className="text-lg font-bold">
-                          {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {goal === 'lose' ? 'zu verlieren' : goal === 'gain' ? 'zuzunehmen' : 'zu halten'}
-                        </div>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg text-center">
-                        <div className="text-lg font-bold">
-                          {Math.max(0, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} Tage
-                        </div>
-                        <div className="text-xs text-muted-foreground">bis zum Ziel</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 bg-muted rounded-lg text-center">
-                        <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.daily}</div>
-                        <div className="text-xs text-muted-foreground">kcal täglich</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg text-center">
-                        <div className="text-lg font-bold">{calculateRequiredCalorieDeficit()?.weekly}</div>
-                        <div className="text-xs text-muted-foreground">kcal wöchentlich</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg text-center">
-                        <div className="text-lg font-bold">
-                          {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
-                            Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(0)}g
-                        </div>
-                        <div className="text-xs text-muted-foreground">pro Woche</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Heart className="h-4 w-4 text-blue-500" />
-                      <div>
-                        <div className="text-sm font-medium">Muskelmasse Priorität</div>
-                        <div className="text-xs text-muted-foreground">
-                          Langsamere, aber gesunde Gewichtsveränderung
-                        </div>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={muscleMaintenancePriority}
-                      onCheckedChange={setMuscleMaintenancePriority}
-                    />
-                  </div>
-
-                  {(calculateRequiredCalorieDeficit()?.daily || 0) > 800 && (
-                    <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
-                        <div className="text-sm">
-                          <div className="font-medium text-orange-700 dark:text-orange-300">Achtung: Sehr aggressives Ziel</div>
-                          <div className="text-orange-600 dark:text-orange-400">
-                            Das Kalorienziel ist sehr niedrig. Erwäge ein langsameres, nachhaltigeres Tempo.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 4. Macro Strategy */}
+        {/* 3. Macro Strategy */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
@@ -925,7 +779,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-        {/* 5. Daily Macros */}
+        {/* 4. Daily Macros */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
@@ -955,7 +809,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-        {/* 6. Intelligent Calorie Analysis */}
+        {/* 5. Intelligent Calorie Analysis */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
@@ -1017,7 +871,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
         </div>
 
-          {/* 7. Target Analysis */}
+          {/* 6. Target Analysis */}
           {targetWeight && targetDate && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
