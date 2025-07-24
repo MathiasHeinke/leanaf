@@ -394,27 +394,24 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Remove the aggressive message splitting since the edge function now handles intelligent responses
   const splitMessage = (message: string): string[] => {
-    // Split message into max 3 parts at sentence boundaries
+    // Only split very long messages (over 800 characters) as a fallback
+    if (message.length <= 800) {
+      return [message];
+    }
+    
+    // Split only at natural breaks for very long messages
     const sentences = message.split(/(?<=[.!?])\s+/);
     const parts: string[] = [];
     let currentPart = '';
     
     for (const sentence of sentences) {
-      // If adding this sentence would make the part too long, start a new part
-      if (currentPart && (currentPart + ' ' + sentence).length > 150) {
+      if (currentPart.length + sentence.length > 400 && currentPart.length > 0) {
         parts.push(currentPart.trim());
         currentPart = sentence;
-        
-        // Limit to max 3 parts
-        if (parts.length === 2) {
-          // Add remaining sentences to the last part
-          const remainingSentences = sentences.slice(sentences.indexOf(sentence));
-          currentPart = remainingSentences.join(' ');
-          break;
-        }
       } else {
-        currentPart = currentPart ? currentPart + ' ' + sentence : sentence;
+        currentPart += (currentPart ? ' ' : '') + sentence;
       }
     }
     
