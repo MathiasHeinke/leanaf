@@ -118,6 +118,11 @@ Generiere 4 intelligente, kontextuelle Anschlussfragen basierend auf:
 3. Der Expertise des Coaches
 4. Erkennbaren Problemen oder Optimierungsmöglichkeiten
 
+WICHTIG - PERSPEKTIVE:
+- Alle Fragen MÜSSEN aus der ICH-PERSPEKTIVE des Benutzers formuliert werden
+- Der Benutzer stellt diese Fragen dem Coach
+- Verwende "ich", "mein", "meine" anstatt "du", "dein", "deine"
+
 REGELN:
 - Jede Frage sollte spezifisch und actionable sein
 - Berücksichtige die aktuellen Fortschritte und Herausforderungen
@@ -125,20 +130,21 @@ REGELN:
 - Fragen sollten zur Coach-Expertise passen
 - Kurz und prägnant (max. 8 Wörter für Button-Text)
 - Nutze echte Daten-Insights
+- IMMER aus ICH-Perspektive formulieren
 
 FORMAT:
 Antworte nur mit einem JSON-Array von Objekten:
 [
   {
     "text": "Kurzer Button-Text",
-    "prompt": "Vollständige Frage mit Kontext und Daten"
+    "prompt": "Vollständige Frage aus ICH-Perspektive mit Kontext und Daten"
   }
 ]
 
-Beispiele für datenbasierte Fragen:
-- "Warum nur ${calorieProgress}% der Kalorien heute?"
-- "Protein-Timing bei ${userData.todaysTotals.protein}g optimieren?"
-- "Plateau bei ${userData.weightHistory[userData.weightHistory.length-1]?.weight}kg durchbrechen?"`;
+Beispiele für korrekte ICH-Perspektive:
+- "Ich habe heute nur ${calorieProgress}% meiner Kalorien erreicht - was sollte ich tun?"
+- "Meine Proteinaufnahme liegt bei ${userData.todaysTotals.protein}g - wie optimiere ich das Timing?"
+- "Ich stagniere bei ${userData.weightHistory[userData.weightHistory.length-1]?.weight}kg - welche Strategien helfen mir?"`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -152,7 +158,7 @@ Beispiele für datenbasierte Fragen:
           { role: 'system', content: systemPrompt },
           { 
             role: 'user', 
-            content: `Generiere jetzt 4 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext.` 
+            content: `Generiere jetzt 4 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext. WICHTIG: Alle Fragen müssen aus der ICH-Perspektive des Benutzers formuliert werden.` 
           }
         ],
         temperature: 0.7,
@@ -181,10 +187,10 @@ Beispiele für datenbasierte Fragen:
       console.error('Failed to parse AI response as JSON:', parseError);
       // Fallback to default suggestions if parsing fails
       suggestions = [
-        { text: 'Ernährung optimieren', prompt: 'Wie kann ich meine heutige Ernährung verbessern?' },
-        { text: 'Fortschritt analysieren', prompt: 'Analysiere meinen aktuellen Fortschritt und gib mir Tipps.' },
-        { text: 'Nächste Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' },
-        { text: 'Motivation steigern', prompt: 'Wie kann ich meine Motivation aufrechterhalten?' }
+        { text: 'Meine Ernährung analysieren', prompt: 'Wie kann ich meine heutige Ernährung verbessern?' },
+        { text: 'Meinen Fortschritt bewerten', prompt: 'Kannst du meinen aktuellen Fortschritt analysieren und mir Tipps geben?' },
+        { text: 'Meine nächsten Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' },
+        { text: 'Meine Motivation steigern', prompt: 'Wie kann ich meine Motivation aufrechterhalten?' }
       ];
     }
 
@@ -213,10 +219,10 @@ Beispiele für datenbasierte Fragen:
     
     // Return fallback suggestions in case of error
     const fallbackSuggestions = [
-      { text: 'Heutigen Tag analysieren', prompt: 'Analysiere meinen heutigen Fortschritt und gib mir Feedback.' },
-      { text: 'Ziele anpassen', prompt: 'Sollte ich meine aktuellen Ziele anpassen?' },
-      { text: 'Motivation steigern', prompt: 'Wie kann ich meine Motivation aufrechterhalten?' },
-      { text: 'Nächste Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' }
+      { text: 'Meinen Tag analysieren', prompt: 'Kannst du meinen heutigen Fortschritt analysieren und mir Feedback geben?' },
+      { text: 'Meine Ziele anpassen', prompt: 'Sollte ich meine aktuellen Ziele anpassen?' },
+      { text: 'Meine Motivation steigern', prompt: 'Wie kann ich meine Motivation aufrechterhalten?' },
+      { text: 'Meine nächsten Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' }
     ];
 
     return new Response(JSON.stringify({ 
