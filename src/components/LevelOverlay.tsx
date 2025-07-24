@@ -104,7 +104,7 @@ export const LevelOverlay = ({ isOpen, onClose, userPoints, getLevelColor }: Lev
               <div 
                 className="absolute inset-0 rounded-full transition-all duration-500 ease-out"
                 style={{
-                  background: `conic-gradient(from 0deg, #FFD700 ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
+                  background: `conic-gradient(from -90deg, #FFD700 ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
                   opacity: levelProgress > 0 ? 0.6 : 0
                 }}
               />

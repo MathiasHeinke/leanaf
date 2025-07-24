@@ -87,7 +87,8 @@ export const LevelBadge = () => {
         <div 
           className="absolute inset-0 w-8 h-8 rounded-full overflow-hidden transition-all duration-500"
           style={{
-            background: `conic-gradient(from -90deg, #FFD700 0deg ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg 360deg)`
+            background: `conic-gradient(from -90deg, #FFD700 ${levelProgress * 3.6}deg, transparent ${levelProgress * 3.6}deg)`,
+            opacity: levelProgress > 0 ? 0.6 : 0
           }}
         />
 
