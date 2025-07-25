@@ -4,7 +4,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon } from "lucide-react";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -150,6 +150,34 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
     setEditingWorkoutId(null);
   };
 
+  const handleDeleteWorkout = async (workout: any) => {
+    // Bestätigung anfordern
+    const confirmed = window.confirm(
+      `Möchtest du dieses Workout wirklich löschen?\n\n${
+        workout.workout_type === 'kraft' ? 'Krafttraining' : 
+        workout.workout_type === 'cardio' ? 'Cardio' : 
+        workout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'
+      } (${workout.duration_minutes || 0} Min)`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', workout.id);
+
+      if (error) throw error;
+
+      toast.success('Workout gelöscht!');
+      onWorkoutAdded?.(); // Refresh the data
+    } catch (error) {
+      console.error('Error deleting workout:', error);
+      toast.error('Fehler beim Löschen des Workouts');
+    }
+  };
+
   const isCompleted = !!hasWorkoutToday;
 
   return (
@@ -234,14 +262,26 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     )}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditWorkout(workout)}
-                  className="text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/50 p-1 h-auto"
-                >
-                  <Edit className="h-3 w-3" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditWorkout(workout)}
+                    className="text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/50 p-1 h-auto"
+                    title="Workout bearbeiten"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteWorkout(workout)}
+                    className="text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 p-1 h-auto"
+                    title="Workout löschen"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
