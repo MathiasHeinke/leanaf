@@ -158,8 +158,8 @@ export const MealInput = ({
             <Textarea
               value={inputText}
               onChange={(e) => {
-                // Fix space bug: allow all input including leading spaces
-                setInputText(sanitizeInput.text(e.target.value, 2000));
+                // Fix space bug: bypass sanitizeInput to allow leading spaces
+                setInputText(e.target.value.slice(0, 2000));
               }}
               placeholder={t('input.placeholder')}
               className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
