@@ -51,6 +51,7 @@ const Index = () => {
   
   // New state for today's data
   const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
+  const [todaysWorkouts, setTodaysWorkouts] = useState<any[]>([]);
   const [todaysSleep, setTodaysSleep] = useState<any>(null);
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
@@ -149,18 +150,22 @@ const Index = () => {
     try {
       const dateString = date.toISOString().split('T')[0];
 
-      // Load today's workout
-      const { data: workoutData, error: workoutError } = await supabase
+      // Load today's workouts (all workouts for the day)
+      const { data: workoutsData, error: workoutsError } = await supabase
         .from('workouts')
         .select('*')
         .eq('user_id', user.id)
         .eq('date', dateString)
-        .maybeSingle();
+        .order('created_at', { ascending: true });
 
-      if (workoutError) {
-        console.error('Error loading workout:', workoutError);
+      if (workoutsError) {
+        console.error('Error loading workouts:', workoutsError);
+        setTodaysWorkouts([]);
+        setTodaysWorkout(null);
       } else {
-        setTodaysWorkout(workoutData);
+        setTodaysWorkouts(workoutsData || []);
+        // Keep the first workout for backward compatibility
+        setTodaysWorkout(workoutsData && workoutsData.length > 0 ? workoutsData[0] : null);
       }
 
       // Load today's sleep
@@ -417,6 +422,7 @@ const Index = () => {
             <QuickWorkoutInput 
               onWorkoutAdded={handleWorkoutAdded}
               todaysWorkout={todaysWorkout}
+              todaysWorkouts={todaysWorkouts}
             />
           </SortableCard>
         );

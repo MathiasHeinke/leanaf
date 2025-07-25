@@ -20,9 +20,10 @@ import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
   todaysWorkout?: any;
+  todaysWorkouts?: any[]; // Array of all workouts for today
 }
 
-export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkoutInputProps) => {
+export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkouts = [] }: QuickWorkoutInputProps) => {
   const [workoutType, setWorkoutType] = useState("kraft");
   const [duration, setDuration] = useState<number[]>([30]);
   const [intensity, setIntensity] = useState<number[]>([7]);
@@ -31,25 +32,50 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
   const [walkingNotes, setWalkingNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
 
   // Check if ANY workout entry exists for today (including rest days)
-  const hasWorkoutToday = todaysWorkout && todaysWorkout.id;
+  const hasWorkoutToday = todaysWorkouts.length > 0;
 
   useEffect(() => {
-    if (hasWorkoutToday && !isEditing) {
-      // Pre-fill form with existing data
-      setWorkoutType(todaysWorkout.workout_type || "kraft");
-      setDuration([todaysWorkout.duration_minutes || 30]);
-      setIntensity([todaysWorkout.intensity || 7]);
-      setDistanceKm(todaysWorkout.distance_km?.toString() || "");
-      setSteps(todaysWorkout.steps?.toString() || "");
-      setWalkingNotes(todaysWorkout.walking_notes || "");
+    if (editingWorkoutId && !isAddingNew) {
+      // Pre-fill form when editing specific workout
+      const editingWorkout = todaysWorkouts.find(w => w.id === editingWorkoutId);
+      if (editingWorkout) {
+        setWorkoutType(editingWorkout.workout_type || "kraft");
+        setDuration([editingWorkout.duration_minutes || 30]);
+        setIntensity([editingWorkout.intensity || 7]);
+        setDistanceKm(editingWorkout.distance_km?.toString() || "");
+        setSteps(editingWorkout.steps?.toString() || "");
+        setWalkingNotes(editingWorkout.walking_notes || "");
+      }
+    } else if (!isAddingNew && !editingWorkoutId) {
+      // Reset form for new workout
+      setWorkoutType("kraft");
+      setDuration([30]);
+      setIntensity([7]);
+      setDistanceKm("");
+      setSteps("");
+      setWalkingNotes("");
     }
-  }, [hasWorkoutToday, todaysWorkout, isEditing]);
+  }, [editingWorkoutId, isAddingNew, todaysWorkouts]);
+
+  const resetForm = () => {
+    setWorkoutType("kraft");
+    setDuration([30]);
+    setIntensity([7]);
+    setDistanceKm("");
+    setSteps("");
+    setWalkingNotes("");
+    setIsEditing(false);
+    setIsAddingNew(false);
+    setEditingWorkoutId(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,23 +98,20 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         date: todayDateString
       };
 
-      if (hasWorkoutToday && todaysWorkout?.id) {
+      if (editingWorkoutId) {
         // Update existing workout - no points awarded
         const { error } = await supabase
           .from('workouts')
           .update(workoutData)
-          .eq('id', todaysWorkout.id);
+          .eq('id', editingWorkoutId);
 
         if (error) throw error;
         toast.success('Workout aktualisiert!');
       } else {
-        // Create new workout with proper UPSERT
+        // Create new workout using INSERT (not UPSERT to allow multiple workouts per day)
         const { error } = await supabase
           .from('workouts')
-          .upsert(workoutData, { 
-            onConflict: 'user_id,date',
-            ignoreDuplicates: false 
-          });
+          .insert(workoutData);
 
         if (error) throw error;
 
@@ -105,7 +128,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
         toast.success('Workout erfolgreich eingetragen!');
       }
 
-      setIsEditing(false);
+      resetForm();
       onWorkoutAdded?.();
     } catch (error) {
       console.error('Error saving workout:', error);
@@ -113,6 +136,18 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditWorkout = (workout: any) => {
+    setEditingWorkoutId(workout.id);
+    setIsEditing(true);
+    setIsAddingNew(false);
+  };
+
+  const handleAddNewWorkout = () => {
+    setIsAddingNew(true);
+    setIsEditing(true);
+    setEditingWorkoutId(null);
   };
 
   const isCompleted = !!hasWorkoutToday;
@@ -132,7 +167,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               <CheckCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-orange-800 dark:text-orange-200">Workout erledigt! 💪</h3>
+              <h3 className="font-semibold text-orange-800 dark:text-orange-200">
+                {todaysWorkouts.length === 1 ? 'Workout erledigt! 💪' : `${todaysWorkouts.length} Workouts erledigt! 💪`}
+              </h3>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -149,10 +186,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsEditing(true)}
+                onClick={handleAddNewWorkout}
                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                title="Weiteres Workout hinzufügen"
               >
-                <Edit className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -160,46 +198,65 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           {/* Points badges directly under title */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <PointsBadge 
-              points={3} 
-              bonusPoints={todaysWorkout.bonus_points > 0 ? todaysWorkout.bonus_points : undefined}
+              points={3 * todaysWorkouts.filter(w => w.workout_type !== 'pause').length} 
+              bonusPoints={todaysWorkouts.reduce((sum, w) => sum + (w.bonus_points || 0), 0)}
               icon="💪"
               animated={false}
               variant="secondary"
             />
           </div>
           
-          <p className="text-sm text-orange-600 dark:text-orange-400 mb-3">
-            {todaysWorkout.workout_type === 'kraft' ? 'Krafttraining' : 
-             todaysWorkout.workout_type === 'cardio' ? 'Cardio' : 
-             todaysWorkout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'} • 
-            {todaysWorkout.workout_type === 'pause' ? (
-              'Regeneration ist wichtig! 🛌'
-            ) : (
-              <>
-                 {todaysWorkout.duration_minutes || 0} Min • 
-                Intensität: {todaysWorkout.intensity || 0}/10
-              </>
-            )}
-            {todaysWorkout.distance_km > 0 && (
-              <> • {todaysWorkout.distance_km} km</>
-            )}
-            {todaysWorkout.steps > 0 && (
-              <> • {todaysWorkout.steps.toLocaleString()} Schritte</>
-            )}
-          </p>
+          {/* Display all workouts */}
+          <div className="space-y-2 mb-3">
+            {todaysWorkouts.map((workout, index) => (
+              <div key={workout.id} className="flex items-center justify-between bg-white/50 dark:bg-orange-900/20 rounded-lg p-2">
+                <div className="flex-1">
+                  <p className="text-sm text-orange-600 dark:text-orange-400">
+                    <span className="font-medium">
+                      {workout.workout_type === 'kraft' ? 'Krafttraining' : 
+                       workout.workout_type === 'cardio' ? 'Cardio' : 
+                       workout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'}
+                    </span>
+                    {workout.workout_type === 'pause' ? (
+                      <span className="ml-2">🛌 Regeneration</span>
+                    ) : (
+                      <>
+                        <span className="ml-2">{workout.duration_minutes || 0} Min</span>
+                        <span className="mx-1">•</span>
+                        <span>Intensität: {workout.intensity || 0}/10</span>
+                      </>
+                    )}
+                    {workout.distance_km > 0 && (
+                      <span className="ml-2">• {workout.distance_km} km</span>
+                    )}
+                    {workout.steps > 0 && (
+                      <span className="ml-2">• {workout.steps.toLocaleString()} Schritte</span>
+                    )}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEditWorkout(workout)}
+                  className="text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/50 p-1 h-auto"
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
           
           <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3">
             <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
-              <strong>Tipp:</strong> Konstanz ist wichtiger als Perfektion!
+              <strong>Tipp:</strong> Verschiedene Trainingsarten ergänzen sich optimal!
             </p>
             <p className="text-xs text-orange-600 dark:text-orange-400">
-              • Krafttraining stärkt Muskeln und Knochen
-              • Cardio verbessert deine Ausdauer
+              • Krafttraining + Cardio = maximaler Erfolg
               • Ruhetage sind genauso wichtig wie Training
               • Jede Bewegung zählt für deinen Erfolg
             </p>
             <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
-              <strong>Nächste Eintragung:</strong> Morgen 📅
+              <strong>Weiteres Workout:</strong> Einfach Plus-Button klicken! ➕
             </p>
           </div>
         </div>
@@ -377,11 +434,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                   )}
                 </Button>
                 
-                {hasWorkoutToday && isEditing && (
+                {(editingWorkoutId || isAddingNew) && (
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsEditing(false)}
+                    onClick={resetForm}
                     className="border-orange-300 text-orange-600"
                   >
                     Abbrechen
