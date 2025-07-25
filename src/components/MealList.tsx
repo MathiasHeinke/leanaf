@@ -172,17 +172,10 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <PointsBadge 
                   points={basePoints} 
+                  bonusPoints={bonusPoints > 0 ? bonusPoints : undefined}
                   icon={pointsIcon}
                   variant="secondary"
                 />
-                {bonusPoints > 0 && (
-                  <PointsBadge 
-                    points={0}
-                    bonusPoints={bonusPoints}
-                    icon="⭐"
-                    variant="outline"
-                  />
-                )}
                 {meal.quality_score && (
                   <div className="text-xs text-muted-foreground ml-1">
                     Qualität: {meal.quality_score}/10
