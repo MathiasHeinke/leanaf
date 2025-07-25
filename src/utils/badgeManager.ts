@@ -204,6 +204,7 @@ export class BadgeManager {
       .eq('user_id', this.userId)
       .limit(1);
 
+    // CRITICAL: Always check if badge already exists first
     const { data: existingBadge } = await supabase
       .from('badges')
       .select('id')
@@ -211,6 +212,13 @@ export class BadgeManager {
       .eq('badge_type', 'first_measurement')
       .maybeSingle();
 
+    console.log('🔍 First Measurement Badge Check:', {
+      hasMeasurements: measurements && measurements.length > 0,
+      hasExistingBadge: !!existingBadge,
+      userId: this.userId
+    });
+
+    // Only award if user has measurements AND no existing badge
     if (measurements && measurements.length > 0 && !existingBadge) {
       return {
         badge_type: 'first_measurement',
@@ -264,7 +272,7 @@ export class BadgeManager {
 
   protected async awardBadge(badge: BadgeCheck): Promise<void> {
     try {
-      // Double-check if badge already exists before awarding
+      // Triple-check if badge already exists before awarding
       const { data: existingBadge } = await supabase
         .from('badges')
         .select('id')
@@ -274,10 +282,12 @@ export class BadgeManager {
         .maybeSingle();
 
       if (existingBadge) {
-        console.log('Badge already exists, skipping:', badge.badge_name);
+        console.log('⚠️ Badge already exists, preventing duplicate:', badge.badge_name);
         throw new Error('Badge already exists');
       }
 
+      console.log('✅ Awarding new badge:', badge.badge_name);
+      
       await supabase
         .from('badges')
         .insert({
@@ -287,8 +297,10 @@ export class BadgeManager {
           badge_description: badge.badge_description,
           metadata: badge.metadata || {}
         });
+        
+      console.log('🎉 Badge successfully awarded:', badge.badge_name);
     } catch (error) {
-      console.error('Error awarding badge:', error);
+      console.error('❌ Error awarding badge:', error);
       throw error; // Re-throw to prevent duplicate processing
     }
   }
