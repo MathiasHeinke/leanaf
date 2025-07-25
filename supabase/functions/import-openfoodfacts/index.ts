@@ -58,16 +58,23 @@ async function testDatabaseConnection(): Promise<boolean> {
 // Import ONE product with extensive logging
 async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boolean> {
   try {
-    console.log('📦 Processing product:', {
-      code: product.code,
-      name: product.product_name,
-      brand: product.brands
-    });
-
     // Check if we have minimum required data
     if (!product.product_name) {
-      console.log('⚠️ Skipping - no product name');
       return false;
+    }
+
+    // Check for duplicates by source_id
+    if (product.code) {
+      const { data: existing } = await supabase
+        .from('food_database')
+        .select('id')
+        .eq('source_id', product.code)
+        .single();
+      
+      if (existing) {
+        console.log('⚠️ Skipping duplicate product:', product.code);
+        return false;
+      }
     }
 
     // Extract basic nutrition data
@@ -75,8 +82,6 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
     const protein = product.nutriments?.proteins_100g;
     const carbs = product.nutriments?.carbohydrates_100g;
     const fats = product.nutriments?.fat_100g;
-
-    console.log('🧮 Nutrition data:', { calories, protein, carbs, fats });
 
     // Create food database entry
     const foodEntry = {
@@ -94,8 +99,6 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
       confidence_score: 0.8
     };
 
-    console.log('💾 Attempting to insert:', foodEntry);
-
     const { data: insertedFood, error: insertError } = await supabase
       .from('food_database')
       .insert(foodEntry)
@@ -103,11 +106,14 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
       .single();
 
     if (insertError) {
+      // Skip duplicates silently (likely unique constraint violation)
+      if (insertError.code === '23505') {
+        return false;
+      }
       console.error('❌ Insert failed:', insertError);
       return false;
     }
 
-    console.log('✅ Successfully inserted food with ID:', insertedFood.id);
     return true;
 
   } catch (error) {
@@ -249,9 +255,9 @@ serve(async (req) => {
   }
 
   try {
-    const { action = 'import', limit = 1, country = 'de' } = await req.json().catch(() => ({}));
+    const { action = 'import', limit = 1, country = 'de', batch = 1 } = await req.json().catch(() => ({}));
     
-    console.log(`🎯 Action: ${action}, Limit: ${limit}, Country: ${country}`);
+    console.log(`🎯 Action: ${action}, Limit: ${limit}, Country: ${country}, Batch: ${batch}`);
 
     // Always test database connection first
     const dbConnected = await testDatabaseConnection();
