@@ -1744,6 +1744,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_badge_atomically: {
+        Args: {
+          p_user_id: string
+          p_badge_type: string
+          p_badge_name: string
+          p_badge_description: string
+          p_metadata?: Json
+        }
+        Returns: boolean
+      }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown

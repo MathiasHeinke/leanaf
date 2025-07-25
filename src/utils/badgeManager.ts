@@ -272,33 +272,28 @@ export class BadgeManager {
 
   protected async awardBadge(badge: BadgeCheck): Promise<void> {
     try {
-      // Triple-check if badge already exists before awarding
-      const { data: existingBadge } = await supabase
-        .from('badges')
-        .select('id')
-        .eq('user_id', this.userId)
-        .eq('badge_type', badge.badge_type)
-        .eq('badge_name', badge.badge_name)
-        .maybeSingle();
+      console.log('🎯 Attempting to award badge atomically:', badge.badge_name);
+      
+      // Use the atomic function to prevent duplicates at database level
+      const { data, error } = await supabase.rpc('award_badge_atomically', {
+        p_user_id: this.userId,
+        p_badge_type: badge.badge_type,
+        p_badge_name: badge.badge_name,
+        p_badge_description: badge.badge_description,
+        p_metadata: badge.metadata || {}
+      });
 
-      if (existingBadge) {
-        console.log('⚠️ Badge already exists, preventing duplicate:', badge.badge_name);
-        throw new Error('Badge already exists');
+      if (error) {
+        console.error('❌ Error in atomic badge award:', error);
+        throw error;
       }
 
-      console.log('✅ Awarding new badge:', badge.badge_name);
-      
-      await supabase
-        .from('badges')
-        .insert({
-          user_id: this.userId,
-          badge_type: badge.badge_type,
-          badge_name: badge.badge_name,
-          badge_description: badge.badge_description,
-          metadata: badge.metadata || {}
-        });
-        
-      console.log('🎉 Badge successfully awarded:', badge.badge_name);
+      if (data) {
+        console.log('🎉 New badge successfully awarded:', badge.badge_name);
+      } else {
+        console.log('⚠️ Badge already exists, atomic function prevented duplicate:', badge.badge_name);
+        throw new Error('Badge already exists');
+      }
     } catch (error) {
       console.error('❌ Error awarding badge:', error);
       throw error; // Re-throw to prevent duplicate processing

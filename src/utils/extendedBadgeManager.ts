@@ -4,41 +4,46 @@ import { BadgeCheck, BadgeManager } from "./badgeManager";
 export class ExtendedBadgeManager extends BadgeManager {
   
   async checkAndAwardAllBadges(): Promise<BadgeCheck[]> {
-    const newBadges: BadgeCheck[] = [];
+    const actuallyNewBadges: BadgeCheck[] = [];
 
     try {
-      // Existing badges from parent class
-      const existingBadges = await super.checkAndAwardBadges();
-      newBadges.push(...existingBadges);
+      console.log('🔄 Starting extended badge check for user:', this.userId);
+      
+      // First, check base badges from parent class
+      const baseBadges = await super.checkAndAwardBadges();
+      actuallyNewBadges.push(...baseBadges);
 
-      // New extended badges - check each type individually
+      // Extended badge checks - collect all potential badges first
+      const potentialBadges: BadgeCheck[] = [];
+      
       const levelBadge = await this.checkLevelAchievementBadges();
-      if (levelBadge) newBadges.push(levelBadge);
+      if (levelBadge) potentialBadges.push(levelBadge);
 
       const streakBadges = await this.checkExtendedStreakBadges();
-      newBadges.push(...streakBadges);
+      potentialBadges.push(...streakBadges);
 
       const commitmentBadges = await this.checkCommitmentBadges();
-      newBadges.push(...commitmentBadges);
+      potentialBadges.push(...commitmentBadges);
 
       const specialBadges = await this.checkSpecialAchievementBadges();
-      newBadges.push(...specialBadges);
+      potentialBadges.push(...specialBadges);
 
-      // Award only truly new badges (not already in database)
-      const actuallyNewBadges: BadgeCheck[] = [];
-      for (const badge of newBadges) {
+      // Award extended badges atomically and track which ones are actually new
+      for (const badge of potentialBadges) {
         try {
           await this.awardBadge(badge);
           actuallyNewBadges.push(badge);
+          console.log('✅ Awarded new extended badge:', badge.badge_name);
         } catch (error) {
-          // Badge might already exist due to unique constraints, which is fine
-          console.log('Badge already exists, skipping:', badge.badge_name);
+          // Badge already exists, skip silently
+          console.log('⚠️ Extended badge already exists:', badge.badge_name);
         }
       }
 
+      console.log('🎯 Total new badges awarded (including base):', actuallyNewBadges.length);
       return actuallyNewBadges;
     } catch (error) {
-      console.error('Error checking extended badges:', error);
+      console.error('❌ Error in extended badge checking:', error);
       return [];
     }
   }
