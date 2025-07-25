@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryCharts } from "@/components/HistoryCharts";
 import { Overview } from "@/components/Overview";
+import { TrainingAnalysis } from "@/components/TrainingAnalysis";
 import { roundNutritionalValue } from "@/utils/numberFormatting";
 
 const Analysis = () => {
@@ -227,6 +228,9 @@ const Analysis = () => {
         averages={averages}
         weightHistory={weightHistory}
       />
+
+      {/* Training & Kraft Analysis - neue Sektion */}
+      <TrainingAnalysis timeRange="month" />
 
       {/* History Charts - nur die Charts behalten */}
       <HistoryCharts 
