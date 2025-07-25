@@ -25,16 +25,16 @@ export function ImportOpenfoodfacts() {
     setResult(null);
     setProgress(0);
     
-    const batchSize = 20; // Import 20 products per batch
-    const totalProducts = 100;
+    const batchSize = 25; // Smaller batches for better German/European coverage
+    const totalProducts = 250; // More total products to get better variety
     const batches = Math.ceil(totalProducts / batchSize);
     setTotalBatches(batches);
     
     try {
-      console.log('🚀 Starting batch import of 100 German foods...');
+      console.log('🚀 Starting import of German/European foods (Hähnchen, Rind, etc.)...');
       
       let totalImported = 0;
-      let totalProducts = 0;
+      let totalSkipped = 0;
       
       for (let batch = 0; batch < batches; batch++) {
         setCurrentBatch(batch + 1);
@@ -45,35 +45,40 @@ export function ImportOpenfoodfacts() {
             action: 'import',
             limit: currentBatchSize,
             country: 'de',
-            batch: batch + 1
+            batch: batch + 1,
+            background: batch > 2 // Use background processing for later batches
           }
         });
 
         if (importError) {
-          throw new Error(`Batch ${batch + 1} failed: ${importError.message}`);
+          console.error(`Batch ${batch + 1} error:`, importError);
+          // Continue with next batch instead of failing completely
+          continue;
         }
 
-        if (data.success) {
-          totalImported += data.imported || 0;
-          totalProducts += data.total || 0;
+        if (data?.success) {
+          totalImported += data.products_imported || 0;
+          totalSkipped += data.products_skipped || 0;
+          console.log(`Batch ${batch + 1}: ${data.products_imported} imported, ${data.products_skipped} skipped`);
         }
         
         const progressPercent = ((batch + 1) / batches) * 100;
         setProgress(progressPercent);
         
-        // Small delay between batches to avoid overwhelming the API
+        // Longer delay between batches for German-focused searches
         if (batch < batches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
-      console.log('✅ Batch import completed');
+      console.log('✅ Import completed - Focus: German/European basic foods');
       setResult({
         success: true,
-        message: `Successfully imported ${totalImported}/${totalProducts} products in ${batches} batches`,
+        message: `Import abgeschlossen: ${totalImported} deutsche/europäische Produkte importiert (${totalSkipped} übersprungen)`,
         imported: totalImported,
-        total: totalProducts,
-        batches: batches
+        skipped: totalSkipped,
+        batches: batches,
+        focus: 'Deutsche/Europäische Grundprodukte: Hähnchen, Rind, Gemüse, etc.'
       });
     } catch (err) {
       console.error('❌ Import error:', err);
@@ -110,7 +115,7 @@ export function ImportOpenfoodfacts() {
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle>🍎 Food Database Import</CardTitle>
-        <CardDescription>Import German foods from Open Food Facts</CardDescription>
+        <CardDescription>Import deutsche/europäische Grundprodukte: Hähnchen, Rind, Gemüse, etc.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
@@ -119,7 +124,7 @@ export function ImportOpenfoodfacts() {
             disabled={isImporting}
             className="flex-1"
           >
-            {isImporting ? `⏳ Batch ${currentBatch}/${totalBatches}...` : '🚀 Import 100 Products'}
+            {isImporting ? `⏳ Batch ${currentBatch}/${totalBatches}...` : '🥩 Import Deutsche Produkte'}
           </Button>
           <Button 
             onClick={getStats} 

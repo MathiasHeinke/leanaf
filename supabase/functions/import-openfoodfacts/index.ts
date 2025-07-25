@@ -122,53 +122,89 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
   }
 }
 
-// Test Open Food Facts API with multiple fallback strategies
+// Test Open Food Facts API with German/European focus and basic food categories
 async function testOpenFoodFactsAPI(country = 'de', limit = 1): Promise<OpenFoodFactsProduct[]> {
   console.log(`🌐 Testing Open Food Facts API with country: ${country}, limit: ${limit}`);
   
-  // Multiple API strategies to try
+  // Focus on German/European basic food categories
   const strategies = [
-    // Strategy 1: German products with nutrition data
+    // Strategy 1: German meat products (Hähnchen, Rind, etc.)
     {
-      name: 'German products with complete nutrition',
+      name: 'German meat products',
       params: {
         action: 'process',
         json: '1',
-        page_size: limit.toString(),
+        page_size: Math.min(limit, 10).toString(), // Smaller batches
         sort_by: 'popularity',
-        countries: country,
-        states: 'en:complete'
+        countries: 'de',
+        categories: 'meats'
       }
     },
-    // Strategy 2: Just German products (simpler)
+    // Strategy 2: German dairy products
     {
-      name: 'German products (basic)',
+      name: 'German dairy products',
       params: {
         action: 'process',
         json: '1',
-        page_size: limit.toString(),
-        sort_by: 'unique_scans_n',
-        countries: country
+        page_size: Math.min(limit, 10).toString(),
+        sort_by: 'popularity',
+        countries: 'de',
+        categories: 'dairy'
       }
     },
-    // Strategy 3: Any European products with German language
+    // Strategy 3: German vegetables and fruits
     {
-      name: 'European products with German names',
+      name: 'German fruits and vegetables',
       params: {
         action: 'process',
         json: '1',
-        page_size: limit.toString(),
+        page_size: Math.min(limit, 10).toString(),
+        sort_by: 'popularity',
+        countries: 'de',
+        categories: 'plant-based-foods'
+      }
+    },
+    // Strategy 4: German basic foods
+    {
+      name: 'German basic foods',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: Math.min(limit, 10).toString(),
+        sort_by: 'popularity',
+        countries: 'de'
+      }
+    },
+    // Strategy 5: European meat products
+    {
+      name: 'European meat products',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: Math.min(limit, 10).toString(),
+        sort_by: 'popularity',
+        countries: 'de,at,ch,nl,fr',
+        categories: 'meats'
+      }
+    },
+    // Strategy 6: German language products
+    {
+      name: 'German language products',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: Math.min(limit, 10).toString(),
         sort_by: 'popularity',
         languages: 'de'
       }
     },
-    // Strategy 4: Most popular global products
+    // Strategy 7: Global popular products (fallback)
     {
       name: 'Global popular products',
       params: {
         action: 'process',
         json: '1',
-        page_size: limit.toString(),
+        page_size: Math.min(limit, 10).toString(),
         sort_by: 'popularity'
       }
     }
@@ -189,7 +225,7 @@ async function testOpenFoodFactsAPI(country = 'de', limit = 1): Promise<OpenFood
           'User-Agent': 'KaloAI-FoodImport/1.0 (+https://kaloai.app)',
           'Accept': 'application/json'
         },
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(15000) // 15 second timeout for category searches
       });
 
       console.log('📡 API Response status:', response.status);
