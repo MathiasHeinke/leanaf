@@ -243,7 +243,7 @@ PERPLEXITY-BEISPIELE pro Coach:
 💚 Lucy: "Warum schwankt mein Hunger bei konstanten ${userData.todaysTotals.calories} kcal so extrem?"
 🎯 Sascha: "Welche Progressive-Overload-Strategie passt zu meiner aktuellen Stagnation?"
 💪 Kai: "Wie baue ich nach ${conversationContext.conversationLength} Gesprächen endlich Routine auf?"
-🏆 Markus: "Isch hab ${userData.todaysTotals.protein}g Protein - reicht des für echte Masse, Maggus?"
+🏆 Markus: "Isch hab ${userData.todaysTotals.protein}g Protein - reicht des für echte Masse, Maggus?"`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
