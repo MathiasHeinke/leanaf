@@ -19,7 +19,7 @@ export function ImportOpenfoodfacts() {
       const { data, error: importError } = await supabase.functions.invoke('import-openfoodfacts', {
         body: {
           action: 'import',
-          limit: 50,
+          limit: 1,
           country: 'de'
         }
       });
