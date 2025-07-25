@@ -341,19 +341,11 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <PointsBadge 
               points={2} 
+              bonusPoints={todaysWeight.bonus_points > 0 ? todaysWeight.bonus_points : undefined}
               icon="⚖️"
               animated={false}
               variant="secondary"
             />
-            {todaysWeight.bonus_points && todaysWeight.bonus_points > 0 && (
-              <PointsBadge 
-                points={0}
-                bonusPoints={todaysWeight.bonus_points}
-                icon="⭐"
-                animated={false}
-                variant="outline"
-              />
-            )}
           </div>
           
           <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
@@ -366,19 +358,11 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <PointsBadge 
                 points={5} 
+                bonusPoints={todaysWeight.bonus_points > 0 ? todaysWeight.bonus_points : undefined}
                 icon="⚖️"
                 animated={showPointsAnimation}
                 variant="secondary"
               />
-              {todaysWeight.bonus_points && todaysWeight.bonus_points > 0 && (
-                <PointsBadge 
-                  points={0}
-                  bonusPoints={todaysWeight.bonus_points}
-                  icon="⭐"
-                  animated={showPointsAnimation}
-                  variant="outline"
-                />
-              )}
             </div>
           )}
           

@@ -161,19 +161,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <PointsBadge 
               points={3} 
+              bonusPoints={todaysWorkout.bonus_points > 0 ? todaysWorkout.bonus_points : undefined}
               icon="💪"
               animated={false}
               variant="secondary"
             />
-            {todaysWorkout.bonus_points && todaysWorkout.bonus_points > 0 && (
-              <PointsBadge 
-                points={0}
-                bonusPoints={todaysWorkout.bonus_points}
-                icon="⭐"
-                animated={false}
-                variant="outline"
-              />
-            )}
           </div>
           
           <p className="text-sm text-orange-600 dark:text-orange-400 mb-3">
