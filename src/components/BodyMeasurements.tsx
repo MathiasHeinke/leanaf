@@ -79,7 +79,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("🔥 Starting form submission, current editing state:", isEditing);
+    // Starting form submission
     if (!user) return;
 
     // Check if at least one measurement is provided
@@ -109,18 +109,18 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
       if (hasMeasurementsThisWeek) {
         // Update existing measurements - no points awarded
-        console.log("📝 Updating existing measurements...");
+        // Updating existing measurements
         const { error } = await supabase
           .from('body_measurements')
           .update(measurementData)
           .eq('id', todaysMeasurements.id);
 
         if (error) throw error;
-        console.log("✅ Update successful");
+        // Update successful
         toast.success('Körpermaße aktualisiert!');
       } else {
         // Create new measurements using UPSERT to prevent duplicates
-        console.log("🆕 Creating new measurements...");
+        // Creating new measurements
         const { error } = await supabase
           .from('body_measurements')
           .upsert(measurementData, { 
@@ -129,7 +129,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           });
 
         if (error) throw error;
-        console.log("✅ Creation successful");
+        // Creation successful
 
         // Award points for body measurements
         await awardPoints('body_measurements', getPointsForActivity('body_measurements'), 'Körpermaße gemessen');
@@ -139,13 +139,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
       setIsEditing(false);
       onMeasurementsAdded?.();
-      console.log("✅ Measurements saved successfully, editing mode closed");
+      // Measurements saved successfully, editing mode closed
     } catch (error) {
       console.error('Error saving measurements:', error);
       toast.error('Fehler beim Speichern der Körpermaße');
     } finally {
       setIsSubmitting(false);
-      console.log("🔄 Form submission completed, isSubmitting set to false");
+      // Form submission completed
     }
   };
 
