@@ -1390,40 +1390,61 @@ export type Database = {
       }
       sleep_tracking: {
         Row: {
+          bedtime: string | null
           bonus_points: number | null
           created_at: string
           date: string
           id: string
+          last_meal_time: string | null
+          morning_libido: number | null
+          motivation_level: number | null
           notes: string | null
           quality_score: number | null
+          screen_time_evening: number | null
           sleep_hours: number | null
+          sleep_interruptions: number | null
           sleep_quality: number | null
           updated_at: string
           user_id: string
+          wake_time: string | null
         }
         Insert: {
+          bedtime?: string | null
           bonus_points?: number | null
           created_at?: string
           date?: string
           id?: string
+          last_meal_time?: string | null
+          morning_libido?: number | null
+          motivation_level?: number | null
           notes?: string | null
           quality_score?: number | null
+          screen_time_evening?: number | null
           sleep_hours?: number | null
+          sleep_interruptions?: number | null
           sleep_quality?: number | null
           updated_at?: string
           user_id: string
+          wake_time?: string | null
         }
         Update: {
+          bedtime?: string | null
           bonus_points?: number | null
           created_at?: string
           date?: string
           id?: string
+          last_meal_time?: string | null
+          morning_libido?: number | null
+          motivation_level?: number | null
           notes?: string | null
           quality_score?: number | null
+          screen_time_evening?: number | null
           sleep_hours?: number | null
+          sleep_interruptions?: number | null
           sleep_quality?: number | null
           updated_at?: string
           user_id?: string
+          wake_time?: string | null
         }
         Relationships: []
       }
