@@ -254,6 +254,62 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_products: {
+        Row: {
+          barcode: string | null
+          brand_name: string
+          calories_adjustment: number | null
+          carbs_adjustment: number | null
+          created_at: string
+          fats_adjustment: number | null
+          food_id: string
+          id: string
+          package_size: number | null
+          package_unit: string | null
+          product_name: string
+          protein_adjustment: number | null
+          updated_at: string
+        }
+        Insert: {
+          barcode?: string | null
+          brand_name: string
+          calories_adjustment?: number | null
+          carbs_adjustment?: number | null
+          created_at?: string
+          fats_adjustment?: number | null
+          food_id: string
+          id?: string
+          package_size?: number | null
+          package_unit?: string | null
+          product_name: string
+          protein_adjustment?: number | null
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string | null
+          brand_name?: string
+          calories_adjustment?: number | null
+          carbs_adjustment?: number | null
+          created_at?: string
+          fats_adjustment?: number | null
+          food_id?: string
+          id?: string
+          package_size?: number | null
+          package_unit?: string | null
+          product_name?: string
+          protein_adjustment?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_products_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "food_database"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bug_reports: {
         Row: {
           category: string
@@ -767,6 +823,175 @@ export type Database = {
         }
         Relationships: []
       }
+      food_aliases: {
+        Row: {
+          alias: string
+          alias_type: string
+          created_at: string
+          food_id: string
+          id: string
+          language: string
+          usage_frequency: number | null
+        }
+        Insert: {
+          alias: string
+          alias_type: string
+          created_at?: string
+          food_id: string
+          id?: string
+          language?: string
+          usage_frequency?: number | null
+        }
+        Update: {
+          alias?: string
+          alias_type?: string
+          created_at?: string
+          food_id?: string
+          id?: string
+          language?: string
+          usage_frequency?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_aliases_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "food_database"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      food_database: {
+        Row: {
+          allergens: string[] | null
+          barcode: string | null
+          brand: string | null
+          calcium: number | null
+          calories: number | null
+          carbs: number | null
+          category: string | null
+          cholesterol: number | null
+          confidence_score: number | null
+          created_at: string
+          fats: number | null
+          fiber: number | null
+          id: string
+          ingredients: string | null
+          iron: number | null
+          name: string
+          name_de: string | null
+          name_en: string | null
+          protein: number | null
+          saturated_fat: number | null
+          serving_description: string | null
+          serving_size: number | null
+          sodium: number | null
+          source: string
+          source_id: string | null
+          sugar: number | null
+          trans_fat: number | null
+          updated_at: string
+          verified: boolean | null
+          vitamin_c: number | null
+        }
+        Insert: {
+          allergens?: string[] | null
+          barcode?: string | null
+          brand?: string | null
+          calcium?: number | null
+          calories?: number | null
+          carbs?: number | null
+          category?: string | null
+          cholesterol?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          fats?: number | null
+          fiber?: number | null
+          id?: string
+          ingredients?: string | null
+          iron?: number | null
+          name: string
+          name_de?: string | null
+          name_en?: string | null
+          protein?: number | null
+          saturated_fat?: number | null
+          serving_description?: string | null
+          serving_size?: number | null
+          sodium?: number | null
+          source: string
+          source_id?: string | null
+          sugar?: number | null
+          trans_fat?: number | null
+          updated_at?: string
+          verified?: boolean | null
+          vitamin_c?: number | null
+        }
+        Update: {
+          allergens?: string[] | null
+          barcode?: string | null
+          brand?: string | null
+          calcium?: number | null
+          calories?: number | null
+          carbs?: number | null
+          category?: string | null
+          cholesterol?: number | null
+          confidence_score?: number | null
+          created_at?: string
+          fats?: number | null
+          fiber?: number | null
+          id?: string
+          ingredients?: string | null
+          iron?: number | null
+          name?: string
+          name_de?: string | null
+          name_en?: string | null
+          protein?: number | null
+          saturated_fat?: number | null
+          serving_description?: string | null
+          serving_size?: number | null
+          sodium?: number | null
+          source?: string
+          source_id?: string | null
+          sugar?: number | null
+          trans_fat?: number | null
+          updated_at?: string
+          verified?: boolean | null
+          vitamin_c?: number | null
+        }
+        Relationships: []
+      }
+      food_embeddings: {
+        Row: {
+          created_at: string
+          embedding: string | null
+          food_id: string
+          id: string
+          text_content: string
+        }
+        Insert: {
+          created_at?: string
+          embedding?: string | null
+          food_id: string
+          id?: string
+          text_content: string
+        }
+        Update: {
+          created_at?: string
+          embedding?: string | null
+          food_id?: string
+          id?: string
+          text_content?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_embeddings_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "food_database"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_images: {
         Row: {
           created_at: string
@@ -1238,6 +1463,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_food_corrections: {
+        Row: {
+          confidence_after: number | null
+          confidence_before: number | null
+          corrected_food_id: string | null
+          corrected_values: Json | null
+          correction_type: string
+          created_at: string
+          food_query: string
+          id: string
+          original_values: Json | null
+          suggested_food_id: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence_after?: number | null
+          confidence_before?: number | null
+          corrected_food_id?: string | null
+          corrected_values?: Json | null
+          correction_type: string
+          created_at?: string
+          food_query: string
+          id?: string
+          original_values?: Json | null
+          suggested_food_id?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence_after?: number | null
+          confidence_before?: number | null
+          corrected_food_id?: string | null
+          corrected_values?: Json | null
+          correction_type?: string
+          created_at?: string
+          food_query?: string
+          id?: string
+          original_values?: Json | null
+          suggested_food_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_food_corrections_corrected_food_id_fkey"
+            columns: ["corrected_food_id"]
+            isOneToOne: false
+            referencedRelation: "food_database"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_food_corrections_suggested_food_id_fkey"
+            columns: ["suggested_food_id"]
+            isOneToOne: false
+            referencedRelation: "food_database"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_points: {
         Row: {
           created_at: string
@@ -1462,6 +1744,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       check_ai_usage_limit: {
         Args: {
           p_user_id: string
@@ -1497,6 +1783,38 @@ export type Database = {
         Args: { p_identifier: string; p_time_window_minutes?: number }
         Returns: Json
       }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
       is_admin_by_email: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -1512,6 +1830,26 @@ export type Database = {
       is_super_admin_by_email: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
       }
       log_failed_login_attempt: {
         Args: {
@@ -1545,6 +1883,49 @@ export type Database = {
         }
         Returns: undefined
       }
+      search_foods_by_text: {
+        Args: { search_query: string; match_count?: number }
+        Returns: {
+          food_id: string
+          name: string
+          brand: string
+          category: string
+          calories: number
+          protein: number
+          carbs: number
+          fats: number
+          rank: number
+        }[]
+      }
+      search_similar_foods: {
+        Args: {
+          query_embedding: string
+          similarity_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          food_id: string
+          name: string
+          brand: string
+          similarity: number
+          calories: number
+          protein: number
+          carbs: number
+          fats: number
+        }[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
       update_user_points_and_level: {
         Args: {
           p_user_id: string
@@ -1567,6 +1948,30 @@ export type Database = {
       validate_password_strength: {
         Args: { password: string }
         Returns: Json
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
