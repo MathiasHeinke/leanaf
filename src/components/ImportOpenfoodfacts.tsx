@@ -20,7 +20,7 @@ export function ImportOpenfoodfacts() {
         body: {
           action: 'import',
           limit: 50,
-          country: 'germany'
+          country: 'de'
         }
       });
 

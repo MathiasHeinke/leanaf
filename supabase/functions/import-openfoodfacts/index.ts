@@ -241,7 +241,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action = 'import', category = 'all', limit = 100, country = 'germany' } = await req.json().catch(() => ({}));
+    const { action = 'import', category = 'all', limit = 100, country = 'de' } = await req.json().catch(() => ({}));
 
     console.log(`Starting Open Food Facts import: ${action}, category: ${category}, limit: ${limit}`);
 
