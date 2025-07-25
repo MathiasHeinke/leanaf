@@ -48,10 +48,10 @@ export const MealEditForm = ({ meal, onSave, onCancel }: MealEditFormProps) => {
       const updates = {
         text: editValues.text,
         meal_type: editValues.meal_type,
-        calories: parseLocaleFloat(editValues.calories) || 0,
-        protein: parseLocaleFloat(editValues.protein) || 0,
-        carbs: parseLocaleFloat(editValues.carbs) || 0,
-        fats: parseLocaleFloat(editValues.fats) || 0
+        calories: Math.round(parseLocaleFloat(editValues.calories) || 0),
+        protein: Math.round((parseLocaleFloat(editValues.protein) || 0) * 10) / 10,
+        carbs: Math.round((parseLocaleFloat(editValues.carbs) || 0) * 10) / 10,
+        fats: Math.round((parseLocaleFloat(editValues.fats) || 0) * 10) / 10
       };
 
       const { error } = await supabase

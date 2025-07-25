@@ -200,8 +200,8 @@ export const DailyProgress = ({
         <div className="text-center space-y-4">
           <div className="space-y-2">
             <div className="text-4xl font-bold text-primary">
-              {dailyTotals.calories}
-              <span className="text-xl text-muted-foreground font-normal">/{dailyGoal.calories}</span>
+              {Math.round(dailyTotals.calories)}
+              <span className="text-xl text-muted-foreground font-normal">/{Math.round(dailyGoal.calories)}</span>
             </div>
             <div className="text-sm text-muted-foreground font-medium">{t('progress.caloriesConsumed')}</div>
           </div>
@@ -259,7 +259,7 @@ export const DailyProgress = ({
             {t('macros.protein')}
           </div>
           <div className={`text-2xl font-bold mb-2 ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-300'}`}>
-            {dailyTotals.protein}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
+            {Math.round(dailyTotals.protein * 10) / 10}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(proteinProgress, 100)} 
@@ -280,7 +280,7 @@ export const DailyProgress = ({
             {t('macros.carbs')}
           </div>
           <div className={`text-2xl font-bold mb-2 ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-orange-700 dark:text-orange-300'}`}>
-            {dailyTotals.carbs}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
+            {Math.round(dailyTotals.carbs * 10) / 10}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(carbsProgress, 100)} 
@@ -301,7 +301,7 @@ export const DailyProgress = ({
             {t('macros.fats')}
           </div>
           <div className={`text-2xl font-bold mb-2 ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-purple-700 dark:text-purple-300'}`}>
-            {dailyTotals.fats}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
+            {Math.round(dailyTotals.fats * 10) / 10}<span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
           </div>
           <Progress 
             value={Math.min(fatsProgress, 100)} 

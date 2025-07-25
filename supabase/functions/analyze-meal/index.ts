@@ -375,6 +375,14 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       const totalDuration = Date.now() - requestStartTime;
       console.log(`🎉 [ANALYZE-MEAL] Request completed successfully in ${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
       
+      // Round nutritional values before returning
+      if (parsed.total) {
+        parsed.total.calories = Math.round(parsed.total.calories || 0);
+        parsed.total.protein = Math.round((parsed.total.protein || 0) * 10) / 10;
+        parsed.total.carbs = Math.round((parsed.total.carbs || 0) * 10) / 10;
+        parsed.total.fats = Math.round((parsed.total.fats || 0) * 10) / 10;
+      }
+
       return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

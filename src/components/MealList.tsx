@@ -148,21 +148,21 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
 
               {/* Nutritional Values */}
               <div className="space-y-2 mb-3">
-                <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="grid grid-cols-4 gap-2 text-xs">
                   <div className="text-center p-2 bg-muted/50 rounded">
-                    <div className="font-semibold">{meal.calories}</div>
+                    <div className="font-semibold">{Math.round(meal.calories)}</div>
                     <div className="text-muted-foreground">kcal</div>
                   </div>
                   <div className="text-center p-2 bg-muted/50 rounded">
-                    <div className="font-semibold">{meal.protein}g</div>
+                    <div className="font-semibold">{Math.round(meal.protein * 10) / 10}g</div>
                     <div className="text-muted-foreground">Protein</div>
                   </div>
                   <div className="text-center p-2 bg-muted/50 rounded">
-                    <div className="font-semibold">{meal.carbs}g</div>
+                    <div className="font-semibold">{Math.round(meal.carbs * 10) / 10}g</div>
                     <div className="text-muted-foreground">Kohlenhydrate</div>
                   </div>
                   <div className="text-center p-2 bg-muted/50 rounded">
-                    <div className="font-semibold">{meal.fats}g</div>
+                    <div className="font-semibold">{Math.round(meal.fats * 10) / 10}g</div>
                     <div className="text-muted-foreground">Fett</div>
                   </div>
                 </div>
