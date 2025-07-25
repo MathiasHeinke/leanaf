@@ -284,6 +284,74 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       }
     ];
     
+    // 🔍 STEP 1: Try RAG-enhanced analysis first
+    console.log('🔍 [ANALYZE-MEAL] Attempting RAG-enhanced analysis...');
+    const ragStartTime = Date.now();
+    
+    try {
+      const { data: ragResult, error: ragError } = await supabaseClient.functions.invoke('enhanced-meal-analysis', {
+        body: {
+          text: text,
+          images: images,
+          userId: userId
+        }
+      });
+
+      const ragDuration = Date.now() - ragStartTime;
+      console.log(`⏱️ [ANALYZE-MEAL] RAG analysis took: ${ragDuration}ms`);
+
+      if (ragResult?.success && ragResult?.result) {
+        const result = ragResult.result;
+        console.log(`✅ [ANALYZE-MEAL] RAG analysis successful: ${result.analysis_method}, confidence: ${result.confidence_score}`);
+        
+        // Convert RAG format to frontend-compatible format
+        const ragResponse = {
+          title: text || 'Analysierte Mahlzeit',
+          items: result.foods.map((food: any) => ({
+            name: food.name + (food.brand ? ` (${food.brand})` : ''),
+            amount: `${food.estimated_portion}g`,
+            calories: Math.round((food.calories || 0) * food.estimated_portion / 100),
+            protein: Math.round((food.protein || 0) * food.estimated_portion / 100 * 10) / 10,
+            carbs: Math.round((food.carbs || 0) * food.estimated_portion / 100 * 10) / 10,
+            fats: Math.round((food.fats || 0) * food.estimated_portion / 100 * 10) / 10
+          })),
+          total: {
+            calories: result.total_calories,
+            protein: result.total_protein,
+            carbs: result.total_carbs,
+            fats: result.total_fats
+          },
+          confidence: result.confidence_score > 0.8 ? 'high' : result.confidence_score > 0.6 ? 'medium' : 'low',
+          notes: `${result.analysis_method === 'hybrid_rag' ? '🎯 Präzise Datenbank-basierte Analyse' : '🤖 KI-basierte Schätzung'} (Konfidenz: ${Math.round(result.confidence_score * 100)}%). ${result.suggestions?.join(' ') || ''}`
+        };
+
+        // Override with user-provided values if available
+        if (hasUserValues) {
+          console.log('🎯 [ANALYZE-MEAL] Applying user-provided values to RAG result:', userValues);
+          if (userValues.calories) ragResponse.total.calories = userValues.calories;
+          if (userValues.protein) ragResponse.total.protein = userValues.protein;
+          if (userValues.carbs) ragResponse.total.carbs = userValues.carbs;
+          if (userValues.fats) ragResponse.total.fats = userValues.fats;
+          
+          ragResponse.confidence = 'high';
+          ragResponse.notes = ragResponse.notes + ' Benutzerdefinierte Werte wurden berücksichtigt.';
+        }
+
+        const totalDuration = Date.now() - requestStartTime;
+        console.log(`🎉 [ANALYZE-MEAL] RAG analysis completed successfully in ${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
+        
+        return new Response(JSON.stringify(ragResponse), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else {
+        console.log('⚠️ [ANALYZE-MEAL] RAG analysis failed or returned no results, falling back to OpenAI');
+        if (ragError) console.log('RAG Error:', ragError);
+      }
+    } catch (ragException) {
+      console.log('⚠️ [ANALYZE-MEAL] RAG analysis exception, falling back to OpenAI:', ragException);
+    }
+
+    // 🤖 STEP 2: Fallback to traditional OpenAI analysis
     console.log('📤 [ANALYZE-MEAL] Sending request to OpenAI...');
     const openAIStartTime = Date.now();
     
