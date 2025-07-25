@@ -122,90 +122,100 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
   }
 }
 
-// Test Open Food Facts API with German/European focus and basic food categories
-async function testOpenFoodFactsAPI(country = 'de', limit = 1): Promise<OpenFoodFactsProduct[]> {
-  console.log(`🌐 Testing Open Food Facts API with country: ${country}, limit: ${limit}`);
+// Test Open Food Facts API with German/European focus and intelligent pagination
+async function testOpenFoodFactsAPI(country = 'de', limit = 50, batch = 1): Promise<OpenFoodFactsProduct[]> {
+  console.log(`🌐 Testing Open Food Facts API with country: ${country}, limit: ${limit}, batch: ${batch}`);
   
-  // Focus on German/European basic food categories
+  // Calculate pagination offset based on batch
+  const pageOffset = Math.max(1, Math.floor((batch - 1) * 0.5) + 1); // Different pages for different batches
+  const randomOffset = Math.floor(Math.random() * 5); // Add some randomness
+  
+  // Focus on German/European basic food categories with pagination
   const strategies = [
-    // Strategy 1: German meat products (Hähnchen, Rind, etc.)
-    {
-      name: 'German meat products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: Math.min(limit, 10).toString(), // Smaller batches
-        sort_by: 'popularity',
-        countries: 'de',
-        categories: 'meats'
-      }
-    },
-    // Strategy 2: German dairy products
-    {
-      name: 'German dairy products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: Math.min(limit, 10).toString(),
-        sort_by: 'popularity',
-        countries: 'de',
-        categories: 'dairy'
-      }
-    },
-    // Strategy 3: German vegetables and fruits
-    {
-      name: 'German fruits and vegetables',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: Math.min(limit, 10).toString(),
-        sort_by: 'popularity',
-        countries: 'de',
-        categories: 'plant-based-foods'
-      }
-    },
-    // Strategy 4: German basic foods
-    {
-      name: 'German basic foods',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: Math.min(limit, 10).toString(),
-        sort_by: 'popularity',
-        countries: 'de'
-      }
-    },
-    // Strategy 5: European meat products
-    {
-      name: 'European meat products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: Math.min(limit, 10).toString(),
-        sort_by: 'popularity',
-        countries: 'de,at,ch,nl,fr',
-        categories: 'meats'
-      }
-    },
-    // Strategy 6: German language products
-    {
-      name: 'German language products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: Math.min(limit, 10).toString(),
-        sort_by: 'popularity',
-        languages: 'de'
-      }
-    },
-    // Strategy 7: Global popular products (fallback)
+    // Strategy 1: Global popular products (most diverse results first)
     {
       name: 'Global popular products',
       params: {
         action: 'process',
         json: '1',
-        page_size: Math.min(limit, 10).toString(),
+        page_size: limit.toString(),
+        page: (pageOffset + randomOffset).toString(),
         sort_by: 'popularity'
+      }
+    },
+    // Strategy 2: German basic foods with pagination
+    {
+      name: 'German basic foods',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: limit.toString(),
+        page: pageOffset.toString(),
+        sort_by: 'popularity',
+        countries: 'de'
+      }
+    },
+    // Strategy 3: European products
+    {
+      name: 'European products',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: limit.toString(),
+        page: pageOffset.toString(),
+        sort_by: 'popularity',
+        countries: 'de,at,ch,nl,fr'
+      }
+    },
+    // Strategy 4: German meat products
+    {
+      name: 'German meat products',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: limit.toString(),
+        page: pageOffset.toString(),
+        sort_by: 'popularity',
+        countries: 'de',
+        categories: 'meats'
+      }
+    },
+    // Strategy 5: German dairy products
+    {
+      name: 'German dairy products',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: limit.toString(),
+        page: pageOffset.toString(),
+        sort_by: 'popularity',
+        countries: 'de',
+        categories: 'dairy'
+      }
+    },
+    // Strategy 6: German fruits and vegetables
+    {
+      name: 'German fruits and vegetables',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: limit.toString(),
+        page: pageOffset.toString(),
+        sort_by: 'popularity',
+        countries: 'de',
+        categories: 'plant-based-foods'
+      }
+    },
+    // Strategy 7: German language products
+    {
+      name: 'German language products',
+      params: {
+        action: 'process',
+        json: '1',
+        page_size: limit.toString(),
+        page: pageOffset.toString(),
+        sort_by: 'popularity',
+        languages: 'de'
       }
     }
   ];
@@ -225,7 +235,7 @@ async function testOpenFoodFactsAPI(country = 'de', limit = 1): Promise<OpenFood
           'User-Agent': 'KaloAI-FoodImport/1.0 (+https://kaloai.app)',
           'Accept': 'application/json'
         },
-        signal: AbortSignal.timeout(15000) // 15 second timeout for category searches
+        signal: AbortSignal.timeout(30000) // 30 second timeout for larger batches
       });
 
       console.log('📡 API Response status:', response.status);
@@ -291,7 +301,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action = 'import', limit = 1, country = 'de', batch = 1 } = await req.json().catch(() => ({}));
+    const { action = 'import', limit = 50, country = 'de', batch = 1 } = await req.json().catch(() => ({}));
     
     console.log(`🎯 Action: ${action}, Limit: ${limit}, Country: ${country}, Batch: ${batch}`);
 
@@ -312,8 +322,8 @@ serve(async (req) => {
     }
 
     if (action === 'import') {
-      // Test API first
-      const products = await testOpenFoodFactsAPI(country, limit);
+      // Test API first with batch parameter
+      const products = await testOpenFoodFactsAPI(country, limit, batch);
       
       if (products.length === 0) {
         return new Response(
