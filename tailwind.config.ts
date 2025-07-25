@@ -76,6 +76,16 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			fontSize: {
+				'xs': ['clamp(0.7rem, 0.5rem + 0.5vw, 0.75rem)', { lineHeight: '1rem' }],
+				'sm': ['clamp(0.8rem, 0.6rem + 0.5vw, 0.875rem)', { lineHeight: '1.25rem' }],
+				'base': ['clamp(0.9rem, 0.7rem + 0.5vw, 1rem)', { lineHeight: '1.5rem' }],
+				'lg': ['clamp(1rem, 0.8rem + 0.6vw, 1.125rem)', { lineHeight: '1.75rem' }],
+				'xl': ['clamp(1.1rem, 0.9rem + 0.7vw, 1.25rem)', { lineHeight: '1.75rem' }],
+				'2xl': ['clamp(1.3rem, 1rem + 0.8vw, 1.5rem)', { lineHeight: '2rem' }],
+				'3xl': ['clamp(1.6rem, 1.2rem + 1vw, 1.875rem)', { lineHeight: '2.25rem' }],
+				'4xl': ['clamp(2rem, 1.5rem + 1.2vw, 2.25rem)', { lineHeight: '2.5rem' }],
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',

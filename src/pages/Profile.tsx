@@ -517,7 +517,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Settings className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Persönliche Daten</h2>
+            <h2 className="text-lg md:text-xl font-bold">Persönliche Daten</h2>
           </div>
 
             <div>
@@ -533,7 +533,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </div>
 
-          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
+          <div className="gradient-personal rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm">Startgewicht</Label>
@@ -639,10 +639,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
               <Target className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Ziele</h2>
+            <h2 className="text-lg md:text-xl font-bold">Ziele</h2>
           </div>
 
-          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
+          <div className="gradient-goals rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
             <div>
               <Label className="text-sm">Ziel</Label>
               <Select value={goal} onValueChange={setGoal}>
@@ -686,10 +686,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
               <PieChart className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Makronährstoff-Strategie</h2>
+            <h2 className="text-lg md:text-xl font-bold">Makronährstoff-Strategie</h2>
           </div>
 
-          <div className="bg-background rounded-xl p-4 shadow-sm border space-y-4">
+          <div className="gradient-macros rounded-xl p-4 shadow-sm border space-y-4">
             <div className="space-y-3">
               {[
                 { 
@@ -805,21 +805,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Tägliche Makros</h2>
+            <h2 className="text-lg md:text-xl font-bold">Tägliche Makros</h2>
           </div>
 
-          <div className="bg-background rounded-xl p-4 shadow-sm border">
+          <div className="gradient-macros rounded-xl p-4 shadow-sm border">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold">{calculateMacroGrams().protein}g</div>
+                <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().protein}g</div>
                 <div className="text-sm text-muted-foreground">Protein</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
+                <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
                 <div className="text-sm text-muted-foreground">Kohlenhydrate</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{calculateMacroGrams().fats}g</div>
+                <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().fats}g</div>
                 <div className="text-sm text-muted-foreground">Fette</div>
               </div>
             </div>
@@ -835,29 +835,29 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Brain className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold">Intelligente Kalorien-Analyse</h2>
+            <h2 className="text-lg md:text-xl font-bold">Intelligente Kalorien-Analyse</h2>
           </div>
 
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
+              <div className="gradient-analysis rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
                 <div className="text-xs text-muted-foreground">BMR</div>
                 <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
               </div>
-              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-lg font-bold">{tdee || '-'}</div>
+              <div className="gradient-analysis rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-base md:text-lg font-bold">{tdee || '-'}</div>
                 <div className="text-xs text-muted-foreground">TDEE</div>
                 <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
               </div>
-              <div className="bg-background rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-lg font-bold">{targetCalories}</div>
+              <div className="gradient-analysis rounded-xl p-3 shadow-sm border text-center">
+                <div className="text-base md:text-lg font-bold">{targetCalories}</div>
                 <div className="text-xs text-muted-foreground">Ziel</div>
                 <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
               </div>
             </div>
 
-            <div className="bg-background rounded-xl p-3 shadow-sm border">
+            <div className="gradient-analysis rounded-xl p-3 shadow-sm border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
                 <div className="flex items-center gap-2">
