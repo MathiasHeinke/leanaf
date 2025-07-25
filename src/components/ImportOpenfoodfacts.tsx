@@ -3,14 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ImportOpenfoodfacts() {
+  const { user } = useAuth();
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [currentBatch, setCurrentBatch] = useState(0);
   const [totalBatches, setTotalBatches] = useState(0);
+
+  // Only show for specific email address
+  if (!user || user.email !== 'office@mathiasheinke.de') {
+    return null;
+  }
 
   const startImport = async () => {
     setIsImporting(true);
