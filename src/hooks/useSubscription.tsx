@@ -383,7 +383,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     let consecutiveErrors = 0;
     const maxErrors = 3;
     
-    // Increase interval from 30 seconds to 5 minutes to avoid interrupting user input
+    // Check subscription every 4 hours - 6 times per day is sufficient
     const interval = setInterval(async () => {
       try {
         secureLogger.debug('Auto-refreshing subscription');
@@ -399,7 +399,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
           clearInterval(interval);
         }
       }
-    }, 300000); // Changed from 30000 (30 seconds) to 300000 (5 minutes)
+    }, 14400000); // 4 hours = 4 * 60 * 60 * 1000 = 14400000ms
 
     return () => clearInterval(interval);
   }, [user]);
