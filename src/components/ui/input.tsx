@@ -12,6 +12,21 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
+        onKeyDown={(e) => {
+          console.log('🐛 [Input] onKeyDown:', {
+            key: e.key,
+            keyCode: e.keyCode,
+            isSpace: e.key === ' ' || e.keyCode === 32
+          });
+          props.onKeyDown?.(e);
+        }}
+        onInput={(e) => {
+          console.log('🐛 [Input] onInput:', {
+            value: (e.target as HTMLInputElement).value,
+            containsSpaces: (e.target as HTMLInputElement).value.includes(' ')
+          });
+          props.onInput?.(e);
+        }}
         {...props}
       />
     )

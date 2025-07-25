@@ -156,10 +156,44 @@ export const MealInput = ({
           <div className="relative">
             <Textarea
               value={inputText}
-              onChange={(e) => setInputText(sanitizeInput.text(e.target.value, 2000))}
+              onChange={(e) => {
+                console.log('🐛 [MealInput] onChange triggered:', {
+                  inputValue: e.target.value,
+                  inputLength: e.target.value.length,
+                  containsSpaces: e.target.value.includes(' '),
+                  charCodes: e.target.value.split('').map(c => c.charCodeAt(0))
+                });
+                // TEMPORARILY DISABLED SANITIZER FOR DEBUGGING
+                setInputText(e.target.value);
+                // Original: setInputText(sanitizeInput.text(e.target.value, 2000));
+              }}
               placeholder={t('input.placeholder')}
               className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => {
+                console.log('🐛 [MealInput] onKeyDown:', {
+                  key: e.key,
+                  keyCode: e.keyCode,
+                  which: e.which,
+                  code: e.code,
+                  isSpace: e.key === ' ' || e.keyCode === 32
+                });
+                handleKeyDown(e);
+              }}
+              onKeyPress={(e) => {
+                console.log('🐛 [MealInput] onKeyPress:', {
+                  key: e.key,
+                  keyCode: e.keyCode,
+                  which: e.which,
+                  isSpace: e.key === ' ' || e.keyCode === 32
+                });
+              }}
+              onInput={(e) => {
+                console.log('🐛 [MealInput] onInput:', {
+                  inputType: (e as any).inputType,
+                  data: (e as any).data,
+                  value: (e.target as HTMLTextAreaElement).value
+                });
+              }}
               disabled={isAnalyzing || isUploading}
             />
             
