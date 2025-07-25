@@ -176,13 +176,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               'Regeneration ist wichtig! 🛌'
             ) : (
               <>
-                {todaysWorkout.duration_minutes || 0} Min • 
+                 {todaysWorkout.duration_minutes || 0} Min • 
                 Intensität: {todaysWorkout.intensity || 0}/10
-                {todaysWorkout.distance_km && (
+                {todaysWorkout.distance_km > 0 && (
                   <> • {todaysWorkout.distance_km} km</>
                 )}
-                {todaysWorkout.steps && (
-                  <> • {todaysWorkout.steps} Schritte</>
+                {todaysWorkout.steps > 0 && (
+                  <> • {todaysWorkout.steps.toLocaleString()} Schritte</>
                 )}
               </>
             )}
@@ -338,6 +338,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                       onChange={(value) => setSteps(value)}
                       placeholder="z.B. 8000"
                       min={0}
+                      allowDecimals={false}
                       className="text-sm border-green-300 focus:border-green-500"
                     />
                   </div>
