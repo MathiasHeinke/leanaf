@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,11 +13,37 @@ export function ImportOpenfoodfacts() {
   const [progress, setProgress] = useState(0);
   const [currentBatch, setCurrentBatch] = useState(0);
   const [totalBatches, setTotalBatches] = useState(0);
+  const [stats, setStats] = useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   // Only show for specific email address
   if (!user || user.email !== 'office@mathiasheinke.de') {
     return null;
   }
+
+  // Load stats on component mount
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    setIsLoadingStats(true);
+    try {
+      const { data, error: statsError } = await supabase.functions.invoke('import-openfoodfacts', {
+        body: { action: 'stats' }
+      });
+
+      if (statsError) {
+        throw new Error(`Stats failed: ${statsError.message}`);
+      }
+
+      setStats(data);
+    } catch (err) {
+      console.error('❌ Stats error:', err);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
   const startImport = async () => {
     setIsImporting(true);
@@ -104,6 +130,7 @@ export function ImportOpenfoodfacts() {
       }
 
       console.log('📊 Current stats:', data);
+      setStats(data); // Update stats state
       setResult(data);
     } catch (err) {
       console.error('❌ Stats error:', err);
@@ -118,6 +145,51 @@ export function ImportOpenfoodfacts() {
         <CardDescription>Import deutsche/europäische Grundprodukte: Hähnchen, Rind, Gemüse, etc.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Aktuelle Statistik-Übersicht */}
+        <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-sm text-gray-700">📊 Import Status</h3>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={loadStats}
+              disabled={isLoadingStats}
+              className="h-6 px-2 text-xs"
+            >
+              {isLoadingStats ? '⏳' : '🔄'} Aktualisieren
+            </Button>
+          </div>
+          
+          {stats ? (
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Gesamt Produkte:</span>
+                  <span className="font-medium">{stats.total_foods?.toLocaleString() || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">OpenFoodFacts:</span>
+                  <span className="font-medium text-blue-600">{stats.openfoodfacts_count?.toLocaleString() || 0}</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Import-Rate:</span>
+                  <span className="font-medium text-green-600">300/Stunde</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Cron-Job:</span>
+                  <span className="font-medium text-green-600">⚡ Alle 2min</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 text-xs py-2">
+              {isLoadingStats ? 'Lade Statistiken...' : 'Keine Statistiken verfügbar'}
+            </div>
+          )}
+        </div>
+
         <div className="flex gap-2">
           <Button 
             onClick={startImport} 
