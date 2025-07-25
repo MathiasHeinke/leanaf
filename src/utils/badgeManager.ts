@@ -34,9 +34,13 @@ export class BadgeManager {
       const weeklyGoalBadge = await this.checkWeeklyGoal();
       if (weeklyGoalBadge) newBadges.push(weeklyGoalBadge);
 
-      // Award new badges
+      // Award new badges with duplicate prevention
       for (const badge of newBadges) {
-        await this.awardBadge(badge);
+        try {
+          await this.awardBadge(badge);
+        } catch (error) {
+          // Badge already exists, skip silently
+        }
       }
 
       return newBadges;
@@ -260,6 +264,20 @@ export class BadgeManager {
 
   protected async awardBadge(badge: BadgeCheck): Promise<void> {
     try {
+      // Double-check if badge already exists before awarding
+      const { data: existingBadge } = await supabase
+        .from('badges')
+        .select('id')
+        .eq('user_id', this.userId)
+        .eq('badge_type', badge.badge_type)
+        .eq('badge_name', badge.badge_name)
+        .maybeSingle();
+
+      if (existingBadge) {
+        console.log('Badge already exists, skipping:', badge.badge_name);
+        throw new Error('Badge already exists');
+      }
+
       await supabase
         .from('badges')
         .insert({
@@ -271,6 +289,7 @@ export class BadgeManager {
         });
     } catch (error) {
       console.error('Error awarding badge:', error);
+      throw error; // Re-throw to prevent duplicate processing
     }
   }
 
