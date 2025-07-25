@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryCharts } from "@/components/HistoryCharts";
 import { Overview } from "@/components/Overview";
+import { roundNutritionalValue } from "@/utils/numberFormatting";
 
 const Analysis = () => {
   const { user } = useAuth();
@@ -84,7 +85,12 @@ const Analysis = () => {
           fats: sum.fats + (meal.fats || 0)
         }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
-        setTodaysTotals(totals);
+        setTodaysTotals({
+          calories: roundNutritionalValue(totals.calories, 'calories'),
+          protein: roundNutritionalValue(totals.protein, 'macros'),
+          carbs: roundNutritionalValue(totals.carbs, 'macros'),
+          fats: roundNutritionalValue(totals.fats, 'macros')
+        });
       }
 
       // Load historical data (last 30 days)
@@ -143,10 +149,10 @@ const Analysis = () => {
           }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
           setAverages({
-            calories: Math.round(weeklyAverages.calories / lastWeekData.length),
-            protein: Math.round(weeklyAverages.protein / lastWeekData.length),
-            carbs: Math.round(weeklyAverages.carbs / lastWeekData.length),
-            fats: Math.round(weeklyAverages.fats / lastWeekData.length)
+            calories: roundNutritionalValue(weeklyAverages.calories / lastWeekData.length, 'calories'),
+            protein: roundNutritionalValue(weeklyAverages.protein / lastWeekData.length, 'macros'),
+            carbs: roundNutritionalValue(weeklyAverages.carbs / lastWeekData.length, 'macros'),
+            fats: roundNutritionalValue(weeklyAverages.fats / lastWeekData.length, 'macros')
           });
         }
 

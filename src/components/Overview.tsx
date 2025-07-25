@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { calculateWeightPrognosis, type WeightPrognosisData } from "@/utils/weightPrognosis";
+import { formatNutritionalValue } from "@/utils/numberFormatting";
 
 interface OverviewProps {
   todaysTotals: {
@@ -258,7 +259,7 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
               </div>
               <div className="space-y-2">
                 <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                  {todaysTotals.calories} / {dailyGoals.calories}
+                  {formatNutritionalValue(todaysTotals.calories, 'calories')} / {formatNutritionalValue(dailyGoals.calories, 'calories')}
                 </div>
                 <Progress 
                   value={Math.min(100, calorieProgress)} 
@@ -277,7 +278,7 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
               </div>
               <div className="space-y-2">
                 <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {todaysTotals.protein}g / {dailyGoals.protein}g
+                  {formatNutritionalValue(todaysTotals.protein, 'macros')}g / {formatNutritionalValue(dailyGoals.protein, 'macros')}g
                 </div>
                 <Progress 
                   value={Math.min(100, proteinProgress)} 
@@ -296,7 +297,7 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
               </div>
               <div className="space-y-2">
                 <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                  {todaysTotals.carbs}g / {dailyGoals.carbs}g
+                  {formatNutritionalValue(todaysTotals.carbs, 'macros')}g / {formatNutritionalValue(dailyGoals.carbs, 'macros')}g
                 </div>
                 <Progress 
                   value={Math.min(100, carbsProgress)} 
@@ -315,7 +316,7 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
               </div>
               <div className="space-y-2">
                 <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                  {todaysTotals.fats}g / {dailyGoals.fats}g
+                  {formatNutritionalValue(todaysTotals.fats, 'macros')}g / {formatNutritionalValue(dailyGoals.fats, 'macros')}g
                 </div>
                 <Progress 
                   value={Math.min(100, fatsProgress)} 
@@ -335,23 +336,23 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
           <div className="grid grid-cols-4 gap-3">
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-xs text-muted-foreground mb-1">Kalorien</div>
-              <div className="text-sm font-bold">{averages.calories}</div>
-              <div className="text-xs text-muted-foreground">vs {todaysTotals.calories} heute</div>
+              <div className="text-sm font-bold">{formatNutritionalValue(averages.calories, 'calories')}</div>
+              <div className="text-xs text-muted-foreground">vs {formatNutritionalValue(todaysTotals.calories, 'calories')} heute</div>
             </div>
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-xs text-muted-foreground mb-1">Protein</div>
-              <div className="text-sm font-bold">{averages.protein}g</div>
-              <div className="text-xs text-muted-foreground">vs {todaysTotals.protein}g heute</div>
+              <div className="text-sm font-bold">{formatNutritionalValue(averages.protein, 'macros')}g</div>
+              <div className="text-xs text-muted-foreground">vs {formatNutritionalValue(todaysTotals.protein, 'macros')}g heute</div>
             </div>
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-xs text-muted-foreground mb-1">Carbs</div>
-              <div className="text-sm font-bold">{averages.carbs}g</div>
-              <div className="text-xs text-muted-foreground">vs {todaysTotals.carbs}g heute</div>
+              <div className="text-sm font-bold">{formatNutritionalValue(averages.carbs, 'macros')}g</div>
+              <div className="text-xs text-muted-foreground">vs {formatNutritionalValue(todaysTotals.carbs, 'macros')}g heute</div>
             </div>
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-xs text-muted-foreground mb-1">Fette</div>
-              <div className="text-sm font-bold">{averages.fats}g</div>
-              <div className="text-xs text-muted-foreground">vs {todaysTotals.fats}g heute</div>
+              <div className="text-sm font-bold">{formatNutritionalValue(averages.fats, 'macros')}g</div>
+              <div className="text-xs text-muted-foreground">vs {formatNutritionalValue(todaysTotals.fats, 'macros')}g heute</div>
             </div>
           </div>
         </div>
