@@ -267,12 +267,12 @@ export const WorkoutCalendar = () => {
                           <div className="flex items-center gap-3">
                             <span className="text-2xl">{getWorkoutTypeEmoji(workout.workout_type)}</span>
                             <div>
-                              <div className="font-medium">
-                                {getWorkoutTypeName(workout.workout_type)}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {workout.duration_minutes} Min • Intensität: <span className={getIntensityColor(workout.intensity)}>{workout.intensity}/10</span>
-                              </div>
+                           <div className="font-medium">
+                             {getWorkoutTypeName(workout.workout_type)}
+                           </div>
+                           <div className="text-sm text-muted-foreground">
+                             {workout.duration_minutes} Min • Intensität: <span className={getIntensityColor(workout.intensity)}>{workout.intensity}/10</span>
+                           </div>
                             </div>
                           </div>
                           
