@@ -92,7 +92,6 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           headers: {
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'Cache-Control': forceRefresh ? 'no-cache' : 'max-age=60'
           }
         });
 
@@ -377,13 +376,28 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     refreshSubscription();
   }, [user]);
 
-  // Auto-refresh subscription every 30 seconds when user is logged in
+  // Auto-refresh subscription every 30 seconds when user is logged in, but only if not in error state
   useEffect(() => {
     if (!user) return;
     
-    const interval = setInterval(() => {
-      secureLogger.debug('Auto-refreshing subscription');
-      refreshSubscription();
+    let consecutiveErrors = 0;
+    const maxErrors = 3;
+    
+    const interval = setInterval(async () => {
+      try {
+        secureLogger.debug('Auto-refreshing subscription');
+        await refreshSubscription();
+        consecutiveErrors = 0; // Reset error count on success
+      } catch (error) {
+        consecutiveErrors++;
+        secureLogger.error(`Auto-refresh failed (${consecutiveErrors}/${maxErrors})`, error);
+        
+        // Stop auto-refresh after too many consecutive errors
+        if (consecutiveErrors >= maxErrors) {
+          secureLogger.error('Stopping auto-refresh due to consecutive errors');
+          clearInterval(interval);
+        }
+      }
     }, 30000);
 
     return () => clearInterval(interval);
