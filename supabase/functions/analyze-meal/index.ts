@@ -57,28 +57,37 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
     
-    // Check rate limit for unauthenticated requests (by IP)
-    const { data: rateLimitResult } = await supabaseClient.rpc('check_and_update_rate_limit', {
-      p_identifier: clientIP,
-      p_endpoint: 'analyze-meal',
-      p_window_minutes: 60,
-      p_max_requests: 100 // 100 requests per hour per IP
-    });
-    
-    if (!rateLimitResult?.allowed) {
-      console.log('🚫 [ANALYZE-MEAL] Rate limit exceeded for IP:', clientIP);
-      return new Response(JSON.stringify({ 
-        error: 'Rate limit exceeded. Please try again later.',
-        code: 'RATE_LIMIT_EXCEEDED',
-        retry_after: rateLimitResult?.retry_after_seconds || 3600
-      }), {
-        status: 429,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json',
-          'Retry-After': String(rateLimitResult?.retry_after_seconds || 3600)
-        }
+    // Check rate limit for unauthenticated requests (by IP) - now more robust
+    try {
+      const { data: rateLimitResult, error: rateLimitError } = await supabaseClient.rpc('check_and_update_rate_limit', {
+        p_identifier: clientIP,
+        p_endpoint: 'analyze-meal',
+        p_window_minutes: 60,
+        p_max_requests: 500 // Increased from 100 to 500 requests per hour
       });
+      
+      // Only block if rate limiting is working AND limit is exceeded
+      if (rateLimitResult && !rateLimitResult.allowed) {
+        console.log('🚫 [ANALYZE-MEAL] Rate limit exceeded for IP:', clientIP);
+        return new Response(JSON.stringify({ 
+          error: 'Rate limit exceeded. Please try again later.',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retry_after: rateLimitResult?.retry_after_seconds || 3600
+        }), {
+          status: 429,
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': String(rateLimitResult?.retry_after_seconds || 3600)
+          }
+        });
+      }
+      
+      if (rateLimitError) {
+        console.warn('⚠️ [ANALYZE-MEAL] Rate limit check failed, continuing anyway:', rateLimitError);
+      }
+    } catch (rateLimitException) {
+      console.warn('⚠️ [ANALYZE-MEAL] Rate limit check failed with exception, continuing anyway:', rateLimitException);
     }
 
     // Authentication verification - REQUIRED
