@@ -63,7 +63,7 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
       return false;
     }
 
-    // Check for duplicates by source_id
+    // Enhanced duplicate detection: check by source_id AND name+brand combination
     if (product.code) {
       const { data: existing } = await supabase
         .from('food_database')
@@ -72,8 +72,26 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
         .single();
       
       if (existing) {
-        console.log('⚠️ Skipping duplicate product:', product.code);
+        console.log('⚠️ Skipping duplicate product (source_id):', product.code);
         return false;
+      }
+    }
+
+    // Additional duplicate check by name+brand
+    if (product.product_name && product.brands) {
+      const brandName = product.brands.split(',')[0]?.trim();
+      if (brandName) {
+        const { data: existing } = await supabase
+          .from('food_database')
+          .select('id')
+          .eq('name', product.product_name)
+          .eq('brand', brandName)
+          .single();
+        
+        if (existing) {
+          console.log('⚠️ Skipping duplicate product (name+brand):', product.product_name, '-', brandName);
+          return false;
+        }
       }
     }
 
@@ -122,8 +140,8 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
   }
 }
 
-// Test Open Food Facts API with German/European focus and intelligent pagination
-async function testOpenFoodFactsAPI(country = 'de', limit = 50, batch = 1): Promise<OpenFoodFactsProduct[]> {
+// Test Open Food Facts API with rate limiting and intelligent batching
+async function testOpenFoodFactsAPI(country = 'de', limit = 15, batch = 1): Promise<OpenFoodFactsProduct[]> {
   console.log(`🌐 Testing Open Food Facts API with country: ${country}, limit: ${limit}, batch: ${batch}`);
   
   // Calculate pagination offset based on batch
@@ -301,7 +319,7 @@ serve(async (req) => {
   }
 
   try {
-    const { action = 'import', limit = 50, country = 'de', batch = 1 } = await req.json().catch(() => ({}));
+    const { action = 'import', limit = 15, country = 'de', batch = 1 } = await req.json().catch(() => ({}));
     
     console.log(`🎯 Action: ${action}, Limit: ${limit}, Country: ${country}, Batch: ${batch}`);
 
@@ -339,18 +357,33 @@ serve(async (req) => {
         );
       }
 
-      // Try to import products
+      // Try to import products with rate limiting
       let imported = 0;
-      for (const product of products) {
+      let skipped = 0;
+      
+      for (let i = 0; i < products.length; i++) {
+        const product = products[i];
         const success = await importSingleProduct(product);
-        if (success) imported++;
+        
+        if (success) {
+          imported++;
+          console.log(`✅ Imported product ${i + 1}/${products.length}: ${product.product_name}`);
+        } else {
+          skipped++;
+        }
+        
+        // Add delay between imports to respect rate limits (2 seconds)
+        if (i < products.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
       }
 
       return new Response(
         JSON.stringify({ 
           success: imported > 0, 
-          message: `Imported ${imported}/${products.length} products`,
+          message: `Imported ${imported}/${products.length} products (${skipped} skipped as duplicates)`,
           imported,
+          skipped,
           total: products.length,
           step: 'import_complete'
         }),
