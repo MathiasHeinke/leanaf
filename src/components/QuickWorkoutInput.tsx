@@ -178,13 +178,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
               <>
                  {todaysWorkout.duration_minutes || 0} Min • 
                 Intensität: {todaysWorkout.intensity || 0}/10
-                {todaysWorkout.distance_km > 0 && (
-                  <> • {todaysWorkout.distance_km} km</>
-                )}
-                {todaysWorkout.steps > 0 && (
-                  <> • {todaysWorkout.steps.toLocaleString()} Schritte</>
-                )}
               </>
+            )}
+            {todaysWorkout.distance_km > 0 && (
+              <> • {todaysWorkout.distance_km} km</>
+            )}
+            {todaysWorkout.steps > 0 && (
+              <> • {todaysWorkout.steps.toLocaleString()} Schritte</>
             )}
           </p>
           
@@ -322,9 +322,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout }: QuickWorkou
                     <NumericInput
                       value={distanceKm}
                       onChange={(value) => setDistanceKm(value)}
-                      placeholder="z.B. 3.5"
+                      placeholder="z.B. 3,5"
                       step={0.1}
                       min={0}
+                      allowDecimals={true}
                       className="text-sm border-green-300 focus:border-green-500"
                     />
                   </div>
