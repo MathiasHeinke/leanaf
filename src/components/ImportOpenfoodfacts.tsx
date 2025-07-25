@@ -19,8 +19,7 @@ export function ImportOpenfoodfacts() {
       const { data, error: importError } = await supabase.functions.invoke('import-openfoodfacts', {
         body: {
           action: 'import',
-          category: 'meals',
-          limit: 1000,
+          limit: 50,
           country: 'germany'
         }
       });
