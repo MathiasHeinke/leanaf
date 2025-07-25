@@ -14,21 +14,6 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className
         )}
         ref={ref}
-        onKeyDown={(e) => {
-          console.log('🐛 [Textarea] onKeyDown:', {
-            key: e.key,
-            keyCode: e.keyCode,
-            isSpace: e.key === ' ' || e.keyCode === 32
-          });
-          props.onKeyDown?.(e);
-        }}
-        onInput={(e) => {
-          console.log('🐛 [Textarea] onInput:', {
-            value: (e.target as HTMLTextAreaElement).value,
-            containsSpaces: (e.target as HTMLTextAreaElement).value.includes(' ')
-          });
-          props.onInput?.(e);
-        }}
         {...props}
       />
     )
