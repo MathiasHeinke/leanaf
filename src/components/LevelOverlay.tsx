@@ -19,44 +19,37 @@ interface LevelOverlayProps {
 }
 
 export const LevelOverlay = ({ isOpen, onClose, userPoints, getLevelColor }: LevelOverlayProps) => {
-  // Calculate level progression based on actual level requirements
+  // Calculate level progression based on correct cumulative thresholds
+  const getMinPointsForLevel = (level: number): number => {
+    if (level === 1) return 0;
+    if (level === 2) return 100;
+    if (level === 3) return 200;
+    if (level === 4) return 350;
+    if (level === 5) return 550;
+    if (level === 6) return 800;
+    if (level === 7) return 1100;
+    if (level >= 8) return 1500 + ((level - 8) * 500);
+    return 0;
+  };
+
   const getMaxPointsForLevel = (level: number): number => {
-    switch (level) {
-      case 1: return 100;
-      case 2: return 200;
-      case 3: return 350;
-      case 4: return 550;
-      case 5: return 800;
-      case 6: return 1100;
-      case 7: return 1500;
-      default: return 500;
-    }
+    if (level === 1) return 100;
+    if (level === 2) return 200;
+    if (level === 3) return 350;
+    if (level === 4) return 550;
+    if (level === 5) return 800;
+    if (level === 6) return 1100;
+    if (level === 7) return 1500;
+    if (level >= 8) return 2000 + ((level - 8) * 500);
+    return 100;
   };
   
+  const minPointsForCurrentLevel = getMinPointsForLevel(userPoints.current_level);
   const maxPointsForCurrentLevel = getMaxPointsForLevel(userPoints.current_level);
   
-  let minPointsForCurrentLevel = 0;
-  if (userPoints.current_level === 1) {
-    minPointsForCurrentLevel = 0;
-  } else if (userPoints.current_level === 2) {
-    minPointsForCurrentLevel = 100;
-  } else if (userPoints.current_level === 3) {
-    minPointsForCurrentLevel = 300;
-  } else if (userPoints.current_level === 4) {
-    minPointsForCurrentLevel = 650;
-  } else if (userPoints.current_level === 5) {
-    minPointsForCurrentLevel = 1200;
-  } else if (userPoints.current_level === 6) {
-    minPointsForCurrentLevel = 2000;
-  } else if (userPoints.current_level === 7) {
-    minPointsForCurrentLevel = 3100;
-  } else if (userPoints.current_level >= 8) {
-    minPointsForCurrentLevel = 4600 + ((userPoints.current_level - 8) * 500);
-  }
-  
   const pointsEarnedInCurrentLevel = userPoints.total_points - minPointsForCurrentLevel;
-  const currentLevelProgress = Math.max(0, Math.min(pointsEarnedInCurrentLevel, maxPointsForCurrentLevel));
-  const levelProgress = (currentLevelProgress / maxPointsForCurrentLevel) * 100;
+  const pointsNeededForCurrentLevel = maxPointsForCurrentLevel - minPointsForCurrentLevel;
+  const levelProgress = Math.max(0, Math.min((pointsEarnedInCurrentLevel / pointsNeededForCurrentLevel) * 100, 100));
 
   const getLevelIcon = (levelName: string) => {
     switch (levelName) {
@@ -151,7 +144,7 @@ export const LevelOverlay = ({ isOpen, onClose, userPoints, getLevelColor }: Lev
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Fortschritt zu Level {userPoints.current_level + 1}</span>
               <span className="text-sm text-muted-foreground">
-                {currentLevelProgress}/{maxPointsForCurrentLevel}
+                {pointsEarnedInCurrentLevel}/{pointsNeededForCurrentLevel}
               </span>
             </div>
             
