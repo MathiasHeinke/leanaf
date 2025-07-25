@@ -40,7 +40,7 @@ export const EnhancedCoachCard = ({
 
     setLoading(true);
     try {
-      console.log('🧠 Generating coaching insights...');
+      // Generating coaching insights
 
       const { data, error } = await supabase.functions.invoke('coach-analysis', {
         body: {
@@ -56,7 +56,7 @@ export const EnhancedCoachCard = ({
 
       if (data?.insights) {
         setInsights(data.insights);
-        console.log('✅ Coaching insights generated:', data.insights.length);
+        // Coaching insights generated successfully
       }
 
     } catch (error) {

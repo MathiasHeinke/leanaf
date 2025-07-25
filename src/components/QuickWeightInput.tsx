@@ -130,22 +130,16 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
       const today = new Date().toISOString().split('T')[0];
       
-      console.log('💾 [QuickWeightInput] Saving weight entry:', {
-        userId: user.id,
-        weight: weightValue,
-        date: today,
-        hasExistingEntry: hasWeightToday,
-        existingId: todaysWeight?.id
-      });
+      // Saving weight entry
 
       // Upload new photos if any
       let newPhotoUrls: string[] = [];
       if (selectedFiles.length > 0) {
-        console.log('📸 [QuickWeightInput] Uploading photos...');
+        // Uploading photos
         const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
         if (uploadResult.success) {
           newPhotoUrls = uploadResult.urls;
-          console.log('📸 [QuickWeightInput] Photos uploaded successfully:', newPhotoUrls);
+          // Photos uploaded successfully
         } else {
           console.error('📸 [QuickWeightInput] Photo upload failed:', uploadResult.errors);
           toast.error('Fehler beim Hochladen der Bilder');
@@ -168,7 +162,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
       if (hasWeightToday && todaysWeight?.id) {
         // Update existing weight entry - no points awarded
-        console.log('🔄 [QuickWeightInput] Updating existing entry with ID:', todaysWeight.id);
+        // Updating existing entry
         
         const { error } = await supabase
           .from('weight_history')
@@ -187,11 +181,11 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           throw error;
         }
         
-        console.log('✅ [QuickWeightInput] Weight entry updated successfully');
+        // Weight entry updated successfully
         toast.success('Gewicht aktualisiert!');
       } else {
         // Create new weight entry with fallback strategy
-        console.log('🆕 [QuickWeightInput] Creating new weight entry');
+        // Creating new weight entry
         
         try {
           // Try upsert first (preferred method with unique constraint)
@@ -213,7 +207,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               if (insertError) {
                 // If insert fails due to duplicate, try update
                 if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
-                  console.log('🔄 [QuickWeightInput] Duplicate detected, updating existing entry...');
+                  // Duplicate detected, updating existing entry
                   
                   const { error: updateError } = await supabase
                     .from('weight_history')
@@ -233,25 +227,25 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
                     throw updateError;
                   }
                   
-                  console.log('✅ [QuickWeightInput] Fallback update successful');
+                  // Fallback update successful
                 } else {
                   console.error('🆕 [QuickWeightInput] Insert failed with non-duplicate error:', insertError);
                   throw insertError;
                 }
               } else {
-                console.log('✅ [QuickWeightInput] Insert successful');
+                // Insert successful
               }
             } catch (fallbackError) {
               console.error('💥 [QuickWeightInput] All fallback strategies failed:', fallbackError);
               throw fallbackError;
             }
           } else {
-            console.log('✅ [QuickWeightInput] Upsert successful');
+            // Upsert successful
           }
 
           // Award points for weight tracking (only for new entries)
           try {
-            console.log('🎯 [QuickWeightInput] Awarding points for weight tracking');
+            // Awarding points for weight tracking
             await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen');
             await updateStreak('weight_tracking');
 
@@ -259,7 +253,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             setShowPointsAnimation(true);
             setTimeout(() => setShowPointsAnimation(false), 3000);
             
-            console.log('🎯 [QuickWeightInput] Points awarded successfully');
+            // Points awarded successfully
           } catch (pointsError) {
             console.error('🎯 [QuickWeightInput] Points award failed (non-critical):', pointsError);
             // Continue without failing the entire operation

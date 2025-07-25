@@ -44,13 +44,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
     setIsSubmitting(true);
     try {
-      console.log('🔍 Sleep submission started', { 
-        user: user.id, 
-        sleepHours: sleepHours[0], 
-        sleepQuality: sleepQuality[0],
-        hasSleepToday,
-        todaysSleepId: todaysSleep?.id
-      });
+      // Sleep submission started
 
       const sleepData = {
         user_id: user.id,
@@ -59,11 +53,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         date: new Date().toISOString().split('T')[0]
       };
 
-      console.log('💾 Sleep data to save:', sleepData);
+      // Sleep data prepared for save
 
       if (hasSleepToday && todaysSleep?.id) {
         // Update existing sleep entry - no points awarded
-        console.log('🔄 Updating existing sleep entry with ID:', todaysSleep.id);
+        // Updating existing sleep entry
         const { error, data } = await supabase
           .from('sleep_tracking')
           .update({
@@ -73,19 +67,19 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           })
           .eq('id', todaysSleep.id);
 
-        console.log('✅ Update result:', { data, error });
+        // Sleep update completed
         if (error) throw error;
         toast.success('Schlaf aktualisiert!');
       } else {
         // Create new sleep entry using UPSERT with correct constraint reference
-        console.log('➕ Creating new sleep entry');
+        // Creating new sleep entry
         const { error, data } = await supabase
           .from('sleep_tracking')
           .upsert(sleepData, { 
             onConflict: 'user_id, date'  // Fixed: proper column reference
           });
 
-        console.log('✅ Insert result:', { data, error });
+        // Sleep insert completed
         if (error) throw error;
 
         // Award points for sleep tracking

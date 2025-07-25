@@ -118,7 +118,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysToLoad);
 
-      console.log(`Loading ${daysToLoad} days of data for ${timeRange} view from ${startDate.toISOString()}`);
+      // Loading data for time range
 
       const { data: mealsData, error } = await supabase
         .from('meals')
@@ -129,7 +129,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       if (error) throw error;
 
-      console.log(`Loaded ${mealsData?.length || 0} meals`);
+      // Meals data loaded
 
       const mealIds = mealsData?.map(meal => meal.id) || [];
       const { data: imagesData, error: imagesError } = await supabase
@@ -243,7 +243,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           .filter(week => week.date <= `${currentYear}-W${getGermanWeekNumber(today).toString().padStart(2, '0')}`)
           .sort((a, b) => b.date.localeCompare(a.date));
 
-        console.log(`Created ${weeklyArray.length} weekly entries for year view`);
+        // Weekly entries created for year view
         setHistoryData(weeklyArray);
       } else {
         // For week and month view, show individual days
@@ -284,7 +284,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         });
 
         const dailyArray = Array.from(groupedData.values()).sort((a, b) => b.date.localeCompare(a.date));
-        console.log(`Created ${dailyArray.length} daily entries for ${timeRange} view`);
+        // Daily entries created for time range view
         setHistoryData(dailyArray);
       }
     } catch (error) {

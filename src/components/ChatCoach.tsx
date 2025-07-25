@@ -373,7 +373,7 @@ export const ChatCoach = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || !user?.id) return;
 
-    console.log('📸 Starting photo upload for coach chat...', files.length, 'files');
+    // Starting photo upload for coach chat
     
     setIsUploading(true);
     setUploadProgress([]);

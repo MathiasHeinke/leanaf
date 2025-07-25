@@ -68,12 +68,7 @@ export const PointsHeader = () => {
   pointsEarnedInCurrentLevel = userPoints.total_points - minPointsForCurrentLevel;
   
   // Debug values
-  console.log(`Level: ${userPoints.current_level} (${userPoints.level_name})`);
-  console.log(`Total Points: ${userPoints.total_points}`);
-  console.log(`Min Points for Level: ${minPointsForCurrentLevel}`);
-  console.log(`Max Points for Level: ${maxPointsForCurrentLevel}`);
-  console.log(`Points Earned in Level: ${pointsEarnedInCurrentLevel}/${maxPointsForCurrentLevel}`);
-  console.log(`Points to Next Level: ${userPoints.points_to_next_level}`);
+  // Debug: Points calculation completed
   
   // Use the points earned in the current level for progress display
   // Ensure it can't be negative and doesn't exceed max
