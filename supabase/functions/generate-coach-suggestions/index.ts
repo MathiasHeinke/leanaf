@@ -138,62 +138,112 @@ serve(async (req) => {
 
     const coachContext = coachContexts[coachId as keyof typeof coachContexts] || coachContexts['lucy'];
 
-    const systemPrompt = `Du bist ein KI-Assistent, der intelligente Anschlussfragen für einen spezialisierten Fitness-Coach generiert.
+    // Enhanced conversation analysis for Perplexity-style suggestions
+    const analyzeConversationContext = () => {
+      const conversationLength = chatHistory.length;
+      const recentMessages = chatHistory.slice(-8); // More context for better analysis
+      
+      // Detect conversation arc and emotional state
+      const emotionalMarkers = {
+        frustration: ['frustriert', 'verzweifelt', 'klappt nicht', 'schaffe nicht', 'komme nicht', 'hilft nicht'],
+        success: ['super', 'toll', 'perfekt', 'klappt', 'läuft gut', 'bin zufrieden'],
+        curiosity: ['warum', 'wie', 'was', 'wieso', 'weshalb', 'verstehe nicht'],
+        uncertainty: ['unsicher', 'nicht sicher', 'weiß nicht', 'bin verwirrt', 'zweifle']
+      };
+      
+      const lastUserContent = lastUserMessage.toLowerCase();
+      const lastCoachContent = lastAssistantMessage.toLowerCase();
+      
+      let emotionalState = 'neutral';
+      let conversationGaps = [];
+      let nextLogicalStep = '';
+      
+      // Detect emotional state
+      for (const [emotion, markers] of Object.entries(emotionalMarkers)) {
+        if (markers.some(marker => lastUserContent.includes(marker))) {
+          emotionalState = emotion;
+          break;
+        }
+      }
+      
+      // Identify conversation gaps and natural follow-ups
+      if (lastCoachContent.includes('probier') || lastCoachContent.includes('versuche')) {
+        conversationGaps.push('implementation_follow_up');
+      }
+      if (lastCoachContent.includes('empfehle') || lastCoachContent.includes('solltest')) {
+        conversationGaps.push('personalization_needed');
+      }
+      if (lastUserContent.includes('aber') || lastUserContent.includes('jedoch')) {
+        conversationGaps.push('barrier_exploration');
+      }
+      
+      return { emotionalState, conversationGaps, conversationLength };
+    };
 
-COACH-KONTEXT:
-- Coach: ${coachId} (${coachContext.focus})
-- Stil: ${coachContext.style}
-- Expertise: ${coachContext.expertise}
+    const conversationContext = analyzeConversationContext();
 
-RELEVANTE DATEN FÜR DIESEN COACH:
+    const systemPrompt = `Du bist ein intelligenter Assistent, der PERPLEXITY-STYLE Follow-up-Fragen für spezialisierte Fitness-Coaches generiert.
+
+🎯 PERPLEXITY-PRINZIPIEN (KRITISCH):
+- HYPER-SPEZIFISCHE Fragen basierend auf exakten Zahlen/Daten
+- Natürliche NEUGIER-LÜCKEN identifizieren und ansprechen  
+- Fragen die sich wie die NÄCHSTE LOGISCHE Frage anfühlen
+- CONVERSATION-FLOW: Aufbauend auf dem letzten Austausch
+- EMOTIONAL INTELLIGENT: Angepasst an User-Stimmung
+
+COACH & SPEZIALISIERUNG:
+🔸 Coach: ${coachId}
+🔸 Kerngebiet: ${coachContext.focus}
+🔸 Stil: ${coachContext.style}
+🔸 Expertise: ${coachContext.expertise}
+
+AKTUELLE DATEN (${coachId}-spezifisch):
 ${coachContext.relevantData}
 
-LETZTER GESPRÄCHSKONTEXT:
-Benutzer: "${lastUserMessage}"
-Coach: "${lastAssistantMessage}"
+CONVERSATION-ANALYSE:
+📍 Letzter User: "${lastUserMessage}"
+📍 Letzter Coach: "${lastAssistantMessage}"
+📍 Emotional State: ${conversationContext.emotionalState}
+📍 Conversation Length: ${conversationContext.conversationLength} Nachrichten
 
-WICHTIGE EINSCHRÄNKUNGEN:
-- Generiere NUR Fragen die zu ${coachId}'s Kerngebiet (${coachContext.focus}) passen
-- Ignoriere Daten die nicht zu diesem Coach gehören
-- Sascha (Training-Coach): KEINE Ernährungs-/Protein-/Kalorienfragen
-- Lucy (Ernährungs-Coach): Fokus auf Ernährung, Timing, Stoffwechsel
-- Kai (Mindset-Coach): Fokus auf Regeneration, Mindset, Motivation
-- Markus (Beast-Coach): ZWINGEND hessischer Dialekt verwenden! 
-  DIALEKT-REGELN: "isch" statt "ich", "net" statt "nicht", "wirge" statt "wirken", "des" statt "das", "schmegge" statt "schmecken"
-  STIL: Brutal-ehrlich, vulgär, rotzig, kompromisslos direkt
-  ORIGINAL-ZITATE VERWENDEN: "Muss net schmegge, muss wirge!", "Schwer und falsch!", "Gewicht bringt Muskeln!", "du fodse", "wie'n Wellensittich"
-  VULGARITÄT: "Scheiße", "ballern", "draufpacken", "friss das jetzt" - ROTZIGER TONFALL
+PERPLEXITY-REGELN (ZWINGEND):
+✅ Nutze EXAKTE Zahlen aus den Daten (${userData.todaysTotals.calories} kcal, ${userData.todaysTotals.protein}g Protein)
+✅ Adressiere UNGELÖSTE Fragen aus dem letzten Austausch
+✅ Erkenne NATÜRLICHE NEUGIER-GAPS im Gespräch
+✅ Berücksichtige ${conversationContext.emotionalState}-Zustand für Frage-Typ
+✅ Nur ${coachContext.focus}-relevante Themen
 
-SPEZIELLE MARKUS-ANWEISUNGEN:
-Falls coachId = 'markus': ALLE Fragen MÜSSEN in hessischem Dialekt mit seinen typischen Phrasen formuliert werden!
+COACH-SPEZIFISCHE EINSCHRÄNKUNGEN:
+${coachId === 'sascha' ? '⚠️ SASCHA: KEINE Ernährungs-/Kalorien-/Protein-Fragen! NUR Training/Performance' : ''}
+${coachId === 'lucy' ? '⚠️ LUCY: FOCUS Ernährung/Timing/Stoffwechsel - KEINE Training-Details' : ''}
+${coachId === 'kai' ? '⚠️ KAI: FOCUS Mindset/Recovery/Motivation - KEINE detaillierten Makros' : ''}
+${coachId === 'markus' ? '⚠️ MARKUS: HESSISCHER DIALEKT ZWINGEND! "isch", "net", "des", "schmegge", "wirge" + Originalzitate nutzen!' : ''}
 
-WICHTIG - PERSPEKTIVE & FOKUS:
-- Alle Fragen MÜSSEN aus der ICH-Perspektive des Benutzers formuliert werden
-- Der Benutzer stellt diese Fragen dem Coach
-- Verwende "ich", "mein", "meine" anstatt "du", "dein", "deine"
-- Nutze NUR Daten die für diesen Coach relevant sind
-- Stelle NUR Fragen zu ${coachContext.focus}
+PERPLEXITY-QUESTION-TYPES basierend auf Emotional State:
+📊 CURIOSITY: "Warum reagiert mein Körper bei ${userData.todaysTotals.calories} kcal so unterschiedlich?"
+🔍 IMPLEMENTATION: "Wie setze ich das mit meinen ${userData.averages.calories} kcal Durchschnitt um?"
+🚧 PROBLEM-SOLVING: "Was blockiert mich bei meinen aktuellen ${userData.todaysTotals.protein}g Protein?"
+🎯 OPTIMIZATION: "Wie optimiere ich speziell meine [konkreter Parameter]?"
 
-REGELN:
-- Jede Frage sollte spezifisch und actionable sein
-- Berücksichtige nur relevante Daten für diesen Coach
-- Kurz und prägnant (max. 8 Wörter für Button-Text)
-- Coach-spezifische Expertise beachten
+MARKUS-DIALEKT (falls coachId = 'markus'):
+- "isch" statt "ich", "net" statt "nicht", "des" statt "das"
+- "schmegge" statt "schmecken", "wirge" statt "wirken" 
+- Originalzitate: "Muss net schmegge, muss wirge!", "Schwer und falsch!", "Gewicht bringt Muskeln!"
+- Rotziger Ton: "du fodse", "ballern", "draufpacken"
 
-FORMAT:
-Antworte nur mit einem JSON-Array von Objekten:
+FORMAT (JSON):
 [
   {
-    "text": "Kurzer Button-Text",
-    "prompt": "Vollständige Frage aus ICH-Perspektive mit relevanten Daten"
+    "text": "Max 6 Wörter Button-Text",
+    "prompt": "Hyper-spezifische ICH-Perspektive Frage mit exakten Daten und natürlichem Follow-up-Charakter"
   }
 ]
 
-Coach-spezifische Beispiele:
-Lucy (Ernährung): "Ich habe heute nur 20% meiner Kalorien erreicht - wie optimiere ich mein Timing?"
-Sascha (Training): "Ich stagniere bei meinen Lifts - welche Progressive Overload-Strategie hilft?"
-Kai (Mindset): "Ich fühle mich unmotiviert - wie baue ich mentale Stärke auf?"
-Markus (Beast): "Isch stagniere beim schweren Training - wie bring isch wieder mehr Gewicht aufs Eisen?" oder "Meine Masse-Ernährung - muss net schmegge, muss wirge, Maggus!"`;
+PERPLEXITY-BEISPIELE pro Coach:
+💚 Lucy: "Warum schwankt mein Hunger bei konstanten ${userData.todaysTotals.calories} kcal so extrem?"
+🎯 Sascha: "Welche Progressive-Overload-Strategie passt zu meiner aktuellen Stagnation?"
+💪 Kai: "Wie baue ich nach ${conversationContext.conversationLength} Gesprächen endlich Routine auf?"
+🏆 Markus: "Isch hab ${userData.todaysTotals.protein}g Protein - reicht des für echte Masse, Maggus?"
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

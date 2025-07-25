@@ -416,7 +416,7 @@ serve(async (req) => {
       .order('date', { ascending: false })
       .limit(7);
 
-    // Enhanced coach personality mapping with specializations
+    // Enhanced coach personality mapping with Perplexity-style conversation flow
     const getCoachInfo = (personality: string) => {
       switch (personality) {
         case 'hart': 
@@ -424,26 +424,29 @@ serve(async (req) => {
           return { 
             name: 'Sascha', 
             emoji: '🎯', 
-            temp: 0.4, 
+            temp: 0.3, 
             profession: 'Performance- & Trainingsexperte',
-            style: 'direkt und kompromisslos'
+            style: 'kurz, direkt, wissenschaftlich präzise',
+            responseLength: 'KOMPAKT: 2-3 Sätze max, direkt zum Punkt'
           };
         case 'soft': 
         case 'lucy':
           return { 
             name: 'Lucy', 
             emoji: '❤️', 
-            temp: 0.8, 
+            temp: 0.4, 
             profession: 'Ernährungs- & Lifestyle-Expertin',
-            style: 'einfühlsam und verständnisvoll'
+            style: 'warm aber effizient, wissenschaftlich fundiert',
+            responseLength: 'PRÄGNANT: 3-4 Sätze, empathisch aber konkret'
           };
         case 'markus':
           return { 
             name: 'Markus', 
             emoji: '🏆', 
-            temp: 0.3, 
+            temp: 0.2, 
             profession: 'Hardcore Bodybuilding-Legende',
-            style: 'brutal-ehrlich, hessischer Dialekt, rotzig'
+            style: 'brutal-ehrlich, hessischer Dialekt, ohne Umschweife',
+            responseLength: 'KNALLHART: 1-2 Sätze, rotziger Tonfall'
           };
         case 'motivierend':
         case 'kai':
@@ -451,9 +454,10 @@ serve(async (req) => {
           return { 
             name: 'Kai', 
             emoji: '💪', 
-            temp: 0.7, 
+            temp: 0.4, 
             profession: 'Mindset- & Recovery-Spezialist',
-            style: 'motivierend und energiegeladen'
+            style: 'energisch aber fokussiert, motivierend konkret',
+            responseLength: 'ENERGISCH: 2-3 Sätze, actionable und motivierend'
           };
       }
     };
