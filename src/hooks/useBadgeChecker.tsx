@@ -32,14 +32,25 @@ export const useBadgeChecker = () => {
     }
   };
 
-  // Auto-check badges on user login/change
+  // Auto-check badges ONLY on initial login, not on every user state change
   useEffect(() => {
     if (user) {
-      // Delay slightly to ensure other data is loaded first
-      const timer = setTimeout(checkBadges, 2000);
-      return () => clearTimeout(timer);
+      // Only check if we haven't checked recently
+      const lastCheck = localStorage.getItem(`badgeCheck_${user.id}`);
+      const now = Date.now();
+      const checkInterval = 60 * 60 * 1000; // 1 hour
+      
+      if (!lastCheck || (now - parseInt(lastCheck)) > checkInterval) {
+        // Delay slightly to ensure other data is loaded first
+        const timer = setTimeout(() => {
+          checkBadges().then(() => {
+            localStorage.setItem(`badgeCheck_${user.id}`, now.toString());
+          });
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id, not full user object
 
   return { checkBadges };
 };

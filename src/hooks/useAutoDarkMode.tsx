@@ -25,9 +25,9 @@ export const useAutoDarkMode = () => {
   const [debugMode] = useState(true); // Enable debugging
   const [isToggling, setIsToggling] = useState(false); // Prevent race conditions
 
-  // Debug logging helper
-  const debugLog = (message: string, data?: any) => {
-    if (debugMode) {
+  // Debug logging helper - only log on actual changes
+  const debugLog = (message: string, data?: any, forceLog = false) => {
+    if (debugMode && (forceLog || message.includes('change') || message.includes('toggle'))) {
       console.log(`[DarkMode Debug] ${message}`, data || '', {
         theme,
         resolvedTheme,
@@ -101,12 +101,13 @@ export const useAutoDarkMode = () => {
       withinHours = currentTime >= startTime && currentTime < endTime;
     }
 
+    // Only log time checks when debug is forced, not every call
     debugLog('Time check:', {
       currentTime: `${currentHour}:${currentMinute.toString().padStart(2, '0')}`,
       startTime: autoSettings.startTime,
       endTime: autoSettings.endTime,
       withinHours
-    });
+    }, false);
 
     return withinHours;
   };
@@ -150,12 +151,12 @@ export const useAutoDarkMode = () => {
       }
     }, 100); // Small delay to allow state updates
 
-    // Set up interval to check every minute
+    // Set up interval to check every hour (reduced from 1 minute for performance)
     const interval = setInterval(() => {
       if (!isToggling && !userOverride && autoSettings.enabled) {
         applyAutoTheme();
       }
-    }, 60000);
+    }, 3600000); // 1 hour instead of 1 minute
 
     return () => {
       clearTimeout(timeoutId);

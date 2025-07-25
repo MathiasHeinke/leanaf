@@ -92,13 +92,18 @@ export const MealInput = ({
     onVoiceRecord();
   };
 
-  // Handle key press for submit
+  // Handle key press for submit - fix space bug
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Fix space bug: don't submit on space if text field is focused
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isSubmitDisabled) {
+      if (!isSubmitDisabled && inputText.trim().length > 0) {
         handleSubmit();
       }
+    }
+    // Prevent space from triggering anything unexpected
+    if (e.key === ' ' && inputText.trim().length === 0) {
+      e.preventDefault();
     }
   };
   
@@ -156,7 +161,12 @@ export const MealInput = ({
           <div className="relative">
             <Textarea
               value={inputText}
-              onChange={(e) => setInputText(sanitizeInput.text(e.target.value, 2000))}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Fix space bug: trim leading spaces but allow internal spaces
+                const sanitizedValue = value.replace(/^\s+/, '');
+                setInputText(sanitizeInput.text(sanitizedValue, 2000));
+              }}
               placeholder={t('input.placeholder')}
               className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
               onKeyDown={handleKeyDown}
