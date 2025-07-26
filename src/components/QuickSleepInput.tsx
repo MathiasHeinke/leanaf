@@ -201,11 +201,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         sleep_quality: sleepQuality[0],
         bedtime: formatTime(bedtime[0]),
         wake_time: formatTime(wakeTime[0]),
-        sleep_interruptions: sleepInterruptions[0],
-        screen_time_evening: screenTimeEvening[0],
-        morning_libido: morningLibido[0],
-        motivation_level: motivationLevel[0],
-        last_meal_time: formatTime(lastMealTime[0]),
+        sleep_interruptions: trackInterruptions ? sleepInterruptions[0] : null,
+        screen_time_evening: trackScreenTime ? screenTimeEvening[0] : null,
+        morning_libido: trackLibido ? morningLibido[0] : null,
+        motivation_level: trackMotivation ? motivationLevel[0] : null,
+        last_meal_time: trackLastMeal ? formatTime(lastMealTime[0]) : null,
         date: new Date().toISOString().split('T')[0]
       };
 
@@ -539,87 +539,167 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 </CollapsibleTrigger>
                 
                 <CollapsibleContent className="space-y-4 mt-3">
-                  {/* Compact 2-column grid for sliders */}
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Vertical layout with eye toggles */}
+                  <div className="space-y-4">
                     {/* Schlafunterbrechungen */}
-                    <div className="w-4/5">
-                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                        <Moon className="inline h-3 w-3 mr-1" />
-                        Unterbrechungen: {sleepInterruptions[0]}x
-                      </label>
-                      <Slider
-                        value={sleepInterruptions}
-                        onValueChange={setSleepInterruptions}
-                        max={10}
-                        min={0}
-                        step={1}
-                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                      />
+                    <div className={`flex justify-between items-center ${!trackInterruptions ? 'opacity-50' : ''}`}>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                          <Moon className="inline h-3 w-3 mr-1" />
+                          Unterbrechungen: {sleepInterruptions[0]}x
+                        </label>
+                        <Slider
+                          value={sleepInterruptions}
+                          onValueChange={setSleepInterruptions}
+                          max={10}
+                          min={0}
+                          step={1}
+                          disabled={!trackInterruptions}
+                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackInterruptions ? 'opacity-50' : ''}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTrackInterruptions(!trackInterruptions)}
+                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
+                      >
+                        {trackInterruptions ? (
+                          <Eye className="h-4 w-4 text-purple-600" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
 
                     {/* Abendliche Handyzeit */}
-                    <div className="w-4/5">
-                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                        <Smartphone className="inline h-3 w-3 mr-1" />
-                        Handyzeit: {screenTimeEvening[0]}min
-                      </label>
-                      <Slider
-                        value={screenTimeEvening}
-                        onValueChange={setScreenTimeEvening}
-                        max={300}
-                        min={0}
-                        step={15}
-                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                      />
+                    <div className={`flex justify-between items-center ${!trackScreenTime ? 'opacity-50' : ''}`}>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                          <Smartphone className="inline h-3 w-3 mr-1" />
+                          Handyzeit: {screenTimeEvening[0]}min
+                        </label>
+                        <Slider
+                          value={screenTimeEvening}
+                          onValueChange={setScreenTimeEvening}
+                          max={300}
+                          min={0}
+                          step={15}
+                          disabled={!trackScreenTime}
+                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackScreenTime ? 'opacity-50' : ''}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTrackScreenTime(!trackScreenTime)}
+                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
+                      >
+                        {trackScreenTime ? (
+                          <Eye className="h-4 w-4 text-purple-600" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
 
                     {/* Letzte Mahlzeit */}
-                    <div className="w-4/5">
-                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                        <Utensils className="inline h-3 w-3 mr-1" />
-                        Letzte Mahlzeit: {formatTime(lastMealTime[0])}
-                      </label>
-                      <Slider
-                        value={lastMealTime}
-                        onValueChange={setLastMealTime}
-                        max={23.5} // 23:30
-                        min={16}   // 16:00
-                        step={0.5}
-                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                      />
+                    <div className={`flex justify-between items-center ${!trackLastMeal ? 'opacity-50' : ''}`}>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                          <Utensils className="inline h-3 w-3 mr-1" />
+                          Letzte Mahlzeit: {formatTime(lastMealTime[0])}
+                        </label>
+                        <Slider
+                          value={lastMealTime}
+                          onValueChange={setLastMealTime}
+                          max={23.5} // 23:30
+                          min={16}   // 16:00
+                          step={0.5}
+                          disabled={!trackLastMeal}
+                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackLastMeal ? 'opacity-50' : ''}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTrackLastMeal(!trackLastMeal)}
+                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
+                      >
+                        {trackLastMeal ? (
+                          <Eye className="h-4 w-4 text-purple-600" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
 
                     {/* Libido am Morgen */}
-                    <div className="w-4/5">
-                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                        <Heart className="inline h-3 w-3 mr-1" />
-                        Libido: {morningLibido[0]}/10
-                      </label>
-                      <Slider
-                        value={morningLibido}
-                        onValueChange={setMorningLibido}
-                        max={10}
-                        min={1}
-                        step={1}
-                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                      />
+                    <div className={`flex justify-between items-center ${!trackLibido ? 'opacity-50' : ''}`}>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                          <Heart className="inline h-3 w-3 mr-1" />
+                          Libido: {morningLibido[0]}/10
+                        </label>
+                        <Slider
+                          value={morningLibido}
+                          onValueChange={setMorningLibido}
+                          max={10}
+                          min={1}
+                          step={1}
+                          disabled={!trackLibido}
+                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackLibido ? 'opacity-50' : ''}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTrackLibido(!trackLibido)}
+                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
+                      >
+                        {trackLibido ? (
+                          <Eye className="h-4 w-4 text-purple-600" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
-                  </div>
 
-                  {/* Motivations-Level - full width */}
-                  <div className="w-4/5">
-                    <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                      <Zap className="inline h-3 w-3 mr-1" />
-                      Motivations-Level: {motivationLevel[0]}/10
-                    </label>
-                    <Slider
-                      value={motivationLevel}
-                      onValueChange={setMotivationLevel}
-                      max={10}
-                      min={1}
-                      step={1}
-                      className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                    />
+                    {/* Motivations-Level */}
+                    <div className={`flex justify-between items-center ${!trackMotivation ? 'opacity-50' : ''}`}>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                          <Zap className="inline h-3 w-3 mr-1" />
+                          Motivations-Level: {motivationLevel[0]}/10
+                        </label>
+                        <Slider
+                          value={motivationLevel}
+                          onValueChange={setMotivationLevel}
+                          max={10}
+                          min={1}
+                          step={1}
+                          disabled={!trackMotivation}
+                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackMotivation ? 'opacity-50' : ''}`}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTrackMotivation(!trackMotivation)}
+                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
+                      >
+                        {trackMotivation ? (
+                          <Eye className="h-4 w-4 text-purple-600" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Ausblenden Button */}
