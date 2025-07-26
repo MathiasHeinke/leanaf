@@ -6,7 +6,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Copy, Check, X, Edit2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -53,6 +53,9 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
   const [notes, setNotes] = useState('');
   const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
+  const [editingExerciseName, setEditingExerciseName] = useState('');
 
   useEffect(() => {
     if (session) {
@@ -93,6 +96,86 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
     };
     
     setSets(prev => [...prev, newSet]);
+  };
+
+  const duplicateSet = (setToDuplicate: ExerciseSet) => {
+    const exerciseSets = sets.filter(set => set.exercise_id === setToDuplicate.exercise_id);
+    const nextSetNumber = Math.max(...exerciseSets.map(s => s.set_number), 0) + 1;
+    
+    const newSet: ExerciseSet = {
+      id: `temp-${Date.now()}-${Math.random()}`,
+      exercise_id: setToDuplicate.exercise_id,
+      set_number: nextSetNumber,
+      weight_kg: setToDuplicate.weight_kg,
+      reps: setToDuplicate.reps,
+      rpe: setToDuplicate.rpe,
+      exercises: setToDuplicate.exercises
+    };
+    
+    setSets(prev => [...prev, newSet]);
+  };
+
+  const duplicateEntireSession = async () => {
+    if (!user || !session) return;
+
+    try {
+      setIsDuplicating(true);
+
+      // Create new session with copied data
+      const newSessionData = {
+        user_id: user.id,
+        session_name: `${sessionName} (Kopie)`,
+        date: new Date().toISOString().split('T')[0], // Today's date
+        start_time: null,
+        end_time: null,
+        notes: notes,
+        workout_type: 'strength'
+      };
+
+      const { data: newSession, error: sessionError } = await supabase
+        .from('exercise_sessions')
+        .insert(newSessionData)
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Copy all exercise sets
+      for (const set of sets) {
+        const newSetData = {
+          user_id: user.id,
+          session_id: newSession.id,
+          exercise_id: set.exercise_id,
+          set_number: set.set_number,
+          weight_kg: set.weight_kg,
+          reps: set.reps,
+          rpe: set.rpe
+        };
+
+        const { error: setError } = await supabase
+          .from('exercise_sets')
+          .insert(newSetData);
+
+        if (setError) throw setError;
+      }
+
+      toast({
+        title: "Session dupliziert",
+        description: `"${sessionName}" wurde erfolgreich für heute dupliziert.`,
+      });
+
+      onSessionUpdated();
+      onClose();
+    } catch (error) {
+      console.error('Error duplicating session:', error);
+      toast({
+        title: "Fehler",
+        description: "Session konnte nicht dupliziert werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(false);
+    }
   };
 
   const handleSave = async () => {
@@ -231,7 +314,70 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
             ).map(([exerciseName, exerciseSets]) => (
               <div key={exerciseName} className="p-4 border rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium">{exerciseName}</h4>
+                  {editingExerciseId === exerciseSets[0].exercise_id ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input
+                        value={editingExerciseName}
+                        onChange={(e) => setEditingExerciseName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            // In a real app, you'd update the exercise name in the database
+                            // For now, just update locally
+                            setSets(prev => prev.map(set => 
+                              set.exercise_id === exerciseSets[0].exercise_id 
+                                ? { ...set, exercises: { ...set.exercises, name: editingExerciseName } }
+                                : set
+                            ));
+                            setEditingExerciseId(null);
+                            setEditingExerciseName('');
+                          } else if (e.key === 'Escape') {
+                            setEditingExerciseId(null);
+                            setEditingExerciseName('');
+                          }
+                        }}
+                        className="font-medium"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSets(prev => prev.map(set => 
+                            set.exercise_id === exerciseSets[0].exercise_id 
+                              ? { ...set, exercises: { ...set.exercises, name: editingExerciseName } }
+                              : set
+                          ));
+                          setEditingExerciseId(null);
+                          setEditingExerciseName('');
+                        }}
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingExerciseId(null);
+                          setEditingExerciseName('');
+                        }}
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h4 
+                        className="font-medium cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => {
+                          setEditingExerciseId(exerciseSets[0].exercise_id);
+                          setEditingExerciseName(exerciseName);
+                        }}
+                      >
+                        {exerciseName}
+                      </h4>
+                      <Edit2 className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{exerciseSets.length} Sätze</Badge>
                     <Button
@@ -289,14 +435,26 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
                         />
                       </div>
                       
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeSet(set.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => duplicateSet(set)}
+                          className="h-7 w-7 p-0"
+                          title="Satz duplizieren"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeSet(set.id)}
+                          className="text-destructive hover:text-destructive h-7 w-7 p-0"
+                          title="Satz löschen"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -304,13 +462,27 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
             ))}
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Abbrechen
+          <div className="flex justify-between pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={duplicateEntireSession}
+              disabled={isDuplicating || isLoading}
+            >
+              {isDuplicating ? (
+                <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full mr-2" />
+              ) : (
+                <Copy className="h-4 w-4 mr-2" />
+              )}
+              Session duplizieren
             </Button>
-            <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? 'Speichern...' : 'Änderungen speichern'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Abbrechen
+              </Button>
+              <Button onClick={handleSave} disabled={isLoading}>
+                {isLoading ? 'Speichern...' : 'Änderungen speichern'}
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
