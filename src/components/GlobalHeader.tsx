@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useLocation } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -22,6 +23,23 @@ export const GlobalHeader = ({
   const { subscriptionTier } = useSubscription();
   const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
+  const location = useLocation();
+
+  // Route to title mapping
+  const getPageTitle = (pathname: string) => {
+    switch (pathname) {
+      case '/': return 'Dashboard';
+      case '/profile': return 'Profil';
+      case '/coach': return 'Coach';
+      case '/training': return 'Training+';
+      case '/history': return 'Analyse';
+      case '/achievements': return 'Erfolge';
+      case '/science': return 'Wissenschaft';
+      case '/subscription': return 'Abonnement';
+      case '/account': return 'Account';
+      default: return 'KaloAI';
+    }
+  };
 
   // Reset click count after 1 second
   useEffect(() => {
@@ -89,11 +107,18 @@ export const GlobalHeader = ({
     <>
       {/* Minimalist Header - ChatGPT Style */}
       <div className="border-b border-border/20 bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-3 max-w-md flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
           {/* Left: Sidebar Toggle */}
           <SidebarTrigger className="p-2 hover:bg-accent rounded-lg">
             <Menu className="h-5 w-5" />
           </SidebarTrigger>
+          
+          {/* Center: Page Title */}
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-semibold text-foreground">
+              {getPageTitle(location.pathname)}
+            </h1>
+          </div>
           
           {/* Right: Dark Mode Toggle */}
           <Button

@@ -2,7 +2,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
   MessageCircle, 
-  TrendingUp,
+  Dumbbell,
+  BarChart3,
   User as UserIcon, 
   Settings, 
   CreditCard, 
@@ -29,8 +30,8 @@ import { BugReportDialog } from "./BugReportDialog";
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "header.main" },
   { title: "Coach", url: "/coach", icon: MessageCircle, key: "coach" },
-  { title: "Training+", url: "/training", icon: TrendingUp },
-  { title: "Analyse", url: "/history", icon: TrendingUp, key: "insights" },
+  { title: "Training+", url: "/training", icon: Dumbbell },
+  { title: "Analyse", url: "/history", icon: BarChart3, key: "insights" },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
 
