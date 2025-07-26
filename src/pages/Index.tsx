@@ -459,6 +459,8 @@ const Index = () => {
         {/* Weekly Coach Recommendation for Free Users */}
         <WeeklyCoachRecommendation />
         
+        {/* Smart Coach Insights */}
+        <SmartCoachInsights />
         
         <DailyProgress
           dailyTotals={{
