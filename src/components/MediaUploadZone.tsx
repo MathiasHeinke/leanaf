@@ -96,7 +96,7 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
               Drag & Drop oder klicken zum Auswählen
             </p>
             <p className="text-xs text-muted-foreground">
-              Max {maxFiles} Dateien • Bilder bis 10MB • Videos bis 50MB
+              Max {maxFiles} Dateien • Bilder bis 10MB • Videos bis 250MB
             </p>
           </div>
         </div>

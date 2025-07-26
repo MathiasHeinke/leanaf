@@ -116,22 +116,30 @@ export const uploadFilesWithProgress = async (
       console.log(`📁 Processing file ${i + 1}/${files.length}: ${file.name}`);
       updateProgress(i, { status: 'uploading', progress: 10 });
 
-      // Validate file
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error(`Datei ist zu groß (max. 10MB)`);
+      // Validate file with different limits for images and videos
+      const isVideo = file.type.startsWith('video/');
+      const isImage = file.type.startsWith('image/');
+      
+      if (!isImage && !isVideo) {
+        throw new Error(`Datei muss ein Bild oder Video sein`);
       }
 
-      if (!file.type.startsWith('image/')) {
-        throw new Error(`Datei ist kein Bild`);
+      const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024; // 250MB for videos, 10MB for images
+      if (file.size > maxSize) {
+        const maxSizeText = isVideo ? '250MB' : '10MB';
+        throw new Error(`Datei ist zu groß (max. ${maxSizeText})`);
       }
 
       updateProgress(i, { progress: 20 });
 
-      // Compress image if needed
+      // Compress image if needed (only for images, not videos)
       let processedFile = file;
-      if (file.size > 1024 * 1024) { // If larger than 1MB
+      if (isImage && file.size > 1024 * 1024) { // If larger than 1MB
         console.log(`🗜️ Compressing ${file.name}...`);
         processedFile = await compressImage(file);
+        updateProgress(i, { progress: 40 });
+      } else if (isVideo) {
+        // For videos, we'll use them as-is but upload to coach-media bucket
         updateProgress(i, { progress: 40 });
       }
 
@@ -141,9 +149,10 @@ export const uploadFilesWithProgress = async (
       console.log(`⬆️ Uploading to: ${fileName}`);
       updateProgress(i, { progress: 60 });
 
-      // Upload with proper error handling
+      // Upload with proper error handling to appropriate bucket
+      const bucketName = isVideo ? 'coach-media' : 'meal-images';
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('meal-images')
+        .from(bucketName)
         .upload(fileName, processedFile, {
           cacheControl: '3600',
           upsert: false
@@ -156,9 +165,9 @@ export const uploadFilesWithProgress = async (
 
       updateProgress(i, { progress: 80 });
 
-      // Get public URL
+      // Get public URL from appropriate bucket
       const { data: urlData } = supabase.storage
-        .from('meal-images')
+        .from(bucketName)
         .getPublicUrl(fileName);
 
       console.log(`✅ Upload successful: ${file.name} -> ${urlData.publicUrl}`);

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,9 +150,19 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       setMessages(prev => [...prev, assistantMessage]);
       await saveMessage('assistant', analysis, data);
 
-      // If exercise data was extracted, trigger logging callback
-      if (data.extractedData && onExerciseLogged) {
-        onExerciseLogged(data.extractedData);
+      // Parse and log exercise data automatically
+      if (analysis && onExerciseLogged) {
+        try {
+          // Extract structured exercise data from analysis
+          const exerciseData = parseExerciseFromAnalysis(analysis);
+          if (exerciseData) {
+            await logExerciseSession(exerciseData);
+            onExerciseLogged(exerciseData);
+            toast.success('Übung automatisch eingetragen!');
+          }
+        } catch (error) {
+          console.error('Error logging exercise:', error);
+        }
       }
 
       toast.success('Training analysiert! Sascha hat dein Workout bewertet.');
@@ -222,6 +233,126 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  // Parse exercise data from coach analysis
+  const parseExerciseFromAnalysis = (analysis: string) => {
+    try {
+      // Look for structured exercise information in the analysis
+      const exercisePattern = /(?:Übung|Exercise):\s*(.+?)(?:\n|$)/i;
+      const repsPattern = /(?:Wiederholungen|Reps):\s*(\d+)/i;
+      const setsPattern = /(?:Sätze|Sets):\s*(\d+)/i;
+      const weightPattern = /(?:Gewicht|Weight):\s*(\d+(?:\.\d+)?)\s*(?:kg|KG)/i;
+      const rpePattern = /(?:RPE|Anstrengung):\s*(\d+(?:\.\d+)?)/i;
+
+      const exerciseMatch = analysis.match(exercisePattern);
+      const repsMatch = analysis.match(repsPattern);
+      const setsMatch = analysis.match(setsPattern);
+      const weightMatch = analysis.match(weightPattern);
+      const rpeMatch = analysis.match(rpePattern);
+
+      if (exerciseMatch) {
+        return {
+          exercise_name: exerciseMatch[1].trim(),
+          reps: repsMatch ? parseInt(repsMatch[1]) : null,
+          sets: setsMatch ? parseInt(setsMatch[1]) : 1,
+          weight_kg: weightMatch ? parseFloat(weightMatch[1]) : null,
+          rpe: rpeMatch ? parseFloat(rpeMatch[1]) : null,
+          date: new Date().toISOString().split('T')[0]
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error parsing exercise data:', error);
+      return null;
+    }
+  };
+
+  // Log exercise session to database
+  const logExerciseSession = async (exerciseData: any) => {
+    if (!user) return;
+
+    try {
+      // First create or get exercise session for today
+      const today = new Date().toISOString().split('T')[0];
+      
+      const { data: existingSession, error: sessionError } = await supabase
+        .from('exercise_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .single();
+
+      let sessionId = existingSession?.id;
+
+      if (!sessionId) {
+        const { data: newSession, error: createError } = await supabase
+          .from('exercise_sessions')
+          .insert({
+            user_id: user.id,
+            date: today,
+            session_name: 'Sascha Analyse Session',
+            workout_type: 'strength',
+            start_time: new Date().toISOString()
+          })
+          .select('id')
+          .single();
+
+        if (createError) throw createError;
+        sessionId = newSession.id;
+      }
+
+      // Find or create exercise
+      let exerciseId;
+      const { data: existingExercise } = await supabase
+        .from('exercises')
+        .select('id')
+        .ilike('name', exerciseData.exercise_name)
+        .single();
+
+      if (existingExercise) {
+        exerciseId = existingExercise.id;
+      } else {
+        const { data: newExercise, error: exerciseError } = await supabase
+          .from('exercises')
+          .insert({
+            name: exerciseData.exercise_name,
+            category: 'strength',
+            muscle_groups: ['unknown'],
+            created_by: user.id
+          })
+          .select('id')
+          .single();
+
+        if (exerciseError) throw exerciseError;
+        exerciseId = newExercise.id;
+      }
+
+      // Create exercise sets
+      const sets = [];
+      for (let i = 1; i <= (exerciseData.sets || 1); i++) {
+        sets.push({
+          user_id: user.id,
+          session_id: sessionId,
+          exercise_id: exerciseId,
+          set_number: i,
+          reps: exerciseData.reps,
+          weight_kg: exerciseData.weight_kg,
+          rpe: exerciseData.rpe
+        });
+      }
+
+      const { error: setsError } = await supabase
+        .from('exercise_sets')
+        .insert(sets);
+
+      if (setsError) throw setsError;
+
+      console.log('✅ Exercise logged successfully');
+    } catch (error) {
+      console.error('Error logging exercise:', error);
+      throw error;
     }
   };
 
@@ -308,7 +439,27 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                         ))}
                       </div>
                     )}
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <div className="prose prose-sm max-w-none">
+                        <ReactMarkdown
+                          components={{
+                            p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
+                            strong: ({ children }) => <strong className="font-semibold text-orange-800">{children}</strong>,
+                            em: ({ children }) => <em className="italic">{children}</em>,
+                            ul: ({ children }) => <ul className="list-disc list-inside space-y-1 mb-2">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 mb-2">{children}</ol>,
+                            li: ({ children }) => <li className="text-sm">{children}</li>,
+                            code: ({ children }) => <code className="bg-orange-100 text-orange-800 px-1 py-0.5 rounded text-xs">{children}</code>,
+                            h3: ({ children }) => <h3 className="font-semibold text-orange-800 mb-1 text-sm">{children}</h3>,
+                            h4: ({ children }) => <h4 className="font-medium text-orange-700 mb-1 text-sm">{children}</h4>
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    )}
                     <div className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString('de-DE', {
                         hour: '2-digit',
