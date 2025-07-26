@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
-import { TrainingFloatingCoach } from '@/components/TrainingFloatingCoach';
 import { TrainingHistory } from '@/components/TrainingHistory';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { TrainingStats } from '@/components/TrainingStats';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Dumbbell, 
@@ -51,6 +51,7 @@ interface WeeklyStats {
 
 export const TrainingDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
     totalSets: 0,
@@ -62,7 +63,6 @@ export const TrainingDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -205,7 +205,7 @@ export const TrainingDashboard: React.FC = () => {
         </Card>
 
         <Card className="border-secondary/20 hover:border-secondary/40 transition-colors cursor-pointer group"
-              onClick={() => setIsChatOpen(true)}>
+              onClick={() => navigate('/training/sascha')}>
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-secondary/20 transition-colors">
               <MessageCircle className="h-6 w-6 text-secondary" />
@@ -285,12 +285,6 @@ export const TrainingDashboard: React.FC = () => {
         />
       )}
 
-      {/* Floating Coach Chat */}
-      <TrainingFloatingCoach 
-        isOpen={isChatOpen}
-        onToggle={() => setIsChatOpen(!isChatOpen)}
-        onExerciseLogged={loadSessions}
-      />
     </div>
   );
 };

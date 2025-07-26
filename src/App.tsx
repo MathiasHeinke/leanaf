@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Subscription from "./pages/Subscription";
 import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
+import TrainingSascha from "./pages/TrainingSascha";
 import HistoryPage from "./pages/History";
 import Achievements from "./pages/Achievements";
 import Science from "./pages/Science";
@@ -47,6 +48,7 @@ const App = () => (
                       <Route path="/subscription" element={<Subscription />} />
                       <Route path="/coach" element={<CoachPage />} />
                       <Route path="/training" element={<TrainingPlus />} />
+                      <Route path="/training/sascha" element={<TrainingSascha />} />
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/science" element={<Science />} />
