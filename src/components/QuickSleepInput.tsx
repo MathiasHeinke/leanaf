@@ -551,13 +551,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         <Slider
                           value={sleepInterruptions}
                           onValueChange={(value) => {
+                            console.log('Schlafunterbrechungen geändert:', value, 'Tracking wird aktiviert');
                             setSleepInterruptions(value);
                             setTrackInterruptions(true);
                           }}
                           max={10}
                           min={0}
                           step={1}
-                          disabled={!trackInterruptions}
                           className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackInterruptions ? 'opacity-50' : ''}`}
                         />
                       </div>
@@ -586,13 +586,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         <Slider
                           value={screenTimeEvening}
                           onValueChange={(value) => {
+                            console.log('Handyzeit geändert:', value, 'Tracking wird aktiviert');
                             setScreenTimeEvening(value);
                             setTrackScreenTime(true);
                           }}
                           max={300}
                           min={0}
                           step={15}
-                          disabled={!trackScreenTime}
                           className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackScreenTime ? 'opacity-50' : ''}`}
                         />
                       </div>
@@ -621,13 +621,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         <Slider
                           value={lastMealTime}
                           onValueChange={(value) => {
+                            console.log('Letzte Mahlzeit geändert:', value, 'Tracking wird aktiviert');
                             setLastMealTime(value);
                             setTrackLastMeal(true);
                           }}
                           max={23.5} // 23:30
                           min={16}   // 16:00
                           step={0.5}
-                          disabled={!trackLastMeal}
                           className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackLastMeal ? 'opacity-50' : ''}`}
                         />
                       </div>
@@ -656,13 +656,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         <Slider
                           value={morningLibido}
                           onValueChange={(value) => {
+                            console.log('Libido geändert:', value, 'Tracking wird aktiviert');
                             setMorningLibido(value);
                             setTrackLibido(true);
                           }}
                           max={10}
                           min={1}
                           step={1}
-                          disabled={!trackLibido}
                           className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackLibido ? 'opacity-50' : ''}`}
                         />
                       </div>
@@ -691,13 +691,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         <Slider
                           value={motivationLevel}
                           onValueChange={(value) => {
+                            console.log('Motivations-Level geändert:', value, 'Tracking wird aktiviert');
                             setMotivationLevel(value);
                             setTrackMotivation(true);
                           }}
                           max={10}
                           min={1}
                           step={1}
-                          disabled={!trackMotivation}
                           className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackMotivation ? 'opacity-50' : ''}`}
                         />
                       </div>
