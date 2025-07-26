@@ -18,6 +18,8 @@ serve(async (req) => {
 
   try {
     const { userId, sleepData } = await req.json();
+    
+    console.log('Received sleep data:', sleepData);
 
     if (!userId || !sleepData) {
       return new Response(

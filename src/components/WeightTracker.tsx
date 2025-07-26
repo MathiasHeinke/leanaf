@@ -315,7 +315,7 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
               <CoachFeedbackCard 
                 coachName="Lucy"
                 coachAvatar="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
-                weightData={weightHistory[0]}
+                weightData={weightHistory}
                 userId={user?.id}
                 type="weight"
               />

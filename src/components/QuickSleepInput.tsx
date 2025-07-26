@@ -366,7 +366,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           <CoachFeedbackCard 
             coachName="Kai"
             coachAvatar="/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
-            sleepData={todaysSleep}
+            sleepData={{
+              ...todaysSleep,
+              screenTime: screenTimeEvening[0],
+              libido: morningLibido[0],
+              motivation: motivationLevel[0],
+              lastMealTime: lastMealTime[0]
+            }}
             userId={user?.id}
             type="sleep"
           />

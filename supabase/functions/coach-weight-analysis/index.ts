@@ -18,6 +18,9 @@ serve(async (req) => {
 
   try {
     const { userId, weightData, measurementData } = await req.json();
+    
+    console.log('Received weight data:', weightData);
+    console.log('Received measurement data:', measurementData);
 
     if (!userId || (!weightData && !measurementData)) {
       return new Response(
