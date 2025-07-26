@@ -255,10 +255,9 @@ export const AdvancedWorkoutSection: React.FC = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="add" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="add">Übung hinzufügen</TabsTrigger>
           <TabsTrigger value="coach">Coach Sascha</TabsTrigger>
-          <TabsTrigger value="progress">Fortschritt</TabsTrigger>
           <TabsTrigger value="history">Verlauf</TabsTrigger>
         </TabsList>
 
@@ -278,9 +277,6 @@ export const AdvancedWorkoutSection: React.FC = () => {
           }} />
         </TabsContent>
 
-        <TabsContent value="progress" className="space-y-4">
-          <ExerciseProgressCharts />
-        </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
           <Card>
