@@ -10,7 +10,7 @@ interface CollapsibleQuickInputProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   className?: string;
-  theme?: 'blue' | 'purple' | 'green' | 'orange' | 'teal';
+  theme?: 'blue' | 'indigo' | 'cyan' | 'sky' | 'teal';
 }
 
 const themeStyles = {
@@ -22,29 +22,29 @@ const themeStyles = {
     completedText: "text-blue-700 dark:text-blue-300",
     completedDot: "bg-blue-500 dark:bg-blue-400"
   },
-  purple: {
-    header: "bg-gradient-to-r from-purple-500/10 to-purple-600/10 backdrop-blur-sm border border-purple-200/20 hover:from-purple-500/15 hover:to-purple-600/15 dark:from-purple-400/10 dark:to-purple-500/10 dark:border-purple-700/20 dark:hover:from-purple-400/15 dark:hover:to-purple-500/15",
-    headerCompleted: "bg-gradient-to-r from-purple-600/15 to-purple-700/15 backdrop-blur-sm border border-purple-300/25 dark:from-purple-500/15 dark:to-purple-600/15 dark:border-purple-600/25",
-    icon: "bg-purple-500 dark:bg-purple-600",
-    iconCompleted: "bg-purple-600 dark:bg-purple-500",
-    completedText: "text-purple-700 dark:text-purple-300",
-    completedDot: "bg-purple-500 dark:bg-purple-400"
+  indigo: {
+    header: "bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 backdrop-blur-sm border border-indigo-200/20 hover:from-indigo-500/15 hover:to-indigo-600/15 dark:from-indigo-400/10 dark:to-indigo-500/10 dark:border-indigo-700/20 dark:hover:from-indigo-400/15 dark:hover:to-indigo-500/15",
+    headerCompleted: "bg-gradient-to-r from-indigo-600/15 to-indigo-700/15 backdrop-blur-sm border border-indigo-300/25 dark:from-indigo-500/15 dark:to-indigo-600/15 dark:border-indigo-600/25",
+    icon: "bg-indigo-500 dark:bg-indigo-600",
+    iconCompleted: "bg-indigo-600 dark:bg-indigo-500",
+    completedText: "text-indigo-700 dark:text-indigo-300",
+    completedDot: "bg-indigo-500 dark:bg-indigo-400"
   },
-  green: {
-    header: "bg-gradient-to-r from-green-500/10 to-green-600/10 backdrop-blur-sm border border-green-200/20 hover:from-green-500/15 hover:to-green-600/15 dark:from-green-400/10 dark:to-green-500/10 dark:border-green-700/20 dark:hover:from-green-400/15 dark:hover:to-green-500/15",
-    headerCompleted: "bg-gradient-to-r from-green-600/15 to-green-700/15 backdrop-blur-sm border border-green-300/25 dark:from-green-500/15 dark:to-green-600/15 dark:border-green-600/25",
-    icon: "bg-green-500 dark:bg-green-600",
-    iconCompleted: "bg-green-600 dark:bg-green-500",
-    completedText: "text-green-700 dark:text-green-300",
-    completedDot: "bg-green-500 dark:bg-green-400"
+  cyan: {
+    header: "bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 backdrop-blur-sm border border-cyan-200/20 hover:from-cyan-500/15 hover:to-cyan-600/15 dark:from-cyan-400/10 dark:to-cyan-500/10 dark:border-cyan-700/20 dark:hover:from-cyan-400/15 dark:hover:to-cyan-500/15",
+    headerCompleted: "bg-gradient-to-r from-cyan-600/15 to-cyan-700/15 backdrop-blur-sm border border-cyan-300/25 dark:from-cyan-500/15 dark:to-cyan-600/15 dark:border-cyan-600/25",
+    icon: "bg-cyan-500 dark:bg-cyan-600",
+    iconCompleted: "bg-cyan-600 dark:bg-cyan-500",
+    completedText: "text-cyan-700 dark:text-cyan-300",
+    completedDot: "bg-cyan-500 dark:bg-cyan-400"
   },
-  orange: {
-    header: "bg-gradient-to-r from-orange-500/10 to-orange-600/10 backdrop-blur-sm border border-orange-200/20 hover:from-orange-500/15 hover:to-orange-600/15 dark:from-orange-400/10 dark:to-orange-500/10 dark:border-orange-700/20 dark:hover:from-orange-400/15 dark:hover:to-orange-500/15",
-    headerCompleted: "bg-gradient-to-r from-orange-600/15 to-orange-700/15 backdrop-blur-sm border border-orange-300/25 dark:from-orange-500/15 dark:to-orange-600/15 dark:border-orange-600/25",
-    icon: "bg-orange-500 dark:bg-orange-600",
-    iconCompleted: "bg-orange-600 dark:bg-orange-500",
-    completedText: "text-orange-700 dark:text-orange-300",
-    completedDot: "bg-orange-500 dark:bg-orange-400"
+  sky: {
+    header: "bg-gradient-to-r from-sky-500/10 to-sky-600/10 backdrop-blur-sm border border-sky-200/20 hover:from-sky-500/15 hover:to-sky-600/15 dark:from-sky-400/10 dark:to-sky-500/10 dark:border-sky-700/20 dark:hover:from-sky-400/15 dark:hover:to-sky-500/15",
+    headerCompleted: "bg-gradient-to-r from-sky-600/15 to-sky-700/15 backdrop-blur-sm border border-sky-300/25 dark:from-sky-500/15 dark:to-sky-600/15 dark:border-sky-600/25",
+    icon: "bg-sky-500 dark:bg-sky-600",
+    iconCompleted: "bg-sky-600 dark:bg-sky-500",
+    completedText: "text-sky-700 dark:text-sky-300",
+    completedDot: "bg-sky-500 dark:bg-sky-400"
   },
   teal: {
     header: "bg-gradient-to-r from-teal-500/10 to-teal-600/10 backdrop-blur-sm border border-teal-200/20 hover:from-teal-500/15 hover:to-teal-600/15 dark:from-teal-400/10 dark:to-teal-500/10 dark:border-teal-700/20 dark:hover:from-teal-400/15 dark:hover:to-teal-500/15",

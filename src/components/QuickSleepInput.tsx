@@ -281,7 +281,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
       icon={<Moon className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
       defaultOpen={false}
-      theme="purple"
+      theme="indigo"
     >
       {hasSleepToday && !isEditing ? (
         <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">

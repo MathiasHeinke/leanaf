@@ -98,31 +98,31 @@ export const CoachFeedbackCard = ({
     switch (type) {
       case 'sleep':
         return {
-          bg: 'bg-purple-100/50 dark:bg-purple-900/30',
-          border: 'border-purple-200 dark:border-purple-700',
-          text: 'text-purple-700 dark:text-purple-300',
-          nameText: 'text-purple-800 dark:text-purple-200'
+          bg: 'bg-indigo-100/50 dark:bg-indigo-900/30',
+          border: 'border-indigo-200 dark:border-indigo-700',
+          text: 'text-indigo-700 dark:text-indigo-300',
+          nameText: 'text-indigo-800 dark:text-indigo-200'
         };
       case 'workout':
         return {
-          bg: 'bg-orange-100/50 dark:bg-orange-900/30',
-          border: 'border-orange-200 dark:border-orange-700',
-          text: 'text-orange-700 dark:text-orange-300',
-          nameText: 'text-orange-800 dark:text-orange-200'
+          bg: 'bg-cyan-100/50 dark:bg-cyan-900/30',
+          border: 'border-cyan-200 dark:border-cyan-700',
+          text: 'text-cyan-700 dark:text-cyan-300',
+          nameText: 'text-cyan-800 dark:text-cyan-200'
         };
       case 'weight':
         return {
-          bg: 'bg-pink-100/50 dark:bg-pink-900/30',
-          border: 'border-pink-200 dark:border-pink-700',
-          text: 'text-pink-700 dark:text-pink-300',
-          nameText: 'text-pink-800 dark:text-pink-200'
+          bg: 'bg-blue-100/50 dark:bg-blue-900/30',
+          border: 'border-blue-200 dark:border-blue-700',
+          text: 'text-blue-700 dark:text-blue-300',
+          nameText: 'text-blue-800 dark:text-blue-200'
         };
       case 'measurement':
         return {
-          bg: 'bg-teal-100/50 dark:bg-teal-900/30',
-          border: 'border-teal-200 dark:border-teal-700',
-          text: 'text-teal-700 dark:text-teal-300',
-          nameText: 'text-teal-800 dark:text-teal-200'
+          bg: 'bg-sky-100/50 dark:bg-sky-900/30',
+          border: 'border-sky-200 dark:border-sky-700',
+          text: 'text-sky-700 dark:text-sky-300',
+          nameText: 'text-sky-800 dark:text-sky-200'
         };
       default:
         return {

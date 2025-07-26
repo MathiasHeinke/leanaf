@@ -158,7 +158,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
       icon={<Ruler className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
       defaultOpen={false}
-      theme="teal"
+      theme="sky"
     >
       {hasMeasurementsThisWeek && !isEditing ? (
         <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800">
