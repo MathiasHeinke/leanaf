@@ -55,6 +55,34 @@ async function testDatabaseConnection(): Promise<boolean> {
   }
 }
 
+// Log cron job statistics
+async function logCronJobStats(jobName: string, strategy: string, batchSize: number, imported: number, skipped: number, failed: number, executionTime: number, success: boolean, error?: string, jobParams?: any) {
+  try {
+    const { error: logError } = await supabase
+      .from('cron_job_stats')
+      .insert({
+        job_name: jobName,
+        strategy: strategy,
+        batch_size: batchSize,
+        products_imported: imported,
+        products_skipped: skipped,
+        products_failed: failed,
+        execution_time_ms: executionTime,
+        success: success,
+        error_message: error || null,
+        job_params: jobParams || {}
+      });
+    
+    if (logError) {
+      console.error('❌ Failed to log cron job stats:', logError);
+    } else {
+      console.log(`📊 Logged stats for ${jobName}: ${imported} imported, ${skipped} skipped, ${failed} failed`);
+    }
+  } catch (err) {
+    console.error('❌ Exception logging cron job stats:', err);
+  }
+}
+
 // Import ONE product with extensive logging
 async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boolean> {
   try {
@@ -140,110 +168,134 @@ async function importSingleProduct(product: OpenFoodFactsProduct): Promise<boole
   }
 }
 
-// Test Open Food Facts API with rate limiting and intelligent batching
-async function testOpenFoodFactsAPI(country = 'de', limit = 15, batch = 1): Promise<OpenFoodFactsProduct[]> {
-  console.log(`🌐 Testing Open Food Facts API with country: ${country}, limit: ${limit}, batch: ${batch}`);
+// Enhanced Open Food Facts API with strategy-based search
+async function testOpenFoodFactsAPI(strategy = 'global_popular', limit = 15, batch = 1): Promise<OpenFoodFactsProduct[]> {
+  console.log(`🌐 Testing Open Food Facts API with strategy: ${strategy}, limit: ${limit}, batch: ${batch}`);
   
   // Calculate pagination offset based on batch
-  const pageOffset = Math.max(1, Math.floor((batch - 1) * 0.5) + 1); // Different pages for different batches
-  const randomOffset = Math.floor(Math.random() * 5); // Add some randomness
+  const pageOffset = Math.max(1, Math.floor((batch - 1) * 0.5) + 1);
+  const randomOffset = Math.floor(Math.random() * 5);
   
-  // Focus on German/European basic food categories with pagination
-  const strategies = [
-    // Strategy 1: Global popular products (most diverse results first)
-    {
-      name: 'Global popular products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: (pageOffset + randomOffset).toString(),
-        sort_by: 'popularity'
-      }
-    },
-    // Strategy 2: German basic foods with pagination
-    {
-      name: 'German basic foods',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: pageOffset.toString(),
-        sort_by: 'popularity',
-        countries: 'de'
-      }
-    },
-    // Strategy 3: European products
-    {
-      name: 'European products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: pageOffset.toString(),
-        sort_by: 'popularity',
-        countries: 'de,at,ch,nl,fr'
-      }
-    },
-    // Strategy 4: German meat products
-    {
-      name: 'German meat products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: pageOffset.toString(),
-        sort_by: 'popularity',
-        countries: 'de',
-        categories: 'meats'
-      }
-    },
-    // Strategy 5: German dairy products
-    {
-      name: 'German dairy products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: pageOffset.toString(),
-        sort_by: 'popularity',
-        countries: 'de',
-        categories: 'dairy'
-      }
-    },
-    // Strategy 6: German fruits and vegetables
-    {
-      name: 'German fruits and vegetables',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: pageOffset.toString(),
-        sort_by: 'popularity',
-        countries: 'de',
-        categories: 'plant-based-foods'
-      }
-    },
-    // Strategy 7: German language products
-    {
-      name: 'German language products',
-      params: {
-        action: 'process',
-        json: '1',
-        page_size: limit.toString(),
-        page: pageOffset.toString(),
-        sort_by: 'popularity',
-        languages: 'de'
-      }
-    }
-  ];
+  let strategies: any[] = [];
 
-  for (const strategy of strategies) {
+  // Define strategy-specific search patterns
+  switch (strategy) {
+    case 'global_popular':
+      strategies = [
+        {
+          name: 'Global popular products',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: (pageOffset + randomOffset).toString(),
+            sort_by: 'popularity'
+          }
+        },
+        {
+          name: 'Global protein rich',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: pageOffset.toString(),
+            sort_by: 'popularity',
+            categories: 'meats,fish,dairy'
+          }
+        }
+      ];
+      break;
+
+    case 'german_focused':
+      strategies = [
+        {
+          name: 'German basic foods',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: pageOffset.toString(),
+            sort_by: 'popularity',
+            countries: 'de'
+          }
+        },
+        {
+          name: 'German meat products',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: pageOffset.toString(),
+            sort_by: 'popularity',
+            countries: 'de',
+            categories: 'meats'
+          }
+        },
+        {
+          name: 'German dairy products',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: pageOffset.toString(),
+            sort_by: 'popularity',
+            countries: 'de',
+            categories: 'dairy'
+          }
+        }
+      ];
+      break;
+
+    case 'european_focused':
+      strategies = [
+        {
+          name: 'European products',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: pageOffset.toString(),
+            sort_by: 'popularity',
+            countries: 'de,at,ch,nl,fr'
+          }
+        },
+        {
+          name: 'European fruits and vegetables',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: pageOffset.toString(),
+            sort_by: 'popularity',
+            countries: 'de,at,ch,nl,fr',
+            categories: 'plant-based-foods'
+          }
+        }
+      ];
+      break;
+
+    default:
+      // Fallback to global popular
+      strategies = [
+        {
+          name: 'Global popular products',
+          params: {
+            action: 'process',
+            json: '1',
+            page_size: limit.toString(),
+            page: (pageOffset + randomOffset).toString(),
+            sort_by: 'popularity'
+          }
+        }
+      ];
+  }
+
+  for (const strategyConfig of strategies) {
     try {
-      console.log(`🎯 Trying strategy: ${strategy.name}`);
+      console.log(`🎯 Trying strategy: ${strategyConfig.name}`);
       
       const url = 'https://world.openfoodfacts.org/cgi/search.pl';
-      const params = new URLSearchParams(strategy.params);
+      const params = new URLSearchParams(strategyConfig.params);
       const fullUrl = `${url}?${params.toString()}`;
       
       console.log('🔗 API URL:', fullUrl);
@@ -253,19 +305,19 @@ async function testOpenFoodFactsAPI(country = 'de', limit = 15, batch = 1): Prom
           'User-Agent': 'KaloAI-FoodImport/1.0 (+https://kaloai.app)',
           'Accept': 'application/json'
         },
-        signal: AbortSignal.timeout(30000) // 30 second timeout for larger batches
+        signal: AbortSignal.timeout(30000)
       });
 
       console.log('📡 API Response status:', response.status);
 
       if (!response.ok) {
-        console.error(`❌ Strategy "${strategy.name}" failed: ${response.status}`);
+        console.error(`❌ Strategy "${strategyConfig.name}" failed: ${response.status}`);
         continue;
       }
 
       const data = await response.json();
       console.log('📊 API Response:', {
-        strategy: strategy.name,
+        strategy: strategyConfig.name,
         count: data.count || 0,
         page: data.page || 0,
         page_size: data.page_size || 0,
@@ -273,7 +325,7 @@ async function testOpenFoodFactsAPI(country = 'de', limit = 15, batch = 1): Prom
       });
 
       if (data.products && data.products.length > 0) {
-        console.log('✅ Found products with strategy:', strategy.name);
+        console.log('✅ Found products with strategy:', strategyConfig.name);
         console.log('🎯 First product sample:', {
           code: data.products[0].code,
           name: data.products[0].product_name,
@@ -285,11 +337,11 @@ async function testOpenFoodFactsAPI(country = 'de', limit = 15, batch = 1): Prom
 
         return data.products;
       } else {
-        console.log(`⚠️ No products found with strategy: ${strategy.name}`);
+        console.log(`⚠️ No products found with strategy: ${strategyConfig.name}`);
       }
 
     } catch (error) {
-      console.error(`❌ Strategy "${strategy.name}" error:`, error);
+      console.error(`❌ Strategy "${strategyConfig.name}" error:`, error);
       continue;
     }
   }
@@ -312,6 +364,7 @@ async function testOpenFoodFactsAPI(country = 'de', limit = 15, batch = 1): Prom
 }
 
 serve(async (req) => {
+  const startTime = Date.now();
   console.log(`📨 Received ${req.method} request`);
   
   if (req.method === 'OPTIONS') {
@@ -319,13 +372,24 @@ serve(async (req) => {
   }
 
   try {
-    const { action = 'import', limit = 15, country = 'de', batch = 1 } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const { 
+      action = 'import', 
+      limit = 15, 
+      country = 'de', 
+      batch = 1,
+      job_name = 'manual',
+      strategy = 'global_popular'
+    } = body;
     
-    console.log(`🎯 Action: ${action}, Limit: ${limit}, Country: ${country}, Batch: ${batch}`);
+    console.log(`🎯 Action: ${action}, Limit: ${limit}, Country: ${country}, Batch: ${batch}, Job: ${job_name}, Strategy: ${strategy}`);
 
     // Always test database connection first
     const dbConnected = await testDatabaseConnection();
     if (!dbConnected) {
+      const executionTime = Date.now() - startTime;
+      await logCronJobStats(job_name, strategy, limit, 0, 0, 0, executionTime, false, 'Database connection failed', body);
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -340,10 +404,13 @@ serve(async (req) => {
     }
 
     if (action === 'import') {
-      // Test API first with batch parameter
-      const products = await testOpenFoodFactsAPI(country, limit, batch);
+      // Test API first with strategy parameter
+      const products = await testOpenFoodFactsAPI(strategy, limit, batch);
       
       if (products.length === 0) {
+        const executionTime = Date.now() - startTime;
+        await logCronJobStats(job_name, strategy, limit, 0, 0, 1, executionTime, false, 'No products found from API', body);
+        
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -360,38 +427,56 @@ serve(async (req) => {
       // Try to import products with rate limiting
       let imported = 0;
       let skipped = 0;
+      let failed = 0;
       
       for (let i = 0; i < products.length; i++) {
         const product = products[i];
-        const success = await importSingleProduct(product);
-        
-        if (success) {
-          imported++;
-          console.log(`✅ Imported product ${i + 1}/${products.length}: ${product.product_name}`);
-        } else {
-          skipped++;
+        try {
+          const success = await importSingleProduct(product);
+          
+          if (success) {
+            imported++;
+            console.log(`✅ Imported product ${i + 1}/${products.length}: ${product.product_name}`);
+          } else {
+            skipped++;
+          }
+        } catch (error) {
+          failed++;
+          console.error(`❌ Failed to import product ${i + 1}/${products.length}:`, error);
         }
         
-        // Add delay between imports to respect rate limits (2 seconds)
-        if (i < products.length - 1) {
+        // Add delay between imports to respect rate limits (1 second for cron jobs)
+        if (i < products.length - 1 && job_name === 'manual') {
           await new Promise(resolve => setTimeout(resolve, 2000));
+        } else if (i < products.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // Faster for cron jobs
         }
       }
 
+      const executionTime = Date.now() - startTime;
+      const success = imported > 0;
+      
+      // Log stats to database
+      await logCronJobStats(job_name, strategy, limit, imported, skipped, failed, executionTime, success, null, body);
+
       return new Response(
         JSON.stringify({ 
-          success: imported > 0, 
-          message: `Imported ${imported}/${products.length} products (${skipped} skipped as duplicates)`,
+          success, 
+          message: `Imported ${imported}/${products.length} products (${skipped} skipped, ${failed} failed)`,
           imported,
           skipped,
+          failed,
           total: products.length,
+          execution_time_ms: executionTime,
+          job_name,
+          strategy,
           step: 'import_complete'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get stats
+    // Get stats including cron job performance
     if (action === 'stats') {
       const { data: totalData, error: totalError } = await supabase
         .from('food_database')
@@ -402,7 +487,52 @@ serve(async (req) => {
         .select('count', { count: 'exact' })
         .eq('source', 'openfoodfacts');
 
-      console.log('📊 Stats query results:', { totalData, totalError, offData, offError });
+      // Get recent cron job stats (last 24 hours)
+      const { data: cronStats, error: cronError } = await supabase
+        .from('cron_job_stats')
+        .select('*')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      console.log('📊 Stats query results:', { totalData, totalError, offData, offError, cronStats: cronStats?.length });
+
+      // Calculate performance metrics for each job
+      const jobPerformance = cronStats?.reduce((acc: any, stat: any) => {
+        const jobName = stat.job_name;
+        if (!acc[jobName]) {
+          acc[jobName] = {
+            name: jobName,
+            strategy: stat.strategy,
+            total_runs: 0,
+            successful_runs: 0,
+            total_imported: 0,
+            total_skipped: 0,
+            total_failed: 0,
+            avg_execution_time: 0,
+            last_run: null
+          };
+        }
+        
+        acc[jobName].total_runs++;
+        if (stat.success) acc[jobName].successful_runs++;
+        acc[jobName].total_imported += stat.products_imported || 0;
+        acc[jobName].total_skipped += stat.products_skipped || 0;
+        acc[jobName].total_failed += stat.products_failed || 0;
+        acc[jobName].avg_execution_time += stat.execution_time_ms || 0;
+        
+        if (!acc[jobName].last_run || new Date(stat.created_at) > new Date(acc[jobName].last_run)) {
+          acc[jobName].last_run = stat.created_at;
+        }
+        
+        return acc;
+      }, {}) || {};
+
+      // Calculate averages
+      Object.values(jobPerformance).forEach((job: any) => {
+        job.avg_execution_time = Math.round(job.avg_execution_time / job.total_runs);
+        job.success_rate = Math.round((job.successful_runs / job.total_runs) * 100);
+      });
 
       return new Response(
         JSON.stringify({
@@ -410,7 +540,9 @@ serve(async (req) => {
           stats: {
             total_foods: totalData?.[0]?.count || 0,
             openfoodfacts_foods: offData?.[0]?.count || 0,
-          }
+          },
+          job_performance: Object.values(jobPerformance),
+          recent_activity: cronStats?.slice(0, 10) || []
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -426,6 +558,15 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('💥 Function error:', error);
+    const executionTime = Date.now() - startTime;
+    
+    // Try to log the error if possible
+    try {
+      await logCronJobStats('unknown', 'unknown', 0, 0, 0, 1, executionTime, false, error.message, {});
+    } catch (logErr) {
+      console.error('Failed to log error:', logErr);
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: false, 

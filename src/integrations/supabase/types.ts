@@ -520,6 +520,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_job_stats: {
+        Row: {
+          batch_size: number
+          created_at: string
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          job_name: string
+          job_params: Json | null
+          products_failed: number
+          products_imported: number
+          products_skipped: number
+          strategy: string
+          success: boolean
+        }
+        Insert: {
+          batch_size?: number
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          job_name: string
+          job_params?: Json | null
+          products_failed?: number
+          products_imported?: number
+          products_skipped?: number
+          strategy: string
+          success?: boolean
+        }
+        Update: {
+          batch_size?: number
+          created_at?: string
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          job_name?: string
+          job_params?: Json | null
+          products_failed?: number
+          products_imported?: number
+          products_skipped?: number
+          strategy?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       daily_goals: {
         Row: {
           bmr: number | null
