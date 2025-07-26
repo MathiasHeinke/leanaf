@@ -58,8 +58,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   }, [messages]);
 
   useEffect(() => {
-    // Load coach conversation history
-    loadConversationHistory();
+    // Load coach conversation history with delay to ensure auth is ready
+    if (user) {
+      const timer = setTimeout(() => {
+        loadConversationHistory();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [user]);
 
   const loadConversationHistory = async () => {
@@ -160,24 +165,66 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
       // Check if we need to ask for RPE or can log immediately
       if (exerciseData) {
-        if (!exerciseData.rpe) {
+        console.log('🎯 Exercise detected, checking if RPE is needed...');
+        
+        if (exerciseData.rpe) {
+          // RPE already provided, log directly
+          try {
+            await logExerciseSession(exerciseData);
+            if (onExerciseLogged) {
+              onExerciseLogged(exerciseData);
+            }
+            
+            // Format sets for display
+            let setsDisplay = '';
+            if (exerciseData.sets_data && Array.isArray(exerciseData.sets_data)) {
+              setsDisplay = exerciseData.sets_data.map((set: any, i: number) => 
+                `  **Satz ${i + 1}:** ${set.reps} Wdh. × ${set.weight} kg`
+              ).join('\n');
+            } else {
+              // Legacy format fallback (shouldn't happen with new parsing)
+              setsDisplay = `  **1 Satz:** Nicht angegeben`;
+            }
+            
+            const successMessage: WorkoutMessage = {
+              id: (Date.now() + 2).toString(),
+              role: 'assistant', 
+              content: `✅ **Übung automatisch eingetragen!**\n\n**${exerciseData.exercise_name}**\n${setsDisplay}\n- **RPE:** ${exerciseData.rpe}/10\n\nDa du bereits die Intensität angegeben hast, habe ich die Übung direkt eingetragen. Stark! 💪`,
+              timestamp: new Date()
+            };
+            
+            setMessages(prev => [...prev, successMessage]);
+            await saveMessage('assistant', successMessage.content);
+            toast.success('Übung automatisch eingetragen!');
+            
+          } catch (error) {
+            console.error('Error logging exercise:', error);
+            toast.error('Fehler beim Eintragen der Übung');
+          }
+        } else {
           // Ask for RPE
           setWaitingForRpe(exerciseData);
-          const rpeQuestion: WorkoutMessage = {
-            id: (Date.now() + 1).toString(),
+          
+          // Format sets for RPE prompt
+          let setsDisplay = '';
+          if (exerciseData.sets_data && Array.isArray(exerciseData.sets_data)) {
+            setsDisplay = exerciseData.sets_data.map((set: any, i: number) => 
+              `  **Satz ${i + 1}:** ${set.reps} Wdh. × ${set.weight} kg`
+            ).join('\n');
+          } else {
+            // Legacy format fallback (shouldn't happen with new parsing)
+            setsDisplay = `  **1 Satz:** Nicht angegeben`;
+          }
+          
+          const rpeMessage: WorkoutMessage = {
+            id: (Date.now() + 2).toString(),
             role: 'assistant',
-            content: `**RPE-Bewertung benötigt** 📊\n\nWie anstrengend war das Training für dich?\n\nBitte bewerte auf einer Skala von 1-10:\n- **1-3**: Sehr leicht\n- **4-6**: Moderat  \n- **7-8**: Schwer\n- **9-10**: Maximal anstrengend\n\nSchreibe einfach eine Zahl (z.B. "7") und ich trage die Übung in deinen Verlauf ein.`,
+            content: `\n\n✅ **Erkannte Übung: ${exerciseData.exercise_name}**\n${setsDisplay}\n\n🎯 **Wie intensiv war dein Training?**\n\nBitte gib deine RPE (Rate of Perceived Exertion) von **1-10** an:\n- 1-3: Sehr leicht\n- 4-6: Mittel\n- 7-8: Schwer\n- 9-10: Maximal\n\nEinfach eine Zahl eingeben (z.B. "8") und ich trage die Übung für dich ein! 💪`,
             timestamp: new Date()
           };
-          setMessages(prev => [...prev, rpeQuestion]);
-          await saveMessage('assistant', rpeQuestion.content);
-        } else {
-          // RPE already provided, log immediately
-          await logExerciseSession(exerciseData);
-          if (onExerciseLogged) {
-            onExerciseLogged(exerciseData);
-          }
-          toast.success('Übung automatisch eingetragen!');
+          
+          setMessages(prev => [...prev, rpeMessage]);
+          await saveMessage('assistant', rpeMessage.content);
         }
       }
 
@@ -223,10 +270,21 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               onExerciseLogged(exerciseWithRpe);
             }
             
+            // Format sets information
+            let setsInfo = '';
+            if (exerciseWithRpe.sets_data && Array.isArray(exerciseWithRpe.sets_data)) {
+              setsInfo = exerciseWithRpe.sets_data.map((set: any, i: number) => 
+                `  **Satz ${i + 1}:** ${set.reps} Wdh. × ${set.weight} kg`
+              ).join('\n');
+            } else {
+              // Legacy format fallback (shouldn't happen with new parsing)
+              setsInfo = `  **1 Satz:** Nicht angegeben`;
+            }
+
             const confirmationMessage: WorkoutMessage = {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
-              content: `✅ **Übung eingetragen!**\n\n**${exerciseWithRpe.exercise_name}**\n- Sätze: ${exerciseWithRpe.sets || 1}\n- Wiederholungen: ${exerciseWithRpe.reps || 'Nicht angegeben'}\n- Gewicht: ${exerciseWithRpe.weight_kg ? exerciseWithRpe.weight_kg + ' kg' : 'Nicht angegeben'}\n- RPE: ${rpeValue}/10\n\nDie Übung wurde in deinen Trainingsplan eingetragen. Weiter so! 💪`,
+              content: `✅ **Übung eingetragen!**\n\n**${exerciseWithRpe.exercise_name}**\n${setsInfo}\n- **RPE:** ${rpeValue}/10\n\nDie Übung wurde in deinen Trainingsplan eingetragen. Weiter so! 💪`,
               timestamp: new Date()
             };
             
@@ -287,48 +345,37 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   };
 
-  // Parse exercise data from coach analysis with improved pattern matching
+  // Parse exercise data from coach analysis - NEW multi-set handling
   const parseExerciseFromAnalysis = (analysis: string) => {
     try {
       console.log('🔍 Parsing exercise data from analysis:', analysis);
       
-      // Multiple pattern matching for robustness
+      // Look for exercise names
       const exercisePatterns = [
-        /(?:Übung|Exercise|Trainiert):\s*([^\n]+)/i,
-        /(?:Du hast|machst|trainierst)\s+([^\n]+?)\s+(?:gemacht|trainiert|geübt)/i,
-        /([A-Za-zäöüß\s-]+(?:press|zug|beugen|strecken|curls?|squats?|deadlifts?))/i
+        /(?:Übung|Exercise):\s*([^\n]+)/i,
+        /(Latzug|Rudern|Bankdrücken|Kniebeugen|Kreuzheben|Curls|Press)/i,
+        /(?:Du hast|machst|trainierst)\s+([^\n]+?)\s+(?:gemacht|trainiert|geübt)/i
       ];
+
+      // Multi-set patterns like "12x 53kg; 8x 73kg; 6x 86kg"
+      const multiSetPattern = /(\d+)(?:x|×|\s*Wdh\.?)\s*(\d+(?:\.\d+)?)\s*kg/gi;
       
-      const repsPatterns = [
-        /(?:Wiederholungen|Reps|WH):\s*(\d+)/i,
-        /(\d+)\s*(?:Wiederholungen|Reps|WH)/i,
-        /(\d+)\s*x\s*\d+/i // e.g., "12x3"
+      // Single set patterns
+      const singleSetPatterns = [
+        /(\d+)\s*(?:Wiederholungen|Wdh\.?|x)\s*(?:mit\s*)?(\d+(?:\.\d+)?)\s*kg/i,
+        /(\d+(?:\.\d+)?)\s*kg\s*(?:für\s*)?(\d+)\s*(?:Wiederholungen|Wdh\.?)/i
       ];
-      
-      const setsPatterns = [
-        /(?:Sätze|Sets):\s*(\d+)/i,
-        /(\d+)\s*(?:Sätze|Sets)/i,
-        /\d+\s*x\s*(\d+)/i // e.g., "12x3"
-      ];
-      
-      const weightPatterns = [
-        /(?:Gewicht|Weight):\s*(\d+(?:\.\d+)?)\s*(?:kg|KG)/i,
-        /(\d+(?:\.\d+)?)\s*(?:kg|KG)/i,
-        /mit\s*(\d+(?:\.\d+)?)\s*(?:kg|KG)/i
-      ];
-      
+
       const rpePatterns = [
         /(?:RPE|Anstrengung|Intensität):\s*(\d+(?:\.\d+)?)/i,
         /RPE\s*(\d+(?:\.\d+)?)/i
       ];
 
       let exerciseName = null;
-      let reps = null;
-      let sets = 1; // Default to 1 set
-      let weight = null;
+      let exerciseSets: Array<{reps: number, weight: number}> = [];
       let rpe = null;
 
-      // Try to find exercise name
+      // Find exercise name
       for (const pattern of exercisePatterns) {
         const match = analysis.match(pattern);
         if (match) {
@@ -337,48 +384,39 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         }
       }
 
-      // Find reps
-      for (const pattern of repsPatterns) {
-        const match = analysis.match(pattern);
-        if (match) {
-          reps = parseInt(match[1]);
-          break;
-        }
+      // Parse multi-set data (e.g., "12x 53kg; 8x 73kg; 6x 86kg")
+      let match;
+      while ((match = multiSetPattern.exec(analysis)) !== null) {
+        const reps = parseInt(match[1]);
+        const weight = parseFloat(match[2]);
+        exerciseSets.push({ reps, weight });
       }
 
-      // Find sets
-      for (const pattern of setsPatterns) {
-        const match = analysis.match(pattern);
-        if (match) {
-          sets = parseInt(match[1]);
-          break;
-        }
-      }
-
-      // Find weight
-      for (const pattern of weightPatterns) {
-        const match = analysis.match(pattern);
-        if (match) {
-          weight = parseFloat(match[1]);
-          break;
+      // If no multi-sets found, try single set patterns
+      if (exerciseSets.length === 0) {
+        for (const pattern of singleSetPatterns) {
+          const singleMatch = analysis.match(pattern);
+          if (singleMatch) {
+            const reps = parseInt(singleMatch[1]);
+            const weight = parseFloat(singleMatch[2]);
+            exerciseSets.push({ reps, weight });
+            break;
+          }
         }
       }
 
       // Find RPE
       for (const pattern of rpePatterns) {
-        const match = analysis.match(pattern);
-        if (match) {
-          rpe = parseFloat(match[1]);
+        const rpeMatch = analysis.match(pattern);
+        if (rpeMatch) {
+          rpe = parseFloat(rpeMatch[1]);
           break;
         }
       }
-
-      if (exerciseName) {
+      if (exerciseName && exerciseSets.length > 0) {
         const exerciseData = {
           exercise_name: exerciseName,
-          reps: reps,
-          sets: sets,
-          weight_kg: weight,
+          sets_data: exerciseSets, // Array of {reps, weight} objects
           rpe: rpe,
           date: new Date().toISOString().split('T')[0]
         };
@@ -387,7 +425,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         return exerciseData;
       }
       
-      console.log('❌ No exercise name found in analysis');
+      console.log('❌ No exercise data found in analysis');
       return null;
     } catch (error) {
       console.error('Error parsing exercise data:', error);
@@ -455,18 +493,35 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         exerciseId = newExercise.id;
       }
 
-      // Create exercise sets
+      // Create exercise sets - handle both new multi-set and legacy format
       const sets = [];
-      for (let i = 1; i <= (exerciseData.sets || 1); i++) {
-        sets.push({
-          user_id: user.id,
-          session_id: sessionId,
-          exercise_id: exerciseId,
-          set_number: i,
-          reps: exerciseData.reps,
-          weight_kg: exerciseData.weight_kg,
-          rpe: exerciseData.rpe
+      
+      if (exerciseData.sets_data && Array.isArray(exerciseData.sets_data)) {
+        // New multi-set format
+        exerciseData.sets_data.forEach((setData: any, index: number) => {
+          sets.push({
+            user_id: user.id,
+            session_id: sessionId,
+            exercise_id: exerciseId,
+            set_number: index + 1,
+            reps: setData.reps,
+            weight_kg: setData.weight,
+            rpe: exerciseData.rpe
+          });
         });
+      } else {
+        // Legacy single set format
+        for (let i = 1; i <= (exerciseData.sets || 1); i++) {
+          sets.push({
+            user_id: user.id,
+            session_id: sessionId,
+            exercise_id: exerciseId,
+            set_number: i,
+            reps: exerciseData.reps,
+            weight_kg: exerciseData.weight_kg,
+            rpe: exerciseData.rpe
+          });
+        }
       }
 
       const { error: setsError } = await supabase

@@ -55,6 +55,7 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
       'video/*': ['.mp4', '.mov', '.avi', '.webm']
     },
     maxFiles,
+    maxSize: 250 * 1024 * 1024, // 250MB max file size
     disabled: uploading
   });
 
