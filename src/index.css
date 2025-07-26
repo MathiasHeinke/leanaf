@@ -204,11 +204,18 @@
 
 /* Safe area and mobile optimization utilities */
 .safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
 .pb-safe {
-  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Additional mobile utilities */
+@media (max-width: 640px) {
+  .safe-area-pb {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }
 
 /* Modern Component Styles */

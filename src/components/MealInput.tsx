@@ -151,8 +151,8 @@ export const MealInput = ({
           </div>
         )}
         
-        {/* Main Input Container */}
-        <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group">
+        {/* Main Input Container - Mobile optimized */}
+        <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-xl sm:rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group">
           {/* Text Input */}
           <div className="relative">
             <Textarea
@@ -162,27 +162,27 @@ export const MealInput = ({
                 setInputText(e.target.value.slice(0, 2000));
               }}
               placeholder={t('input.placeholder')}
-              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
+              className="min-h-[50px] sm:min-h-[60px] max-h-[120px] sm:max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm sm:text-base placeholder:text-muted-foreground/70 pl-3 sm:pl-4 pr-16 sm:pr-20 pb-5 sm:pb-6 pt-3 sm:pt-4 leading-relaxed"
               onKeyDown={handleKeyDown}
               disabled={isAnalyzing || isUploading}
             />
             
             {/* Left Action Button - Photo Upload */}
-            <div className="absolute left-4 bottom-2 flex items-center">
+            <div className="absolute left-3 sm:left-4 bottom-2 flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
                 type="button"
-                className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${
+                className={`h-7 w-7 sm:h-9 sm:w-9 p-0 rounded-lg sm:rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${
                   isUploadDisabled ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
                 }`}
                 onClick={handlePhotoUploadClick}
                 disabled={isUploadDisabled}
               >
                 {isUploading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  <Paperclip className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
                 )}
               </Button>
               
@@ -199,13 +199,13 @@ export const MealInput = ({
             </div>
             
             {/* Right Action Buttons - Voice + Send */}
-            <div className="absolute right-4 bottom-2 flex items-center gap-2">
+            <div className="absolute right-3 sm:right-4 bottom-2 flex items-center gap-1 sm:gap-2">
               {/* Voice Recording Button - Only shows loading when voice is processing */}
               <Button
                 variant="ghost"
                 size="sm"
                 type="button"
-                className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 ${
+                className={`h-7 w-7 sm:h-9 sm:w-9 p-0 rounded-lg sm:rounded-xl transition-all duration-200 ${
                   isRecording
                     ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30' 
                     : 'hover:bg-muted/90 hover:scale-105'
@@ -214,11 +214,11 @@ export const MealInput = ({
                 disabled={isVoiceDisabled}
               >
                 {isRecording ? (
-                  <StopCircle className="h-5 w-5" />
+                  <StopCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                 ) : isProcessing ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  <Mic className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
                 )}
               </Button>
               
@@ -226,7 +226,7 @@ export const MealInput = ({
               <Button
                 size="sm"
                 type="button"
-                className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
+                className={`h-7 w-7 sm:h-9 sm:w-9 p-0 rounded-lg sm:rounded-xl transition-all duration-300 font-medium ${
                   isSubmitDisabled
                     ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
                     : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
@@ -235,9 +235,9 @@ export const MealInput = ({
                 disabled={isSubmitDisabled}
               >
                 {isAnalyzing ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-current"></div>
                 ) : (
-                  <Send className="h-5 w-5" />
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                 )}
               </Button>
             </div>

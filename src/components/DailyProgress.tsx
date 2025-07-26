@@ -150,29 +150,31 @@ export const DailyProgress = ({
   const overallStatus = getOverallStatus(dailyTotals, dailyGoal, userGoal, t);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Integrated Nutrient Card - Calories + Macros */}
-      <div className="p-6 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <Target className="h-5 w-5 text-primary" />
+      <div className="p-3 sm:p-6 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-2xl sm:rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl">
+              <Target className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
-            <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
+            <span className="font-semibold text-base sm:text-lg">{t('app.dailyProgress')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <InfoButton
-              title="Kalorien & Makro Tracking"
-              description="Präzises Tracking deiner Kalorien und Makronährstoffe ist der Schlüssel für nachhaltigen Erfolg. Jeder Makronährstoff hat eine spezielle Funktion für deinen Körper."
-              scientificBasis="Studien zeigen: Ein moderates Kaloriendefizit von 300-500 kcal führt zu 0,3-0,5kg Gewichtsverlust pro Woche bei optimaler Muskelerhaltung."
-              tips={[
-                "Protein: 1,6-2,2g pro kg Körpergewicht für Muskelerhalt",
-                "Kohlenhydrate: Energie für Training und Gehirn",
-                "Fette: 0,8-1,2g pro kg für Hormonproduktion"
-              ]}
-            />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <div className="hidden sm:block">
+              <InfoButton
+                title="Kalorien & Makro Tracking"
+                description="Präzises Tracking deiner Kalorien und Makronährstoffe ist der Schlüssel für nachhaltigen Erfolg. Jeder Makronährstoff hat eine spezielle Funktion für deinen Körper."
+                scientificBasis="Studien zeigen: Ein moderates Kaloriendefizit von 300-500 kcal führt zu 0,3-0,5kg Gewichtsverlust pro Woche bei optimaler Muskelerhaltung."
+                tips={[
+                  "Protein: 1,6-2,2g pro kg Körpergewicht für Muskelerhalt",
+                  "Kohlenhydrate: Energie für Training und Gehirn",
+                  "Fette: 0,8-1,2g pro kg für Hormonproduktion"
+                ]}
+              />
+            </div>
             {!isToday && (
-              <Button variant="outline" size="sm" onClick={goToToday}>
+              <Button variant="outline" size="sm" onClick={goToToday} className="text-xs sm:text-sm">
                 {t('date.today')}
               </Button>
             )}
@@ -180,42 +182,42 @@ export const DailyProgress = ({
         </div>
 
         {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-6 p-3 bg-white/60 dark:bg-gray-800/40 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
-          <Button variant="ghost" size="sm" onClick={goToPreviousDay}>
-            <ChevronLeft className="h-4 w-4" />
+        <div className="flex items-center justify-between mb-4 sm:mb-6 p-2 sm:p-3 bg-white/60 dark:bg-gray-800/40 rounded-xl sm:rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
+          <Button variant="ghost" size="sm" onClick={goToPreviousDay} className="p-1 sm:p-2">
+            <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
           
           <div className="text-center">
-            <div className="font-semibold text-base">{formatDate(currentDate)}</div>
+            <div className="font-semibold text-sm sm:text-base">{formatDate(currentDate)}</div>
             {isToday && (
-              <div className="text-sm text-primary font-medium">{t('date.today')}</div>
+              <div className="text-xs sm:text-sm text-primary font-medium">{t('date.today')}</div>
             )}
           </div>
           
-          <Button variant="ghost" size="sm" onClick={goToNextDay}>
-            <ChevronRight className="h-4 w-4" />
+          <Button variant="ghost" size="sm" onClick={goToNextDay} className="p-1 sm:p-2">
+            <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
         </div>
         
         {/* Calories Section - More Compact */}
-        <div className="text-center space-y-3 mb-6">
-          <div className="space-y-2">
-            <div className="text-3xl font-bold text-primary">
+        <div className="text-center space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+          <div className="space-y-1 sm:space-y-2">
+            <div className="text-2xl sm:text-3xl font-bold text-primary">
               {Math.round(dailyTotals.calories)}
-              <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.calories)}</span>
+              <span className="text-base sm:text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.calories)}</span>
             </div>
-            <div className="text-sm text-muted-foreground font-medium">{t('progress.caloriesConsumed')}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground font-medium">{t('progress.caloriesConsumed')}</div>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <Progress 
               value={Math.min(calorieProgress, 100)} 
-              className={`h-3 rounded-full ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              className={`h-2 sm:h-3 rounded-full ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
             />
             
-            <div className="flex items-center justify-center gap-2 text-sm font-medium">
-              <div className="p-1.5 bg-primary/10 rounded-lg">
-                <Flame className="h-4 w-4 text-primary" />
+            <div className="flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium">
+              <div className="p-1 sm:p-1.5 bg-primary/10 rounded-lg">
+                <Flame className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
               </div>
               <span className={goalStatus.color}>
                 {userGoal === 'lose' && remainingCalories > 0 ? 
@@ -229,15 +231,17 @@ export const DailyProgress = ({
                   remainingCalories > 0 ? `${remainingCalories} ${t('ui.kcal')} ${t('progress.remaining')}` : `${Math.abs(remainingCalories)} ${t('ui.kcal')} ${t('progress.exceeded')}`
                 }
               </span>
-              {goalStatus.status === 'success' ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-500" />
-              )}
+              <div className="hidden sm:block">
+                {goalStatus.status === 'success' ? (
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                )}
+              </div>
             </div>
 
-            {/* Personalized motivational quote */}
-            <div className="mt-3 px-4">
+            {/* Personalized motivational quote - Hidden on mobile to save space */}
+            <div className="hidden sm:block mt-3 px-4">
               <RandomQuote 
                 userGender={userProfile?.gender}
                 fallbackText=""
@@ -249,65 +253,65 @@ export const DailyProgress = ({
         {/* Subtle Separator */}
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-gray-700/60 to-transparent mb-6"></div>
 
-        {/* Macros Section - Subtle and Clean */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Macros Section - Mobile optimized */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
           {/* Protein */}
-          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
+          <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-medium mb-1 sm:mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.protein')}
             </div>
-            <div className="space-y-1 mb-3">
-              <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">
+            <div className="space-y-1 mb-2 sm:mb-3">
+              <div className="text-lg sm:text-2xl font-bold text-slate-600 dark:text-slate-300">
                 {Math.round(dailyTotals.protein * 10) / 10}
                 <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
               </div>
-              <div className="text-sm font-medium text-muted-foreground">
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {remainingProtein > 0 ? `+${Math.round(remainingProtein)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingProtein))}${t('ui.gram')} ${t('ui.over')}`}
               </div>
             </div>
             <Progress 
               value={Math.min(proteinProgress, 100)} 
-              className="h-2 [&>div:last-child]:bg-slate-500" 
+              className="h-1.5 sm:h-2 [&>div:last-child]:bg-slate-500" 
             />
           </div>
 
           {/* Carbs */}
-          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
+          <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-medium mb-1 sm:mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.carbs')}
             </div>
-            <div className="space-y-1 mb-3">
-              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+            <div className="space-y-1 mb-2 sm:mb-3">
+              <div className="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {Math.round(dailyTotals.carbs * 10) / 10}
                 <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
               </div>
-              <div className="text-sm font-medium text-muted-foreground">
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingCarbs))}${t('ui.gram')} ${t('ui.over')}`}
               </div>
             </div>
             <Progress 
               value={Math.min(carbsProgress, 100)} 
-              className="h-2 [&>div:last-child]:bg-amber-500" 
+              className="h-1.5 sm:h-2 [&>div:last-child]:bg-amber-500" 
             />
           </div>
 
           {/* Fats */}
-          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
+          <div className="p-3 sm:p-4 rounded-lg sm:rounded-xl bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-medium mb-1 sm:mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.fats')}
             </div>
-            <div className="space-y-1 mb-3">
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="space-y-1 mb-2 sm:mb-3">
+              <div className="text-lg sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {Math.round(dailyTotals.fats * 10) / 10}
                 <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
               </div>
-              <div className="text-sm font-medium text-muted-foreground">
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {remainingFats > 0 ? `+${Math.round(remainingFats)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingFats))}${t('ui.gram')} ${t('ui.over')}`}
               </div>
             </div>
             <Progress 
               value={Math.min(fatsProgress, 100)} 
-              className="h-2 [&>div:last-child]:bg-emerald-500" 
+              className="h-1.5 sm:h-2 [&>div:last-child]:bg-emerald-500" 
             />
           </div>
         </div>

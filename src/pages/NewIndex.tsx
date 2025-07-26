@@ -289,12 +289,14 @@ const NewIndex = () => {
 
   return (
     <>
-      <div className="space-y-2 sm:space-y-3 lg:space-y-4 max-w-7xl mx-auto px-2 sm:px-3 lg:px-6 pb-48 sm:pb-44 md:pb-40 safe-area-pb">
+      <div className="space-y-2 sm:space-y-3 lg:space-y-4 max-w-7xl mx-auto px-2 sm:px-3 lg:px-6 pb-40 sm:pb-36 md:pb-32 safe-area-pb">
         {/* Trial Banner */}
         <TrialBanner />
         
-        {/* Weekly Coach Recommendation for Free Users */}
-        <WeeklyCoachRecommendation />
+        {/* Weekly Coach Recommendation - Hidden on mobile, shown below on mobile */}
+        <div className="hidden sm:block">
+          <WeeklyCoachRecommendation />
+        </div>
 
         {/* Header */}
         <div className="space-y-1 sm:space-y-2">
@@ -322,91 +324,51 @@ const NewIndex = () => {
           onDateChange={handleDateChange}
         />
 
-        {/* Quick Input Cards - Mobile First Responsive Grid */}
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+        {/* Quick Input Cards - Optimized 2x2 grid for mobile */}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
           {/* Weight Tracker */}
-          <Card className="gradient-personal">
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
-                <Scale className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden min-[480px]:inline">Gewicht erfassen</span>
-                <span className="min-[480px]:hidden">Gewicht</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-              <QuickWeightInput 
-                onWeightAdded={handleWeightAdded}
-                todaysWeight={todaysWeight}
-              />
-            </CardContent>
-          </Card>
+          <QuickWeightInput 
+            onWeightAdded={handleWeightAdded}
+            todaysWeight={todaysWeight}
+          />
 
           {/* Quick Workout */}
-          <Card className="gradient-goals">
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
-                <Dumbbell className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden min-[480px]:inline">Training erfassen</span>
-                <span className="min-[480px]:hidden">Training</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-              <QuickWorkoutInput 
-                onWorkoutAdded={handleWorkoutAdded}
-                todaysWorkout={todaysWorkouts[0] || null}
-                todaysWorkouts={todaysWorkouts}
-              />
-            </CardContent>
-          </Card>
+          <QuickWorkoutInput 
+            onWorkoutAdded={handleWorkoutAdded}
+            todaysWorkout={todaysWorkouts[0] || null}
+            todaysWorkouts={todaysWorkouts}
+          />
 
           {/* Sleep Input */}
-          <Card className="gradient-analysis">
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
-                <Moon className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden min-[480px]:inline">Schlaf protokollieren</span>
-                <span className="min-[480px]:hidden">Schlaf</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-              <QuickSleepInput 
-                onSleepAdded={handleSleepAdded}
-                todaysSleep={todaysSleep}
-              />
-            </CardContent>
-          </Card>
+          <QuickSleepInput 
+            onSleepAdded={handleSleepAdded}
+            todaysSleep={todaysSleep}
+          />
 
           {/* Body Measurements */}
-          <Card className="gradient-card">
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
-                <Target className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden min-[480px]:inline">Körpermaße</span>
-                <span className="min-[480px]:hidden">Maße</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-              <BodyMeasurements 
-                onMeasurementsAdded={handleMeasurementsAdded}
-                todaysMeasurements={todaysMeasurements}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Smart Coach Insights */}
-          <Card className="gradient-insights min-[480px]:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
-                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden min-[480px]:inline">Coach Insights</span>
-                <span className="min-[480px]:hidden">Insights</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
-              <SmartCoachInsights />
-            </CardContent>
-          </Card>
+          <BodyMeasurements 
+            onMeasurementsAdded={handleMeasurementsAdded}
+            todaysMeasurements={todaysMeasurements}
+          />
         </div>
+
+        {/* Mobile Coach Recommendation - Show on mobile only */}
+        <div className="sm:hidden">
+          <WeeklyCoachRecommendation />
+        </div>
+
+        {/* Smart Coach Insights - Full width on mobile */}
+        <Card className="gradient-insights">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+              Coach Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-3 sm:px-6 pb-3">
+            <SmartCoachInsights />
+          </CardContent>
+        </Card>
 
         {/* Progress Charts */}
         <Card className="gradient-card">
@@ -442,31 +404,24 @@ const NewIndex = () => {
       </div>
       
       {/* Fixed Bottom Meal Input - Mobile Optimized */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-2 sm:p-3 lg:p-4 shadow-lg pb-safe">
-        <div className="max-w-7xl mx-auto">
-          <Card className="gradient-macros shadow-xl">
-            <CardHeader className="pb-1 sm:pb-2">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
-                <Utensils className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden min-[480px]:inline">Mahlzeit hinzufügen</span>
-                <span className="min-[480px]:hidden">Mahlzeit</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 pb-1 sm:pb-2 px-2 sm:px-6">
-              <MealInput 
-                inputText={mealInputHook.inputText}
-                setInputText={mealInputHook.setInputText}
-                onSubmitMeal={mealInputHook.handleSubmitMeal}
-                onPhotoUpload={mealInputHook.handlePhotoUpload}
-                onVoiceRecord={mealInputHook.handleVoiceRecord}
-                isAnalyzing={mealInputHook.isAnalyzing}
-                isRecording={mealInputHook.isRecording}
-                isProcessing={mealInputHook.isProcessing}
-                uploadedImages={mealInputHook.uploadedImages}
-                onRemoveImage={mealInputHook.removeImage}
-              />
-            </CardContent>
-          </Card>
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border/50 safe-area-pb">
+        <div className="px-2 sm:px-4 lg:px-6 xl:px-8 py-2 sm:py-3">
+          <div className="max-w-7xl mx-auto">
+            <MealInput 
+              inputText={mealInputHook.inputText}
+              setInputText={mealInputHook.setInputText}
+              onSubmitMeal={mealInputHook.handleSubmitMeal}
+              onPhotoUpload={mealInputHook.handlePhotoUpload}
+              onVoiceRecord={mealInputHook.handleVoiceRecord}
+              isAnalyzing={mealInputHook.isAnalyzing}
+              isRecording={mealInputHook.isRecording}
+              isProcessing={mealInputHook.isProcessing}
+              uploadedImages={mealInputHook.uploadedImages}
+              onRemoveImage={mealInputHook.removeImage}
+              uploadProgress={mealInputHook.uploadProgress}
+              isUploading={mealInputHook.isUploading}
+            />
+          </div>
         </div>
       </div>
 
