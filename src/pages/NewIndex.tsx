@@ -279,7 +279,7 @@ const NewIndex = () => {
 
   if (dataLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 px-4 sm:px-6 lg:px-8">
         <div className="h-32 w-full animate-pulse bg-muted rounded-lg" />
         <div className="h-48 w-full animate-pulse bg-muted rounded-lg" />
         <div className="h-64 w-full animate-pulse bg-muted rounded-lg" />
@@ -288,175 +288,186 @@ const NewIndex = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Trial Banner */}
-      <TrialBanner />
+    <>
+      <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+        {/* Trial Banner */}
+        <TrialBanner />
+        
+        {/* Weekly Coach Recommendation for Free Users */}
+        <WeeklyCoachRecommendation />
+
+        {/* Header */}
+        <div className="space-y-2">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Überblick über Ihren heutigen Fortschritt</p>
+        </div>
+
+        {/* Daily Progress Overview */}
+        <DailyProgress
+          dailyTotals={{
+            calories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
+            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
+            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
+            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
+          }}
+          userProfile={userProfile}
+          dailyGoal={{
+            calories: dailyGoals?.calories || 2000,
+            protein: dailyGoals?.protein || 150,
+            carbs: dailyGoals?.carbs || 250,
+            fats: dailyGoals?.fats || 65
+          }}
+          userGoal={userProfile?.goal || 'maintain'}
+          currentDate={currentDate}
+          onDateChange={handleDateChange}
+        />
+
+        {/* Quick Input Cards - Responsive Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {/* Weight Tracker */}
+          <Card className="gradient-personal">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <Scale className="h-4 w-4" />
+                <span className="hidden sm:inline">Gewicht erfassen</span>
+                <span className="sm:hidden">Gewicht</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <QuickWeightInput 
+                onWeightAdded={handleWeightAdded}
+                todaysWeight={todaysWeight}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Quick Workout */}
+          <Card className="gradient-goals">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <Dumbbell className="h-4 w-4" />
+                <span className="hidden sm:inline">Training erfassen</span>
+                <span className="sm:hidden">Training</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <QuickWorkoutInput 
+                onWorkoutAdded={handleWorkoutAdded}
+                todaysWorkout={todaysWorkouts[0] || null}
+                todaysWorkouts={todaysWorkouts}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Sleep Input */}
+          <Card className="gradient-analysis">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <Moon className="h-4 w-4" />
+                <span className="hidden sm:inline">Schlaf protokollieren</span>
+                <span className="sm:hidden">Schlaf</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <QuickSleepInput 
+                onSleepAdded={handleSleepAdded}
+                todaysSleep={todaysSleep}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Body Measurements */}
+          <Card className="gradient-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">Körpermaße</span>
+                <span className="sm:hidden">Maße</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <BodyMeasurements 
+                onMeasurementsAdded={handleMeasurementsAdded}
+                todaysMeasurements={todaysMeasurements}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Smart Coach Insights */}
+          <Card className="gradient-insights sm:col-span-2 lg:col-span-1">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Coach Insights</span>
+                <span className="sm:hidden">Insights</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <SmartCoachInsights />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Progress Charts */}
+        <Card className="gradient-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+              Fortschrittsverlauf
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProgressCharts />
+          </CardContent>
+        </Card>
+
+        {/* Meal List */}
+        {meals.length > 0 && (
+          <Card className="gradient-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
+                <Utensils className="h-4 w-4 sm:h-5 sm:w-5" />
+                Heutige Mahlzeiten ({meals.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MealList 
+                meals={meals}
+                onMealUpdate={handleMealUpdate}
+                selectedDate={currentDate.toISOString().split('T')[0]}
+              />
+            </CardContent>
+          </Card>
+        )}
+      </div>
       
-      {/* Weekly Coach Recommendation for Free Users */}
-      <WeeklyCoachRecommendation />
-
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">Überblick über Ihren heutigen Fortschritt</p>
+      {/* Fixed Bottom Meal Input */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-4 shadow-lg">
+        <div className="max-w-7xl mx-auto">
+          <Card className="gradient-macros shadow-xl">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                <Utensils className="h-4 w-4" />
+                Mahlzeit hinzufügen
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <MealInput 
+                inputText={mealInputHook.inputText}
+                setInputText={mealInputHook.setInputText}
+                onSubmitMeal={mealInputHook.handleSubmitMeal}
+                onPhotoUpload={mealInputHook.handlePhotoUpload}
+                onVoiceRecord={mealInputHook.handleVoiceRecord}
+                isAnalyzing={mealInputHook.isAnalyzing}
+                isRecording={mealInputHook.isRecording}
+                isProcessing={mealInputHook.isProcessing}
+                uploadedImages={mealInputHook.uploadedImages}
+                onRemoveImage={mealInputHook.removeImage}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* Daily Progress Overview */}
-      <DailyProgress
-        dailyTotals={{
-          calories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
-          protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-          carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-          fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
-        }}
-        userProfile={userProfile}
-        dailyGoal={{
-          calories: dailyGoals?.calories || 2000,
-          protein: dailyGoals?.protein || 150,
-          carbs: dailyGoals?.carbs || 250,
-          fats: dailyGoals?.fats || 65
-        }}
-        userGoal={userProfile?.goal || 'maintain'}
-        currentDate={currentDate}
-        onDateChange={handleDateChange}
-      />
-
-      {/* Quick Input Cards - 2x3 Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* Meal Input */}
-        <Card className="gradient-macros">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Utensils className="h-4 w-4" />
-              Mahlzeit hinzufügen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MealInput 
-              inputText={mealInputHook.inputText}
-              setInputText={mealInputHook.setInputText}
-              onSubmitMeal={mealInputHook.handleSubmitMeal}
-              onPhotoUpload={mealInputHook.handlePhotoUpload}
-              onVoiceRecord={mealInputHook.handleVoiceRecord}
-              isAnalyzing={mealInputHook.isAnalyzing}
-              isRecording={mealInputHook.isRecording}
-              isProcessing={mealInputHook.isProcessing}
-              uploadedImages={mealInputHook.uploadedImages}
-              onRemoveImage={mealInputHook.removeImage}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Weight Tracker */}
-        <Card className="gradient-personal">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Scale className="h-4 w-4" />
-              Gewicht erfassen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <QuickWeightInput 
-              onWeightAdded={handleWeightAdded}
-              todaysWeight={todaysWeight}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Quick Workout */}
-        <Card className="gradient-goals">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Dumbbell className="h-4 w-4" />
-              Training erfassen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <QuickWorkoutInput 
-              onWorkoutAdded={handleWorkoutAdded}
-              todaysWorkout={todaysWorkouts[0] || null}
-              todaysWorkouts={todaysWorkouts}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Sleep Input */}
-        <Card className="gradient-analysis">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Moon className="h-4 w-4" />
-              Schlaf protokollieren
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <QuickSleepInput 
-              onSleepAdded={handleSleepAdded}
-              todaysSleep={todaysSleep}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Body Measurements */}
-        <Card className="gradient-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="h-4 w-4" />
-              Körpermaße
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BodyMeasurements 
-              onMeasurementsAdded={handleMeasurementsAdded}
-              todaysMeasurements={todaysMeasurements}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Smart Coach Insights */}
-        <Card className="gradient-insights">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4" />
-              Coach Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SmartCoachInsights />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progress Charts */}
-      <Card className="gradient-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Fortschrittsverlauf
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProgressCharts />
-        </CardContent>
-      </Card>
-
-      {/* Meal List */}
-      {meals.length > 0 && (
-        <Card className="gradient-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Utensils className="h-5 w-5 text-primary" />
-              Heutige Mahlzeiten ({meals.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MealList 
-              meals={meals}
-              onMealUpdate={handleMealUpdate}
-              selectedDate={currentDate.toISOString().split('T')[0]}
-            />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Meal Confirmation Dialog */}
       <MealConfirmationDialog 
@@ -468,7 +479,7 @@ const NewIndex = () => {
         onMealTypeChange={mealInputHook.setSelectedMealType}
         uploadedImages={mealInputHook.uploadedImages}
       />
-    </div>
+    </>
   )
 }
 
