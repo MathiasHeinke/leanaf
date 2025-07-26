@@ -79,7 +79,7 @@ const translations = {
     
     // Macros
     'macros.protein': 'Protein',
-    'macros.carbs': 'Kohlenhydrate',
+    'macros.carbs': 'Kohlenhyd.',
     'macros.fats': 'Fette',
     'macros.calories': 'Kalorien',
     
