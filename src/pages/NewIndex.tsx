@@ -47,28 +47,7 @@ const NewIndex = () => {
   const [todaysWorkouts, setTodaysWorkouts] = useState<any[]>([])
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null)
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  // Redirect to profile setup if not complete
-  if (!isSetupComplete) {
-    return <Navigate to="/profile" replace />
-  }
-
-  // Load user data
-  useEffect(() => {
-    if (user) {
-      loadUserData()
-      fetchMealsForDate(currentDate)
-      loadTodaysData(currentDate)
-    }
-  }, [user, currentDate])
-
+  // ✅ ALL FUNCTIONS DEFINED BEFORE useEffect
   const loadUserData = async () => {
     if (!user) return
     
@@ -275,12 +254,27 @@ const NewIndex = () => {
     loadTodaysData(currentDate)
   }
 
-  const handleMealDeleted = async () => {
-    await fetchMealsForDate(currentDate)
+  // ✅ HOOKS CALLED BEFORE ANY EARLY RETURNS
+  useEffect(() => {
+    if (user) {
+      loadUserData()
+      fetchMealsForDate(currentDate)
+      loadTodaysData(currentDate)
+    }
+  }, [user, currentDate])
+
+  // ✅ NOW SAFE TO DO EARLY RETURNS AFTER ALL HOOKS
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
-  const handleMealUpdated = async () => {
-    await fetchMealsForDate(currentDate)
+  // Redirect to profile setup if not complete
+  if (!isSetupComplete) {
+    return <Navigate to="/profile" replace />
   }
 
   if (dataLoading) {
