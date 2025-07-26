@@ -50,12 +50,20 @@ export const CoachFeedbackCard = ({
             break;
         }
 
+        console.log(`Calling ${functionName} with:`, requestBody);
+        
         const { data, error } = await supabase.functions.invoke(functionName, {
           body: requestBody
         });
 
-        if (error) throw error;
-        setFeedback(data.coachFeedback || "Feedback wird geladen...");
+        console.log(`Response from ${functionName}:`, { data, error });
+
+        if (error) {
+          console.error(`Error from ${functionName}:`, error);
+          throw error;
+        }
+        
+        setFeedback(data?.coachFeedback || "Feedback wird geladen...");
       } catch (error) {
         console.error('Error fetching coach feedback:', error);
         setFeedback(getGenericFeedback(type));
@@ -124,6 +132,7 @@ export const CoachFeedbackCard = ({
             alt={`${coachName} Avatar`}
             className="w-8 h-8 rounded-full object-cover"
             onError={(e) => {
+              console.log(`Failed to load avatar: ${coachAvatar}`);
               e.currentTarget.src = '/coach-images/default-avatar.jpg';
             }}
           />

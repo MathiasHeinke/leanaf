@@ -21,6 +21,18 @@ serve(async (req) => {
     
     console.log('Received weight data:', weightData);
     console.log('Received measurement data:', measurementData);
+    
+    // Validate that we have at least some data
+    if (!weightData && !measurementData) {
+      console.log('No weight or measurement data provided');
+      return new Response(
+        JSON.stringify({ error: 'No weight or measurement data provided' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
 
     if (!userId || (!weightData && !measurementData)) {
       return new Response(
