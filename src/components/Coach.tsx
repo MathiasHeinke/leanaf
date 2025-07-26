@@ -334,7 +334,7 @@ const Coach = ({ onClose }: CoachProps) => {
   };
 
   const averages = calculateAverages();
-  const showAdvancedWorkout = hasFeatureAccess('advanced_exercise_tracking');
+  
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -346,7 +346,6 @@ const Coach = ({ onClose }: CoachProps) => {
         historyData={historyData}
         trendData={trendData}
         weightHistory={weightHistory}
-        showAdvancedWorkout={showAdvancedWorkout}
       />
     </div>
   );

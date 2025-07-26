@@ -176,7 +176,7 @@ interface SpecializedCoachesProps {
   historyData: any[];
   trendData: any;
   weightHistory: any[];
-  showAdvancedWorkout?: boolean;
+  
 }
 
 export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
@@ -185,8 +185,7 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
   averages,
   historyData,
   trendData,
-  weightHistory,
-  showAdvancedWorkout = false
+  weightHistory
 }) => {
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
 
@@ -218,56 +217,22 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
 
   return (
     <div className="space-y-4">
-      {showAdvancedWorkout ? (
-        <Tabs defaultValue="coach" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="coach">Coach auswählen</TabsTrigger>
-            <TabsTrigger value="training">Training+</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="coach" className="mt-3">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold mb-2">Wähle deinen Experten</h3>
-              <p className="text-sm text-muted-foreground">
-                Jeder Coach ist auf ein spezielles Gebiet fokussiert - wähle den passenden Experten für deine Frage!
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
-              {coachProfiles.map((coach) => (
-                <CoachMiniCard
-                  key={coach.id}
-                  coach={coach}
-                  onSelect={handleCoachSelect}
-                />
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="training" className="mt-3">
-            <AdvancedWorkoutSection />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <div className="space-y-4">
-          <div className="text-center mb-6">
-            <h3 className="text-lg font-semibold mb-2">Wähle deinen Experten</h3>
-            <p className="text-sm text-muted-foreground">
-              Jeder Coach ist auf ein spezielles Gebiet fokussiert - wähle den passenden Experten für deine Frage!
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
-            {coachProfiles.map((coach) => (
-              <CoachMiniCard
-                key={coach.id}
-                coach={coach}
-                onSelect={handleCoachSelect}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-semibold mb-2">Wähle deinen Experten</h3>
+        <p className="text-sm text-muted-foreground">
+          Jeder Coach ist auf ein spezielles Gebiet fokussiert - wähle den passenden Experten für deine Frage!
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
+        {coachProfiles.map((coach) => (
+          <CoachMiniCard
+            key={coach.id}
+            coach={coach}
+            onSelect={handleCoachSelect}
+          />
+        ))}
+      </div>
     </div>
   );
 };
