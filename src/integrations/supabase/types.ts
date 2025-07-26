@@ -347,6 +347,7 @@ export type Database = {
         Row: {
           coach_personality: string | null
           context_data: Json | null
+          conversation_date: string
           created_at: string
           id: string
           message_content: string
@@ -357,6 +358,7 @@ export type Database = {
         Insert: {
           coach_personality?: string | null
           context_data?: Json | null
+          conversation_date?: string
           created_at?: string
           id?: string
           message_content: string
@@ -367,6 +369,7 @@ export type Database = {
         Update: {
           coach_personality?: string | null
           context_data?: Json | null
+          conversation_date?: string
           created_at?: string
           id?: string
           message_content?: string

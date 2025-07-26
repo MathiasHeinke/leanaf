@@ -21,7 +21,9 @@ import {
   X,
   MessageSquare,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  History,
+  Calendar
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,8 +31,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
+import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
+import { VideoCompressionProgress } from '@/components/VideoCompressionProgress';
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
+import { VideoCompressor, CompressionProgress } from '@/utils/videoCompression';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface ChatMessage {
   id: string;
@@ -110,6 +117,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [analysisType, setAnalysisType] = useState<'exercise_form' | 'meal_analysis' | 'progress_photo' | 'general'>('general');
   const [dynamicSuggestions, setDynamicSuggestions] = useState<Array<{text: string; prompt: string}>>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [currentDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -124,7 +136,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       loadUserData();
       loadCoachChatHistory();
     }
-  }, [user?.id, coach.id]);
+  }, [user?.id, coach.id, selectedDate]);
 
   useEffect(() => {
     scrollToBottom();
@@ -181,18 +193,21 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
   };
 
-  const loadCoachChatHistory = async () => {
+  const loadCoachChatHistory = async (dateFilter?: string) => {
     if (!user?.id) return;
 
     setIsLoading(true);
     try {
+      const targetDate = dateFilter || selectedDate || currentDate;
+      
       const { data, error } = await supabase
         .from('coach_conversations')
         .select('*')
         .eq('user_id', user.id)
         .eq('coach_personality', coach.id)
+        .eq('conversation_date', targetDate)
         .order('created_at', { ascending: true })
-        .limit(20);
+        .limit(50);
 
       if (error) {
         console.error('Error loading coach chat history:', error);
@@ -289,6 +304,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           message_role: role,
           message_content: content,
           coach_personality: coach.id,
+          conversation_date: selectedDate || currentDate,
           context_data: images ? { images } : {}
         })
         .select()
@@ -552,16 +568,18 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     if (!user?.id) return;
     
     try {
+      const targetDate = selectedDate || currentDate;
       await supabase
         .from('coach_conversations')
         .delete()
         .eq('user_id', user.id)
-        .eq('coach_personality', coach.id);
+        .eq('coach_personality', coach.id)
+        .eq('conversation_date', targetDate);
       
       setMessages([]);
       setQuickActionsShown(false);
       generateWelcomeMessage();
-      toast.success('Chat geleert');
+      toast.success('Heutiger Chat geleert');
     } catch (error) {
       console.error('Error clearing chat:', error);
       toast.error('Fehler beim Leeren des Chats');
@@ -640,51 +658,68 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" onClick={onBack}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              
+    <div className="flex gap-4">
+      {/* Main Chat Area */}
+      <div className="flex-1 space-y-4">
+        {/* Header */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                {coach.imageUrl ? (
-                  <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg">
-                    <img 
-                      src={coach.imageUrl} 
-                      alt={coach.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        target.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden`}>
+                <Button variant="ghost" size="sm" onClick={onBack}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center space-x-3">
+                  {coach.imageUrl ? (
+                    <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg">
+                      <img 
+                        src={coach.imageUrl} 
+                        alt={coach.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden`}>
+                        {coach.avatar}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
                       {coach.avatar}
                     </div>
+                  )}
+                  <div>
+                    <CardTitle className="text-lg">{coach.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{coach.role}</p>
+                    {selectedDate && selectedDate !== currentDate && (
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {format(new Date(selectedDate), 'dd.MM.yyyy', { locale: de })}
+                      </Badge>
+                    )}
                   </div>
-                ) : (
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
-                    {coach.avatar}
-                  </div>
-                )}
-                <div>
-                  <CardTitle className="text-lg">{coach.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{coach.role}</p>
                 </div>
               </div>
+              
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowHistory(!showHistory)}
+                  className={showHistory ? 'bg-primary/10 text-primary' : ''}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearChat}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            
-            <Button variant="ghost" size="sm" onClick={clearChat}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
 
       {/* Chat Area */}
       <Card className="flex flex-col h-[600px]">
@@ -1037,6 +1072,19 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
         </div>
       </Card>
+      </div>
+
+      {/* History Sidebar */}
+      {showHistory && (
+        <ChatHistorySidebar
+          selectedCoach={coach.id}
+          onSelectDate={(date) => {
+            setSelectedDate(date);
+            setShowHistory(false);
+          }}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 };

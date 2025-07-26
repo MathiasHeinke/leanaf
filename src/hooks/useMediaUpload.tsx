@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { VideoCompressor, CompressionProgress } from '@/utils/videoCompression';
 
 interface UploadProgress {
   progress: number;
@@ -12,6 +13,8 @@ export const useMediaUpload = () => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const uploadFiles = async (files: File[]): Promise<string[]> => {
     if (!user?.id) {
@@ -35,17 +38,44 @@ export const useMediaUpload = () => {
           continue;
         }
 
-        // Validate file size (max 250MB for videos, 10MB for images)
+        // Handle video compression for large files
+        let processedFile = file;
+        if (isVideo && file.size > 50 * 1024 * 1024) { // Compress videos > 50MB
+          try {
+            setIsCompressing(true);
+            toast.info(`Video ${file.name} wird komprimiert...`);
+            
+            const compressionResult = await VideoCompressor.compressVideo(
+              file,
+              (progress) => setCompressionProgress(progress)
+            );
+            
+            processedFile = compressionResult.file;
+            
+            if (compressionResult.compressionRatio > 1) {
+              const savedMB = (compressionResult.originalSize - compressionResult.compressedSize) / 1024 / 1024;
+              toast.success(`Video komprimiert! ${savedMB.toFixed(1)}MB gespart (${compressionResult.compressionRatio.toFixed(1)}x kleiner)`);
+            }
+          } catch (error) {
+            console.error('Video compression failed:', error);
+            toast.warning('Komprimierung fehlgeschlagen, verwende Original-Video');
+          } finally {
+            setIsCompressing(false);
+            setCompressionProgress(null);
+          }
+        }
+        
+        // Validate final file size
         const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024;
-        if (file.size > maxSize) {
-          toast.error(`${file.name} ist zu groß. Max: ${isVideo ? '250MB' : '10MB'}`);
+        if (processedFile.size > maxSize) {
+          toast.error(`${processedFile.name} ist zu groß. Max: ${isVideo ? '250MB' : '10MB'}`);
           continue;
         }
 
         // Update progress
         setUploadProgress(prev => [
-          ...prev.filter(p => p.fileName !== file.name),
-          { fileName: file.name, progress: 0 }
+          ...prev.filter(p => p.fileName !== processedFile.name),
+          { fileName: processedFile.name, progress: 0 }
         ]);
 
         // Generate unique filename
@@ -123,6 +153,8 @@ export const useMediaUpload = () => {
     uploadFiles,
     uploading,
     uploadProgress,
+    compressionProgress,
+    isCompressing,
     getMediaType
   };
 };

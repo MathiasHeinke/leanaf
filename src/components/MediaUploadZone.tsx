@@ -20,7 +20,14 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
   accept = ['image/*', 'video/*'],
   className = ''
 }) => {
-  const { uploadFiles, uploading, uploadProgress, getMediaType } = useMediaUpload();
+  const { 
+    uploadFiles, 
+    uploading, 
+    uploadProgress, 
+    compressionProgress, 
+    isCompressing, 
+    getMediaType 
+  } = useMediaUpload();
   const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {

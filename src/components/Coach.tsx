@@ -338,43 +338,16 @@ const Coach = ({ onClose }: CoachProps) => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <Tabs defaultValue="coach" className="w-full">
-        <TabsList className={`grid w-full ${showAdvancedWorkout ? 'grid-cols-2' : 'grid-cols-1'}`}>
-          <TabsTrigger value="coach">Coach auswählen</TabsTrigger>
-          {showAdvancedWorkout && <TabsTrigger value="training">Training+</TabsTrigger>}
-        </TabsList>
-        
-        
-        <TabsContent value="coach" className="mt-3">
-          <SpecializedCoaches 
-            todaysTotals={todaysTotals}
-            dailyGoals={dailyGoals}
-            averages={averages}
-            historyData={historyData}
-            trendData={trendData}
-            weightHistory={weightHistory}
-          />
-        </TabsContent>
-
-        {showAdvancedWorkout && (
-          <TabsContent value="training" className="mt-3">
-            <AdvancedWorkoutSection />
-          </TabsContent>
-        )}
-
-        {/* Hidden premium gate for non-premium users who might access this via URL */}
-        {!showAdvancedWorkout && (
-          <TabsContent value="training" className="mt-3">
-            <PremiumGate 
-              feature="advanced_exercise_tracking"
-              fallbackMessage="Detailliertes Krafttraining-Tracking ist Teil von getleanAI+. Upgrade für erweiterte Fitnessfunktionen."
-              showUpgrade={true}
-            >
-              <AdvancedWorkoutSection />
-            </PremiumGate>
-          </TabsContent>
-        )}
-      </Tabs>
+      {/* Removed Tabs - Direct coach selection with Training+ integration */}
+      <SpecializedCoaches 
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        historyData={historyData}
+        trendData={trendData}
+        weightHistory={weightHistory}
+        showAdvancedWorkout={showAdvancedWorkout}
+      />
     </div>
   );
 };
