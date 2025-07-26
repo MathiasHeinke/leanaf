@@ -550,7 +550,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         </label>
                         <Slider
                           value={sleepInterruptions}
-                          onValueChange={setSleepInterruptions}
+                          onValueChange={(value) => {
+                            setSleepInterruptions(value);
+                            setTrackInterruptions(true);
+                          }}
                           max={10}
                           min={0}
                           step={1}
@@ -582,7 +585,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         </label>
                         <Slider
                           value={screenTimeEvening}
-                          onValueChange={setScreenTimeEvening}
+                          onValueChange={(value) => {
+                            setScreenTimeEvening(value);
+                            setTrackScreenTime(true);
+                          }}
                           max={300}
                           min={0}
                           step={15}
@@ -614,7 +620,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         </label>
                         <Slider
                           value={lastMealTime}
-                          onValueChange={setLastMealTime}
+                          onValueChange={(value) => {
+                            setLastMealTime(value);
+                            setTrackLastMeal(true);
+                          }}
                           max={23.5} // 23:30
                           min={16}   // 16:00
                           step={0.5}
@@ -646,7 +655,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         </label>
                         <Slider
                           value={morningLibido}
-                          onValueChange={setMorningLibido}
+                          onValueChange={(value) => {
+                            setMorningLibido(value);
+                            setTrackLibido(true);
+                          }}
                           max={10}
                           min={1}
                           step={1}
@@ -678,7 +690,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         </label>
                         <Slider
                           value={motivationLevel}
-                          onValueChange={setMotivationLevel}
+                          onValueChange={(value) => {
+                            setMotivationLevel(value);
+                            setTrackMotivation(true);
+                          }}
                           max={10}
                           min={1}
                           step={1}
