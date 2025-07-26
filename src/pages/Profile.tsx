@@ -533,104 +533,106 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </div>
 
-          <div className="gradient-personal rounded-xl p-4 shadow-sm border space-y-4 profile-basic-data">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Startgewicht</Label>
-                <NumericInput
-                  value={startWeight}
-                  onChange={(value) => {
-                    const newStartWeight = value;
-                    setStartWeight(newStartWeight);
-                    // Auto-set current weight after delay if it's empty (first time setup)
-                    if (!weight && newStartWeight) {
-                      setTimeout(() => {
-                        setWeight(newStartWeight);
-                      }, 300);
-                    }
-                  }}
-                  placeholder="75"
-                  className={cn("mt-1", validationErrors.startWeight && "border-red-500")}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Aktuelles Gewicht</Label>
-                <div className="relative">
-                  <Input
-                    value={weight}
-                    disabled={true}
+          <Card>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Startgewicht</Label>
+                  <NumericInput
+                    value={startWeight}
+                    onChange={(value) => {
+                      const newStartWeight = value;
+                      setStartWeight(newStartWeight);
+                      // Auto-set current weight after delay if it's empty (first time setup)
+                      if (!weight && newStartWeight) {
+                        setTimeout(() => {
+                          setWeight(newStartWeight);
+                        }, 300);
+                      }
+                    }}
                     placeholder="75"
-                    className={cn("mt-1 bg-muted", validationErrors.weight && "border-red-500")}
+                    className={cn("mt-1", validationErrors.startWeight && "border-red-500")}
                   />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Wird automatisch aus der Gewichtsmessung geladen
-                </div>
-                {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
-                  <div className="text-xs mt-1">
-                    {parseFloat(weight) < parseFloat(startWeight) && (
-                      <span className="text-green-500">↓ -{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)} kg</span>
-                    )}
-                    {parseFloat(weight) > parseFloat(startWeight) && (
-                      <span className="text-red-500">↑ +{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)} kg</span>
-                    )}
+                <div>
+                  <Label className="text-sm">Aktuelles Gewicht</Label>
+                  <div className="relative">
+                    <Input
+                      value={weight}
+                      disabled={true}
+                      placeholder="75"
+                      className={cn("mt-1 bg-muted", validationErrors.weight && "border-red-500")}
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </div>
                   </div>
-                )}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Wird automatisch aus der Gewichtsmessung geladen
+                  </div>
+                  {weight && startWeight && parseFloat(weight) !== parseFloat(startWeight) && (
+                    <div className="text-xs mt-1">
+                      {parseFloat(weight) < parseFloat(startWeight) && (
+                        <span className="text-green-500">↓ -{(parseFloat(startWeight) - parseFloat(weight)).toFixed(1)} kg</span>
+                      )}
+                      {parseFloat(weight) > parseFloat(startWeight) && (
+                        <span className="text-red-500">↑ +{(parseFloat(weight) - parseFloat(startWeight)).toFixed(1)} kg</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label className="text-sm">Größe (cm)</Label>
-                <NumericInput
-                  value={height}
-                  onChange={setHeight}
-                  placeholder="175"
-                  className={cn("mt-1", validationErrors.height && "border-red-500")}
-                />
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-sm">Größe (cm)</Label>
+                  <NumericInput
+                    value={height}
+                    onChange={setHeight}
+                    placeholder="175"
+                    className={cn("mt-1", validationErrors.height && "border-red-500")}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Alter</Label>
+                  <NumericInput
+                    value={age}
+                    onChange={setAge}
+                    placeholder="30"
+                    className={cn("mt-1", validationErrors.age && "border-red-500")}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Geschlecht</Label>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger className={cn("mt-1", validationErrors.gender && "border-red-500")}>
+                      <SelectValue placeholder="Wählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Männlich</SelectItem>
+                      <SelectItem value="female">Weiblich</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label className="text-sm">Alter</Label>
-                <NumericInput
-                  value={age}
-                  onChange={setAge}
-                  placeholder="30"
-                  className={cn("mt-1", validationErrors.age && "border-red-500")}
-                />
-              </div>
-              <div>
-                <Label className="text-sm">Geschlecht</Label>
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger className={cn("mt-1", validationErrors.gender && "border-red-500")}>
+
+              <div className="profile-activity-level">
+                <Label className="text-sm">Aktivitätslevel</Label>
+                <Select value={activityLevel} onValueChange={setActivityLevel}>
+                  <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
                     <SelectValue placeholder="Wählen..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Männlich</SelectItem>
-                    <SelectItem value="female">Weiblich</SelectItem>
-                  </SelectContent>
+                    <SelectContent>
+                      <SelectItem value="sedentary">Sitzend (wenig/keine Bewegung)</SelectItem>
+                      <SelectItem value="light">Leicht aktiv (1-2 Tage/Woche Sport, wenig Schritte)</SelectItem>
+                      <SelectItem value="moderate">Moderat aktiv (2-3 Tage/Woche Sport, 5-6k Schritte)</SelectItem>
+                      <SelectItem value="active">Sehr aktiv (3-5 Tage/Woche Sport, 6-8k Schritte)</SelectItem>
+                      <SelectItem value="very_active">Extrem aktiv (5+ Tage/Woche Sport, 8k+ Schritte)</SelectItem>
+                    </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="profile-activity-level">
-              <Label className="text-sm">Aktivitätslevel</Label>
-              <Select value={activityLevel} onValueChange={setActivityLevel}>
-                <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
-                  <SelectValue placeholder="Wählen..." />
-                </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sedentary">Sitzend (wenig/keine Bewegung)</SelectItem>
-                    <SelectItem value="light">Leicht aktiv (1-2 Tage/Woche Sport, wenig Schritte)</SelectItem>
-                    <SelectItem value="moderate">Moderat aktiv (2-3 Tage/Woche Sport, 5-6k Schritte)</SelectItem>
-                    <SelectItem value="active">Sehr aktiv (3-5 Tage/Woche Sport, 6-8k Schritte)</SelectItem>
-                    <SelectItem value="very_active">Extrem aktiv (5+ Tage/Woche Sport, 8k+ Schritte)</SelectItem>
-                  </SelectContent>
-              </Select>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 2. Goals */}
@@ -642,42 +644,44 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-lg md:text-xl font-bold">Ziele</h2>
           </div>
 
-          <div className="gradient-goals rounded-xl p-4 shadow-sm border space-y-4 profile-goals">
-            <div>
-              <Label className="text-sm">Ziel</Label>
-              <Select value={goal} onValueChange={setGoal}>
-                <SelectTrigger className={cn("mt-1", validationErrors.goal && "border-red-500")}>
-                  <SelectValue placeholder="Wählen..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lose">Gewicht reduzieren</SelectItem>
-                  <SelectItem value="maintain">Gewicht halten</SelectItem>
-                  <SelectItem value="gain">Gewicht aufbauen</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <Card>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm">Ziel</Label>
+                <Select value={goal} onValueChange={setGoal}>
+                  <SelectTrigger className={cn("mt-1", validationErrors.goal && "border-red-500")}>
+                    <SelectValue placeholder="Wählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lose">Gewicht reduzieren</SelectItem>
+                    <SelectItem value="maintain">Gewicht halten</SelectItem>
+                    <SelectItem value="gain">Gewicht aufbauen</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-sm">Zielgewicht</Label>
-                <NumericInput
-                  value={targetWeight}
-                  onChange={setTargetWeight}
-                  placeholder="70"
-                  className="mt-1"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Zielgewicht</Label>
+                  <NumericInput
+                    value={targetWeight}
+                    onChange={setTargetWeight}
+                    placeholder="70"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Zieldatum</Label>
+                  <Input
+                    type="date"
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
               </div>
-              <div>
-                <Label className="text-sm">Zieldatum</Label>
-                <Input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 3. Macro Strategy */}
@@ -689,114 +693,116 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-lg md:text-xl font-bold">Makronährstoff-Strategie</h2>
           </div>
 
-          <div className="gradient-macros rounded-xl p-4 shadow-sm border space-y-4">
-            <div className="space-y-3">
-              {[
-                { 
-                  id: 'high_protein',
-                  label: 'High Protein (50/20/30)',
-                  desc: 'Optimal für Muskelaufbau & Sättigung',
-                  protein: 50, carbs: 20, fats: 30
-                },
-                { 
-                  id: 'high_carb',
-                  label: 'High Carb (20/50/30)',
-                  desc: 'Ideal für intensive Workouts',
-                  protein: 20, carbs: 50, fats: 30
-                },
-                {
-                  id: 'low_carb',
-                  label: 'Low Carb (30/20/50)',
-                  desc: 'Ketogene Ernährung & Fettverbrennung',
-                  protein: 30, carbs: 20, fats: 50
-                },
-                {
-                  id: 'custom',
-                  label: 'Individuell',
-                  desc: 'Eigene Werte definieren',
-                  protein: dailyGoals.protein, carbs: dailyGoals.carbs, fats: dailyGoals.fats
-                }
-              ].map((strategy) => (
-                <div 
-                  key={strategy.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                    macroStrategy === strategy.id 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => {
-                    setMacroStrategy(strategy.id);
-                    if (strategy.id !== 'custom') {
-                      setDailyGoals(prev => ({
-                        ...prev,
-                        protein: strategy.protein,
-                        carbs: strategy.carbs,
-                        fats: strategy.fats
-                      }));
-                      setHasUserModifiedMacros(false);
-                    }
-                  }}
-                >
-                  <div className="flex justify-between items-center">
+          <Card>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                {[
+                  { 
+                    id: 'high_protein',
+                    label: 'High Protein (50/20/30)',
+                    desc: 'Optimal für Muskelaufbau & Sättigung',
+                    protein: 50, carbs: 20, fats: 30
+                  },
+                  { 
+                    id: 'high_carb',
+                    label: 'High Carb (20/50/30)',
+                    desc: 'Ideal für intensive Workouts',
+                    protein: 20, carbs: 50, fats: 30
+                  },
+                  {
+                    id: 'low_carb',
+                    label: 'Low Carb (30/20/50)',
+                    desc: 'Ketogene Ernährung & Fettverbrennung',
+                    protein: 30, carbs: 20, fats: 50
+                  },
+                  {
+                    id: 'custom',
+                    label: 'Individuell',
+                    desc: 'Eigene Werte definieren',
+                    protein: dailyGoals.protein, carbs: dailyGoals.carbs, fats: dailyGoals.fats
+                  }
+                ].map((strategy) => (
+                  <div 
+                    key={strategy.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      macroStrategy === strategy.id 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => {
+                      setMacroStrategy(strategy.id);
+                      if (strategy.id !== 'custom') {
+                        setDailyGoals(prev => ({
+                          ...prev,
+                          protein: strategy.protein,
+                          carbs: strategy.carbs,
+                          fats: strategy.fats
+                        }));
+                        setHasUserModifiedMacros(false);
+                      }
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium text-sm">{strategy.label}</div>
+                        <div className="text-xs text-muted-foreground">{strategy.desc}</div>
+                      </div>
+                      <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                        {macroStrategy === strategy.id ? '✓' : '○'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {macroStrategy === 'custom' && (
+                <>
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <div className="font-medium text-sm">{strategy.label}</div>
-                      <div className="text-xs text-muted-foreground">{strategy.desc}</div>
+                      <Label className="text-xs">Protein %</Label>
+                      <NumericInput
+                        value={dailyGoals.protein.toString()}
+                        onChange={(value) => {
+                          setDailyGoals(prev => ({ ...prev, protein: parseInt(value) || 0 }));
+                          setHasUserModifiedMacros(true);
+                        }}
+                        className="mt-1 text-sm"
+                      />
                     </div>
-                    <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                      {macroStrategy === strategy.id ? '✓' : '○'}
+                    <div>
+                      <Label className="text-xs">Kohlenhydrate %</Label>
+                      <NumericInput
+                        value={dailyGoals.carbs.toString()}
+                        onChange={(value) => {
+                          setDailyGoals(prev => ({ ...prev, carbs: parseInt(value) || 0 }));
+                          setHasUserModifiedMacros(true);
+                        }}
+                        className="mt-1 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Fette %</Label>
+                      <NumericInput
+                        value={dailyGoals.fats.toString()}
+                        onChange={(value) => {
+                          setDailyGoals(prev => ({ ...prev, fats: parseInt(value) || 0 }));
+                          setHasUserModifiedMacros(true);
+                        }}
+                        className="mt-1 text-sm"
+                      />
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
 
-            {macroStrategy === 'custom' && (
-              <>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label className="text-xs">Protein %</Label>
-                    <NumericInput
-                      value={dailyGoals.protein.toString()}
-                      onChange={(value) => {
-                        setDailyGoals(prev => ({ ...prev, protein: parseInt(value) || 0 }));
-                        setHasUserModifiedMacros(true);
-                      }}
-                      className="mt-1 text-sm"
-                    />
+                  <div className="text-center text-xs text-muted-foreground">
+                    Summe: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
+                    {(dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats) !== 100 && (
+                      <span className="text-orange-500 ml-2">⚠️ Sollte 100% sein</span>
+                    )}
                   </div>
-                  <div>
-                    <Label className="text-xs">Kohlenhydrate %</Label>
-                    <NumericInput
-                      value={dailyGoals.carbs.toString()}
-                      onChange={(value) => {
-                        setDailyGoals(prev => ({ ...prev, carbs: parseInt(value) || 0 }));
-                        setHasUserModifiedMacros(true);
-                      }}
-                      className="mt-1 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Fette %</Label>
-                    <NumericInput
-                      value={dailyGoals.fats.toString()}
-                      onChange={(value) => {
-                        setDailyGoals(prev => ({ ...prev, fats: parseInt(value) || 0 }));
-                        setHasUserModifiedMacros(true);
-                      }}
-                      className="mt-1 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="text-center text-xs text-muted-foreground">
-                  Summe: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
-                  {(dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats) !== 100 && (
-                    <span className="text-orange-500 ml-2">⚠️ Sollte 100% sein</span>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* 4. Daily Macros */}
@@ -808,25 +814,27 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-lg md:text-xl font-bold">Tägliche Makros</h2>
           </div>
 
-          <div className="gradient-macros rounded-xl p-4 shadow-sm border">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().protein}g</div>
-                <div className="text-sm text-muted-foreground">Protein</div>
+          <Card>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().protein}g</div>
+                  <div className="text-sm text-muted-foreground">Protein</div>
+                </div>
+                <div>
+                  <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
+                  <div className="text-sm text-muted-foreground">Kohlenhydrate</div>
+                </div>
+                <div>
+                  <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().fats}g</div>
+                  <div className="text-sm text-muted-foreground">Fette</div>
+                </div>
               </div>
-              <div>
-                <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
-                <div className="text-sm text-muted-foreground">Kohlenhydrate</div>
+              <div className="text-center mt-4 text-sm text-muted-foreground">
+                Basierend auf {targetCalories} kcal täglich
               </div>
-              <div>
-                <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().fats}g</div>
-                <div className="text-sm text-muted-foreground">Fette</div>
-              </div>
-            </div>
-            <div className="text-center mt-4 text-sm text-muted-foreground">
-              Basierend auf {targetCalories} kcal täglich
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 5. Intelligent Calorie Analysis */}
@@ -839,25 +847,25 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="gradient-analysis rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
-                <div className="text-xs text-muted-foreground">BMR</div>
-                <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
-              </div>
-              <div className="gradient-analysis rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-base md:text-lg font-bold">{tdee || '-'}</div>
-                <div className="text-xs text-muted-foreground">TDEE</div>
-                <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
-              </div>
-              <div className="gradient-analysis rounded-xl p-3 shadow-sm border text-center">
-                <div className="text-base md:text-lg font-bold">{targetCalories}</div>
-                <div className="text-xs text-muted-foreground">Ziel</div>
-                <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
-              </div>
-            </div>
-
-            <div className="gradient-analysis rounded-xl p-3 shadow-sm border">
+            <Card>
+              <CardContent className="pt-4">
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="text-center">
+                    <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
+                    <div className="text-xs text-muted-foreground">BMR</div>
+                    <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-base md:text-lg font-bold">{tdee || '-'}</div>
+                    <div className="text-xs text-muted-foreground">TDEE</div>
+                    <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-base md:text-lg font-bold">{targetCalories}</div>
+                    <div className="text-xs text-muted-foreground">Ziel</div>
+                    <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
+                  </div>
+                </div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
                 <div className="flex items-center gap-2">
@@ -887,9 +895,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   ))}
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
           </div>
-        </div>
 
           {/* 6. Target Analysis */}
           {targetWeight && targetDate && (
@@ -901,13 +909,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <h2 className="text-xl font-bold">Ziel-Analyse</h2>
               </div>
 
-              <div className="bg-gradient-to-br from-background/80 to-background/60 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-border/30 space-y-6">
-                {calculateRequiredCalorieDeficit() && (
-                  <>
-                    <div className="space-y-4">
-                      <div className="text-lg font-semibold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
-                        Gewichtsziel Analyse
-                      </div>
+              <Card>
+                <CardContent className="space-y-6">
+                  {calculateRequiredCalorieDeficit() && (
+                    <>
+                      <div className="space-y-4">
                       
                       {/* Hauptmetriken - Größer und prominenter */}
                       <div className="grid grid-cols-2 gap-4">
@@ -1069,11 +1075,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                         </div>
                       </div>
                     </div>
-                  </>
-                )}
-              </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
+        </div>
         </div>
 
         {/* Save Status */}

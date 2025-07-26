@@ -243,25 +243,6 @@
     transform: translateY(-2px);
   }
 
-  .gradient-personal {
-    background: var(--gradient-personal);
-    border: 1px solid hsl(var(--border) / 0.3);
-  }
-
-  .gradient-goals {
-    background: var(--gradient-goals);
-    border: 1px solid hsl(var(--primary) / 0.2);
-  }
-
-  .gradient-macros {
-    background: var(--gradient-macros);
-    border: 1px solid hsl(var(--protein) / 0.2);
-  }
-
-  .gradient-analysis {
-    background: var(--gradient-analysis);
-    border: 1px solid hsl(var(--accent) / 0.2);
-  }
 
 }
 
