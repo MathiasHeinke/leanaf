@@ -289,7 +289,7 @@ const NewIndex = () => {
 
   return (
     <>
-      <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-6 max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pb-40 sm:pb-36">
         {/* Trial Banner */}
         <TrialBanner />
         
@@ -322,8 +322,8 @@ const NewIndex = () => {
           onDateChange={handleDateChange}
         />
 
-        {/* Quick Input Cards - Responsive Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {/* Quick Input Cards - Mobile Optimized Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {/* Weight Tracker */}
           <Card className="gradient-personal">
             <CardHeader className="pb-3">
@@ -441,17 +441,18 @@ const NewIndex = () => {
         )}
       </div>
       
-      {/* Fixed Bottom Meal Input */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-4 shadow-lg">
+      {/* Fixed Bottom Meal Input - Mobile Optimized */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-2 sm:p-3 lg:p-4 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <Card className="gradient-macros shadow-xl">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                <Utensils className="h-4 w-4" />
-                Mahlzeit hinzufügen
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm lg:text-base">
+                <Utensils className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Mahlzeit hinzufügen</span>
+                <span className="xs:hidden">Mahlzeit</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 pb-2 sm:pb-3">
               <MealInput 
                 inputText={mealInputHook.inputText}
                 setInputText={mealInputHook.setInputText}
