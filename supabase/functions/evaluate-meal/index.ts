@@ -72,12 +72,12 @@ async function evaluateMeal(meal: MealData, profile: UserProfile, dailyGoals: Da
 
   const totalScore = Math.round((macroScore.score + goalScore.score + qualityScore.score + timingScore.score) / 4);
   
-  // Calculate bonus points (0-10)
+  // Calculate bonus points (0-10) - much stricter system
   let bonusPoints = 0;
-  if (totalScore >= 8) bonusPoints += 3;
-  if (totalScore >= 6) bonusPoints += 2;
-  if (macroScore.score >= 8) bonusPoints += 2;
-  if (qualityScore.score >= 8) bonusPoints += 3;
+  if (totalScore >= 9) bonusPoints += 3; // Only excellent meals get high bonus
+  if (totalScore >= 8) bonusPoints += 1; // Good meals get small bonus
+  if (macroScore.score >= 9) bonusPoints += 1;
+  if (qualityScore.score >= 9) bonusPoints += 2;
 
   // Generate AI feedback
   const aiFeedback = await generateCoachFeedback(meal, profile, totalScore, {
@@ -165,27 +165,59 @@ function evaluateGoalAlignment(meal: MealData, profile: UserProfile, dailyGoals:
 }
 
 function evaluateNutritionalQuality(meal: MealData) {
-  let score = 5; // Base score
+  let score = 3; // Much lower base score - neutral starting point
   let feedback = "Durchschnittliche Nährstoffqualität.";
 
   const text = meal.text.toLowerCase();
   
-  // Positive indicators
-  const healthyKeywords = ['gemüse', 'obst', 'vollkorn', 'nüsse', 'fisch', 'hähnchen', 'quinoa', 'hafer'];
-  const processedKeywords = ['fast', 'fertig', 'chips', 'süß', 'schokolade', 'limonade', 'pizza'];
+  // Positive indicators - expanded list
+  const healthyKeywords = [
+    'gemüse', 'obst', 'vollkorn', 'nüsse', 'fisch', 'hähnchen', 'quinoa', 'hafer',
+    'salat', 'brokkoli', 'spinat', 'tomate', 'gurke', 'paprika', 'avocado',
+    'lachs', 'thunfisch', 'ei', 'joghurt', 'quark', 'hülsenfrüchte', 'linsen'
+  ];
+  
+  // Massively expanded unhealthy keywords - especially German desserts
+  const processedKeywords = [
+    'fast', 'fertig', 'chips', 'süß', 'schokolade', 'limonade', 'pizza',
+    'käsekuchen', 'kuchen', 'torte', 'sahne', 'creme', 'dessert', 'nachspeise',
+    'süßigkeiten', 'bonbon', 'gummibärchen', 'eis', 'eiscreme', 'zucker',
+    'nutella', 'marmelade', 'honig', 'sirup', 'keks', 'gebäck', 'muffin',
+    'donut', 'croissant', 'burger', 'pommes', 'würstchen', 'wurst', 'speck',
+    'cola', 'energy', 'softdrink', 'alkohol', 'bier', 'wein', 'schnaps'
+  ];
+
+  // Special dessert keywords for extra harsh penalty
+  const dessertKeywords = [
+    'käsekuchen', 'kuchen', 'torte', 'sahnetorte', 'schwarzwälder', 'tiramisu',
+    'mousse', 'pudding', 'creme', 'dessert', 'nachspeise', 'eis', 'eiscreme'
+  ];
 
   const healthyCount = healthyKeywords.filter(keyword => text.includes(keyword)).length;
   const processedCount = processedKeywords.filter(keyword => text.includes(keyword)).length;
+  const dessertCount = dessertKeywords.filter(keyword => text.includes(keyword)).length;
 
-  score += healthyCount * 1.5;
-  score -= processedCount * 2;
+  // Calculate calorie density penalty (kcal per 100g)
+  const caloriesPerGram = meal.calories / 100; // Rough estimation
+  if (caloriesPerGram > 2.5) { // Very calorie dense (like cheesecake ~270kcal/100g)
+    score -= 2;
+  }
 
-  if (healthyCount >= 3) {
+  score += healthyCount * 2; // Bigger bonus for healthy foods
+  score -= processedCount * 3; // Stronger penalty for processed foods
+  score -= dessertCount * 4; // Massive penalty for obvious desserts
+
+  // Feedback based on content
+  if (dessertCount > 0) {
+    feedback = "Das ist ein Dessert - gönn dir das mal, aber achte auf die Balance!";
+  } else if (healthyCount >= 3) {
     feedback = "Ausgezeichnete Nährstoffqualität!";
   } else if (healthyCount >= 1) {
     feedback = "Gute Nährstoffauswahl!";
   } else if (processedCount >= 2) {
     feedback = "Versuche mehr natürliche Lebensmittel zu wählen.";
+  } else if (processedCount >= 1) {
+    feedback = "Verarbeitete Lebensmittel sparsam verwenden.";
   }
 
   return { score: Math.max(0, Math.min(10, score)), feedback };
@@ -233,11 +265,11 @@ async function generateCoachFeedback(meal: MealData, profile: UserProfile, score
         messages: [
           { 
             role: 'system', 
-            content: `${personalityPrompt} ${goalContext} Gib kurzes, prägnantes Feedback (max 2 Sätze) zur Mahlzeit. Verwende deutsche Sprache.`
+            content: `${personalityPrompt} ${goalContext} Sei ehrlich bei der Bewertung - Desserts sind Desserts, auch wenn sie mal okay sind. Gib kurzes, prägnantes Feedback (max 2 Sätze) zur Mahlzeit. Bei niedrigen Scores sei konstruktiv kritisch, aber nicht demotivierend. Verwende deutsche Sprache.`
           },
           { 
             role: 'user', 
-            content: `Bewerte diese Mahlzeit: ${meal.text}. Score: ${score}/10. Kriterien: Makros ${criteria.macro.score}/10, Ziel ${criteria.goal.score}/10, Qualität ${criteria.quality.score}/10, Timing ${criteria.timing.score}/10.`
+            content: `Bewerte diese Mahlzeit: ${meal.text}. Score: ${score}/10. Kriterien: Makros ${criteria.macro.score}/10, Ziel ${criteria.goal.score}/10, Qualität ${criteria.quality.score}/10, Timing ${criteria.timing.score}/10. ${criteria.quality.score <= 3 ? 'Das ist offensichtlich ein Dessert/ungesunde Mahlzeit.' : ''}`
           }
         ],
         max_tokens: 100,
@@ -279,9 +311,13 @@ function getDefaultFeedback(personality: string, score: number): string {
     return personality === 'streng' ? "Geht so. Da ist noch Luft nach oben." : 
            personality === 'liebevoll' ? "Gut gemacht! Kleine Anpassungen und es wird perfekt! 😊" : 
            "Gute Wahl! Mit kleinen Optimierungen wird's noch besser.";
-  } else {
-    return personality === 'streng' ? "Das geht besser. Fokus auf Qualität!" : 
-           personality === 'liebevoll' ? "Kein Problem! Nächstes Mal wird's noch besser! 🌟" : 
+  } else if (score >= 4) {
+    return personality === 'streng' ? "Das ist nicht optimal. Mehr Nährstoffe, weniger Verarbeitung!" : 
+           personality === 'liebevoll' ? "Gönn dir das mal! Aber lass uns beim nächsten Mal was Gesünderes wählen! 🌱" : 
            "Hier ist noch Verbesserungspotential. Du schaffst das!";
+  } else {
+    return personality === 'streng' ? "Das ist ein Dessert, oder? Fokus auf echte Nährstoffe!" : 
+           personality === 'liebevoll' ? "Lecker, aber das ist eindeutig ein Dessert! Nächstes Mal was Nährstoffreicheres? 🍰" : 
+           "Das war ein Treat! Lass uns beim nächsten Mal auf die Nährstoffe achten.";
   }
 }
