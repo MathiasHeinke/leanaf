@@ -238,18 +238,18 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             />
           </div>
           
-          {/* Tips in matching pink theme */}
-          <div className="bg-pink-100/50 dark:bg-pink-900/30 rounded-lg p-3 border border-pink-200 dark:border-pink-700">
-            <p className="text-xs text-pink-700 dark:text-pink-300 mb-2">
+          {/* Tips in matching sky theme */}
+          <div className="bg-sky-100/50 dark:bg-sky-900/30 rounded-lg p-3 border border-sky-200 dark:border-sky-700">
+            <p className="text-xs text-sky-700 dark:text-sky-300 mb-2">
               <strong>Tipp:</strong> Miss zur gleichen Zeit für beste Vergleichbarkeit!
             </p>
-            <p className="text-xs text-pink-600 dark:text-pink-400">
+            <p className="text-xs text-sky-600 dark:text-sky-400">
               • Morgens vor dem Essen für konsistente Werte
               • Maßband parallel zum Boden halten
               • Immer an derselben Körperstelle messen
               • Wöchentlich messen für langfristige Trends
             </p>
-            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2">
+            <p className="text-xs text-sky-600 dark:text-sky-400 mt-2">
               <strong>Nächste Messung:</strong> Nächste Woche 📏
             </p>
           </div>

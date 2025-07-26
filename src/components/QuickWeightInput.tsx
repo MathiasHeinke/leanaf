@@ -403,18 +403,18 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             </div>
           )}
           
-          {/* Tips in matching pink theme */}
-          <div className="bg-pink-100/50 dark:bg-pink-900/30 rounded-lg p-3 border border-pink-200 dark:border-pink-700">
-            <p className="text-xs text-pink-700 dark:text-pink-300 mb-2">
+          {/* Tips in matching blue theme */}
+          <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
               <strong>Tipp:</strong> Wiege dich zur gleichen Tageszeit für beste Vergleichbarkeit!
             </p>
-            <p className="text-xs text-pink-600 dark:text-pink-400">
+            <p className="text-xs text-blue-600 dark:text-blue-400">
               • Morgens nach dem Aufstehen und Toilettengang
               • Vor dem Frühstück und ohne Kleidung
               • Natürliche Schwankungen von ±1kg sind normal
               • Der Trend über mehrere Wochen ist wichtiger als einzelne Werte
             </p>
-            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2">
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
               <strong>Nächste Messung:</strong> Morgen 📅
             </p>
           </div>
