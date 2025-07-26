@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MealInput } from "@/components/MealInput";
 import { toast } from "sonner";
-import { ImportOpenfoodfacts } from "@/components/ImportOpenfoodfacts";
+
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -459,8 +459,6 @@ const Index = () => {
         {/* Weekly Coach Recommendation for Free Users */}
         <WeeklyCoachRecommendation />
         
-        {/* Food Database Import - Temporary */}
-        <ImportOpenfoodfacts />
         
         <DailyProgress
           dailyTotals={{
