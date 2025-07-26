@@ -264,48 +264,85 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     try {
       setIsLoading(true);
 
-      const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
-        body: {
-          userId: user.id,
-          mediaUrls,
-          mediaType: 'mixed',
-          analysisType: 'workout_analysis',
-          coachPersonality: 'sascha',
-          userQuestion: userMessage || 'Analysiere mein Training und gib mir Feedback.',
-          userProfile: {
-            goal: 'muscle_building',
-            experience_level: 'intermediate'
+      // Call both services in parallel
+      const [coachAnalysisPromise, exerciseDataPromise] = await Promise.allSettled([
+        // Sascha's natural analysis (unchanged)
+        supabase.functions.invoke('coach-media-analysis', {
+          body: {
+            userId: user.id,
+            mediaUrls,
+            mediaType: 'mixed',
+            analysisType: 'workout_analysis',
+            coachPersonality: 'sascha',
+            userQuestion: userMessage || 'Analysiere mein Training und gib mir Feedback.',
+            userProfile: {
+              goal: 'muscle_building',
+              experience_level: 'intermediate'
+            }
           }
-        }
-      });
+        }),
+        // New structured data extraction
+        supabase.functions.invoke('extract-exercise-data', {
+          body: {
+            userId: user.id,
+            mediaUrls,
+            userMessage: userMessage || 'Extract exercise data from this workout'
+          }
+        })
+      ]);
 
-      if (error) throw error;
+      // Process Sascha's analysis (always show this)
+      if (coachAnalysisPromise.status === 'fulfilled' && !coachAnalysisPromise.value.error) {
+        const coachData = coachAnalysisPromise.value.data;
+        const analysis = coachData.analysis;
+        
+        // Add assistant response
+        const assistantMessage: WorkoutMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: analysis,
+          timestamp: new Date(),
+          metadata: {
+            suggestions: coachData.suggestions || []
+          }
+        };
 
-      const analysis = data.analysis;
+        setMessages(prev => [...prev, assistantMessage]);
+        await saveMessage('assistant', analysis, coachData);
+      }
+
+      // Process structured exercise data
+      let extractedExercise = null;
       
-      // Add assistant response
-      const assistantMessage: WorkoutMessage = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: analysis,
-        timestamp: new Date(),
-        metadata: {
-          suggestions: data.suggestions || []
+      if (exerciseDataPromise.status === 'fulfilled' && !exerciseDataPromise.value.error) {
+        const extractedData = exerciseDataPromise.value.data;
+        console.log('🎯 Structured exercise data:', extractedData);
+        
+        if (extractedData.success && extractedData.exerciseData) {
+          extractedExercise = {
+            exercise_name: extractedData.exerciseData.exercise_name,
+            sets: extractedData.exerciseData.sets.map((set: any) => ({
+              reps: set.reps,
+              weight: set.weight
+            }))
+          };
+          console.log('✅ Using structured exercise data');
         }
-      };
+      }
 
-      setMessages(prev => [...prev, assistantMessage]);
-      await saveMessage('assistant', analysis, data);
-
-      // Try to extract exercise data from the analysis text
-      let extractedExercise = extractExerciseFromText(analysis);
+      // Fallback to text extraction if structured data failed
+      if (!extractedExercise && coachAnalysisPromise.status === 'fulfilled') {
+        const analysis = coachAnalysisPromise.value.data?.analysis || '';
+        extractedExercise = extractExerciseFromText(analysis);
+        console.log('📝 Using fallback text extraction');
+      }
       
       // Show exercise preview if found
       if (extractedExercise) {
-        console.log('🎯 Extracted exercise data:', extractedExercise);
+        console.log('🎯 Final exercise data for preview:', extractedExercise);
         setExercisePreview(extractedExercise);
       } else {
-        console.log('❌ No exercise data could be extracted from analysis');
+        console.log('❌ No exercise data could be extracted');
       }
 
       toast.success('Training analysiert! Sascha hat dein Workout bewertet.');
