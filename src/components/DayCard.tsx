@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Edit, Dumbbell } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ChevronDown, ChevronRight, Edit, Copy, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExerciseSet {
   id: string;
@@ -13,6 +16,9 @@ interface ExerciseSet {
   weight_kg: number;
   reps: number;
   rpe: number;
+  user_id?: string;
+  rest_seconds?: number;
+  notes?: string;
   exercises: {
     name: string;
     category: string;
@@ -33,6 +39,8 @@ interface DayCardProps {
   date: string;
   sessions: ExerciseSession[];
   onEditSession: (session: ExerciseSession) => void;
+  onDuplicateSession?: (session: ExerciseSession) => void;
+  onSessionUpdated?: () => void;
 }
 
 interface DayStats {
@@ -43,8 +51,19 @@ interface DayStats {
   sessionCount: number;
 }
 
-export const DayCard: React.FC<DayCardProps> = ({ date, sessions, onEditSession }) => {
+export const DayCard: React.FC<DayCardProps> = ({ 
+  date, 
+  sessions, 
+  onEditSession, 
+  onDuplicateSession,
+  onSessionUpdated 
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const calculateDayStats = (): DayStats => {
     const allSets = sessions.flatMap(session => session.exercise_sets);
@@ -74,6 +93,116 @@ export const DayCard: React.FC<DayCardProps> = ({ date, sessions, onEditSession 
   };
 
   const stats = calculateDayStats();
+
+  const handleSessionNameEdit = (session: ExerciseSession) => {
+    setEditingSessionId(session.id);
+    setEditingName(session.session_name);
+  };
+
+  const handleSessionNameSave = async () => {
+    if (!editingSessionId || !editingName.trim()) return;
+
+    try {
+      setIsUpdating(true);
+      const { error } = await supabase
+        .from('exercise_sessions')
+        .update({ session_name: editingName.trim() })
+        .eq('id', editingSessionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Session name updated",
+        description: "Session name was successfully updated.",
+      });
+
+      setEditingSessionId(null);
+      setEditingName('');
+      onSessionUpdated?.();
+    } catch (error) {
+      console.error('Error updating session name:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update session name.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSessionNameCancel = () => {
+    setEditingSessionId(null);
+    setEditingName('');
+  };
+
+  const handleDuplicateSession = async (session: ExerciseSession) => {
+    try {
+      setIsDuplicating(session.id);
+      
+      // Get user_id from the session sets or use current user
+      const userId = session.exercise_sets[0]?.user_id;
+      if (!userId) {
+        throw new Error('Unable to determine user ID for duplication');
+      }
+
+      // Create new session with copied data
+      const newSessionData = {
+        user_id: userId,
+        session_name: `${session.session_name} (Kopie)`,
+        date: new Date().toISOString().split('T')[0], // Today's date
+        start_time: null,
+        end_time: null,
+        notes: session.notes,
+        workout_type: 'strength'
+      };
+
+      const { data: newSession, error: sessionError } = await supabase
+        .from('exercise_sessions')
+        .insert(newSessionData)
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Copy all exercise sets
+      for (const set of session.exercise_sets) {
+        const newSetData = {
+          user_id: userId,
+          session_id: newSession.id,
+          exercise_id: set.exercise_id,
+          set_number: set.set_number,
+          weight_kg: set.weight_kg,
+          reps: set.reps,
+          rpe: set.rpe,
+          rest_seconds: set.rest_seconds || null,
+          notes: set.notes || null
+        };
+
+        const { error: setError } = await supabase
+          .from('exercise_sets')
+          .insert(newSetData);
+
+        if (setError) throw setError;
+      }
+
+      toast({
+        title: "Session duplicated",
+        description: `"${session.session_name}" was successfully duplicated for today.`,
+      });
+
+      onSessionUpdated?.();
+    } catch (error) {
+      console.error('Error duplicating session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to duplicate session.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(null);
+    }
+  };
 
   const renderExerciseDetails = (session: ExerciseSession) => {
     return Object.entries(
@@ -142,24 +271,84 @@ export const DayCard: React.FC<DayCardProps> = ({ date, sessions, onEditSession 
               <Card key={session.id} className="bg-muted/30">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-semibold">{session.session_name}</h4>
+                    <div className="flex-1">
+                      {editingSessionId === session.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSessionNameSave();
+                              } else if (e.key === 'Escape') {
+                                handleSessionNameCancel();
+                              }
+                            }}
+                            className="text-sm font-semibold"
+                            autoFocus
+                            disabled={isUpdating}
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleSessionNameSave}
+                            disabled={isUpdating || !editingName.trim()}
+                          >
+                            <Check className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleSessionNameCancel}
+                            disabled={isUpdating}
+                          >
+                            <X className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <h4 
+                          className="font-semibold cursor-pointer hover:text-primary transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSessionNameEdit(session);
+                          }}
+                        >
+                          {session.session_name}
+                        </h4>
+                      )}
                       {session.start_time && session.end_time && (
                         <p className="text-sm text-muted-foreground">
                           Dauer: {Math.round((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / (1000 * 60))} Min
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditSession(session);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDuplicateSession(session);
+                        }}
+                        disabled={isDuplicating === session.id}
+                      >
+                        {isDuplicating === session.id ? (
+                          <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditSession(session);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   
                   <div className="space-y-2">

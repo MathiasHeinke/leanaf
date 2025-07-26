@@ -287,6 +287,7 @@ export const AdvancedWorkoutSection: React.FC = () => {
                               setEditingSession(session);
                               setIsEditModalOpen(true);
                             }}
+                            onSessionUpdated={loadSessions}
                           />
                         ))}
                     </div>
@@ -307,6 +308,7 @@ export const AdvancedWorkoutSection: React.FC = () => {
                               setEditingSession(session);
                               setIsEditModalOpen(true);
                             }}
+                            onSessionUpdated={loadSessions}
                           />
                         ))}
                     </div>
@@ -327,6 +329,7 @@ export const AdvancedWorkoutSection: React.FC = () => {
                               setEditingSession(session);
                               setIsEditModalOpen(true);
                             }}
+                            onSessionUpdated={loadSessions}
                           />
                         ))}
                     </div>

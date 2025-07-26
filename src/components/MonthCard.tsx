@@ -33,6 +33,7 @@ interface MonthCardProps {
   month: string; // YYYY-MM format
   sessionsByDay: Record<string, ExerciseSession[]>;
   onEditSession: (session: ExerciseSession) => void;
+  onSessionUpdated?: () => void;
 }
 
 interface MonthStats {
@@ -43,7 +44,7 @@ interface MonthStats {
   totalSessions: number;
 }
 
-export const MonthCard: React.FC<MonthCardProps> = ({ month, sessionsByDay, onEditSession }) => {
+export const MonthCard: React.FC<MonthCardProps> = ({ month, sessionsByDay, onEditSession, onSessionUpdated }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const calculateMonthStats = (): MonthStats => {
@@ -123,6 +124,7 @@ export const MonthCard: React.FC<MonthCardProps> = ({ month, sessionsByDay, onEd
                 date={date}
                 sessions={sessionsByDay[date]}
                 onEditSession={onEditSession}
+                onSessionUpdated={onSessionUpdated}
               />
             ))}
           </div>
