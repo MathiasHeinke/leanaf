@@ -192,10 +192,25 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
 
               {/* AI Feedback if available */}
               {meal.ai_feedback && (
-                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    <strong>🤖 Coach-Feedback:</strong> {meal.ai_feedback}
-                  </p>
+                <div className="mt-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-950/30 dark:to-rose-950/30 rounded-lg border border-pink-200 dark:border-pink-800">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <img 
+                        src="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png" 
+                        alt="Lucy" 
+                        className="w-8 h-8 rounded-full border-2 border-pink-200 dark:border-pink-700"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-pink-700 dark:text-pink-300">Lucy</span>
+                        <span className="text-xs text-pink-500 dark:text-pink-400">❤️ Coach</span>
+                      </div>
+                      <p className="text-sm text-pink-700 dark:text-pink-300 leading-relaxed">
+                        {meal.ai_feedback}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
