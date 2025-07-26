@@ -94,8 +94,12 @@ async function evaluateMeal(meal: MealData, profile: UserProfile, dailyGoals: Da
     }
   }
 
-  // Get today's context if we have a user
-  const todayContext = userId ? await getTodaysMealContext(userId) : null;
+  // Get today's context if we have a user - WITH TIMEZONE FIX
+  // Get user timezone from profile or default to Europe/Berlin
+  const userTimezone = profile.preferred_timezone || 'Europe/Berlin';
+  console.log(`🚀 [LUCY-DEBUG] Evaluating meal for user ${userId} in timezone: ${userTimezone}`);
+  
+  const todayContext = userId ? await getTodaysMealContext(userId, userTimezone) : null;
   const recentMeals = userId ? await getRecentMeals(userId, 30) : []; // Last 30 minutes
 
   // Calculate base quality score (0-10) with context
@@ -113,14 +117,15 @@ async function evaluateMeal(meal: MealData, profile: UserProfile, dailyGoals: Da
   if (macroScore.score >= 9) bonusPoints += 1;
   if (qualityScore.score >= 9) bonusPoints += 2;
 
-  // Generate AI feedback with full context
+  // Generate AI feedback with full context including daily goals
   const aiFeedback = await generateCoachFeedback(meal, profile, totalScore, {
     macro: macroScore,
     goal: goalScore,
     quality: qualityScore,
     timing: timingScore,
     dailyContext: todayContext,
-    recentMeals: recentMeals
+    recentMeals: recentMeals,
+    dailyGoals: dailyGoals
   });
 
   return {
@@ -360,31 +365,57 @@ async function generateCoachFeedback(meal: MealData, profile: UserProfile, score
     const personalityPrompt = getPersonalityPrompt(profile.coach_personality);
     const goalContext = getGoalContext(profile.goal, profile.macro_strategy);
     
-    // Build context information for Lucy
+    // Build TRANSPARENT context information for Lucy - this fixes the transparency issue!
     let contextInfo = '';
+    let debugInfo = '';
     
     if (criteria.dailyContext) {
-      const { totalCalories, totalProtein, mealCount } = criteria.dailyContext;
-      const remainingCalories = profile.daily_goals?.calories ? profile.daily_goals.calories - totalCalories : 0;
-      const remainingProtein = profile.daily_goals?.protein ? profile.daily_goals.protein - totalProtein : 0;
+      const { totalCalories, totalProtein, mealCount, debugInfo: debug } = criteria.dailyContext;
+      // Use actual daily goals from profile instead of hardcoded fallbacks
+      const targetCalories = criteria.dailyGoals?.calories || 2000;
+      const targetProtein = criteria.dailyGoals?.protein || 150;
       
-      contextInfo += `Tages-Kontext: Heute schon ${totalCalories} kcal und ${totalProtein}g Protein gegessen (${mealCount} Mahlzeiten). `;
+      // Add debug information about timezone and query
+      debugInfo += `🕐 Berechnung basiert auf ${debug?.timezone || 'Europe/Berlin'} Zeitzone, heute: ${debug?.queryDate || 'unknown'}. `;
+      debugInfo += `🔍 Gefundene Mahlzeiten: ${mealCount} mit insgesamt ${totalCalories}kcal. `;
+      
+      // Calculate remaining/excess for transparency
+      const remainingCalories = targetCalories - totalCalories;
+      const remainingProtein = targetProtein - totalProtein;
+      
+      contextInfo += `💯 LUCY'S BERECHNUNG: Heute bereits ${totalCalories}kcal von ${targetCalories}kcal gegessen (${mealCount} Mahlzeiten). `;
       
       if (remainingCalories > 0) {
-        contextInfo += `Noch ${Math.round(remainingCalories)} kcal übrig. `;
+        contextInfo += `Noch ${Math.round(remainingCalories)}kcal übrig heute. `;
+      } else if (remainingCalories < 0) {
+        contextInfo += `⚠️ WARNUNG: Bereits ${Math.abs(Math.round(remainingCalories))}kcal ÜBER dem Tagesziel! `;
       } else {
-        contextInfo += `Kalorienziel bereits erreicht/überschritten! `;
+        contextInfo += `🎯 Perfekt am Kalorienziel! `;
       }
       
       if (remainingProtein > 15) {
         contextInfo += `Noch ${Math.round(remainingProtein)}g Protein benötigt. `;
+      } else if (remainingProtein < -10) {
+        contextInfo += `Protein bereits erfüllt! `;
+      }
+      
+      // Add meal details for full transparency
+      if (criteria.dailyContext.meals && criteria.dailyContext.meals.length > 0) {
+        contextInfo += `\n📋 Bisherige Mahlzeiten heute: `;
+        criteria.dailyContext.meals.forEach((meal: any, i: number) => {
+          contextInfo += `${i + 1}. "${meal.text}" (${meal.calories}kcal) `;
+        });
       }
     }
     
     if (criteria.recentMeals && criteria.recentMeals.length > 0) {
-      const recentTexts = criteria.recentMeals.map(m => m.text).join(', ');
-      contextInfo += `Kürzlich eingegeben: ${recentTexts}. Das könnte zusammengehören! `;
+      const recentTexts = criteria.recentMeals.map((m: any) => m.text).join(', ');
+      contextInfo += `\n⏰ Kürzlich eingegeben: ${recentTexts}. Das könnte zusammengehören! `;
     }
+    
+    // Log debug info to console for troubleshooting
+    console.log(`🎯 [LUCY-DEBUG] Context for feedback: ${debugInfo}`);
+    console.log(`🎯 [LUCY-DEBUG] Context info: ${contextInfo.substring(0, 200)}...`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -472,25 +503,39 @@ function getDefaultFeedback(personality: string, score: number, criteria: any = 
 }
 
 // Neue Funktionen für Kontext-Analyse
-async function getTodaysMealContext(userId: string) {
+// Helper function to get current date in user's timezone
+function getCurrentDateInTimezone(timezone: string = 'Europe/Berlin'): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return formatter.format(now);
+}
+
+async function getTodaysMealContext(userId: string, userTimezone: string = 'Europe/Berlin') {
   const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.38.4');
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
-  const today = new Date().toISOString().split('T')[0];
+  // TIMEZONE FIX: Use user's timezone instead of UTC
+  const today = getCurrentDateInTimezone(userTimezone);
+  console.log(`🕐 [LUCY-DEBUG] Getting meals for user ${userId} on date: ${today} (timezone: ${userTimezone})`);
   
   try {
     const { data: meals, error } = await supabase
       .from('meals')
-      .select('calories, protein, carbs, fats, meal_type, created_at')
+      .select('calories, protein, carbs, fats, meal_type, created_at, text')
       .eq('user_id', userId)
       .gte('created_at', `${today}T00:00:00.000Z`)
       .lt('created_at', `${today}T23:59:59.999Z`);
 
     if (error) {
-      console.error('Error fetching today\'s meals:', error);
+      console.error('❌ [LUCY-DEBUG] Error fetching today\'s meals:', error);
       return null;
     }
 
@@ -499,16 +544,29 @@ async function getTodaysMealContext(userId: string) {
     const totalCarbs = meals?.reduce((sum, meal) => sum + (meal.carbs || 0), 0) || 0;
     const totalFats = meals?.reduce((sum, meal) => sum + (meal.fats || 0), 0) || 0;
 
+    // EXTENSIVE DEBUG LOGGING
+    console.log(`📊 [LUCY-DEBUG] Found ${meals?.length || 0} meals for today (${today}):`);
+    console.log(`📊 [LUCY-DEBUG] Total calories: ${totalCalories}kcal, Total protein: ${totalProtein}g`);
+    meals?.forEach((meal, i) => {
+      console.log(`📊 [LUCY-DEBUG] Meal ${i + 1}: "${meal.text}" - ${meal.calories}kcal, ${meal.protein}g protein (${meal.created_at})`);
+    });
+
     return {
       totalCalories,
       totalProtein,
       totalCarbs,
       totalFats,
       mealCount: meals?.length || 0,
-      meals: meals || []
+      meals: meals || [],
+      debugInfo: {
+        queryDate: today,
+        timezone: userTimezone,
+        utcTime: new Date().toISOString(),
+        localTime: new Date().toLocaleString('de-DE', { timeZone: userTimezone })
+      }
     };
   } catch (error) {
-    console.error('Error in getTodaysMealContext:', error);
+    console.error('❌ [LUCY-DEBUG] Error in getTodaysMealContext:', error);
     return null;
   }
 }

@@ -253,7 +253,8 @@ export const usePointsSystem = () => {
 
       const profile = {
         ...profileResult.data,
-        coach_personality: profileResult.data.coach_personality || 'moderat'
+        coach_personality: profileResult.data.coach_personality || 'moderat',
+        preferred_timezone: localStorage.getItem('user-timezone') || 'Europe/Berlin'
       };
 
       // Call evaluate-meal edge function
