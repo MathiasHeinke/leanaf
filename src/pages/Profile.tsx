@@ -534,7 +534,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
 
           <Card>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-sm">Startgewicht</Label>
@@ -645,7 +645,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
 
           <Card>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               <div>
                 <Label className="text-sm">Ziel</Label>
                 <Select value={goal} onValueChange={setGoal}>
@@ -694,7 +694,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
 
           <Card>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-5">
               <div className="space-y-3">
                 {[
                   { 
@@ -815,7 +815,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </div>
 
           <Card>
-            <CardContent>
+            <CardContent className="pt-5">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().protein}g</div>
@@ -848,7 +848,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
           <div className="space-y-4">
             <Card>
-              <CardContent className="pt-4">
+              <CardContent className="pt-5">
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="text-center">
                     <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
@@ -910,7 +910,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
 
               <Card>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 pt-5">
                   {calculateRequiredCalorieDeficit() && (
                     <>
                       <div className="space-y-4">
