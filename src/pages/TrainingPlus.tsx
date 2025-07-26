@@ -1,5 +1,5 @@
 import React from 'react';
-import { AdvancedWorkoutSection } from '@/components/AdvancedWorkoutSection';
+import { TrainingDashboard } from '@/components/TrainingDashboard';
 import { PremiumGate } from '@/components/PremiumGate';
 
 const TrainingPlus = () => {
@@ -11,7 +11,7 @@ const TrainingPlus = () => {
         showUpgrade={true}
         showTrialPrompt={true}
       >
-        <AdvancedWorkoutSection />
+        <TrainingDashboard />
       </PremiumGate>
     </div>
   );
