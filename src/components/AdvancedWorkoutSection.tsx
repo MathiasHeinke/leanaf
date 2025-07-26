@@ -218,40 +218,6 @@ export const AdvancedWorkoutSection: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Weekly Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
-          <CardContent className="p-4 text-center">
-            <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
-            <div className="text-2xl font-bold">{weeklyStats.totalSets}</div>
-            <div className="text-sm text-muted-foreground">Sätze (7 Tage)</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5">
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="h-8 w-8 mx-auto mb-2 text-secondary" />
-            <div className="text-2xl font-bold">{weeklyStats.totalVolume.toLocaleString()}</div>
-            <div className="text-sm text-muted-foreground">Volumen (kg)</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-accent/10 to-accent/5">
-          <CardContent className="p-4 text-center">
-            <Calendar className="h-8 w-8 mx-auto mb-2 text-accent" />
-            <div className="text-2xl font-bold">{weeklyStats.exercisesCount}</div>
-            <div className="text-sm text-muted-foreground">Übungen</div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-primary/10 to-accent/5">
-          <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold mb-1">⚡</div>
-            <div className="text-2xl font-bold">{weeklyStats.averageIntensity}</div>
-            <div className="text-sm text-muted-foreground">Ø RPE</div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Main Content */}
       <Tabs defaultValue="add" className="space-y-4">

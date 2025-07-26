@@ -7,9 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
+import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { toast } from 'sonner';
 import { useGlobalCoachChat } from '@/hooks/useGlobalCoachChat';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Send, 
@@ -19,7 +21,9 @@ import {
   Camera, 
   Target,
   TrendingUp,
-  Bot
+  Bot,
+  History,
+  Trash2
 } from 'lucide-react';
 
 interface WorkoutMessage {
@@ -44,6 +48,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   onExerciseLogged
 }) => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<WorkoutMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +56,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [conversationHistory, setConversationHistory] = useState<Array<{role: string, content: string}>>([]);
   const [exercisePreview, setExercisePreview] = useState<any | null>(null);
   const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const currentDate = new Date().toISOString().split('T')[0];
 
   // Enhanced exercise parsing with better pattern matching
   const extractExerciseFromText = (text: string): any | null => {
@@ -171,17 +180,18 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   }, [user]);
 
-  const loadConversationHistory = async () => {
+  const loadConversationHistory = async (date?: string) => {
     if (!user) return;
 
     try {
+      const targetDate = date || currentDate;
       const { data, error } = await supabase
         .from('coach_conversations')
         .select('*')
         .eq('user_id', user.id)
         .eq('coach_personality', 'sascha')
-        .order('created_at', { ascending: true })
-        .limit(20);
+        .eq('conversation_date', targetDate)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
@@ -194,6 +204,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       }));
 
       setMessages(conversationMessages);
+      setSelectedDate(targetDate);
     } catch (error) {
       console.error('Error loading conversation:', error);
     }
@@ -210,11 +221,37 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
           coach_personality: 'sascha',
           message_role: role,
           message_content: content,
+          conversation_date: selectedDate || currentDate,
           context_data: contextData || {}
         });
     } catch (error) {
       console.error('Error saving message:', error);
     }
+  };
+
+  const clearChat = async () => {
+    if (!user) return;
+
+    try {
+      const targetDate = selectedDate || currentDate;
+      await supabase
+        .from('coach_conversations')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('coach_personality', 'sascha')
+        .eq('conversation_date', targetDate);
+      
+      setMessages([]);
+      toast.success('Chat-Verlauf gelöscht');
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      toast.error('Fehler beim Löschen des Chats');
+    }
+  };
+
+  const handleSelectDate = (date: string) => {
+    loadConversationHistory(date);
+    setShowHistory(false);
   };
 
   const handleMediaUpload = (urls: string[]) => {
@@ -522,63 +559,92 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      {/* Coach Header */}
-      <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-              <img 
-                src="/coach-images/markus-ruehl.jpg" 
-                alt="Coach Sascha"
-                className="w-10 h-10 rounded-full object-cover"
-              />
+    <div className="flex gap-4 h-full">
+      {/* Main Chat Area */}
+      <div className="flex-1 space-y-4 flex flex-col">
+        {/* Coach Header */}
+        <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                <img 
+                  src="/coach-images/markus-ruehl.jpg" 
+                  alt="Coach Sascha"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <Dumbbell className="h-5 w-5" />
+                  Coach Sascha
+                  {selectedDate && selectedDate !== currentDate && (
+                    <Badge variant="outline" className="text-xs">
+                      {new Date(selectedDate).toLocaleDateString('de-DE')}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <p className="text-sm text-orange-600">
+                  Dein AI-Trainingsspezialist für Krafttraining & Form-Check
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory(true)}
+                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-100"
+                >
+                  <History className="h-4 w-4" />
+                  {!isMobile && <span className="ml-1">History</span>}
+                </Button>
+                {messages.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearChat}
+                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-100"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {!isMobile && <span className="ml-1">Clear</span>}
+                  </Button>
+                )}
+                <Badge className="bg-orange-100 text-orange-800 border-orange-200">
+                  <Bot className="h-3 w-3 mr-1" />
+                  AI Coach
+                </Badge>
+              </div>
             </div>
-            <div>
-              <CardTitle className="flex items-center gap-2 text-orange-800">
-                <Dumbbell className="h-5 w-5" />
-                Coach Sascha
-              </CardTitle>
-              <p className="text-sm text-orange-600">
-                Dein AI-Trainingsspezialist für Krafttraining & Form-Check
-              </p>
-            </div>
-            <Badge className="bg-orange-100 text-orange-800 border-orange-200 ml-auto">
-              <Bot className="h-3 w-3 mr-1" />
-              AI Coach
-            </Badge>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
 
-      {/* Chat Messages */}
-      <Card className="flex-1">
-        <CardContent className="p-0">
-          <ScrollArea className="h-[400px] p-4">
-            <div className="space-y-4">
-              {messages.length === 0 && (
-                <div className="text-center py-8">
-                  <Dumbbell className="h-12 w-12 mx-auto mb-4 text-orange-500" />
-                  <h3 className="text-lg font-semibold mb-2">Willkommen bei Coach Sascha!</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Lade Bilder oder Videos von deinem Training hoch und ich analysiere:
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-orange-600">
-                      <Camera className="h-4 w-4" />
-                      Übungsausführung
-                    </div>
-                    <div className="flex items-center gap-2 text-orange-600">
-                      <Target className="h-4 w-4" />
-                      RPE Einschätzung
-                    </div>
-                    <div className="flex items-center gap-2 text-orange-600">
-                      <TrendingUp className="h-4 w-4" />
-                      Trainingsempfehlungen
+        {/* Chat Messages */}
+        <Card className="flex-1">
+          <CardContent className="p-0">
+            <ScrollArea className="h-[400px] p-4">
+              <div className="space-y-4">
+                {messages.length === 0 && (
+                  <div className="text-center py-8">
+                    <Dumbbell className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+                    <h3 className="text-lg font-semibold mb-2">Willkommen bei Coach Sascha!</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Lade Bilder oder Videos von deinem Training hoch und ich analysiere:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <div className="flex items-center gap-2 text-orange-600">
+                        <Camera className="h-4 w-4" />
+                        Übungsausführung
+                      </div>
+                      <div className="flex items-center gap-2 text-orange-600">
+                        <Target className="h-4 w-4" />
+                        RPE Einschätzung
+                      </div>
+                      <div className="flex items-center gap-2 text-orange-600">
+                        <TrendingUp className="h-4 w-4" />
+                        Trainingsempfehlungen
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {messages.map((message) => (
                 <div
@@ -672,70 +738,89 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 </div>
               )}
             </div>
-            <div ref={messagesEndRef} />
-          </ScrollArea>
-        </CardContent>
-      </Card>
+              <div ref={messagesEndRef} />
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
-      {/* Media Upload */}
-      {uploadedMedia.length === 0 && (
-        <MediaUploadZone
-          onMediaUploaded={handleMediaUpload}
-          maxFiles={3}
-          className="border-orange-200"
+        {/* Media Upload */}
+        {uploadedMedia.length === 0 && (
+          <MediaUploadZone
+            onMediaUploaded={handleMediaUpload}
+            maxFiles={3}
+            className="border-orange-200"
+          />
+        )}
+
+        {/* Input Area */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={
+                  waitingForRpe 
+                    ? "Bewerte die Intensität (1-10)..." 
+                    : "Beschreibe dein Training oder stelle eine Frage..."
+                }
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={isLoading || (!input.trim() && uploadedMedia.length === 0)}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {(uploadedMedia.length > 0 || waitingForRpe) && (
+              <div className="mt-3 p-2 bg-orange-50 rounded border border-orange-200">
+                {waitingForRpe ? (
+                  <p className="text-sm text-orange-700 mb-2">
+                    ⏳ Warte auf RPE-Bewertung für: <strong>{waitingForRpe.exercise_name}</strong>
+                  </p>
+                ) : (
+                  <p className="text-sm text-orange-700 mb-2">
+                    {uploadedMedia.length} Datei(en) bereit für Analyse
+                  </p>
+                )}
+                {!waitingForRpe && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setUploadedMedia([])}
+                    className="text-orange-600"
+                  >
+                    Medien entfernen
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Chat History Sidebar */}
+      {showHistory && !isMobile && (
+        <ChatHistorySidebar
+          selectedCoach="sascha"
+          onSelectDate={handleSelectDate}
+          onClose={() => setShowHistory(false)}
         />
       )}
 
-      {/* Input Area */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                waitingForRpe 
-                  ? "Bewerte die Intensität (1-10)..." 
-                  : "Beschreibe dein Training oder stelle eine Frage..."
-              }
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button
-              onClick={sendMessage}
-              disabled={isLoading || (!input.trim() && uploadedMedia.length === 0)}
-              className="bg-orange-600 hover:bg-orange-700"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {(uploadedMedia.length > 0 || waitingForRpe) && (
-            <div className="mt-3 p-2 bg-orange-50 rounded border border-orange-200">
-              {waitingForRpe ? (
-                <p className="text-sm text-orange-700 mb-2">
-                  ⏳ Warte auf RPE-Bewertung für: <strong>{waitingForRpe.exercise_name}</strong>
-                </p>
-              ) : (
-                <p className="text-sm text-orange-700 mb-2">
-                  {uploadedMedia.length} Datei(en) bereit für Analyse
-                </p>
-              )}
-              {!waitingForRpe && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setUploadedMedia([])}
-                  className="text-orange-600"
-                >
-                  Medien entfernen
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Mobile Chat History */}
+      {showHistory && isMobile && (
+        <ChatHistorySidebar
+          selectedCoach="sascha"
+          onSelectDate={handleSelectDate}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 };
