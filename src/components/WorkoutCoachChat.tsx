@@ -568,7 +568,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
                 <img 
-                  src="/coach-images/markus-ruehl.jpg" 
+                  src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png" 
                   alt="Coach Sascha"
                   className="w-10 h-10 rounded-full object-cover"
                 />
@@ -584,7 +584,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   )}
                 </CardTitle>
                 <p className="text-sm text-orange-600">
-                  Dein AI-Trainingsspezialist für Krafttraining & Form-Check
+                  Performance- & Trainingsexperte
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -608,10 +608,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                     {!isMobile && <span className="ml-1">Clear</span>}
                   </Button>
                 )}
-                <Badge className="bg-orange-100 text-orange-800 border-orange-200">
-                  <Bot className="h-3 w-3 mr-1" />
-                  AI Coach
-                </Badge>
               </div>
             </div>
           </CardHeader>
