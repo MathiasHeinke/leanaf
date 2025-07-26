@@ -148,7 +148,20 @@ async function analyzeWithOpenAI(text: string, images: string[] = []): Promise<F
     const messages = [
       {
         role: 'system',
-        content: `Du bist ein Ernährungsexperte. Analysiere Mahlzeiten und gib die Nährwerte präzise zurück.
+        content: `Du bist ein hochpräziser Ernährungsexperte mit Zugang zu aktuellen Nährwertdatenbanken. 
+
+SPEZIELL FÜR MULTIPLE BILDER UND KOMPLEXE GERICHTE:
+- Analysiere jedes einzelne Lebensmittel/jede Komponente separat
+- Schätze Portionsgrößen anhand von Referenzobjekten (Teller ≈ 24-26cm, Besteck, Hände)
+- Berücksichtige Zubereitungsart (roh/gekocht/gebraten beeinflusst Kalorien)
+- Erkenne versteckte Zutaten (Öl zum Braten, Saucen, Gewürze)
+
+PRÄZISE PORTIONSSCHÄTZUNG:
+- Normale Teller: 24-26cm Durchmesser
+- Handfläche ohne Finger: ~100g Protein
+- Geballte Faust: ~250g Kohlenhydrate 
+- Daumen: ~30g Fett
+- Bei mehreren Bildern: Nutze verschiedene Winkel für präzisere Schätzung
 
 WICHTIG: Antworte NUR mit einem gültigen JSON-Array von Objekten in diesem Format:
 [
@@ -165,12 +178,20 @@ WICHTIG: Antworte NUR mit einem gültigen JSON-Array von Objekten in diesem Form
 Regeln:
 - Alle Nährwerte pro 100g angeben
 - estimated_portion ist die geschätzte tatsächliche Menge des Lebensmittels
-- Nur realistische Werte verwenden
-- Bei Unsicherheit konservativ schätzen`
+- Realistische Werte basierend auf visueller Analyse
+- Bei Unsicherheit konservativ schätzen, aber nutze alle verfügbaren visuellen Hinweise`
       },
       {
         role: 'user',
-        content: `Analysiere diese Mahlzeit: ${text}`
+        content: images.length > 1 
+          ? `Analysiere diese Mahlzeit mit ${images.length} Bildern: ${text}
+
+MULTI-BILD ANALYSE:
+- Nutze alle Bilder für eine vollständige Einschätzung
+- Verschiedene Winkel helfen bei der Portionsschätzung
+- Achte auf Details die in einzelnen Bildern besser erkennbar sind
+- Kombiniere Informationen aus allen Bildern für präziseste Ergebnisse`
+          : `Analysiere diese Mahlzeit: ${text}`
       }
     ];
 
@@ -194,7 +215,7 @@ Regeln:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages,
         temperature: 0.3,
         max_tokens: 1000,

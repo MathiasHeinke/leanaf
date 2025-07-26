@@ -190,6 +190,29 @@ serve(async (req) => {
     const userValues = text ? extractUserValues(text) : {};
     const hasUserValues = Object.keys(userValues).length > 0;
 
+    // 🎯 INTELLIGENT COMPLEXITY DETECTION
+    const assessInputComplexity = (text: string, images: string[]) => {
+      const hasMultipleImages = images && images.length > 1;
+      const hasComplexMeal = text && (
+        text.includes('mit') || text.includes('und') || text.includes(',') || 
+        text.includes('sauce') || text.includes('beilage') || text.includes('dressing') ||
+        text.split(' ').length > 8
+      );
+      const isComplexInput = hasMultipleImages || hasComplexMeal;
+      
+      console.log(`🎯 [ANALYZE-MEAL] Complexity assessment:`, {
+        hasMultipleImages,
+        hasComplexMeal, 
+        isComplexInput,
+        imageCount: images?.length || 0,
+        textLength: text?.length || 0
+      });
+      
+      return { isComplexInput, hasMultipleImages, hasComplexMeal };
+    };
+
+    const { isComplexInput, hasMultipleImages } = assessInputComplexity(text, images);
+
     const getPersonalityPrompt = (personality: string): string => {
       switch (personality) {
         case 'streng':
@@ -225,11 +248,14 @@ ${Object.entries(userValues).map(([key, value]) => `${key}: ${value}`).join(', '
 ${text ? `Analysiere diese Mahlzeit: "${text}"` : ""}
 
 ${images?.length > 0 ? `
-BILD-ANALYSE:
+BILD-ANALYSE${hasMultipleImages ? ' (MULTIPLE BILDER)' : ''}:
 - Schätze die Portionsgröße anhand der Tellergröße und Lebensmittel-Proportionen
 - Berücksichtige die Zubereitungsart (roh, gekocht, gebraten)
 - Achte auf Beilagen und Saucen
 - Normale Tellergröße = ca. 24-26cm Durchmesser als Referenz
+${hasMultipleImages ? `- Bei ${images.length} Bildern: Nutze verschiedene Winkel für präzisere Schätzung
+- Kombiniere Informationen aus allen Bildern für beste Ergebnisse
+- Erkenne Details die in einzelnen Bildern besser sichtbar sind` : ''}
 ` : ""}
 
 Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
@@ -256,11 +282,11 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
   "notes": "Erklärung der Schätzung und respektierte User-Werte"
 }`;
 
-    // Build user content with text and images
+    // Build user content with text and images - enhanced for complex inputs
     let userContent = [{ type: 'text', text: prompt }];
     
     if (images && images.length > 0) {
-      console.log('🖼️ [ANALYZE-MEAL] Adding images to request:', images.length);
+      console.log(`🖼️ [ANALYZE-MEAL] Adding ${images.length} image(s) to request (complex: ${isComplexInput})`);
       // Add each image to the content array
       images.forEach((imageUrl: string, index: number) => {
         console.log(`📷 [ANALYZE-MEAL] Image ${index + 1}:`, imageUrl.substring(0, 80) + '...');
@@ -274,7 +300,21 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     const messages = [
       {
         role: 'system',
-        content: `Du bist ein präziser Ernährungsexperte. Nutze Referenz-Nährwertdatenbanken für genaue Angaben. 
+        content: `Du bist ein hochpräziser Ernährungsexperte mit Zugang zu aktuellen Nährwertdatenbanken. 
+        
+        ${isComplexInput ? 'KOMPLEXE MAHLZEIT ERKANNT - Spezial-Analyse:' : ''}
+        ${hasMultipleImages ? `
+        MULTIPLE BILDER (${images.length}):
+        - Analysiere jedes Bild für vollständige Übersicht
+        - Nutze verschiedene Winkel für präzise Portionsschätzung
+        - Kombiniere alle visuellen Informationen` : ''}
+        
+        PORTIONSSCHÄTZUNG:
+        - Teller: 24-26cm Durchmesser als Referenz
+        - Handfläche ohne Finger: ~100g Protein
+        - Geballte Faust: ~250g Kohlenhydrate
+        - Daumen: ~30g Fett
+        
         Respektiere IMMER vom User angegebene Nährwerte. Maximale Kalorienzahl pro normaler Portion: 800 kcal.
         Antworte nur mit dem angeforderten JSON-Format.`
       },
@@ -284,75 +324,86 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       }
     ];
     
-    // 🔍 STEP 1: Try RAG-enhanced analysis first
-    console.log('🔍 [ANALYZE-MEAL] Attempting RAG-enhanced analysis...');
-    const ragStartTime = Date.now();
+    // 🔍 SMART ANALYSIS STRATEGY: Skip RAG for complex inputs
+    let ragResult = null;
+    let ragError = null;
+    let ragDuration = 0;
     
-    try {
-      const { data: ragResult, error: ragError } = await supabaseClient.functions.invoke('enhanced-meal-analysis', {
-        body: {
-          text: text,
-          images: images,
-          userId: userId
-        }
-      });
-
-      const ragDuration = Date.now() - ragStartTime;
-      console.log(`⏱️ [ANALYZE-MEAL] RAG analysis took: ${ragDuration}ms`);
-
-      if (ragResult?.success && ragResult?.result) {
-        const result = ragResult.result;
-        console.log(`✅ [ANALYZE-MEAL] RAG analysis successful: ${result.analysis_method}, confidence: ${result.confidence_score}`);
-        
-        // Convert RAG format to frontend-compatible format
-        const ragResponse = {
-          title: text || 'Analysierte Mahlzeit',
-          items: result.foods.map((food: any) => ({
-            name: food.name + (food.brand ? ` (${food.brand})` : ''),
-            amount: `${food.estimated_portion}g`,
-            calories: Math.round((food.calories || 0) * food.estimated_portion / 100),
-            protein: Math.round((food.protein || 0) * food.estimated_portion / 100 * 10) / 10,
-            carbs: Math.round((food.carbs || 0) * food.estimated_portion / 100 * 10) / 10,
-            fats: Math.round((food.fats || 0) * food.estimated_portion / 100 * 10) / 10
-          })),
-          total: {
-            calories: result.total_calories,
-            protein: result.total_protein,
-            carbs: result.total_carbs,
-            fats: result.total_fats
-          },
-          confidence: result.confidence_score > 0.8 ? 'high' : result.confidence_score > 0.6 ? 'medium' : 'low',
-          notes: `${result.analysis_method === 'hybrid_rag' ? '🎯 Präzise Datenbank-basierte Analyse' : '🤖 KI-basierte Schätzung'} (Konfidenz: ${Math.round(result.confidence_score * 100)}%). ${result.suggestions?.join(' ') || ''}`
-        };
-
-        // Override with user-provided values if available
-        if (hasUserValues) {
-          console.log('🎯 [ANALYZE-MEAL] Applying user-provided values to RAG result:', userValues);
-          if (userValues.calories) ragResponse.total.calories = userValues.calories;
-          if (userValues.protein) ragResponse.total.protein = userValues.protein;
-          if (userValues.carbs) ragResponse.total.carbs = userValues.carbs;
-          if (userValues.fats) ragResponse.total.fats = userValues.fats;
-          
-          ragResponse.confidence = 'high';
-          ragResponse.notes = ragResponse.notes + ' Benutzerdefinierte Werte wurden berücksichtigt.';
-        }
-
-        const totalDuration = Date.now() - requestStartTime;
-        console.log(`🎉 [ANALYZE-MEAL] RAG analysis completed successfully in ${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
-        
-        return new Response(JSON.stringify(ragResponse), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    if (!isComplexInput) {
+      console.log('🔍 [ANALYZE-MEAL] Simple input detected - attempting RAG-enhanced analysis...');
+      const ragStartTime = Date.now();
+      
+      try {
+        const { data: ragData, error: ragErr } = await supabaseClient.functions.invoke('enhanced-meal-analysis', {
+          body: {
+            text: text,
+            images: images,
+            userId: userId
+          }
         });
-      } else {
-        console.log('⚠️ [ANALYZE-MEAL] RAG analysis failed or returned no results, falling back to OpenAI');
-        if (ragError) console.log('RAG Error:', ragError);
+        ragResult = ragData;
+        ragError = ragErr;
+        ragDuration = Date.now() - ragStartTime;
+      } catch (ragException) {
+        console.log('⚠️ [ANALYZE-MEAL] RAG analysis exception:', ragException);
+        ragError = ragException;
       }
-    } catch (ragException) {
-      console.log('⚠️ [ANALYZE-MEAL] RAG analysis exception, falling back to OpenAI:', ragException);
+    } else {
+      console.log('🎯 [ANALYZE-MEAL] Complex input detected - skipping RAG, using direct GPT-4.1 analysis');
     }
 
-    // 🤖 STEP 2: Fallback to traditional OpenAI analysis
-    console.log('📤 [ANALYZE-MEAL] Sending request to OpenAI...');
+    // Only process RAG results if we attempted RAG analysis
+    if (!isComplexInput && ragResult?.success && ragResult?.result) {
+      console.log(`⏱️ [ANALYZE-MEAL] RAG analysis took: ${ragDuration}ms`);
+      
+      const result = ragResult.result;
+      console.log(`✅ [ANALYZE-MEAL] RAG analysis successful: ${result.analysis_method}, confidence: ${result.confidence_score}`);
+      
+      // Convert RAG format to frontend-compatible format
+      const ragResponse = {
+        title: text || 'Analysierte Mahlzeit',
+        items: result.foods.map((food: any) => ({
+          name: food.name + (food.brand ? ` (${food.brand})` : ''),
+          amount: `${food.estimated_portion}g`,
+          calories: Math.round((food.calories || 0) * food.estimated_portion / 100),
+          protein: Math.round((food.protein || 0) * food.estimated_portion / 100 * 10) / 10,
+          carbs: Math.round((food.carbs || 0) * food.estimated_portion / 100 * 10) / 10,
+          fats: Math.round((food.fats || 0) * food.estimated_portion / 100 * 10) / 10
+        })),
+        total: {
+          calories: result.total_calories,
+          protein: result.total_protein,
+          carbs: result.total_carbs,
+          fats: result.total_fats
+        },
+        confidence: result.confidence_score > 0.8 ? 'high' : result.confidence_score > 0.6 ? 'medium' : 'low',
+        notes: `${result.analysis_method === 'hybrid_rag' ? '🎯 Präzise Datenbank-basierte Analyse' : '🤖 KI-basierte Schätzung'} (Konfidenz: ${Math.round(result.confidence_score * 100)}%). ${result.suggestions?.join(' ') || ''}`
+      };
+
+      // Override with user-provided values if available
+      if (hasUserValues) {
+        console.log('🎯 [ANALYZE-MEAL] Applying user-provided values to RAG result:', userValues);
+        if (userValues.calories) ragResponse.total.calories = userValues.calories;
+        if (userValues.protein) ragResponse.total.protein = userValues.protein;
+        if (userValues.carbs) ragResponse.total.carbs = userValues.carbs;
+        if (userValues.fats) ragResponse.total.fats = userValues.fats;
+        
+        ragResponse.confidence = 'high';
+        ragResponse.notes = ragResponse.notes + ' Benutzerdefinierte Werte wurden berücksichtigt.';
+      }
+
+      const totalDuration = Date.now() - requestStartTime;
+      console.log(`🎉 [ANALYZE-MEAL] RAG analysis completed successfully in ${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
+      
+      return new Response(JSON.stringify(ragResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else if (!isComplexInput) {
+      console.log('⚠️ [ANALYZE-MEAL] RAG analysis failed or returned no results, falling back to OpenAI');
+      if (ragError) console.log('RAG Error:', ragError);
+    }
+
+    console.log(`📤 [ANALYZE-MEAL] Using direct OpenAI analysis (complex: ${isComplexInput})...`);
     const openAIStartTime = Date.now();
     
     // Use GPT-4.1 for all users for better quality
