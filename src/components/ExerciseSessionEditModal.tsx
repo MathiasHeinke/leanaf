@@ -6,7 +6,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -72,6 +72,29 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
     setSets(prev => prev.filter(set => set.id !== setId));
   };
 
+  const addSet = (exerciseId: string, exerciseName: string, exerciseCategory: string) => {
+    const exerciseSets = sets.filter(set => set.exercise_id === exerciseId);
+    const nextSetNumber = Math.max(...exerciseSets.map(s => s.set_number), 0) + 1;
+    
+    // Get default values from the last set of this exercise
+    const lastSet = exerciseSets[exerciseSets.length - 1];
+    
+    const newSet: ExerciseSet = {
+      id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID for new sets
+      exercise_id: exerciseId,
+      set_number: nextSetNumber,
+      weight_kg: lastSet?.weight_kg || 0,
+      reps: lastSet?.reps || 10,
+      rpe: lastSet?.rpe,
+      exercises: {
+        name: exerciseName,
+        category: exerciseCategory
+      }
+    };
+    
+    setSets(prev => [...prev, newSet]);
+  };
+
   const handleSave = async () => {
     if (!user || !session) return;
 
@@ -90,19 +113,37 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
 
       if (sessionError) throw sessionError;
 
-      // Update sets
+      // Handle sets (update existing, insert new)
       for (const set of sets) {
-        const { error: setError } = await supabase
-          .from('exercise_sets')
-          .update({
-            weight_kg: set.weight_kg,
-            reps: set.reps,
-            rpe: set.rpe,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', set.id);
+        if (set.id.startsWith('temp-')) {
+          // Insert new set
+          const { error: insertError } = await supabase
+            .from('exercise_sets')
+            .insert({
+              session_id: session.id,
+              exercise_id: set.exercise_id,
+              user_id: user.id,
+              set_number: set.set_number,
+              weight_kg: set.weight_kg,
+              reps: set.reps,
+              rpe: set.rpe
+            });
 
-        if (setError) throw setError;
+          if (insertError) throw insertError;
+        } else {
+          // Update existing set
+          const { error: setError } = await supabase
+            .from('exercise_sets')
+            .update({
+              weight_kg: set.weight_kg,
+              reps: set.reps,
+              rpe: set.rpe,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', set.id);
+
+          if (setError) throw setError;
+        }
       }
 
       // Delete removed sets
@@ -191,12 +232,28 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
               <div key={exerciseName} className="p-4 border rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">{exerciseName}</h4>
-                  <Badge variant="secondary">{exerciseSets.length} Sätze</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{exerciseSets.length} Sätze</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addSet(exerciseSets[0].exercise_id, exerciseName, exerciseSets[0].exercises.category)}
+                      className="h-6 px-2 text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Satz hinzufügen
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
                   {exerciseSets.map((set) => (
-                    <div key={set.id} className="grid grid-cols-5 gap-2 items-center">
+                    <div 
+                      key={set.id} 
+                      className={`grid grid-cols-5 gap-2 items-center ${
+                        set.id.startsWith('temp-') ? 'bg-green-50 dark:bg-green-900/20 p-2 rounded' : ''
+                      }`}
+                    >
                       <div className="text-sm text-muted-foreground">
                         Satz {set.set_number}
                       </div>
