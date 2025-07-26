@@ -12,6 +12,7 @@ import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
+import { CoachFeedbackCard } from "./CoachFeedbackCard";
 
 interface QuickSleepInputProps {
   onSleepAdded?: () => void;
@@ -362,19 +363,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
           )}
           
-          <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3">
-            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
-              <strong>Tipp:</strong> Guter Schlaf = bessere Fettverbrennung!
-            </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400">
-              • Während des Schlafs produziert dein Körper Wachstumshormone
-              • Schlechter Schlaf erhöht Cortisol und Heißhunger
-              • 7-9 Stunden sind optimal für die Regeneration
-            </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-              <strong>Nächste Eintragung:</strong> Morgen 📅
-            </p>
-          </div>
+          <CoachFeedbackCard 
+            coachName="Kai"
+            coachAvatar="/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
+            sleepData={todaysSleep}
+            userId={user?.id}
+            type="sleep"
+          />
         </div>
       ) : (
         <PremiumGate 

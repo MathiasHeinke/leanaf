@@ -13,6 +13,7 @@ import { PointsBadge } from "@/components/PointsBadge";
 import { PremiumGate } from "@/components/PremiumGate";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
+import { CoachFeedbackCard } from "./CoachFeedbackCard";
 
 interface BodyMeasurementsProps {
   onMeasurementsAdded?: () => void;
@@ -226,20 +227,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             )}
           </div>
           
-          <div className="bg-teal-100/50 dark:bg-teal-900/30 rounded-lg p-3">
-            <p className="text-xs text-teal-700 dark:text-teal-300 mb-2">
-              <strong>Tipp:</strong> Miss zur gleichen Tageszeit für beste Vergleichbarkeit!
-            </p>
-            <p className="text-xs text-teal-600 dark:text-teal-400">
-              • Morgens vor dem Essen für konsistente Werte
-              • Maßband parallel zum Boden halten
-              • Nicht zu fest anziehen, aber auch nicht zu locker
-              • Wöchentliche Messungen reichen meist aus
-            </p>
-            <p className="text-xs text-teal-600 dark:text-teal-400 mt-2">
-              <strong>Nächste Messung:</strong> {nextMeasurementDate.toLocaleDateString('de-DE')} 📅
-            </p>
-          </div>
+          <CoachFeedbackCard 
+            coachName="Lucy"
+            coachAvatar="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
+            measurementData={todaysMeasurements}
+            userId={user?.id}
+            type="weight"
+          />
         </div>
       ) : (
         <PremiumGate 

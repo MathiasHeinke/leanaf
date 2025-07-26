@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
+import { CoachFeedbackCard } from "./CoachFeedbackCard";
 
 interface WeightEntry {
   id: string;
@@ -305,6 +306,19 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
                 <trend.icon className="h-3 w-3 mr-1" />
                 {trend.text}
               </Badge>
+            </div>
+          )}
+
+          {/* Coach Feedback after successful entry */}
+          {weightHistory.length > 0 && (
+            <div className="mt-4">
+              <CoachFeedbackCard 
+                coachName="Lucy"
+                coachAvatar="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
+                weightData={weightHistory[0]}
+                userId={user?.id}
+                type="weight"
+              />
             </div>
           )}
         </div>

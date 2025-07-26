@@ -16,6 +16,7 @@ import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
+import { CoachFeedbackCard } from "./CoachFeedbackCard";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
@@ -286,19 +287,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             ))}
           </div>
           
-          <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3">
-            <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
-              <strong>Tipp:</strong> Verschiedene Trainingsarten ergänzen sich optimal!
-            </p>
-            <p className="text-xs text-orange-600 dark:text-orange-400">
-              • Krafttraining + Cardio = maximaler Erfolg
-              • Ruhetage sind genauso wichtig wie Training
-              • Jede Bewegung zählt für deinen Erfolg
-            </p>
-            <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
-              <strong>Weiteres Workout:</strong> Einfach Plus-Button klicken! ➕
-            </p>
-          </div>
+          <CoachFeedbackCard 
+            coachName="Sascha"
+            coachAvatar="/coach-images/markus-ruehl.jpg"
+            workoutData={todaysWorkouts}
+            userId={user?.id}
+            type="workout"
+          />
         </div>
       ) : (
         <PremiumGate 
