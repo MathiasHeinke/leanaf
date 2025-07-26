@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { ExerciseProgressCharts } from '@/components/ExerciseProgressCharts';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
+import { WorkoutCoachChat } from '@/components/WorkoutCoachChat';
 import { DayCard } from '@/components/DayCard';
 import { MonthCard } from '@/components/MonthCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -254,8 +255,9 @@ export const AdvancedWorkoutSection: React.FC = () => {
 
       {/* Main Content */}
       <Tabs defaultValue="add" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="add">Übung hinzufügen</TabsTrigger>
+          <TabsTrigger value="coach">Coach Sascha</TabsTrigger>
           <TabsTrigger value="progress">Fortschritt</TabsTrigger>
           <TabsTrigger value="history">Verlauf</TabsTrigger>
         </TabsList>
@@ -267,6 +269,13 @@ export const AdvancedWorkoutSection: React.FC = () => {
             </div>
             <ExerciseQuickAdd onSessionSaved={loadSessions} />
           </div>
+        </TabsContent>
+
+        <TabsContent value="coach" className="space-y-4">
+          <WorkoutCoachChat onExerciseLogged={(exerciseData) => {
+            // Refresh sessions when exercise is logged through coach
+            loadSessions();
+          }} />
         </TabsContent>
 
         <TabsContent value="progress" className="space-y-4">
