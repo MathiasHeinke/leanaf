@@ -258,7 +258,8 @@ export const DailyProgress = ({
             </div>
             <div className="mb-3">
               <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">
-                {Math.round(dailyTotals.protein * 10) / 10}{t('ui.gram')}/{Math.round(dailyGoal.protein)}{t('ui.gram')}
+                {Math.round(dailyTotals.protein * 10) / 10}{t('ui.gram')}
+                <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.protein)}{t('ui.gram')}</span>
               </div>
             </div>
             <Progress 
@@ -274,7 +275,8 @@ export const DailyProgress = ({
             </div>
             <div className="mb-3">
               <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {Math.round(dailyTotals.carbs * 10) / 10}{t('ui.gram')}/{Math.round(dailyGoal.carbs)}{t('ui.gram')}
+                {Math.round(dailyTotals.carbs * 10) / 10}{t('ui.gram')}
+                <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.carbs)}{t('ui.gram')}</span>
               </div>
             </div>
             <Progress 
@@ -290,7 +292,8 @@ export const DailyProgress = ({
             </div>
             <div className="mb-3">
               <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {Math.round(dailyTotals.fats * 10) / 10}{t('ui.gram')}/{Math.round(dailyGoal.fats)}{t('ui.gram')}
+                {Math.round(dailyTotals.fats * 10) / 10}{t('ui.gram')}
+                <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.fats)}{t('ui.gram')}</span>
               </div>
             </div>
             <Progress 
