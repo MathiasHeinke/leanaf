@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { Navigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,14 +15,31 @@ import {
 } from "lucide-react"
 
 import { useProfileCompletion } from "@/hooks/useProfileCompletion"
+import { useAuth } from "@/hooks/useAuth"
+import { useGlobalMealInput } from "@/hooks/useGlobalMealInput"
 import { DailyProgress } from "@/components/DailyProgress"
-import { WeightTracker } from "@/components/WeightTracker"
 import { MealInput } from "@/components/MealInput"
 import { QuickSleepInput } from "@/components/QuickSleepInput"
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput"
+import { QuickWeightInput } from "@/components/QuickWeightInput"
+import { MealList } from "@/components/MealList"
+import { MealConfirmationDialog } from "@/components/MealConfirmationDialog"
+import { supabase } from "@/integrations/supabase/client"
 
 const NewIndex = () => {
   const { isSetupComplete, isLoading } = useProfileCompletion()
+  const { user } = useAuth()
+  const mealInputHook = useGlobalMealInput()
+  
+  // State for dashboard data
+  const [meals, setMeals] = useState<any[]>([])
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [dailyGoals, setDailyGoals] = useState<any>(null)
+  const [dataLoading, setDataLoading] = useState(true)
+  const [todaysWeight, setTodaysWeight] = useState<any>(null)
+  const [todaysSleep, setTodaysSleep] = useState<any>(null)
+  const [todaysWorkouts, setTodaysWorkouts] = useState<any[]>([])
 
   if (isLoading) {
     return (
@@ -37,6 +54,216 @@ const NewIndex = () => {
     return <Navigate to="/profile" replace />
   }
 
+  // Load user data
+  useEffect(() => {
+    if (user) {
+      loadUserData()
+      fetchMealsForDate(currentDate)
+      loadTodaysData(currentDate)
+    }
+  }, [user, currentDate])
+
+  const loadUserData = async () => {
+    if (!user) return
+    
+    setDataLoading(true)
+    try {
+      // Load user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error('Error loading profile:', profileError)
+      } else {
+        setUserProfile(profileData)
+      }
+
+      // Load daily goals
+      const { data: goalsData, error: goalsError } = await supabase
+        .from('daily_goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (goalsError) {
+        console.error('Error loading daily goals:', goalsError)
+        setDailyGoals({
+          calories: 2000,
+          protein: 150,
+          carbs: 250,
+          fats: 65
+        })
+      } else {
+        setDailyGoals(goalsData || {
+          calories: 2000,
+          protein: 150,
+          carbs: 250,
+          fats: 65
+        })
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+    } finally {
+      setDataLoading(false)
+    }
+  }
+
+  const loadTodaysData = async (date: Date) => {
+    if (!user) return
+
+    try {
+      const dateString = date.toISOString().split('T')[0]
+
+      // Load today's workouts
+      const { data: workoutsData, error: workoutsError } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .order('created_at', { ascending: true })
+
+      if (workoutsError) {
+        console.error('Error loading workouts:', workoutsError)
+        setTodaysWorkouts([])
+      } else {
+        setTodaysWorkouts(workoutsData || [])
+      }
+
+      // Load today's sleep
+      const { data: sleepData, error: sleepError } = await supabase
+        .from('sleep_tracking')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle()
+
+      if (sleepError) {
+        console.error('Error loading sleep:', sleepError)
+      } else {
+        setTodaysSleep(sleepData)
+      }
+
+      // Load today's weight
+      const { data: weightData, error: weightError } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle()
+
+      if (weightError) {
+        console.error('Error loading weight:', weightError)
+      } else {
+        setTodaysWeight(weightData)
+      }
+    } catch (error) {
+      console.error('Error loading today\'s data:', error)
+    }
+  }
+
+  const fetchMealsForDate = async (date: Date) => {
+    try {
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+      
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
+
+      const { data: mealsData, error: mealsError } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .gte('created_at', startOfDay.toISOString())
+        .lte('created_at', endOfDay.toISOString())
+        .order('created_at', { ascending: false })
+
+      if (mealsError) throw mealsError
+      
+      if (!mealsData || mealsData.length === 0) {
+        setMeals([])
+        return
+      }
+
+      // Fetch images for all meals
+      const mealIds = mealsData.map(meal => meal.id)
+      const { data: imagesData, error: imagesError } = await supabase
+        .from('meal_images')
+        .select('meal_id, image_url')
+        .in('meal_id', mealIds)
+
+      if (imagesError) {
+        console.error('Error fetching meal images:', imagesError)
+      }
+
+      // Group images by meal_id
+      const imagesByMeal = (imagesData || []).reduce((acc, img) => {
+        if (!acc[img.meal_id]) {
+          acc[img.meal_id] = []
+        }
+        acc[img.meal_id].push(img.image_url)
+        return acc
+      }, {} as Record<string, string[]>)
+
+      // Combine meals with their images
+      const mealsWithImages = mealsData.map(meal => ({
+        ...meal,
+        images: imagesByMeal[meal.id] || []
+      }))
+      
+      setMeals(mealsWithImages)
+    } catch (error) {
+      console.error('Error fetching meals:', error)
+      setMeals([])
+    }
+  }
+
+  const handleDateChange = (date: Date) => {
+    setCurrentDate(new Date(date))
+  }
+
+  const handleMealSuccess = async () => {
+    await fetchMealsForDate(currentDate)
+    mealInputHook.resetForm()
+  }
+
+  const handleMealUpdate = async () => {
+    await fetchMealsForDate(currentDate)
+  }
+
+  const handleWeightAdded = async () => {
+    await loadTodaysData(currentDate)
+    await loadUserData()
+  }
+
+  const handleWorkoutAdded = async () => {
+    await loadTodaysData(currentDate)
+  }
+
+  const handleSleepAdded = async () => {
+    await loadTodaysData(currentDate)
+  }
+
+  const handleMealDeleted = async () => {
+    await fetchMealsForDate(currentDate)
+  }
+
+  const handleMealUpdated = async () => {
+    await fetchMealsForDate(currentDate)
+  }
+
+  if (dataLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="h-32 w-full animate-pulse bg-muted rounded-lg" />
+        <div className="h-48 w-full animate-pulse bg-muted rounded-lg" />
+        <div className="h-64 w-full animate-pulse bg-muted rounded-lg" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -46,81 +273,26 @@ const NewIndex = () => {
       </div>
 
       {/* Daily Progress Overview */}
-      <Card className="gradient-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            Tagesfortschritt
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <Target className="h-12 w-12 text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Tagesfortschritt wird hier angezeigt</p>
-          </div>
-        </CardContent>
-      </Card>
+      <DailyProgress
+        dailyTotals={{
+          calories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0),
+          protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
+          carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
+          fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
+        }}
+        userProfile={userProfile}
+        dailyGoal={{
+          calories: dailyGoals?.calories || 2000,
+          protein: dailyGoals?.protein || 150,
+          carbs: dailyGoals?.carbs || 250,
+          fats: dailyGoals?.fats || 65
+        }}
+        userGoal={userProfile?.goal || 'maintain'}
+        currentDate={currentDate}
+        onDateChange={handleDateChange}
+      />
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="gradient-card hover-lift">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-carbs/10 rounded-lg">
-                <Utensils className="h-5 w-5 text-carbs" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-sm">Mahlzeit</h3>
-                <p className="text-xs text-muted-foreground">Tracking</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gradient-card hover-lift">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Scale className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-sm">Gewicht</h3>
-                <p className="text-xs text-muted-foreground">Erfassen</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gradient-card hover-lift">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-protein/10 rounded-lg">
-                <Dumbbell className="h-5 w-5 text-protein" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-sm">Training</h3>
-                <p className="text-xs text-muted-foreground">Protokoll</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="gradient-card hover-lift">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-fats/10 rounded-lg">
-                <Moon className="h-5 w-5 text-fats" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-sm">Schlaf</h3>
-                <p className="text-xs text-muted-foreground">Protokoll</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Grid */}
+      {/* Quick Input Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Meal Input */}
         <Card className="gradient-macros">
@@ -131,10 +303,18 @@ const NewIndex = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <Utensils className="h-12 w-12 text-carbs mx-auto mb-4" />
-              <p className="text-muted-foreground">Mahlzeit-Eingabe wird hier integriert</p>
-            </div>
+            <MealInput 
+              inputText={mealInputHook.inputText}
+              setInputText={mealInputHook.setInputText}
+              onSubmitMeal={mealInputHook.handleSubmitMeal}
+              onPhotoUpload={mealInputHook.handlePhotoUpload}
+              onVoiceRecord={mealInputHook.handleVoiceRecord}
+              isAnalyzing={mealInputHook.isAnalyzing}
+              isRecording={mealInputHook.isRecording}
+              isProcessing={mealInputHook.isProcessing}
+              uploadedImages={mealInputHook.uploadedImages}
+              onRemoveImage={mealInputHook.removeImage}
+            />
           </CardContent>
         </Card>
 
@@ -143,14 +323,14 @@ const NewIndex = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Scale className="h-4 w-4" />
-              Gewichtstracking
+              Gewicht erfassen
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <Scale className="h-12 w-12 text-primary mx-auto mb-4" />
-              <p className="text-muted-foreground">Gewichts-Tracker wird hier integriert</p>
-            </div>
+            <QuickWeightInput 
+              onWeightAdded={handleWeightAdded}
+              todaysWeight={todaysWeight}
+            />
           </CardContent>
         </Card>
 
@@ -163,10 +343,11 @@ const NewIndex = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <Dumbbell className="h-12 w-12 text-protein mx-auto mb-4" />
-              <p className="text-muted-foreground">Training-Eingabe wird hier integriert</p>
-            </div>
+            <QuickWorkoutInput 
+              onWorkoutAdded={handleWorkoutAdded}
+              todaysWorkout={todaysWorkouts[0] || null}
+              todaysWorkouts={todaysWorkouts}
+            />
           </CardContent>
         </Card>
 
@@ -179,13 +360,43 @@ const NewIndex = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <Moon className="h-12 w-12 text-fats mx-auto mb-4" />
-              <p className="text-muted-foreground">Schlaf-Protokoll wird hier integriert</p>
-            </div>
+            <QuickSleepInput 
+              onSleepAdded={handleSleepAdded}
+              todaysSleep={todaysSleep}
+            />
           </CardContent>
         </Card>
       </div>
+
+      {/* Meal List */}
+      {meals.length > 0 && (
+        <Card className="gradient-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Utensils className="h-5 w-5 text-primary" />
+              Heutige Mahlzeiten ({meals.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MealList 
+              meals={meals}
+              onMealUpdate={handleMealUpdate}
+              selectedDate={currentDate.toISOString().split('T')[0]}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Meal Confirmation Dialog */}
+      <MealConfirmationDialog 
+        isOpen={mealInputHook.showConfirmationDialog}
+        onClose={mealInputHook.closeDialog}
+        analyzedMealData={mealInputHook.analyzedMealData}
+        onSuccess={handleMealSuccess}
+        selectedMealType={mealInputHook.selectedMealType}
+        onMealTypeChange={mealInputHook.setSelectedMealType}
+        uploadedImages={mealInputHook.uploadedImages}
+      />
     </div>
   )
 }
