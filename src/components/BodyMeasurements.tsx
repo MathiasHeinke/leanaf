@@ -227,13 +227,32 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             )}
           </div>
           
-          <CoachFeedbackCard 
-            coachName="Lucy"
-            coachAvatar="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
-            measurementData={todaysMeasurements}
-            userId={user?.id}
-            type="measurement"
-          />
+          {/* Coach Feedback First */}
+          <div className="mb-3">
+            <CoachFeedbackCard 
+              coachName="Lucy"
+              coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+              measurementData={todaysMeasurements}
+              userId={user?.id}
+              type="measurement"
+            />
+          </div>
+          
+          {/* Tips in matching pink theme */}
+          <div className="bg-pink-100/50 dark:bg-pink-900/30 rounded-lg p-3 border border-pink-200 dark:border-pink-700">
+            <p className="text-xs text-pink-700 dark:text-pink-300 mb-2">
+              <strong>Tipp:</strong> Miss zur gleichen Zeit für beste Vergleichbarkeit!
+            </p>
+            <p className="text-xs text-pink-600 dark:text-pink-400">
+              • Morgens vor dem Essen für konsistente Werte
+              • Maßband parallel zum Boden halten
+              • Immer an derselben Körperstelle messen
+              • Wöchentlich messen für langfristige Trends
+            </p>
+            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2">
+              <strong>Nächste Messung:</strong> Nächste Woche 📏
+            </p>
+          </div>
         </div>
       ) : (
         <PremiumGate 

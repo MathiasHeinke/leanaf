@@ -363,19 +363,38 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
           )}
           
-          <CoachFeedbackCard 
-            coachName="Kai"
-            coachAvatar="/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
-            sleepData={{
-              ...todaysSleep,
-              screenTime: screenTimeEvening[0],
-              libido: morningLibido[0],
-              motivation: motivationLevel[0],
-              lastMealTime: lastMealTime[0]
-            }}
-            userId={user?.id}
-            type="sleep"
-          />
+          {/* Coach Feedback First */}
+          <div className="mb-3">
+            <CoachFeedbackCard 
+              coachName="Kai"
+              coachAvatar="/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
+              sleepData={{
+                ...todaysSleep,
+                screenTime: screenTimeEvening[0],
+                libido: morningLibido[0],
+                motivation: motivationLevel[0],
+                lastMealTime: lastMealTime[0]
+              }}
+              userId={user?.id}
+              type="sleep"
+            />
+          </div>
+          
+          {/* Tips in matching purple theme */}
+          <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-700">
+            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
+              <strong>Tipp:</strong> Optimiere deinen Schlaf für bessere Regeneration!
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              • 7-9 Stunden Schlaf für optimale Regeneration
+              • Feste Schlafzeiten unterstützen den Biorhythmus
+              • Bildschirme 1h vor dem Schlafen vermeiden
+              • Kühles, dunkles Schlafzimmer für bessere Schlafqualität
+            </p>
+            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+              <strong>Nächster Schlaf:</strong> Heute Abend 😴
+            </p>
+          </div>
         </div>
       ) : (
         <PremiumGate 

@@ -287,13 +287,32 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             ))}
           </div>
           
-          <CoachFeedbackCard 
-            coachName="Sascha"
-            coachAvatar="/coach-images/markus-ruehl.jpg"
-            workoutData={todaysWorkouts}
-            userId={user?.id}
-            type="workout"
-          />
+          {/* Coach Feedback First */}
+          <div className="mb-3">
+            <CoachFeedbackCard 
+              coachName="Sascha"
+              coachAvatar="/coach-images/markus-ruehl.jpg"
+              workoutData={todaysWorkouts}
+              userId={user?.id}
+              type="workout"
+            />
+          </div>
+          
+          {/* Tips in matching orange theme */}
+          <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3 border border-orange-200 dark:border-orange-700">
+            <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
+              <strong>Tipp:</strong> Effektives Training braucht die richtige Balance!
+            </p>
+            <p className="text-xs text-orange-600 dark:text-orange-400">
+              • Krafttraining 2-3x pro Woche für optimalen Muskelaufbau
+              • Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung
+              • Mindestens 1-2 Ruhetage pro Woche für Regeneration
+              • Progressive Steigerung für kontinuierliche Fortschritte
+            </p>
+            <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+              <strong>Nächstes Training:</strong> Morgen 💪
+            </p>
+          </div>
         </div>
       ) : (
         <PremiumGate 
