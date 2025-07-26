@@ -459,9 +459,6 @@ const Index = () => {
         {/* Weekly Coach Recommendation for Free Users */}
         <WeeklyCoachRecommendation />
         
-        {/* Smart Coach Insights */}
-        <SmartCoachInsights />
-        
         <DailyProgress
           dailyTotals={{
             calories: calorieSummary.consumed,
@@ -495,6 +492,9 @@ const Index = () => {
             </div>
           </SortableContext>
         </DndContext>
+
+        {/* Smart Coach Insights */}
+        <SmartCoachInsights />
 
         <div>
           <div className="mb-4">
