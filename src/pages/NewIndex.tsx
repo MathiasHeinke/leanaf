@@ -289,7 +289,7 @@ const NewIndex = () => {
 
   return (
     <>
-      <div className="space-y-3 sm:space-y-4 lg:space-y-6 max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 pb-40 sm:pb-36">
+      <div className="space-y-2 sm:space-y-3 lg:space-y-4 max-w-7xl mx-auto px-2 sm:px-3 lg:px-6 pb-48 sm:pb-44 md:pb-40 safe-area-pb">
         {/* Trial Banner */}
         <TrialBanner />
         
@@ -297,9 +297,9 @@ const NewIndex = () => {
         <WeeklyCoachRecommendation />
 
         {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Überblick über Ihren heutigen Fortschritt</p>
+        <div className="space-y-1 sm:space-y-2">
+          <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">Überblick über Ihren heutigen Fortschritt</p>
         </div>
 
         {/* Daily Progress Overview */}
@@ -322,18 +322,18 @@ const NewIndex = () => {
           onDateChange={handleDateChange}
         />
 
-        {/* Quick Input Cards - Mobile Optimized Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        {/* Quick Input Cards - Mobile First Responsive Grid */}
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
           {/* Weight Tracker */}
           <Card className="gradient-personal">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                <Scale className="h-4 w-4" />
-                <span className="hidden sm:inline">Gewicht erfassen</span>
-                <span className="sm:hidden">Gewicht</span>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
+                <Scale className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden min-[480px]:inline">Gewicht erfassen</span>
+                <span className="min-[480px]:hidden">Gewicht</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
               <QuickWeightInput 
                 onWeightAdded={handleWeightAdded}
                 todaysWeight={todaysWeight}
@@ -343,14 +343,14 @@ const NewIndex = () => {
 
           {/* Quick Workout */}
           <Card className="gradient-goals">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                <Dumbbell className="h-4 w-4" />
-                <span className="hidden sm:inline">Training erfassen</span>
-                <span className="sm:hidden">Training</span>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
+                <Dumbbell className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden min-[480px]:inline">Training erfassen</span>
+                <span className="min-[480px]:hidden">Training</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
               <QuickWorkoutInput 
                 onWorkoutAdded={handleWorkoutAdded}
                 todaysWorkout={todaysWorkouts[0] || null}
@@ -361,14 +361,14 @@ const NewIndex = () => {
 
           {/* Sleep Input */}
           <Card className="gradient-analysis">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                <Moon className="h-4 w-4" />
-                <span className="hidden sm:inline">Schlaf protokollieren</span>
-                <span className="sm:hidden">Schlaf</span>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
+                <Moon className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden min-[480px]:inline">Schlaf protokollieren</span>
+                <span className="min-[480px]:hidden">Schlaf</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
               <QuickSleepInput 
                 onSleepAdded={handleSleepAdded}
                 todaysSleep={todaysSleep}
@@ -378,14 +378,14 @@ const NewIndex = () => {
 
           {/* Body Measurements */}
           <Card className="gradient-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                <Target className="h-4 w-4" />
-                <span className="hidden sm:inline">Körpermaße</span>
-                <span className="sm:hidden">Maße</span>
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
+                <Target className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden min-[480px]:inline">Körpermaße</span>
+                <span className="min-[480px]:hidden">Maße</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
               <BodyMeasurements 
                 onMeasurementsAdded={handleMeasurementsAdded}
                 todaysMeasurements={todaysMeasurements}
@@ -394,15 +394,15 @@ const NewIndex = () => {
           </Card>
 
           {/* Smart Coach Insights */}
-          <Card className="gradient-insights sm:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Coach Insights</span>
-                <span className="sm:hidden">Insights</span>
+          <Card className="gradient-insights min-[480px]:col-span-2 lg:col-span-1">
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden min-[480px]:inline">Coach Insights</span>
+                <span className="min-[480px]:hidden">Insights</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-3 sm:px-6 pb-3">
               <SmartCoachInsights />
             </CardContent>
           </Card>
@@ -442,17 +442,17 @@ const NewIndex = () => {
       </div>
       
       {/* Fixed Bottom Meal Input - Mobile Optimized */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-2 sm:p-3 lg:p-4 shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border p-2 sm:p-3 lg:p-4 shadow-lg pb-safe">
         <div className="max-w-7xl mx-auto">
           <Card className="gradient-macros shadow-xl">
-            <CardHeader className="pb-2 sm:pb-3">
-              <CardTitle className="flex items-center gap-2 text-xs sm:text-sm lg:text-base">
+            <CardHeader className="pb-1 sm:pb-2">
+              <CardTitle className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm lg:text-base">
                 <Utensils className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Mahlzeit hinzufügen</span>
-                <span className="xs:hidden">Mahlzeit</span>
+                <span className="hidden min-[480px]:inline">Mahlzeit hinzufügen</span>
+                <span className="min-[480px]:hidden">Mahlzeit</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 pb-2 sm:pb-3">
+            <CardContent className="pt-0 pb-1 sm:pb-2 px-2 sm:px-6">
               <MealInput 
                 inputText={mealInputHook.inputText}
                 setInputText={mealInputHook.setInputText}
