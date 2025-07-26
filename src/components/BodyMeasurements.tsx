@@ -232,7 +232,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             coachAvatar="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
             measurementData={todaysMeasurements}
             userId={user?.id}
-            type="weight"
+            type="measurement"
           />
         </div>
       ) : (

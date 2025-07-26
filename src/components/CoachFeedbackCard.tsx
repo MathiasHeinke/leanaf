@@ -9,7 +9,7 @@ interface CoachFeedbackCardProps {
   weightData?: any;
   measurementData?: any;
   userId?: string;
-  type: 'sleep' | 'workout' | 'weight';
+  type: 'sleep' | 'workout' | 'weight' | 'measurement';
 }
 
 export const CoachFeedbackCard = ({ 
@@ -48,6 +48,10 @@ export const CoachFeedbackCard = ({
             requestBody.weightData = weightData;
             requestBody.measurementData = measurementData;
             break;
+          case 'measurement':
+            functionName = 'coach-weight-analysis';
+            requestBody.measurementData = measurementData;
+            break;
         }
 
         console.log(`Calling ${functionName} with:`, requestBody);
@@ -83,6 +87,8 @@ export const CoachFeedbackCard = ({
         return "Jede Bewegung bringt dich deinem Ziel näher! 💪";
       case 'weight':
         return "Kontinuierliche Fortschritte sind der Schlüssel zum Erfolg! 💖";
+      case 'measurement':
+        return "Körpermaße zeigen oft Fortschritte, die die Waage nicht anzeigt! 📏";
       default:
         return "Weiter so!";
     }
@@ -110,6 +116,13 @@ export const CoachFeedbackCard = ({
           border: 'border-pink-200 dark:border-pink-700',
           text: 'text-pink-700 dark:text-pink-300',
           nameText: 'text-pink-800 dark:text-pink-200'
+        };
+      case 'measurement':
+        return {
+          bg: 'bg-teal-100/50 dark:bg-teal-900/30',
+          border: 'border-teal-200 dark:border-teal-700',
+          text: 'text-teal-700 dark:text-teal-300',
+          nameText: 'text-teal-800 dark:text-teal-200'
         };
       default:
         return {
