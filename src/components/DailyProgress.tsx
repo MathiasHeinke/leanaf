@@ -249,77 +249,65 @@ export const DailyProgress = ({
         {/* Subtle Separator */}
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-gray-700/60 to-transparent mb-6"></div>
 
-        {/* Macros Section - Enhanced with Specific Colors */}
+        {/* Macros Section - Subtle and Clean */}
         <div className="grid grid-cols-3 gap-4">
           {/* Protein */}
-          <div className={`p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02] ${
-            proteinExceeded 
-              ? 'bg-red-50/60 dark:bg-red-950/20 border-red-200/50 dark:border-red-800/50' 
-              : 'bg-protein-light/60 dark:bg-protein-light border-protein/20 dark:border-protein/30'
-          }`}>
-            <div className={`text-xs font-medium mb-2 uppercase tracking-wider ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein/70 dark:text-protein/80'}`}>
+          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.protein')}
             </div>
             <div className="space-y-1 mb-3">
-              <div className={`text-2xl font-bold ${proteinExceeded ? 'text-red-600 dark:text-red-400' : 'text-protein dark:text-protein'}`}>
+              <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">
                 {Math.round(dailyTotals.protein * 10) / 10}
                 <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
               </div>
-              <div className={`text-sm font-medium ${proteinExceeded ? 'text-red-500 dark:text-red-400' : 'text-protein/60 dark:text-protein/70'}`}>
+              <div className="text-sm font-medium text-muted-foreground">
                 {remainingProtein > 0 ? `+${Math.round(remainingProtein)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingProtein))}${t('ui.gram')} ${t('ui.over')}`}
               </div>
             </div>
             <Progress 
               value={Math.min(proteinProgress, 100)} 
-              className={`h-2 ${proteinExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-protein'}`} 
+              className="h-2 [&>div:last-child]:bg-slate-500" 
             />
           </div>
 
           {/* Carbs */}
-          <div className={`p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02] ${
-            carbsExceeded 
-              ? 'bg-red-50/60 dark:bg-red-950/20 border-red-200/50 dark:border-red-800/50' 
-              : 'bg-carbs-light/60 dark:bg-carbs-light border-carbs/20 dark:border-carbs/30'
-          }`}>
-            <div className={`text-xs font-medium mb-2 uppercase tracking-wider ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs/70 dark:text-carbs/80'}`}>
+          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.carbs')}
             </div>
             <div className="space-y-1 mb-3">
-              <div className={`text-2xl font-bold ${carbsExceeded ? 'text-red-600 dark:text-red-400' : 'text-carbs dark:text-carbs'}`}>
+              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {Math.round(dailyTotals.carbs * 10) / 10}
                 <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
               </div>
-              <div className={`text-sm font-medium ${carbsExceeded ? 'text-red-500 dark:text-red-400' : 'text-carbs/60 dark:text-carbs/70'}`}>
+              <div className="text-sm font-medium text-muted-foreground">
                 {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingCarbs))}${t('ui.gram')} ${t('ui.over')}`}
               </div>
             </div>
             <Progress 
               value={Math.min(carbsProgress, 100)} 
-              className={`h-2 ${carbsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-carbs'}`} 
+              className="h-2 [&>div:last-child]:bg-amber-500" 
             />
           </div>
 
           {/* Fats */}
-          <div className={`p-4 rounded-xl border transition-all duration-200 hover:scale-[1.02] ${
-            fatsExceeded 
-              ? 'bg-red-50/60 dark:bg-red-950/20 border-red-200/50 dark:border-red-800/50' 
-              : 'bg-fats-light/60 dark:bg-fats-light border-fats/20 dark:border-fats/30'
-          }`}>
-            <div className={`text-xs font-medium mb-2 uppercase tracking-wider ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats/70 dark:text-fats/80'}`}>
+          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.fats')}
             </div>
             <div className="space-y-1 mb-3">
-              <div className={`text-2xl font-bold ${fatsExceeded ? 'text-red-600 dark:text-red-400' : 'text-fats dark:text-fats'}`}>
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                 {Math.round(dailyTotals.fats * 10) / 10}
                 <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
               </div>
-              <div className={`text-sm font-medium ${fatsExceeded ? 'text-red-500 dark:text-red-400' : 'text-fats/60 dark:text-fats/70'}`}>
+              <div className="text-sm font-medium text-muted-foreground">
                 {remainingFats > 0 ? `+${Math.round(remainingFats)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingFats))}${t('ui.gram')} ${t('ui.over')}`}
               </div>
             </div>
             <Progress 
               value={Math.min(fatsProgress, 100)} 
-              className={`h-2 ${fatsExceeded ? '[&>div]:bg-red-500' : '[&>div]:bg-fats'}`} 
+              className="h-2 [&>div:last-child]:bg-emerald-500" 
             />
           </div>
         </div>
