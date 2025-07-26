@@ -29,7 +29,7 @@ import { BugReportDialog } from "./BugReportDialog";
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "header.main" },
   { title: "Coach", url: "/coach", icon: MessageCircle, key: "coach" },
-  { title: "Training+", url: "/history", icon: TrendingUp, key: "insights" },
+  { title: "Training+", url: "/training", icon: TrendingUp, key: "insights" },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
 
