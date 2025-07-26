@@ -35,10 +35,10 @@ export const useMediaUpload = () => {
           continue;
         }
 
-        // Validate file size (max 50MB for videos, 10MB for images)
-        const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+        // Validate file size (max 250MB for videos, 10MB for images)
+        const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024;
         if (file.size > maxSize) {
-          toast.error(`${file.name} ist zu groß. Max: ${isVideo ? '50MB' : '10MB'}`);
+          toast.error(`${file.name} ist zu groß. Max: ${isVideo ? '250MB' : '10MB'}`);
           continue;
         }
 

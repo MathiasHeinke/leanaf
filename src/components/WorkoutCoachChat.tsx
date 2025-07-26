@@ -29,6 +29,8 @@ interface WorkoutMessage {
   metadata?: {
     exerciseData?: any;
     suggestions?: string[];
+    needsRpeInput?: boolean;
+    pendingExercise?: any;
   };
 }
 
@@ -44,6 +46,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
+  const [waitingForRpe, setWaitingForRpe] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -135,6 +138,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
       const analysis = data.analysis;
       
+      // Parse exercise data from analysis
+      const exerciseData = parseExerciseFromAnalysis(analysis);
+      
       // Add assistant response
       const assistantMessage: WorkoutMessage = {
         id: Date.now().toString(),
@@ -142,26 +148,36 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         content: analysis,
         timestamp: new Date(),
         metadata: {
-          exerciseData: data.extractedData,
-          suggestions: data.suggestions || []
+          exerciseData: exerciseData,
+          suggestions: data.suggestions || [],
+          needsRpeInput: exerciseData && !exerciseData.rpe,
+          pendingExercise: exerciseData
         }
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       await saveMessage('assistant', analysis, data);
 
-      // Parse and log exercise data automatically
-      if (analysis && onExerciseLogged) {
-        try {
-          // Extract structured exercise data from analysis
-          const exerciseData = parseExerciseFromAnalysis(analysis);
-          if (exerciseData) {
-            await logExerciseSession(exerciseData);
+      // Check if we need to ask for RPE or can log immediately
+      if (exerciseData) {
+        if (!exerciseData.rpe) {
+          // Ask for RPE
+          setWaitingForRpe(exerciseData);
+          const rpeQuestion: WorkoutMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: `**RPE-Bewertung benötigt** 📊\n\nWie anstrengend war das Training für dich?\n\nBitte bewerte auf einer Skala von 1-10:\n- **1-3**: Sehr leicht\n- **4-6**: Moderat  \n- **7-8**: Schwer\n- **9-10**: Maximal anstrengend\n\nSchreibe einfach eine Zahl (z.B. "7") und ich trage die Übung in deinen Verlauf ein.`,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, rpeQuestion]);
+          await saveMessage('assistant', rpeQuestion.content);
+        } else {
+          // RPE already provided, log immediately
+          await logExerciseSession(exerciseData);
+          if (onExerciseLogged) {
             onExerciseLogged(exerciseData);
-            toast.success('Übung automatisch eingetragen!');
           }
-        } catch (error) {
-          console.error('Error logging exercise:', error);
+          toast.success('Übung automatisch eingetragen!');
         }
       }
 
@@ -194,6 +210,41 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       await analyzeWorkoutMedia(uploadedMedia, input);
       setUploadedMedia([]);
     } else {
+      // Check if user is providing RPE for pending exercise
+      if (waitingForRpe && /^\d+(\.\d+)?$/.test(input.trim())) {
+        const rpeValue = parseFloat(input.trim());
+        if (rpeValue >= 1 && rpeValue <= 10) {
+          // Update exercise with RPE and log it
+          const exerciseWithRpe = { ...waitingForRpe, rpe: rpeValue };
+          
+          try {
+            await logExerciseSession(exerciseWithRpe);
+            if (onExerciseLogged) {
+              onExerciseLogged(exerciseWithRpe);
+            }
+            
+            const confirmationMessage: WorkoutMessage = {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: `✅ **Übung eingetragen!**\n\n**${exerciseWithRpe.exercise_name}**\n- Sätze: ${exerciseWithRpe.sets || 1}\n- Wiederholungen: ${exerciseWithRpe.reps || 'Nicht angegeben'}\n- Gewicht: ${exerciseWithRpe.weight_kg ? exerciseWithRpe.weight_kg + ' kg' : 'Nicht angegeben'}\n- RPE: ${rpeValue}/10\n\nDie Übung wurde in deinen Trainingsplan eingetragen. Weiter so! 💪`,
+              timestamp: new Date()
+            };
+            
+            setMessages(prev => [...prev, confirmationMessage]);
+            await saveMessage('assistant', confirmationMessage.content);
+            setWaitingForRpe(null);
+            toast.success('Übung mit RPE eingetragen!');
+            
+          } catch (error) {
+            console.error('Error logging exercise:', error);
+            toast.error('Fehler beim Eintragen der Übung');
+          }
+          
+          setInput('');
+          return;
+        }
+      }
+      
       // Regular chat without media
       try {
         setIsLoading(true);
@@ -236,32 +287,107 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   };
 
-  // Parse exercise data from coach analysis
+  // Parse exercise data from coach analysis with improved pattern matching
   const parseExerciseFromAnalysis = (analysis: string) => {
     try {
-      // Look for structured exercise information in the analysis
-      const exercisePattern = /(?:Übung|Exercise):\s*(.+?)(?:\n|$)/i;
-      const repsPattern = /(?:Wiederholungen|Reps):\s*(\d+)/i;
-      const setsPattern = /(?:Sätze|Sets):\s*(\d+)/i;
-      const weightPattern = /(?:Gewicht|Weight):\s*(\d+(?:\.\d+)?)\s*(?:kg|KG)/i;
-      const rpePattern = /(?:RPE|Anstrengung):\s*(\d+(?:\.\d+)?)/i;
+      console.log('🔍 Parsing exercise data from analysis:', analysis);
+      
+      // Multiple pattern matching for robustness
+      const exercisePatterns = [
+        /(?:Übung|Exercise|Trainiert):\s*([^\n]+)/i,
+        /(?:Du hast|machst|trainierst)\s+([^\n]+?)\s+(?:gemacht|trainiert|geübt)/i,
+        /([A-Za-zäöüß\s-]+(?:press|zug|beugen|strecken|curls?|squats?|deadlifts?))/i
+      ];
+      
+      const repsPatterns = [
+        /(?:Wiederholungen|Reps|WH):\s*(\d+)/i,
+        /(\d+)\s*(?:Wiederholungen|Reps|WH)/i,
+        /(\d+)\s*x\s*\d+/i // e.g., "12x3"
+      ];
+      
+      const setsPatterns = [
+        /(?:Sätze|Sets):\s*(\d+)/i,
+        /(\d+)\s*(?:Sätze|Sets)/i,
+        /\d+\s*x\s*(\d+)/i // e.g., "12x3"
+      ];
+      
+      const weightPatterns = [
+        /(?:Gewicht|Weight):\s*(\d+(?:\.\d+)?)\s*(?:kg|KG)/i,
+        /(\d+(?:\.\d+)?)\s*(?:kg|KG)/i,
+        /mit\s*(\d+(?:\.\d+)?)\s*(?:kg|KG)/i
+      ];
+      
+      const rpePatterns = [
+        /(?:RPE|Anstrengung|Intensität):\s*(\d+(?:\.\d+)?)/i,
+        /RPE\s*(\d+(?:\.\d+)?)/i
+      ];
 
-      const exerciseMatch = analysis.match(exercisePattern);
-      const repsMatch = analysis.match(repsPattern);
-      const setsMatch = analysis.match(setsPattern);
-      const weightMatch = analysis.match(weightPattern);
-      const rpeMatch = analysis.match(rpePattern);
+      let exerciseName = null;
+      let reps = null;
+      let sets = 1; // Default to 1 set
+      let weight = null;
+      let rpe = null;
 
-      if (exerciseMatch) {
-        return {
-          exercise_name: exerciseMatch[1].trim(),
-          reps: repsMatch ? parseInt(repsMatch[1]) : null,
-          sets: setsMatch ? parseInt(setsMatch[1]) : 1,
-          weight_kg: weightMatch ? parseFloat(weightMatch[1]) : null,
-          rpe: rpeMatch ? parseFloat(rpeMatch[1]) : null,
+      // Try to find exercise name
+      for (const pattern of exercisePatterns) {
+        const match = analysis.match(pattern);
+        if (match) {
+          exerciseName = match[1].trim();
+          break;
+        }
+      }
+
+      // Find reps
+      for (const pattern of repsPatterns) {
+        const match = analysis.match(pattern);
+        if (match) {
+          reps = parseInt(match[1]);
+          break;
+        }
+      }
+
+      // Find sets
+      for (const pattern of setsPatterns) {
+        const match = analysis.match(pattern);
+        if (match) {
+          sets = parseInt(match[1]);
+          break;
+        }
+      }
+
+      // Find weight
+      for (const pattern of weightPatterns) {
+        const match = analysis.match(pattern);
+        if (match) {
+          weight = parseFloat(match[1]);
+          break;
+        }
+      }
+
+      // Find RPE
+      for (const pattern of rpePatterns) {
+        const match = analysis.match(pattern);
+        if (match) {
+          rpe = parseFloat(match[1]);
+          break;
+        }
+      }
+
+      if (exerciseName) {
+        const exerciseData = {
+          exercise_name: exerciseName,
+          reps: reps,
+          sets: sets,
+          weight_kg: weight,
+          rpe: rpe,
           date: new Date().toISOString().split('T')[0]
         };
+        
+        console.log('✅ Parsed exercise data:', exerciseData);
+        return exerciseData;
       }
+      
+      console.log('❌ No exercise name found in analysis');
       return null;
     } catch (error) {
       console.error('Error parsing exercise data:', error);
@@ -503,7 +629,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Beschreibe dein Training oder stelle eine Frage..."
+              placeholder={
+                waitingForRpe 
+                  ? "Bewerte die Intensität (1-10)..." 
+                  : "Beschreibe dein Training oder stelle eine Frage..."
+              }
               disabled={isLoading}
               className="flex-1"
             />
@@ -516,19 +646,27 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             </Button>
           </div>
 
-          {uploadedMedia.length > 0 && (
+          {(uploadedMedia.length > 0 || waitingForRpe) && (
             <div className="mt-3 p-2 bg-orange-50 rounded border border-orange-200">
-              <p className="text-sm text-orange-700 mb-2">
-                {uploadedMedia.length} Datei(en) bereit für Analyse
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setUploadedMedia([])}
-                className="text-orange-600"
-              >
-                Medien entfernen
-              </Button>
+              {waitingForRpe ? (
+                <p className="text-sm text-orange-700 mb-2">
+                  ⏳ Warte auf RPE-Bewertung für: <strong>{waitingForRpe.exercise_name}</strong>
+                </p>
+              ) : (
+                <p className="text-sm text-orange-700 mb-2">
+                  {uploadedMedia.length} Datei(en) bereit für Analyse
+                </p>
+              )}
+              {!waitingForRpe && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUploadedMedia([])}
+                  className="text-orange-600"
+                >
+                  Medien entfernen
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
