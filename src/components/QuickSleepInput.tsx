@@ -290,17 +290,17 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 24-Stunden Timeline Bar */}
+              {/* Interactive 24-Stunden Timeline Bar */}
               <div className="space-y-4">
                 <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
                   <Clock className="inline h-4 w-4 mr-1" />
                   Schlafzeiten: {formatTime(bedtime[0])} bis {formatTime(wakeTime[0])} ({sleepDuration}h)
                 </div>
                 
-                {/* 24-Hour Timeline with dual sliders */}
+                {/* Interactive 24-Hour Timeline */}
                 <div className="relative p-4 bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-purple-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
                   {/* Time markers */}
-                  <div className="flex justify-between items-center mb-2 text-xs text-purple-600 dark:text-purple-400">
+                  <div className="flex justify-between items-center mb-3 text-xs text-purple-600 dark:text-purple-400">
                     <div className="flex items-center gap-1">
                       <Sun className="h-3 w-3" />
                       <span>12:00</span>
@@ -323,48 +323,73 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                     </div>
                   </div>
                   
-                  {/* Timeline track with night/day gradient */}
-                  <div className="relative h-3 w-full rounded-full bg-gradient-to-r from-yellow-200 via-blue-400 via-blue-600 via-blue-400 to-yellow-200 dark:from-yellow-600 dark:via-blue-600 dark:via-blue-800 dark:via-blue-600 dark:to-yellow-600 mb-4">
-                    {/* Sleep duration visualization */}
-                    <div 
-                      className="absolute h-full bg-purple-600/60 dark:bg-purple-400/60 rounded-full"
-                      style={{
-                        left: `${((bedtime[0] - 12) / 24) * 100}%`,
-                        width: `${(sleepDuration / 24) * 100}%`
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Bedtime slider */}
-                  <div className="mb-3">
-                    <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
-                      <Moon className="h-3 w-3" />
-                      Einschlafzeit: {formatTime(bedtime[0])}
+                  {/* Interactive timeline with dual sliders */}
+                  <div className="relative">
+                    {/* Background track with day/night gradient */}
+                    <div className="h-6 w-full rounded-full bg-gradient-to-r from-yellow-200 via-blue-400 via-blue-600 via-blue-400 to-yellow-200 dark:from-yellow-600 dark:via-blue-600 dark:via-blue-800 dark:via-blue-600 dark:to-yellow-600 relative">
+                      {/* Sleep duration visualization */}
+                      <div 
+                        className="absolute h-full bg-purple-600/60 dark:bg-purple-400/60 rounded-full"
+                        style={{
+                          left: `${((bedtime[0] - 12) / 24) * 100}%`,
+                          width: `${(sleepDuration / 24) * 100}%`
+                        }}
+                      />
+                      
+                      {/* Bedtime thumb */}
+                      <div 
+                        className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-purple-600 border-2 border-white rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
+                        style={{ left: `calc(${((bedtime[0] - 12) / 24) * 100}% - 12px)` }}
+                      >
+                        <Moon className="h-3 w-3 text-white" />
+                      </div>
+                      
+                      {/* Wake time thumb */}
+                      <div 
+                        className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-amber-500 border-2 border-white rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
+                        style={{ left: `calc(${((wakeTime[0] - 12) / 24) * 100}% - 12px)` }}
+                      >
+                        <Sun className="h-3 w-3 text-white" />
+                      </div>
                     </div>
+                    
+                    {/* Invisible slider for bedtime */}
                     <Slider
                       value={[((bedtime[0] - 12) / 24) * 100]}
                       onValueChange={(value) => setBedtime([12 + (value[0] / 100) * 24])}
                       max={100}
                       min={0}
                       step={2.08} // Represents 0.5 hours in percentage
-                      className="w-full [&>*]:bg-transparent [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-purple-600 [&_[role=slider]]:shadow-lg [&>span>span]:bg-transparent"
+                      className="absolute top-0 w-full h-6 opacity-0 cursor-pointer"
                     />
-                  </div>
-                  
-                  {/* Wake time slider */}
-                  <div>
-                    <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
-                      <Sun className="h-3 w-3" />
-                      Aufwachzeit: {formatTime(wakeTime[0])}
-                    </div>
+                    
+                    {/* Invisible slider for wake time */}
                     <Slider
                       value={[((wakeTime[0] - 12) / 24) * 100]}
                       onValueChange={(value) => setWakeTime([12 + (value[0] / 100) * 24])}
                       max={100}
                       min={0}
                       step={2.08} // Represents 0.5 hours in percentage
-                      className="w-full [&>*]:bg-transparent [&_[role=slider]]:border-amber-500 [&_[role=slider]]:bg-amber-500 [&_[role=slider]]:shadow-lg [&>span>span]:bg-transparent"
+                      className="absolute top-0 w-full h-6 opacity-0 cursor-pointer"
                     />
+                  </div>
+                  
+                  {/* Time labels below thumbs */}
+                  <div className="flex justify-between mt-2 text-xs">
+                    <div 
+                      className="text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1"
+                      style={{ marginLeft: `${((bedtime[0] - 12) / 24) * 100}%`, transform: 'translateX(-50%)' }}
+                    >
+                      <Moon className="h-3 w-3" />
+                      {formatTime(bedtime[0])}
+                    </div>
+                    <div 
+                      className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1"
+                      style={{ marginLeft: `${((wakeTime[0] - 12) / 24) * 100}%`, transform: 'translateX(-50%)' }}
+                    >
+                      <Sun className="h-3 w-3" />
+                      {formatTime(wakeTime[0])}
+                    </div>
                   </div>
                 </div>
               </div>
