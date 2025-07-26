@@ -66,17 +66,15 @@
 
     --radius: 0.75rem;
 
-    /* Protein - Clean Blue */
-    --protein: 221 83% 53%;
-    --protein-light: 221 83% 97%;
+    /* Macro Colors - Distinctive & Appealing */
+    --protein: 200 100% 50%;        /* Bright Cyan-Blue for Protein */
+    --protein-light: 200 100% 97%;
     
-    /* Carbs - Warm Amber */
-    --carbs: 43 96% 56%;
-    --carbs-light: 43 96% 95%;
+    --carbs: 35 100% 55%;           /* Vibrant Orange for Carbs */
+    --carbs-light: 35 100% 96%;
     
-    /* Fats - Elegant Purple */
-    --fats: 262 83% 58%;
-    --fats-light: 262 83% 97%;
+    --fats: 150 80% 45%;            /* Fresh Green for Fats */
+    --fats-light: 150 80% 96%;
 
     /* Modern Gradients - Subtle & Clean */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
@@ -152,17 +150,15 @@
     --input: 240 3.7% 15.9%;
     --ring: 221 83% 65%;
 
-    /* Protein - Bright Blue */
-    --protein: 221 83% 65%;
-    --protein-light: 221 83% 10%;
+    /* Macro Colors Dark Mode */
+    --protein: 200 100% 60%;        /* Brighter Cyan-Blue for Dark Mode */
+    --protein-light: 200 100% 8%;
     
-    /* Carbs - Warm Amber */
-    --carbs: 43 96% 65%;
-    --carbs-light: 43 96% 10%;
+    --carbs: 35 100% 65%;           /* Brighter Orange for Dark Mode */
+    --carbs-light: 35 100% 8%;
     
-    /* Fats - Elegant Purple */
-    --fats: 262 83% 68%;
-    --fats-light: 262 83% 10%;
+    --fats: 150 80% 55%;            /* Brighter Green for Dark Mode */
+    --fats-light: 150 80% 8%;
 
     /* Dark Mode Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
