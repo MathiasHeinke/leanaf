@@ -284,13 +284,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
       theme="indigo"
     >
       {hasSleepToday && !isEditing ? (
-        <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-purple-800 dark:text-purple-200">Schlaf eingetragen! 😴</h3>
+              <h3 className="font-semibold text-indigo-800 dark:text-indigo-200">Schlaf eingetragen! 😴</h3>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -307,7 +307,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                className="text-indigo-600 border-indigo-300 hover:bg-indigo-50"
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -324,7 +324,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             />
           </div>
           
-          <p className="text-sm text-purple-600 dark:text-purple-400 mb-3">
+          <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-3">
             {todaysSleep.bedtime && todaysSleep.wake_time 
               ? `${todaysSleep.bedtime} - ${todaysSleep.wake_time}` 
               : `${todaysSleep.sleep_hours || 0} Stunden`
@@ -335,7 +335,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           
           {/* Erweiterte Infos wenn verfügbar */}
           {(todaysSleep.screen_time_evening || todaysSleep.morning_libido || todaysSleep.motivation_level) && (
-            <div className="text-xs text-purple-600 dark:text-purple-400 mb-3 space-y-1">
+            <div className="text-xs text-indigo-600 dark:text-indigo-400 mb-3 space-y-1">
               {todaysSleep.screen_time_evening > 0 && (
                 <div className="flex items-center gap-1">
                   <Smartphone className="h-3 w-3" />
@@ -380,18 +380,18 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             />
           </div>
           
-          {/* Tips in matching purple theme */}
-          <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-700">
-            <p className="text-xs text-purple-700 dark:text-purple-300 mb-2">
+          {/* Tips in matching indigo theme */}
+          <div className="bg-indigo-100/50 dark:bg-indigo-900/30 rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
+            <p className="text-xs text-indigo-700 dark:text-indigo-300 mb-2">
               <strong>Tipp:</strong> Optimiere deinen Schlaf für bessere Regeneration!
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400">
+            <p className="text-xs text-indigo-600 dark:text-indigo-400">
               • 7-9 Stunden Schlaf für optimale Regeneration
               • Feste Schlafzeiten unterstützen den Biorhythmus
               • Bildschirme 1h vor dem Schlafen vermeiden
               • Kühles, dunkles Schlafzimmer für bessere Schlafqualität
             </p>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2">
               <strong>Nächster Schlaf:</strong> Heute Abend 😴
             </p>
           </div>
@@ -402,13 +402,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           hideable={true}
           fallbackMessage="Schlaf-Tracking ist ein Premium Feature. Upgrade für detailliertes Schlaf-Monitoring!"
         >
-          <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/20 p-4 rounded-2xl border border-purple-200 dark:border-purple-800">
+          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-xl">
-                <Moon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
+                <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-purple-800 dark:text-purple-200">
+                <h3 className="font-semibold text-indigo-800 dark:text-indigo-200">
                   {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
                 </h3>
               </div>
@@ -427,15 +427,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Interactive 24-Stunden Timeline Bar */}
               <div className="space-y-4">
-                <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
                   <Clock className="inline h-4 w-4 mr-1" />
                   Schlafzeiten: {formatTime(bedtime[0])} bis {formatTime(wakeTime[0])} ({sleepDuration}h)
                 </div>
                 
                 {/* Interactive 24-Hour Timeline */}
-                <div className="relative p-4 bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-purple-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                <div className="relative p-4 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/20 dark:via-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
                   {/* Simplified time markers - only key times */}
-                  <div className="flex justify-between items-center mb-3 text-sm font-medium text-purple-700 dark:text-purple-300">
+                  <div className="flex justify-between items-center mb-3 text-sm font-medium text-indigo-700 dark:text-indigo-300">
                     <span>00:00</span>
                     <span>06:00</span>
                     <span>12:00</span>
@@ -447,7 +447,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                   <div className="relative">
                     {/* Background track with day/night gradient */}
                     <div 
-                      className="h-12 w-full rounded-lg bg-gradient-to-r from-blue-400 via-yellow-300 via-yellow-300 via-blue-400 to-blue-600 dark:from-blue-600 dark:via-yellow-600 dark:via-yellow-600 dark:via-blue-600 dark:to-blue-800 relative cursor-pointer border-2 border-purple-200 dark:border-purple-700"
+                      className="h-12 w-full rounded-lg bg-gradient-to-r from-blue-400 via-yellow-300 via-yellow-300 via-blue-400 to-blue-600 dark:from-blue-600 dark:via-yellow-600 dark:via-yellow-600 dark:via-blue-600 dark:to-blue-800 relative cursor-pointer border-2 border-indigo-200 dark:border-indigo-700"
                       onClick={handleTimelineClick}
                       ref={timelineRef}
                     >

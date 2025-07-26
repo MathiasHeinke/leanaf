@@ -190,13 +190,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
       theme="cyan"
     >
       {hasWorkoutToday && !isEditing ? (
-        <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">
+        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-cyan-200 dark:border-cyan-800">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            <div className="p-2 bg-cyan-100 dark:bg-cyan-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-orange-800 dark:text-orange-200">
+              <h3 className="font-semibold text-cyan-800 dark:text-cyan-200">
                 {todaysWorkouts.length === 1 ? 'Workout erledigt! 💪' : `${todaysWorkouts.length} Workouts erledigt! 💪`}
               </h3>
             </div>
@@ -216,7 +216,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                 variant="outline"
                 size="sm"
                 onClick={handleAddNewWorkout}
-                className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                className="text-cyan-600 border-cyan-300 hover:bg-cyan-50"
                 title="Weiteres Workout hinzufügen"
               >
                 <Plus className="h-4 w-4" />
@@ -238,9 +238,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           {/* Display all workouts */}
           <div className="space-y-2 mb-3">
             {todaysWorkouts.map((workout, index) => (
-              <div key={workout.id} className="flex items-center justify-between bg-white/50 dark:bg-orange-900/20 rounded-lg p-2">
+              <div key={workout.id} className="flex items-center justify-between bg-white/50 dark:bg-cyan-900/20 rounded-lg p-2">
                 <div className="flex-1">
-                  <p className="text-sm text-orange-600 dark:text-orange-400">
+                  <p className="text-sm text-cyan-600 dark:text-cyan-400">
                     <span className="font-medium">
                       {workout.workout_type === 'kraft' ? 'Krafttraining' : 
                        workout.workout_type === 'cardio' ? 'Cardio' : 
@@ -268,7 +268,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEditWorkout(workout)}
-                    className="text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/50 p-1 h-auto"
+                    className="text-cyan-600 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 p-1 h-auto"
                     title="Workout bearbeiten"
                   >
                     <Edit className="h-3 w-3" />
@@ -298,18 +298,18 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             />
           </div>
           
-          {/* Tips in matching orange theme */}
-          <div className="bg-orange-100/50 dark:bg-orange-900/30 rounded-lg p-3 border border-orange-200 dark:border-orange-700">
-            <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
+          {/* Tips in matching cyan theme */}
+          <div className="bg-cyan-100/50 dark:bg-cyan-900/30 rounded-lg p-3 border border-cyan-200 dark:border-cyan-700">
+            <p className="text-xs text-cyan-700 dark:text-cyan-300 mb-2">
               <strong>Tipp:</strong> Effektives Training braucht die richtige Balance!
             </p>
-            <p className="text-xs text-orange-600 dark:text-orange-400">
+            <p className="text-xs text-cyan-600 dark:text-cyan-400">
               • Krafttraining 2-3x pro Woche für optimalen Muskelaufbau
               • Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung
               • Mindestens 1-2 Ruhetage pro Woche für Regeneration
               • Progressive Steigerung für kontinuierliche Fortschritte
             </p>
-            <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+            <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-2">
               <strong>Nächstes Training:</strong> Morgen 💪
             </p>
           </div>
@@ -320,13 +320,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           hideable={true}
           fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
         >
-          <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/20 p-4 rounded-2xl border border-orange-200 dark:border-orange-800">
+          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-cyan-200 dark:border-cyan-800">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-xl">
-                <Dumbbell className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              <div className="p-2 bg-cyan-100 dark:bg-cyan-900 rounded-xl">
+                <Dumbbell className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-orange-800 dark:text-orange-200">
+                <h3 className="font-semibold text-cyan-800 dark:text-cyan-200">
                   {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
                 </h3>
               </div>
@@ -345,11 +345,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
+                <label className="text-sm font-medium text-cyan-700 dark:text-cyan-300 mb-2 block">
                   Trainingsart
                 </label>
                 <Select value={workoutType} onValueChange={setWorkoutType}>
-                  <SelectTrigger className="bg-white dark:bg-orange-950/50 border-orange-200 dark:border-orange-700">
+                  <SelectTrigger className="bg-white dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-700">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

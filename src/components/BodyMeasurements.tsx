@@ -161,13 +161,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
       theme="sky"
     >
       {hasMeasurementsThisWeek && !isEditing ? (
-        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800">
+        <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-sky-200 dark:border-sky-800">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+            <div className="p-2 bg-sky-100 dark:bg-sky-900 rounded-xl">
+              <CheckCircle className="h-5 w-5 text-sky-600 dark:text-sky-400" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-teal-800 dark:text-teal-200">Maße erfasst! 📏</h3>
+              <h3 className="font-semibold text-sky-800 dark:text-sky-200">Maße erfasst! 📏</h3>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -186,7 +186,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="text-teal-600 border-teal-300 hover:bg-teal-50"
+                className="text-sky-600 border-sky-300 hover:bg-sky-50"
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -203,7 +203,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-teal-600 dark:text-teal-400 mb-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-sky-600 dark:text-sky-400 mb-3">
             {todaysMeasurements?.neck && (
               <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
             )}
@@ -260,13 +260,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           hideable={true}
           fallbackMessage="Körpermaße-Tracking ist ein Premium Feature. Upgrade für detaillierte Körpermaß-Aufzeichnung!"
         >
-          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-4 rounded-2xl border border-teal-200 dark:border-teal-800">
+          <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-sky-200 dark:border-sky-800">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-xl">
-                <Ruler className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+              <div className="p-2 bg-sky-100 dark:bg-sky-900 rounded-xl">
+                <Ruler className="h-5 w-5 text-sky-600 dark:text-sky-400" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-teal-800 dark:text-teal-200">
+                <h3 className="font-semibold text-sky-800 dark:text-sky-200">
                   {hasMeasurementsThisWeek ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
                 </h3>
               </div>
@@ -286,7 +286,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Hals (cm)</label>
+                  <label className="text-sm font-medium text-sky-700 dark:text-sky-300">Hals (cm)</label>
                   <NumericInput
                     placeholder="32.0"
                     value={measurements.neck}
@@ -294,7 +294,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={100}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
+                    className="bg-white dark:bg-sky-950/50 border-sky-200 dark:border-sky-700"
                   />
                 </div>
                 
