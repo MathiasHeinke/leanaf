@@ -39,11 +39,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   const [activeThumb, setActiveThumb] = useState<'bedtime' | 'waketime' | null>(null);
   
   // Individual tracking states for optional fields
-  const [trackInterruptions, setTrackInterruptions] = useState(true);
-  const [trackScreenTime, setTrackScreenTime] = useState(true);
-  const [trackLibido, setTrackLibido] = useState(true);
-  const [trackMotivation, setTrackMotivation] = useState(true);
-  const [trackLastMeal, setTrackLastMeal] = useState(true);
+  const [trackInterruptions, setTrackInterruptions] = useState(false);
+  const [trackScreenTime, setTrackScreenTime] = useState(false);
+  const [trackLibido, setTrackLibido] = useState(false);
+  const [trackMotivation, setTrackMotivation] = useState(false);
+  const [trackLastMeal, setTrackLastMeal] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
