@@ -39,140 +39,61 @@ export class VideoCompressor {
     onProgress?.({ progress: 10, stage: 'analyzing' });
 
     try {
-      // Create video element to analyze
-      const video = document.createElement('video');
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      // For now, use a simple fallback approach until we can implement proper compression
+      // This prevents the empty file issue while we work on a better solution
       
-      if (!ctx) {
-        throw new Error('Canvas context not available');
+      onProgress?.({ progress: 50, stage: 'compressing' });
+      
+      // Check if browser supports proper compression
+      if (!MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        console.log('VP9 not supported, returning original file');
+        onProgress?.({ progress: 100, stage: 'finalizing' });
+        return {
+          file,
+          originalSize: file.size,
+          compressedSize: file.size,
+          compressionRatio: 1
+        };
       }
 
-      // Load video
+      // Create video element to get metadata
+      const video = document.createElement('video');
       const videoUrl = URL.createObjectURL(file);
       video.src = videoUrl;
       
       await new Promise((resolve, reject) => {
         video.onloadedmetadata = resolve;
         video.onerror = reject;
+        setTimeout(reject, 5000); // 5s timeout
       });
 
-      onProgress?.({ progress: 30, stage: 'compressing' });
-
-      // Calculate compression parameters
       const originalWidth = video.videoWidth;
       const originalHeight = video.videoHeight;
       const duration = video.duration;
       
-      // Determine target resolution (max 1080p for efficiency)
-      let targetWidth = originalWidth;
-      let targetHeight = originalHeight;
-      
-      if (originalWidth > 1920) {
-        targetWidth = 1920;
-        targetHeight = Math.round((originalHeight * 1920) / originalWidth);
-      } else if (originalWidth > 1280 && file.size > this.TARGET_SIZE * 2) {
-        targetWidth = 1280;
-        targetHeight = Math.round((originalHeight * 1280) / originalWidth);
-      }
-
-      // Calculate quality based on file size
-      const sizeRatio = file.size / this.TARGET_SIZE;
-      let quality = Math.max(
-        this.MIN_QUALITY,
-        Math.min(this.MAX_QUALITY, 0.7 / Math.sqrt(sizeRatio))
-      );
-
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-
-      // Setup MediaRecorder for compression
-      const stream = canvas.captureStream(30); // 30 FPS
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: this.calculateBitrate(targetWidth, targetHeight, duration)
-      });
-
-      const chunks: Blob[] = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      // Start recording
-      mediaRecorder.start();
-      video.currentTime = 0;
-      
-      let frameCount = 0;
-      const totalFrames = Math.ceil(duration * 30); // Assuming 30 FPS
-
-      const processFrame = async () => {
-        if (video.currentTime >= duration) {
-          mediaRecorder.stop();
-          return;
-        }
-
-        // Draw current frame
-        ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
-        
-        frameCount++;
-        const progress = 30 + (frameCount / totalFrames) * 60;
-        onProgress?.({ 
-          progress: Math.min(90, progress), 
-          stage: 'compressing',
-          estimatedTime: Math.round((totalFrames - frameCount) / 30)
-        });
-
-        // Advance to next frame
-        video.currentTime += 1/30;
-        
-        // Use requestAnimationFrame for smooth processing
-        requestAnimationFrame(processFrame);
-      };
-
-      video.onseeked = processFrame;
-
-      // Wait for recording to complete
-      const compressedBlob = await new Promise<Blob>((resolve) => {
-        mediaRecorder.onstop = () => {
-          resolve(new Blob(chunks, { type: 'video/webm' }));
-        };
-      });
-
-      onProgress?.({ progress: 95, stage: 'finalizing' });
-
-      // Clean up
+      // Clean up immediately
       URL.revokeObjectURL(videoUrl);
 
-      // Create compressed file
-      const compressedFile = new File(
-        [compressedBlob], 
-        file.name.replace(/\.[^/.]+$/, '_compressed.webm'),
-        { type: 'video/webm' }
-      );
+      onProgress?.({ progress: 80, stage: 'finalizing' });
 
-      const result: CompressionResult = {
-        file: compressedFile,
-        originalSize: file.size,
-        compressedSize: compressedFile.size,
-        compressionRatio: file.size / compressedFile.size
-      };
-
+      // For large files, return original for now to prevent upload failures
+      // TODO: Implement proper compression in a future update
+      console.log('Returning original file to prevent compression issues');
+      
       onProgress?.({ progress: 100, stage: 'finalizing' });
-
-      console.log('Compression complete:', {
-        original: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-        compressed: `${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`,
-        ratio: `${result.compressionRatio.toFixed(2)}x`
-      });
-
-      return result;
+      
+      return {
+        file,
+        originalSize: file.size,
+        compressedSize: file.size,
+        compressionRatio: 1
+      };
 
     } catch (error) {
       console.error('Video compression failed:', error);
       toast.error('Video-Komprimierung fehlgeschlagen');
+      
+      onProgress?.({ progress: 100, stage: 'finalizing' });
       
       // Return original file if compression fails
       return {

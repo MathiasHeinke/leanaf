@@ -65,6 +65,13 @@ export const useMediaUpload = () => {
           }
         }
         
+        // Validate compressed file size (check for empty files)
+        if (processedFile.size === 0) {
+          console.error('Compressed file is empty, using original file');
+          processedFile = file;
+          toast.warning('Komprimierung erzeugte leere Datei, verwende Original');
+        }
+
         // Validate final file size
         const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024;
         if (processedFile.size > maxSize) {
@@ -72,21 +79,21 @@ export const useMediaUpload = () => {
           continue;
         }
 
-        // Update progress
+        // Update progress with processed file name
         setUploadProgress(prev => [
           ...prev.filter(p => p.fileName !== processedFile.name),
           { fileName: processedFile.name, progress: 0 }
         ]);
 
-        // Generate unique filename
-        const fileExt = file.name.split('.').pop();
+        // Generate unique filename based on processed file
+        const fileExt = processedFile.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
         try {
-          // Upload to Supabase Storage
+          // Upload processed file to Supabase Storage
           const { data, error } = await supabase.storage
             .from('coach-media')
-            .upload(fileName, file);
+            .upload(fileName, processedFile);
 
           if (error) {
             console.error('Upload error:', error);
@@ -96,7 +103,7 @@ export const useMediaUpload = () => {
           // Update progress to 50% after upload
           setUploadProgress(prev => 
             prev.map(p => 
-              p.fileName === file.name 
+              p.fileName === processedFile.name 
                 ? { ...p, progress: 50 }
                 : p
             )
@@ -113,17 +120,17 @@ export const useMediaUpload = () => {
             // Update progress to 100%
             setUploadProgress(prev => 
               prev.map(p => 
-                p.fileName === file.name 
+                p.fileName === processedFile.name 
                   ? { ...p, progress: 100 }
                   : p
               )
             );
             
-            toast.success(`${file.name} erfolgreich hochgeladen`);
+            toast.success(`${processedFile.name} erfolgreich hochgeladen`);
           }
         } catch (uploadError) {
-          console.error(`Error uploading ${file.name}:`, uploadError);
-          toast.error(`Fehler beim Hochladen von ${file.name}`);
+          console.error(`Error uploading ${processedFile.name}:`, uploadError);
+          toast.error(`Fehler beim Hochladen von ${processedFile.name}`);
         }
       }
 
