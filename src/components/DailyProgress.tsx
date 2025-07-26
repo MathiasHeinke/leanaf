@@ -256,13 +256,9 @@ export const DailyProgress = ({
             <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.protein')}
             </div>
-            <div className="space-y-1 mb-3">
+            <div className="mb-3">
               <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">
-                {Math.round(dailyTotals.protein * 10) / 10}
-                <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
-              </div>
-              <div className="text-sm font-medium text-muted-foreground">
-                {remainingProtein > 0 ? `+${Math.round(remainingProtein)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingProtein))}${t('ui.gram')} ${t('ui.over')}`}
+                {Math.round(dailyTotals.protein * 10) / 10}{t('ui.gram')}/{Math.round(dailyGoal.protein)}{t('ui.gram')}
               </div>
             </div>
             <Progress 
@@ -276,13 +272,9 @@ export const DailyProgress = ({
             <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.carbs')}
             </div>
-            <div className="space-y-1 mb-3">
+            <div className="mb-3">
               <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {Math.round(dailyTotals.carbs * 10) / 10}
-                <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
-              </div>
-              <div className="text-sm font-medium text-muted-foreground">
-                {remainingCarbs > 0 ? `+${Math.round(remainingCarbs)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingCarbs))}${t('ui.gram')} ${t('ui.over')}`}
+                {Math.round(dailyTotals.carbs * 10) / 10}{t('ui.gram')}/{Math.round(dailyGoal.carbs)}{t('ui.gram')}
               </div>
             </div>
             <Progress 
@@ -296,13 +288,9 @@ export const DailyProgress = ({
             <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
               {t('macros.fats')}
             </div>
-            <div className="space-y-1 mb-3">
+            <div className="mb-3">
               <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {Math.round(dailyTotals.fats * 10) / 10}
-                <span className="text-sm font-normal opacity-70">{t('ui.gram')}</span>
-              </div>
-              <div className="text-sm font-medium text-muted-foreground">
-                {remainingFats > 0 ? `+${Math.round(remainingFats)}${t('ui.gram')} übrig` : `${Math.round(Math.abs(remainingFats))}${t('ui.gram')} ${t('ui.over')}`}
+                {Math.round(dailyTotals.fats * 10) / 10}{t('ui.gram')}/{Math.round(dailyGoal.fats)}{t('ui.gram')}
               </div>
             </div>
             <Progress 
