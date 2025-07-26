@@ -40,7 +40,7 @@ export const useMediaUpload = () => {
 
         // Handle video compression for large files
         let processedFile = file;
-        if (isVideo && file.size > 50 * 1024 * 1024) { // Compress videos > 50MB
+        if (isVideo && file.size > 100 * 1024 * 1024) { // Compress videos > 100MB
           try {
             setIsCompressing(true);
             toast.info(`Video ${file.name} wird komprimiert...`);
@@ -90,11 +90,37 @@ export const useMediaUpload = () => {
         const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
         try {
-          // Upload processed file to Supabase Storage
-          const { data, error } = await supabase.storage
-            .from('coach-media')
-            .upload(fileName, processedFile);
+          // Upload processed file to Supabase Storage with timeout and retry
+          const uploadWithRetry = async (retries = 3): Promise<any> => {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+              try {
+                const uploadPromise = supabase.storage
+                  .from('coach-media')
+                  .upload(fileName, processedFile);
+                
+                const timeoutPromise = new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Upload timeout')), 300000) // 5min timeout
+                );
+                
+                const { data, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+                
+                if (error) throw error;
+                return { data, error: null };
+              } catch (error: any) {
+                console.error(`Upload attempt ${attempt} failed:`, error);
+                if (attempt === retries) throw error;
+                if (error.message?.includes('timeout')) {
+                  toast.warning(`Upload-Versuch ${attempt} Timeout, versuche erneut...`);
+                  await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Progressive delay
+                } else {
+                  throw error; // Non-timeout errors should not retry
+                }
+              }
+            }
+          };
 
+          const { data, error } = await uploadWithRetry();
+          
           if (error) {
             console.error('Upload error:', error);
             throw error;

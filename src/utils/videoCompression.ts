@@ -14,10 +14,12 @@ export interface CompressionResult {
 }
 
 export class VideoCompressor {
-  private static readonly MAX_SIZE = 50 * 1024 * 1024; // 50MB
-  private static readonly TARGET_SIZE = 25 * 1024 * 1024; // 25MB target
+  private static readonly MAX_SIZE = 100 * 1024 * 1024; // 100MB
+  private static readonly TARGET_SIZE = 50 * 1024 * 1024; // 50MB target
   private static readonly MIN_QUALITY = 0.3;
   private static readonly MAX_QUALITY = 0.8;
+  private static readonly METADATA_TIMEOUT = 60000; // 60s timeout for metadata
+  private static readonly COMPRESSION_TIMEOUT = 300000; // 5min timeout for compression
 
   static async compressVideo(
     file: File,
@@ -64,7 +66,7 @@ export class VideoCompressor {
       await new Promise((resolve, reject) => {
         video.onloadedmetadata = resolve;
         video.onerror = reject;
-        setTimeout(reject, 5000); // 5s timeout
+        setTimeout(() => reject(new Error('Metadata loading timeout')), this.METADATA_TIMEOUT);
       });
 
       const originalWidth = video.videoWidth;
@@ -133,7 +135,13 @@ export class VideoCompressor {
       const video = document.createElement('video');
       const url = URL.createObjectURL(file);
       
+      const timeout = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Video metadata loading timeout'));
+      }, this.METADATA_TIMEOUT);
+      
       video.onloadedmetadata = () => {
+        clearTimeout(timeout);
         URL.revokeObjectURL(url);
         resolve({
           duration: video.duration,
@@ -144,6 +152,7 @@ export class VideoCompressor {
       };
       
       video.onerror = () => {
+        clearTimeout(timeout);
         URL.revokeObjectURL(url);
         reject(new Error('Failed to load video metadata'));
       };
