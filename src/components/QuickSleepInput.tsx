@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -35,6 +35,9 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   const [isEditing, setIsEditing] = useState(false);
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const [showOptionalFields, setShowOptionalFields] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [activeThumb, setActiveThumb] = useState<'bedtime' | 'waketime' | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -48,11 +51,116 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
   const sleepDuration = calculateSleepDuration(bedtime[0], wakeTime[0]);
 
+  // Convert hours to percentage positions (0-100%)
+  const bedtimeHours = bedtime[0];
+  const waketimeHours = wakeTime[0];
+  const bedtimePosition = (bedtimeHours / 24) * 100;
+  const waketimePosition = (waketimeHours / 24) * 100;
+
   // Hilfsfunktionen für Zeit-Formatierung
   const formatTime = (hours: number) => {
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  // Custom timeline interaction handlers
+  const getTimeFromPosition = (clientX: number) => {
+    if (!timelineRef.current) return 0;
+    const rect = timelineRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    return (percentage / 100) * 24;
+  };
+
+  const handleTimelineClick = (e: React.MouseEvent) => {
+    if (isDragging) return;
+    const clickedTime = getTimeFromPosition(e.clientX);
+    
+    // Determine which thumb is closer to the click
+    const bedtimeDistance = Math.abs(clickedTime - bedtimeHours);
+    const waketimeDistance = Math.abs(clickedTime - waketimeHours);
+    
+    if (bedtimeDistance <= waketimeDistance) {
+      setBedtime([clickedTime]);
+    } else {
+      setWakeTime([clickedTime]);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, thumb: 'bedtime' | 'waketime') => {
+    e.preventDefault();
+    setIsDragging(true);
+    setActiveThumb(thumb);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newTime = getTimeFromPosition(e.clientX);
+      const roundedTime = Math.round(newTime * 2) / 2; // Round to 0.5 hour increments
+      
+      if (thumb === 'bedtime') {
+        // Auto-snap logic: if bedtime gets too close to waketime, push waketime forward
+        if (Math.abs(roundedTime - waketimeHours) < 4) {
+          const newWaketime = (roundedTime + 7) % 24;
+          setWakeTime([newWaketime]);
+        }
+        setBedtime([roundedTime]);
+      } else {
+        // Auto-snap logic: if waketime gets too close to bedtime, push bedtime backward
+        if (Math.abs(roundedTime - bedtimeHours) < 4) {
+          let newBedtime = roundedTime - 7;
+          if (newBedtime < 0) newBedtime += 24;
+          setBedtime([newBedtime]);
+        }
+        setWakeTime([roundedTime]);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setActiveThumb(null);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent, thumb: 'bedtime' | 'waketime') => {
+    e.preventDefault();
+    setIsDragging(true);
+    setActiveThumb(thumb);
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const newTime = getTimeFromPosition(touch.clientX);
+      const roundedTime = Math.round(newTime * 2) / 2;
+      
+      if (thumb === 'bedtime') {
+        if (Math.abs(roundedTime - waketimeHours) < 4) {
+          const newWaketime = (roundedTime + 7) % 24;
+          setWakeTime([newWaketime]);
+        }
+        setBedtime([roundedTime]);
+      } else {
+        if (Math.abs(roundedTime - bedtimeHours) < 4) {
+          let newBedtime = roundedTime - 7;
+          if (newBedtime < 0) newBedtime += 24;
+          setBedtime([newBedtime]);
+        }
+        setWakeTime([roundedTime]);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+      setActiveThumb(null);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
   };
 
   // Check if sleep already exists for today
@@ -303,14 +411,6 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                   <div className="flex justify-between items-center mb-3 text-xs text-purple-600 dark:text-purple-400">
                     <div className="flex items-center gap-1">
                       <Sun className="h-3 w-3" />
-                      <span>12:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Moon className="h-3 w-3" />
-                      <span>18:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Moon className="h-3 w-3" />
                       <span>00:00</span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -321,57 +421,76 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       <Sun className="h-3 w-3" />
                       <span>12:00</span>
                     </div>
+                    <div className="flex items-center gap-1">
+                      <Moon className="h-3 w-3" />
+                      <span>18:00</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Moon className="h-3 w-3" />
+                      <span>24:00</span>
+                    </div>
                   </div>
                   
-                  {/* Interactive timeline with dual sliders */}
+                  {/* Interactive timeline */}
                   <div className="relative">
                     {/* Background track with day/night gradient */}
-                    <div className="h-6 w-full rounded-full bg-gradient-to-r from-yellow-200 via-blue-400 via-blue-600 via-blue-400 to-yellow-200 dark:from-yellow-600 dark:via-blue-600 dark:via-blue-800 dark:via-blue-600 dark:to-yellow-600 relative">
+                    <div 
+                      className="h-12 w-full rounded-lg bg-gradient-to-r from-blue-400 via-yellow-300 via-yellow-300 via-blue-400 to-blue-600 dark:from-blue-600 dark:via-yellow-600 dark:via-yellow-600 dark:via-blue-600 dark:to-blue-800 relative cursor-pointer border-2 border-purple-200 dark:border-purple-700"
+                      onClick={handleTimelineClick}
+                      ref={timelineRef}
+                    >
+                      {/* Hour markers */}
+                      <div className="absolute inset-0 flex pointer-events-none">
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <div key={i} className="flex-1 border-r border-white/20 last:border-r-0 flex items-center justify-center">
+                            <span className="text-xs text-white/80 font-medium">
+                              {i.toString().padStart(2, '0')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      
                       {/* Sleep duration visualization */}
                       <div 
-                        className="absolute h-full bg-purple-600/60 dark:bg-purple-400/60 rounded-full"
+                        className="absolute top-0 h-full bg-purple-600/40 dark:bg-purple-400/40 rounded pointer-events-none transition-all duration-200"
                         style={{
-                          left: `${((bedtime[0] - 12) / 24) * 100}%`,
-                          width: `${(sleepDuration / 24) * 100}%`
+                          left: `${Math.min(bedtimePosition, waketimePosition)}%`,
+                          width: `${Math.abs(waketimePosition - bedtimePosition)}%`
                         }}
                       />
                       
                       {/* Bedtime thumb */}
                       <div 
-                        className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-purple-600 border-2 border-white rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
-                        style={{ left: `calc(${((bedtime[0] - 12) / 24) * 100}% - 12px)` }}
+                        className={`absolute top-1/2 w-8 h-8 bg-blue-600 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
+                          isDragging && activeThumb === 'bedtime' ? 'scale-125 shadow-2xl' : 'hover:scale-110'
+                        }`}
+                        style={{ 
+                          left: `${bedtimePosition}%`, 
+                          transform: 'translateX(-50%) translateY(-50%)',
+                          zIndex: activeThumb === 'bedtime' ? 30 : 20
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, 'bedtime')}
+                        onTouchStart={(e) => handleTouchStart(e, 'bedtime')}
                       >
-                        <Moon className="h-3 w-3 text-white" />
+                        <span className="text-sm">💤</span>
                       </div>
                       
                       {/* Wake time thumb */}
                       <div 
-                        className="absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-amber-500 border-2 border-white rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform flex items-center justify-center"
-                        style={{ left: `calc(${((wakeTime[0] - 12) / 24) * 100}% - 12px)` }}
+                        className={`absolute top-1/2 w-8 h-8 bg-yellow-500 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
+                          isDragging && activeThumb === 'waketime' ? 'scale-125 shadow-2xl' : 'hover:scale-110'
+                        }`}
+                        style={{ 
+                          left: `${waketimePosition}%`, 
+                          transform: 'translateX(-50%) translateY(-50%)',
+                          zIndex: activeThumb === 'waketime' ? 30 : 20
+                        }}
+                        onMouseDown={(e) => handleMouseDown(e, 'waketime')}
+                        onTouchStart={(e) => handleTouchStart(e, 'waketime')}
                       >
-                        <Sun className="h-3 w-3 text-white" />
+                        <span className="text-sm">☀️</span>
                       </div>
                     </div>
-                    
-                    {/* Invisible slider for bedtime */}
-                    <Slider
-                      value={[((bedtime[0] - 12) / 24) * 100]}
-                      onValueChange={(value) => setBedtime([12 + (value[0] / 100) * 24])}
-                      max={100}
-                      min={0}
-                      step={2.08} // Represents 0.5 hours in percentage
-                      className="absolute top-0 w-full h-6 opacity-0 cursor-pointer"
-                    />
-                    
-                    {/* Invisible slider for wake time */}
-                    <Slider
-                      value={[((wakeTime[0] - 12) / 24) * 100]}
-                      onValueChange={(value) => setWakeTime([12 + (value[0] / 100) * 24])}
-                      max={100}
-                      min={0}
-                      step={2.08} // Represents 0.5 hours in percentage
-                      className="absolute top-0 w-full h-6 opacity-0 cursor-pointer"
-                    />
                   </div>
                   
                   {/* Time labels below thumbs */}
