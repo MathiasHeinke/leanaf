@@ -390,24 +390,9 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             ) : null;
           })()}
           
-          <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3">
-            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-              <strong>Tipp:</strong> Wiege dich zur gleichen Tageszeit für beste Vergleichbarkeit!
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              • Morgens nach dem Aufstehen und Toilettengang
-              • Vor dem Frühstück und ohne Kleidung
-              • Natürliche Schwankungen von ±1kg sind normal
-              • Der Trend über mehrere Wochen ist wichtiger als einzelne Werte
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-              <strong>Nächste Messung:</strong> Morgen 📅
-            </p>
-          </div>
-          
-          {/* Coach Feedback */}
+          {/* Coach Feedback First */}
           {user?.id && todaysWeight && (
-            <div className="mt-4">
+            <div className="mb-3">
               <CoachFeedbackCard
                 coachName="Lucy"
                 coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
@@ -417,6 +402,22 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               />
             </div>
           )}
+          
+          {/* Tips in matching pink theme */}
+          <div className="bg-pink-100/50 dark:bg-pink-900/30 rounded-lg p-3 border border-pink-200 dark:border-pink-700">
+            <p className="text-xs text-pink-700 dark:text-pink-300 mb-2">
+              <strong>Tipp:</strong> Wiege dich zur gleichen Tageszeit für beste Vergleichbarkeit!
+            </p>
+            <p className="text-xs text-pink-600 dark:text-pink-400">
+              • Morgens nach dem Aufstehen und Toilettengang
+              • Vor dem Frühstück und ohne Kleidung
+              • Natürliche Schwankungen von ±1kg sind normal
+              • Der Trend über mehrere Wochen ist wichtiger als einzelne Werte
+            </p>
+            <p className="text-xs text-pink-600 dark:text-pink-400 mt-2">
+              <strong>Nächste Messung:</strong> Morgen 📅
+            </p>
+          </div>
         </div>
       ) : (
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
