@@ -407,28 +407,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 
                 {/* Interactive 24-Hour Timeline */}
                 <div className="relative p-4 bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-purple-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
-                  {/* Time markers */}
-                  <div className="flex justify-between items-center mb-3 text-xs text-purple-600 dark:text-purple-400">
-                    <div className="flex items-center gap-1">
-                      <Sun className="h-3 w-3" />
-                      <span>00:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Sun className="h-3 w-3" />
-                      <span>06:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Sun className="h-3 w-3" />
-                      <span>12:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Moon className="h-3 w-3" />
-                      <span>18:00</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Moon className="h-3 w-3" />
-                      <span>24:00</span>
-                    </div>
+                  {/* Simplified time markers - only key times */}
+                  <div className="flex justify-between items-center mb-3 text-sm font-medium text-purple-700 dark:text-purple-300">
+                    <span>00:00</span>
+                    <span>06:00</span>
+                    <span>12:00</span>
+                    <span>18:00</span>
+                    <span>24:00</span>
                   </div>
                   
                   {/* Interactive timeline */}
@@ -439,13 +424,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       onClick={handleTimelineClick}
                       ref={timelineRef}
                     >
-                      {/* Hour markers */}
+                      {/* Reduced hour markers - only every 4 hours for cleaner look */}
                       <div className="absolute inset-0 flex pointer-events-none">
-                        {Array.from({ length: 24 }, (_, i) => (
-                          <div key={i} className="flex-1 border-r border-white/20 last:border-r-0 flex items-center justify-center">
-                            <span className="text-xs text-white/80 font-medium">
-                              {i.toString().padStart(2, '0')}
-                            </span>
+                        {[0, 4, 8, 12, 16, 20].map((hour) => (
+                          <div 
+                            key={hour} 
+                            className="absolute top-0 bottom-0 flex items-center justify-center"
+                            style={{ left: `${(hour / 24) * 100}%` }}
+                          >
+                            <div className="w-px bg-white/30 h-full absolute"></div>
                           </div>
                         ))}
                       </div>
@@ -459,10 +446,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         }}
                       />
                       
-                      {/* Bedtime thumb */}
+                      {/* Bedtime thumb - Moon for sleeping */}
                       <div 
-                        className={`absolute top-1/2 w-8 h-8 bg-blue-600 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
-                          isDragging && activeThumb === 'bedtime' ? 'scale-125 shadow-2xl' : 'hover:scale-110'
+                        className={`absolute top-1/2 w-10 h-10 bg-purple-600 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
+                          isDragging && activeThumb === 'bedtime' ? 'scale-125 shadow-2xl bg-purple-700' : 'hover:scale-110 hover:bg-purple-700'
                         }`}
                         style={{ 
                           left: `${bedtimePosition}%`, 
@@ -472,13 +459,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         onMouseDown={(e) => handleMouseDown(e, 'bedtime')}
                         onTouchStart={(e) => handleTouchStart(e, 'bedtime')}
                       >
-                        <span className="text-sm">💤</span>
+                        <Moon className="h-5 w-5 text-white drop-shadow-sm" />
                       </div>
                       
-                      {/* Wake time thumb */}
+                      {/* Wake time thumb - Sun for waking up */}
                       <div 
-                        className={`absolute top-1/2 w-8 h-8 bg-yellow-500 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
-                          isDragging && activeThumb === 'waketime' ? 'scale-125 shadow-2xl' : 'hover:scale-110'
+                        className={`absolute top-1/2 w-10 h-10 bg-orange-500 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
+                          isDragging && activeThumb === 'waketime' ? 'scale-125 shadow-2xl bg-orange-600' : 'hover:scale-110 hover:bg-orange-600'
                         }`}
                         style={{ 
                           left: `${waketimePosition}%`, 
@@ -488,7 +475,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                         onMouseDown={(e) => handleMouseDown(e, 'waketime')}
                         onTouchStart={(e) => handleTouchStart(e, 'waketime')}
                       >
-                        <span className="text-sm">☀️</span>
+                        <Sun className="h-5 w-5 text-white drop-shadow-sm" />
                       </div>
                     </div>
                   </div>
