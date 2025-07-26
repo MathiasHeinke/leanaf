@@ -13,6 +13,7 @@ import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
+import { CoachFeedbackCard } from "./CoachFeedbackCard";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -403,6 +404,19 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               <strong>Nächste Messung:</strong> Morgen 📅
             </p>
           </div>
+          
+          {/* Coach Feedback */}
+          {user?.id && todaysWeight && (
+            <div className="mt-4">
+              <CoachFeedbackCard
+                coachName="Lucy"
+                coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+                type="weight"
+                weightData={todaysWeight}
+                userId={user.id}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
