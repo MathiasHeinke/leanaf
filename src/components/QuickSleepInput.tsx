@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils } from "lucide-react";
+import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -290,41 +290,82 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Haupt-Slider: Einschlaf- und Aufwachzeit */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-purple-700 dark:text-purple-300 block">
+              {/* 24-Stunden Timeline Bar */}
+              <div className="space-y-4">
+                <div className="text-sm font-medium text-purple-700 dark:text-purple-300">
                   <Clock className="inline h-4 w-4 mr-1" />
                   Schlafzeiten: {formatTime(bedtime[0])} bis {formatTime(wakeTime[0])} ({sleepDuration}h)
-                </label>
-                
-                {/* Bedtime Slider */}
-                <div>
-                  <div className="text-xs text-purple-600 dark:text-purple-400 mb-1">
-                    Einschlafzeit: {formatTime(bedtime[0])}
-                  </div>
-                  <Slider
-                    value={bedtime}
-                    onValueChange={setBedtime}
-                    max={26} // Bis 02:00 (26 = 2:00 am next day)
-                    min={20} // Ab 20:00
-                    step={0.5}
-                    className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                  />
                 </div>
-
-                {/* Wake time Slider */}
-                <div>
-                  <div className="text-xs text-purple-600 dark:text-purple-400 mb-1">
-                    Aufwachzeit: {formatTime(wakeTime[0])}
+                
+                {/* 24-Hour Timeline with dual sliders */}
+                <div className="relative p-4 bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-purple-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                  {/* Time markers */}
+                  <div className="flex justify-between items-center mb-2 text-xs text-purple-600 dark:text-purple-400">
+                    <div className="flex items-center gap-1">
+                      <Sun className="h-3 w-3" />
+                      <span>12:00</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Moon className="h-3 w-3" />
+                      <span>18:00</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Moon className="h-3 w-3" />
+                      <span>00:00</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Sun className="h-3 w-3" />
+                      <span>06:00</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Sun className="h-3 w-3" />
+                      <span>12:00</span>
+                    </div>
                   </div>
-                  <Slider
-                    value={wakeTime}
-                    onValueChange={setWakeTime}
-                    max={12} // Bis 12:00
-                    min={5}  // Ab 05:00
-                    step={0.5}
-                    className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                  />
+                  
+                  {/* Timeline track with night/day gradient */}
+                  <div className="relative h-3 w-full rounded-full bg-gradient-to-r from-yellow-200 via-blue-400 via-blue-600 via-blue-400 to-yellow-200 dark:from-yellow-600 dark:via-blue-600 dark:via-blue-800 dark:via-blue-600 dark:to-yellow-600 mb-4">
+                    {/* Sleep duration visualization */}
+                    <div 
+                      className="absolute h-full bg-purple-600/60 dark:bg-purple-400/60 rounded-full"
+                      style={{
+                        left: `${((bedtime[0] - 12) / 24) * 100}%`,
+                        width: `${(sleepDuration / 24) * 100}%`
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Bedtime slider */}
+                  <div className="mb-3">
+                    <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
+                      <Moon className="h-3 w-3" />
+                      Einschlafzeit: {formatTime(bedtime[0])}
+                    </div>
+                    <Slider
+                      value={[((bedtime[0] - 12) / 24) * 100]}
+                      onValueChange={(value) => setBedtime([12 + (value[0] / 100) * 24])}
+                      max={100}
+                      min={0}
+                      step={2.08} // Represents 0.5 hours in percentage
+                      className="w-full [&>*]:bg-transparent [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-purple-600 [&_[role=slider]]:shadow-lg [&>span>span]:bg-transparent"
+                    />
+                  </div>
+                  
+                  {/* Wake time slider */}
+                  <div>
+                    <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
+                      <Sun className="h-3 w-3" />
+                      Aufwachzeit: {formatTime(wakeTime[0])}
+                    </div>
+                    <Slider
+                      value={[((wakeTime[0] - 12) / 24) * 100]}
+                      onValueChange={(value) => setWakeTime([12 + (value[0] / 100) * 24])}
+                      max={100}
+                      min={0}
+                      step={2.08} // Represents 0.5 hours in percentage
+                      className="w-full [&>*]:bg-transparent [&_[role=slider]]:border-amber-500 [&_[role=slider]]:bg-amber-500 [&_[role=slider]]:shadow-lg [&>span>span]:bg-transparent"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -360,74 +401,77 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 </CollapsibleTrigger>
                 
                 <CollapsibleContent className="space-y-4 mt-3">
-                  {/* Schlafunterbrechungen */}
-                  <div>
-                    <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                      <Moon className="inline h-4 w-4 mr-1" />
-                      Schlafunterbrechungen: {sleepInterruptions[0]}x
-                    </label>
-                    <Slider
-                      value={sleepInterruptions}
-                      onValueChange={setSleepInterruptions}
-                      max={10}
-                      min={0}
-                      step={1}
-                      className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                    />
+                  {/* Compact 2-column grid for sliders */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Schlafunterbrechungen */}
+                    <div className="w-4/5">
+                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <Moon className="inline h-3 w-3 mr-1" />
+                        Unterbrechungen: {sleepInterruptions[0]}x
+                      </label>
+                      <Slider
+                        value={sleepInterruptions}
+                        onValueChange={setSleepInterruptions}
+                        max={10}
+                        min={0}
+                        step={1}
+                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
+                      />
+                    </div>
+
+                    {/* Abendliche Handyzeit */}
+                    <div className="w-4/5">
+                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <Smartphone className="inline h-3 w-3 mr-1" />
+                        Handyzeit: {screenTimeEvening[0]}min
+                      </label>
+                      <Slider
+                        value={screenTimeEvening}
+                        onValueChange={setScreenTimeEvening}
+                        max={300}
+                        min={0}
+                        step={15}
+                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
+                      />
+                    </div>
+
+                    {/* Letzte Mahlzeit */}
+                    <div className="w-4/5">
+                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <Utensils className="inline h-3 w-3 mr-1" />
+                        Letzte Mahlzeit: {formatTime(lastMealTime[0])}
+                      </label>
+                      <Slider
+                        value={lastMealTime}
+                        onValueChange={setLastMealTime}
+                        max={23.5} // 23:30
+                        min={16}   // 16:00
+                        step={0.5}
+                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
+                      />
+                    </div>
+
+                    {/* Libido am Morgen */}
+                    <div className="w-4/5">
+                      <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <Heart className="inline h-3 w-3 mr-1" />
+                        Libido: {morningLibido[0]}/10
+                      </label>
+                      <Slider
+                        value={morningLibido}
+                        onValueChange={setMorningLibido}
+                        max={10}
+                        min={1}
+                        step={1}
+                        className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
+                      />
+                    </div>
                   </div>
 
-                  {/* Abendliche Handyzeit */}
-                  <div>
-                    <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                      <Smartphone className="inline h-4 w-4 mr-1" />
-                      Abendliche Handyzeit: {screenTimeEvening[0]} min
-                    </label>
-                    <Slider
-                      value={screenTimeEvening}
-                      onValueChange={setScreenTimeEvening}
-                      max={300}
-                      min={0}
-                      step={15}
-                      className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                    />
-                  </div>
-
-                  {/* Letzte Mahlzeit */}
-                  <div>
-                    <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                      <Utensils className="inline h-4 w-4 mr-1" />
-                      Letzte Mahlzeit: {formatTime(lastMealTime[0])}
-                    </label>
-                    <Slider
-                      value={lastMealTime}
-                      onValueChange={setLastMealTime}
-                      max={23.5} // 23:30
-                      min={16}   // 16:00
-                      step={0.5}
-                      className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                    />
-                  </div>
-
-                  {/* Libido am Morgen */}
-                  <div>
-                    <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                      <Heart className="inline h-4 w-4 mr-1" />
-                      Libido am Morgen: {morningLibido[0]}/10
-                    </label>
-                    <Slider
-                      value={morningLibido}
-                      onValueChange={setMorningLibido}
-                      max={10}
-                      min={1}
-                      step={1}
-                      className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                    />
-                  </div>
-
-                  {/* Motivations-Level */}
-                  <div>
-                    <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
-                      <Zap className="inline h-4 w-4 mr-1" />
+                  {/* Motivations-Level - full width */}
+                  <div className="w-4/5">
+                    <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                      <Zap className="inline h-3 w-3 mr-1" />
                       Motivations-Level: {motivationLevel[0]}/10
                     </label>
                     <Slider
@@ -438,6 +482,20 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       step={1}
                       className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
                     />
+                  </div>
+
+                  {/* Ausblenden Button */}
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowOptionalFields(false)}
+                      className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950"
+                    >
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Ausblenden
+                    </Button>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
