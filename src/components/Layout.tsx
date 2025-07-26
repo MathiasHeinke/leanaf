@@ -1,11 +1,9 @@
 
-import { GlobalHeader, FloatingBottomNav } from "@/components/GlobalHeader";
+import { GlobalHeader } from "@/components/GlobalHeader";
+import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-
-
-import { DarkModeDebugPanel } from "@/components/DarkModeDebugPanel";
 import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
 
 interface LayoutProps {
@@ -37,7 +35,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full">
       {/* Background Geometric Shapes for Glass Effect - Animated */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-primary/20 to-primary-glow/10 rounded-full blur-2xl animate-float-1"></div>
@@ -47,22 +45,24 @@ export const Layout = ({ children }: LayoutProps) => {
         <div className="absolute top-1/3 left-1/2 w-40 h-20 bg-gradient-to-r from-primary/10 to-transparent rounded-full blur-3xl transform -translate-x-1/2 rotate-45 animate-float-5"></div>
       </div>
       
-      <GlobalHeader 
-        onRefresh={() => setShowSubscriptionDebug(true)}
-      />
-      <main className="container mx-auto px-3 pb-24 pt-2 max-w-md relative z-10">
-        {children}
-      </main>
+      {/* Sidebar */}
+      <AppSidebar />
       
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <GlobalHeader 
+          onRefresh={() => setShowSubscriptionDebug(true)}
+        />
+        <main className="container mx-auto px-3 pb-6 pt-2 max-w-md relative z-10 flex-1">
+          {children}
+        </main>
+      </div>
       
       {/* Debug Panels */}
       <EnhancedSubscriptionDebugPanel 
         isOpen={showSubscriptionDebug} 
         onClose={() => setShowSubscriptionDebug(false)} 
       />
-      
-      {/* Floating Bottom Navigation */}
-      <FloatingBottomNav />
     </div>
   );
 };

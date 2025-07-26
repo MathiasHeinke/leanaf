@@ -1,53 +1,26 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  Menu, 
-  RefreshCw, 
-  User as UserIcon, 
-  CreditCard, 
-  Microscope, 
-  Bug, 
-  LogOut, 
-  LayoutDashboard, 
-  MessageCircle, 
-  TrendingUp,
-  Sun, 
-  Moon, 
-  Clock,
-  Trophy
-} from "lucide-react";
+import { Menu, Sun, Moon, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PointsDebugPanel } from "./PointsDebugPanel";
-import { BugReportDialog } from "./BugReportDialog";
-import { LevelBadge } from "./LevelBadge";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
-  onViewChange?: (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => void;
-  currentView?: string;
 }
 
 export const GlobalHeader = ({ 
   onRefresh, 
-  isRefreshing = false, 
-  onViewChange,
-  currentView
+  isRefreshing = false
 }: GlobalHeaderProps) => {
-  const [currentActiveView, setCurrentActiveView] = useState<string>('main');
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   
-  const { signOut } = useAuth();
   const { subscriptionTier } = useSubscription();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { language, setLanguage, t } = useTranslation();
+  const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
 
   // Reset click count after 1 second
@@ -58,42 +31,6 @@ export const GlobalHeader = ({
     }
   }, [clickCount]);
 
-  // Handle navigation to different views
-  const handleNavigation = (view: 'main' | 'coach' | 'profile' | 'subscription' | 'history') => {
-    if (onViewChange) {
-      onViewChange(view);
-      setCurrentActiveView(view);
-    } else {
-      // For route-based navigation
-      switch (view) {
-        case 'main':
-          navigate('/');
-          break;
-        case 'coach':
-          navigate('/coach');
-          break;
-        case 'history':
-          navigate('/history');
-          break;
-        case 'profile':
-          navigate('/profile');
-          break;
-        case 'subscription':
-          navigate('/subscription');
-          break;
-      }
-    }
-  };
-
-  // Handle sign out
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/auth');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   // Handle refresh with debug functionality
   const handleRefresh = () => {
@@ -115,25 +52,6 @@ export const GlobalHeader = ({
     }
   };
 
-  // Determine current active tab
-  const getActiveTab = () => {
-    switch (location.pathname) {
-      case '/':
-        return 'main';
-      case '/coach':
-        return 'coach';
-      case '/history':
-        return 'history';
-      case '/profile':
-        return 'profile';
-      case '/subscription':
-        return 'subscription';
-      default:
-        return 'main';
-    }
-  };
-
-  const activeTab = getActiveTab();
   const themeStatus = getThemeStatus();
   const themeIconType = getThemeIcon();
 
@@ -169,188 +87,34 @@ export const GlobalHeader = ({
 
   return (
     <>
-      <div className="container mx-auto px-4 py-3 max-w-md">
-        {/* Header - Restructured logo with icon on left */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            {/* GetleanAI Logo Icon */}
-            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-lg">
-              <img 
-                src="/lovable-uploads/fa896878-ee7e-4b4b-9e03-e10d55543ca2.png" 
-                alt="GetleanAI Logo" 
-                className="w-8 h-8 object-contain"
-              />
-            </div>
-            
-            {/* Logo text with subtext */}
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-                {t('app.title')}
-              </h1>
-              <p className="text-sm text-gray-600 -mt-1">
-                {t('app.letsGetLean')}
-              </p>
-            </div>
-          </div>
+      {/* Minimalist Header - ChatGPT Style */}
+      <div className="border-b border-border/20 bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-3 max-w-md flex items-center justify-between">
+          {/* Left: Sidebar Toggle */}
+          <SidebarTrigger className="p-2 hover:bg-accent rounded-lg">
+            <Menu className="h-5 w-5" />
+          </SidebarTrigger>
           
-          <div className="flex items-center gap-2">
-            {/* Level Badge */}
-            <LevelBadge />
-            
-            {/* Dark Mode Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="flex items-center gap-2"
-              title={getThemeTooltip()}
-            >
-              {renderThemeIcon()}
-            </Button>
-            
-            {/* Language Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLanguage(language === 'de' ? 'en' : 'de')}
-              className="flex items-center gap-2 text-sm"
-              title={t('settings.language')}
-            >
-              <span className="text-xs">{language === 'de' ? '🇩🇪' : '🇬🇧'}</span>
-              {language.toUpperCase()}
-            </Button>
-            
-            {/* Menu Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" title={t('app.menu')}>
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-               <DropdownMenuContent align="end">
-                {/* Refresh/Debug Button for Super Admin */}
-                {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
-                  <DropdownMenuItem onClick={handleRefresh} disabled={isRefreshing}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''} ${clickCount > 0 ? 'text-primary' : ''}`} />
-                    {clickCount > 0 ? `Debug (${clickCount}/3)` : 'Refresh & Debug'}
-                    {clickCount > 0 && (
-                      <span className="ml-2 text-xs text-primary font-bold">{clickCount}</span>
-                    )}
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => navigate('/account')}>
-                  <UserIcon className="h-4 w-4 mr-2" />
-                  {t('header.account')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleNavigation('subscription')}>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  {t('header.subscription')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/achievements')}>
-                  <Trophy className="h-4 w-4 mr-2" />
-                  Erfolge & Fortschritt
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/science')}>
-                  <Microscope className="h-4 w-4 mr-2" />
-                  Wissenschaft & Methodik
-                </DropdownMenuItem>
-                <BugReportDialog 
-                  trigger={
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                      <Bug className="h-4 w-4 mr-2" />
-                      Bug melden
-                    </DropdownMenuItem>
-                  }
-                />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {t('header.logout')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Enhanced Segmented Control Navigation with Smooth Sliding Background */}
-        <div className="flex justify-center mb-3">
-          <div className="relative bg-muted/60 backdrop-blur-xl p-1.5 rounded-2xl border border-border/30 shadow-lg">
-            {/* Sliding background indicator */}
-            <div 
-              className={`absolute top-1.5 h-[calc(100%-12px)] bg-gradient-to-r from-background to-background/95 rounded-xl shadow-md border border-border/20 transition-all duration-300 ease-out transform ${
-                activeTab === 'main' ? 'left-1.5 w-[calc(25%-3px)]' :
-                activeTab === 'coach' ? 'left-[calc(25%+3px)] w-[calc(25%-3px)]' :
-                activeTab === 'history' ? 'left-[calc(50%+3px)] w-[calc(25%-3px)]' :
-                'left-[calc(75%+3px)] w-[calc(25%-3px)]'
-              }`}
-            />
-            
-            <div className="flex relative z-10">
-              <button 
-                onClick={() => handleNavigation('main')}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
-                  activeTab === 'main' 
-                    ? 'text-foreground scale-105 font-semibold' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                style={{ width: '25%' }}
-              >
-                <LayoutDashboard className={`h-4 w-4 mr-2 transition-all duration-300 ${
-                  activeTab === 'main' ? 'animate-pulse text-primary' : ''
-                }`} style={{ animationDuration: activeTab === 'main' ? '2s' : undefined }} />
-                {t('header.main')}
-              </button>
-              <button 
-                onClick={() => handleNavigation('coach')}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
-                  activeTab === 'coach' 
-                    ? 'text-foreground scale-105 font-semibold' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                style={{ width: '25%' }}
-              >
-                <MessageCircle className={`h-4 w-4 mr-2 transition-all duration-300 ${
-                  activeTab === 'coach' ? 'animate-pulse text-primary' : ''
-                }`} style={{ animationDuration: activeTab === 'coach' ? '2s' : undefined }} />
-                Coach
-              </button>
-              <button 
-                onClick={() => handleNavigation('history')}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center ${
-                  activeTab === 'history' 
-                    ? 'text-foreground scale-105 font-semibold' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                style={{ width: '25%' }}
-              >
-                <TrendingUp className={`h-4 w-4 mr-2 transition-all duration-300 ${
-                  activeTab === 'history' ? 'animate-pulse text-primary' : ''
-                }`} style={{ animationDuration: activeTab === 'history' ? '2s' : undefined }} />
-                Insights
-              </button>
-              <button 
-                onClick={() => handleNavigation('profile')}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 flex items-center justify-center profile-button ${
-                  activeTab === 'profile' 
-                    ? 'text-foreground scale-105 font-semibold' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                style={{ width: '25%' }}
-              >
-                <UserIcon className={`h-4 w-4 mr-2 transition-all duration-300 ${
-                  activeTab === 'profile' ? 'animate-pulse text-primary' : ''
-                }`} style={{ animationDuration: activeTab === 'profile' ? '2s' : undefined }} />
-                {t('header.profile')}
-              </button>
-            </div>
-          </div>
+          {/* Right: Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="p-2 hover:bg-accent rounded-lg"
+            title={getThemeTooltip()}
+          >
+            {renderThemeIcon()}
+          </Button>
         </div>
       </div>
 
-      {/* Points Debug Panel */}
-      <PointsDebugPanel 
-        isOpen={isDebugPanelOpen} 
-        onClose={() => setIsDebugPanelOpen(false)} 
-      />
+      {/* Debug Panel for Super Admins */}
+      {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
+        <PointsDebugPanel 
+          isOpen={isDebugPanelOpen} 
+          onClose={() => setIsDebugPanelOpen(false)} 
+        />
+      )}
     </>
   );
 };
