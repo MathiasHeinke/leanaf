@@ -22,8 +22,13 @@ import { MealInput } from "@/components/MealInput"
 import { QuickSleepInput } from "@/components/QuickSleepInput"
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput"
 import { QuickWeightInput } from "@/components/QuickWeightInput"
+import { BodyMeasurements } from "@/components/BodyMeasurements"
 import { MealList } from "@/components/MealList"
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog"
+import { SmartCoachInsights } from "@/components/SmartCoachInsights"
+import { ProgressCharts } from "@/components/ProgressCharts"
+import { TrialBanner } from "@/components/TrialBanner"
+import { WeeklyCoachRecommendation } from "@/components/WeeklyCoachRecommendation"
 import { supabase } from "@/integrations/supabase/client"
 
 const NewIndex = () => {
@@ -40,6 +45,7 @@ const NewIndex = () => {
   const [todaysWeight, setTodaysWeight] = useState<any>(null)
   const [todaysSleep, setTodaysSleep] = useState<any>(null)
   const [todaysWorkouts, setTodaysWorkouts] = useState<any[]>([])
+  const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null)
 
   if (isLoading) {
     return (
@@ -159,6 +165,25 @@ const NewIndex = () => {
       } else {
         setTodaysWeight(weightData)
       }
+
+      // Load this week's measurements (within last 7 days)
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+      const { data: measurementsData, error: measurementsError } = await supabase
+        .from('body_measurements')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (measurementsError) {
+        console.error('Error loading measurements:', measurementsError)
+      } else {
+        setTodaysMeasurements(measurementsData)
+      }
     } catch (error) {
       console.error('Error loading today\'s data:', error)
     }
@@ -246,6 +271,10 @@ const NewIndex = () => {
     await loadTodaysData(currentDate)
   }
 
+  const handleMeasurementsAdded = () => {
+    loadTodaysData(currentDate)
+  }
+
   const handleMealDeleted = async () => {
     await fetchMealsForDate(currentDate)
   }
@@ -266,6 +295,12 @@ const NewIndex = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Trial Banner */}
+      <TrialBanner />
+      
+      {/* Weekly Coach Recommendation for Free Users */}
+      <WeeklyCoachRecommendation />
+
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
@@ -292,8 +327,8 @@ const NewIndex = () => {
         onDateChange={handleDateChange}
       />
 
-      {/* Quick Input Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Quick Input Cards - 2x3 Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Meal Input */}
         <Card className="gradient-macros">
           <CardHeader>
@@ -366,7 +401,49 @@ const NewIndex = () => {
             />
           </CardContent>
         </Card>
+
+        {/* Body Measurements */}
+        <Card className="gradient-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Target className="h-4 w-4" />
+              Körpermaße
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BodyMeasurements 
+              onMeasurementsAdded={handleMeasurementsAdded}
+              todaysMeasurements={todaysMeasurements}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Smart Coach Insights */}
+        <Card className="gradient-insights">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4" />
+              Coach Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SmartCoachInsights />
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Progress Charts */}
+      <Card className="gradient-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Fortschrittsverlauf
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProgressCharts />
+        </CardContent>
+      </Card>
 
       {/* Meal List */}
       {meals.length > 0 && (
