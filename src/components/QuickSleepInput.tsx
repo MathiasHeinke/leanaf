@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff } from "lucide-react";
+import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -37,6 +37,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [activeThumb, setActiveThumb] = useState<'bedtime' | 'waketime' | null>(null);
+  
+  // Individual tracking states for optional fields
+  const [trackInterruptions, setTrackInterruptions] = useState(true);
+  const [trackScreenTime, setTrackScreenTime] = useState(true);
+  const [trackLibido, setTrackLibido] = useState(true);
+  const [trackMotivation, setTrackMotivation] = useState(true);
+  const [trackLastMeal, setTrackLastMeal] = useState(true);
   const timelineRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
