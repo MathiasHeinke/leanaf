@@ -105,17 +105,17 @@ export const GlobalHeader = ({
 
   return (
     <>
-      {/* Minimalist Header - ChatGPT Style */}
-      <div className="border-b border-border/20 bg-background/80 backdrop-blur-sm">
+      {/* Fixed Minimalist Header with Glassmorphism */}
+      <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
           {/* Left: Sidebar Toggle */}
-          <SidebarTrigger className="p-2 hover:bg-accent rounded-lg">
+          <SidebarTrigger className="p-2 hover:bg-accent/60 rounded-lg transition-colors">
             <Menu className="h-5 w-5" />
           </SidebarTrigger>
           
           {/* Center: Page Title */}
           <div className="flex-1 text-center">
-            <h1 className="text-lg font-semibold text-foreground">
+            <h1 className="text-lg font-semibold text-foreground/90">
               {getPageTitle(location.pathname)}
             </h1>
           </div>
@@ -125,13 +125,16 @@ export const GlobalHeader = ({
             variant="ghost"
             size="sm"
             onClick={toggleTheme}
-            className="p-2 hover:bg-accent rounded-lg"
+            className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
             title={getThemeTooltip()}
           >
             {renderThemeIcon()}
           </Button>
         </div>
       </div>
+
+      {/* Spacer to prevent content overlap */}
+      <div className="h-[73px]" />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
