@@ -90,6 +90,7 @@ export const CoachTopicManager: React.FC = () => {
   const loadCoachData = async () => {
     try {
       setIsLoading(true);
+      console.log('Loading coach data for:', selectedCoach);
       
       // Lade Topic-Konfigurationen
       const { data: topics, error: topicsError } = await supabase
@@ -99,6 +100,9 @@ export const CoachTopicManager: React.FC = () => {
         .order('topic_category', { ascending: true })
         .order('priority_level', { ascending: false });
 
+      console.log('Topics loaded:', topics);
+      console.log('Topics error:', topicsError);
+
       if (topicsError) throw topicsError;
 
       // Lade Pipeline-Status
@@ -106,12 +110,20 @@ export const CoachTopicManager: React.FC = () => {
         .from('coach_pipeline_status')
         .select('*')
         .eq('coach_id', selectedCoach)
-        .single();
+        .maybeSingle();
+
+      console.log('Status loaded:', status);
+      console.log('Status error:', statusError);
 
       if (statusError && statusError.code !== 'PGRST116') throw statusError;
 
-      setCoachTopics((topics || []) as CoachTopicConfig[]);
+      const topicsArray = Array.isArray(topics) ? topics : [];
+      console.log('Setting coach topics:', topicsArray);
+      
+      setCoachTopics(topicsArray as CoachTopicConfig[]);
       setCoachStatus(status);
+      
+      console.log('Coach data loaded successfully - Topics count:', topicsArray.length);
     } catch (error) {
       console.error('Error loading coach data:', error);
       toast({
