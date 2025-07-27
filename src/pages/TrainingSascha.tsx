@@ -31,7 +31,7 @@ const TrainingSascha = () => {
                 <Dumbbell className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <h1 className="text-base font-semibold">Coach Sascha</h1>
+                <h1 className="text-base font-semibold">Workout/Sascha</h1>
                 <p className="text-xs text-muted-foreground">
                   Personal Trainer
                 </p>

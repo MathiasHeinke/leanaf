@@ -449,28 +449,29 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Chat Area */}
-      <div className="flex-1 flex relative min-h-0">
+      {/* Chat Area - with proper height calculation for fixed input */}
+      <div className="flex-1 flex relative min-h-0" style={{ height: 'calc(100vh - 60px - 140px)' }}>
         {/* Messages */}
         <div className="flex-1 flex flex-col">
           <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
-            <div className="space-y-3">
+            <div className="space-y-4 pb-4">
               {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex",
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
+                <div key={message.id} className="flex">
                   {message.role === "assistant" && (
-                    <div className="flex items-start gap-2 w-full max-w-[80%]">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Dumbbell className="h-4 w-4 text-primary" />
+                    <div className="flex gap-3 w-full">
+                      {/* Profile picture bottom-aligned */}
+                      <div className="flex flex-col items-end h-full">
+                        <div className="mt-auto">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Dumbbell className="h-4 w-4 text-primary" />
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">Coach Sascha</span>
+                      
+                      {/* Content area */}
+                      <div className="flex-1 flex flex-col gap-1">
+                        {/* Timestamp next to profile picture */}
+                        <div className="flex items-end gap-2">
                           <span className="text-xs text-muted-foreground">
                             {message.timestamp.toLocaleTimeString('de-DE', {
                               hour: '2-digit',
@@ -478,7 +479,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                             })}
                           </span>
                         </div>
-                        <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2">
+                        
+                        {/* Message bubble */}
+                        <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
                           {message.mediaUrls && message.mediaUrls.length > 0 && (
                             <div className="grid grid-cols-2 gap-2 mb-2">
                               {message.mediaUrls.map((url, index) => (
@@ -491,9 +494,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                                       <source src={url} type="video/mp4" />
                                     </video>
                                   ) : (
-                                    <img
-                                      src={url}
-                                      alt={`Upload ${index + 1}`}
+                                    <img 
+                                      src={url} 
+                                      alt="Uploaded content" 
                                       className="w-full h-16 object-cover rounded"
                                     />
                                   )}
@@ -501,105 +504,87 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                               ))}
                             </div>
                           )}
-                          <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {message.timestamp.toLocaleTimeString('de-DE', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          <ReactMarkdown>
+                            {message.content}
+                          </ReactMarkdown>
                         </div>
                       </div>
                     </div>
                   )}
                   
                   {message.role === "user" && (
-                    <div className="flex flex-col items-end max-w-[80%]">
-                      <div
-                        className={cn(
-                          "rounded-lg px-3 py-2",
-                          "bg-primary text-primary-foreground"
-                        )}
-                      >
-                        {message.mediaUrls && message.mediaUrls.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            {message.mediaUrls.map((url, index) => (
-                              <div key={index} className="relative">
-                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                  <video 
-                                    controls 
-                                    className="w-full h-16 object-cover rounded"
-                                  >
-                                    <source src={url} type="video/mp4" />
-                                  </video>
-                                ) : (
-                                  <img
-                                    src={url}
-                                    alt={`Upload ${index + 1}`}
-                                    className="w-full h-16 object-cover rounded"
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <div className="w-full flex justify-end">
+                      <div className="max-w-[85%] flex flex-col gap-1 items-end">
+                        {/* Timestamp */}
+                        <span className="text-xs text-muted-foreground">
+                          {message.timestamp.toLocaleTimeString('de-DE', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                        
+                        {/* Message bubble */}
+                        <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2">
+                          {message.mediaUrls && message.mediaUrls.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              {message.mediaUrls.map((url, index) => (
+                                <div key={index} className="relative">
+                                  {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                    <video 
+                                      controls 
+                                      className="w-full h-16 object-cover rounded"
+                                    >
+                                      <source src={url} type="video/mp4" />
+                                    </video>
+                                  ) : (
+                                    <img 
+                                      src={url} 
+                                      alt="Uploaded content" 
+                                      className="w-full h-16 object-cover rounded"
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <ReactMarkdown>
+                            {message.content}
+                          </ReactMarkdown>
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {message.timestamp.toLocaleTimeString('de-DE', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="flex">
+                  <div className="flex gap-3 w-full">
+                    <div className="flex flex-col items-end h-full">
+                      <div className="mt-auto">
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Dumbbell className="h-4 w-4 text-primary" />
+                        </div>
                       </div>
                     </div>
-                   )}
-                 </div>
-               ))}
-
-               {/* Exercise Preview Card */}
-                {exercisePreview && !isFormcheckMode && (
-                  <div className="flex justify-center">
-                    <div className="w-full max-w-md">
-                      <ExercisePreviewCard
-                        data={exercisePreview}
-                        onSave={handleExercisePreviewSave}
-                        onCancel={() => setExercisePreview(null)}
-                        onEdit={(data) => console.log('Exercise edited:', data)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Formcheck Summary Card */}
-                {formcheckSummary && isFormcheckMode && (
-                  <div className="flex justify-center">
-                    <div className="w-full max-w-md">
-                      <FormcheckSummaryCard
-                        data={formcheckSummary}
-                        onSave={handleFormcheckSummarySave}
-                        onCancel={handleFormcheckSummaryCancel}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                        <span className="text-sm">Coach Sascha denkt nach...</span>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex items-end gap-2">
+                        <span className="text-xs text-muted-foreground">Sascha schreibt...</span>
+                      </div>
+                      <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
                       </div>
                     </div>
                   </div>
-                )}
-               </div>
-           </ScrollArea>
-
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
 
         {/* Chat History Sidebar */}
@@ -612,125 +597,121 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         )}
       </div>
 
-      {/* Media Upload Zone */}
-      {showUpload && (
-        <div className="flex-shrink-0 p-3 border-t border-border/20 bg-card/50">
-          <MediaUploadZone
-            onMediaUploaded={handleMediaUploaded}
-            maxFiles={3}
-            accept={['image/*', 'video/*']}
-            className="h-24"
+      {/* Exercise Preview */}
+      {exercisePreview && (
+        <div className="p-3 border-t border-border/20">
+          <ExercisePreviewCard
+            data={exercisePreview}
+            onSave={handleExercisePreviewSave}
+            onCancel={() => setExercisePreview(null)}
           />
         </div>
       )}
 
-      {/* Quick Actions / Suggestions - Permanent but collapsible */}
-      <div className="border-t border-border/20 bg-card/95 backdrop-blur-sm">
+      {/* Formcheck Summary */}
+      {formcheckSummary && (
+        <div className="p-3 border-t border-border/20">
+          <FormcheckSummaryCard
+            data={formcheckSummary}
+            onSave={handleFormcheckSummarySave}
+            onCancel={handleFormcheckSummaryCancel}
+          />
+        </div>
+      )}
+
+      {/* Fixed Input Area at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border/20 bg-background/95 backdrop-blur-sm z-10">
+        {/* Quick Actions */}
         <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none text-sm font-medium">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                <span>Vorschläge ({quickActions.length})</span>
+          <div className="px-3 pt-2">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Schnellaktionen</span>
+                </div>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", showQuickActions && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pb-2">
+              <div className="grid grid-cols-2 gap-2">
+                {quickActions.map((action, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setInputText(action);
+                      setShowQuickActions(false);
+                    }}
+                    className="text-xs h-auto p-2 text-left justify-start"
+                  >
+                    {action}
+                  </Button>
+                ))}
               </div>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", showQuickActions && "rotate-180")} />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="px-3 pb-3">
-            <div className="space-y-2">
-              {quickActions.map((action, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start text-left h-auto py-2 px-3 text-sm"
-                  onClick={() => {
-                    setInputText(action);
-                  }}
-                >
-                  {action}
-                </Button>
-              ))}
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        {/* Media Upload */}
+        <Collapsible open={showUpload} onOpenChange={setShowUpload}>
+          <CollapsibleContent>
+            <div className="p-3">
+              <MediaUploadZone
+                onMediaUploaded={handleMediaUploaded}
+                maxFiles={3}
+                accept={['image/*', 'video/*']}
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>
-      </div>
 
-      {/* Fixed Input Area - Identical to CoachChat */}
-      <div className="flex-shrink-0 p-3 border-t border-border/20 bg-card/95 backdrop-blur-sm">
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Frage Sascha etwas über Training..."
-              className="min-h-[80px] resize-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              disabled={isLoading}
-            />
-          </div>
-          
-          <div className="flex flex-col gap-2">
-            {/* Upload Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowUpload(!showUpload)}
-              disabled={isLoading}
-              className="h-10 w-10 p-0"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            
-            {/* Voice Button */}
-            <Button
-              variant={isRecording ? "destructive" : "outline"}
-              size="sm"
-              onClick={handleVoiceToggle}
-              disabled={isLoading || isProcessing}
-              className="h-10 w-10 p-0"
-            >
-              {isRecording ? (
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              ) : isProcessing ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-              ) : (
+        {/* Input */}
+        <div className="p-3">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
+                className="resize-none h-[60px] border-input focus:border-primary"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUpload(!showUpload)}
+                className="h-8 w-8 p-0"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleVoiceToggle}
+                className="h-8 w-8 p-0"
+              >
                 <Mic className="h-4 w-4" />
-              )}
-            </Button>
-            
-            {/* Send Button */}
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputText.trim() || isLoading}
-              className="h-10 w-10 p-0"
-            >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
-              ) : (
+              </Button>
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputText.trim() && uploadedMedia.length === 0}
+                size="sm"
+                className="h-8 w-8 p-0"
+              >
                 <Send className="h-4 w-4" />
-              )}
-            </Button>
+              </Button>
+            </div>
           </div>
         </div>
-        
-        {(isRecording || isProcessing) && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg mt-2">
-            <div className="flex gap-1">
-              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
-              <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
-              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
-            </div>
-            <span>
-              {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
