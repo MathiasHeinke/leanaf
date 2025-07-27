@@ -92,7 +92,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'llama-3.1-sonar-large-128k-online',
+              model: 'llama-3.1-sonar-small-128k-online',
               messages: [
                 {
                   role: 'system',
@@ -183,7 +183,7 @@ serve(async (req) => {
     try {
       console.log('Triggering embedding generation...');
       const { data: embeddingData, error: embeddingError } = await supabaseClient.functions.invoke('generate-embeddings', {
-        body: { regenerateAll: false }
+        body: { regenerate_all: false }
       });
       
       if (embeddingError) {

@@ -101,11 +101,11 @@ serve(async (req) => {
 
     // Schritt 4: Performance Metrics tracken
     const responseTime = Date.now() - startTime;
-    const relevanceScore = calculateRelevanceScore(searchResults);
+    const relevance_score = calculateRelevanceScore(searchResults);
 
     // Metrics in Background Task speichern (non-blocking)
-    EdgeRuntime.waitUntil(
-      savePerformanceMetrics(supabaseClient, {
+    try {
+      await savePerformanceMetrics(supabaseClient, {
         user_id,
         coach_id,
         query_text: query,
@@ -114,8 +114,10 @@ serve(async (req) => {
         relevance_score,
         cache_hit: false, // TODO: Implement cache checking
         embedding_tokens: embeddingTokens
-      })
-    );
+      });
+    } catch (metricsError) {
+      console.error('Failed to save metrics:', metricsError);
+    }
 
     // Schritt 5: Intelligentes Context Ranking
     const rankedContext = rankContextByRelevance(contextChunks, query);
