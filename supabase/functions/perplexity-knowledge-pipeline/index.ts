@@ -51,6 +51,7 @@ const TRAINING_AREAS = [
 ];
 
 serve(async (req) => {
+  const startTime = Date.now();
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -83,41 +84,71 @@ serve(async (req) => {
         try {
           const query = `Latest scientific research on ${topic} in strength and conditioning. Include effect sizes, study populations, practical applications, and evidence quality. Focus on peer-reviewed studies from 2020-2024.`;
           
-          console.log(`Researching: ${topic}`);
+          console.log(`🔍 Researching: ${topic} (Area: ${trainingArea.category})`);
           
-          const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${perplexityApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.1-sonar-small-128k-online',
-              messages: [
-                {
-                  role: 'system',
-                  content: `You are a sports science researcher. Provide structured, evidence-based information about training methods. Format responses as JSON with: id, category, topic, evidence_level, population, finding, effect_size, application, coach_prompt, and sources.`
+          // Test multiple models in fallback order
+          const models = ['sonar', 'sonar-reasoning'];
+          let perplexityResponse = null;
+          let modelUsed = null;
+          
+          for (const model of models) {
+            try {
+              console.log(`🧪 Trying model: ${model} for topic: ${topic}`);
+              
+              perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${perplexityApiKey}`,
+                  'Content-Type': 'application/json',
                 },
-                {
-                  role: 'user',
-                  content: query
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    {
+                      role: 'system',
+                      content: `You are a sports science researcher. Provide structured, evidence-based information about training methods. Format responses as JSON with: id, category, topic, evidence_level, population, finding, effect_size, application, coach_prompt, and sources.`
+                    },
+                    {
+                      role: 'user',
+                      content: query
+                    }
+                  ],
+                  temperature: 0.2,
+                  top_p: 0.9,
+                  max_tokens: 2000,
+                  search_domain_filter: ['pubmed.ncbi.nlm.nih.gov', 'scholar.google.com', 'researchgate.net'],
+                  search_recency_filter: 'month'
+                }),
+              });
+              
+              if (perplexityResponse.ok) {
+                modelUsed = model;
+                console.log(`✅ Successfully using model: ${model} for topic: ${topic}`);
+                break;
+              } else {
+                const errorData = await perplexityResponse.text();
+                console.error(`❌ Model ${model} failed for ${topic}:`, errorData);
+                if (model === models[models.length - 1]) {
+                  console.error(`🚨 All models failed for ${topic}, skipping...`);
+                  continue;
                 }
-              ],
-              temperature: 0.2,
-              top_p: 0.9,
-              max_tokens: 2000,
-              search_domain_filter: ['pubmed.ncbi.nlm.nih.gov', 'scholar.google.com', 'researchgate.net'],
-              search_recency_filter: 'month'
-            }),
-          });
-
-          if (!perplexityResponse.ok) {
-            console.error(`Perplexity API error for ${topic}:`, await perplexityResponse.text());
+              }
+            } catch (modelError) {
+              console.error(`🔥 Exception with model ${model} for ${topic}:`, modelError);
+              if (model === models[models.length - 1]) {
+                throw modelError;
+              }
+            }
+          }
+          
+          if (!perplexityResponse || !perplexityResponse.ok) {
+            console.error(`💥 All Perplexity models failed for ${topic}, skipping...`);
             continue;
           }
 
           const perplexityData = await perplexityResponse.json();
           const content = perplexityData.choices[0].message.content;
+          console.log(`✅ Research completed for: ${topic} using model: ${modelUsed}`);
 
           // Try to extract structured data or create it
           let structuredData;
@@ -134,7 +165,9 @@ serve(async (req) => {
               finding: content.substring(0, 500) + "...",
               application: `Apply ${topic} principles in training programs`,
               coach_prompt: `Integrate ${topic} research into coaching recommendations`,
-              source: "Perplexity AI Research - Latest Studies"
+              source: "Perplexity AI Research - Latest Studies",
+              model_used: modelUsed,
+              processing_timestamp: new Date().toISOString()
             };
           }
 
@@ -153,22 +186,32 @@ serve(async (req) => {
             });
 
           if (insertError) {
-            console.error(`Error inserting ${topic}:`, insertError);
+            console.error(`❌ Error inserting ${topic}:`, insertError);
+            results.push({
+              topic,
+              category: trainingArea.category,
+              status: 'error',
+              error: insertError.message,
+              data: structuredData
+            });
           } else {
-            console.log(`Successfully inserted: ${topic}`);
+            console.log(`✅ Successfully inserted: ${topic} (ID: ${insertData?.[0]?.id})`);
             results.push({
               topic,
               category: trainingArea.category,
               status: 'success',
-              id: insertData?.[0]?.id
+              id: insertData?.[0]?.id,
+              data: structuredData,
+              model_used: modelUsed
             });
           }
 
           // Rate limiting - wait between requests
+          console.log(`⏰ Waiting 2 seconds before next request...`);
           await new Promise(resolve => setTimeout(resolve, 2000));
 
         } catch (error) {
-          console.error(`Error processing ${topic}:`, error);
+          console.error(`💥 Error processing ${topic}:`, error);
           results.push({
             topic,
             category: trainingArea.category,
@@ -180,34 +223,69 @@ serve(async (req) => {
     }
 
     // Generate embeddings for new entries
-    try {
-      console.log('Triggering embedding generation...');
-      const { data: embeddingData, error: embeddingError } = await supabaseClient.functions.invoke('generate-embeddings', {
-        body: { regenerate_all: false }
-      });
-      
-      if (embeddingError) {
-        console.error('Embedding generation error:', embeddingError);
-      } else {
-        console.log('Embeddings generated successfully');
+    const successfulInserts = results.filter(r => r.status === 'success' && r.id);
+    
+    if (successfulInserts.length > 0) {
+      try {
+        console.log(`🧠 Triggering embedding generation for ${successfulInserts.length} new entries...`);
+        
+        // Generate embeddings for each new knowledge entry individually
+        for (const insert of successfulInserts) {
+          try {
+            const { data: embeddingData, error: embeddingError } = await supabaseClient.functions.invoke('generate-embeddings', {
+              body: { knowledge_id: insert.id }
+            });
+            
+            if (embeddingError) {
+              console.error(`❌ Embedding generation error for ${insert.id}:`, embeddingError);
+            } else {
+              console.log(`✅ Embedding generated for knowledge ID: ${insert.id}`);
+            }
+          } catch (individualEmbeddingError) {
+            console.error(`💥 Error generating embedding for ${insert.id}:`, individualEmbeddingError);
+          }
+          
+          // Small delay between embedding generations
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        console.log(`🎉 Embedding generation completed for all new entries`);
+      } catch (embeddingError) {
+        console.error('💥 Failed to trigger embedding generation:', embeddingError);
       }
-    } catch (embeddingError) {
-      console.error('Failed to trigger embedding generation:', embeddingError);
+    } else {
+      console.log('📝 No new entries to generate embeddings for');
     }
+
+    // Generate final statistics
+    const stats = {
+      total_processed: results.length,
+      successful: results.filter(r => r.status === 'success').length,
+      failed: results.filter(r => r.status === 'error').length,
+      new_knowledge_entries: successfulInserts.length,
+      processed_areas: areasToProcess.length
+    };
+
+    console.log(`📊 Pipeline Summary:`, stats);
 
     return new Response(JSON.stringify({
       success: true,
       message: `Processed ${results.length} topics`,
       results,
+      statistics: stats,
+      execution_time_ms: Date.now() - startTime,
       nextSteps: 'Knowledge base updated with latest research'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Pipeline error:', error);
+    console.error('💥 Critical pipeline error:', error);
     return new Response(JSON.stringify({ 
+      success: false,
       error: error.message,
+      stack: error.stack,
+      execution_time_ms: Date.now() - startTime,
       details: 'Check function logs for more information'
     }), {
       status: 500,
