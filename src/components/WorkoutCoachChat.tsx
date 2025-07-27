@@ -513,44 +513,42 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   )}
                   
                   {message.role === "user" && (
-                    <div className="w-full flex justify-end">
-                      <div className="max-w-[85%] flex flex-col gap-1 items-end">
-                        {/* Timestamp */}
-                        <span className="text-xs text-muted-foreground">
-                          {message.timestamp.toLocaleTimeString('de-DE', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        
-                        {/* Message bubble */}
-                        <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2">
-                          {message.mediaUrls && message.mediaUrls.length > 0 && (
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                              {message.mediaUrls.map((url, index) => (
-                                <div key={index} className="relative">
-                                  {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                    <video 
-                                      controls 
-                                      className="w-full h-16 object-cover rounded"
-                                    >
-                                      <source src={url} type="video/mp4" />
-                                    </video>
-                                  ) : (
-                                    <img 
-                                      src={url} 
-                                      alt="Uploaded content" 
-                                      className="w-full h-16 object-cover rounded"
-                                    />
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <ReactMarkdown>
-                            {message.content}
-                          </ReactMarkdown>
-                        </div>
+                    <div className="w-full flex flex-col gap-2 items-end">
+                      {/* Message bubble */}
+                      <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                        {message.mediaUrls && message.mediaUrls.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            {message.mediaUrls.map((url, index) => (
+                              <div key={index} className="relative">
+                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                  <video 
+                                    controls 
+                                    className="w-full h-16 object-cover rounded"
+                                  >
+                                    <source src={url} type="video/mp4" />
+                                  </video>
+                                ) : (
+                                  <img 
+                                    src={url} 
+                                    alt="Uploaded content" 
+                                    className="w-full h-16 object-cover rounded"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <ReactMarkdown>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                      
+                      {/* Timestamp */}
+                      <div className="text-xs text-muted-foreground">
+                        {message.timestamp.toLocaleTimeString('de-DE', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </div>
                     </div>
                   )}
@@ -559,26 +557,28 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               
               {/* Loading indicator */}
               {isLoading && (
-                <div className="flex">
-                  <div className="flex gap-3 w-full">
-                    <div className="flex flex-col items-end h-full">
-                      <div className="mt-auto">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Dumbbell className="h-4 w-4 text-primary" />
-                        </div>
-                      </div>
+                <div className="flex flex-col gap-2 items-start">
+                  {/* Coach name */}
+                  <div className="text-sm font-medium text-foreground">
+                    Sascha
+                  </div>
+                  
+                  {/* Typing bubble */}
+                  <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <div className="flex-1 flex flex-col gap-1">
-                      <div className="flex items-end gap-2">
-                        <span className="text-xs text-muted-foreground">Sascha schreibt...</span>
-                      </div>
-                      <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                      </div>
+                  </div>
+                  
+                  {/* Profile picture and "schreibt..." */}
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Dumbbell className="h-3 w-3 text-white" />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      schreibt...
                     </div>
                   </div>
                 </div>
