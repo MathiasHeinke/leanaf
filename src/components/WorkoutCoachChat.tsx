@@ -488,11 +488,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   return (
     <div className="h-full flex flex-col">
       {/* Chat Area - with proper height calculation for fixed input */}
-      <div className="flex-1 flex relative min-h-0">
+      <div className="flex-1 flex relative min-h-0" style={{ height: 'calc(100vh - 140px)' }}>
         {/* Messages */}
         <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 p-3">
-            <div className="space-y-4 pb-20">
+          <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
+            <div className="space-y-4 pb-4">
               {messages.map((message) => (
                 <div key={message.id} className="flex">
                   {message.role === "assistant" && (
