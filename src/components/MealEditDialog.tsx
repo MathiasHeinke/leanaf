@@ -248,103 +248,102 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-        <DialogHeader className="text-left">
-          <DialogTitle className="text-xl font-bold">Mahlzeit bearbeiten</DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-8">
+        <DialogHeader className="text-left pb-6">
+          <DialogTitle className="text-2xl font-bold">Mahlzeit bearbeiten</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
+        <div className="space-y-8">
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Description */}
             <div>
-              <Label htmlFor="text" className="text-sm font-medium">Was gegessen</Label>
+              <Label htmlFor="text" className="text-base font-medium">Was gegessen</Label>
               <Textarea
                 id="text"
                 value={editingMeal.text}
                 onChange={(e) => setEditingMeal({...editingMeal, text: e.target.value})}
-                className="mt-2 resize-none"
-                rows={3}
+                className="mt-3 resize-none min-h-[100px]"
+                rows={4}
                 placeholder="Beschreibe deine Mahlzeit..."
               />
             </div>
 
-
             {/* Nutritional Values */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="calories" className="text-sm font-medium">Kalorien</Label>
+                <Label htmlFor="calories" className="text-base font-medium">Kalorien</Label>
                 <NumericInput
                   value={editingMeal.calories}
                   onChange={(value) => setEditingMeal({...editingMeal, calories: Number(value)})}
                   allowDecimals={false}
                   min={0}
-                  className="mt-2"
+                  className="mt-3 h-12 text-lg"
                 />
               </div>
               <div>
-                <Label htmlFor="protein" className="text-sm font-medium">Protein (g)</Label>
+                <Label htmlFor="protein" className="text-base font-medium">Protein (g)</Label>
                 <NumericInput
                   value={editingMeal.protein}
                   onChange={(value) => setEditingMeal({...editingMeal, protein: Number(value)})}
                   allowDecimals={true}
                   min={0}
-                  className="mt-2"
+                  className="mt-3 h-12 text-lg"
                 />
               </div>
               <div>
-                <Label htmlFor="carbs" className="text-sm font-medium">Kohlenhydrate (g)</Label>
+                <Label htmlFor="carbs" className="text-base font-medium">Kohlenhydrate (g)</Label>
                 <NumericInput
                   value={editingMeal.carbs}
                   onChange={(value) => setEditingMeal({...editingMeal, carbs: Number(value)})}
                   allowDecimals={true}
                   min={0}
-                  className="mt-2"
+                  className="mt-3 h-12 text-lg"
                 />
               </div>
               <div>
-                <Label htmlFor="fats" className="text-sm font-medium">Fette (g)</Label>
+                <Label htmlFor="fats" className="text-base font-medium">Fette (g)</Label>
                 <NumericInput
                   value={editingMeal.fats}
                   onChange={(value) => setEditingMeal({...editingMeal, fats: Number(value)})}
                   allowDecimals={true}
                   min={0}
-                  className="mt-2"
+                  className="mt-3 h-12 text-lg"
                 />
               </div>
             </div>
 
             {/* AI Verification */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg p-4 space-y-3">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg p-6 space-y-4">
               {!showVerification ? (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setShowVerification(true)}
-                  className="w-full"
+                  className="w-full h-12"
                   disabled={isVerifying}
                 >
-                  <MessageSquare className="w-4 h-4 mr-2" />
+                  <MessageSquare className="w-5 h-5 mr-2" />
                   Mit KI überprüfen
                 </Button>
               ) : (
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Nachricht an KI</Label>
+                <div className="space-y-4">
+                  <Label className="text-base font-medium">Nachricht an KI</Label>
                   <Textarea
                     value={verificationMessage}
                     onChange={(e) => setVerificationMessage(e.target.value)}
                     placeholder="z.B. 'Das war nur eine halbe Portion' oder 'Mehr Protein als angegeben'"
-                    className="resize-none"
-                    rows={2}
+                    className="resize-none min-h-[80px]"
+                    rows={3}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Button
                       type="button"
                       onClick={handleVerifyWithAI}
                       disabled={isVerifying || !verificationMessage.trim()}
-                      className="flex-1"
+                      className="flex-1 h-11"
                     >
-                      <Check className="w-4 h-4 mr-2" />
+                      <Check className="w-5 h-5 mr-2" />
                       {isVerifying ? 'Überprüfen...' : 'Überprüfen'}
                     </Button>
                     <Button
@@ -355,8 +354,9 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                         setVerificationMessage('');
                       }}
                       disabled={isVerifying}
+                      className="h-11"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </Button>
                   </div>
                 </div>
@@ -364,14 +364,14 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
             </div>
 
             {/* Meal Type and Date */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="meal_type" className="text-sm font-medium">Mahlzeitentyp</Label>
+                <Label htmlFor="meal_type" className="text-base font-medium">Mahlzeitentyp</Label>
                 <Select 
                   value={editingMeal.meal_type} 
                   onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
                 >
-                  <SelectTrigger className="mt-2">
+                  <SelectTrigger className="mt-3 h-12">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -384,17 +384,17 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
               </div>
 
               <div>
-                <Label className="text-sm font-medium">Datum</Label>
+                <Label className="text-base font-medium">Datum</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal mt-2",
+                        "w-full justify-start text-left font-normal mt-3 h-12",
                         !editingMealDate && "text-muted-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-2 h-5 w-5" />
                       {editingMealDate ? format(editingMealDate, "PPP", { locale: de }) : "Datum auswählen"}
                     </Button>
                   </PopoverTrigger>
@@ -413,9 +413,9 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
 
             {/* Leftover Analysis */}
             {editingMeal.images && editingMeal.images.length > 0 && (
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-4 space-y-4">
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-6 space-y-5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Reste-Analyse</Label>
+                  <Label className="text-base font-medium">Reste-Analyse</Label>
                   <Switch
                     checked={leftoverMode}
                     onCheckedChange={setLeftoverMode}
@@ -451,19 +451,19 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-4 pt-6">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={onClose} 
-                className="flex-1"
+                className="flex-1 h-12 text-base"
                 disabled={isSubmitting}
               >
                 Abbrechen
               </Button>
               <Button 
                 type="submit" 
-                className="flex-1"
+                className="flex-1 h-12 text-base"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Speichern...' : 'Speichern'}
