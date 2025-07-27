@@ -42,15 +42,16 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
   const sessionsBadge = getSessionsBadge();
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-      <Card>
+    <div className="grid gap-4 grid-cols-6 auto-rows-fr">
+      {/* Workout Sessions - Large (span 2 columns) */}
+      <Card className="col-span-6 sm:col-span-3 lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Sessions</CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Workout Sessions</CardTitle>
+          <Calendar className="h-5 w-5 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <div className={`text-2xl font-bold ${getPerformanceColor(stats.sessionsThisWeek, 'sessions')}`}>
+            <div className={`text-3xl font-bold ${getPerformanceColor(stats.sessionsThisWeek, 'sessions')}`}>
               {stats.sessionsThisWeek}
             </div>
             <Badge variant={sessionsBadge.variant} className="text-xs">
@@ -63,33 +64,22 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Gesamtsätze</CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalSets}</div>
-          <p className="text-xs text-muted-foreground">
-            {stats.totalSets > 0 ? `Ø ${Math.round(stats.totalSets / Math.max(stats.sessionsThisWeek, 1))} pro Session` : 'Noch keine Sätze'}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
+      {/* Volumen - Large (span 2 columns) */}
+      <Card className="col-span-6 sm:col-span-3 lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Volumen</CardTitle>
-          <Dumbbell className="h-4 w-4 text-muted-foreground" />
+          <Dumbbell className="h-5 w-5 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalVolume.toLocaleString()}</div>
+          <div className="text-3xl font-bold">{stats.totalVolume.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">
             kg diese Woche
           </p>
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Intensität - Medium (1 column) */}
+      <Card className="col-span-2 sm:col-span-2 lg:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Intensität</CardTitle>
           <Activity className="h-4 w-4 text-muted-foreground" />
@@ -104,7 +94,22 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Gesamtsätze - Small (1 column) */}
+      <Card className="col-span-2 sm:col-span-2 lg:col-span-1">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Gesamtsätze</CardTitle>
+          <Target className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats.totalSets}</div>
+          <p className="text-xs text-muted-foreground">
+            {stats.totalSets > 0 ? `Ø ${Math.round(stats.totalSets / Math.max(stats.sessionsThisWeek, 1))}` : 'Keine'}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Übungen - Small (1 column) */}
+      <Card className="col-span-2 sm:col-span-2 lg:col-span-1">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Übungen</CardTitle>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -112,7 +117,7 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         <CardContent>
           <div className="text-2xl font-bold">{stats.exercisesCount}</div>
           <p className="text-xs text-muted-foreground">
-            Verschiedene Übungen
+            Verschiedene
           </p>
         </CardContent>
       </Card>
