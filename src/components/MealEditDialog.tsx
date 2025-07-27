@@ -9,12 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Camera, Trash2, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
+import { useAuth } from "@/hooks/useAuth";
 
 interface MealData {
   id: string;
@@ -26,6 +29,9 @@ interface MealData {
   created_at: string;
   meal_type: string;
   images?: string[];
+  leftover_images?: string[];
+  consumption_percentage?: number;
+  leftover_analysis_metadata?: any;
 }
 
 interface MealEditDialogProps {
@@ -36,6 +42,7 @@ interface MealEditDialogProps {
 }
 
 export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialogProps) => {
+  const { user } = useAuth();
   const [editingMeal, setEditingMeal] = useState<MealData | null>(null);
   const [editMode, setEditMode] = useState<'manual' | 'portion'>('manual');
   const [portionAmount, setPortionAmount] = useState<number>(100);
@@ -47,13 +54,100 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
   });
   const [editingMealDate, setEditingMealDate] = useState<Date>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Leftover functionality state
+  const [leftoverMode, setLeftoverMode] = useState(false);
+  const [leftoverImages, setLeftoverImages] = useState<string[]>([]);
+  const [isAnalyzingLeftovers, setIsAnalyzingLeftovers] = useState(false);
+  const [originalCalories, setOriginalCalories] = useState<number>(0);
+  const [originalProtein, setOriginalProtein] = useState<number>(0);
+  const [originalCarbs, setOriginalCarbs] = useState<number>(0);
+  const [originalFats, setOriginalFats] = useState<number>(0);
 
   useEffect(() => {
     if (meal) {
       setEditingMeal(meal);
       setEditingMealDate(new Date(meal.created_at));
+      setLeftoverImages(meal.leftover_images || []);
+      setLeftoverMode(meal.leftover_images && meal.leftover_images.length > 0);
+      // Store original values for leftover calculation
+      setOriginalCalories(meal.calories);
+      setOriginalProtein(meal.protein);
+      setOriginalCarbs(meal.carbs);
+      setOriginalFats(meal.fats);
     }
   }, [meal]);
+
+  const handleLeftoverImageUpload = async (files: File[]) => {
+    if (!user) return;
+
+    try {
+      setIsAnalyzingLeftovers(true);
+      const uploadResult = await uploadFilesWithProgress(files, user.id);
+      
+      if (uploadResult.success && uploadResult.urls) {
+        setLeftoverImages([...leftoverImages, ...uploadResult.urls]);
+        toast.success('Reste-Foto hochgeladen');
+      } else {
+        toast.error('Fehler beim Hochladen des Fotos');
+      }
+    } catch (error) {
+      console.error('Error uploading leftover image:', error);
+      toast.error('Fehler beim Hochladen des Fotos');
+    } finally {
+      setIsAnalyzingLeftovers(false);
+    }
+  };
+
+  const analyzeLeftovers = async () => {
+    if (!editingMeal || !editingMeal.images?.length || !leftoverImages.length) {
+      toast.error('Original- und Reste-Bilder sind erforderlich');
+      return;
+    }
+
+    setIsAnalyzingLeftovers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-meal-leftovers', {
+        body: {
+          originalImages: editingMeal.images,
+          leftoverImages: leftoverImages,
+          mealDescription: editingMeal.text
+        }
+      });
+
+      if (error) throw error;
+
+      const consumptionPercentage = data.consumption_percentage || 75;
+      
+      // Calculate consumed amounts based on original values
+      const consumedCalories = Math.round(originalCalories * (consumptionPercentage / 100));
+      const consumedProtein = Math.round(originalProtein * (consumptionPercentage / 100) * 10) / 10;
+      const consumedCarbs = Math.round(originalCarbs * (consumptionPercentage / 100) * 10) / 10;
+      const consumedFats = Math.round(originalFats * (consumptionPercentage / 100) * 10) / 10;
+
+      setEditingMeal({
+        ...editingMeal,
+        calories: consumedCalories,
+        protein: consumedProtein,
+        carbs: consumedCarbs,
+        fats: consumedFats,
+        consumption_percentage: consumptionPercentage,
+        leftover_analysis_metadata: data
+      });
+
+      toast.success(`Analyse abgeschlossen: ${consumptionPercentage}% verzehrt`);
+    } catch (error) {
+      console.error('Error analyzing leftovers:', error);
+      toast.error('Fehler bei der Reste-Analyse');
+    } finally {
+      setIsAnalyzingLeftovers(false);
+    }
+  };
+
+  const removeLeftoverImage = (index: number) => {
+    const newImages = leftoverImages.filter((_, i) => i !== index);
+    setLeftoverImages(newImages);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +167,9 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
         fats: editingMeal.fats,
         meal_type: editingMeal.meal_type,
         created_at: localDate.toISOString(),
+        leftover_images: leftoverImages,
+        consumption_percentage: editingMeal.consumption_percentage,
+        leftover_analysis_metadata: editingMeal.leftover_analysis_metadata,
       };
 
       // Update in database
@@ -312,6 +409,106 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                 />
               </div>
             </div>
+
+            {/* Leftover Analysis */}
+            {editingMeal.images && editingMeal.images.length > 0 && (
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Reste-Analyse</Label>
+                  <Switch
+                    checked={leftoverMode}
+                    onCheckedChange={setLeftoverMode}
+                  />
+                </div>
+                
+                {leftoverMode && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-muted-foreground">
+                      Lade ein Foto der Reste hoch, um die tatsächlich verzehrte Menge zu berechnen.
+                    </p>
+                    
+                    {/* Leftover Images */}
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        {leftoverImages.map((url, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={url}
+                              alt={`Reste ${index + 1}`}
+                              className="w-full h-20 object-cover rounded-lg"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeLeftoverImage(index)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        id="leftover-images"
+                        className="hidden"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length > 0) {
+                            handleLeftoverImageUpload(files);
+                          }
+                        }}
+                      />
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('leftover-images')?.click()}
+                        disabled={isAnalyzingLeftovers}
+                        className="w-full"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {isAnalyzingLeftovers ? 'Lade hoch...' : 'Reste-Foto hinzufügen'}
+                      </Button>
+                    </div>
+
+                    {/* Analysis Button */}
+                    {leftoverImages.length > 0 && (
+                      <div className="space-y-3">
+                        <Button
+                          type="button"
+                          onClick={analyzeLeftovers}
+                          disabled={isAnalyzingLeftovers}
+                          className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                        >
+                          <Camera className="mr-2 h-4 w-4" />
+                          {isAnalyzingLeftovers ? 'Analysiere...' : 'Reste analysieren'}
+                        </Button>
+                        
+                        {editingMeal.consumption_percentage && (
+                          <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
+                            <div className="text-sm font-medium text-center">
+                              Verzehrt: {editingMeal.consumption_percentage}%
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+                              <div
+                                className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${editingMeal.consumption_percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Meal Type */}
             <div>
