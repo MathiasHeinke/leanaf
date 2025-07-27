@@ -450,7 +450,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   return (
     <div className="h-full flex flex-col">
       {/* Chat Area - with proper height calculation for fixed input */}
-      <div className="flex-1 flex relative min-h-0" style={{ height: 'calc(100vh - 60px - 140px)' }}>
+      <div className="flex-1 flex relative min-h-0" style={{ height: 'calc(100vh - 140px)' }}>
         {/* Messages */}
         <div className="flex-1 flex flex-col">
           <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
@@ -459,11 +459,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 <div key={message.id} className="flex">
                   {message.role === "assistant" && (
                     <div className="w-full flex flex-col gap-2 items-start">
-                      {/* Coach name */}
-                      <div className="text-sm font-medium text-foreground">
-                        Sascha
-                      </div>
-                      
                       {/* Message bubble */}
                       <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
                         {message.mediaUrls && message.mediaUrls.length > 0 && (
