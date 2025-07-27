@@ -252,14 +252,14 @@ export const DailyProgress = ({
         {/* Macros Section - Compact Grid */}
         <div className="grid grid-cols-3 gap-2">
           {/* Protein */}
-          <div className="p-2 rounded-lg bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300">
+          <div className="p-2 rounded-lg bg-card/40 border border-border/30 hover:border-border/60 transition-colors backdrop-blur-sm">
+            <div className="text-sm font-semibold mb-1 text-slate-600 dark:text-slate-300">
               {t('macros.protein')}
             </div>
             <div className="mb-2">
-              <div className="text-sm font-bold text-slate-600 dark:text-slate-300 break-words">
-                <div>{Math.round(dailyTotals.protein * 10) / 10}g</div>
-                <div className="text-xs text-muted-foreground font-normal">/{Math.round(dailyGoal.protein)}g</div>
+              <div className="text-base font-bold text-slate-600 dark:text-slate-300 flex items-baseline gap-1">
+                <span>{Math.round(dailyTotals.protein * 10) / 10}g</span>
+                <span className="text-sm text-muted-foreground font-normal">/{Math.round(dailyGoal.protein)}g</span>
               </div>
             </div>
             <Progress 
@@ -269,14 +269,14 @@ export const DailyProgress = ({
           </div>
 
           {/* Carbs */}
-          <div className="p-2 rounded-lg bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-semibold mb-1 text-amber-600 dark:text-amber-400">
+          <div className="p-2 rounded-lg bg-card/40 border border-border/30 hover:border-border/60 transition-colors backdrop-blur-sm">
+            <div className="text-sm font-semibold mb-1 text-amber-600 dark:text-amber-400">
               {t('macros.carbs')}
             </div>
             <div className="mb-2">
-              <div className="text-sm font-bold text-amber-600 dark:text-amber-400 break-words">
-                <div>{Math.round(dailyTotals.carbs * 10) / 10}g</div>
-                <div className="text-xs text-muted-foreground font-normal">/{Math.round(dailyGoal.carbs)}g</div>
+              <div className="text-base font-bold text-amber-600 dark:text-amber-400 flex items-baseline gap-1">
+                <span>{Math.round(dailyTotals.carbs * 10) / 10}g</span>
+                <span className="text-sm text-muted-foreground font-normal">/{Math.round(dailyGoal.carbs)}g</span>
               </div>
             </div>
             <Progress 
@@ -286,14 +286,14 @@ export const DailyProgress = ({
           </div>
 
           {/* Fats */}
-          <div className="p-2 rounded-lg bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-semibold mb-1 text-emerald-600 dark:text-emerald-400">
+          <div className="p-2 rounded-lg bg-card/40 border border-border/30 hover:border-border/60 transition-colors backdrop-blur-sm">
+            <div className="text-sm font-semibold mb-1 text-emerald-600 dark:text-emerald-400">
               {t('macros.fats')}
             </div>
             <div className="mb-2">
-              <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 break-words">
-                <div>{Math.round(dailyTotals.fats * 10) / 10}g</div>
-                <div className="text-xs text-muted-foreground font-normal">/{Math.round(dailyGoal.fats)}g</div>
+              <div className="text-base font-bold text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1">
+                <span>{Math.round(dailyTotals.fats * 10) / 10}g</span>
+                <span className="text-sm text-muted-foreground font-normal">/{Math.round(dailyGoal.fats)}g</span>
               </div>
             </div>
             <Progress 
