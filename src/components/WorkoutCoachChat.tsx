@@ -17,7 +17,8 @@ import {
   Mic, 
   Dumbbell, 
   Paperclip,
-  ChevronDown
+  ChevronDown,
+  MessageSquare
 } from 'lucide-react';
 
 interface WorkoutMessage {
@@ -620,7 +621,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none text-sm font-medium">
-              <span>Vorschläge ({quickActions.length})</span>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <span>Vorschläge ({quickActions.length})</span>
+              </div>
               <ChevronDown className={cn("h-4 w-4 transition-transform", showQuickActions && "rotate-180")} />
             </Button>
           </CollapsibleTrigger>
