@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { CalendarIcon, Camera, Trash2, Upload } from "lucide-react";
+import { CalendarIcon, Camera, Trash2, Upload, MessageSquare, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,11 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
   const [originalProtein, setOriginalProtein] = useState<number>(0);
   const [originalCarbs, setOriginalCarbs] = useState<number>(0);
   const [originalFats, setOriginalFats] = useState<number>(0);
+
+  // AI verification state
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     if (meal) {
@@ -140,6 +145,55 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
   const removeLeftoverImage = (index: number) => {
     const newImages = leftoverImages.filter((_, i) => i !== index);
     setLeftoverImages(newImages);
+  };
+
+  const handleVerifyWithAI = async () => {
+    if (!editingMeal || !verificationMessage.trim()) {
+      toast.error('Bitte geben Sie eine Nachricht für die KI ein');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-meal', {
+        body: {
+          message: verificationMessage,
+          mealData: {
+            title: editingMeal.text,
+            calories: editingMeal.calories,
+            protein: editingMeal.protein,
+            carbs: editingMeal.carbs,
+            fats: editingMeal.fats,
+            description: editingMeal.text
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.adjustments && data.needsAdjustment) {
+        setEditingMeal({
+          ...editingMeal,
+          calories: data.adjustments.calories || editingMeal.calories,
+          protein: data.adjustments.protein || editingMeal.protein,
+          carbs: data.adjustments.carbs || editingMeal.carbs,
+          fats: data.adjustments.fats || editingMeal.fats,
+        });
+        toast.success('Nährwerte wurden angepasst');
+      }
+
+      if (data.message) {
+        toast.info(data.message);
+      }
+
+      setShowVerification(false);
+      setVerificationMessage('');
+    } catch (error) {
+      console.error('Error verifying with AI:', error);
+      toast.error('Fehler bei der KI-Überprüfung');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -258,6 +312,55 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                   className="mt-2"
                 />
               </div>
+            </div>
+
+            {/* AI Verification */}
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-lg p-4 space-y-3">
+              {!showVerification ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowVerification(true)}
+                  className="w-full"
+                  disabled={isVerifying}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Mit KI überprüfen
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Nachricht an KI</Label>
+                  <Textarea
+                    value={verificationMessage}
+                    onChange={(e) => setVerificationMessage(e.target.value)}
+                    placeholder="z.B. 'Das war nur eine halbe Portion' oder 'Mehr Protein als angegeben'"
+                    className="resize-none"
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleVerifyWithAI}
+                      disabled={isVerifying || !verificationMessage.trim()}
+                      className="flex-1"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      {isVerifying ? 'Überprüfen...' : 'Überprüfen'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowVerification(false);
+                        setVerificationMessage('');
+                      }}
+                      disabled={isVerifying}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Meal Type and Date */}
