@@ -52,7 +52,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [showQuickActions, setShowQuickActions] = useState(true);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -615,37 +615,34 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </div>
       )}
 
-      {/* Quick Actions / Suggestions - Always show for workout coaching */}
-      {showQuickActions && (
-        <div className="border-t border-border/20 bg-card/95 backdrop-blur-sm">
-          <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none text-sm font-medium">
-                <span>Vorschläge ({quickActions.length})</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="px-3 pb-3">
-              <div className="space-y-2">
-                {quickActions.map((action, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start text-left h-auto py-2 px-3 text-sm"
-                    onClick={() => {
-                      setInputText(action);
-                      setShowQuickActions(false);
-                    }}
-                  >
-                    {action}
-                  </Button>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      )}
+      {/* Quick Actions / Suggestions - Permanent but collapsible */}
+      <div className="border-t border-border/20 bg-card/95 backdrop-blur-sm">
+        <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none text-sm font-medium">
+              <span>Vorschläge ({quickActions.length})</span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", showQuickActions && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="px-3 pb-3">
+            <div className="space-y-2">
+              {quickActions.map((action, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto py-2 px-3 text-sm"
+                  onClick={() => {
+                    setInputText(action);
+                  }}
+                >
+                  {action}
+                </Button>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
 
       {/* Fixed Input Area - Identical to CoachChat */}
       <div className="flex-shrink-0 p-3 border-t border-border/20 bg-card/95 backdrop-blur-sm">
@@ -655,7 +652,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Frage Sascha etwas über Training..."
-              className="min-h-[60px] max-h-[120px] resize-none"
+              className="min-h-[80px] max-h-[200px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
