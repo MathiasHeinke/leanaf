@@ -24,6 +24,7 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
@@ -34,7 +35,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
-  { title: "Analyse", url: "/history", icon: BarChart3, key: "insights" },
+  { title: "Analyse", url: "/history", icon: BarChart3 },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
 
@@ -54,6 +55,31 @@ export function AppSidebar() {
   const location = useLocation();
   
   const collapsed = state === "collapsed";
+
+  // Helper functions for level calculations
+  const getMinPointsForLevel = (level: number): number => {
+    if (level === 1) return 0;
+    if (level === 2) return 100;
+    if (level === 3) return 200;
+    if (level === 4) return 350;
+    if (level === 5) return 550;
+    if (level === 6) return 800;
+    if (level === 7) return 1100;
+    if (level >= 8) return 1500 + ((level - 8) * 500);
+    return 0;
+  };
+
+  const getMaxPointsForLevel = (level: number): number => {
+    if (level === 1) return 100;
+    if (level === 2) return 200;
+    if (level === 3) return 350;
+    if (level === 4) return 550;
+    if (level === 5) return 800;
+    if (level === 6) return 1100;
+    if (level === 7) return 1500;
+    if (level >= 8) return 2000 + ((level - 8) * 500);
+    return 100;
+  };
 
   const handleSignOut = async () => {
     try {
@@ -80,18 +106,30 @@ export function AppSidebar() {
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
       {/* Header with Level Badge */}
-      <SidebarHeader className="border-b border-border/40 pb-3">
-        {!collapsed && (
-          <div className="flex flex-col space-y-2 px-2">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-muted-foreground border-b border-border/30 pb-1">Level</span>
-                {userPoints && (
-                  <span className="text-xs text-muted-foreground/70 mt-1">
-                    {userPoints.total_points.toLocaleString()} Punkte
-                  </span>
-                )}
+      <SidebarHeader className="border-b border-border/40 pb-4">
+        {!collapsed && userPoints && (
+          <div className="flex items-start justify-between px-2 gap-3">
+            <div className="flex-1 min-w-0">
+              {/* Level Info Line */}
+              <div className="text-sm font-medium text-foreground mb-2">
+                Level: {userPoints.current_level} {userPoints.level_name} | {userPoints.total_points.toLocaleString()} Punkte
               </div>
+              
+              {/* Progress Bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Fortschritt</span>
+                  <span>{Math.round(((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100)}%</span>
+                </div>
+                <Progress 
+                  value={((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100} 
+                  className="h-2"
+                />
+              </div>
+            </div>
+            
+            {/* Level Badge rechts */}
+            <div className="flex-shrink-0">
               <LevelBadge />
             </div>
           </div>
