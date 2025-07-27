@@ -32,14 +32,7 @@ export const useLeftoverImageManager = ({
       if (result.success && result.urls.length > 0) {
         const newLeftoverImages = [...currentLeftoverImages, ...result.urls];
         
-        // Update meal in database
-        const { error } = await supabase
-          .from('meals')
-          .update({ leftover_images: newLeftoverImages })
-          .eq('id', mealId);
-
-        if (error) throw error;
-
+        // DON'T update database here, just pass the new images to parent component
         onLeftoverImagesUpdate(newLeftoverImages);
         toast.success(`${result.urls.length} Reste-Bild${result.urls.length > 1 ? 'er' : ''} hinzugefügt`);
       }
@@ -60,14 +53,7 @@ export const useLeftoverImageManager = ({
     try {
       const newLeftoverImages = currentLeftoverImages.filter(url => url !== imageUrl);
       
-      // Update meal in database
-      const { error } = await supabase
-        .from('meals')
-        .update({ leftover_images: newLeftoverImages })
-        .eq('id', mealId);
-
-      if (error) throw error;
-
+      // DON'T update database here either, just pass the new images to parent component
       onLeftoverImagesUpdate(newLeftoverImages);
       toast.success('Reste-Bild entfernt');
     } catch (error: any) {
