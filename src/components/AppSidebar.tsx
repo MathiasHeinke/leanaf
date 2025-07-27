@@ -10,7 +10,10 @@ import {
   Trophy, 
   Microscope, 
   Bug, 
-  LogOut 
+  LogOut,
+  Star,
+  Award,
+  Crown
 } from "lucide-react";
 import {
   Sidebar,
@@ -111,9 +114,12 @@ export function AppSidebar() {
           <>
             {!collapsed ? (
               <div className="flex items-start gap-3 px-2">
-                {/* LevelBadge als sich füllender Kreis links */}
-                <div className="flex-shrink-0">
-                  <LevelBadge />
+                {/* Level Icon links */}
+                <div className="flex-shrink-0 flex items-center justify-center h-6 w-6" style={{ color: userPoints.level_name === 'Gold' ? '#FFD700' : userPoints.level_name === 'Silver' ? '#C0C0C0' : userPoints.level_name === 'Bronze' ? '#CD7F32' : '#4A90E2' }}>
+                  {userPoints.level_name === 'Rookie' && <Star className="w-5 h-5" />}
+                  {userPoints.level_name === 'Bronze' && <Award className="w-5 h-5" />}
+                  {userPoints.level_name === 'Silver' && <Trophy className="w-5 h-5" />}
+                  {(userPoints.level_name === 'Gold' || userPoints.level_name === 'Platinum' || userPoints.level_name === 'Diamond' || userPoints.level_name === 'Master' || userPoints.level_name === 'Grandmaster') && <Crown className="w-5 h-5" />}
                 </div>
                 
                 {/* Level Text und Progress rechts daneben */}
@@ -131,8 +137,13 @@ export function AppSidebar() {
               </div>
             ) : (
               <div className="flex justify-center px-2">
-                {/* Nur der LevelBadge im collapsed State */}
-                <LevelBadge />
+                {/* Nur das Level Icon im collapsed State */}
+                <div className="flex items-center justify-center h-6 w-6" style={{ color: userPoints.level_name === 'Gold' ? '#FFD700' : userPoints.level_name === 'Silver' ? '#C0C0C0' : userPoints.level_name === 'Bronze' ? '#CD7F32' : '#4A90E2' }}>
+                  {userPoints.level_name === 'Rookie' && <Star className="w-5 h-5" />}
+                  {userPoints.level_name === 'Bronze' && <Award className="w-5 h-5" />}
+                  {userPoints.level_name === 'Silver' && <Trophy className="w-5 h-5" />}
+                  {(userPoints.level_name === 'Gold' || userPoints.level_name === 'Platinum' || userPoints.level_name === 'Diamond' || userPoints.level_name === 'Master' || userPoints.level_name === 'Grandmaster') && <Crown className="w-5 h-5" />}
+                </div>
               </div>
             )}
           </>
