@@ -9,6 +9,7 @@ import { RAGEmbeddingManager } from "@/utils/ragEmbeddingManager";
 import { Database, Activity, Zap, BarChart3, RefreshCw, CheckCircle } from "lucide-react";
 import { PerplexityKnowledgePipeline } from './PerplexityKnowledgePipeline';
 import { RAGTestingSuite } from './RAGTestingSuite';
+import { AutomatedPipelineManager } from './AutomatedPipelineManager';
 
 interface EmbeddingStatus {
   total_knowledge_entries: number;
@@ -151,6 +152,9 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Automated Pipeline Manager */}
+      <AutomatedPipelineManager />
 
       {/* Perplexity Knowledge Pipeline */}
       <PerplexityKnowledgePipeline />

@@ -143,6 +143,51 @@ export type Database = {
         }
         Relationships: []
       }
+      automated_pipeline_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          entries_failed: number | null
+          entries_processed: number | null
+          entries_successful: number | null
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          metadata: Json | null
+          pipeline_type: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          entries_failed?: number | null
+          entries_processed?: number | null
+          entries_successful?: number | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          pipeline_type?: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          entries_failed?: number | null
+          entries_processed?: number | null
+          entries_successful?: number | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          pipeline_type?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           badge_description: string | null
@@ -1194,6 +1239,51 @@ export type Database = {
           id?: string
           language?: string | null
           quote_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pipeline_automation_config: {
+        Row: {
+          config_data: Json | null
+          created_at: string
+          failure_count: number
+          id: string
+          interval_minutes: number
+          is_enabled: boolean
+          last_run_at: string | null
+          max_entries_per_run: number
+          max_failures: number
+          next_run_at: string | null
+          pipeline_name: string
+          updated_at: string
+        }
+        Insert: {
+          config_data?: Json | null
+          created_at?: string
+          failure_count?: number
+          id?: string
+          interval_minutes?: number
+          is_enabled?: boolean
+          last_run_at?: string | null
+          max_entries_per_run?: number
+          max_failures?: number
+          next_run_at?: string | null
+          pipeline_name: string
+          updated_at?: string
+        }
+        Update: {
+          config_data?: Json | null
+          created_at?: string
+          failure_count?: number
+          id?: string
+          interval_minutes?: number
+          is_enabled?: boolean
+          last_run_at?: string | null
+          max_entries_per_run?: number
+          max_failures?: number
+          next_run_at?: string | null
+          pipeline_name?: string
           updated_at?: string
         }
         Relationships: []
