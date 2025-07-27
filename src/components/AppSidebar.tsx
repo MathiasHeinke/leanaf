@@ -107,37 +107,51 @@ export function AppSidebar() {
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
       {/* Header with Level Badge */}
       <SidebarHeader className="border-b border-border/40 pb-4">
-        {!collapsed && userPoints && (
-          <div className="flex items-start justify-between px-2 gap-3">
-            <div className="flex-1 min-w-0">
-              {/* Level Info Line */}
-              <div className="text-sm font-medium text-foreground mb-2">
-                Level: {userPoints.current_level} {userPoints.level_name} | {userPoints.total_points.toLocaleString()} Punkte
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Fortschritt</span>
-                  <span>{Math.round(((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100)}%</span>
+        {userPoints && (
+          <>
+            {!collapsed ? (
+              <div className="flex items-start gap-3 px-2">
+                {/* Sich füllender Kreis links */}
+                <div className="relative h-6 w-6 flex-shrink-0">
+                  <div className="absolute inset-0 rounded-full bg-secondary/20" />
+                  <div 
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: `conic-gradient(from 0deg, hsl(var(--primary)) ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%, transparent ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%)`
+                    }}
+                  />
+                  <div className="absolute inset-1 rounded-full bg-background" />
                 </div>
-                <Progress 
-                  value={((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100} 
-                  className="h-2"
-                />
+                
+                {/* Level Text und Progress rechts daneben */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground mb-2">
+                    Level {userPoints.current_level} {userPoints.level_name} | {userPoints.total_points.toLocaleString()} Punkte
+                  </div>
+                  
+                  {/* Kleinere Progress Bar ohne Prozente */}
+                  <Progress 
+                    value={((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100} 
+                    className="h-1.5"
+                  />
+                </div>
               </div>
-            </div>
-            
-            {/* Level Badge rechts */}
-            <div className="flex-shrink-0">
-              <LevelBadge />
-            </div>
-          </div>
-        )}
-        {collapsed && (
-          <div className="flex justify-center">
-            <LevelBadge />
-          </div>
+            ) : (
+              <div className="flex justify-center px-2">
+                {/* Nur der Kreis im collapsed State */}
+                <div className="relative h-6 w-6">
+                  <div className="absolute inset-0 rounded-full bg-secondary/20" />
+                  <div 
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: `conic-gradient(from 0deg, hsl(var(--primary)) ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%, transparent ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%)`
+                    }}
+                  />
+                  <div className="absolute inset-1 rounded-full bg-background" />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </SidebarHeader>
 
