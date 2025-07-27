@@ -464,7 +464,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   )}
                 >
                   {message.role === "assistant" && (
-                    <div className="flex items-start gap-3 w-full max-w-[85%]">
+                    <div className="flex items-start gap-2 w-full max-w-[80%]">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                         <Dumbbell className="h-4 w-4 text-primary" />
                       </div>
@@ -505,43 +505,51 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                             <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
                         </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {message.timestamp.toLocaleTimeString('de-DE', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     </div>
                   )}
                   
                   {message.role === "user" && (
-                    <div
-                      className={cn(
-                        "max-w-[85%] rounded-lg px-3 py-2",
-                        "bg-primary text-primary-foreground"
-                      )}
-                    >
-                      {message.mediaUrls && message.mediaUrls.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          {message.mediaUrls.map((url, index) => (
-                            <div key={index} className="relative">
-                              {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                <video 
-                                  controls 
-                                  className="w-full h-16 object-cover rounded"
-                                >
-                                  <source src={url} type="video/mp4" />
-                                </video>
-                              ) : (
-                                <img
-                                  src={url}
-                                  alt={`Upload ${index + 1}`}
-                                  className="w-full h-16 object-cover rounded"
-                                />
-                              )}
-                            </div>
-                          ))}
+                    <div className="flex flex-col items-end max-w-[80%]">
+                      <div
+                        className={cn(
+                          "rounded-lg px-3 py-2",
+                          "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {message.mediaUrls && message.mediaUrls.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            {message.mediaUrls.map((url, index) => (
+                              <div key={index} className="relative">
+                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                  <video 
+                                    controls 
+                                    className="w-full h-16 object-cover rounded"
+                                  >
+                                    <source src={url} type="video/mp4" />
+                                  </video>
+                                ) : (
+                                  <img
+                                    src={url}
+                                    alt={`Upload ${index + 1}`}
+                                    className="w-full h-16 object-cover rounded"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
                         </div>
-                      )}
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
-                      <div className="text-xs opacity-70 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {message.timestamp.toLocaleTimeString('de-DE', {
                           hour: '2-digit',
                           minute: '2-digit'
@@ -656,7 +664,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Frage Sascha etwas über Training..."
-              className="min-h-[120px] max-h-[300px] resize-y"
+              className="min-h-[80px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
