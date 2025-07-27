@@ -21,16 +21,18 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { BugReportDialog } from "./BugReportDialog";
+import { LevelBadge } from "./LevelBadge";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "header.main" },
-  { title: "Coach", url: "/coach", icon: MessageCircle, key: "coach" },
-  { title: "Training+", url: "/training", icon: Dumbbell },
+  { title: "Coaching", url: "/coach", icon: MessageCircle, key: "coach" },
+  { title: "Workout", url: "/training", icon: Dumbbell },
   { title: "Analyse", url: "/history", icon: BarChart3, key: "insights" },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
@@ -75,6 +77,21 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
+      {/* Header with Level Badge */}
+      <SidebarHeader className="border-b border-border/40 pb-3">
+        {!collapsed && (
+          <div className="flex items-center justify-between px-2">
+            <span className="text-sm font-medium text-muted-foreground">Level</span>
+            <LevelBadge />
+          </div>
+        )}
+        {collapsed && (
+          <div className="flex justify-center">
+            <LevelBadge />
+          </div>
+        )}
+      </SidebarHeader>
+
       <SidebarContent className="gap-6">
         {/* Main Navigation */}
         <SidebarGroup>
