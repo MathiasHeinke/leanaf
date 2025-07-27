@@ -152,13 +152,13 @@ export const DailyProgress = ({
   return (
     <div className="space-y-6">
       {/* Integrated Nutrient Card - Calories + Macros */}
-      <div className="p-6 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <Target className="h-5 w-5 text-primary" />
+      <div className="p-4 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-primary/10 rounded-lg">
+              <Target className="h-4 w-4 text-primary" />
             </div>
-            <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
+            <span className="font-semibold text-base">{t('app.dailyProgress')}</span>
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
@@ -180,15 +180,15 @@ export const DailyProgress = ({
         </div>
 
         {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-6 p-3 bg-white/60 dark:bg-gray-800/40 rounded-2xl border border-gray-200/40 dark:border-gray-700/40">
+        <div className="flex items-center justify-between mb-4 p-2 bg-white/60 dark:bg-gray-800/40 rounded-xl border border-gray-200/40 dark:border-gray-700/40">
           <Button variant="ghost" size="sm" onClick={goToPreviousDay}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
           <div className="text-center">
-            <div className="font-semibold text-base">{formatDate(currentDate)}</div>
+            <div className="font-semibold text-sm">{formatDate(currentDate)}</div>
             {isToday && (
-              <div className="text-sm text-primary font-medium">{t('date.today')}</div>
+              <div className="text-xs text-primary font-medium">{t('date.today')}</div>
             )}
           </div>
           
@@ -198,24 +198,24 @@ export const DailyProgress = ({
         </div>
         
         {/* Calories Section - More Compact */}
-        <div className="text-center space-y-3 mb-6">
-          <div className="space-y-2">
-            <div className="text-3xl font-bold text-primary">
+        <div className="text-center space-y-2 mb-4">
+          <div className="space-y-1">
+            <div className="text-2xl font-bold text-primary">
               {Math.round(dailyTotals.calories)}
-              <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.calories)}</span>
+              <span className="text-base text-muted-foreground font-normal">/{Math.round(dailyGoal.calories)}</span>
             </div>
-            <div className="text-sm text-muted-foreground font-medium">{t('progress.caloriesConsumed')}</div>
+            <div className="text-xs text-muted-foreground font-medium">{t('progress.caloriesConsumed')}</div>
           </div>
           
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Progress 
               value={Math.min(calorieProgress, 100)} 
-              className={`h-3 rounded-full ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              className={`h-2 rounded-full ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
             />
             
-            <div className="flex items-center justify-center gap-2 text-sm font-medium">
-              <div className="p-1.5 bg-primary/10 rounded-lg">
-                <Flame className="h-4 w-4 text-primary" />
+            <div className="flex items-center justify-center gap-1.5 text-xs font-medium">
+              <div className="p-1 bg-primary/10 rounded">
+                <Flame className="h-3 w-3 text-primary" />
               </div>
               <span className={goalStatus.color}>
                 {userGoal === 'lose' && remainingCalories > 0 ? 
@@ -230,14 +230,14 @@ export const DailyProgress = ({
                 }
               </span>
               {goalStatus.status === 'success' ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
+                <TrendingUp className="h-3 w-3 text-green-500" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-500" />
+                <TrendingDown className="h-3 w-3 text-red-500" />
               )}
             </div>
 
             {/* Personalized motivational quote */}
-            <div className="mt-3 px-4">
+            <div className="mt-2 px-2">
               <RandomQuote 
                 userGender={userProfile?.gender}
                 fallbackText=""
@@ -247,58 +247,58 @@ export const DailyProgress = ({
         </div>
 
         {/* Subtle Separator */}
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-gray-700/60 to-transparent mb-6"></div>
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-gray-700/60 to-transparent mb-4"></div>
 
-        {/* Macros Section - Subtle and Clean */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Macros Section - Compact Grid */}
+        <div className="grid grid-cols-3 gap-2">
           {/* Protein */}
-          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
+          <div className="p-2 rounded-lg bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300">
               {t('macros.protein')}
             </div>
-            <div className="mb-3">
-              <div className="text-2xl font-bold text-slate-600 dark:text-slate-300">
-                {Math.round(dailyTotals.protein * 10) / 10}{t('ui.gram')}
-                <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.protein)}{t('ui.gram')}</span>
+            <div className="mb-2">
+              <div className="text-sm font-bold text-slate-600 dark:text-slate-300 break-words">
+                <div>{Math.round(dailyTotals.protein * 10) / 10}g</div>
+                <div className="text-xs text-muted-foreground font-normal">/{Math.round(dailyGoal.protein)}g</div>
               </div>
             </div>
             <Progress 
               value={Math.min(proteinProgress, 100)} 
-              className="h-2 [&>div:last-child]:bg-slate-500" 
+              className="h-1.5 [&>div:last-child]:bg-slate-500" 
             />
           </div>
 
           {/* Carbs */}
-          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
+          <div className="p-2 rounded-lg bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-semibold mb-1 text-amber-600 dark:text-amber-400">
               {t('macros.carbs')}
             </div>
-            <div className="mb-3">
-              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {Math.round(dailyTotals.carbs * 10) / 10}{t('ui.gram')}
-                <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.carbs)}{t('ui.gram')}</span>
+            <div className="mb-2">
+              <div className="text-sm font-bold text-amber-600 dark:text-amber-400 break-words">
+                <div>{Math.round(dailyTotals.carbs * 10) / 10}g</div>
+                <div className="text-xs text-muted-foreground font-normal">/{Math.round(dailyGoal.carbs)}g</div>
               </div>
             </div>
             <Progress 
               value={Math.min(carbsProgress, 100)} 
-              className="h-2 [&>div:last-child]:bg-amber-500" 
+              className="h-1.5 [&>div:last-child]:bg-amber-500" 
             />
           </div>
 
           {/* Fats */}
-          <div className="p-4 rounded-xl bg-card border hover:border-border/60 transition-colors">
-            <div className="text-xs font-medium mb-2 uppercase tracking-wider text-muted-foreground">
+          <div className="p-2 rounded-lg bg-card border hover:border-border/60 transition-colors">
+            <div className="text-xs font-semibold mb-1 text-emerald-600 dark:text-emerald-400">
               {t('macros.fats')}
             </div>
-            <div className="mb-3">
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {Math.round(dailyTotals.fats * 10) / 10}{t('ui.gram')}
-                <span className="text-lg text-muted-foreground font-normal">/{Math.round(dailyGoal.fats)}{t('ui.gram')}</span>
+            <div className="mb-2">
+              <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 break-words">
+                <div>{Math.round(dailyTotals.fats * 10) / 10}g</div>
+                <div className="text-xs text-muted-foreground font-normal">/{Math.round(dailyGoal.fats)}g</div>
               </div>
             </div>
             <Progress 
               value={Math.min(fatsProgress, 100)} 
-              className="h-2 [&>div:last-child]:bg-emerald-500" 
+              className="h-1.5 [&>div:last-child]:bg-emerald-500" 
             />
           </div>
         </div>
