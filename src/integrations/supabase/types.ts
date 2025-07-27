@@ -469,6 +469,54 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_pipeline_status: {
+        Row: {
+          avg_embedding_quality: number | null
+          coach_id: string
+          created_at: string
+          current_topic_focus: string | null
+          id: string
+          is_active: boolean
+          knowledge_completion_rate: number | null
+          last_pipeline_run: string | null
+          metadata: Json | null
+          next_scheduled_run: string | null
+          pipeline_health_score: number | null
+          total_knowledge_entries: number | null
+          updated_at: string
+        }
+        Insert: {
+          avg_embedding_quality?: number | null
+          coach_id: string
+          created_at?: string
+          current_topic_focus?: string | null
+          id?: string
+          is_active?: boolean
+          knowledge_completion_rate?: number | null
+          last_pipeline_run?: string | null
+          metadata?: Json | null
+          next_scheduled_run?: string | null
+          pipeline_health_score?: number | null
+          total_knowledge_entries?: number | null
+          updated_at?: string
+        }
+        Update: {
+          avg_embedding_quality?: number | null
+          coach_id?: string
+          created_at?: string
+          current_topic_focus?: string | null
+          id?: string
+          is_active?: boolean
+          knowledge_completion_rate?: number | null
+          last_pipeline_run?: string | null
+          metadata?: Json | null
+          next_scheduled_run?: string | null
+          pipeline_health_score?: number | null
+          total_knowledge_entries?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_ratings: {
         Row: {
           coach_id: string
@@ -564,6 +612,54 @@ export type Database = {
           methodology?: string | null
           name?: string
           specialization_description?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coach_topic_configurations: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          knowledge_depth: string | null
+          last_updated_at: string | null
+          priority_level: number
+          search_keywords: Json | null
+          success_rate: number | null
+          topic_category: string
+          topic_name: string
+          update_frequency_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          knowledge_depth?: string | null
+          last_updated_at?: string | null
+          priority_level?: number
+          search_keywords?: Json | null
+          success_rate?: number | null
+          topic_category: string
+          topic_name: string
+          update_frequency_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          knowledge_depth?: string | null
+          last_updated_at?: string | null
+          priority_level?: number
+          search_keywords?: Json | null
+          success_rate?: number | null
+          topic_category?: string
+          topic_name?: string
+          update_frequency_hours?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -1245,45 +1341,60 @@ export type Database = {
       }
       pipeline_automation_config: {
         Row: {
+          active_topics: Json | null
+          coach_id: string | null
           config_data: Json | null
           created_at: string
           failure_count: number
           id: string
           interval_minutes: number
           is_enabled: boolean
+          knowledge_areas: Json | null
           last_run_at: string | null
           max_entries_per_run: number
           max_failures: number
           next_run_at: string | null
           pipeline_name: string
+          priority_weights: Json | null
+          topic_rotation_strategy: string | null
           updated_at: string
         }
         Insert: {
+          active_topics?: Json | null
+          coach_id?: string | null
           config_data?: Json | null
           created_at?: string
           failure_count?: number
           id?: string
           interval_minutes?: number
           is_enabled?: boolean
+          knowledge_areas?: Json | null
           last_run_at?: string | null
           max_entries_per_run?: number
           max_failures?: number
           next_run_at?: string | null
           pipeline_name: string
+          priority_weights?: Json | null
+          topic_rotation_strategy?: string | null
           updated_at?: string
         }
         Update: {
+          active_topics?: Json | null
+          coach_id?: string | null
           config_data?: Json | null
           created_at?: string
           failure_count?: number
           id?: string
           interval_minutes?: number
           is_enabled?: boolean
+          knowledge_areas?: Json | null
           last_run_at?: string | null
           max_entries_per_run?: number
           max_failures?: number
           next_run_at?: string | null
           pipeline_name?: string
+          priority_weights?: Json | null
+          topic_rotation_strategy?: string | null
           updated_at?: string
         }
         Relationships: []
