@@ -44,7 +44,7 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
   return (
     <div className="space-y-6">
       {/* Large cards row - Sessions & Volumen */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+      <div className="grid gap-3 md:gap-4 grid-cols-2">
         {/* Workout Sessions */}
         <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -82,7 +82,7 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
       </div>
 
       {/* Small cards row - Intensität, Gesamtsätze, Übungen */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-2 md:gap-4 grid-cols-3">
         {/* Intensität */}
         <Card className="h-24">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
