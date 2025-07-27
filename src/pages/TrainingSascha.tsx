@@ -57,7 +57,7 @@ const TrainingSascha = () => {
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full overflow-hidden">
                   <img 
-                    src="/coach-images/markus-ruehl.jpg" 
+                    src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
                     alt="Sascha" 
                     className="w-full h-full object-cover"
                   />

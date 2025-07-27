@@ -497,7 +497,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                           <img 
-                            src="/coach-images/markus-ruehl.jpg" 
+                            src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
                             alt="Sascha" 
                             className="w-full h-full object-cover"
                           />
@@ -577,7 +577,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                       <img 
-                        src="/coach-images/markus-ruehl.jpg" 
+                        src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
                         alt="Sascha" 
                         className="w-full h-full object-cover"
                       />
