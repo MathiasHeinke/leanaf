@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { RAGEmbeddingManager } from "@/utils/ragEmbeddingManager";
 import { Database, Activity, Zap, BarChart3, RefreshCw, CheckCircle } from "lucide-react";
+import { PerplexityKnowledgePipeline } from './PerplexityKnowledgePipeline';
 
 interface EmbeddingStatus {
   total_knowledge_entries: number;
@@ -142,13 +143,16 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="w-5 h-5" />
-            RAG Embedding Manager - Phase 1
+            RAG Embedding Manager - Phase 1.5
           </CardTitle>
           <CardDescription>
             Verwalte das Vector-Embedding-System für Saschas Enhanced RAG
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Perplexity Knowledge Pipeline */}
+      <PerplexityKnowledgePipeline />
 
       {/* Embedding Status */}
       <Card>
