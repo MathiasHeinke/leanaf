@@ -191,43 +191,60 @@ export const TrainingDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-primary/20 hover:border-primary/40 transition-colors cursor-pointer group" 
-              onClick={() => setShowQuickAdd(true)}>
-          <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-primary/20 transition-colors">
-              <Plus className="h-6 w-6 text-primary" />
-            </div>
-            <h3 className="font-semibold mb-1">Training hinzufügen</h3>
-            <p className="text-sm text-muted-foreground">
-              Neue Übung schnell erfassen
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-secondary/20 hover:border-secondary/40 transition-colors cursor-pointer group"
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Enhanced Coach Sascha Card */}
+        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg"
               onClick={() => navigate('/training/sascha')}>
-          <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-secondary/20 transition-colors">
-              <MessageCircle className="h-6 w-6 text-secondary" />
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
+                <img 
+                  src="https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=80&h=80&fit=crop&crop=face" 
+                  alt="Coach Sascha"
+                  className="w-14 h-14 rounded-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-lg">Coach Sascha</h3>
+                  <Badge variant="secondary" className="text-xs">Personal Trainer</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Dein KI-Trainingsexperte für optimale Resultate
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="outline" className="text-xs">Formcheck</Badge>
+                  <Badge variant="outline" className="text-xs">Übungsanalyse</Badge>
+                  <Badge variant="outline" className="text-xs">Trainingstipps</Badge>
+                </div>
+              </div>
             </div>
-            <h3 className="font-semibold mb-1">Coach Sascha</h3>
-            <p className="text-sm text-muted-foreground">
-              Personalisierte Trainingstipps
-            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-accent/20 hover:border-accent/40 transition-colors cursor-pointer group"
+        {/* Training History Card */}
+        <Card className="border-accent/20 hover:border-accent/40 transition-all cursor-pointer group hover:shadow-lg"
               onClick={() => setShowHistory(true)}>
-          <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-accent/20 transition-colors">
-              <BarChart3 className="h-6 w-6 text-accent" />
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
+                <BarChart3 className="h-8 w-8 text-accent" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-1">Trainingshistorie</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Analysiere deine Fortschritte und Entwicklung
+                </p>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-muted-foreground">
+                    <strong className="text-foreground">{sessions.length}</strong> Sessions
+                  </span>
+                  <span className="text-muted-foreground">
+                    <strong className="text-foreground">{weeklyStats.totalSets}</strong> Sätze diese Woche
+                  </span>
+                </div>
+              </div>
             </div>
-            <h3 className="font-semibold mb-1">Trainingshistorie</h3>
-            <p className="text-sm text-muted-foreground">
-              Verlauf und Fortschritte
-            </p>
           </CardContent>
         </Card>
       </div>
