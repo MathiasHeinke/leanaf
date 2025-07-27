@@ -433,10 +433,20 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         {/* Messages */}
         <div className="flex-1 flex flex-col">
           <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
+            {/* Coach Avatar and Welcome */}
+            {messages.length === 0 && (
+              <div className="flex items-start gap-3 mb-6">
+                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Dumbbell className="h-4 w-4 text-primary" />
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  01:07
+                </div>
+              </div>
+            )}
+
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-6">
-                <Dumbbell className="h-8 w-8 mx-auto mb-3 text-primary/30" />
-                <p className="text-base font-medium mb-2">Willkommen beim Training!</p>
                 <p className="text-sm">
                   Erzähle mir von deinem Training oder frage nach Übungen.
                 </p>
@@ -535,37 +545,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             )}
           </ScrollArea>
 
-          {/* Quick Actions */}
-          {messages.length === 0 && (
-            <div className="p-3 border-t border-border/20">
-              <Collapsible 
-                open={showQuickActions} 
-                onOpenChange={setShowQuickActions}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between text-sm">
-                    <span>Schnelle Aktionen</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2">
-                  <div className="grid grid-cols-1 gap-2">
-                    {quickActions.map((action, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setInputText(action)}
-                        className="text-left justify-start h-auto py-2 whitespace-normal text-xs"
-                      >
-                        {action}
-                      </Button>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          )}
         </div>
 
         {/* Chat History Sidebar */}
@@ -590,12 +569,44 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </div>
       )}
 
+      {/* Quick Actions / Suggestions */}
+      {showQuickActions && messages.length === 0 && (
+        <div className="border-t border-border/20">
+          <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none">
+                <span className="text-sm font-medium">Vorschläge ({quickActions.length})</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-3 pb-3">
+              <div className="space-y-2">
+                {quickActions.map((action, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start text-left h-auto py-2 px-3"
+                    onClick={() => {
+                      setInputText(action);
+                      setShowQuickActions(false);
+                    }}
+                  >
+                    <span className="text-sm">{action}</span>
+                  </Button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+      )}
+
       {/* Fixed Input Area */}
       <div className="flex-shrink-0 p-3 border-t border-border/20 bg-card/95 backdrop-blur-sm">
         <div className="space-y-2">
           <div className="flex items-end gap-2">
             <Textarea
-              placeholder="Frage Coach Sascha..."
+              placeholder="Frage Sascha etwas über intelligente Planung..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => {
