@@ -84,12 +84,12 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
       {/* Small cards row - Intensität, Gesamtsätze, Übungen */}
       <div className="grid gap-2 md:gap-4 grid-cols-3">
         {/* Intensität */}
-        <Card className="h-20 md:h-24">
+        <Card className="h-22 md:h-26">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-3 pt-3">
             <CardTitle className="text-xs md:text-sm font-medium">Intensität</CardTitle>
             <Activity className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-3 px-4">
+          <CardContent className="pb-5 px-4">
             <div className={`text-2xl font-bold ${getPerformanceColor(stats.averageIntensity, 'intensity')}`}>
               {stats.averageIntensity || 0}
             </div>
@@ -98,12 +98,12 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </Card>
 
         {/* Gesamtsätze */}
-        <Card className="h-20 md:h-24">
+        <Card className="h-22 md:h-26">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-3 pt-3">
             <CardTitle className="text-xs md:text-sm font-medium">Gesamtsätze</CardTitle>
             <Target className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-3 px-4">
+          <CardContent className="pb-5 px-4">
             <div className="text-2xl font-bold">{stats.totalSets}</div>
             <p className="text-xs text-muted-foreground">
               {stats.totalSets > 0 ? `Ø ${Math.round(stats.totalSets / Math.max(stats.sessionsThisWeek, 1))}` : 'Keine'}
@@ -112,12 +112,12 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </Card>
 
         {/* Übungen */}
-        <Card className="h-20 md:h-24">
+        <Card className="h-22 md:h-26">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-3 pt-3">
             <CardTitle className="text-xs md:text-sm font-medium">Übungen</CardTitle>
             <TrendingUp className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-3 px-4">
+          <CardContent className="pb-5 px-4">
             <div className="text-2xl font-bold">{stats.exercisesCount}</div>
             <p className="text-xs text-muted-foreground">Verschiedene</p>
           </CardContent>
