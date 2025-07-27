@@ -1040,6 +1040,47 @@ export type Database = {
           },
         ]
       }
+      knowledge_base_embeddings: {
+        Row: {
+          chunk_index: number
+          content_chunk: string
+          created_at: string
+          embedding: string | null
+          id: string
+          knowledge_id: string
+          metadata: Json | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_index?: number
+          content_chunk: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          knowledge_id: string
+          metadata?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_index?: number
+          content_chunk?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          knowledge_id?: string
+          metadata?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_base_embeddings_knowledge_id_fkey"
+            columns: ["knowledge_id"]
+            isOneToOne: false
+            referencedRelation: "coach_knowledge_base"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_images: {
         Row: {
           created_at: string
@@ -1289,6 +1330,48 @@ export type Database = {
         }
         Relationships: []
       }
+      rag_performance_metrics: {
+        Row: {
+          cache_hit: boolean | null
+          coach_id: string
+          created_at: string
+          embedding_tokens: number | null
+          id: string
+          query_text: string
+          relevance_score: number | null
+          response_time_ms: number
+          search_method: string
+          user_id: string | null
+          user_rating: number | null
+        }
+        Insert: {
+          cache_hit?: boolean | null
+          coach_id: string
+          created_at?: string
+          embedding_tokens?: number | null
+          id?: string
+          query_text: string
+          relevance_score?: number | null
+          response_time_ms: number
+          search_method: string
+          user_id?: string | null
+          user_rating?: number | null
+        }
+        Update: {
+          cache_hit?: boolean | null
+          coach_id?: string
+          created_at?: string
+          embedding_tokens?: number | null
+          id?: string
+          query_text?: string
+          relevance_score?: number | null
+          response_time_ms?: number
+          search_method?: string
+          user_id?: string | null
+          user_rating?: number | null
+        }
+        Relationships: []
+      }
       saved_formchecks: {
         Row: {
           coach_analysis: string
@@ -1481,6 +1564,36 @@ export type Database = {
           severity?: string
           user_agent?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      semantic_query_cache: {
+        Row: {
+          cached_results: Json
+          created_at: string
+          hit_count: number
+          id: string
+          last_used_at: string
+          query_embedding: string | null
+          query_text: string
+        }
+        Insert: {
+          cached_results?: Json
+          created_at?: string
+          hit_count?: number
+          id?: string
+          last_used_at?: string
+          query_embedding?: string | null
+          query_text: string
+        }
+        Update: {
+          cached_results?: Json
+          created_at?: string
+          hit_count?: number
+          id?: string
+          last_used_at?: string
+          query_embedding?: string | null
+          query_text?: string
         }
         Relationships: []
       }
@@ -1910,6 +2023,10 @@ export type Database = {
         Args: { p_identifier: string; p_time_window_minutes?: number }
         Returns: Json
       }
+      get_or_cache_query_embedding: {
+        Args: { query_text: string; query_embedding: string }
+        Returns: string
+      }
       halfvec_avg: {
         Args: { "": number[] }
         Returns: unknown
@@ -2022,6 +2139,43 @@ export type Database = {
           carbs: number
           fats: number
           rank: number
+        }[]
+      }
+      search_knowledge_hybrid: {
+        Args: {
+          query_text: string
+          query_embedding: string
+          coach_filter?: string
+          semantic_weight?: number
+          text_weight?: number
+          match_count?: number
+        }
+        Returns: {
+          knowledge_id: string
+          content_chunk: string
+          combined_score: number
+          semantic_score: number
+          text_score: number
+          title: string
+          expertise_area: string
+          coach_id: string
+        }[]
+      }
+      search_knowledge_semantic: {
+        Args: {
+          query_embedding: string
+          coach_filter?: string
+          similarity_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          knowledge_id: string
+          content_chunk: string
+          similarity: number
+          title: string
+          expertise_area: string
+          coach_id: string
+          chunk_index: number
         }[]
       }
       search_similar_foods: {
