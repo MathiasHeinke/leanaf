@@ -169,7 +169,7 @@ export const TrainingDashboard: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <Dumbbell className="h-8 w-8 text-primary" />
-            Training+
+            Workout
           </h1>
           <p className="text-muted-foreground mt-1">
             Intelligentes Krafttraining mit KI-Coach
@@ -180,14 +180,15 @@ export const TrainingDashboard: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Stats Overview */}
-      <TrainingStats stats={weeklyStats} />
-
-      {/* Today's Status */}
-      <TodaysTrainingStatus 
-        todaysSessions={getTodaysSessions()}
-        onStartTraining={() => setShowQuickAdd(true)}
-      />
+      {/* Stats Overview and Today's Status */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <TrainingStats stats={weeklyStats} />
+        
+        <TodaysTrainingStatus 
+          todaysSessions={getTodaysSessions()}
+          onStartTraining={() => setShowQuickAdd(true)}
+        />
+      </div>
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
