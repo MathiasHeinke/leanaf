@@ -10,6 +10,7 @@ import { FormcheckSummaryCard } from '@/components/FormcheckSummaryCard';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { 
@@ -18,7 +19,9 @@ import {
   Dumbbell, 
   Paperclip,
   ChevronDown,
-  MessageSquare
+  MessageSquare,
+  X,
+  Loader2
 } from 'lucide-react';
 
 interface WorkoutMessage {
@@ -55,8 +58,16 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [analysisType, setAnalysisType] = useState<'exercise_form' | 'meal_analysis' | 'progress_photo' | 'general'>('exercise_form');
+  const [isThinking, setIsThinking] = useState(false);
+  
+  // Voice recording hook
+  const {
+    isRecording,
+    isProcessing,
+    startRecording,
+    stopRecording
+  } = useVoiceRecording();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const currentDate = new Date().toISOString().split('T')[0];
@@ -332,6 +343,21 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     return [...new Set(tips)].slice(0, 4); // Remove duplicates and limit to 4 tips
   };
 
+  const getAnalysisPrompt = (analysisType: string) => {
+    switch (analysisType) {
+      case 'exercise_form':
+        return 'Analysiere meine Trainingstechnik und Übungsausführung in diesen Bildern/Videos. Gib mir detailliertes Feedback zur Form und Verbesserungsvorschläge.';
+      case 'meal_analysis':
+        return 'Analysiere diese Mahlzeit und gib mir Feedback zur Nährwertverteilung und wie sie zu meinen Trainingszielen passt.';
+      case 'progress_photo':
+        return 'Analysiere meine Fortschrittsfotos und gib mir Feedback zu den sichtbaren Veränderungen und Tipps für weitere Verbesserungen.';
+      case 'general':
+        return 'Analysiere diese Medien und gib mir allgemeines Feedback dazu.';
+      default:
+        return 'Analysiere diese Trainingsbilder/videos und gib mir Feedback zur Technik und Ausführung.';
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedMedia.length === 0) return;
     if (!user) return;
@@ -432,8 +458,20 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     setIsFormcheckMode(false);
   };
 
-  const handleVoiceToggle = () => {
-    toast.success('Sprachfunktion in Entwicklung');
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      const transcribedText = await stopRecording();
+      if (transcribedText) {
+        setInputText(prev => prev ? prev + ' ' + transcribedText : transcribedText);
+        toast.success('Spracheingabe hinzugefügt');
+      }
+    } else {
+      try {
+        await startRecording();
+      } catch (error) {
+        toast.error('Fehler bei der Sprachaufnahme');
+      }
+    }
   };
 
   const handleSendMessage = () => {
@@ -657,12 +695,80 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         {/* Media Upload */}
         <Collapsible open={showUpload} onOpenChange={setShowUpload}>
           <CollapsibleContent>
-            <div className="p-3">
+            <div className="p-3 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Medien hochladen</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowUpload(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                <Button
+                  variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('exercise_form')}
+                  className="text-xs"
+                >
+                  🏋️ Übung
+                </Button>
+                <Button
+                  variant={analysisType === 'meal_analysis' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('meal_analysis')}
+                  className="text-xs"
+                >
+                  🍽️ Essen
+                </Button>
+                <Button
+                  variant={analysisType === 'progress_photo' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('progress_photo')}
+                  className="text-xs"
+                >
+                  📸 Fortschritt
+                </Button>
+                <Button
+                  variant={analysisType === 'general' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('general')}
+                  className="text-xs"
+                >
+                  💬 Allgemein
+                </Button>
+              </div>
+              
               <MediaUploadZone
                 onMediaUploaded={handleMediaUploaded}
                 maxFiles={3}
                 accept={['image/*', 'video/*']}
+                className="max-h-64"
               />
+              
+              {uploadedMedia.length > 0 && (
+                <Button
+                  onClick={() => analyzeWorkoutMedia(uploadedMedia, getAnalysisPrompt(analysisType))}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analysiere...
+                    </>
+                  ) : (
+                    <>
+                      Medien analysieren ({analysisType === 'exercise_form' ? 'Übung' : 
+                                        analysisType === 'meal_analysis' ? 'Essen' : 
+                                        analysisType === 'progress_photo' ? 'Fortschritt' : 'Allgemein'})
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -696,12 +802,19 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               </Button>
               
               <Button
-                variant="outline"
+                variant={isRecording ? "destructive" : "outline"}
                 size="icon"
                 onClick={handleVoiceToggle}
+                disabled={isLoading || isProcessing}
                 className="h-[38px] w-[38px] flex-shrink-0"
               >
-                <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
+                {isRecording ? (
+                  <div className="h-4 w-4 bg-white rounded-full animate-pulse" />
+                ) : isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
               </Button>
               
               <Button
@@ -714,6 +827,20 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               </Button>
             </div>
           </div>
+          
+          {/* Voice recording indicator */}
+          {(isRecording || isProcessing) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg mt-2">
+              <div className="flex gap-1">
+                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
+                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
+              </div>
+              <span>
+                {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
