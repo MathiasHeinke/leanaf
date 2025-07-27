@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 import { useAuth } from "@/hooks/useAuth";
+import { LeftoverImageManager } from './LeftoverImageManager';
 
 interface MealData {
   id: string;
@@ -423,86 +424,25 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                 
                 {leftoverMode && (
                   <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground">
-                      Lade ein Foto der Reste hoch, um die tatsächlich verzehrte Menge zu berechnen.
-                    </p>
+                    <LeftoverImageManager
+                      mealId={editingMeal.id}
+                      leftoverImages={leftoverImages}
+                      onLeftoverImagesUpdate={setLeftoverImages}
+                      onAnalyzeLeftovers={analyzeLeftovers}
+                      isAnalyzing={isAnalyzingLeftovers}
+                    />
                     
-                    {/* Leftover Images */}
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-2">
-                        {leftoverImages.map((url, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={url}
-                              alt={`Reste ${index + 1}`}
-                              className="w-full h-20 object-cover rounded-lg"
-                            />
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => removeLeftoverImage(index)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        id="leftover-images"
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          if (files.length > 0) {
-                            handleLeftoverImageUpload(files);
-                          }
-                        }}
-                      />
-                      
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => document.getElementById('leftover-images')?.click()}
-                        disabled={isAnalyzingLeftovers}
-                        className="w-full"
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {isAnalyzingLeftovers ? 'Lade hoch...' : 'Reste-Foto hinzufügen'}
-                      </Button>
-                    </div>
-
-                    {/* Analysis Button */}
-                    {leftoverImages.length > 0 && (
-                      <div className="space-y-3">
-                        <Button
-                          type="button"
-                          onClick={analyzeLeftovers}
-                          disabled={isAnalyzingLeftovers}
-                          className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
-                        >
-                          <Camera className="mr-2 h-4 w-4" />
-                          {isAnalyzingLeftovers ? 'Analysiere...' : 'Reste analysieren'}
-                        </Button>
-                        
-                        {editingMeal.consumption_percentage && (
-                          <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
-                            <div className="text-sm font-medium text-center">
-                              Verzehrt: {editingMeal.consumption_percentage}%
-                            </div>
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-                              <div
-                                className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${editingMeal.consumption_percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        )}
+                    {editingMeal.consumption_percentage && editingMeal.consumption_percentage < 100 && (
+                      <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3">
+                        <div className="text-sm font-medium text-center">
+                          Verzehrt: {editingMeal.consumption_percentage}%
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+                          <div
+                            className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${editingMeal.consumption_percentage}%` }}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
