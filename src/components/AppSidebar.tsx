@@ -26,12 +26,13 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
+import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { BugReportDialog } from "./BugReportDialog";
 import { LevelBadge } from "./LevelBadge";
 
 const navigationItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, key: "header.main" },
-  { title: "Coaching", url: "/coach", icon: MessageCircle, key: "coach" },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
   { title: "Analyse", url: "/history", icon: BarChart3, key: "insights" },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
@@ -40,14 +41,15 @@ const navigationItems = [
 const settingsItems = [
   { title: "Einstellungen", url: "/account", icon: Settings, key: "header.account" },
   { title: "Subscription", url: "/subscription", icon: CreditCard, key: "header.subscription" },
-  { title: "Erfolge", url: "/achievements", icon: Trophy, key: "achievements" },
-  { title: "Wissenschaft", url: "/science", icon: Microscope, key: "science" },
+  { title: "Erfolge", url: "/achievements", icon: Trophy },
+  { title: "Wissenschaft", url: "/science", icon: Microscope },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const { signOut } = useAuth();
   const { t } = useTranslation();
+  const { userPoints } = usePointsSystem();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -80,9 +82,18 @@ export function AppSidebar() {
       {/* Header with Level Badge */}
       <SidebarHeader className="border-b border-border/40 pb-3">
         {!collapsed && (
-          <div className="flex items-center justify-between px-2">
-            <span className="text-sm font-medium text-muted-foreground">Level</span>
-            <LevelBadge />
+          <div className="flex flex-col space-y-2 px-2">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-muted-foreground border-b border-border/30 pb-1">Level</span>
+                {userPoints && (
+                  <span className="text-xs text-muted-foreground/70 mt-1">
+                    {userPoints.total_points.toLocaleString()} Punkte
+                  </span>
+                )}
+              </div>
+              <LevelBadge />
+            </div>
           </div>
         )}
         {collapsed && (
