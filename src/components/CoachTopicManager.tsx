@@ -276,13 +276,22 @@ export const CoachTopicManager: React.FC = () => {
   };
 
   const getTopicsByCategory = () => {
+    console.log('Getting topics by category. coachTopics:', coachTopics);
     const categories: Record<string, CoachTopicConfig[]> = {};
+    
+    if (!Array.isArray(coachTopics) || coachTopics.length === 0) {
+      console.log('No topics available for categorization');
+      return {};
+    }
+    
     coachTopics.forEach(topic => {
       if (!categories[topic.topic_category]) {
         categories[topic.topic_category] = [];
       }
       categories[topic.topic_category].push(topic);
     });
+    
+    console.log('Categorized topics:', categories);
     return categories;
   };
 

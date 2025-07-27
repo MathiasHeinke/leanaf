@@ -132,7 +132,7 @@ serve(async (req) => {
           results_count: searchResults.length,
           response_time_ms: responseTime,
           relevance_score,
-          embedding_tokens,
+          embedding_tokens: embeddingTokens,
           context_length: rankedContext.reduce((sum, chunk) => sum + chunk.content.length, 0)
         }
       }),
