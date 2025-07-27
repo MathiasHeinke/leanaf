@@ -20,6 +20,9 @@ interface Meal {
   fats: number;
   created_at: string;
   images?: string[];
+  leftover_images?: string[];
+  consumption_percentage?: number;
+  leftover_analysis_metadata?: any;
   quality_score?: number;
   bonus_points?: number;
   ai_feedback?: string;
@@ -229,7 +232,10 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
             fats: editingMeal.fats,
             created_at: editingMeal.created_at,
             meal_type: editingMeal.meal_type,
-            images: editingMeal.images
+            images: editingMeal.images,
+            leftover_images: editingMeal.leftover_images,
+            consumption_percentage: editingMeal.consumption_percentage,
+            leftover_analysis_metadata: editingMeal.leftover_analysis_metadata
           }}
           open={!!editingMeal}
           onClose={() => setEditingMeal(null)}
