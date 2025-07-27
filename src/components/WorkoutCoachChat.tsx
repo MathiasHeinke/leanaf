@@ -62,9 +62,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
   const quickActions = [
     "Analysiere meine Trainingsform",
-    "Wie war meine Kraftentwicklung?", 
+    "Bewerte meine Ausführung",
     "Gib mir Trainingstipps",
-    "Was kann ich besser machen?"
+    "Wie kann ich mich verbessern?",
+    "Erstelle mir einen Trainingsplan",
+    "Welche Übungen für heute?"
   ];
 
   useEffect(() => {
@@ -613,13 +615,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </div>
       )}
 
-      {/* Quick Actions / Suggestions */}
-      {showQuickActions && messages.length === 1 && messages[0]?.metadata?.isWelcome && (
-        <div className="border-t border-border/20">
+      {/* Quick Actions / Suggestions - Always show for workout coaching */}
+      {showQuickActions && (
+        <div className="border-t border-border/20 bg-card/95 backdrop-blur-sm">
           <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none">
-                <span className="text-sm font-medium">Vorschläge ({quickActions.length})</span>
+              <Button variant="ghost" className="w-full justify-between p-3 h-auto rounded-none text-sm font-medium">
+                <span>Vorschläge ({quickActions.length})</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </CollapsibleTrigger>
@@ -630,13 +632,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                     key={index}
                     variant="outline"
                     size="sm"
-                    className="w-full justify-start text-left h-auto py-2 px-3"
+                    className="w-full justify-start text-left h-auto py-2 px-3 text-sm"
                     onClick={() => {
                       setInputText(action);
                       setShowQuickActions(false);
                     }}
                   >
-                    <span className="text-sm">{action}</span>
+                    {action}
                   </Button>
                 ))}
               </div>
@@ -645,71 +647,81 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </div>
       )}
 
-      {/* Fixed Input Area */}
+      {/* Fixed Input Area - Identical to CoachChat */}
       <div className="flex-shrink-0 p-3 border-t border-border/20 bg-card/95 backdrop-blur-sm">
-        <div className="space-y-2">
-          <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
             <Textarea
-              placeholder="Frage Sascha etwas über intelligente Planung..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              placeholder="Frage Sascha etwas über Training..."
+              className="min-h-[60px] max-h-[120px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
               }}
-              className="min-h-[40px] resize-none text-sm"
-              rows={1}
+              disabled={isLoading}
             />
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowUpload(!showUpload)}
-                className={cn(
-                  "p-2 h-10 w-10",
-                  showUpload && "bg-accent"
-                )}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleVoiceToggle}
-                className={cn(
-                  "p-2 h-10 w-10",
-                  (isRecording || isProcessing) && "bg-red-500 text-white"
-                )}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim() || isLoading}
-                size="sm"
-                className="p-2 h-10 w-10"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
           
-          {(isRecording || isProcessing) && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              <span>
-                {isRecording ? "Aufnahme läuft..." : "Verarbeite Sprache..."}
-              </span>
-            </div>
-          )}
+          <div className="flex flex-col gap-2">
+            {/* Upload Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowUpload(!showUpload)}
+              disabled={isLoading}
+              className="h-10 w-10 p-0"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            
+            {/* Voice Button */}
+            <Button
+              variant={isRecording ? "destructive" : "outline"}
+              size="sm"
+              onClick={handleVoiceToggle}
+              disabled={isLoading || isProcessing}
+              className="h-10 w-10 p-0"
+            >
+              {isRecording ? (
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              ) : isProcessing ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+            
+            {/* Send Button */}
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || isLoading}
+              className="h-10 w-10 p-0"
+            >
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
+        
+        {(isRecording || isProcessing) && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg mt-2">
+            <div className="flex gap-1">
+              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
+              <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
+              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
+            </div>
+            <span>
+              {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
