@@ -111,16 +111,9 @@ export function AppSidebar() {
           <>
             {!collapsed ? (
               <div className="flex items-start gap-3 px-2">
-                {/* Sich füllender Kreis links */}
-                <div className="relative h-6 w-6 flex-shrink-0">
-                  <div className="absolute inset-0 rounded-full bg-secondary/20" />
-                  <div 
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background: `conic-gradient(from 0deg, hsl(var(--primary)) ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%, transparent ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%)`
-                    }}
-                  />
-                  <div className="absolute inset-1 rounded-full bg-background" />
+                {/* LevelBadge als sich füllender Kreis links */}
+                <div className="flex-shrink-0">
+                  <LevelBadge />
                 </div>
                 
                 {/* Level Text und Progress rechts daneben */}
@@ -138,17 +131,8 @@ export function AppSidebar() {
               </div>
             ) : (
               <div className="flex justify-center px-2">
-                {/* Nur der Kreis im collapsed State */}
-                <div className="relative h-6 w-6">
-                  <div className="absolute inset-0 rounded-full bg-secondary/20" />
-                  <div 
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background: `conic-gradient(from 0deg, hsl(var(--primary)) ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%, transparent ${((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100}%)`
-                    }}
-                  />
-                  <div className="absolute inset-1 rounded-full bg-background" />
-                </div>
+                {/* Nur der LevelBadge im collapsed State */}
+                <LevelBadge />
               </div>
             )}
           </>
