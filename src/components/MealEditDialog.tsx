@@ -260,6 +260,54 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
               </div>
             </div>
 
+            {/* Meal Type and Date */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="meal_type" className="text-sm font-medium">Mahlzeitentyp</Label>
+                <Select 
+                  value={editingMeal.meal_type} 
+                  onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
+                >
+                  <SelectTrigger className="mt-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="breakfast">🌅 Frühstück</SelectItem>
+                    <SelectItem value="lunch">🌞 Mittagessen</SelectItem>
+                    <SelectItem value="dinner">🌙 Abendessen</SelectItem>
+                    <SelectItem value="snack">🍎 Snack</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Datum</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal mt-2",
+                        !editingMealDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editingMealDate ? format(editingMealDate, "PPP", { locale: de }) : "Datum auswählen"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={editingMealDate}
+                      onSelect={(date) => date && setEditingMealDate(date)}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
             {/* Leftover Analysis */}
             {editingMeal.images && editingMeal.images.length > 0 && (
               <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 rounded-lg p-4 space-y-4">
@@ -298,53 +346,6 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
                 )}
               </div>
             )}
-
-            {/* Meal Type */}
-            <div>
-              <Label htmlFor="meal_type" className="text-sm font-medium">Mahlzeitentyp</Label>
-              <Select 
-                value={editingMeal.meal_type} 
-                onValueChange={(value) => setEditingMeal({...editingMeal, meal_type: value})}
-              >
-                <SelectTrigger className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="breakfast">🌅 Frühstück</SelectItem>
-                  <SelectItem value="lunch">🌞 Mittagessen</SelectItem>
-                  <SelectItem value="dinner">🌙 Abendessen</SelectItem>
-                  <SelectItem value="snack">🍎 Snack</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date */}
-            <div>
-              <Label className="text-sm font-medium">Datum</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal mt-2",
-                      !editingMealDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {editingMealDate ? format(editingMealDate, "PPP", { locale: de }) : "Datum auswählen"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={editingMealDate}
-                    onSelect={(date) => date && setEditingMealDate(date)}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
