@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RAGEmbeddingManager } from "@/utils/ragEmbeddingManager";
 import { Database, Activity, Zap, BarChart3, RefreshCw, CheckCircle } from "lucide-react";
 import { PerplexityKnowledgePipeline } from './PerplexityKnowledgePipeline';
+import { RAGTestingSuite } from './RAGTestingSuite';
 
 interface EmbeddingStatus {
   total_knowledge_entries: number;
@@ -153,6 +154,9 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
 
       {/* Perplexity Knowledge Pipeline */}
       <PerplexityKnowledgePipeline />
+
+      {/* RAG Testing Suite */}
+      <RAGTestingSuite />
 
       {/* Embedding Status */}
       <Card>
