@@ -46,14 +46,14 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
       {/* Large cards row - Sessions & Volumen */}
       <div className="grid gap-3 md:gap-4 grid-cols-2">
         {/* Workout Sessions */}
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-base font-medium">Sessions</CardTitle>
-            <Calendar className="h-5 w-5 text-muted-foreground" />
+        <Card className="h-28 md:h-32">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
+            <CardTitle className="text-sm md:text-base font-medium">Sessions</CardTitle>
+            <Calendar className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-4">
+          <CardContent className="pb-3 px-4">
             <div className="flex items-end justify-between">
-              <div className={`text-4xl font-bold ${getPerformanceColor(stats.sessionsThisWeek, 'sessions')}`}>
+              <div className={`text-2xl md:text-4xl font-bold ${getPerformanceColor(stats.sessionsThisWeek, 'sessions')}`}>
                 {stats.sessionsThisWeek}
               </div>
               <Badge variant={sessionsBadge.variant} className="text-xs">
@@ -67,13 +67,13 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </Card>
 
         {/* Volumen */}
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-base font-medium">Volumen</CardTitle>
-            <Dumbbell className="h-5 w-5 text-muted-foreground" />
+        <Card className="h-28 md:h-32">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
+            <CardTitle className="text-sm md:text-base font-medium">Volumen</CardTitle>
+            <Dumbbell className="h-4 md:h-5 w-4 md:w-5 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-4">
-            <div className="text-4xl font-bold">{stats.totalVolume.toLocaleString()}</div>
+          <CardContent className="pb-3 px-4">
+            <div className="text-2xl md:text-4xl font-bold">{stats.totalVolume.toLocaleString()}</div>
             <p className="text-sm text-muted-foreground mt-1">
               kg diese Woche
             </p>
@@ -84,12 +84,12 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
       {/* Small cards row - Intensität, Gesamtsätze, Übungen */}
       <div className="grid gap-2 md:gap-4 grid-cols-3">
         {/* Intensität */}
-        <Card className="h-24">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Intensität</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-20 md:h-24">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-3 pt-3">
+            <CardTitle className="text-xs md:text-sm font-medium">Intensität</CardTitle>
+            <Activity className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-3">
+          <CardContent className="pb-2 px-3">
             <div className={`text-2xl font-bold ${getPerformanceColor(stats.averageIntensity, 'intensity')}`}>
               {stats.averageIntensity || 0}
             </div>
@@ -98,12 +98,12 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </Card>
 
         {/* Gesamtsätze */}
-        <Card className="h-24">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gesamtsätze</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-20 md:h-24">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-3 pt-3">
+            <CardTitle className="text-xs md:text-sm font-medium">Gesamtsätze</CardTitle>
+            <Target className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-3">
+          <CardContent className="pb-2 px-3">
             <div className="text-2xl font-bold">{stats.totalSets}</div>
             <p className="text-xs text-muted-foreground">
               {stats.totalSets > 0 ? `Ø ${Math.round(stats.totalSets / Math.max(stats.sessionsThisWeek, 1))}` : 'Keine'}
@@ -112,12 +112,12 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
         </Card>
 
         {/* Übungen */}
-        <Card className="h-24">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Übungen</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-20 md:h-24">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 px-3 pt-3">
+            <CardTitle className="text-xs md:text-sm font-medium">Übungen</CardTitle>
+            <TrendingUp className="h-3 md:h-4 w-3 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="pb-3">
+          <CardContent className="pb-2 px-3">
             <div className="text-2xl font-bold">{stats.exercisesCount}</div>
             <p className="text-xs text-muted-foreground">Verschiedene</p>
           </CardContent>
