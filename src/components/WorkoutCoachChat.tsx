@@ -669,43 +669,46 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
         {/* Input */}
         <div className="p-3">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <Textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
-                className="resize-none h-[60px] border-input focus:border-primary"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
+          <div className="flex items-stretch gap-3">
+            {/* Textarea - takes full available height */}
+            <Textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
+              className="flex-1 min-h-[120px] resize-none border-input focus:border-primary"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+            />
+            
+            {/* Button column - vertically stacked */}
+            <div className="flex flex-col gap-3 justify-between">
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={() => setShowUpload(!showUpload)}
-                className="h-8 w-8 p-0"
+                className="h-[38px] w-[38px] flex-shrink-0"
               >
                 <Paperclip className="h-4 w-4" />
               </Button>
+              
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={handleVoiceToggle}
-                className="h-8 w-8 p-0"
+                className="h-[38px] w-[38px] flex-shrink-0"
               >
-                <Mic className="h-4 w-4" />
+                <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
               </Button>
+              
               <Button
                 onClick={handleSendMessage}
                 disabled={!inputText.trim() && uploadedMedia.length === 0}
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon"
+                className="h-[38px] w-[38px] flex-shrink-0"
               >
                 <Send className="h-4 w-4" />
               </Button>
