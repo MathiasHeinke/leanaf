@@ -1280,6 +1280,45 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_formchecks: {
+        Row: {
+          coach_analysis: string
+          created_at: string
+          exercise_name: string
+          form_rating: number | null
+          id: string
+          improvement_tips: string[]
+          key_points: string[]
+          media_urls: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_analysis: string
+          created_at?: string
+          exercise_name: string
+          form_rating?: number | null
+          id?: string
+          improvement_tips?: string[]
+          key_points?: string[]
+          media_urls?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_analysis?: string
+          created_at?: string
+          exercise_name?: string
+          form_rating?: number | null
+          id?: string
+          improvement_tips?: string[]
+          key_points?: string[]
+          media_urls?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_items: {
         Row: {
           content: string

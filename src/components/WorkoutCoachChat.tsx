@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
+import { FormcheckSummaryCard } from '@/components/FormcheckSummaryCard';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,6 +46,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [exercisePreview, setExercisePreview] = useState<any | null>(null);
+  const [formcheckSummary, setFormcheckSummary] = useState<any>(null);
+  const [isFormcheckMode, setIsFormcheckMode] = useState(false);
   const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -136,14 +139,24 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     try {
       setIsLoading(true);
 
+      // Determine if this is a formcheck or workout logging request
+      const isFormcheck = userMessage.toLowerCase().includes('form') || 
+                         userMessage.toLowerCase().includes('technik') ||
+                         userMessage.toLowerCase().includes('ausführung') ||
+                         userMessage.toLowerCase().includes('korrekt') ||
+                         userMessage.toLowerCase().includes('bewert');
+
+      const analysisType = isFormcheck ? 'form_analysis' : 'workout_analysis';
+      setIsFormcheckMode(isFormcheck);
+
       const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
         body: {
           userId: user.id,
           mediaUrls,
           mediaType: 'mixed',
-          analysisType: 'workout_analysis',
+          analysisType,
           coachPersonality: 'sascha',
-          userQuestion: userMessage || 'Analysiere mein Training und gib mir Feedback.',
+          userQuestion: userMessage || (isFormcheck ? 'Bewerte meine Trainingsform.' : 'Analysiere mein Training und gib mir Feedback.'),
           userProfile: {
             goal: 'muscle_building',
             experience_level: 'intermediate'
@@ -166,13 +179,136 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       setMessages(prev => [...prev, assistantMessage]);
       await saveMessage('assistant', data.analysis, data);
 
-      toast.success('Training analysiert! Sascha hat dein Workout bewertet.');
+      // If it's a formcheck, trigger the extraction of summary data after the analysis
+      if (isFormcheck && data?.analysis) {
+        setTimeout(() => {
+          extractFormcheckSummary(mediaUrls, data.analysis, userMessage);
+        }, 2000); // Wait 2 seconds after the analysis is shown
+      }
+
+      // If it's workout logging, try to extract exercise data
+      if (!isFormcheck) {
+        try {
+          const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
+            body: {
+              userId: user.id,
+              mediaUrls,
+              userMessage
+            }
+          });
+
+          if (!extractError && exerciseData?.success && exerciseData?.exercises?.length > 0) {
+            setExercisePreview({
+              exercise_name: exerciseData.exercises[0].name,
+              sets: exerciseData.exercises[0].sets || [],
+              overall_rpe: exerciseData.exercises[0].rpe
+            });
+          }
+        } catch (extractError) {
+          console.error('Exercise extraction error:', extractError);
+        }
+      }
+
+      toast.success(isFormcheck ? 'Formcheck abgeschlossen!' : 'Training analysiert! Sascha hat dein Workout bewertet.');
     } catch (error) {
       console.error('Error analyzing media:', error);
       toast.error('Fehler bei der Trainingsanalyse');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const extractFormcheckSummary = async (mediaUrls: string[], coachAnalysis: string, userMessage: string) => {
+    try {
+      // Extract key information from the coach analysis
+      const exerciseName = extractExerciseName(userMessage, coachAnalysis);
+      const formRating = extractFormRating(coachAnalysis);
+      const keyPoints = extractKeyPoints(coachAnalysis);
+      const improvementTips = extractImprovementTips(coachAnalysis);
+
+      setFormcheckSummary({
+        exercise_name: exerciseName,
+        media_urls: mediaUrls,
+        coach_analysis: coachAnalysis,
+        key_points: keyPoints,
+        form_rating: formRating,
+        improvement_tips: improvementTips
+      });
+    } catch (error) {
+      console.error('Error extracting formcheck summary:', error);
+    }
+  };
+
+  const extractExerciseName = (userMessage: string, analysis: string): string => {
+    // Try to extract exercise name from user message or analysis
+    const exerciseKeywords = ['squat', 'deadlift', 'bench', 'press', 'curl', 'row', 'pullup', 'pushup'];
+    const germanKeywords = ['kniebeuge', 'kreuzheben', 'bankdrücken', 'schulterdrücken', 'rudern', 'klimmzug', 'liegestütz'];
+    
+    const combined = (userMessage + ' ' + analysis).toLowerCase();
+    
+    for (let i = 0; i < exerciseKeywords.length; i++) {
+      if (combined.includes(exerciseKeywords[i]) || combined.includes(germanKeywords[i] || '')) {
+        return exerciseKeywords[i].charAt(0).toUpperCase() + exerciseKeywords[i].slice(1);
+      }
+    }
+    
+    return 'Unbekannte Übung';
+  };
+
+  const extractFormRating = (analysis: string): number => {
+    // Look for rating patterns in the analysis
+    const ratingMatch = analysis.match(/(\d+)\/10|(\d+) von 10|(\d+) punkte/i);
+    if (ratingMatch) {
+      return parseInt(ratingMatch[1] || ratingMatch[2] || ratingMatch[3]);
+    }
+    
+    // Default rating based on tone
+    if (analysis.toLowerCase().includes('sehr gut') || analysis.toLowerCase().includes('excellent')) return 9;
+    if (analysis.toLowerCase().includes('gut') || analysis.toLowerCase().includes('good')) return 7;
+    if (analysis.toLowerCase().includes('okay') || analysis.toLowerCase().includes('average')) return 6;
+    if (analysis.toLowerCase().includes('verbesserung') || analysis.toLowerCase().includes('needs work')) return 5;
+    
+    return 7; // Default
+  };
+
+  const extractKeyPoints = (analysis: string): string[] => {
+    const points: string[] = [];
+    
+    // Look for bullet points or numbered lists
+    const bulletPoints = analysis.match(/[•\-\*]\s*([^\n\r]+)/g);
+    if (bulletPoints) {
+      points.push(...bulletPoints.map(point => point.replace(/[•\-\*]\s*/, '').trim()));
+    }
+    
+    // Look for key phrases
+    if (analysis.includes('wichtig')) {
+      const importantMatch = analysis.match(/wichtig[^.]*\./i);
+      if (importantMatch) points.push(importantMatch[0]);
+    }
+    
+    if (analysis.includes('achte')) {
+      const achtMatch = analysis.match(/achte[^.]*\./i);
+      if (achtMatch) points.push(achtMatch[0]);
+    }
+    
+    return points.slice(0, 5); // Limit to 5 key points
+  };
+
+  const extractImprovementTips = (analysis: string): string[] => {
+    const tips: string[] = [];
+    
+    // Look for improvement suggestions
+    const tipPhrases = ['verbessern', 'tipp', 'empfehlung', 'solltest', 'versuche'];
+    
+    for (const phrase of tipPhrases) {
+      const regex = new RegExp(`[^.]*${phrase}[^.]*\\.`, 'gi');
+      const matches = analysis.match(regex);
+      if (matches) {
+        tips.push(...matches.map(tip => tip.trim()));
+      }
+    }
+    
+    return [...new Set(tips)].slice(0, 4); // Remove duplicates and limit to 4 tips
   };
 
   const sendMessage = async () => {
@@ -252,6 +388,27 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       console.error('Error saving exercise from preview:', error);
       throw error;
     }
+  };
+
+  const handleFormcheckSummarySave = async (savedData: any) => {
+    console.log('Formcheck saved:', savedData);
+    
+    const successMessage: WorkoutMessage = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `✅ **Formcheck erfolgreich gespeichert!**\n\n**${savedData.exercise_name}**\n\nDein Formcheck wurde gespeichert und kann später abgerufen werden. 🎯`,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, successMessage]);
+    await saveMessage('assistant', successMessage.content);
+    setFormcheckSummary(null);
+    setIsFormcheckMode(false);
+  };
+
+  const handleFormcheckSummaryCancel = () => {
+    setFormcheckSummary(null);
+    setIsFormcheckMode(false);
   };
 
   const handleVoiceToggle = () => {
@@ -338,7 +495,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 ))}
 
                 {/* Exercise Preview Card */}
-                {exercisePreview && (
+                {exercisePreview && !isFormcheckMode && (
                   <div className="flex justify-center">
                     <div className="w-full max-w-md">
                       <ExercisePreviewCard
@@ -346,6 +503,19 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                         onSave={handleExercisePreviewSave}
                         onCancel={() => setExercisePreview(null)}
                         onEdit={(data) => console.log('Exercise edited:', data)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Formcheck Summary Card */}
+                {formcheckSummary && isFormcheckMode && (
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-md">
+                      <FormcheckSummaryCard
+                        data={formcheckSummary}
+                        onSave={handleFormcheckSummarySave}
+                        onCancel={handleFormcheckSummaryCancel}
                       />
                     </div>
                   </div>
