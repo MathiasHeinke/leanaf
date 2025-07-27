@@ -31,6 +31,7 @@ interface WorkoutMessage {
     suggestions?: string[];
     needsRpeInput?: boolean;
     pendingExercise?: any;
+    isWelcome?: boolean;
   };
 }
 
@@ -75,6 +76,23 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       const timer = setTimeout(() => {
         loadConversationHistory();
       }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
+
+  // Add initial welcome message
+  useEffect(() => {
+    if (user && messages.length === 0) {
+      const timer = setTimeout(() => {
+        const welcomeMessage: WorkoutMessage = {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: 'Hallo! Ich bin Coach Sascha, dein persönlicher Trainer. Erzähle mir von deinem Training oder frage mich nach Übungen und Trainingsplänen!',
+          timestamp: new Date(),
+          metadata: { isWelcome: true }
+        };
+        setMessages([welcomeMessage]);
+      }, 200);
       return () => clearTimeout(timer);
     }
   }, [user]);
@@ -433,40 +451,66 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         {/* Messages */}
         <div className="flex-1 flex flex-col">
           <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
-            {/* Coach Avatar and Welcome */}
-            {messages.length === 0 && (
-              <div className="flex items-start gap-3 mb-6">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Dumbbell className="h-4 w-4 text-primary" />
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  01:07
-                </div>
-              </div>
-            )}
-
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-6">
-                <p className="text-sm">
-                  Erzähle mir von deinem Training oder frage nach Übungen.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex",
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    )}
-                  >
+            <div className="space-y-3">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "flex",
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  )}
+                >
+                  {message.role === "assistant" && (
+                    <div className="flex items-start gap-3 w-full max-w-[85%]">
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Dumbbell className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">Coach Sascha</span>
+                          <span className="text-xs text-muted-foreground">
+                            {message.timestamp.toLocaleTimeString('de-DE', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <div className="bg-muted text-muted-foreground rounded-lg px-3 py-2">
+                          {message.mediaUrls && message.mediaUrls.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              {message.mediaUrls.map((url, index) => (
+                                <div key={index} className="relative">
+                                  {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                    <video 
+                                      controls 
+                                      className="w-full h-16 object-cover rounded"
+                                    >
+                                      <source src={url} type="video/mp4" />
+                                    </video>
+                                  ) : (
+                                    <img
+                                      src={url}
+                                      alt={`Upload ${index + 1}`}
+                                      className="w-full h-16 object-cover rounded"
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {message.role === "user" && (
                     <div
                       className={cn(
                         "max-w-[85%] rounded-lg px-3 py-2",
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
+                        "bg-primary text-primary-foreground"
                       )}
                     >
                       {message.mediaUrls && message.mediaUrls.length > 0 && (
@@ -501,10 +545,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                         })}
                       </div>
                     </div>
-                  </div>
-                ))}
+                   )}
+                 </div>
+               ))}
 
-                {/* Exercise Preview Card */}
+               {/* Exercise Preview Card */}
                 {exercisePreview && !isFormcheckMode && (
                   <div className="flex justify-center">
                     <div className="w-full max-w-md">
@@ -541,9 +586,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-          </ScrollArea>
+               </div>
+           </ScrollArea>
 
         </div>
 
@@ -570,7 +614,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       )}
 
       {/* Quick Actions / Suggestions */}
-      {showQuickActions && messages.length === 0 && (
+      {showQuickActions && messages.length === 1 && messages[0]?.metadata?.isWelcome && (
         <div className="border-t border-border/20">
           <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
             <CollapsibleTrigger asChild>
