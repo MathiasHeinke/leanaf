@@ -656,7 +656,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Frage Sascha etwas über Training..."
-              className="min-h-[80px] max-h-[200px] resize-none"
+              className="min-h-[120px] max-h-[300px] resize-y"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
