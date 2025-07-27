@@ -172,7 +172,7 @@ export const TrainingDashboard: React.FC = () => {
             Workout
           </h1>
           <p className="text-muted-foreground mt-1">
-            Intelligentes Krafttraining mit KI-Coach
+            Intelligentes Training mit KI-Coach
           </p>
         </div>
         <Badge className="bg-gradient-primary text-white px-4 py-2">

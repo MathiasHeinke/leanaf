@@ -42,85 +42,92 @@ export const TrainingStats: React.FC<TrainingStatsProps> = ({ stats }) => {
   const sessionsBadge = getSessionsBadge();
 
   return (
-    <div className="grid gap-4 grid-cols-6 auto-rows-fr">
-      {/* Workout Sessions - Large (span 2 columns) */}
-      <Card className="col-span-6 sm:col-span-3 lg:col-span-2">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Workout Sessions</CardTitle>
-          <Calendar className="h-5 w-5 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className={`text-3xl font-bold ${getPerformanceColor(stats.sessionsThisWeek, 'sessions')}`}>
-              {stats.sessionsThisWeek}
+    <div className="space-y-4">
+      {/* First two cards in 2-column grid */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        {/* Workout Sessions - Large */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Workout Sessions</CardTitle>
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className={`text-3xl font-bold ${getPerformanceColor(stats.sessionsThisWeek, 'sessions')}`}>
+                {stats.sessionsThisWeek}
+              </div>
+              <Badge variant={sessionsBadge.variant} className="text-xs">
+                {sessionsBadge.text}
+              </Badge>
             </div>
-            <Badge variant={sessionsBadge.variant} className="text-xs">
-              {sessionsBadge.text}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Diese Woche
-          </p>
-        </CardContent>
-      </Card>
+            <p className="text-xs text-muted-foreground">
+              Diese Woche
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Volumen - Large (span 2 columns) */}
-      <Card className="col-span-6 sm:col-span-3 lg:col-span-2">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Volumen</CardTitle>
-          <Dumbbell className="h-5 w-5 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">{stats.totalVolume.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">
-            kg diese Woche
-          </p>
-        </CardContent>
-      </Card>
+        {/* Volumen - Large */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Volumen</CardTitle>
+            <Dumbbell className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.totalVolume.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              kg diese Woche
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Intensität - Medium (1 column) */}
-      <Card className="col-span-2 sm:col-span-2 lg:col-span-1">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Intensität</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className={`text-2xl font-bold ${getPerformanceColor(stats.averageIntensity, 'intensity')}`}>
-            {stats.averageIntensity || 0}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Ø RPE
-          </p>
-        </CardContent>
-      </Card>
+      {/* Remaining three cards in 3-column grid */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
 
-      {/* Gesamtsätze - Small (1 column) */}
-      <Card className="col-span-2 sm:col-span-2 lg:col-span-1">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Gesamtsätze</CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalSets}</div>
-          <p className="text-xs text-muted-foreground">
-            {stats.totalSets > 0 ? `Ø ${Math.round(stats.totalSets / Math.max(stats.sessionsThisWeek, 1))}` : 'Keine'}
-          </p>
-        </CardContent>
-      </Card>
+        {/* Intensität - Medium */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Intensität</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${getPerformanceColor(stats.averageIntensity, 'intensity')}`}>
+              {stats.averageIntensity || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ø RPE
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* Übungen - Small (1 column) */}
-      <Card className="col-span-2 sm:col-span-2 lg:col-span-1">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Übungen</CardTitle>
-          <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.exercisesCount}</div>
-          <p className="text-xs text-muted-foreground">
-            Verschiedene
-          </p>
-        </CardContent>
-      </Card>
+        {/* Gesamtsätze - Small */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gesamtsätze</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalSets}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalSets > 0 ? `Ø ${Math.round(stats.totalSets / Math.max(stats.sessionsThisWeek, 1))}` : 'Keine'}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Übungen - Small */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Übungen</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.exercisesCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Verschiedene
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
