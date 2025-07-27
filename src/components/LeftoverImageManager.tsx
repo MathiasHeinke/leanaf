@@ -38,8 +38,22 @@ export const LeftoverImageManager = ({
     }
   };
 
-  const handleAddPhoto = () => {
+  const handleAddPhoto = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     fileInputRef.current?.click();
+  };
+
+  const handleAnalyzeLeftovers = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onAnalyzeLeftovers?.();
+  };
+
+  const handleDeleteImage = (event: React.MouseEvent, imageUrl: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteLeftoverImage(imageUrl);
   };
 
   return (
@@ -48,9 +62,10 @@ export const LeftoverImageManager = ({
         <h4 className="text-sm font-medium">Reste-Bilder</h4>
         {leftoverImages.length > 0 && onAnalyzeLeftovers && (
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            onClick={onAnalyzeLeftovers}
+            onClick={handleAnalyzeLeftovers}
             disabled={isAnalyzing}
             className="flex items-center gap-1"
           >
@@ -71,9 +86,10 @@ export const LeftoverImageManager = ({
                 className="w-full h-20 object-cover rounded-md border-2 border-orange-200"
               />
               <Button
+                type="button"
                 variant="destructive"
                 size="sm"
-                onClick={() => deleteLeftoverImage(imageUrl)}
+                onClick={(e) => handleDeleteImage(e, imageUrl)}
                 className="absolute top-1 right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="h-2 w-2" />
@@ -87,6 +103,7 @@ export const LeftoverImageManager = ({
       {leftoverImages.length < 2 && (
         <div className="flex items-center gap-2">
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={handleAddPhoto}
