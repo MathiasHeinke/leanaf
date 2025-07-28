@@ -844,6 +844,66 @@ Du bist ein smarter Coach, der seine Antworten an die Situation anpasst:
 
     const personalityPrompt = personalityPrompts[personality as keyof typeof personalityPrompts];
 
+    // Genius System - Generate powerful questions for each coach
+    const generateGeniusQuestions = (coachPersonality: string, context: any) => {
+      const questions = [];
+      
+      switch (coachPersonality) {
+        case 'lucy':
+          questions.push(
+            'Was wäre möglich, wenn du Essen als Freund statt als Feind betrachtest?',
+            'Welche unbewussten Essens-Rituale könnten dich bremsen?',
+            'Wie würde sich dein Leben ändern, wenn Ernährung mühelos wäre?'
+          );
+          break;
+        case 'sascha':
+          questions.push(
+            'Was ist der größte Mythos, dem du beim Training folgst?',
+            'Welche mentale Blockade hält dich davon ab, dein Training zu maximieren?',
+            'Wie würde dein Training aussehen, wenn du keine Angst vor dem Versagen hättest?'
+          );
+          break;
+        case 'kai':
+          questions.push(
+            'Was würde passieren, wenn du aufhörst dich mit anderen zu vergleichen?',
+            'Welcher Glaubenssatz über dich selbst sabotiert deine Fortschritte?',
+            'Wie würde sich dein Leben verändern, wenn du komplett dir selbst vertraust?'
+          );
+          break;
+        case 'markus':
+          questions.push(
+            'Was ist der härteste Kampf, den du mit dir selbst führst?',
+            'Welche Ausrede benutzt du am häufigsten, um vor der Wahrheit zu fliehen?',
+            'Was würdest du tun, wenn Versagen keine Option wäre?'
+          );
+          break;
+        case 'dr_vita':
+          questions.push(
+            'Wie beeinflusst dein Zyklus wirklich deine Ziele und Motivation?',
+            'Welche hormonellen Muster erkennst du in deinen Stimmungen und Energielevels?',
+            'Was würde sich ändern, wenn du deinen Körper als Verbündeten siehst?'
+          );
+          break;
+        case 'integral':
+          questions.push(
+            'Welche Entwicklungsstufe lebst du in Bezug auf Gesundheit aus?',
+            'Wie integrierst du alle 4 Quadranten (Innen-Außen, Individual-Kollektiv) in deine Gesundheit?',
+            'Was ist dein nächster evolutionärer Schritt in der Selbstentwicklung?'
+          );
+          break;
+        default:
+          questions.push(
+            'Welche Perspektive auf deine Gesundheit hast du noch nie eingenommen?',
+            'Was ist der größte blinde Fleck in deinem aktuellen Ansatz?'
+          );
+      }
+      
+      return questions;
+    };
+
+    const geniusQuestions = generateGeniusQuestions(personality, { message, userData });
+    const shouldIncludeGeniusQuestion = Math.random() < 0.3; // 30% chance
+
     // Build coach knowledge context
     const coachKnowledgeContext = coachKnowledge?.length > 0 ? `
 
@@ -1011,6 +1071,14 @@ WICHTIGE ANWEISUNGEN:
 - Halte Antworten prägnant aber hilfreich (max. 2-3 Absätze)
 - Strukturiere deine Antworten mit Absätzen, Listen und Formatierung für bessere Lesbarkeit
 - Verwende Emojis sparsam aber passend zu deiner Persönlichkeit
+
+${shouldIncludeGeniusQuestion ? `
+🧠 GENIUS-LEVEL COACHING:
+Manchmal stelle eine dieser tiefgreifenden Fragen, um neue Perspektiven zu eröffnen:
+${geniusQuestions.map(q => `• ${q}`).join('\n')}
+
+Diese Fragen nur verwenden wenn sie zur Situation passen und den User wirklich weiterbringen würden.
+` : ''}
 
 ${hasTrainingPlusAccess ? `
 🏋️ TRAINING+ COACHING-FÄHIGKEITEN (NUR FÜR PREMIUM):

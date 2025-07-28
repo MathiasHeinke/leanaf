@@ -11,6 +11,9 @@ import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { useSentimentAnalysis } from '@/hooks/useSentimentAnalysis';
+import { useCoachMemory } from '@/hooks/useCoachMemory';
+import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { 
@@ -61,6 +64,18 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [analysisType, setAnalysisType] = useState<'exercise_form' | 'meal_analysis' | 'progress_photo' | 'general'>('exercise_form');
   const [isThinking, setIsThinking] = useState(false);
   
+  // Human-like features
+  const { analyzeSentiment } = useSentimentAnalysis();
+  const { 
+    memory, 
+    loadCoachMemory, 
+    updateUserPreference, 
+    addMoodEntry, 
+    addSuccessMoment,
+    addStruggleMention 
+  } = useCoachMemory();
+  const { checkForProactiveOpportunities } = useProactiveCoaching();
+  
   // Voice recording hook
   const {
     isRecording,
@@ -89,6 +104,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     if (user) {
       const timer = setTimeout(() => {
         loadConversationHistory();
+        loadCoachMemory();
+        checkForProactiveOpportunities();
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -377,38 +394,56 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     if (uploadedMedia.length > 0) {
       await analyzeWorkoutMedia(uploadedMedia, inputText);
       setUploadedMedia([]);
-    } else {
-      // Regular chat without media
-      try {
-        setIsLoading(true);
-        
-        const { data, error } = await supabase.functions.invoke('coach-chat', {
-          body: {
-            message: inputText,
-            userId: user.id,
-            coachPersonality: 'sascha',
-            context: 'workout_coaching'
+      } else {
+        // Regular chat without media
+        try {
+          setIsLoading(true);
+          
+          // Analyze sentiment of user message
+          const sentimentResult = await analyzeSentiment(inputText);
+          
+          // Add mood entry based on sentiment
+          if (sentimentResult.emotion && sentimentResult.intensity > 0.5) {
+            addMoodEntry(sentimentResult.emotion, sentimentResult.intensity);
           }
-        });
+          
+          // Detect achievements and struggles
+          if (inputText.toLowerCase().includes('geschafft') || inputText.toLowerCase().includes('erfolgreich')) {
+            addSuccessMoment(inputText.substring(0, 100));
+          }
+          if (inputText.toLowerCase().includes('schwer') || inputText.toLowerCase().includes('problem')) {
+            addStruggleMention(inputText.substring(0, 100));
+          }
+          
+          const { data, error } = await supabase.functions.invoke('coach-chat', {
+            body: {
+              message: inputText,
+              userId: user.id,
+              coachPersonality: 'sascha',
+              context: 'workout_coaching',
+              memory: memory,
+              sentiment: sentimentResult
+            }
+          });
 
-        if (error) throw error;
+          if (error) throw error;
 
-        const assistantMessage: WorkoutMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: data.response,
-          timestamp: new Date()
-        };
+          const assistantMessage: WorkoutMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date()
+          };
 
-        setMessages(prev => [...prev, assistantMessage]);
-        await saveMessage('assistant', data.response);
-      } catch (error) {
-        console.error('Error sending message:', error);
-        toast.error('Fehler beim Senden der Nachricht');
-      } finally {
-        setIsLoading(false);
+          setMessages(prev => [...prev, assistantMessage]);
+          await saveMessage('assistant', data.response);
+        } catch (error) {
+          console.error('Error sending message:', error);
+          toast.error('Fehler beim Senden der Nachricht');
+        } finally {
+          setIsLoading(false);
+        }
       }
-    }
 
     setInputText('');
   };
