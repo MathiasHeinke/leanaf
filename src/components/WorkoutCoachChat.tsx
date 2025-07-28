@@ -518,7 +518,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
   const handleMediaUploaded = (urls: string[]) => {
     setUploadedMedia(prev => [...prev, ...urls]);
-    analyzeWorkoutMedia(urls, '');
+    // Don't auto-analyze - wait for user to send message
   };
 
   return (
