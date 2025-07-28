@@ -1,0 +1,22 @@
+-- Deutsche Übersetzungen für weitere Sascha Knowledge Base Einträge (Batch 2/6)
+
+INSERT INTO public.coach_knowledge_base (title, expertise_area, knowledge_type, content, coach_id, priority_level, tags, created_at, updated_at) VALUES
+('Andropause-Management: Natürliche Testosteronerhaltung', 'male_hormone_aging_de', 'guideline', 'Männer verlieren ab 35 Jahren 1% Testosteron/Jahr, ab 65 ist primärer Hypogonadismus häufiger. Lifestyle-Interventionen können sekundären Hypogonadismus umkehren: Gewichtsreduktion bei BMI >30, regelmäßiges Training, Stressmanagement. Krafttraining + Ausdauer kombiniert zeigt beste Ergebnisse bei altersbedingtem Testosteronmangel.', 'sascha', 2, ARRAY['andropause', 'aging', 'testosteron_rückgang', 'lifestyle_intervention', 'sekundärer_hypogonadismus'], now(), now()),
+
+('Body Armor Training (Detailliert)', 'biomechanics_de', 'field_study', '17 kg Körperpanzer verschlechtert Laufzeiten, erfordert spezifisches Training. Load-Carriage-Workouts einbauen. Realistische Lasten im Training verwenden für optimale Vorbereitung auf Einsatzbedingungen.', 'sascha', 2, ARRAY['body_armor', '17kg', 'load_carriage', 'laufzeiten'], now(), now()),
+
+('Body Armor Training Effect', 'biomechanics_de', 'field_research', '17kg Body Armor erhöht Ermüdung und Laufzeit, verschlechtert Bewegungsökonomie signifikant. Regelmäßig Load Carriage Training mit realistischer Ausrüstung. Passe Workouts an tatsächliche Einsatzbedingungen an für maximale Effizienz.', 'sascha', 2, ARRAY['body_armor', 'load_carriage', 'militär', 'bewegungsökonomie'], now(), now()),
+
+('EPOC (Afterburn Effect)', 'hiit_de', 'meta_review', 'EPOC nach HIIT hält bis zu 48h an, führt zu erhöhter Fettverbrennung. Komplexe Mehrgelenksübungen, Workouts mit ≥90% 1RM. HIIT für Nachbrenneffekt/Fettabbau einplanen und metabolische Vorteile maximieren.', 'sascha', 2, ARRAY['epoc', 'afterburn', 'fettverbrennung', '48h', 'mehrgelenk'], now(), now()),
+
+('Flexible Smart Periodization', 'periodization_de', 'application_trend', 'Automatisierte Phasenumschaltung (z.B. alle 6 Trainingseinheiten) steigert Adhärenz und Leistungszuwächse. Trainingsplanung dynamisch per Trainingserfolg oder Plateaubildung steuern. Verknüpfe App-Feedback oder Performance-Trigger mit Mikro-/Mesozyklus-Wechsel.', 'sascha', 2, ARRAY['smart_periodization', 'automatisierung', 'adhärenz', 'performance'], now(), now()),
+
+('Functional Movement Screen (FMS)', 'biomechanics_de', 'cohort_study', 'Score ≤14 mit ~24% Erfolgsrate als reiner Verletzungsprädiktor, trotzdem nützlich als Bewegungsanalyse. Screen alle 8 Wochen. Nutze FMS zur Ableitung von Mobility-, Core- und Stabilisationsübungen für optimale Bewegungsqualität.', 'sascha', 2, ARRAY['fms', 'movement_screen', 'verletzungsprävention', 'mobility'], now(), now()),
+
+('Functional Movement Screen (FMS) - Detailliert', 'biomechanics_de', 'cohort_study', 'FMS-Score ≤14 hat moderate prädiktive Kraft für Verletzungsrisiko. Regelmäßiges Screening + Mobility-Daten kombinieren. Nicht als alleinigen Risikofaktor nutzen, sondern als Teil umfassender Bewegungsanalyse.', 'sascha', 2, ARRAY['fms', 'score_14', 'verletzungsrisiko', 'screening'], now(), now()),
+
+('Herzfrequenzvariabilität (HRV)', 'performance_monitoring_de', 'screening_tool', 'Tagesaktuelle HRV erlaubt differenzierte Recovery- bzw. Belastungssteuerung. Tägliches Monitoring per App/Tracker. Passe Intensität/Umfang der Einheit adaptiv über HRV an für optimale Trainingssteuerung.', 'sascha', 2, ARRAY['hrv', 'recovery', 'monitoring', 'belastungssteuerung'], now(), now()),
+
+('Herzfrequenzvariabilität (HRV) - Detailliert', 'performance_monitoring_de', 'screening_tool', 'HRV zeigt Tagesform und Belastungsfähigkeit an. Tagesspezifische Steuerung, App-Tracking. An HRV orientiert steuern für präzise Trainingsanpassung und Übertraining-Prävention.', 'sascha', 2, ARRAY['hrv', 'tagesform', 'belastung', 'app_tracking'], now(), now()),
+
+('HIIT & Immunsystem', 'hiit_de', 'meta_review', 'Kurzzeitiges, intensives Training kann kurzfristig Immunsuppression verursachen, langfristig aber Abwehrkräfte stärken. Phasengerechter Wechsel aus HIIT & Recovery. Beachte Regeneration und Ernährung bei HIIT-intensiven Wochen für optimale Immunfunktion.', 'sascha', 2, ARRAY['hiit', 'immunsystem', 'recovery', 'regeneration'], now(), now());
