@@ -1160,9 +1160,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       </Card>
 
       {/* Exercise Preview Card */}
-      {exercisePreview && (
-        <div className="mt-4">
-          <ExercisePreviewCard
+        {exercisePreview && (
+          <div className="mt-2">
+            <ExercisePreviewCard
             data={exercisePreview}
             onSave={handleExercisePreviewSave}
             onCancel={() => setExercisePreview(null)}
