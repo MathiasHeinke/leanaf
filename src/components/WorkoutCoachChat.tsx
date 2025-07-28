@@ -694,9 +694,28 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 </Button>
               </div>
             </div>
+
+            {/* Voice recording indicator */}
+            {(isRecording || isProcessing) && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                {isRecording ? 'Aufnahme läuft...' : 'Verarbeitung...'}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Chat History Sidebar */}
+      {showHistory && (
+        <ChatHistorySidebar
+          open={showHistory}
+          onOpenChange={setShowHistory}
+          onSelectDate={handleSelectDate}
+          conversationType="coach"
+          coachPersonality="sascha"
+        />
+      )}
     </div>
   );
 };
