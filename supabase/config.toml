@@ -33,9 +33,9 @@ enable_manual_linking = false
 security_update_password_require_reauthentication = true
 # Enhanced security: Enable leaked password protection  
 security_password_change_require_reauthentication = true
-# Enable leaked password detection (CRITICAL SECURITY)
+# Enable leaked password detection (CRITICAL SECURITY) - FINAL ACTIVATION
 security_enable_leak_protection = true
-# Enable additional password security checks - ENABLED FOR PRODUCTION
+# Enable additional password security checks - PRODUCTION READY
 security_enable_leaked_password_protection = true
 # Enable CAPTCHA for registration
 security_captcha_enabled = true
