@@ -9,8 +9,9 @@ import { Card, CardContent } from './ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Pill, Plus, Check, X, Clock } from 'lucide-react';
+import { Pill, Plus, Check, X, Clock, Edit, Trash2, Save } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 
 interface SupplementOption {
   id: string;
@@ -66,6 +67,17 @@ export const QuickSupplementInput = () => {
   const [selectedTimings, setSelectedTimings] = useState<string[]>([]);
   const [goal, setGoal] = useState('');
   const [notes, setNotes] = useState('');
+  const [editingSupplementId, setEditingSupplementId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    customName: '',
+    dosage: '',
+    unit: 'mg',
+    timing: [] as string[],
+    goal: '',
+    notes: ''
+  });
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // Load supplements and user supplements
   useEffect(() => {
@@ -266,6 +278,106 @@ export const QuickSupplementInput = () => {
         ? prev.filter(t => t !== timing)
         : [...prev, timing]
     );
+  };
+
+  const toggleEditTiming = (timing: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      timing: prev.timing.includes(timing) 
+        ? prev.timing.filter(t => t !== timing)
+        : [...prev.timing, timing]
+    }));
+  };
+
+  const handleEditSupplement = (supplement: UserSupplement) => {
+    setEditingSupplementId(supplement.id);
+    setEditForm({
+      customName: supplement.custom_name || supplement.supplement_name || '',
+      dosage: supplement.dosage,
+      unit: supplement.unit,
+      timing: supplement.timing,
+      goal: supplement.goal || '',
+      notes: supplement.notes || ''
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSupplementId(null);
+    setEditForm({
+      customName: '',
+      dosage: '',
+      unit: 'mg',
+      timing: [],
+      goal: '',
+      notes: ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!user || !editingSupplementId || !editForm.dosage || editForm.timing.length === 0) {
+      toast.error('Bitte alle Pflichtfelder ausfüllen');
+      return;
+    }
+
+    setEditLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('user_supplements')
+        .update({
+          custom_name: editForm.customName || null,
+          dosage: editForm.dosage,
+          unit: editForm.unit,
+          timing: editForm.timing,
+          goal: editForm.goal || null,
+          notes: editForm.notes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingSupplementId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Supplement erfolgreich aktualisiert');
+      setEditingSupplementId(null);
+      loadUserSupplements();
+      
+    } catch (error) {
+      console.error('Error updating supplement:', error);
+      toast.error('Fehler beim Aktualisieren des Supplements');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteSupplement = async (supplementId: string) => {
+    if (!user) return;
+
+    setDeleteLoading(supplementId);
+
+    try {
+      // Soft delete: set is_active to false
+      const { error } = await supabase
+        .from('user_supplements')
+        .update({ 
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', supplementId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Supplement erfolgreich entfernt');
+      loadUserSupplements();
+      loadTodayIntake(); // Refresh today's intake
+      
+    } catch (error) {
+      console.error('Error deleting supplement:', error);
+      toast.error('Fehler beim Entfernen des Supplements');
+    } finally {
+      setDeleteLoading(null);
+    }
   };
 
   const hasSupplements = userSupplements.length > 0;
@@ -494,24 +606,199 @@ export const QuickSupplementInput = () => {
             <div className="space-y-2">
               {userSupplements.map(supplement => (
                 <Card key={supplement.id} className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">{supplement.supplement_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {supplement.dosage} {supplement.unit} • {supplement.timing.map(t => 
-                          timingOptions.find(opt => opt.value === t)?.label || t
-                        ).join(', ')}
-                      </p>
-                      {supplement.goal && (
-                        <p className="text-xs text-muted-foreground">Ziel: {supplement.goal}</p>
-                      )}
+                  {editingSupplementId === supplement.id ? (
+                    /* Edit mode */
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-sm font-medium">Supplement bearbeiten</h5>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelEdit}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Name */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Name
+                        </label>
+                        <Input
+                          value={editForm.customName}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, customName: e.target.value }))}
+                          placeholder="Supplement Name"
+                        />
+                      </div>
+
+                      {/* Dosage */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            Dosierung
+                          </label>
+                          <Input
+                            value={editForm.dosage}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, dosage: e.target.value }))}
+                            placeholder="z.B. 500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-muted-foreground">
+                            Einheit
+                          </label>
+                          <Select 
+                            value={editForm.unit} 
+                            onValueChange={(value) => setEditForm(prev => ({ ...prev, unit: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mg">mg</SelectItem>
+                              <SelectItem value="g">g</SelectItem>
+                              <SelectItem value="mcg">mcg</SelectItem>
+                              <SelectItem value="IU">IU</SelectItem>
+                              <SelectItem value="ml">ml</SelectItem>
+                              <SelectItem value="Tablette">Tablette</SelectItem>
+                              <SelectItem value="Kapsel">Kapsel</SelectItem>
+                              <SelectItem value="Messlöffel">Messlöffel</SelectItem>
+                              <SelectItem value="Tropfen">Tropfen</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Timing */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Einnahmezeitpunkt
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {timingOptions.map(timing => (
+                            <Badge
+                              key={timing.value}
+                              variant={editForm.timing.includes(timing.value) ? "default" : "outline"}
+                              className="cursor-pointer text-xs"
+                              onClick={() => toggleEditTiming(timing.value)}
+                            >
+                              {timing.label}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Goal */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Ziel (optional)
+                        </label>
+                        <Input
+                          value={editForm.goal}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, goal: e.target.value }))}
+                          placeholder="z.B. Besserer Schlaf, Muskelaufbau"
+                        />
+                      </div>
+
+                      {/* Notes */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Notizen (optional)
+                        </label>
+                        <Textarea
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                          placeholder="Zusätzliche Informationen..."
+                          className="min-h-[60px]"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSaveEdit}
+                          disabled={editLoading || !editForm.dosage || editForm.timing.length === 0}
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {editLoading ? 'Speichern...' : 'Speichern'}
+                        </Button>
+                        <Button
+                          onClick={handleCancelEdit}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Abbrechen
+                        </Button>
+                      </div>
                     </div>
-                    {supplement.supplement_category && (
-                      <Badge variant="outline" className="text-xs">
-                        {supplement.supplement_category}
-                      </Badge>
-                    )}
-                  </div>
+                  ) : (
+                    /* View mode */
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{supplement.supplement_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {supplement.dosage} {supplement.unit} • {supplement.timing.map(t => 
+                            timingOptions.find(opt => opt.value === t)?.label || t
+                          ).join(', ')}
+                        </p>
+                        {supplement.goal && (
+                          <p className="text-xs text-muted-foreground">Ziel: {supplement.goal}</p>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {supplement.supplement_category && (
+                          <Badge variant="outline" className="text-xs">
+                            {supplement.supplement_category}
+                          </Badge>
+                        )}
+                        
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSupplement(supplement)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={deleteLoading === supplement.id}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supplement entfernen</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Möchten Sie "{supplement.supplement_name}" wirklich aus Ihrer Supplement-Liste entfernen? 
+                                  Diese Aktion kann nicht rückgängig gemacht werden.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteSupplement(supplement.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Entfernen
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
