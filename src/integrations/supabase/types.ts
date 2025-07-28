@@ -983,6 +983,7 @@ export type Database = {
           end_time: string | null
           id: string
           notes: string | null
+          overall_rpe: number | null
           session_name: string | null
           start_time: string | null
           updated_at: string
@@ -997,6 +998,7 @@ export type Database = {
           end_time?: string | null
           id?: string
           notes?: string | null
+          overall_rpe?: number | null
           session_name?: string | null
           start_time?: string | null
           updated_at?: string
@@ -1011,6 +1013,7 @@ export type Database = {
           end_time?: string | null
           id?: string
           notes?: string | null
+          overall_rpe?: number | null
           session_name?: string | null
           start_time?: string | null
           updated_at?: string
