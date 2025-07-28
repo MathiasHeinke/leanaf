@@ -307,7 +307,7 @@ export const EnhancedCoachTopicManager = () => {
         abortControllerRef.current.abort();
       }
     };
-  }, [selectedCoach, loadCoachData]);
+  }, [selectedCoach]);
 
   const loadAvailableCoaches = async () => {
     setIsLoadingCoaches(true);
