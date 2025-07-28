@@ -2026,7 +2026,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
           hasData: detailedExerciseData !== null,
           exerciseData: detailedExerciseData
         },
-        exerciseExtracted
+        exerciseExtracted: exerciseExtracted
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
