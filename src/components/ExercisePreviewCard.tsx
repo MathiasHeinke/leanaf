@@ -38,6 +38,7 @@ export const ExercisePreviewCard: React.FC<ExercisePreviewCardProps> = ({
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   const updateSet = (index: number, field: keyof ExerciseSet, value: number) => {
     const newSets = [...exerciseData.sets];
@@ -87,9 +88,33 @@ export const ExercisePreviewCard: React.FC<ExercisePreviewCardProps> = ({
     <Card className="w-full border-primary/20 bg-gradient-to-br from-background to-muted/30">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span className="text-lg font-bold text-primary">
-            🏋️ {exerciseData.exercise_name}
-          </span>
+          {isEditingTitle ? (
+            <div className="flex items-center space-x-2 flex-1">
+              <span className="text-lg">🏋️</span>
+              <Input
+                value={exerciseData.exercise_name}
+                onChange={(e) => setExerciseData({ ...exerciseData, exercise_name: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setIsEditingTitle(false);
+                  } else if (e.key === 'Escape') {
+                    setIsEditingTitle(false);
+                  }
+                }}
+                onBlur={() => setIsEditingTitle(false)}
+                className="text-lg font-bold"
+                autoFocus
+              />
+            </div>
+          ) : (
+            <span 
+              className="text-lg font-bold text-primary cursor-pointer hover:text-primary/80 flex items-center space-x-2"
+              onClick={() => setIsEditingTitle(true)}
+            >
+              <span>🏋️</span>
+              <span>{exerciseData.exercise_name || 'Übung benennen'}</span>
+            </span>
+          )}
           <Button
             variant="ghost"
             size="sm"

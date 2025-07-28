@@ -480,6 +480,139 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
   };
 
+  const extractExerciseDataFromContext = async (userMessage: string, assistantResponse: string) => {
+    try {
+      // Combine recent chat context
+      const recentMessages = messages.slice(-3); // Last 3 messages for context
+      const chatContext = recentMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + 
+                         `\nuser: ${userMessage}\nassistant: ${assistantResponse}`;
+      
+      console.log('Extracting exercise data from context:', chatContext);
+      
+      // Use a simple extraction function first (no API call needed)
+      const extractedData = extractExerciseDataFromText(chatContext);
+      
+      if (extractedData) {
+        console.log('Exercise data extracted:', extractedData);
+        setExercisePreview(extractedData);
+        toast.success('Übungsdaten erkannt! Bitte überprüfen und speichern.');
+      }
+    } catch (error) {
+      console.error('Error extracting exercise data:', error);
+    }
+  };
+
+  const extractExerciseDataFromText = (text: string) => {
+    const lowerText = text.toLowerCase();
+    
+    // Exercise name patterns
+    const exercisePatterns = [
+      { pattern: /kreuzheben|deadlift/i, name: 'Kreuzheben' },
+      { pattern: /bankdrücken|bench.*press/i, name: 'Bankdrücken' },
+      { pattern: /kniebeugen?|squat/i, name: 'Kniebeugen' },
+      { pattern: /beinpresse|leg.*press/i, name: 'Beinpresse' },
+      { pattern: /bizeps.*curl|curl/i, name: 'Bizeps Curls' },
+      { pattern: /trizeps|triceps/i, name: 'Trizeps' },
+      { pattern: /klimmzüge?|pull.*up/i, name: 'Klimmzüge' },
+      { pattern: /liegestütze?|push.*up/i, name: 'Liegestütze' },
+      { pattern: /schulterdrücken|shoulder.*press/i, name: 'Schulterdrücken' },
+      { pattern: /rudern|row/i, name: 'Rudern' }
+    ];
+    
+    let exerciseName = '';
+    for (const { pattern, name } of exercisePatterns) {
+      if (pattern.test(text)) {
+        exerciseName = name;
+        break;
+      }
+    }
+    
+    // Extract sets data using various patterns
+    const sets = [];
+    const setPatterns = [
+      /(\d+)\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*(?:kg)?/gi,
+      /(\d+)\s*(?:wdh?|reps?|wiederholungen?)\s*(?:mit|bei|@)?\s*(\d+(?:[.,]\d+)?)\s*(?:kg)?/gi,
+      /(\d+(?:[.,]\d+)?)\s*kg\s*(?:für|bei)?\s*(\d+)\s*(?:wdh?|reps?|wiederholungen?)/gi
+    ];
+    
+    for (const pattern of setPatterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        let reps, weight;
+        
+        // Check if first group is reps and second is weight
+        if (match[0].includes('kg') && match[0].match(/kg.*(?:wdh|reps|wiederholungen)/i)) {
+          weight = parseFloat(match[1].replace(',', '.'));
+          reps = parseInt(match[2]);
+        } else {
+          reps = parseInt(match[1]);
+          weight = parseFloat(match[2].replace(',', '.'));
+        }
+        
+        if (reps > 0 && weight >= 0 && reps <= 100 && weight <= 500) {
+          sets.push({ reps, weight });
+        }
+      }
+    }
+    
+    // Extract RPE
+    let overallRpe;
+    const rpeMatch = text.match(/rpe\s*(\d+)|intensität\s*(\d+)|anstrengung\s*(\d+)/i);
+    if (rpeMatch) {
+      overallRpe = parseInt(rpeMatch[1] || rpeMatch[2] || rpeMatch[3]);
+      if (overallRpe < 1 || overallRpe > 10) overallRpe = undefined;
+    }
+    
+    // Return data if we found something useful
+    if (exerciseName || sets.length > 0) {
+      return {
+        exercise_name: exerciseName || 'Krafttraining',
+        sets: sets.length > 0 ? sets : [{ reps: 10, weight: 0 }],
+        overall_rpe: overallRpe
+      };
+    }
+    
+    return null;
+  };
+
+  const extractSupplementDataFromText = (text: string) => {
+    const supplementPatterns = [
+      { pattern: /creatin|kreatin/i, name: 'Creatin' },
+      { pattern: /protein.*pulver|whey|casein/i, name: 'Protein Pulver' },
+      { pattern: /vitamin.*d|vitamin d/i, name: 'Vitamin D' },
+      { pattern: /magnesium/i, name: 'Magnesium' },
+      { pattern: /omega.*3|fischöl/i, name: 'Omega-3' },
+      { pattern: /bcaa/i, name: 'BCAA' },
+      { pattern: /glutamin/i, name: 'Glutamin' }
+    ];
+    
+    let supplementName = '';
+    for (const { pattern, name } of supplementPatterns) {
+      if (pattern.test(text)) {
+        supplementName = name;
+        break;
+      }
+    }
+    
+    // Extract dosage
+    let dosage = '';
+    const dosageMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:g|mg|ml|tabletten?|kapseln?)/i);
+    if (dosageMatch) {
+      dosage = dosageMatch[0];
+    }
+    
+    if (supplementName) {
+      return {
+        supplement_name: supplementName,
+        dosage: dosage || '1 Portion',
+        timing: 'Nach dem Training',
+        notes: 'Aus Chat-Kontext erkannt'
+      };
+    }
+    
+    return null;
+  };
+
   const handleSendMessage = async (messageText?: string) => {
     const userMessage = messageText || inputText.trim();
     if ((!userMessage && uploadedImages.length === 0) || isThinking || !user?.id) return;
@@ -558,12 +691,22 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       // Check for exercise data extraction if this is a workout coach
       if ((coach.id === 'sascha' || coach.id === 'markus') && (coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData)) {
         setExercisePreview(coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData);
+      } else {
+        // Try to extract exercise data from the conversation context
+        await extractExerciseDataFromContext(userMessage, assistantMessage);
       }
       
       // Check for supplement table in the response
       const supplementTable = parseSupplementTable(assistantMessage);
       if (supplementTable) {
         setSupplementPreview(supplementTable);
+      } else {
+        // Try to extract supplement data from context
+        const supplementData = extractSupplementDataFromText(assistantMessage + ' ' + userMessage);
+        if (supplementData) {
+          setSupplementPreview(supplementData);
+          toast.success('Supplement erkannt! Bitte überprüfen und speichern.');
+        }
       }
       
       // Split long messages into parts
