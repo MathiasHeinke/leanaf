@@ -11,8 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CheckCircle, Save, Loader2, Shield, Mail, Key, Smartphone, LogOut, Crown, User, Database } from 'lucide-react';
-import { RAGEmbeddingManagerComponent } from '@/components/RAGEmbeddingManager';
+import { CheckCircle, Save, Loader2, Shield, Mail, Key, LogOut, User } from 'lucide-react';
 
 const Account = () => {
   const [displayName, setDisplayName] = useState('');
@@ -373,26 +372,6 @@ const Account = () => {
           </CardContent>
         </Card>
 
-        {/* RAG System Management */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <Database className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <CardTitle className="text-xl">RAG System Management</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Manage knowledge base, embeddings and AI content expansion
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            <RAGEmbeddingManagerComponent />
-          </CardContent>
-        </Card>
 
         {/* Abmelden */}
         <Card className="border-red-200 dark:border-red-800">
