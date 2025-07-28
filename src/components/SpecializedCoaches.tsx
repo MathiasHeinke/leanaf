@@ -153,6 +153,41 @@ const coachProfiles = [
     ]
   },
   {
+    id: 'dr_vita',
+    name: 'Dr. Vita Femina',
+    age: 38,
+    role: 'Frauengesundheits- & Hormon-Expertin',
+    avatar: '🌸',
+    icon: Heart,
+    imageUrl: '/coach-images/dr-vita-femina.jpg',
+    personality: 'Wissenschaftlich-empathisch & Hormon-bewusst',
+    description: 'Spezialisiert auf zyklusorientiertes Training, Hormonbalance und Frauen-spezifische Gesundheitsoptimierung.',
+    expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
+    color: 'rose',
+    accentColor: 'from-rose-500 to-rose-600',
+    coachInfo: {
+      id: 'dr_vita',
+      name: 'Dr. Vita Femina',
+      role: 'Frauengesundheits- & Hormon-Expertin',
+      color: 'rose',
+      imageUrl: '/coach-images/dr-vita-femina.jpg',
+      avatar: '🌸',
+      philosophy: 'Frauen sind nicht kleine Männer - unser Körper arbeitet in Zyklen und verdient zyklusorientierte Trainings- und Ernährungsstrategien. Hormonbalance ist der Schlüssel.',
+      scientificFoundation: 'Expertise in Frauengesundheit, Endokrinologie, zyklusorientierten Training und evidenzbasierter Hormonoptimierung.',
+      specializations: ['Zyklusorientierte Periodisierung', 'Hormonbalance-Strategien', 'PCOS & Endometriose Management', 'Menopause-Coaching', 'Schwangerschafts-Fitness', 'Frauen-spezifische Nährstoffe'],
+      keyMethods: ['Menstrual Cycle Periodization', 'Hormon-optimierte Ernährung', 'Frauen-spezifische Supplementierung', 'Lifestyle-Medizin für Frauen'],
+      evidence: 'Studien zu Menstrualzyklus-Training, Hormonoptimierung, Frauen-spezifischer Physiologie und zyklusorientierten Interventionen',
+      evidenceBase: 'Forschung zu Female Athlete Triad, zyklusorientierten Training, Hormonbalance und Frauen-Gesundheit',
+      interventions: ['Zyklusbasierte Trainingspläne', 'Hormon-Assessment', 'Frauen-spezifische Ernährungspläne', 'Lifestyle-Medizin-Coaching']
+    },
+    quickActions: [
+      { text: 'Zyklusorientiertes Training', prompt: 'Wie kann ich mein Training an meinen Menstruationszyklus anpassen für optimale Ergebnisse?' },
+      { text: 'Hormonbalance optimieren', prompt: 'Analysiere meine Hormone und gib mir Strategien für bessere Balance.' },
+      { text: 'PMS & Periode verbessern', prompt: 'Wie kann ich PMS-Symptome lindern und meine Periode angenehmer gestalten?' },
+      { text: 'Frauen-spezifische Ernährung', prompt: 'Welche Nährstoffe brauche ich als Frau besonders und wann in meinem Zyklus?' }
+    ]
+  },
+  {
     id: 'integral',
     name: 'Dr. Sophia Integral',
     age: 42,
@@ -185,41 +220,6 @@ const coachProfiles = [
       { text: 'Entwicklungsstufen-Check', prompt: 'Auf welcher Entwicklungsstufe stehe ich in Bezug auf Gesundheit und wo ist mein nächster Wachstumsschritt?' },
       { text: 'Systemische Blockaden', prompt: 'Welche systemischen Muster in meinem Umfeld sabotieren meine Gesundheitsziele?' },
       { text: 'Ganzheitliche Transformation', prompt: 'Erstelle mir einen integral-basierten Transformationsplan für nachhaltigen Erfolg.' }
-    ]
-  },
-  {
-    id: 'vita',
-    name: 'Dr. Vita Femina',
-    age: 38,
-    role: 'Female Health & Hormone Coach',
-    avatar: '🌺',
-    icon: Heart,
-    imageUrl: '/coach-images/dr-vita-femina.jpg',
-    personality: 'Wissenschaftlich & Empathisch',
-    description: 'Expertin für weibliche Gesundheit und hormonelle Balance. Evidenzbasiertes Training von der ersten Periode bis zur Menopause.',
-    expertise: ['Zyklusbasiertes Training', 'Hormonoptimierung', 'Schwangerschaft & Postpartum', 'Menopause-Support'],
-    color: 'purple',
-    accentColor: 'from-purple-500 to-purple-600',
-    coachInfo: {
-      id: 'vita',
-      name: 'Dr. Vita Femina',
-      role: 'Female Health & Hormone Coach',
-      color: 'purple',
-      imageUrl: '/coach-images/dr-vita-femina.jpg',
-      avatar: '🌺',
-      philosophy: 'Von der ersten Periode bis zur goldenen Reife – wir trainieren Hormone, Herz & Hirn im Takt des Lebens. Jede Lebensphase einer Frau bietet einzigartige Trainings- und Ernährungsfenster.',
-      scientificFoundation: 'Endokrinologie, Sportwissenschaft, Gynäkologie, Reha-Medizin mit Spezialisierung auf hormonelle Lebensphasen und evidenzbasierte Trainingssteuerung.',
-      specializations: ['Menstruationszyklus-Training', 'Follikel- & Lutealphase-Optimierung', 'Schwangerschaft & Rückbildung', 'Menopause & Knochengesundheit', 'Hormonelle Ernährungsstrategien', 'PMS & PMDD Management'],
-      keyMethods: ['Zyklus-Sync-Performance', 'HRV-basierte Belastungssteuerung', 'Hormonelle Trainingsperiodisierung', 'Lebensphasenadaptierte Ernährung'],
-      evidence: 'Basiert auf aktueller Forschung zu hormonellen Adaptationen, zyklischen Leistungsschwankungen und geschlechtsspezifischen Trainingsresponses',
-      evidenceBase: 'Aktuelle Forschung zu Menstruationszyklus, Schwangerschaftsphysiologie, Menopause und hormonoptimiertem Training',
-      interventions: ['Zyklusadaptierte Trainingspläne', 'Hormonelle Ernährungsstrategien', 'Lebensphasenangepasste Programme', 'Supplementationsprotokalle']
-    },
-    quickActions: [
-      { text: 'Zyklusbasiertes Training', prompt: 'Wie kann ich mein Training an meinen Menstruationszyklus anpassen für optimale Performance?' },
-      { text: 'Hormonbalance optimieren', prompt: 'Welche evidenzbasierten Strategien helfen mir bei hormoneller Balance und PMS-Management?' },
-      { text: 'Training in der Schwangerschaft', prompt: 'Wie trainiere ich sicher und effektiv während der Schwangerschaft und im Postpartum?' },
-      { text: 'Menopause & Krafttraining', prompt: 'Welche Trainings- und Ernährungsstrategien sind optimal für die Menopause?' }
     ]
   }
 ];

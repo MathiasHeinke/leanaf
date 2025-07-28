@@ -29,6 +29,9 @@ import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
+import { useSentimentAnalysis } from '@/hooks/useSentimentAnalysis';
+import { useCoachMemory } from '@/hooks/useCoachMemory';
+import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
@@ -131,10 +134,24 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     stopRecording
   } = useVoiceRecording();
 
+  // Human-like features hooks
+  const { analyzeSentiment } = useSentimentAnalysis();
+  const { 
+    memory, 
+    loadCoachMemory, 
+    updateUserPreference, 
+    addMoodEntry, 
+    addSuccessMoment, 
+    addStruggleMention, 
+    updateRelationshipStage 
+  } = useCoachMemory();
+  const { checkForProactiveOpportunities } = useProactiveCoaching();
+
   useEffect(() => {
     if (user?.id) {
       loadUserData();
       loadCoachChatHistory();
+      loadCoachMemory(); // Load coach memory for this user
     }
   }, [user?.id, coach.id, selectedDate]);
 
@@ -488,6 +505,25 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         setMessages(prev => [...prev, mappedMessage]);
       }
 
+      // Human-like features: Sentiment analysis
+      const sentimentResult = await analyzeSentiment(userMessage);
+      
+      // Update memory with mood
+      if (sentimentResult.emotion !== 'neutral') {
+        await addMoodEntry(sentimentResult.emotion, sentimentResult.intensity);
+      }
+      
+      // Detect success moments and struggles
+      const successPatterns = ['geschafft', 'erfolgreich', 'stolz', 'super', 'klasse', 'gut gemacht', 'ziel erreicht'];
+      const strugglePatterns = ['schwer', 'probleme', 'frustrier', 'schaffe nicht', 'klappt nicht', 'hilfe'];
+      
+      const lowerMessage = userMessage.toLowerCase();
+      if (successPatterns.some(pattern => lowerMessage.includes(pattern))) {
+        await addSuccessMoment(userMessage);
+      } else if (strugglePatterns.some(pattern => lowerMessage.includes(pattern))) {
+        await addStruggleMention(userMessage);
+      }
+
       const { data: coachResponse, error } = await supabase.functions.invoke('coach-chat', {
         body: {
           message: userMessage,
@@ -502,7 +538,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             historyData: historyData.slice(0, 7),
             trendData,
             weightHistory: weightHistory.slice(0, 10)
-          }
+          },
+          // Enhanced with human-like features
+          sentimentAnalysis: sentimentResult,
+          coachMemory: memory
         }
       });
 
@@ -519,6 +558,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       await sendMessageParts(messageParts);
       
       setQuickActionsShown(true);
+      
+      // Update relationship stage after successful conversation
+      await updateRelationshipStage();
       
       // Generate dynamic suggestions after all parts are sent
       generateDynamicSuggestions();
