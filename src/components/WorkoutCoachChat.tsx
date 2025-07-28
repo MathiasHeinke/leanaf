@@ -522,9 +522,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Chat Area */}
-      <div className="flex flex-col h-[calc(100dvh-210px)]">
+    <div className="flex flex-col h-[calc(100dvh-210px)]">
         <div className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
@@ -671,7 +669,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             onClose={() => setShowHistory(false)}
           />
         )}
-      </div>
 
       {/* Exercise Preview */}
       {exercisePreview && (
