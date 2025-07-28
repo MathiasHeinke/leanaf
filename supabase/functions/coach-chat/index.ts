@@ -303,26 +303,302 @@ const validateCoachPersonality = (personality: string): string => {
   return validPersonalities.includes(personality) ? personality : 'motivierend';
 };
 
+// ============= COMPREHENSIVE DATA COLLECTION =============
+const collectComprehensiveUserData = async (supabase: any, userId: string) => {
+  try {
+    console.log('📊 Collecting comprehensive data for user:', userId);
+    
+    // Parallel data collection for efficiency
+    const [
+      mealsData,
+      fluidData,
+      weightData,
+      sleepData,
+      bodyMeasurementsData,
+      workoutData,
+      supplementData,
+      dailyGoalsData,
+      profileData
+    ] = await Promise.all([
+      // Meals (last 30 days)
+      supabase.from('meal_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Fluid intake (last 30 days)
+      supabase.from('fluid_intake')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Weight history (last 90 days)
+      supabase.from('weight_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Sleep data (last 30 days)
+      supabase.from('sleep_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Body measurements (last 90 days)
+      supabase.from('body_measurements')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Workout data (last 30 days)
+      supabase.from('exercise_sessions')
+        .select(`
+          *,
+          exercise_sets (
+            *,
+            exercises (name, category, muscle_groups)
+          )
+        `)
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Supplement intake (last 30 days)
+      supabase.from('supplement_intake')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('date', { ascending: false }),
+      
+      // Daily goals
+      supabase.from('daily_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .single(),
+      
+      // Profile data
+      supabase.from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+    ]);
+
+    // Calculate insights and analytics
+    const insights = await calculateUserInsights(
+      mealsData.data || [],
+      weightData.data || [],
+      workoutData.data || [],
+      sleepData.data || []
+    );
+
+    return {
+      meals: mealsData.data || [],
+      fluids: fluidData.data || [],
+      weight: weightData.data || [],
+      sleep: sleepData.data || [],
+      bodyMeasurements: bodyMeasurementsData.data || [],
+      workouts: workoutData.data || [],
+      supplements: supplementData.data || [],
+      dailyGoals: dailyGoalsData.data || null,
+      profile: profileData.data || null,
+      insights,
+      dataCollectionTimestamp: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('Error collecting comprehensive user data:', error);
+    return {
+      meals: [],
+      fluids: [],
+      weight: [],
+      sleep: [],
+      bodyMeasurements: [],
+      workouts: [],
+      supplements: [],
+      dailyGoals: null,
+      profile: null,
+      insights: {},
+      dataCollectionTimestamp: new Date().toISOString()
+    };
+  }
+};
+
+// Calculate user insights and analytics
+const calculateUserInsights = async (meals: any[], weight: any[], workouts: any[], sleep: any[]) => {
+  try {
+    const insights: any = {};
+
+    // Nutrition insights
+    if (meals.length > 0) {
+      const recentMeals = meals.slice(0, 7); // Last 7 days
+      insights.nutrition = {
+        avgCalories: recentMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0) / recentMeals.length,
+        avgProtein: recentMeals.reduce((sum, meal) => sum + (meal.protein || 0), 0) / recentMeals.length,
+        mealFrequency: recentMeals.length / 7,
+        mostEatenFoods: getMostFrequentFoods(recentMeals)
+      };
+    }
+
+    // Weight insights
+    if (weight.length > 1) {
+      const sortedWeight = weight.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const weightChange = sortedWeight[sortedWeight.length - 1].weight - sortedWeight[0].weight;
+      insights.weight = {
+        trend: weightChange > 0 ? 'increasing' : weightChange < 0 ? 'decreasing' : 'stable',
+        changeKg: weightChange,
+        currentWeight: sortedWeight[sortedWeight.length - 1].weight
+      };
+    }
+
+    // Workout insights
+    if (workouts.length > 0) {
+      insights.fitness = {
+        workoutsPerWeek: workouts.length / 4, // Assuming 4 weeks of data
+        avgDuration: workouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0) / workouts.length,
+        muscleGroupsFocus: getMostTrainedMuscleGroups(workouts)
+      };
+    }
+
+    // Sleep insights
+    if (sleep.length > 0) {
+      insights.recovery = {
+        avgSleepHours: sleep.reduce((sum, s) => sum + (s.hours_slept || 0), 0) / sleep.length,
+        avgQuality: sleep.reduce((sum, s) => sum + (s.quality_rating || 0), 0) / sleep.length
+      };
+    }
+
+    return insights;
+  } catch (error) {
+    console.error('Error calculating insights:', error);
+    return {};
+  }
+};
+
+const getMostFrequentFoods = (meals: any[]) => {
+  const foodCounts = meals.reduce((counts, meal) => {
+    const foodName = meal.food_name || meal.name || 'Unbekannt';
+    counts[foodName] = (counts[foodName] || 0) + 1;
+    return counts;
+  }, {});
+  
+  return Object.entries(foodCounts)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
+    .slice(0, 5)
+    .map(([food, count]) => ({ food, count }));
+};
+
+const getMostTrainedMuscleGroups = (workouts: any[]) => {
+  const muscleCounts = workouts.reduce((counts, workout) => {
+    if (workout.exercise_sets) {
+      workout.exercise_sets.forEach((set: any) => {
+        if (set.exercises?.muscle_groups) {
+          set.exercises.muscle_groups.forEach((muscle: string) => {
+            counts[muscle] = (counts[muscle] || 0) + 1;
+          });
+        }
+      });
+    }
+    return counts;
+  }, {});
+  
+  return Object.entries(muscleCounts)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
+    .slice(0, 3)
+    .map(([muscle, count]) => ({ muscle, count }));
+};
+
+// ============= RAG INTEGRATION =============
+const determineRAGUsage = async (message: string, coachPersonality: string) => {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check if message contains topics that benefit from RAG
+  const ragTopics = [
+    'wissenschaft', 'studie', 'forschung', 'warum', 'wie funktioniert',
+    'evidenz', 'beweis', 'metabolismus', 'hormone', 'biochemie',
+    'supplement', 'vitamin', 'mineral', 'nährstoff', 'makronährstoff',
+    'training', 'übung', 'technik', 'form', 'biomechanik',
+    'ernährung', 'diät', 'abnehmen', 'muskelaufbau', 'regeneration'
+  ];
+  
+  const hasRAGTopic = ragTopics.some(topic => lowerMessage.includes(topic));
+  const isSpecializedCoach = ['dr_vita', 'sascha', 'markus', 'kai'].includes(coachPersonality);
+  
+  return hasRAGTopic || isSpecializedCoach;
+};
+
+const performRAGSearch = async (supabase: any, message: string, coachPersonality: string, userId?: string) => {
+  try {
+    console.log('🔍 Performing RAG search for message:', message.substring(0, 100));
+    
+    const { data, error } = await supabase.functions.invoke('enhanced-coach-rag', {
+      body: {
+        query: message,
+        coachId: coachPersonality,
+        userId: userId,
+        searchMethod: 'hybrid',
+        maxResults: 5,
+        contextWindow: 2000
+      }
+    });
+
+    if (error) {
+      console.error('RAG search error:', error);
+      return null;
+    }
+
+    console.log('✅ RAG search completed:', {
+      contextsFound: data?.context?.length || 0,
+      totalTokens: data?.metadata?.totalTokens || 0
+    });
+
+    return data;
+  } catch (error) {
+    console.error('Error in RAG search:', error);
+    return null;
+  }
+};
+
 const sanitizeUserData = (userData: any): any => {
   if (!userData || typeof userData !== 'object') return {};
   
   return {
-    todaysTotals: userData.todaysTotals ? {
-      calories: typeof userData.todaysTotals.calories === 'number' ? userData.todaysTotals.calories : 0,
-      protein: typeof userData.todaysTotals.protein === 'number' ? userData.todaysTotals.protein : 0,
-      carbs: typeof userData.todaysTotals.carbs === 'number' ? userData.todaysTotals.carbs : 0,
-      fats: typeof userData.todaysTotals.fats === 'number' ? userData.todaysTotals.fats : 0
-    } : { calories: 0, protein: 0, carbs: 0, fats: 0 },
+    // Comprehensive meal data
+    meals: Array.isArray(userData.meals) ? userData.meals.slice(0, 100) : [],
+    fluids: Array.isArray(userData.fluids) ? userData.fluids.slice(0, 50) : [],
+    supplements: Array.isArray(userData.supplements) ? userData.supplements.slice(0, 50) : [],
+    
+    // Physical data
+    weight: Array.isArray(userData.weight) ? userData.weight.slice(0, 100) : [],
+    bodyMeasurements: Array.isArray(userData.bodyMeasurements) ? userData.bodyMeasurements.slice(0, 50) : [],
+    
+    // Activity data
+    workouts: Array.isArray(userData.workouts) ? userData.workouts.slice(0, 50) : [],
+    sleep: Array.isArray(userData.sleep) ? userData.sleep.slice(0, 30) : [],
+    
+    // Goals and preferences
     dailyGoals: userData.dailyGoals,
+    profile: userData.profile,
+    
+    // Analytics and insights
+    insights: userData.insights || {},
+    
+    // Legacy support
+    todaysTotals: userData.todaysTotals,
     averages: userData.averages,
-    historyData: Array.isArray(userData.historyData) ? userData.historyData.slice(0, 50) : [],
+    historyData: userData.historyData,
     trendData: userData.trendData,
-    weightHistory: Array.isArray(userData.weightHistory) ? userData.weightHistory.slice(0, 100) : [],
-    sleepData: Array.isArray(userData.sleepData) ? userData.sleepData.slice(0, 30) : [],
-    bodyMeasurements: Array.isArray(userData.bodyMeasurements) ? userData.bodyMeasurements.slice(0, 30) : [],
-    workoutData: Array.isArray(userData.workoutData) ? userData.workoutData.slice(0, 30) : [],
-    profileData: userData.profileData || null,
-    progressPhotos: Array.isArray(userData.progressPhotos) ? userData.progressPhotos.slice(0, 10) : []
+    weightHistory: userData.weightHistory,
+    sleepData: userData.sleepData,
+    workoutData: userData.workoutData,
+    profileData: userData.profileData,
+    progressPhotos: userData.progressPhotos,
+    
+    dataCollectionTimestamp: userData.dataCollectionTimestamp
   };
 };
 
@@ -393,8 +669,14 @@ serve(async (req) => {
       })).filter(msg => msg.content);
     }
     
-    // Sanitize user data
-    const userData = sanitizeUserData(body.userData || {});
+    // ============= COMPREHENSIVE DATA COLLECTION =============
+    console.log('📊 Collecting comprehensive user data...');
+    
+    // Collect all user data from database
+    const comprehensiveUserData = await collectComprehensiveUserData(supabase, userId);
+    
+    // Sanitize user data (keeping detailed data)
+    const userData = sanitizeUserData(body.userData || comprehensiveUserData);
     
     // Enhanced image validation using security helpers
     let images = [];
@@ -402,6 +684,15 @@ serve(async (req) => {
       images = body.images.slice(0, 10).filter(url => 
         typeof url === 'string' && securityHelpers.validateInput.url(url)
       );
+    }
+    
+    // ============= RAG INTEGRATION =============
+    const shouldUseRAG = await determineRAGUsage(message, coachPersonality);
+    let ragContext = null;
+    
+    if (shouldUseRAG) {
+      console.log('🔍 Using RAG for specialized knowledge...');
+      ragContext = await performRAGSearch(supabase, message, coachPersonality, userId);
     }
     
     // Log security event
