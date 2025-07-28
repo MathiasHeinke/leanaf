@@ -76,6 +76,23 @@ export const QuickSupplementInput = () => {
     }
   }, [user]);
 
+  // Listen for supplement recommendations from coach
+  useEffect(() => {
+    const handleSupplementRecommendations = () => {
+      if (user) {
+        loadUserSupplements();
+        loadTodayIntake();
+        toast.success('Neue Supplement-Empfehlungen vom Coach hinzugefügt!');
+      }
+    };
+
+    window.addEventListener('supplement-recommendations-saved', handleSupplementRecommendations);
+
+    return () => {
+      window.removeEventListener('supplement-recommendations-saved', handleSupplementRecommendations);
+    };
+  }, [user]);
+
   const loadSupplements = async () => {
     const { data, error } = await supabase
       .from('supplement_database')

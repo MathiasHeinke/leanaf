@@ -1301,22 +1301,27 @@ Nutze diese Daten AKTIV wenn der User nach Training, Krafttraining, Progression 
 ` : ''}
 
 💊 SUPPLEMENT-TABELLEN ERSTELLUNG:
-Wenn du Supplement-Empfehlungen gibst, kannst du BEARBEITBARE Tabellen erstellen:
+Wenn du Supplement-Empfehlungen gibst, erstelle BEARBEITBARE Tabellen mit diesem Format:
 
-BEISPIEL FÜR SUPPLEMENT-TABELLE:
-| Supplement | Dosierung | Timing | Ziel | Status |
-|------------|-----------|--------|------|--------|
-| Whey Protein | 30g | Post-Workout | Muskelaufbau | ✅ Aktiv |
-| Kreatin | 5g | Täglich | Kraft | ❌ Fehlt |
-| Vitamin D3 | 2000 IU | Morgens | Gesundheit | ✅ Aktiv |
+**Supplement Plan**: 
+| Name | Dosierung | Timing | Ziel | Notizen |
+|------|-----------|--------|------|---------|
+| Whey Protein | 30 g | Nach dem Training | Muskelaufbau | Mit Wasser mischen |
+| Kreatin | 5 g | Morgens | Kraft | Täglich, auch an Ruhetagen |
+| Vitamin D3 | 2000 IU | Morgens | Immunsystem | Mit Fett einnehmen |
 
-WICHTIG:
-- Nutze die verfügbare Supplement-Database für Empfehlungen
-- Berücksichtige aktuelle Supplements des Users
-- Markiere fehlende aber empfohlene Supplements mit ❌
+TIMING-BEGRIFFE VERWENDEN:
+- Morgens, Mittags, Abends
+- Vor dem Training, Nach dem Training
+- Vor dem Schlafengehen
+
+WICHTIGE REGELN:
+- Verwende DEUTSCHE Timing-Begriffe (nicht englisch)
+- Dosierung nur als Zahl + Einheit (z.B. "30 g", "2000 IU")
+- Konkrete, umsetzbare Empfehlungen geben
 - Erkläre WARUM du bestimmte Supplements empfiehlst
-- Gib konkrete Dosierungs- und Timing-Empfehlungen
-- Stelle sicher, dass Empfehlungen zum Ziel des Users passen
+- Berücksichtige aktuelle Supplements des Users
+- Tabelle wird automatisch in bearbeitbare Karte umgewandelt
 
 COACHING-PRIORITÄTEN:
 1. Sicherheit und Gesundheit stehen immer an erster Stelle

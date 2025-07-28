@@ -36,6 +36,7 @@ import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dyn
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
+import { SupplementPreviewCard } from '@/components/SupplementPreviewCard';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { VideoCompressionProgress } from '@/components/VideoCompressionProgress';
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
@@ -138,6 +139,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [exercisePreview, setExercisePreview] = useState<any>(null);
+  const [supplementPreview, setSupplementPreview] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -558,6 +560,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         setExercisePreview(coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData);
       }
       
+      // Check for supplement table in the response
+      const supplementTable = parseSupplementTable(assistantMessage);
+      if (supplementTable) {
+        setSupplementPreview(supplementTable);
+      }
+      
       // Split long messages into parts
       const messageParts = splitMessage(assistantMessage);
       
@@ -694,6 +702,73 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         minute: '2-digit'
       });
     }
+  };
+
+  // Supplement parsing functions
+  const parseSupplementTable = (content: string) => {
+    const supplementRegex = /\*\*Supplement[-\s]*Plan?\*\*:?\s*(.*?)(?=\n\n|\n\*\*|$)/s;
+    const match = content.match(supplementRegex);
+    
+    if (!match) return null;
+
+    const tableContent = match[1];
+    const lines = tableContent.split('\n').filter(line => line.trim() && !line.includes('---'));
+    
+    if (lines.length < 2) return null;
+
+    const supplements = [];
+    let title = "Supplement Empfehlungen";
+    
+    // Extract title if available
+    const titleMatch = content.match(/\*\*([^*]+Supplement[^*]*)\*\*/i);
+    if (titleMatch) {
+      title = titleMatch[1];
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line.startsWith('|') || line === '|') continue;
+      
+      const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
+      
+      if (cells.length >= 3) {
+        const supplement = {
+          name: cells[0],
+          dosage: cells[1].split(' ')[0] || '',
+          unit: cells[1].split(' ').slice(1).join(' ') || 'mg',
+          timing: cells[2] ? cells[2].split(',').map(t => {
+            const timing = t.trim().toLowerCase();
+            if (timing.includes('morgen')) return 'morning';
+            if (timing.includes('mittag')) return 'noon';
+            if (timing.includes('abend')) return 'evening';
+            if (timing.includes('vor') && timing.includes('training')) return 'pre_workout';
+            if (timing.includes('nach') && timing.includes('training')) return 'post_workout';
+            if (timing.includes('schlaf')) return 'before_bed';
+            return 'morning';
+          }) : ['morning'],
+          goal: cells[3] || '',
+          notes: cells[4] || ''
+        };
+        
+        if (supplement.name && supplement.dosage) {
+          supplements.push(supplement);
+        }
+      }
+    }
+
+    if (supplements.length === 0) return null;
+
+    return {
+      title,
+      supplements,
+      description: `Personalisierte Supplement-Empfehlungen von ${coach.name}`
+    };
+  };
+
+  const handleSupplementPreviewSave = async (supplementData: any) => {
+    setSupplementPreview(null);
+    // Event is triggered within SupplementPreviewCard
+    toast.success('Supplement-Empfehlungen werden zu deinen Supplementen hinzugefügt!');
   };
 
   const handleExercisePreviewSave = async (exerciseData: any) => {
@@ -1165,6 +1240,17 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             data={exercisePreview}
             onSave={handleExercisePreviewSave}
             onCancel={() => setExercisePreview(null)}
+          />
+        </div>
+      )}
+
+      {/* Supplement Preview Card */}
+        {supplementPreview && (
+          <div className="mt-2">
+            <SupplementPreviewCard
+            data={supplementPreview}
+            onSave={handleSupplementPreviewSave}
+            onCancel={() => setSupplementPreview(null)}
           />
         </div>
       )}
