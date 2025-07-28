@@ -812,13 +812,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </Collapsible>
 
         {/* Input */}
-        <div className="p-3">
-          <div className="flex space-x-2">
+        <div className="p-4">
+          <div className="flex items-center space-x-2">
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
-              className="flex-1 min-h-[60px] resize-none"
+              className="flex-1 min-h-[36px] resize-none"
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -827,55 +827,53 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               }}
             />
             
-            <div className="flex flex-col space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowUpload(!showUpload)}
-                className={showUpload ? 'bg-primary/10 text-primary' : ''}
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant={isRecording ? "destructive" : "outline"}
-                size="sm"
-                onClick={handleVoiceToggle}
-                disabled={isLoading || isProcessing}
-              >
-                {isRecording ? (
-                  <div className="h-4 w-4 bg-white rounded-full animate-pulse" />
-                ) : isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </Button>
-              
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputText.trim() && uploadedMedia.length === 0}
-                size="sm"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowUpload(!showUpload)}
+              className={showUpload ? 'bg-primary/10 text-primary' : ''}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant={isRecording ? "destructive" : "outline"}
+              size="icon"
+              onClick={handleVoiceToggle}
+              disabled={isLoading || isProcessing}
+            >
+              {isRecording ? (
+                <div className="h-4 w-4 bg-white rounded-full animate-pulse" />
+              ) : isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+            
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() && uploadedMedia.length === 0}
+              size="icon"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
-          
-          {/* Voice recording indicator */}
-          {(isRecording || isProcessing) && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg mt-2">
-              <div className="flex gap-1">
-                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
-                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
-                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
-              </div>
-              <span>
-                {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
-              </span>
-            </div>
-          )}
         </div>
+        
+        {/* Voice recording indicator */}
+        {(isRecording || isProcessing) && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg mt-2">
+            <div className="flex gap-1">
+              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
+              <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
+              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
+            </div>
+            <span>
+              {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
