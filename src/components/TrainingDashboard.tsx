@@ -182,7 +182,7 @@ export const TrainingDashboard: React.FC = () => {
       </div>
 
       {/* Responsive Grid Layout */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
         <TrainingStats stats={weeklyStats} />
         
         <TodaysTrainingStatus 
@@ -191,8 +191,8 @@ export const TrainingDashboard: React.FC = () => {
         />
       </div>
 
-      {/* Quick Actions - Responsive Grid */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+      {/* Quick Actions - Enhanced Responsive Grid */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {/* Enhanced Prominent Coach Sascha Card */}
         <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
               onClick={() => navigate('/training/sascha')}>
@@ -250,8 +250,8 @@ export const TrainingDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Custom Exercise Manager */}
-      <div className="max-w-md">
+      {/* Custom Exercise Manager - Desktop Third Column */}
+      <div className="xl:col-span-1 md:col-span-2">
         <CustomExerciseManager onExerciseAdded={loadSessions} />
       </div>
 
