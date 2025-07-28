@@ -73,11 +73,11 @@ interface CoachPipelineStatus {
   pipeline_health_score: number;
 }
 
-const AVAILABLE_COACHES = [
-  { id: 'sascha', name: 'Sascha Coach', description: 'Strength & Conditioning Expert' },
-  { id: 'anna', name: 'Anna Coach', description: 'Nutrition & Wellness Specialist' },
-  { id: 'max', name: 'Max Coach', description: 'Endurance & Recovery Expert' }
-];
+interface AvailableCoach {
+  id: string;
+  name: string;
+  description: string;
+}
 
 const TRAINING_CATEGORIES = [
   'Periodization', 'VO2max Training', 'Military Conditioning', 'Biomechanics',
@@ -91,9 +91,11 @@ const KNOWLEDGE_DEPTHS = {
 };
 
 export const EnhancedCoachTopicManager = () => {
-  const [selectedCoach, setSelectedCoach] = useState('sascha');
+  const [availableCoaches, setAvailableCoaches] = useState<AvailableCoach[]>([]);
+  const [selectedCoach, setSelectedCoach] = useState('');
   const [coachTopics, setCoachTopics] = useState<CoachTopicConfig[]>([]);
   const [coachStatus, setCoachStatus] = useState<CoachPipelineStatus | null>(null);
+  const [isLoadingCoaches, setIsLoadingCoaches] = useState(true);
   const [perplexityResults, setPerplexityResults] = useState<PerplexityTopic[]>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -110,8 +112,49 @@ export const EnhancedCoachTopicManager = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadCoachData();
+    loadAvailableCoaches();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCoach) {
+      loadCoachData();
+    }
   }, [selectedCoach]);
+
+  const loadAvailableCoaches = async () => {
+    setIsLoadingCoaches(true);
+    try {
+      const { data: coachData, error } = await supabase
+        .from('coach_specializations')
+        .select('coach_id, name, specialization_description')
+        .order('name');
+
+      if (error) throw error;
+
+      const coaches: AvailableCoach[] = (coachData || []).map(coach => ({
+        id: coach.coach_id,
+        name: coach.name,
+        description: coach.specialization_description
+      }));
+
+      console.log('🏃‍♂️ Loaded coaches from database:', coaches);
+      setAvailableCoaches(coaches);
+      
+      // Set default coach to first available
+      if (coaches.length > 0 && !selectedCoach) {
+        setSelectedCoach(coaches[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading coaches:', error);
+      toast({
+        title: "Fehler beim Laden",
+        description: "Coaches konnten nicht geladen werden",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingCoaches(false);
+    }
+  };
 
   const loadCoachData = async () => {
     console.log('🔍 Loading coach data for:', selectedCoach);
@@ -361,21 +404,27 @@ export const EnhancedCoachTopicManager = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedCoach} onValueChange={setSelectedCoach}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AVAILABLE_COACHES.map(coach => (
-                <SelectItem key={coach.id} value={coach.id}>
-                  <div>
-                    <div className="font-medium">{coach.name}</div>
-                    <div className="text-sm text-muted-foreground">{coach.description}</div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isLoadingCoaches ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <Select value={selectedCoach} onValueChange={setSelectedCoach}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Coach auswählen..." />
+              </SelectTrigger>
+              <SelectContent>
+                {availableCoaches.map(coach => (
+                  <SelectItem key={coach.id} value={coach.id}>
+                    <div>
+                      <div className="font-medium">{coach.name}</div>
+                      <div className="text-sm text-muted-foreground">{coach.description}</div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </CardContent>
       </Card>
 
@@ -393,7 +442,7 @@ export const EnhancedCoachTopicManager = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5" />
-                Aktuelle Topics für {AVAILABLE_COACHES.find(c => c.id === selectedCoach)?.name}
+                Aktuelle Topics für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'Coach'}
               </CardTitle>
               <CardDescription>
                 {coachTopics.length} Topics konfiguriert
@@ -469,7 +518,7 @@ export const EnhancedCoachTopicManager = () => {
                 Perplexity Topic-Entdeckung
               </CardTitle>
               <CardDescription>
-                Finden Sie neue relevante Topics für {AVAILABLE_COACHES.find(c => c.id === selectedCoach)?.name}
+                Finden Sie neue relevante Topics für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'Coach'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -616,7 +665,7 @@ export const EnhancedCoachTopicManager = () => {
                 <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">RAG-Management</h3>
                 <p className="text-muted-foreground mb-4">
-                  Hier können Sie die Wissensbasis für {AVAILABLE_COACHES.find(c => c.id === selectedCoach)?.name} verwalten
+                  Hier können Sie die Wissensbasis für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'Coach'} verwalten
                 </p>
                 <Button variant="outline">
                   <Settings className="h-4 w-4 mr-2" />
