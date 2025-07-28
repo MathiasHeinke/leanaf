@@ -33,6 +33,7 @@ export const GlobalHeader = ({
       case '/coach': return 'Coach';
       case '/training': return 'Workout';
       case '/training/sascha': return 'Workout/Sascha';
+      case '/training/markus': return 'Workout/Markus';
       case '/history': return 'Analyse';
       case '/achievements': return 'Erfolge';
       case '/science': return 'Wissenschaft';
