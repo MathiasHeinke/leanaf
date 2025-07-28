@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +8,250 @@ const corsHeaders = {
 };
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+// ============= EXERCISE EXTRACTION FUNCTIONS =============
+
+// Extract exercise data from user text
+const extractExerciseFromText = (text: string) => {
+  const lowerText = text.toLowerCase();
+  
+  console.log('🔍 Analyzing text for exercise data:', text.substring(0, 100));
+  
+  // Check for exercise-related keywords
+  const exerciseKeywords = [
+    'übung', 'training', 'deadlift', 'kreuzheben', 'squat', 'kniebeuge', 
+    'bench', 'bankdrücken', 'press', 'drücken', 'row', 'rudern', 
+    'pull', 'klimmzug', 'push', 'liegestütz', 'curl', 'bizeps',
+    'kg', 'rpe', 'satz', 'sätze', 'wiederholung', 'wdh', 'rep', 'reps',
+    'x', '×', 'mal', 'hinzufüg', 'add', 'log'
+  ];
+  
+  const hasExerciseKeywords = exerciseKeywords.some(keyword => lowerText.includes(keyword));
+  
+  if (!hasExerciseKeywords) {
+    console.log('❌ No exercise keywords found');
+    return null;
+  }
+  
+  // Enhanced exercise name extraction patterns
+  const exercisePatterns = [
+    /(?:deadlift|kreuzheben|deadlifts)/gi,
+    /(?:squat|kniebeuge|squats)/gi,
+    /(?:bench\s*press|bankdrücken)/gi,
+    /(?:overhead\s*press|schulterdrücken|military\s*press)/gi,
+    /(?:barbell\s*row|langhantel\s*rudern|rudern)/gi,
+    /(?:pull\s*up|klimmzug|klimmzüge)/gi,
+    /(?:push\s*up|liegestütz|liegestütze)/gi,
+    /(?:bicep\s*curl|bizeps\s*curl|curl)/gi,
+    /(?:dip|dips)/gi,
+    /(?:lat\s*pulldown|latzug)/gi,
+    /(?:leg\s*press|beinpresse)/gi,
+    /(?:leg\s*curl|beincurl)/gi,
+    /(?:calf\s*raise|wadenheben)/gi
+  ];
+  
+  let exerciseName = '';
+  for (const pattern of exercisePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      exerciseName = match[0];
+      console.log('💪 Found exercise:', exerciseName);
+      break;
+    }
+  }
+  
+  if (!exerciseName) {
+    console.log('❌ No specific exercise found');
+    return null;
+  }
+  
+  // Enhanced sets and reps extraction with multiple patterns
+  const setsPatterns = [
+    // Pattern: "10x 90kg rpe 7"
+    /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+    // Pattern: "10 Wiederholungen × 90 kg (RPE 7)"
+    /(\d+)\s*(?:wiederholung|wdh|rep|reps?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*\(?rpe\s*(\d+)\)?)?/gi,
+    // Pattern: "90kg x 10 rpe 7"
+    /(\d+(?:\.\d+)?)\s*kg\s*[x×]\s*(\d+)(?:\s*rpe\s*(\d+))?/gi,
+    // Pattern: "10 mal 90kg"
+    /(\d+)\s*mal\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi
+  ];
+  
+  const sets = [];
+  let match;
+  
+  for (const pattern of setsPatterns) {
+    pattern.lastIndex = 0; // Reset regex
+    while ((match = pattern.exec(text)) !== null) {
+      let reps, weight, rpe;
+      
+      // Check if weight or reps is first based on pattern
+      if (match[0].includes('kg') && match[0].indexOf('kg') < match[0].indexOf('x')) {
+        // Weight first: "90kg x 10"
+        weight = parseFloat(match[1]);
+        reps = parseInt(match[2]);
+        rpe = match[3] ? parseInt(match[3]) : null;
+      } else {
+        // Reps first: "10x 90kg"
+        reps = parseInt(match[1]);
+        weight = parseFloat(match[2]);
+        rpe = match[3] ? parseInt(match[3]) : null;
+      }
+      
+      if (reps > 0 && weight > 0) {
+        sets.push({ reps, weight, rpe });
+        console.log('📝 Added set:', { reps, weight, rpe });
+      }
+    }
+  }
+  
+  if (sets.length === 0) {
+    console.log('❌ No valid sets found');
+    return null;
+  }
+  
+  const result = {
+    exerciseName: normalizeExerciseName(exerciseName),
+    sets,
+    originalText: text
+  };
+  
+  console.log('✅ Exercise extraction successful:', result);
+  return result;
+};
+
+// Normalize exercise names to match database entries
+const normalizeExerciseName = (exerciseName: string) => {
+  const exerciseMap: { [key: string]: string } = {
+    'deadlift': 'Deadlift',
+    'kreuzheben': 'Deadlift',
+    'squat': 'Squat',
+    'kniebeuge': 'Squat',
+    'bench press': 'Bench Press',
+    'bankdrücken': 'Bench Press',
+    'overhead press': 'Overhead Press',
+    'schulterdrücken': 'Overhead Press',
+    'row': 'Barbell Row',
+    'rudern': 'Barbell Row',
+    'pull up': 'Pull-up',
+    'klimmzug': 'Pull-up',
+    'push up': 'Push-up',
+    'liegestütz': 'Push-up',
+    'curl': 'Bicep Curl',
+    'bizeps': 'Bicep Curl',
+    'dip': 'Dip',
+    'dips': 'Dip',
+    'lat pulldown': 'Lat Pulldown',
+    'latzug': 'Lat Pulldown'
+  };
+  
+  const normalized = exerciseMap[exerciseName.toLowerCase().trim()] || exerciseName;
+  return normalized;
+};
+
+// Save exercise data to database
+const saveExerciseData = async (supabase: any, userId: string, exerciseData: any) => {
+  try {
+    console.log('💪 Attempting to save exercise data:', {
+      exercise: exerciseData.exerciseName,
+      setsCount: exerciseData.sets.length,
+      userId: userId.substring(0, 8) + '...'
+    });
+    
+    // 1. Create exercise session first
+    const today = new Date().toISOString().split('T')[0];
+    console.log('📝 Creating exercise session for date:', today);
+    
+    const { data: session, error: sessionError } = await supabase
+      .from('exercise_sessions')
+      .insert({
+        user_id: userId,
+        date: today,
+        session_name: `${exerciseData.exerciseName} Session`,
+        workout_type: 'strength',
+        notes: `Automatisch hinzugefügt: ${exerciseData.originalText}`,
+        overall_rpe: exerciseData.sets.filter((s: any) => s.rpe).length > 0 
+          ? Math.round(exerciseData.sets.filter((s: any) => s.rpe).reduce((sum: number, set: any) => sum + set.rpe, 0) / exerciseData.sets.filter((s: any) => s.rpe).length)
+          : null
+      })
+      .select()
+      .single();
+    
+    if (sessionError) {
+      console.error('❌ Error creating exercise session:', sessionError);
+      return { success: false, error: sessionError.message };
+    }
+    
+    console.log('✅ Exercise session created with ID:', session.id);
+    
+    // 2. Find or create the exercise
+    let { data: exercise, error: exerciseError } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('name', exerciseData.exerciseName)
+      .single();
+    
+    if (exerciseError && exerciseError.code === 'PGRST116') {
+      // Exercise doesn't exist, create it
+      console.log('🆕 Creating new exercise:', exerciseData.exerciseName);
+      const { data: newExercise, error: createError } = await supabase
+        .from('exercises')
+        .insert({
+          name: exerciseData.exerciseName,
+          category: 'Strength',
+          muscle_groups: ['Full Body'],
+          is_public: true,
+          created_by: userId
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error('❌ Error creating exercise:', createError);
+        return { success: false, error: createError.message };
+      }
+      
+      exercise = newExercise;
+      console.log('✅ Exercise created with ID:', exercise.id);
+    } else if (exerciseError) {
+      console.error('❌ Error finding exercise:', exerciseError);
+      return { success: false, error: exerciseError.message };
+    } else {
+      console.log('✅ Exercise found:', exercise.name);
+    }
+    
+    // 3. Create individual sets with proper foreign keys
+    const setsData = exerciseData.sets.map((set: any, index: number) => ({
+      session_id: session.id,
+      user_id: userId,
+      exercise_id: exercise.id,
+      set_number: index + 1,
+      reps: set.reps,
+      weight_kg: set.weight,
+      rpe: set.rpe
+    }));
+    
+    console.log('📝 Creating sets:', setsData.length, 'sets for exercise:', exercise.name);
+    
+    const { error: setsError } = await supabase
+      .from('exercise_sets')
+      .insert(setsData);
+    
+    if (setsError) {
+      console.error('❌ Error creating exercise sets:', setsError);
+      return { success: false, error: setsError.message };
+    }
+    
+    console.log('✅ All exercise data saved successfully!');
+    return { success: true, data: { session, exercise, sets: setsData } };
+    
+  } catch (error) {
+    console.error('❌ Fatal error in saveExerciseData:', error);
+    return { success: false, error: error.message };
+  }
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,9 +263,55 @@ serve(async (req) => {
     console.log('Exercise data extraction request received at:', new Date().toISOString());
 
     const { userId, mediaUrls, userMessage } = await req.json();
+    console.log('Request data:', { userId: userId?.substring(0, 8) + '...', mediaCount: mediaUrls?.length, hasMessage: !!userMessage });
 
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // First try text extraction if userMessage is provided
+    if (userMessage) {
+      console.log('🔍 Checking text for exercise data...');
+      const textExtractionResult = extractExerciseFromText(userMessage);
+      
+      if (textExtractionResult) {
+        console.log('💪 Exercise found in text, saving to database...');
+        const saveResult = await saveExerciseData(supabase, userId, textExtractionResult);
+        
+        if (saveResult.success) {
+          return new Response(JSON.stringify({
+            success: true,
+            source: 'text',
+            exerciseData: {
+              exercise_name: textExtractionResult.exerciseName,
+              sets: textExtractionResult.sets.map(set => ({
+                reps: set.reps,
+                weight: set.weight,
+                rpe: set.rpe
+              })),
+              confidence: 0.9
+            },
+            saved: true,
+            sessionData: saveResult.data
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          console.error('Failed to save text-extracted exercise data:', saveResult.error);
+        }
+      } else {
+        console.log('❌ No exercise data found in text');
+      }
+    }
+
+    // If no text extraction or mediaUrls provided, try vision API
     if (!mediaUrls || mediaUrls.length === 0) {
-      throw new Error('No media URLs provided');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No exercise data found in text and no media URLs provided',
+        exerciseData: null
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`Processing ${mediaUrls.length} media items for exercise data extraction`);
@@ -37,17 +328,16 @@ CRITICAL: Respond ONLY with valid JSON in this exact format:
   "sets": [
     {
       "reps": number,
-      "weight": number
+      "weight": number,
+      "rpe": number
     }
   ],
-  "rpe": number,
   "confidence": number
 }
 
 RULES:
-- exercise_name: German exercise name (e.g., "Kurzhantel Bizeps Curls")
-- sets: Array of sets with reps and weight in kg
-- rpe: Estimated RPE 1-10 based on form/effort visible
+- exercise_name: German exercise name (e.g., "Deadlift", "Squat")
+- sets: Array of sets with reps, weight in kg, and estimated RPE
 - confidence: 0-1 how confident you are in extraction
 - If bodyweight exercise, use weight: 0
 - If weight unclear, estimate based on visible equipment
@@ -78,7 +368,7 @@ RULES:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         messages,
         max_tokens: 500,
         temperature: 0.1
@@ -114,11 +404,28 @@ RULES:
       throw new Error('Invalid exercise data structure');
     }
 
-    console.log('Successfully extracted exercise data:', extractedData);
+    console.log('Successfully extracted exercise data from vision:', extractedData);
+
+    // Convert to our format and save
+    const exerciseForSaving = {
+      exerciseName: extractedData.exercise_name,
+      sets: extractedData.sets.map((set: any) => ({
+        reps: set.reps,
+        weight: set.weight,
+        rpe: set.rpe || null
+      })),
+      originalText: `Vision extraction: ${userMessage || 'Image analysis'}`
+    };
+
+    const saveResult = await saveExerciseData(supabase, userId, exerciseForSaving);
 
     return new Response(JSON.stringify({
       success: true,
-      exerciseData: extractedData
+      source: 'vision',
+      exerciseData: extractedData,
+      saved: saveResult.success,
+      sessionData: saveResult.success ? saveResult.data : null,
+      saveError: saveResult.success ? null : saveResult.error
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
