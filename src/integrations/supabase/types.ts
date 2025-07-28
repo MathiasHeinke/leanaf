@@ -469,6 +469,30 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_memory: {
+        Row: {
+          created_at: string
+          id: string
+          memory_data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memory_data?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memory_data?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coach_pipeline_status: {
         Row: {
           avg_embedding_quality: number | null
@@ -1437,6 +1461,39 @@ export type Database = {
           points_earned?: number
           streak_length?: number | null
           trial_multiplier?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      proactive_messages: {
+        Row: {
+          coach_personality: string
+          id: string
+          message_content: string
+          message_type: string
+          read_at: string | null
+          sent_at: string
+          trigger_reason: string
+          user_id: string
+        }
+        Insert: {
+          coach_personality: string
+          id?: string
+          message_content: string
+          message_type: string
+          read_at?: string | null
+          sent_at?: string
+          trigger_reason: string
+          user_id: string
+        }
+        Update: {
+          coach_personality?: string
+          id?: string
+          message_content?: string
+          message_type?: string
+          read_at?: string | null
+          sent_at?: string
+          trigger_reason?: string
           user_id?: string
         }
         Relationships: []

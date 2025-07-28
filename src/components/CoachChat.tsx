@@ -21,6 +21,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { toast } from "sonner";
 import { useCoachLimitHandler } from "./CoachLimitHandler";
+import { useSentimentAnalysis } from "@/hooks/useSentimentAnalysis";
+import { useCoachMemory } from "@/hooks/useCoachMemory";
+import { useProactiveCoaching } from "@/hooks/useProactiveCoaching";
 
 interface ChatMessage {
   id: string;
@@ -54,6 +57,18 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     startRecording,
     stopRecording
   } = useVoiceRecording();
+
+  // Human-like coaching features
+  const { analyzeSentiment } = useSentimentAnalysis();
+  const { 
+    memory, 
+    loadCoachMemory, 
+    addMoodEntry, 
+    addSuccessMoment, 
+    addStruggleMention,
+    updateRelationshipStage 
+  } = useCoachMemory();
+  const { isEnabled: proactiveEnabled } = useProactiveCoaching();
 
   // Monitor coach personality changes from database
   useEffect(() => {
@@ -94,12 +109,13 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     return () => clearInterval(interval);
   }, [user?.id, currentCoachPersonality]);
 
-  // Load chat history on component mount
+  // Load chat history and coach memory on component mount
   useEffect(() => {
     if (user?.id) {
       loadChatHistory();
+      loadCoachMemory();
     }
-  }, [user?.id]);
+  }, [user?.id, loadCoachMemory]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -232,6 +248,20 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     setIsThinking(true);
 
     try {
+      // Analyze sentiment for emotional intelligence
+      const sentiment = await analyzeSentiment(userMessage);
+      
+      // Update coach memory with mood
+      if (sentiment.emotion !== 'neutral') {
+        await addMoodEntry(sentiment.emotion, sentiment.intensity);
+      }
+      
+      // Detect success moments or struggles
+      if (sentiment.sentiment === 'positive' && sentiment.confidence > 0.7) {
+        await addSuccessMoment(`Positive interaction: ${sentiment.emotion}`);
+      } else if (sentiment.sentiment === 'negative' && sentiment.confidence > 0.7) {
+        await addStruggleMention(`User feeling: ${sentiment.emotion}`);
+      }
       // Save user message and add to UI
       const savedUserMessage = await saveMessage('user', userMessage);
       if (savedUserMessage) {
@@ -288,7 +318,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
           .single()
       ]);
 
-      // Call enhanced coach-chat function with current personality
+      // Call enhanced coach-chat function with current personality and human-like features
       const { data: coachResponse, error } = await supabase.functions.invoke('coach-chat', {
         body: {
           message: userMessage,
@@ -302,7 +332,9 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
             profile: profileData.data || {},
             goals: goalsData.data || {}
           },
-          chatHistory: messages.slice(-10)
+          chatHistory: messages.slice(-10),
+          sentiment: sentiment,
+          coachMemory: memory
         }
       });
 
@@ -365,6 +397,9 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
           coach_personality: savedAssistantMessage.coach_personality
         };
         setMessages(prev => [...prev, mappedMessage]);
+        
+        // Update relationship stage after successful interaction
+        await updateRelationshipStage();
       }
 
     } catch (error: any) {

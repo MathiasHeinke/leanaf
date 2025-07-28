@@ -45,6 +45,7 @@ export const useCoachMemory = () => {
 
     setIsLoading(true);
     try {
+      // @ts-ignore - Types will be updated after migration
       const { data, error } = await supabase
         .from('coach_memory')
         .select('*')
@@ -56,7 +57,8 @@ export const useCoachMemory = () => {
         return null;
       }
 
-      const coachMemory = data?.memory_data || createDefaultMemory();
+      // @ts-ignore - Types will be updated after migration
+      const coachMemory = (data?.memory_data as CoachMemory) || createDefaultMemory();
       setMemory(coachMemory);
       return coachMemory;
 
@@ -72,11 +74,12 @@ export const useCoachMemory = () => {
     if (!user?.id) return false;
 
     try {
+      // @ts-ignore - Types will be updated after migration
       const { error } = await supabase
         .from('coach_memory')
         .upsert({
           user_id: user.id,
-          memory_data: memoryData,
+          memory_data: memoryData as any,
           updated_at: new Date().toISOString()
         });
 

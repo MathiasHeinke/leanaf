@@ -168,7 +168,7 @@ serve(async (req) => {
       throw new Error('User ID is required');
     }
 
-    console.log('Processing enhanced coach chat for user:', userId);
+    console.log('Processing enhanced human-like coach chat for user:', userId);
 
     // Check if user has active subscription with improved logging
     let userTier = 'free';
