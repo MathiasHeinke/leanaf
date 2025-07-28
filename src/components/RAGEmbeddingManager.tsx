@@ -10,7 +10,7 @@ import { Database, Activity, Zap, BarChart3, RefreshCw, CheckCircle } from "luci
 import { PerplexityKnowledgePipeline } from './PerplexityKnowledgePipeline';
 import { RAGTestingSuite } from './RAGTestingSuite';
 import { AutomatedPipelineManager } from './AutomatedPipelineManager';
-import { CoachTopicManager } from './CoachTopicManager';
+import { EnhancedCoachTopicManager } from './EnhancedCoachTopicManager';
 
 interface EmbeddingStatus {
   total_knowledge_entries: number;
@@ -154,8 +154,8 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* Coach Topic Manager */}
-      <CoachTopicManager />
+      {/* Enhanced Coach Topic Manager */}
+      <EnhancedCoachTopicManager />
 
       {/* Automated Pipeline Manager */}
       <AutomatedPipelineManager />
