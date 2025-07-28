@@ -458,8 +458,22 @@ export const EnhancedCoachTopicManager = () => {
                 <BookOpen className="h-5 w-5" />
                 Aktuelle Topics für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'Coach'}
               </CardTitle>
-              <CardDescription>
-                {coachTopics.length} Topics konfiguriert
+              <CardDescription className="flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-2xl text-primary">{coachTopics.length}</span> Topics gefunden
+                  <div className="text-xs opacity-70 mt-1">Coach ID: {selectedCoach}</div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    const tabsList = document.querySelector('[role="tablist"]');
+                    const discoverTab = document.querySelector('[value="discover"]') as HTMLButtonElement;
+                    discoverTab?.click();
+                  }}
+                >
+                  Topics konfigurieren
+                </Button>
               </CardDescription>
             </CardHeader>
             <CardContent>
