@@ -40,7 +40,7 @@ interface CoachTopicConfig {
   topic_name: string;
   is_enabled: boolean;
   priority_level: number;
-  search_keywords: any;
+  search_keywords: string[];
   knowledge_depth: string;
   update_frequency_hours: number;
   last_updated_at: string | null;
@@ -114,6 +114,7 @@ export const EnhancedCoachTopicManager = () => {
   }, [selectedCoach]);
 
   const loadCoachData = async () => {
+    console.log('🔍 Loading coach data for:', selectedCoach);
     setIsLoadingTopics(true);
     try {
       // Load existing topics for selected coach
@@ -122,6 +123,9 @@ export const EnhancedCoachTopicManager = () => {
         .select('*')
         .eq('coach_id', selectedCoach)
         .order('priority_level', { ascending: false });
+
+      console.log('📊 Raw topics data:', topicsData);
+      console.log('❌ Topics error:', topicsError);
 
       if (topicsError) throw topicsError;
 
@@ -136,7 +140,18 @@ export const EnhancedCoachTopicManager = () => {
         console.error('Status error:', statusError);
       }
 
-      setCoachTopics(topicsData || []);
+      console.log('✅ Setting coach topics:', topicsData?.length, 'topics');
+      console.log('📝 Sample topic:', topicsData?.[0]);
+      
+      // Cast the data to ensure search_keywords is properly typed
+      const typedTopicsData = (topicsData || []).map(topic => ({
+        ...topic,
+        search_keywords: Array.isArray(topic.search_keywords) 
+          ? topic.search_keywords as string[]
+          : []
+      })) as CoachTopicConfig[];
+      
+      setCoachTopics(typedTopicsData);
       setCoachStatus(statusData || null);
 
       console.log(`Loaded ${topicsData?.length || 0} topics for coach ${selectedCoach}`);
@@ -309,13 +324,21 @@ export const EnhancedCoachTopicManager = () => {
   };
 
   const getTopicsByCategory = () => {
+    console.log('🗂️ Categorizing topics. Total topics:', coachTopics.length);
+    console.log('📊 Topics array:', coachTopics);
+    
     const categories: Record<string, CoachTopicConfig[]> = {};
     coachTopics.forEach(topic => {
+      console.log('Processing topic:', topic.topic_name, 'Category:', topic.topic_category);
       if (!categories[topic.topic_category]) {
         categories[topic.topic_category] = [];
       }
       categories[topic.topic_category].push(topic);
     });
+    
+    console.log('📂 Final categories:', Object.keys(categories));
+    console.log('📊 Categories with counts:', Object.entries(categories).map(([cat, topics]) => `${cat}: ${topics.length}`));
+    
     return categories;
   };
 
