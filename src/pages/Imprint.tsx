@@ -19,10 +19,11 @@ export default function Imprint() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <p className="font-medium">GetleanAI GmbH</p>
-              <p>Musterstraße 123</p>
-              <p>12345 Musterstadt</p>
-              <p>Deutschland</p>
+              <p className="font-medium">FYN Consulting LTD</p>
+              <p>21 HILL STREET, FLAT 207</p>
+              <p>HAVERFORDWEST</p>
+              <p>SA61 1QQ</p>
+              <p>United Kingdom</p>
             </div>
           </CardContent>
         </Card>
@@ -33,19 +34,10 @@ export default function Imprint() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <p><strong>Telefon:</strong> +49 (0) 123 456789</p>
+              <p><strong>Telefon:</strong> [Telefonnummer]</p>
               <p><strong>E-Mail:</strong> info@getleanai.com</p>
               <p><strong>Website:</strong> www.getleanai.com</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Geschäftsführung</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <p>Max Mustermann</p>
           </CardContent>
         </Card>
 
@@ -55,22 +47,9 @@ export default function Imprint() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <p><strong>Registergericht:</strong> Amtsgericht Musterstadt</p>
-              <p><strong>Registernummer:</strong> HRB 12345</p>
+              <p><strong>UTR:</strong> 4695628902</p>
+              <p><strong>Registergericht:</strong> UK Company Registration</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Umsatzsteuer-ID</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <p>
-              Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:
-              <br />
-              DE123456789
-            </p>
           </CardContent>
         </Card>
 
@@ -82,11 +61,11 @@ export default function Imprint() {
             <p>
               Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:
               <br />
-              Max Mustermann
+              FYN Consulting LTD
               <br />
-              Musterstraße 123
+              21 HILL STREET, FLAT 207
               <br />
-              12345 Musterstadt
+              HAVERFORDWEST SA61 1QQ
             </p>
           </CardContent>
         </Card>
