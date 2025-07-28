@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,8 @@ import {
   Database,
   Filter,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  RefreshCw
 } from "lucide-react";
 
 interface CoachTopicConfig {
@@ -111,15 +112,100 @@ export const EnhancedCoachTopicManager = () => {
   
   const { toast } = useToast();
 
+  const loadCoachData = useCallback(async () => {
+    if (!selectedCoach) {
+      console.log('🚫 No coach selected, skipping data load');
+      setCoachTopics([]); // Clear topics when no coach selected
+      setCoachStatus(null);
+      return;
+    }
+
+    console.log('🔍 [STATE] Loading coach data for:', selectedCoach);
+    console.log('🔍 [STATE] Current coachTopics length before load:', coachTopics.length);
+    setIsLoadingTopics(true);
+    
+    try {
+      // Load existing topics for selected coach with retry mechanism
+      console.log('📡 [QUERY] Querying coach_topic_configurations for coach_id:', selectedCoach);
+      
+      const { data: topicsData, error: topicsError } = await supabase
+        .from('coach_topic_configurations')
+        .select('*')
+        .eq('coach_id', selectedCoach)
+        .order('priority_level', { ascending: false });
+
+      console.log('📊 [RESULT] Raw query result - Data length:', topicsData?.length || 0);
+      console.log('📊 [RESULT] Raw query result - Error:', topicsError);
+      console.log('📊 [RESULT] Query parameters - coach_id:', selectedCoach);
+      console.log('📊 [RESULT] First few topics:', topicsData?.slice(0, 3));
+
+      if (topicsError) {
+        console.error('❌ [ERROR] Database query error:', topicsError);
+        throw topicsError;
+      }
+
+      // Load coach pipeline status
+      const { data: statusData, error: statusError } = await supabase
+        .from('coach_pipeline_status')
+        .select('*')
+        .eq('coach_id', selectedCoach)
+        .single();
+
+      if (statusError && statusError.code !== 'PGRST116') {
+        console.error('⚠️ [WARNING] Status error (non-critical):', statusError);
+      }
+
+      console.log('✅ [SUCCESS] Query successful - Found topics:', topicsData?.length || 0);
+      console.log('📝 [SAMPLE] First topic sample:', topicsData?.[0]);
+      
+      // Cast the data to ensure search_keywords is properly typed
+      const typedTopicsData = (topicsData || []).map(topic => ({
+        ...topic,
+        search_keywords: Array.isArray(topic.search_keywords) 
+          ? topic.search_keywords as string[]
+          : []
+      })) as CoachTopicConfig[];
+      
+      console.log('🎯 [STATE] Setting state with', typedTopicsData.length, 'topics for coach:', selectedCoach);
+      console.log('🎯 [STATE] Topic names:', typedTopicsData.map(t => t.topic_name));
+      
+      setCoachTopics(typedTopicsData);
+      setCoachStatus(statusData || null);
+
+      console.log(`✅ [FINAL] Successfully loaded ${typedTopicsData.length} topics for coach ${selectedCoach}`);
+    } catch (error) {
+      console.error('💥 [ERROR] Error loading coach data:', error);
+      toast({
+        title: "Fehler beim Laden",
+        description: "Coach-Daten konnten nicht geladen werden",
+        variant: "destructive"
+      });
+      // Don't reset topics on error, keep existing state unless it's empty
+      if (coachTopics.length === 0) {
+        setCoachTopics([]);
+        setCoachStatus(null);
+      }
+    } finally {
+      console.log('🏁 [LOADING] Setting isLoadingTopics to false');
+      setIsLoadingTopics(false);
+    }
+  }, [selectedCoach, toast]); // Remove coachTopics from dependencies to prevent infinite loops
+
   useEffect(() => {
     loadAvailableCoaches();
   }, []);
 
   useEffect(() => {
+    console.log('🔄 [EFFECT] selectedCoach changed to:', selectedCoach);
     if (selectedCoach) {
+      console.log('✅ [EFFECT] Calling loadCoachData for coach:', selectedCoach);
       loadCoachData();
+    } else {
+      console.log('❌ [EFFECT] No coach selected, clearing state');
+      setCoachTopics([]);
+      setCoachStatus(null);
     }
-  }, [selectedCoach]);
+  }, [selectedCoach, loadCoachData]);
 
   const loadAvailableCoaches = async () => {
     setIsLoadingCoaches(true);
@@ -156,73 +242,6 @@ export const EnhancedCoachTopicManager = () => {
     }
   };
 
-  const loadCoachData = async () => {
-    if (!selectedCoach) {
-      console.log('🚫 No coach selected, skipping data load');
-      return;
-    }
-
-    console.log('🔍 Loading coach data for:', selectedCoach);
-    setIsLoadingTopics(true);
-    
-    try {
-      // Load existing topics for selected coach with retry mechanism
-      console.log('📡 Querying coach_topic_configurations for coach_id:', selectedCoach);
-      
-      const { data: topicsData, error: topicsError } = await supabase
-        .from('coach_topic_configurations')
-        .select('*')
-        .eq('coach_id', selectedCoach)
-        .order('priority_level', { ascending: false });
-
-      console.log('📊 Raw query result - Data:', topicsData);
-      console.log('📊 Raw query result - Error:', topicsError);
-      console.log('📊 Query parameters - coach_id:', selectedCoach);
-
-      if (topicsError) {
-        console.error('❌ Database query error:', topicsError);
-        throw topicsError;
-      }
-
-      // Load coach pipeline status
-      const { data: statusData, error: statusError } = await supabase
-        .from('coach_pipeline_status')
-        .select('*')
-        .eq('coach_id', selectedCoach)
-        .single();
-
-      if (statusError && statusError.code !== 'PGRST116') {
-        console.error('⚠️ Status error (non-critical):', statusError);
-      }
-
-      console.log('✅ Query successful - Found topics:', topicsData?.length || 0);
-      console.log('📝 First topic sample:', topicsData?.[0]);
-      
-      // Cast the data to ensure search_keywords is properly typed
-      const typedTopicsData = (topicsData || []).map(topic => ({
-        ...topic,
-        search_keywords: Array.isArray(topic.search_keywords) 
-          ? topic.search_keywords as string[]
-          : []
-      })) as CoachTopicConfig[];
-      
-      console.log('🎯 Setting state with', typedTopicsData.length, 'topics');
-      setCoachTopics(typedTopicsData);
-      setCoachStatus(statusData || null);
-
-      console.log(`✅ Successfully loaded ${typedTopicsData.length} topics for coach ${selectedCoach}`);
-    } catch (error) {
-      console.error('💥 Error loading coach data:', error);
-      toast({
-        title: "Fehler beim Laden",
-        description: "Coach-Daten konnten nicht geladen werden",
-        variant: "destructive"
-      });
-      // Don't reset topics on error, keep existing state
-    } finally {
-      setIsLoadingTopics(false);
-    }
-  };
 
   const searchPerplexityTopics = async (category?: string) => {
     setIsSearching(true);
@@ -459,21 +478,46 @@ export const EnhancedCoachTopicManager = () => {
                 Aktuelle Topics für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'Coach'}
               </CardTitle>
               <CardDescription className="flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-2xl text-primary">{coachTopics.length}</span> Topics gefunden
-                  <div className="text-xs opacity-70 mt-1">Coach ID: {selectedCoach}</div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {isLoadingTopics ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>Lade Topics...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="font-semibold text-2xl text-primary">{coachTopics.length}</span> Topics gefunden
+                      </>
+                    )}
+                  </div>
+                  <div className="text-xs opacity-70 space-y-1">
+                    <div>Coach ID: {selectedCoach}</div>
+                    <div>State: {isLoadingTopics ? 'Loading' : 'Loaded'}</div>
+                    <div>DB Result: {coachTopics.length} items</div>
+                  </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    const tabsList = document.querySelector('[role="tablist"]');
-                    const discoverTab = document.querySelector('[value="discover"]') as HTMLButtonElement;
-                    discoverTab?.click();
-                  }}
-                >
-                  Topics konfigurieren
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={loadCoachData}
+                    disabled={isLoadingTopics}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoadingTopics ? 'animate-spin' : ''}`} />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const tabsList = document.querySelector('[role="tablist"]');
+                      const discoverTab = document.querySelector('[value="discover"]') as HTMLButtonElement;
+                      discoverTab?.click();
+                    }}
+                  >
+                    Topics konfigurieren
+                  </Button>
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent>
