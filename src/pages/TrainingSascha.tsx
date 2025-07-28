@@ -480,7 +480,7 @@ const TrainingSascha = () => {
             expertise: ['Krafttraining', 'Performance', 'Trainingsplanung'],
             personality: 'hart',
             color: 'blue',
-            avatar: '/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png',
+            avatar: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
             age: 32,
             icon: 'dumbbell',
             accentColor: 'blue',
