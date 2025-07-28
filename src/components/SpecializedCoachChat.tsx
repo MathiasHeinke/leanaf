@@ -23,7 +23,8 @@ import {
   Sparkles,
   ChevronDown,
   History,
-  Calendar
+  Calendar,
+  Activity
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -503,73 +504,128 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   const extractExerciseDataFromText = (text: string) => {
-    const lowerText = text.toLowerCase();
+    console.log('🔍 Extracting exercise data from text:', text);
     
-    // Exercise name patterns
+    // Erweiterte Übungsmuster mit mehr Variationen
     const exercisePatterns = [
-      { pattern: /kreuzheben|deadlift/i, name: 'Kreuzheben' },
-      { pattern: /bankdrücken|bench.*press/i, name: 'Bankdrücken' },
-      { pattern: /kniebeugen?|squat/i, name: 'Kniebeugen' },
-      { pattern: /beinpresse|leg.*press/i, name: 'Beinpresse' },
-      { pattern: /bizeps.*curl|curl/i, name: 'Bizeps Curls' },
-      { pattern: /trizeps|triceps/i, name: 'Trizeps' },
-      { pattern: /klimmzüge?|pull.*up/i, name: 'Klimmzüge' },
-      { pattern: /liegestütze?|push.*up/i, name: 'Liegestütze' },
-      { pattern: /schulterdrücken|shoulder.*press/i, name: 'Schulterdrücken' },
-      { pattern: /rudern|row/i, name: 'Rudern' }
+      { pattern: /(?:bankdrücken|bank\s*drücken|bench\s*press|brustdrücken)/gi, name: 'Bankdrücken' },
+      { pattern: /(?:kniebeugen|squats?|beinbeugen)/gi, name: 'Kniebeugen' },
+      { pattern: /(?:kreuzheben|deadlifts?|kreuzheben)/gi, name: 'Kreuzheben' },
+      { pattern: /(?:klimmzüge|chin\s*ups?|pull\s*ups?|hochziehen)/gi, name: 'Klimmzüge' },
+      { pattern: /(?:liegestütze|push\s*ups?|armdrücken)/gi, name: 'Liegestütze' },
+      { pattern: /(?:schulterdrücken|overhead\s*press|military\s*press|schulter\s*presse)/gi, name: 'Schulterdrücken' },
+      { pattern: /(?:bizeps?\s*curls?|bizeps\s*training|armcurls)/gi, name: 'Bizeps Curls' },
+      { pattern: /(?:trizeps?\s*drücken|triceps?\s*press|trizeps\s*training)/gi, name: 'Trizeps Drücken' },
+      { pattern: /(?:rudern|rows?|latzug|lat\s*pulldown)/gi, name: 'Rudern' },
+      { pattern: /(?:dips|barrenstütz)/gi, name: 'Dips' },
+      { pattern: /(?:kurzhantel|dumbell|hanteln?)/gi, name: 'Kurzhantel Training' },
+      { pattern: /(?:langhantel|barbell)/gi, name: 'Langhantel Training' },
+      { pattern: /(?:krafttraining|workout|training|gym)/gi, name: 'Krafttraining' }
     ];
-    
-    let exerciseName = '';
+
+    // Suche nach Übungsname
+    let exerciseName = 'Krafttraining';
     for (const { pattern, name } of exercisePatterns) {
-      if (pattern.test(text)) {
+      const match = text.match(pattern);
+      if (match) {
         exerciseName = name;
+        console.log('✅ Found exercise:', exerciseName, 'from pattern:', match[0]);
         break;
       }
     }
-    
-    // Extract sets data using various patterns
+
+    // Erweiterte Set-Extraktion
     const sets = [];
-    const setPatterns = [
-      /(\d+)\s*[×x]\s*(\d+(?:[.,]\d+)?)\s*(?:kg)?/gi,
-      /(\d+)\s*(?:wdh?|reps?|wiederholungen?)\s*(?:mit|bei|@)?\s*(\d+(?:[.,]\d+)?)\s*(?:kg)?/gi,
-      /(\d+(?:[.,]\d+)?)\s*kg\s*(?:für|bei)?\s*(\d+)\s*(?:wdh?|reps?|wiederholungen?)/gi
-    ];
     
+    // Verschiedene Muster für Sets und Wiederholungen
+    const setPatterns = [
+      // Standard: "3x10 @ 80kg", "3×10 bei 80kg"
+      /(\d+)\s*[x×]\s*(\d+)\s*(?:@|bei|mit|at|à)?\s*(\d+(?:[.,]\d+)?)\s*kg/gi,
+      // Ausgeschrieben: "3 Sätze mit 10 Wiederholungen bei 80kg"
+      /(\d+)\s*(?:sets?|sätze)\s*(?:of|von|mit|à|je)?\s*(\d+)\s*(?:reps?|wiederholungen|wdh)\s*(?:@|bei|mit|at|à)?\s*(\d+(?:[.,]\d+)?)\s*kg/gi,
+      // Flexibler: "3 Sätze á 10 Wiederholungen mit 80 kg"
+      /(\d+)\s*(?:sets?|sätze).*?(\d+)\s*(?:reps?|wiederholungen|wdh).*?(\d+(?:[.,]\d+)?)\s*kg/gi,
+      // Umgekehrt: "10 Wiederholungen mit 80kg für 3 Sätze"
+      /(\d+)\s*(?:reps?|wiederholungen|wdh).*?(\d+(?:[.,]\d+)?)\s*kg.*?(\d+)\s*(?:sets?|sätze)/gi,
+      // Einfach: "10 reps 80kg"
+      /(\d+)\s*(?:reps?|wiederholungen|wdh)\s*(\d+(?:[.,]\d+)?)\s*kg/gi
+    ];
+
     for (const pattern of setPatterns) {
       let match;
       while ((match = pattern.exec(text)) !== null) {
-        let reps, weight;
+        let numSets, reps, weight;
         
-        // Check if first group is reps and second is weight
-        if (match[0].includes('kg') && match[0].match(/kg.*(?:wdh|reps|wiederholungen)/i)) {
-          weight = parseFloat(match[1].replace(',', '.'));
+        if (match.length === 4) {
+          // 3 Gruppen: sets, reps, weight
+          numSets = parseInt(match[1]);
           reps = parseInt(match[2]);
-        } else {
+          weight = parseFloat(match[3].replace(',', '.'));
+        } else if (match.length === 3) {
+          // 2 Gruppen: reps, weight (1 Set angenommen)
+          numSets = 1;
           reps = parseInt(match[1]);
           weight = parseFloat(match[2].replace(',', '.'));
         }
         
-        if (reps > 0 && weight >= 0 && reps <= 100 && weight <= 500) {
-          sets.push({ reps, weight });
+        console.log('📊 Found set pattern:', { numSets, reps, weight, match: match[0] });
+        
+        if (numSets && reps && weight && reps <= 100 && weight <= 500) {
+          for (let i = 0; i < Math.min(numSets, 10); i++) { // Max 10 Sets
+            sets.push({ reps, weight });
+          }
         }
       }
     }
-    
-    // Extract RPE
-    let overallRpe;
-    const rpeMatch = text.match(/rpe\s*(\d+)|intensität\s*(\d+)|anstrengung\s*(\d+)/i);
-    if (rpeMatch) {
-      overallRpe = parseInt(rpeMatch[1] || rpeMatch[2] || rpeMatch[3]);
-      if (overallRpe < 1 || overallRpe > 10) overallRpe = undefined;
+
+    // Fallback: Suche nach einzelnen Zahlen
+    if (sets.length === 0) {
+      console.log('🔄 No structured sets found, trying fallback patterns...');
+      
+      // Einzelne Wiederholungen und Gewichte finden
+      const weightMatches = text.match(/(\d+(?:[.,]\d+)?)\s*kg/gi);
+      const repMatches = text.match(/(\d+)\s*(?:reps?|wiederholungen|wdh|mal)/gi);
+      
+      if (weightMatches && repMatches) {
+        const weight = parseFloat(weightMatches[0].replace(/[^\d.,]/g, '').replace(',', '.'));
+        const reps = parseInt(repMatches[0].replace(/[^\d]/g, ''));
+        
+        if (weight && reps && reps <= 100 && weight <= 500) {
+          sets.push({ reps, weight });
+          console.log('🎯 Fallback extraction successful:', { reps, weight });
+        }
+      }
     }
+
+    // RPE Extraktion
+    let overallRpe = undefined;
+    const rpePatterns = [
+      /(?:rpe|rpe-wert|anstrengung|schwierigkeit).*?(\d+(?:[.,]\d+)?)/gi,
+      /(\d+(?:[.,]\d+)?)\s*(?:\/10|von 10|rpe)/gi
+    ];
     
+    for (const pattern of rpePatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const rpeValue = parseFloat(match[1]?.replace(',', '.'));
+        if (rpeValue >= 1 && rpeValue <= 10) {
+          overallRpe = rpeValue;
+          console.log('💪 Found RPE:', overallRpe);
+          break;
+        }
+      }
+    }
+
+    const result = { 
+      exercise_name: exerciseName, 
+      sets: sets.length > 0 ? sets : [], 
+      overall_rpe: overallRpe 
+    };
+    console.log('🏆 Final extracted exercise data:', result);
+
     // Return data if we found something useful
-    if (exerciseName || sets.length > 0) {
-      return {
-        exercise_name: exerciseName || 'Krafttraining',
-        sets: sets.length > 0 ? sets : [{ reps: 10, weight: 0 }],
-        overall_rpe: overallRpe
-      };
+    if (exerciseName !== 'Krafttraining' || sets.length > 0) {
+      return result;
     }
     
     return null;
@@ -1183,7 +1239,36 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                     </div>
                   )}
                   
-                  <div className="space-y-2">
+                 {/* Smart Exercise Detection Button */}
+                 <div className="mb-3">
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => {
+                       console.log('🔍 Manual context extraction from recent messages');
+                       const recentMessages = messages.slice(-5); // Letzte 5 Nachrichten
+                       const combinedText = recentMessages.map(m => m.content).join(' ') + ' ' + inputText;
+                       const exerciseData = extractExerciseDataFromText(combinedText);
+                       
+                       if (exerciseData && (exerciseData.sets.length > 0 || exerciseData.exercise_name !== 'Krafttraining')) {
+                         setExercisePreview({
+                           exercise_name: exerciseData.exercise_name,
+                           sets: exerciseData.sets.length > 0 ? exerciseData.sets : [{ reps: 10, weight: 0 }],
+                           overall_rpe: exerciseData.overall_rpe
+                         });
+                         toast.success(`Übungsdaten erkannt: ${exerciseData.exercise_name} mit ${exerciseData.sets.length} Sätzen`);
+                       } else {
+                         toast.error("Keine Übungsdaten gefunden. Beschreibe dein Training detaillierter (z.B. '3x10 Bankdrücken mit 80kg')");
+                       }
+                     }}
+                     className="w-full text-xs text-muted-foreground"
+                   >
+                     <Activity className="h-3 w-3 mr-1" />
+                     Übung aus Chat erkennen
+                   </Button>
+                 </div>
+
+                 <div className="space-y-2">
                     {(dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions).map((action, index) => (
                       <Button
                         key={index}
