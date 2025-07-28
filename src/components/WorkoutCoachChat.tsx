@@ -14,6 +14,7 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useSentimentAnalysis } from '@/hooks/useSentimentAnalysis';
 import { useCoachMemory } from '@/hooks/useCoachMemory';
 import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
+import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dynamicCoachGreetings';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { 

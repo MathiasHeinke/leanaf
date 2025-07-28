@@ -32,6 +32,7 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useSentimentAnalysis } from '@/hooks/useSentimentAnalysis';
 import { useCoachMemory } from '@/hooks/useCoachMemory';
 import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
+import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dynamicCoachGreetings';
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
@@ -290,24 +291,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   const getWelcomeMessage = (isFirstConversation: boolean) => {
-    if (!isFirstConversation) {
-      // Returning user - more casual greeting
-      return `Hey ${firstName}! Was steht heute an?`;
-    }
-    
-    // First time meeting - introduce yourself
-    switch (coach.id) {
-      case 'lucy':
-        return `Hey ${firstName}! 💗 Ich bin Lucy, deine Ernährungs- und Lifestyle-Expertin. Was beschäftigt dich im Moment beim Thema Ernährung oder Lifestyle?`;
-      case 'sascha':
-        return `Hi ${firstName}! 🎯 Ich bin Sascha, dein Personal Trainer. Was ist dein aktuelles Trainingsziel?`;
-      case 'kai':
-        return `Hey ${firstName}! 💪 Ich bin Kai, dein Mindset- und Recovery-Spezialist. Woran arbeitest du gerade?`;
-      case 'markus':
-        return `Servus ${firstName}! 🏋️‍♂️ Hier ist der Maggus - isch bin zurück! Bock auf echtes Training oder willste wie'n Wellensittich aussehen? Schwer und falsch - des is unumgänglich! Muss net schmegge, muss wirge!`;
-      default:
-        return `Hey ${firstName}! Schön, dich kennenzulernen. Wie kann ich dir helfen?`;
-    }
+    const greetingContext = createGreetingContext(firstName, coach.id, memory, isFirstConversation);
+    return generateDynamicCoachGreeting(greetingContext);
   };
 
   const saveMessage = async (role: 'user' | 'assistant', content: string, images?: string[]) => {
