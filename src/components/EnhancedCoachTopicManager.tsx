@@ -443,7 +443,7 @@ export const EnhancedCoachTopicManager = () => {
     const matchesQuery = !searchQuery || 
       topic.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       topic.category.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || topic.category === selectedCategory;
+    const matchesCategory = !selectedCategory || selectedCategory === 'all' || topic.category === selectedCategory;
     return matchesQuery && matchesCategory;
   });
 
@@ -712,7 +712,7 @@ export const EnhancedCoachTopicManager = () => {
                       <SelectValue placeholder="Kategorie wählen" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Alle Kategorien</SelectItem>
+                      <SelectItem value="all">Alle Kategorien</SelectItem>
                       {TRAINING_CATEGORIES.map(cat => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
