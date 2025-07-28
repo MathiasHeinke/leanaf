@@ -450,51 +450,52 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
 
   if (isLoading) {
     return (
-      <Card className="h-[600px] flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Lade Chat-Verlauf...</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="h-[600px] flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
-            <Brain className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">KaloAI Coach</span>
-              <Badge variant="secondary" className="text-xs">
-                {getCoachIcon(currentCoachPersonality)} {getCoachName(currentCoachPersonality)}
-              </Badge>
+    <div className="h-screen flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b border-border/20 bg-card/95 backdrop-blur-sm">
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center">
+              <Brain className="h-5 w-5 text-white" />
             </div>
-            <p className="text-sm text-muted-foreground font-normal">
-              Dein persönlicher Ernährungs- und Fitness-Coach
-            </p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">KaloAI Coach</span>
+                <Badge variant="secondary" className="text-xs">
+                  {getCoachIcon(currentCoachPersonality)} {getCoachName(currentCoachPersonality)}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground font-normal">
+                Dein persönlicher Ernährungs- und Fitness-Coach
+              </p>
+            </div>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => clearChat(true)}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-          {messages.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => clearChat(true)}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </CardTitle>
-      </CardHeader>
+        </div>
+      </div>
       
-      <Separator />
-      
-      <CardContent className="flex-1 flex flex-col p-4 gap-4">
-        {/* Chat Messages */}
-        <ScrollArea className="flex-1 pr-4">
+      {/* Chat Messages - Scrollable Area */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <ScrollArea className="flex-1 px-4 py-4">
           <div className="space-y-4">
             {messages.length === 0 ? (
               <div className="text-center py-8">
@@ -558,70 +559,65 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
           </div>
         </ScrollArea>
 
-        {/* Input Area */}
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Frage deinen Coach etwas..."
-              className="min-h-[60px] max-h-[120px] resize-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              disabled={isThinking}
-            />
-          </div>
-          
-          <div className="flex flex-col gap-2">
-            {/* Voice Button */}
-            <Button
-              variant={isRecording ? "destructive" : "outline"}
-              size="sm"
-              onClick={handleVoiceToggle}
-              disabled={isThinking || isProcessing}
-              className="h-10 w-10 p-0"
-            >
-              {isRecording ? (
-                <StopCircle className="h-4 w-4" />
-              ) : isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Mic className="h-4 w-4" />
-              )}
-            </Button>
-            
-            {/* Send Button */}
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputText.trim() || isThinking}
-              className="h-10 w-10 p-0"
-            >
-              {isThinking ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+        {/* Fixed Input Area */}
+        <div className="flex-shrink-0 border-t border-border/20 bg-card/95 backdrop-blur-sm">
+          <div className="px-4 py-4">
+            <div className="space-y-3">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Schreibe eine Nachricht an deinen Coach..."
+                className="min-h-[60px] resize-none border-border/30"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+              />
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {(isRecording || isProcessing) && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                      {isRecording ? 'Aufnahme läuft...' : 'Verarbeitung...'}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleVoiceToggle}
+                    disabled={isThinking}
+                    className={cn(
+                      "transition-colors",
+                      isRecording && "text-red-500 hover:text-red-600"
+                    )}
+                  >
+                    {isRecording ? <StopCircle className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!inputText.trim() || isThinking}
+                    size="sm"
+                    className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white"
+                  >
+                    {isThinking ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        
-        {(isRecording || isProcessing) && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
-            <div className="flex gap-1">
-              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
-              <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
-              <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
-            </div>
-            <span>
-              {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
-            </span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
