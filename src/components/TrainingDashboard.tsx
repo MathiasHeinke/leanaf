@@ -219,7 +219,7 @@ export const TrainingDashboard: React.FC = () => {
       </div>
 
       {/* Secondary Actions */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1">
         {/* Today's Training Status */}
         <div>
           <TodaysTrainingStatus 
