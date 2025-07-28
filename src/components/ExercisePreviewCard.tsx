@@ -31,7 +31,11 @@ export const ExercisePreviewCard: React.FC<ExercisePreviewCardProps> = ({
   onEdit,
   onCancel
 }) => {
-  const [exerciseData, setExerciseData] = useState<ExercisePreviewData>(data);
+  const [exerciseData, setExerciseData] = useState<ExercisePreviewData>({
+    exercise_name: data?.exercise_name || '',
+    sets: data?.sets || [],
+    overall_rpe: data?.overall_rpe
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
