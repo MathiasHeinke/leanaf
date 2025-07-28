@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CoachAvatar } from '@/components/ui/coach-avatar';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { FormcheckSummaryCard } from '@/components/FormcheckSummaryCard';
@@ -525,20 +524,29 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   return (
     <div className="flex flex-col h-[calc(100vh-150px)]">
       {/* Chat Header */}
-      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 p-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <CoachAvatar 
-            src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
-            alt="Coach Sascha"
-            fallback="S"
-            size="md"
-          />
-          <div>
-            <h2 className="font-semibold text-foreground">Coach Sascha</h2>
-            <p className="text-sm text-muted-foreground">Performance- & Trainingsexperte</p>
-          </div>
-        </div>
-      </div>
+       <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 p-4 shrink-0">
+         <div className="flex items-center gap-3">
+           <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex-shrink-0">
+             <img 
+               src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png" 
+               alt="Coach Sascha"
+               className="w-full h-full object-cover aspect-square"
+               onError={(e) => {
+                 const target = e.target as HTMLImageElement;
+                 target.style.display = 'none';
+                 target.nextElementSibling?.classList.remove('hidden');
+               }}
+             />
+             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-lg font-bold shadow-lg hidden flex-shrink-0">
+               S
+             </div>
+           </div>
+           <div>
+             <h2 className="font-semibold text-foreground">Coach Sascha</h2>
+             <p className="text-sm text-muted-foreground">Performance- & Trainingsexperte</p>
+           </div>
+         </div>
+       </div>
 
       <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
@@ -581,7 +589,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                           <img 
-                            src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
+                             src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
                             alt="Sascha" 
                             className="w-full h-full object-cover"
                           />
@@ -661,7 +669,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                       <img 
-                        src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
+                        src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png" 
                         alt="Sascha" 
                         className="w-full h-full object-cover"
                       />
