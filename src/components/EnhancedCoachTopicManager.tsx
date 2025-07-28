@@ -127,19 +127,7 @@ export const EnhancedCoachTopicManager = () => {
     }
 
     const timestamp = new Date().toISOString();
-    const cacheKey = selectedCoach;
-    const lastLoad = lastLoadTime[cacheKey] || 0;
-    const cacheAge = Date.now() - lastLoad;
-    const MAX_CACHE_AGE = 30000; // 30 seconds cache
-
-    // Use cache if available and not forcing reload
-    if (!forceReload && topicsCache[cacheKey] && cacheAge < MAX_CACHE_AGE) {
-      console.log(`💾 [CACHE] Using cached data for ${selectedCoach} (age: ${Math.round(cacheAge/1000)}s)`);
-      setCoachTopics(topicsCache[cacheKey]);
-      return;
-    }
-
-    console.log(`🔍 [${timestamp}] Loading coach data for: ${selectedCoach} (attempt ${attempt}/3)`);
+    console.log(`🔍 [${timestamp}] Starting search for topics in database for coach: ${selectedCoach}`);
     setIsLoadingTopics(true);
     setRetryCount(attempt - 1);
 
@@ -150,126 +138,59 @@ export const EnhancedCoachTopicManager = () => {
     abortControllerRef.current = new AbortController();
     
     try {
-      console.log(`📡 [${timestamp}] Querying coach_topic_configurations for coach_id:`, selectedCoach);
+      // First, just count how many topics exist in the database for this coach
+      console.log(`📊 [${timestamp}] Counting topics for coach: ${selectedCoach}`);
       
-      // Create timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout')), 10000); // 10 second timeout
-      });
-
-      // Query with timeout (note: Supabase doesn't support abort signals directly, so we'll use Promise.race)
-      const queryPromise = supabase
+      const { count, error: countError } = await supabase
         .from('coach_topic_configurations')
-        .select('*')
-        .eq('coach_id', selectedCoach)
-        .order('priority_level', { ascending: false });
+        .select('*', { count: 'exact', head: true })
+        .eq('coach_id', selectedCoach);
 
-      const { data: topicsData, error: topicsError } = await Promise.race([
-        queryPromise,
-        timeoutPromise
-      ]) as any;
-
-      console.log(`📊 [${timestamp}] Query result - Data length:`, topicsData?.length || 0);
-      console.log(`📊 [${timestamp}] Query error:`, topicsError);
-      console.log(`📊 [${timestamp}] Network latency: ${Date.now() - new Date(timestamp).getTime()}ms`);
-
-      if (topicsError) {
-        console.error(`❌ [${timestamp}] Database query error:`, topicsError);
-        throw topicsError;
+      if (countError) {
+        console.error(`❌ [${timestamp}] Count query error:`, countError);
+        throw countError;
       }
 
-      // Check if we got empty results unexpectedly
-      if (!topicsData || topicsData.length === 0) {
-        console.warn(`⚠️ [${timestamp}] Empty result for coach ${selectedCoach}, this might be unexpected`);
-        
-        // Retry if this is the first attempt and we know this coach should have topics
-        if (attempt < 3 && selectedCoach === 'sascha') {
-          console.log(`🔄 [${timestamp}] Retrying query for ${selectedCoach} (attempt ${attempt + 1})`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
-          return loadCoachData(forceReload, attempt + 1);
-        }
-      }
-
-      // Load coach pipeline status with shorter timeout
-      const statusTimeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Status query timeout')), 5000);
+      console.log(`📈 [${timestamp}] Database search result: Found ${count || 0} topics for coach ${selectedCoach}`);
+      
+      // Show the count in a toast
+      toast({
+        title: "🔍 Database-Suche abgeschlossen",
+        description: `${count || 0} Topics für Coach ${selectedCoach} in der Datenbank gefunden`,
       });
 
-      try {
-        const statusQueryPromise = supabase
-          .from('coach_pipeline_status')
-          .select('*')
-          .eq('coach_id', selectedCoach)
-          .single();
-
-        const { data: statusData, error: statusError } = await Promise.race([
-          statusQueryPromise,
-          statusTimeoutPromise
-        ]) as any;
-
-        if (statusError && statusError.code !== 'PGRST116') {
-          console.error(`⚠️ [${timestamp}] Status error (non-critical):`, statusError);
-        }
-        setCoachStatus(statusData || null);
-      } catch (statusErr) {
-        console.warn(`⚠️ [${timestamp}] Status query failed (non-critical):`, statusErr);
-        setCoachStatus(null);
-      }
-
-      console.log(`✅ [${timestamp}] Query successful - Found topics:`, topicsData?.length || 0);
+      // For now, we're just showing the count - not loading the actual data yet
+      // Set empty array but log the count
+      setCoachTopics([]);
+      console.log(`✅ [${timestamp}] Search completed - ${count || 0} topics exist in database for ${selectedCoach}`);
       
-      // Process and type the data
-      const typedTopicsData = (topicsData || []).map(topic => ({
-        ...topic,
-        search_keywords: Array.isArray(topic.search_keywords) 
-          ? topic.search_keywords as string[]
-          : []
-      })) as CoachTopicConfig[];
-      
-      console.log(`🎯 [${timestamp}] Setting state with ${typedTopicsData.length} topics for coach: ${selectedCoach}`);
-      console.log(`🎯 [${timestamp}] Topic categories:`, [...new Set(typedTopicsData.map(t => t.topic_category))]);
-      
-      // Update cache
-      setTopicsCache(prev => ({ ...prev, [cacheKey]: typedTopicsData }));
-      setLastLoadTime(prev => ({ ...prev, [cacheKey]: Date.now() }));
-      
-      setCoachTopics(typedTopicsData);
-      setRetryCount(0);
-
-      console.log(`✅ [${timestamp}] Successfully loaded ${typedTopicsData.length} topics for coach ${selectedCoach}`);
     } catch (error: any) {
-      console.error(`💥 [${timestamp}] Error loading coach data (attempt ${attempt}):`, error);
+      console.error(`💥 [${timestamp}] Error searching database (attempt ${attempt}):`, error);
       
       // Retry logic
       if (attempt < 3 && !abortControllerRef.current?.signal.aborted) {
-        console.log(`🔄 [${timestamp}] Retrying in ${attempt * 2} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000)); // Progressive delay
+        console.log(`🔄 [${timestamp}] Retrying search in ${attempt * 2} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
         return loadCoachData(forceReload, attempt + 1);
       }
       
       // Show error only on final attempt
       if (attempt === 3) {
         toast({
-          title: "Fehler beim Laden",
-          description: `Coach-Daten konnten nach ${attempt} Versuchen nicht geladen werden`,
+          title: "❌ Database-Suche fehlgeschlagen",
+          description: `Topics konnten nach ${attempt} Versuchen nicht gesucht werden`,
           variant: "destructive"
         });
       }
       
-      // Use cache as fallback if available
-      if (topicsCache[cacheKey]) {
-        console.log(`💾 [${timestamp}] Using stale cache as fallback`);
-        setCoachTopics(topicsCache[cacheKey]);
-      } else {
-        setCoachTopics([]);
-        setCoachStatus(null);
-      }
+      setCoachTopics([]);
+      setCoachStatus(null);
     } finally {
-      console.log(`🏁 [${timestamp}] Setting isLoadingTopics to false (attempt ${attempt})`);
+      console.log(`🏁 [${timestamp}] Database search completed (attempt ${attempt})`);
       setIsLoadingTopics(false);
       abortControllerRef.current = null;
     }
-  }, [selectedCoach, toast, topicsCache, lastLoadTime]);
+  }, [selectedCoach, toast]);
 
   useEffect(() => {
     loadAvailableCoaches();
