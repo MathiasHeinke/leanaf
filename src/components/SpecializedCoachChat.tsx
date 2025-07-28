@@ -806,9 +806,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         </Card>
 
       {/* Chat Area */}
-      <Card className="flex flex-col h-[calc(100vh-77px)] absolute top-[77px] left-0 right-0">
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-[calc(100%-120px)]">
+      <div className="flex flex-col h-[calc(100vh-150px)]">
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
             <div className="p-4">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
@@ -933,7 +933,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               )}
             </div>
           </ScrollArea>
-        </CardContent>
+        </div>
         
         {/* Dynamic Quick Actions - Collapsible */}
         {quickActionsShown && !isThinking && (
@@ -1066,7 +1066,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         )}
         
         {/* Input Area */}
-        <div className="sticky bottom-0 border-t p-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
+        <div className="border-t p-3 bg-background">
           {uploadedImages.length > 0 && (
             <div className="mb-3">
               <div className="flex items-center space-x-2 mb-2">
@@ -1157,7 +1157,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             </div>
           )}
         </div>
-      </Card>
 
       {/* Exercise Preview Card */}
         {exercisePreview && (
@@ -1169,6 +1168,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           />
         </div>
       )}
+      </div>
       </div>
 
       {/* History Sidebar */}
