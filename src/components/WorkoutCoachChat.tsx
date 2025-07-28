@@ -398,8 +398,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     if (uploadedMedia.length > 0) {
       await analyzeWorkoutMedia(uploadedMedia, inputText);
       setUploadedMedia([]);
-      } else {
-        // Regular chat without media
+      } else if (inputText.trim()) {
+        // Regular chat without media - only if there's actual text
         try {
           setIsLoading(true);
           
