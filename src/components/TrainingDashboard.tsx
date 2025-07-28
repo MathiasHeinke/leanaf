@@ -182,8 +182,8 @@ export const TrainingDashboard: React.FC = () => {
       </div>
 
       {/* Enhanced Prominent Coach Sascha Card - Top Priority */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px] md:col-span-2 xl:col-span-1"
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
               onClick={() => navigate('/training/sascha')}>
           <CardContent className="p-8">
             <div className="flex flex-col items-center text-center gap-4">
@@ -213,21 +213,21 @@ export const TrainingDashboard: React.FC = () => {
         </Card>
 
         {/* Training Stats */}
-        <div className="xl:col-span-1">
+        <div>
           <TrainingStats stats={weeklyStats} />
         </div>
-        
+      </div>
+
+      {/* Secondary Actions */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {/* Today's Training Status */}
-        <div className="xl:col-span-1">
+        <div>
           <TodaysTrainingStatus 
             todaysSessions={getTodaysSessions()}
             onStartTraining={() => setShowQuickAdd(true)}
           />
         </div>
-      </div>
-
-      {/* Secondary Actions */}
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        
         {/* Training History Card */}
         <Card className="border-accent/20 hover:border-accent/40 transition-all cursor-pointer group hover:shadow-lg"
               onClick={() => setShowHistory(true)}>
