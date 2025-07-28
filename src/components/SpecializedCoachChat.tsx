@@ -1052,7 +1052,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                   )}
                   <div>
                     <CardTitle className="text-lg">{coach.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{coach.role}</p>
                     {selectedDate && selectedDate !== currentDate && (
                       <Badge variant="outline" className="text-xs mt-1">
                         {format(new Date(selectedDate), 'dd.MM.yyyy', { locale: de })}
