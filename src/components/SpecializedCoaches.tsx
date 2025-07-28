@@ -401,6 +401,25 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
           >
             Chat starten
           </Button>
+          
+          {/* Workout start button for Sascha and Markus */}
+          {(coach.id === 'sascha' || coach.id === 'markus') && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                if (coach.id === 'sascha') {
+                  window.location.href = '/training-sascha';
+                } else if (coach.id === 'markus') {
+                  window.location.href = '/training-markus';
+                }
+              }}
+            >
+              Workout starten
+            </Button>
+          )}
+          
           <CoachRating 
             coachId={coach.id} 
             coachName={coach.name}
