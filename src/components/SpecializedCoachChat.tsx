@@ -1185,7 +1185,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               placeholder={`Frage ${coach.name} etwas über ${coach.expertise[0].toLowerCase()}...`}
               className="flex-1 min-h-[60px] resize-none"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }

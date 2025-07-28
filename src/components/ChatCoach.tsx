@@ -773,11 +773,11 @@ export const ChatCoach = ({
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={`Frage ${coachInfo.name} etwas...`}
                 className="min-h-[60px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter' && e.shiftKey) {
+                   e.preventDefault();
+                   handleSendMessage();
+                 }
                 }}
                 disabled={isThinking || isUploading}
               />

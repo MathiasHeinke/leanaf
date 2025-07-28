@@ -602,7 +602,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
               placeholder="Frage deinen Coach etwas..."
               className="min-h-[60px] max-h-[120px] resize-none"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
