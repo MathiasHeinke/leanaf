@@ -523,7 +523,24 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
   return (
     <div className="flex flex-col h-[calc(100vh-150px)]">
-        <div className="flex-1 overflow-hidden">
+      {/* Chat Header */}
+      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 p-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
+            <img 
+              src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png" 
+              alt="Coach Sascha"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">Coach Sascha</h2>
+            <p className="text-sm text-muted-foreground">Performance- & Trainingsexperte</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
               <div className="space-y-4 pb-4">
