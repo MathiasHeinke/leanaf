@@ -113,40 +113,31 @@ export const TrainingHistory: React.FC<TrainingHistoryProps> = ({
       <Dialog open onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                Trainingshistorie
-              </DialogTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Trainingshistorie
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
             {/* Summary Stats */}
             <div className="grid grid-cols-3 gap-4">
-              <Card>
+              <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-primary">{totalSessions}</div>
-                  <p className="text-sm text-muted-foreground">Sessions</p>
+                  <p className="text-sm font-medium text-foreground">Sessions</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-secondary">{totalSets}</div>
-                  <p className="text-sm text-muted-foreground">Sätze</p>
+                  <p className="text-sm font-medium text-foreground">Sätze</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-accent">{Math.round(totalVolume).toLocaleString()}</div>
-                  <p className="text-sm text-muted-foreground">kg Volumen</p>
+                  <p className="text-sm font-medium text-foreground">kg Volumen</p>
                 </CardContent>
               </Card>
             </div>
