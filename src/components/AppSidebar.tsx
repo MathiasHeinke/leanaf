@@ -45,13 +45,13 @@ const navigationItems = [
   { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
   { title: "Analyse", url: "/history", icon: BarChart3 },
+  { title: "Erfolge", url: "/achievements", icon: Trophy },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
 
 const settingsItems = [
   { title: "Einstellungen", url: "/account", icon: Settings, key: "header.account" },
   { title: "Subscription", url: "/subscription", icon: CreditCard, key: "header.subscription" },
-  { title: "Erfolge", url: "/achievements", icon: Trophy },
   { title: "Wissenschaft", url: "/science", icon: Microscope },
   { title: "Features", url: "/features", icon: Lightbulb },
   { title: "Roadmap", url: "/roadmap", icon: MapPin },
