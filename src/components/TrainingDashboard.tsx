@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
 import { TrainingHistory } from '@/components/TrainingHistory';
+import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { TrainingStats } from '@/components/TrainingStats';
 import { useAuth } from '@/hooks/useAuth';
@@ -180,8 +181,8 @@ export const TrainingDashboard: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Stats Overview and Today's Status */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Responsive Grid Layout */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <TrainingStats stats={weeklyStats} />
         
         <TodaysTrainingStatus 
@@ -190,32 +191,32 @@ export const TrainingDashboard: React.FC = () => {
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Enhanced Coach Sascha Card */}
-        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg"
+      {/* Quick Actions - Responsive Grid */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        {/* Enhanced Prominent Coach Sascha Card */}
+        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
               onClick={() => navigate('/training/sascha')}>
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
                 <img 
-                  src="https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?w=80&h=80&fit=crop&crop=face" 
+                  src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
                   alt="Coach Sascha"
-                  className="w-14 h-14 rounded-full object-cover"
+                  className="w-18 h-18 rounded-full object-cover"
                 />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-semibold text-lg">Coach Sascha</h3>
-                  <Badge variant="secondary" className="text-xs">Personal Trainer</Badge>
+              <div className="space-y-3">
+                <div className="flex flex-col items-center gap-2">
+                  <h3 className="font-bold text-xl">Coach Sascha</h3>
+                  <Badge variant="secondary" className="text-sm bg-primary/10 text-primary">KI-Trainingscoach</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Dein KI-Trainingsexperte für optimale Resultate
+                <p className="text-sm text-muted-foreground">
+                  Mit Sascha trainieren: KI-gestützte Formchecks, personalisierte Übungsanalyse und professionelle Trainingstipps für maximale Erfolge
                 </p>
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="text-xs">Formcheck</Badge>
-                  <Badge variant="outline" className="text-xs">Übungsanalyse</Badge>
-                  <Badge variant="outline" className="text-xs">Trainingstipps</Badge>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <Badge variant="outline" className="text-xs">🎯 Formcheck</Badge>
+                  <Badge variant="outline" className="text-xs">📹 Video-Analyse</Badge>
+                  <Badge variant="outline" className="text-xs">💪 Personalisiert</Badge>
                 </div>
               </div>
             </div>
@@ -247,6 +248,11 @@ export const TrainingDashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Custom Exercise Manager */}
+      <div className="max-w-md">
+        <CustomExerciseManager onExerciseAdded={loadSessions} />
       </div>
 
       {/* Recent Activity Preview */}

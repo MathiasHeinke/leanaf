@@ -63,16 +63,19 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
 
   if (!hasTrained) {
     return (
-      <Card className="border-dashed border-2 border-muted-foreground/20 bg-gradient-to-br from-background to-muted/20">
+      <Card 
+        className="border-dashed border-2 border-muted-foreground/20 bg-gradient-to-br from-background to-muted/20 cursor-pointer hover:border-primary/40 transition-all group"
+        onClick={onStartTraining}
+      >
         <CardContent className="p-8 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform">
             <Plus className="h-8 w-8 text-primary" />
           </div>
           <h3 className="text-xl font-semibold mb-2">Bereit für dein Training?</h3>
           <p className="text-muted-foreground mb-6">
             Du hast heute noch nicht trainiert. Starte jetzt dein Workout!
           </p>
-          <Button onClick={onStartTraining} size="lg" className="bg-gradient-primary">
+          <Button onClick={(e) => { e.stopPropagation(); onStartTraining(); }} size="lg" className="bg-gradient-primary">
             <Plus className="h-5 w-5 mr-2" />
             Training starten
           </Button>
