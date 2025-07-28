@@ -144,6 +144,56 @@ export class EnhancedCoachAnalyzer {
     return null;
   }
 
+  private analyzeIntegralPerspectives(): CoachInsight | null {
+    // Integral Theory analysis - only if user shows readiness for deeper insights
+    const hasConsistentData = this.data.meals.length > 7 && this.data.workouts.length > 5;
+    const showsSystemicThinking = this.data.profile?.goal?.includes('ganzheitlich') || 
+                                   this.data.profile?.goal?.includes('nachhaltig');
+    
+    if (!hasConsistentData || !showsSystemicThinking) return null;
+
+    // Analyze patterns across all four quadrants
+    const interiorPatterns = this.analyzeInteriorPatterns();
+    const exteriorPatterns = this.analyzeExteriorPatterns();
+    const systemicFactors = this.analyzeSystemicFactors();
+
+    if (interiorPatterns || exteriorPatterns || systemicFactors) {
+      return {
+        type: 'info',
+        title: '🧠 Integral-Perspektive verfügbar',
+        message: 'Deine Daten zeigen Bereitschaft für tiefere, systemische Analyse. Dr. Sophia Integral kann multi-perspektivische Einblicke bieten.',
+        icon: '🧠',
+        data: { readyForIntegral: true, patterns: { interior: interiorPatterns, exterior: exteriorPatterns, systemic: systemicFactors } }
+      };
+    }
+
+    return null;
+  }
+
+  private analyzeInteriorPatterns(): boolean {
+    // Look for patterns suggesting internal conflicts or motivational complexity
+    const goalComplexity = this.data.profile?.goal && this.data.profile.goal.length > 50;
+    const inconsistentBehavior = this.data.workouts.some(w => w.intensity > 8) && 
+                                this.data.workouts.some(w => w.intensity < 3);
+    return goalComplexity || inconsistentBehavior;
+  }
+
+  private analyzeExteriorPatterns(): boolean {
+    // Analyze measurable behavioral patterns
+    const variableIntake = this.data.meals.length > 5 && 
+                          Math.max(...this.data.meals.map(m => m.calories)) - 
+                          Math.min(...this.data.meals.map(m => m.calories)) > 800;
+    return variableIntake;
+  }
+
+  private analyzeSystemicFactors(): boolean {
+    // Look for systemic influences (schedule, environment, etc.)
+    const workdayPattern = this.data.workouts.some(w => 
+      new Date(w.date).getDay() >= 1 && new Date(w.date).getDay() <= 5
+    );
+    return workdayPattern;
+  }
+
   private analyzeWorkoutConsistency(): CoachInsight | null {
     const weeklyWorkouts = this.data.workouts.slice(-7);
     const workoutCount = weeklyWorkouts.filter(w => w.did_workout).length;

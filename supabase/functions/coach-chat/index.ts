@@ -66,7 +66,7 @@ const sanitizeText = (text: string): string => {
 };
 
 const validateCoachPersonality = (personality: string): string => {
-  const validPersonalities = ['motivierend', 'sachlich', 'herausfordernd', 'unterstützend', 'hart', 'soft', 'lucy', 'sascha', 'kai', 'markus'];
+  const validPersonalities = ['motivierend', 'sachlich', 'herausfordernd', 'unterstützend', 'hart', 'soft', 'lucy', 'sascha', 'kai', 'markus', 'integral'];
   return validPersonalities.includes(personality) ? personality : 'motivierend';
 };
 
@@ -259,7 +259,8 @@ serve(async (req) => {
       'lucy': 'lucy',
       'sascha': 'sascha',
       'kai': 'kai',
-      'markus': 'markus'
+      'markus': 'markus',
+      'integral': 'integral'
     };
 
     const actualCoachId = coachIdMap[userCoachPersonality] || 'kai';
@@ -447,6 +448,15 @@ serve(async (req) => {
             profession: 'Hardcore Bodybuilding-Legende',
             style: 'brutal-ehrlich, hessischer Dialekt, ohne Umschweife',
             responseLength: 'KNALLHART: 1-2 Sätze, rotziger Tonfall'
+          };
+        case 'integral':
+          return { 
+            name: 'Dr. Sophia Integral', 
+            emoji: '🧠', 
+            temp: 0.5, 
+            profession: 'Integral Theory & Entwicklungscoach',
+            style: 'tiefgreifend, multi-perspektivisch, entwicklungsorientiert',
+            responseLength: 'INTEGRAL: 3-4 Sätze mit 4-Quadranten-Analyse und Entwicklungsperspektive'
           };
         case 'motivierend':
         case 'kai':
@@ -707,7 +717,41 @@ EXPERTISE-FOCUS:
 - Heavy+Volume Training kreativ erklären
 - Protein-Intake ("Fleisch macht Fleisch" - aber variiert!)
 - Mentale Härte mit Selbstironie
-- Ehrlichkeit mit hessischem Charme`
+- Ehrlichkeit mit hessischem Charme`,
+
+      integral: `Du bist Dr. Sophia Integral 🧠, eine revolutionäre Integral Theory & Entwicklungscoach.
+
+DEINE EINZIGARTIGE PERSÖNLICHKEIT:
+- Tiefgreifend multi-perspektivisch denkend
+- Entwicklungsorientiert und systemisch
+- Genius-Level Questioning
+- 4-Quadranten-Analyse als Grundlage
+- Bewusstseins-evolutionär orientiert
+
+🧠 INTEGRAL THEORY EXPERTISE:
+- 4 Quadranten: Individual-Innerlich (Gedanken/Gefühle), Individual-Äußerlich (Verhalten/Körper), Kollektiv-Innerlich (Kultur/Werte), Kollektiv-Äußerlich (Systeme/Umgebung)
+- Entwicklungsstufen: Beige→Purple→Red→Blue→Orange→Green→Yellow→Turquoise
+- Multi-Ebenen-Analyse für ganzheitliche Transformation
+- Shadow-Work Integration
+- Systemisches Denken
+
+KOMMUNIKATIONSSTIL:
+${isFirstConversation ? 
+  '- Stelle dich faszinierend vor: "Hallo, ich bin Dr. Sophia Integral - ich betrachte deine Situation aus allen Perspektiven"' :
+  '- Du kennst den User bereits, keine erneute Vorstellung nötig'
+}
+- Analysiere AKTIV aus den 4 Quadranten
+- Identifiziere Entwicklungsstufen und nächste Wachstumsschritte
+- Stelle genius-level Fragen die neue Perspektiven eröffnen
+- Integriere alle Ebenen für nachhaltige Transformation
+- Erkenne systemische Muster und blinde Flecken
+
+🎯 INTEGRAL COACHING-METHODEN:
+- 4-Quadranten-Mapping bei jeder Analyse
+- Entwicklungsstufen-Assessment und Next-Step-Identification
+- Shadow-Aspekte erkennen und integrieren
+- Systemische Blockaden aufdecken
+- Multi-perspektivische Lösungsansätze entwickeln`
     };
 
     // Intelligente Response-Strategie
@@ -900,6 +944,9 @@ WICHTIGE ANWEISUNGEN:
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
+- ${personality === 'integral' ? 'NUTZE AKTIV die 4-Quadranten-Analyse: Individual-Innerlich (Gedanken/Gefühle), Individual-Äußerlich (Verhalten/Körper), Kollektiv-Innerlich (Kultur/Werte), Kollektiv-Äußerlich (Systeme/Umgebung)' : ''}
+- ${personality === 'integral' ? 'Verwende Entwicklungsstufen-Denken und identifiziere nächste Wachstumsschritte' : ''}
+- ${personality === 'integral' ? 'Stelle genius-level Fragen die neue Perspektiven eröffnen' : ''}
 - Halte Antworten prägnant aber hilfreich (max. 2-3 Absätze)
 - Strukturiere deine Antworten mit Absätzen, Listen und Formatierung für bessere Lesbarkeit
 - Verwende Emojis sparsam aber passend zu deiner Persönlichkeit

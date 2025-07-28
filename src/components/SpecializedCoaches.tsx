@@ -153,6 +153,41 @@ const coachProfiles = [
     ]
   },
   {
+    id: 'integral',
+    name: 'Dr. Sophia Integral',
+    age: 42,
+    role: 'Integral Theory & Entwicklungscoach',
+    avatar: '🧠',
+    icon: Brain,
+    imageUrl: '/coach-images/dr-sophia-integral.jpg',
+    personality: 'Tiefgreifend & Entwicklungsorientiert',
+    description: 'Revolutionärer Coaching-Ansatz durch Integral Theory. Multi-perspektivische Betrachtung für ganzheitliche Transformation.',
+    expertise: ['4-Quadranten-Analyse', 'Entwicklungsbewusstsein', 'Systemic Thinking', 'Mehrebenen-Coaching'],
+    color: 'indigo',
+    accentColor: 'from-indigo-500 to-indigo-600',
+    coachInfo: {
+      id: 'integral',
+      name: 'Dr. Sophia Integral',
+      role: 'Integral Theory & Entwicklungscoach',
+      color: 'indigo',
+      imageUrl: '/coach-images/dr-sophia-integral.jpg',
+      avatar: '🧠',
+      philosophy: 'Wahrer Fortschritt entsteht nur durch die Integration aller Perspektiven - individuell & kollektiv, innerlich & äußerlich. Mit den 4 Quadranten und Entwicklungslinien schaffen wir nachhaltige Transformation.',
+      scientificFoundation: 'Basiert auf Ken Wilbers Integral Theory, Entwicklungspsychologie (Spiral Dynamics, Kegan), systemischem Denken und evidenzbasierter Multi-Level-Intervention.',
+      specializations: ['4-Quadranten-Mapping (Individual/Kollektiv × Innerlich/Äußerlich)', 'Entwicklungsstufen-Assessment', 'Systemische Perspektiven-Integration', 'Genius-Level Questioning', 'Multi-Level Problem-Solving', 'Bewusstseins-Evolution'],
+      keyMethods: ['AQAL-Framework (All Quadrants, All Lines)', 'Entwicklungslinien-Analyse', 'Perspektiven-Triangulation', 'Integral Life Practice (ILP)', 'Shadow Work Integration'],
+      evidence: 'Integral Theory (Wilber), Entwicklungspsychologie (Kegan, Cook-Greuter), Spiral Dynamics (Beck & Cowan), systemische Therapie und Meta-theoretische Forschung',
+      evidenceBase: 'Ken Wilber Integral Theory, Robert Kegan Adult Development, Spiral Dynamics, systemische Familientherapie, Meta-Development Research',
+      interventions: ['4-Quadranten-Interventions-Design', 'Entwicklungsstufen-spezifische Strategien', 'Integral Life Practice', 'Shadow-Integration-Prozesse']
+    },
+    quickActions: [
+      { text: '4-Quadranten-Analyse', prompt: 'Analysiere meine Fitness-Situation aus allen 4 Integral-Quadranten und zeige mir blinde Flecken auf.' },
+      { text: 'Entwicklungsstufen-Check', prompt: 'Auf welcher Entwicklungsstufe stehe ich in Bezug auf Gesundheit und wo ist mein nächster Wachstumsschritt?' },
+      { text: 'Systemische Blockaden', prompt: 'Welche systemischen Muster in meinem Umfeld sabotieren meine Gesundheitsziele?' },
+      { text: 'Ganzheitliche Transformation', prompt: 'Erstelle mir einen integral-basierten Transformationsplan für nachhaltigen Erfolg.' }
+    ]
+  },
+  {
     id: 'vita',
     name: 'Dr. Vita Femina',
     age: 38,
@@ -290,6 +325,10 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
         return 'from-green-500 to-green-600';
       case 'orange':
         return 'from-orange-500 to-orange-600';
+      case 'purple':
+        return 'from-purple-500 to-purple-600';
+      case 'indigo':
+        return 'from-indigo-500 to-indigo-600';
       default:
         return 'from-gray-500 to-gray-600';
     }
