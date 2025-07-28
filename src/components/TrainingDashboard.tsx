@@ -181,38 +181,70 @@ export const TrainingDashboard: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Enhanced Prominent Coach Sascha Card - Top Priority */}
-      <div className="grid gap-6 grid-cols-1">
+      {/* KI Training Coaches */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
               onClick={() => navigate('/training/sascha')}>
-          <CardContent className="p-8">
+          <CardContent className="p-6">
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
                 <img 
                   src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
                   alt="Coach Sascha"
-                  className="w-18 h-18 rounded-full object-cover"
+                  className="w-14 h-14 rounded-full object-cover"
                 />
               </div>
-              <div className="space-y-3">
-                <div className="flex flex-col items-center gap-2">
-                  <h3 className="font-bold text-xl">Coach Sascha</h3>
-                  <Badge variant="secondary" className="text-sm bg-primary/10 text-primary">KI-Trainingscoach</Badge>
+              <div className="space-y-2">
+                <div className="flex flex-col items-center gap-1">
+                  <h3 className="font-bold text-lg">Coach Sascha</h3>
+                  <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">Performance Coach</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Mit Sascha trainieren: KI-gestützte Formchecks, personalisierte Übungsanalyse und professionelle Trainingstipps für maximale Erfolge
+                <p className="text-xs text-muted-foreground">
+                  KI-gestützte Formchecks, personalisierte Übungsanalyse und professionelle Trainingstipps
                 </p>
-                <div className="flex flex-wrap gap-2 justify-center">
+                <div className="flex flex-wrap gap-1 justify-center">
                   <Badge variant="outline" className="text-xs">🎯 Formcheck</Badge>
-                  <Badge variant="outline" className="text-xs">📹 Video-Analyse</Badge>
-                  <Badge variant="outline" className="text-xs">💪 Personalisiert</Badge>
+                  <Badge variant="outline" className="text-xs">📹 Analyse</Badge>
+                  <Badge variant="outline" className="text-xs">💪 Performance</Badge>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Today's Training Status - Directly after Sascha */}
+        <Card className="border-orange-500/20 hover:border-orange-500/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
+              onClick={() => navigate('/training/markus')}>
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-600/20 to-red-600/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
+                <img 
+                  src="/lovable-uploads/e96e839c-c781-4825-bb29-7c45b9febcdf.png" 
+                  alt="Coach Markus Rühl"
+                  className="w-14 h-14 rounded-full object-cover"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex flex-col items-center gap-1">
+                  <h3 className="font-bold text-lg">Markus Rühl</h3>
+                  <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-600">The German Beast</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Hardcore Bodybuilding-Legende. Heavy+Volume Training für maximale Muskelmasse!
+                </p>
+                <div className="flex flex-wrap gap-1 justify-center">
+                  <Badge variant="outline" className="text-xs">🔥 Beast Mode</Badge>
+                  <Badge variant="outline" className="text-xs">💀 Heavy+Volume</Badge>
+                  <Badge variant="outline" className="text-xs">🦾 Hardcore</Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Training Status and Stats */}
+      <div className="grid gap-6 grid-cols-1">
+        {/* Today's Training Status */}
         <TodaysTrainingStatus 
           todaysSessions={getTodaysSessions()}
           onStartTraining={() => setShowQuickAdd(true)}
