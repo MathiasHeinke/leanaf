@@ -58,7 +58,7 @@ export const FloatingCoachChat = ({
                 placeholder={t('coach.askCoach')}
                 className="min-h-[40px] max-h-[100px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm placeholder:text-muted-foreground/60 rounded-xl px-3 py-2"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && e.shiftKey) {
+                  if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     if (inputText.trim()) {
                       onSubmitMessage();
