@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { CoachAvatar } from '@/components/ui/coach-avatar';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { FormcheckSummaryCard } from '@/components/FormcheckSummaryCard';
@@ -526,13 +527,12 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       {/* Chat Header */}
       <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 p-4 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
-            <img 
-              src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
-              alt="Coach Sascha"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <CoachAvatar 
+            src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
+            alt="Coach Sascha"
+            fallback="S"
+            size="md"
+          />
           <div>
             <h2 className="font-semibold text-foreground">Coach Sascha</h2>
             <p className="text-sm text-muted-foreground">Performance- & Trainingsexperte</p>
