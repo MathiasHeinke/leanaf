@@ -23,6 +23,9 @@ import Achievements from "./pages/Achievements";
 import Science from "./pages/Science";
 import Features from "./pages/Features";
 import Roadmap from "./pages/Roadmap";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Imprint from "./pages/Imprint";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +61,9 @@ const App = () => (
                       <Route path="/science" element={<Science />} />
                       <Route path="/features" element={<Features />} />
                       <Route path="/roadmap" element={<Roadmap />} />
+                      <Route path="/terms" element={<Terms />} />
+                      <Route path="/privacy" element={<Privacy />} />
+                      <Route path="/imprint" element={<Imprint />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>

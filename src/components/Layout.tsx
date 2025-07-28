@@ -1,5 +1,6 @@
 
 import { GlobalHeader } from "@/components/GlobalHeader";
+import { Footer } from "@/components/Footer";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
@@ -56,6 +57,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <main className="container mx-auto px-3 pb-6 pt-2 max-w-md relative z-10 flex-1">
           {children}
         </main>
+        <Footer />
       </div>
       
       {/* Debug Panels */}
