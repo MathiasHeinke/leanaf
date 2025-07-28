@@ -23,7 +23,7 @@ interface NewsletterProps {
 export const NewsletterTemplate = ({ user_name, content, tips, app_url }: NewsletterProps) => (
   <Html>
     <Head />
-    <Preview>KaloAI Newsletter - Ihre wöchentlichen Fitness-Tipps</Preview>
+    <Preview>GetleanAI Newsletter - Ihre wöchentlichen Fitness-Tipps</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
@@ -31,7 +31,7 @@ export const NewsletterTemplate = ({ user_name, content, tips, app_url }: Newsle
             src={`${app_url}/kai-logo.png`}
             width="120"
             height="40"
-            alt="KaloAI"
+            alt="GetleanAI"
             style={logo}
           />
           <Text style={newsletterBadge}>NEWSLETTER</Text>
@@ -86,11 +86,11 @@ export const NewsletterTemplate = ({ user_name, content, tips, app_url }: Newsle
         
         <Text style={footer}>
           Bleiben Sie dran und erreichen Sie Ihre Ziele!<br />
-          Ihr KaloAI-Team 💪
+          Ihr GetleanAI-Team 💪
         </Text>
         
         <Text style={disclaimer}>
-          Sie erhalten diesen Newsletter, weil Sie bei KaloAI angemeldet sind.
+          Sie erhalten diesen Newsletter, weil Sie bei GetleanAI angemeldet sind.
           <Link href={`${app_url}/unsubscribe`} style={link}> Abmelden</Link> |
           <Link href={`${app_url}/preferences`} style={link}> E-Mail-Einstellungen</Link>
         </Text>

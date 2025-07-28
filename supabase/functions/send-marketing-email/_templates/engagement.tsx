@@ -61,7 +61,7 @@ export const EngagementTemplate = ({ user_name, days_inactive, last_activity, mo
               src={`${app_url}/kai-logo.png`}
               width="120"
               height="40"
-              alt="KaloAI"
+              alt="GetleanAI"
               style={logo}
             />
             <Text style={comebackBadge}>COMEBACK</Text>
@@ -149,7 +149,7 @@ export const EngagementTemplate = ({ user_name, days_inactive, last_activity, mo
           
           <Text style={footer}>
             Wir glauben an Sie und Ihre Ziele!<br />
-            Ihr KaloAI-Team {getEmoji()}
+            Ihr GetleanAI-Team {getEmoji()}
           </Text>
           
           <Text style={disclaimer}>

@@ -62,7 +62,7 @@ const generatePersonalizedContent = async (user_id: string, email_type: string):
       .order('created_at', { ascending: false })
       .limit(3);
 
-    const prompt = `Als KaloAI Fitness-Coach, erstelle personalisierten deutschen E-Mail-Inhalt für ${email_type}.
+    const prompt = `Als GetleanAI Fitness-Coach, erstelle personalisierten deutschen E-Mail-Inhalt für ${email_type}.
     
 Nutzer-Daten:
 - Name: ${userData?.display_name || 'Fitness-Enthusiast'}
@@ -127,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     switch (type) {
       case 'newsletter':
-        subject = content?.subject || 'KaloAI Newsletter - Ihre wöchentlichen Fitness-Tipps';
+        subject = content?.subject || 'GetleanAI Newsletter - Ihre wöchentlichen Fitness-Tipps';
         html = await renderAsync(
           React.createElement(NewsletterTemplate, {
             user_name,
@@ -139,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
         break;
 
       case 'onboarding':
-        subject = content?.subject || 'Willkommen bei KaloAI - Ihre Fitness-Reise beginnt!';
+        subject = content?.subject || 'Willkommen bei GetleanAI - Ihre Fitness-Reise beginnt!';
         html = await renderAsync(
           React.createElement(OnboardingTemplate, {
             user_name,
@@ -168,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "KaloAI <noreply@kaloai.app>",
+      from: "GetleanAI <noreply@getleanai.app>",
       to: [email],
       subject,
       html,

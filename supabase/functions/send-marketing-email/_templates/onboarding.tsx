@@ -23,7 +23,7 @@ export const OnboardingTemplate = ({ user_name, step, content, app_url }: Onboar
   const getStepInfo = (stepNumber: number) => {
     const steps = {
       1: {
-        title: 'Tag 1: Willkommen bei KaloAI! 🎉',
+        title: 'Tag 1: Willkommen bei GetleanAI! 🎉',
         emoji: '🎯',
         action: 'Profil vervollständigen',
         nextSteps: ['Ziele festlegen', 'Erste Mahlzeit fotografieren', 'App erkunden']
@@ -57,7 +57,7 @@ export const OnboardingTemplate = ({ user_name, step, content, app_url }: Onboar
               src={`${app_url}/kai-logo.png`}
               width="120"
               height="40"
-              alt="KaloAI"
+              alt="GetleanAI"
               style={logo}
             />
             <Text style={stepBadge}>SCHRITT {step}</Text>
@@ -135,11 +135,11 @@ export const OnboardingTemplate = ({ user_name, step, content, app_url }: Onboar
           
           <Text style={footer}>
             Wir begleiten Sie auf jedem Schritt!<br />
-            Ihr KaloAI-Team 🚀
+            Ihr GetleanAI-Team 🚀
           </Text>
           
           <Text style={disclaimer}>
-            Sie erhalten diese Onboarding-Serie, weil Sie sich bei KaloAI registriert haben. 
+            Sie erhalten diese Onboarding-Serie, weil Sie sich bei GetleanAI registriert haben. 
             Die Serie pausiert automatisch, sobald Sie aktiv sind.
           </Text>
         </Container>

@@ -159,7 +159,7 @@ async function confirmDoubleOptIn(token: string): Promise<Response> {
 
   return new Response(JSON.stringify({ 
     success: true, 
-    message: 'E-Mail erfolgreich bestätigt! Willkommen bei KaloAI!' 
+    message: 'E-Mail erfolgreich bestätigt! Willkommen bei GetleanAI!' 
   }), {
     status: 200,
     headers: { "Content-Type": "application/json", ...corsHeaders },

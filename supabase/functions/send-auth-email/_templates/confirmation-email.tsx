@@ -22,7 +22,7 @@ interface ConfirmationEmailProps {
 export const ConfirmationEmailTemplate = ({ user_name, confirmation_url, app_url }: ConfirmationEmailProps) => (
   <Html>
     <Head />
-    <Preview>Bestätigen Sie Ihre E-Mail-Adresse für KaloAI</Preview>
+    <Preview>Bestätigen Sie Ihre E-Mail-Adresse für GetleanAI</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
@@ -30,7 +30,7 @@ export const ConfirmationEmailTemplate = ({ user_name, confirmation_url, app_url
             src={`${app_url}/kai-logo.png`}
             width="120"
             height="40"
-            alt="KaloAI"
+            alt="GetleanAI"
             style={logo}
           />
         </Section>
@@ -38,7 +38,7 @@ export const ConfirmationEmailTemplate = ({ user_name, confirmation_url, app_url
         <Heading style={h1}>Fast geschafft, {user_name}! 🚀</Heading>
         
         <Text style={text}>
-          Vielen Dank für Ihre Registrierung bei KaloAI! Um Ihr Konto zu aktivieren und alle Funktionen zu nutzen, bestätigen Sie bitte Ihre E-Mail-Adresse.
+          Vielen Dank für Ihre Registrierung bei GetleanAI! Um Ihr Konto zu aktivieren und alle Funktionen zu nutzen, bestätigen Sie bitte Ihre E-Mail-Adresse.
         </Text>
         
         <Section style={ctaSection}>
@@ -68,11 +68,11 @@ export const ConfirmationEmailTemplate = ({ user_name, confirmation_url, app_url
         
         <Text style={footer}>
           Freuen Sie sich auf Ihre Fitness-Reise!<br />
-          Ihr KaloAI-Team 💪
+          Ihr GetleanAI-Team 💪
         </Text>
         
         <Text style={disclaimer}>
-          Sie erhalten diese E-Mail, weil Sie sich bei KaloAI registriert haben. Falls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail einfach.
+          Sie erhalten diese E-Mail, weil Sie sich bei GetleanAI registriert haben. Falls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail einfach.
         </Text>
       </Container>
     </Body>

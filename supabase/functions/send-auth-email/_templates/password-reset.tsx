@@ -22,7 +22,7 @@ interface PasswordResetEmailProps {
 export const PasswordResetEmailTemplate = ({ user_name, reset_url, app_url }: PasswordResetEmailProps) => (
   <Html>
     <Head />
-    <Preview>Passwort zurücksetzen - KaloAI</Preview>
+    <Preview>Passwort zurücksetzen - GetleanAI</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
@@ -30,7 +30,7 @@ export const PasswordResetEmailTemplate = ({ user_name, reset_url, app_url }: Pa
             src={`${app_url}/kai-logo.png`}
             width="120"
             height="40"
-            alt="KaloAI"
+            alt="GetleanAI"
             style={logo}
           />
         </Section>
@@ -42,7 +42,7 @@ export const PasswordResetEmailTemplate = ({ user_name, reset_url, app_url }: Pa
         </Text>
         
         <Text style={text}>
-          Sie haben eine Anfrage zum Zurücksetzen Ihres KaloAI-Passworts gestellt. Kein Problem - das passiert jedem mal!
+          Sie haben eine Anfrage zum Zurücksetzen Ihres GetleanAI-Passworts gestellt. Kein Problem - das passiert jedem mal!
         </Text>
         
         <Section style={ctaSection}>
@@ -81,7 +81,7 @@ export const PasswordResetEmailTemplate = ({ user_name, reset_url, app_url }: Pa
         
         <Text style={footer}>
           Bei Fragen sind wir für Sie da!<br />
-          Ihr KaloAI-Team 💪
+          Ihr GetleanAI-Team 💪
         </Text>
         
         <Text style={disclaimer}>

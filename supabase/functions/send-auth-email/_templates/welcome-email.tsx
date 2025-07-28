@@ -21,7 +21,7 @@ interface WelcomeEmailProps {
 export const WelcomeEmailTemplate = ({ user_name, app_url }: WelcomeEmailProps) => (
   <Html>
     <Head />
-    <Preview>Willkommen bei KaloAI - Ihre Fitness-Reise beginnt jetzt!</Preview>
+    <Preview>Willkommen bei GetleanAI - Ihre Fitness-Reise beginnt jetzt!</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
@@ -29,15 +29,15 @@ export const WelcomeEmailTemplate = ({ user_name, app_url }: WelcomeEmailProps) 
             src={`${app_url}/kai-logo.png`}
             width="120"
             height="40"
-            alt="KaloAI"
+            alt="GetleanAI"
             style={logo}
           />
         </Section>
         
-        <Heading style={h1}>Willkommen bei KaloAI, {user_name}! 🎉</Heading>
+        <Heading style={h1}>Willkommen bei GetleanAI, {user_name}! 🎉</Heading>
         
         <Text style={text}>
-          Herzlich willkommen in der KaloAI-Community! Wir freuen uns riesig, Sie auf Ihrer Fitness-Reise zu begleiten.
+          Herzlich willkommen in der GetleanAI-Community! Wir freuen uns riesig, Sie auf Ihrer Fitness-Reise zu begleiten.
         </Text>
         
         <Text style={text}>
@@ -70,11 +70,11 @@ export const WelcomeEmailTemplate = ({ user_name, app_url }: WelcomeEmailProps) 
         
         <Text style={footer}>
           Mit sportlichen Grüßen,<br />
-          Ihr KaloAI-Team 💪
+          Ihr GetleanAI-Team 💪
         </Text>
         
         <Text style={disclaimer}>
-          Sie erhalten diese E-Mail, weil Sie sich bei KaloAI registriert haben. 
+          Sie erhalten diese E-Mail, weil Sie sich bei GetleanAI registriert haben. 
           <Link href={`${app_url}/unsubscribe`} style={link}>Abmelden</Link>
         </Text>
       </Container>

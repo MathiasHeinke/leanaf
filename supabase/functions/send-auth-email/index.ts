@@ -42,7 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     switch (type) {
       case 'welcome':
-        subject = 'Willkommen bei KaloAI - Ihre Fitness-Reise beginnt jetzt!';
+        subject = 'Willkommen bei GetleanAI - Ihre Fitness-Reise beginnt jetzt!';
         templateType = 'welcome';
         html = await renderAsync(
           React.createElement(WelcomeEmailTemplate, {
@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
         break;
 
       case 'confirmation':
-        subject = 'Bestätigen Sie Ihre E-Mail-Adresse für KaloAI';
+        subject = 'Bestätigen Sie Ihre E-Mail-Adresse für GetleanAI';
         templateType = 'confirmation';
         html = await renderAsync(
           React.createElement(ConfirmationEmailTemplate, {
@@ -65,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
         break;
 
       case 'password_reset':
-        subject = 'Passwort zurücksetzen - KaloAI';
+        subject = 'Passwort zurücksetzen - GetleanAI';
         templateType = 'password_reset';
         html = await renderAsync(
           React.createElement(PasswordResetEmailTemplate, {
@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "KaloAI <noreply@kaloai.app>",
+      from: "GetleanAI <noreply@getleanai.app>",
       to: [email],
       subject,
       html,
