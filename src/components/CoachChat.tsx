@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { toast } from "sonner";
 import { useCoachLimitHandler } from "./CoachLimitHandler";
+import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   id: string;

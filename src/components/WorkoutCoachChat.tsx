@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { 
   Send, 
   Mic, 
+  StopCircle,
   Dumbbell, 
   Paperclip,
   ChevronDown,
@@ -69,6 +70,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     stopRecording
   } = useVoiceRecording();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentDate = new Date().toISOString().split('T')[0];
 
@@ -492,91 +494,48 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         {/* Messages */}
         <ScrollArea className="flex-1 px-4 py-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
-              {messages.map((message) => (
-                <div key={message.id} className="flex">
-                  {message.role === "assistant" && (
-                    <div className="w-full flex flex-col gap-2 items-start">
-                      {/* Message bubble */}
-                      <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                        {message.mediaUrls && message.mediaUrls.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            {message.mediaUrls.map((url, index) => (
-                              <div key={index} className="relative">
-                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                  <video 
-                                    controls 
-                                    className="w-full h-16 object-cover rounded"
-                                  >
-                                    <source src={url} type="video/mp4" />
-                                  </video>
-                                ) : (
-                                  <img 
-                                    src={url} 
-                                    alt="Uploaded content" 
-                                    className="w-full h-16 object-cover rounded"
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <ReactMarkdown>
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                      
-                      {/* Profile picture and time row UNTER der Nachricht */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                          <img 
-                            src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
-                            alt="Sascha" 
-                            className="w-full h-full object-cover"
-                          />
+            {messages.map((message) => (
+              <div key={message.id} className="flex">
+                {message.role === "assistant" && (
+                  <div className="w-full flex flex-col gap-2 items-start">
+                    {/* Message bubble */}
+                    <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                      {message.mediaUrls && message.mediaUrls.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          {message.mediaUrls.map((url, index) => (
+                            <div key={index} className="relative">
+                              {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                <video 
+                                  controls 
+                                  className="w-full h-16 object-cover rounded"
+                                >
+                                  <source src={url} type="video/mp4" />
+                                </video>
+                              ) : (
+                                <img 
+                                  src={url} 
+                                  alt="Uploaded content" 
+                                  className="w-full h-16 object-cover rounded"
+                                />
+                              )}
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {message.timestamp.toLocaleTimeString('de-DE', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
+                      )}
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
-                  )}
-                  
-                  
-                  {message.role === "user" && (
-                    <div className="w-full flex flex-col gap-2 items-end">
-                      {/* Message bubble */}
-                      <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                        {message.mediaUrls && message.mediaUrls.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            {message.mediaUrls.map((url, index) => (
-                              <div key={index} className="relative">
-                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                  <video 
-                                    controls 
-                                    className="w-full h-16 object-cover rounded"
-                                  >
-                                    <source src={url} type="video/mp4" />
-                                  </video>
-                                ) : (
-                                  <img 
-                                    src={url} 
-                                    alt="Uploaded content" 
-                                    className="w-full h-16 object-cover rounded"
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <ReactMarkdown>
-                          {message.content}
-                        </ReactMarkdown>
+                    
+                    {/* Profile picture and time row UNTER der Nachricht */}
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                        <img 
+                          src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
+                          alt="Sascha" 
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      
-                      {/* Timestamp */}
                       <div className="text-xs text-muted-foreground">
                         {message.timestamp.toLocaleTimeString('de-DE', {
                           hour: '2-digit',
@@ -584,45 +543,87 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                         })}
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
-              
-              {/* Loading indicator */}
-              {isLoading && (
-                <div className="flex flex-col gap-2 items-start">
-                  {/* Coach name */}
-                  <div className="text-sm font-medium text-foreground">
-                    Sascha
                   </div>
-                  
-                  {/* Typing bubble */}
-                  <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                )}
+                
+                {message.role === "user" && (
+                  <div className="w-full flex flex-col gap-2 items-end">
+                    {/* Message bubble */}
+                    <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                      {message.mediaUrls && message.mediaUrls.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          {message.mediaUrls.map((url, index) => (
+                            <div key={index} className="relative">
+                              {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                <video 
+                                  controls 
+                                  className="w-full h-16 object-cover rounded"
+                                >
+                                  <source src={url} type="video/mp4" />
+                                </video>
+                              ) : (
+                                <img 
+                                  src={url} 
+                                  alt="Uploaded content" 
+                                  className="w-full h-16 object-cover rounded"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
-                  </div>
-                  
-                  {/* Profile picture and "schreibt..." */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                      <img 
-                        src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
-                        alt="Sascha" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    
+                    {/* Timestamp */}
                     <div className="text-xs text-muted-foreground">
-                      schreibt...
+                      {message.timestamp.toLocaleTimeString('de-DE', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
                   </div>
+                )}
+              </div>
+            ))}
+            
+            {/* Loading indicator */}
+            {isLoading && (
+              <div className="flex flex-col gap-2 items-start">
+                {/* Coach name */}
+                <div className="text-sm font-medium text-foreground">
+                  Sascha
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+                
+                {/* Typing bubble */}
+                <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+                
+                {/* Profile picture and "schreibt..." */}
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                    <img 
+                      src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
+                      alt="Sascha" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    schreibt...
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={scrollRef} />
+          </div>
+        </ScrollArea>
 
         {/* Fixed Input Area */}
         <div className="flex-shrink-0 border-t border-border/20 bg-card/95 backdrop-blur-sm">
@@ -631,7 +632,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             {exercisePreview && (
               <div className="mb-4">
                 <ExercisePreviewCard
-                  exerciseData={exercisePreview}
+                  data={exercisePreview}
                   onSave={handleExercisePreviewSave}
                   onCancel={() => setExercisePreview(null)}
                 />
@@ -709,11 +710,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       {/* Chat History Sidebar */}
       {showHistory && (
         <ChatHistorySidebar
-          open={showHistory}
-          onOpenChange={setShowHistory}
+          selectedCoach="sascha"
           onSelectDate={handleSelectDate}
-          conversationType="coach"
-          coachPersonality="sascha"
+          onClose={() => setShowHistory(false)}
         />
       )}
     </div>
