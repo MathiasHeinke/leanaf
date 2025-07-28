@@ -454,12 +454,32 @@ export const EnhancedCoachTopicManager = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : coachTopics.length === 0 ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Keine Topics für diesen Coach gefunden. Nutzen Sie die Perplexity-Suche, um neue Topics zu entdecken.
-                  </AlertDescription>
-                </Alert>
+                <div className="text-center py-8 space-y-4">
+                  <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <div>
+                    <h3 className="text-lg font-medium">Keine Topics konfiguriert</h3>
+                    <p className="text-muted-foreground mt-1">
+                      Für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'diesen Coach'} sind noch keine Topics vorhanden.
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => searchPerplexityTopics()}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={isSearching}
+                  >
+                    {isSearching ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Generiere Topics...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" />
+                        Topics mit Perplexity generieren
+                      </>
+                    )}
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {Object.entries(getTopicsByCategory()).map(([category, topics]) => (
