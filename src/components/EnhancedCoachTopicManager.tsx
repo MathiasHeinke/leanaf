@@ -121,7 +121,6 @@ export const EnhancedCoachTopicManager = () => {
     }
 
     console.log('🔍 [STATE] Loading coach data for:', selectedCoach);
-    console.log('🔍 [STATE] Current coachTopics length before load:', coachTopics.length);
     setIsLoadingTopics(true);
     
     try {
@@ -180,16 +179,14 @@ export const EnhancedCoachTopicManager = () => {
         description: "Coach-Daten konnten nicht geladen werden",
         variant: "destructive"
       });
-      // Don't reset topics on error, keep existing state unless it's empty
-      if (coachTopics.length === 0) {
-        setCoachTopics([]);
-        setCoachStatus(null);
-      }
+      // On error, clear the state to prevent stale data
+      setCoachTopics([]);
+      setCoachStatus(null);
     } finally {
       console.log('🏁 [LOADING] Setting isLoadingTopics to false');
       setIsLoadingTopics(false);
     }
-  }, [selectedCoach, toast]); // Remove coachTopics from dependencies to prevent infinite loops
+  }, [selectedCoach, toast]);
 
   useEffect(() => {
     loadAvailableCoaches();
