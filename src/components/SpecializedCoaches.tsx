@@ -410,9 +410,9 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
               className="flex-1"
               onClick={() => {
                 if (coach.id === 'sascha') {
-                  window.location.href = '/training-sascha';
+                  window.location.href = '/training/sascha';
                 } else if (coach.id === 'markus') {
-                  window.location.href = '/training-markus';
+                  window.location.href = '/training/markus';
                 }
               }}
             >
