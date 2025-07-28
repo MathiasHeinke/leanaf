@@ -127,7 +127,7 @@ export const EnhancedCoachTopicManager = () => {
     }
 
     const timestamp = new Date().toISOString();
-    console.log(`🔍 [${timestamp}] Starting search for topics in database for coach: ${selectedCoach}`);
+    console.log(`🔍 [${timestamp}] Starting debug search for coach: ${selectedCoach}`);
     setIsLoadingTopics(true);
     setRetryCount(attempt - 1);
 
@@ -138,38 +138,80 @@ export const EnhancedCoachTopicManager = () => {
     abortControllerRef.current = new AbortController();
     
     try {
-      // First, just count how many topics exist in the database for this coach
-      console.log(`📊 [${timestamp}] Counting topics for coach: ${selectedCoach}`);
+      // Debug: First check what coach_ids exist in the database
+      console.log(`🔍 [${timestamp}] Checking all existing coach_ids...`);
+      const { data: allCoaches, error: allCoachesError } = await supabase
+        .from('coach_topic_configurations')
+        .select('coach_id');
+
+      if (allCoachesError) {
+        console.error(`❌ [${timestamp}] Error getting all coaches:`, allCoachesError);
+      } else {
+        const uniqueCoaches = [...new Set(allCoaches?.map(c => c.coach_id) || [])];
+        console.log(`📋 [${timestamp}] All coach_ids in database:`, uniqueCoaches);
+      }
       
-      const { count, error: countError } = await supabase
+      // Try exact match first
+      console.log(`🎯 [${timestamp}] Trying exact match for coach: "${selectedCoach}"`);
+      const { count: exactCount, error: exactError } = await supabase
         .from('coach_topic_configurations')
         .select('*', { count: 'exact', head: true })
         .eq('coach_id', selectedCoach);
 
-      if (countError) {
-        console.error(`❌ [${timestamp}] Count query error:`, countError);
-        throw countError;
+      if (exactError) {
+        console.error(`❌ [${timestamp}] Exact match error:`, exactError);
+      } else {
+        console.log(`🎯 [${timestamp}] Exact match result: ${exactCount || 0} topics`);
       }
 
-      console.log(`📈 [${timestamp}] Database search result: Found ${count || 0} topics for coach ${selectedCoach}`);
+      // Try case-insensitive match
+      console.log(`🔤 [${timestamp}] Trying case-insensitive match for coach: "${selectedCoach}"`);
+      const { count: caseCount, error: caseError } = await supabase
+        .from('coach_topic_configurations')
+        .select('*', { count: 'exact', head: true })
+        .ilike('coach_id', selectedCoach);
+
+      if (caseError) {
+        console.error(`❌ [${timestamp}] Case-insensitive match error:`, caseError);
+      } else {
+        console.log(`🔤 [${timestamp}] Case-insensitive match result: ${caseCount || 0} topics`);
+      }
+
+      // Try capitalized version
+      const capitalizedCoach = selectedCoach.charAt(0).toUpperCase() + selectedCoach.slice(1);
+      console.log(`🅰️ [${timestamp}] Trying capitalized version: "${capitalizedCoach}"`);
+      const { count: capCount, error: capError } = await supabase
+        .from('coach_topic_configurations')
+        .select('*', { count: 'exact', head: true })
+        .eq('coach_id', capitalizedCoach);
+
+      if (capError) {
+        console.error(`❌ [${timestamp}] Capitalized match error:`, capError);
+      } else {
+        console.log(`🅰️ [${timestamp}] Capitalized match result: ${capCount || 0} topics`);
+      }
+
+      // Use the best result
+      const finalCount = exactCount || caseCount || capCount || 0;
       
-      // Show the count in a toast
+      console.log(`📊 [${timestamp}] Final result: ${finalCount} topics for coach ${selectedCoach}`);
+      
+      // Show detailed results in toast
       toast({
-        title: "🔍 Database-Suche abgeschlossen",
-        description: `${count || 0} Topics für Coach ${selectedCoach} in der Datenbank gefunden`,
+        title: "🔍 Database-Debug abgeschlossen",
+        description: `Exact: ${exactCount || 0} | Case-insensitive: ${caseCount || 0} | Capitalized: ${capCount || 0}`,
       });
 
-      // For now, we're just showing the count - not loading the actual data yet
-      // Set empty array but log the count
+      // Set empty array - we're just debugging counts for now
       setCoachTopics([]);
-      console.log(`✅ [${timestamp}] Search completed - ${count || 0} topics exist in database for ${selectedCoach}`);
+      console.log(`✅ [${timestamp}] Debug search completed for ${selectedCoach}`);
       
     } catch (error: any) {
-      console.error(`💥 [${timestamp}] Error searching database (attempt ${attempt}):`, error);
+      console.error(`💥 [${timestamp}] Error in debug search (attempt ${attempt}):`, error);
       
       // Retry logic
       if (attempt < 3 && !abortControllerRef.current?.signal.aborted) {
-        console.log(`🔄 [${timestamp}] Retrying search in ${attempt * 2} seconds...`);
+        console.log(`🔄 [${timestamp}] Retrying debug search in ${attempt * 2} seconds...`);
         await new Promise(resolve => setTimeout(resolve, attempt * 2000));
         return loadCoachData(forceReload, attempt + 1);
       }
@@ -177,7 +219,7 @@ export const EnhancedCoachTopicManager = () => {
       // Show error only on final attempt
       if (attempt === 3) {
         toast({
-          title: "❌ Database-Suche fehlgeschlagen",
+          title: "❌ Debug-Suche fehlgeschlagen",
           description: `Topics konnten nach ${attempt} Versuchen nicht gesucht werden`,
           variant: "destructive"
         });
@@ -186,7 +228,7 @@ export const EnhancedCoachTopicManager = () => {
       setCoachTopics([]);
       setCoachStatus(null);
     } finally {
-      console.log(`🏁 [${timestamp}] Database search completed (attempt ${attempt})`);
+      console.log(`🏁 [${timestamp}] Debug search completed (attempt ${attempt})`);
       setIsLoadingTopics(false);
       abortControllerRef.current = null;
     }
