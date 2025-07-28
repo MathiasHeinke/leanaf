@@ -94,7 +94,7 @@ export const MealInput = ({
 
   // Handle key press for submit - fix space bug properly
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
       if (!isSubmitDisabled && inputText.trim().length > 0) {
         handleSubmit();

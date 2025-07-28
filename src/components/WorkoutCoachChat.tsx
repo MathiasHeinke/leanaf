@@ -833,8 +833,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
               className="flex-1 min-h-[36px] resize-none"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
