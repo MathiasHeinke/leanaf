@@ -522,12 +522,12 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-[calc(100dvh-200px)] flex flex-col">
       {/* Chat Area - with proper height calculation for fixed input */}
-      <div className="flex-1 flex relative min-h-0" style={{ height: 'calc(100vh - 140px)' }}>
+      <div className="flex-1 flex relative min-h-0">
         {/* Messages */}
         <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
+          <ScrollArea className="flex-1 px-4 py-2" ref={scrollAreaRef}>
             <div className="space-y-4 pb-25">
               {messages.map((message) => (
                 <div key={message.id} className="flex">
@@ -673,7 +673,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
       {/* Exercise Preview */}
       {exercisePreview && (
-        <div className="p-3 border-t border-border/20">
+        <div className="px-3 py-1 border-t border-border/20">
           <ExercisePreviewCard
             data={exercisePreview}
             onSave={handleExercisePreviewSave}
@@ -684,7 +684,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
       {/* Formcheck Summary */}
       {formcheckSummary && (
-        <div className="p-3 border-t border-border/20">
+        <div className="px-3 py-1 border-t border-border/20">
           <FormcheckSummaryCard
             data={formcheckSummary}
             onSave={handleFormcheckSummarySave}
@@ -810,7 +810,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </Collapsible>
 
         {/* Input */}
-        <div className="p-3">
+        <div className="px-3 py-1">
           <div className="flex items-stretch gap-3">
             {/* Textarea - takes full available height */}
             <Textarea
