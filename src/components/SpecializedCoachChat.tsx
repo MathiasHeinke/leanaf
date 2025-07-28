@@ -806,8 +806,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         </Card>
 
       {/* Chat Area */}
-      <Card className="flex flex-col h-[calc(100dvh-210px)]">
-        <CardContent className="flex-1 p-0 overflow-hidden">
+      <Card className="flex flex-col h-[calc(100vh-210px)]">
+        <CardContent className="flex-1 p-0">
           <ScrollArea className="h-full">
             <div className="p-4">
               {isLoading ? (
@@ -955,7 +955,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               </CollapsibleTrigger>
               
               <CollapsibleContent>
-                <div className="px-4 pb-4">
+                <div className="px-3 pb-3">
                   {isLoadingSuggestions && (
                     <div className="flex items-center justify-center mb-3">
                       <div className="flex items-center space-x-2">
@@ -988,7 +988,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         
         {/* Media Upload Zone */}
         {showMediaUpload && (
-          <div className="border-t p-4">
+          <div className="border-t p-3">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium">Medien hochladen</h4>
@@ -1066,7 +1066,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         )}
         
         {/* Input Area */}
-        <div className="border-t p-4">
+        <div className="border-t p-3">
           {uploadedImages.length > 0 && (
             <div className="mb-3">
               <div className="flex items-center space-x-2 mb-2">
