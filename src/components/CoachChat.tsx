@@ -22,8 +22,8 @@ import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { toast } from "sonner";
 import { useCoachLimitHandler } from "./CoachLimitHandler";
 import { useSentimentAnalysis } from "@/hooks/useSentimentAnalysis";
-import { useCoachMemory } from "@/hooks/useCoachMemory";
-import { useProactiveCoaching } from "@/hooks/useProactiveCoaching";
+import { useGlobalCoachMemory } from "@/hooks/useGlobalCoachMemory";
+import { ProactiveCoachNotifications } from "./ProactiveCoachNotifications";
 
 interface ChatMessage {
   id: string;
@@ -58,17 +58,8 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     stopRecording
   } = useVoiceRecording();
 
-  // Human-like coaching features
-  const { analyzeSentiment } = useSentimentAnalysis();
-  const { 
-    memory, 
-    loadCoachMemory, 
-    addMoodEntry, 
-    addSuccessMoment, 
-    addStruggleMention,
-    updateRelationshipStage 
-  } = useCoachMemory();
-  const { isEnabled: proactiveEnabled } = useProactiveCoaching();
+  // ============= ENHANCED HUMAN-LIKE COACHING =============
+  const { processMessage, getMemorySummary, memory, loadCoachMemory, updateRelationshipStage } = useGlobalCoachMemory();
 
   // Monitor coach personality changes from database
   useEffect(() => {
@@ -248,20 +239,8 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
     setIsThinking(true);
 
     try {
-      // Analyze sentiment for emotional intelligence
-      const sentiment = await analyzeSentiment(userMessage);
-      
-      // Update coach memory with mood
-      if (sentiment.emotion !== 'neutral') {
-        await addMoodEntry(sentiment.emotion, sentiment.intensity);
-      }
-      
-      // Detect success moments or struggles
-      if (sentiment.sentiment === 'positive' && sentiment.confidence > 0.7) {
-        await addSuccessMoment(`Positive interaction: ${sentiment.emotion}`);
-      } else if (sentiment.sentiment === 'negative' && sentiment.confidence > 0.7) {
-        await addStruggleMention(`User feeling: ${sentiment.emotion}`);
-      }
+      // ============= ENHANCED HUMAN-LIKE PROCESSING =============
+      await processMessage(userMessage, currentCoachPersonality, true);
       // Save user message and add to UI
       const savedUserMessage = await saveMessage('user', userMessage);
       if (savedUserMessage) {
@@ -333,7 +312,6 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
             goals: goalsData.data || {}
           },
           chatHistory: messages.slice(-10),
-          sentiment: sentiment,
           coachMemory: memory
         }
       });
