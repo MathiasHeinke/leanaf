@@ -122,6 +122,7 @@ export const WorkoutHistoryTab = ({ timeRange }: WorkoutHistoryTabProps) => {
             date={dayData.date}
             quickWorkouts={dayData.quickWorkouts}
             advancedSessions={dayData.advancedSessions}
+            onWorkoutUpdated={() => window.location.reload()} // Simple refresh for now
           />
         ))}
       </div>

@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronDown, ChevronRight, Edit, Copy, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Copy, Check, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,6 +63,7 @@ export const DayCard: React.FC<DayCardProps> = ({
   const [editingName, setEditingName] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
   const calculateDayStats = (): DayStats => {
@@ -201,6 +202,48 @@ export const DayCard: React.FC<DayCardProps> = ({
       });
     } finally {
       setIsDuplicating(null);
+    }
+  };
+
+  const handleDeleteSession = async (session: ExerciseSession) => {
+    if (!confirm(`Möchtest du die Session "${session.session_name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(session.id);
+      
+      // First delete all exercise sets for this session
+      const { error: setsError } = await supabase
+        .from('exercise_sets')
+        .delete()
+        .eq('session_id', session.id);
+
+      if (setsError) throw setsError;
+
+      // Then delete the session itself
+      const { error: sessionError } = await supabase
+        .from('exercise_sessions')
+        .delete()
+        .eq('id', session.id);
+
+      if (sessionError) throw sessionError;
+
+      toast({
+        title: "Session gelöscht",
+        description: `"${session.session_name}" wurde erfolgreich gelöscht.`,
+      });
+
+      onSessionUpdated?.();
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      toast({
+        title: "Fehler",
+        description: "Session konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -347,6 +390,21 @@ export const DayCard: React.FC<DayCardProps> = ({
                         }}
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(session);
+                        }}
+                        disabled={isDeleting === session.id}
+                      >
+                        {isDeleting === session.id ? (
+                          <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>

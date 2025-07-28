@@ -11,8 +11,11 @@ import {
   Activity, 
   Target,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ExerciseSet {
   id: string;
@@ -48,15 +51,19 @@ interface UnifiedWorkoutCardProps {
   quickWorkouts: QuickWorkout[];
   advancedSessions: AdvancedSession[];
   onEdit?: (workout: QuickWorkout | AdvancedSession) => void;
+  onWorkoutUpdated?: () => void;
 }
 
 export const UnifiedWorkoutCard = ({ 
   date, 
   quickWorkouts, 
   advancedSessions, 
-  onEdit 
+  onEdit,
+  onWorkoutUpdated 
 }: UnifiedWorkoutCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -117,6 +124,81 @@ export const UnifiedWorkoutCard = ({
       };
     }
     return null;
+  };
+
+  const handleDeleteQuickWorkout = async (workout: QuickWorkout) => {
+    if (!confirm(`Möchtest du das ${workout.workout_type}-Training wirklich löschen?`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(workout.id);
+      
+      const { error } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', workout.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Training gelöscht",
+        description: "Das Training wurde erfolgreich gelöscht.",
+      });
+
+      onWorkoutUpdated?.();
+    } catch (error) {
+      console.error('Error deleting quick workout:', error);
+      toast({
+        title: "Fehler",
+        description: "Training konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleDeleteAdvancedSession = async (session: AdvancedSession) => {
+    if (!confirm(`Möchtest du die Session "${session.session_name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(session.id);
+      
+      // First delete all exercise sets for this session
+      const { error: setsError } = await supabase
+        .from('exercise_sets')
+        .delete()
+        .eq('session_id', session.id);
+
+      if (setsError) throw setsError;
+
+      // Then delete the session itself
+      const { error: sessionError } = await supabase
+        .from('exercise_sessions')
+        .delete()
+        .eq('id', session.id);
+
+      if (sessionError) throw sessionError;
+
+      toast({
+        title: "Session gelöscht",
+        description: `"${session.session_name}" wurde erfolgreich gelöscht.`,
+      });
+
+      onWorkoutUpdated?.();
+    } catch (error) {
+      console.error('Error deleting advanced session:', error);
+      toast({
+        title: "Fehler",
+        description: "Session konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   const hasWorkouts = quickWorkouts.length > 0 || advancedSessions.length > 0;
@@ -237,11 +319,25 @@ export const UnifiedWorkoutCard = ({
                             {workout.steps && ` • ${workout.steps.toLocaleString()} Schritte`}
                           </div>
                         </div>
-                        {onEdit && (
-                          <Button variant="ghost" size="sm" onClick={() => onEdit(workout)}>
-                            <Edit className="h-4 w-4" />
+                        <div className="flex items-center gap-2">
+                          {onEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => onEdit(workout)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDeleteQuickWorkout(workout)}
+                            disabled={isDeleting === workout.id}
+                          >
+                            {isDeleting === workout.id ? (
+                              <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            )}
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -264,11 +360,25 @@ export const UnifiedWorkoutCard = ({
                             {calculateDuration(session)} Min • {session.exercise_sets.length} Sätze
                           </div>
                         </div>
-                        {onEdit && (
-                          <Button variant="ghost" size="sm" onClick={() => onEdit(session)}>
-                            <Edit className="h-4 w-4" />
+                        <div className="flex items-center gap-2">
+                          {onEdit && (
+                            <Button variant="ghost" size="sm" onClick={() => onEdit(session)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDeleteAdvancedSession(session)}
+                            disabled={isDeleting === session.id}
+                          >
+                            {isDeleting === session.id ? (
+                              <div className="h-4 w-4 animate-spin border-2 border-current border-t-transparent rounded-full" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            )}
                           </Button>
-                        )}
+                        </div>
                       </div>
                       
                       {/* Exercise breakdown */}
