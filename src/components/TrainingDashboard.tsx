@@ -212,22 +212,18 @@ export const TrainingDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Today's Training Status - Directly after Sascha */}
+        <TodaysTrainingStatus 
+          todaysSessions={getTodaysSessions()}
+          onStartTraining={() => setShowQuickAdd(true)}
+        />
+
         {/* Training Stats */}
-        <div>
-          <TrainingStats stats={weeklyStats} />
-        </div>
+        <TrainingStats stats={weeklyStats} />
       </div>
 
       {/* Secondary Actions */}
-      <div className="grid gap-6 grid-cols-1">
-        {/* Today's Training Status */}
-        <div>
-          <TodaysTrainingStatus 
-            todaysSessions={getTodaysSessions()}
-            onStartTraining={() => setShowQuickAdd(true)}
-          />
-        </div>
-        
+      <div className="grid gap-6 grid-cols-1">        
         {/* Training History Card */}
         <Card className="border-accent/20 hover:border-accent/40 transition-all cursor-pointer group hover:shadow-lg"
               onClick={() => setShowHistory(true)}>
@@ -255,9 +251,7 @@ export const TrainingDashboard: React.FC = () => {
         </Card>
 
         {/* Custom Exercise Manager */}
-        <div>
-          <CustomExerciseManager onExerciseAdded={loadSessions} />
-        </div>
+        <CustomExerciseManager onExerciseAdded={loadSessions} />
       </div>
 
       {/* Recent Activity Preview */}
