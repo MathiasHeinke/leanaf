@@ -34,7 +34,7 @@ import {
   Lightbulb,
   Database
 } from "lucide-react";
-import { KnowledgeBaseExportImport } from '@/components/KnowledgeBaseExportImport';
+
 
 export default function Science() {
   const { t } = useTranslation();
@@ -590,14 +590,6 @@ export default function Science() {
         </CardContent>
       </Card>
 
-      {/* Knowledge Base Management */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Database className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Wissensbasis-Verwaltung</h2>
-        </div>
-        <KnowledgeBaseExportImport />
-      </div>
 
       {/* Call to Action */}
       <Card className="glass-card">
