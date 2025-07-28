@@ -69,14 +69,16 @@ const extractExerciseFromText = (text: string) => {
   
   // Enhanced sets and reps extraction with multiple patterns
   const setsPatterns = [
-    // Pattern: "10x 90kg rpe 7"
+    // Pattern: "10x 90kg rpe 7 und 5x 110kg rpe 9"
     /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
-    // Pattern: "10 Wiederholungen × 90 kg (RPE 7)"
-    /(\d+)\s*(?:wiederholung|wdh|rep|reps?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*\(?rpe\s*(\d+)\)?)?/gi,
+    // Pattern: "10 reps 90kg"
+    /(\d+)\s*(?:wiederholung|wdh|rep|reps?)\s*(?:à|bei|mit|von)?\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
     // Pattern: "90kg x 10 rpe 7"
     /(\d+(?:\.\d+)?)\s*kg\s*[x×]\s*(\d+)(?:\s*rpe\s*(\d+))?/gi,
     // Pattern: "10 mal 90kg"
-    /(\d+)\s*mal\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi
+    /(\d+)\s*mal\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+    // Pattern: simple "10 90 7" format
+    /(\d+)\s+(\d+(?:\.\d+)?)\s*kg?\s*(?:rpe\s*)?(\d+)?/gi
   ];
   
   const sets = [];
@@ -298,7 +300,92 @@ serve(async (req) => {
           console.error('Failed to save text-extracted exercise data:', saveResult.error);
         }
       } else {
-        console.log('❌ No exercise data found in text');
+        console.log('❌ No exercise data found in text using regex, trying GPT-4.1...');
+        
+        // Try GPT-4.1 for text extraction
+        try {
+          const textExtractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4.1-2025-04-14',
+              messages: [
+                {
+                  role: "system",
+                  content: `You are an expert exercise data extraction system. Extract exercise data from German text and return ONLY valid JSON in this exact format:
+{
+  "exercise_name": "string",
+  "sets": [
+    {
+      "reps": number,
+      "weight": number,
+      "rpe": number
+    }
+  ],
+  "confidence": number
+}
+
+Examples:
+- "Füge deadlift Übung hinzu 10x 90kg rpe 7 und 5x 110kg rpe 9" should extract:
+  {"exercise_name": "Deadlift", "sets": [{"reps": 10, "weight": 90, "rpe": 7}, {"reps": 5, "weight": 110, "rpe": 9}], "confidence": 0.95}
+
+CRITICAL: Return ONLY the JSON, no additional text or explanations.`
+                },
+                {
+                  role: "user",
+                  content: userMessage
+                }
+              ],
+              max_tokens: 300,
+              temperature: 0.1
+            }),
+          });
+
+          if (textExtractionResponse.ok) {
+            const gptData = await textExtractionResponse.json();
+            const gptResponse = gptData.choices[0].message.content;
+            
+            console.log('GPT-4.1 text extraction response:', gptResponse);
+            
+            try {
+              const gptExtractedData = JSON.parse(gptResponse);
+              
+              if (gptExtractedData.exercise_name && gptExtractedData.sets && Array.isArray(gptExtractedData.sets)) {
+                const exerciseForSaving = {
+                  exerciseName: gptExtractedData.exercise_name,
+                  sets: gptExtractedData.sets,
+                  originalText: userMessage
+                };
+                
+                console.log('💪 GPT-4.1 extracted exercise data, saving to database...');
+                const saveResult = await saveExerciseData(supabase, userId, exerciseForSaving);
+                
+                if (saveResult.success) {
+                  return new Response(JSON.stringify({
+                    success: true,
+                    source: 'gpt-4.1-text',
+                    exerciseData: {
+                      exercise_name: gptExtractedData.exercise_name,
+                      sets: gptExtractedData.sets,
+                      confidence: gptExtractedData.confidence || 0.9
+                    },
+                    saved: true,
+                    sessionData: saveResult.data
+                  }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  });
+                }
+              }
+            } catch (parseError) {
+              console.error('Failed to parse GPT-4.1 text extraction response:', parseError);
+            }
+          }
+        } catch (gptError) {
+          console.error('Error with GPT-4.1 text extraction:', gptError);
+        }
       }
     }
 
@@ -368,7 +455,7 @@ RULES:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         messages,
         max_tokens: 500,
         temperature: 0.1
