@@ -698,6 +698,7 @@ serve(async (req) => {
     }
     
     // EXERCISE EXTRACTION REMOVED - Now handled by extract-exercise-data function
+    let exerciseExtracted = false; // Keep for backwards compatibility
     
     // Log security event
     try {
