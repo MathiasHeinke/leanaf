@@ -756,13 +756,20 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             }
           });
 
-          if (!extractError && exerciseData?.success && exerciseData?.exercises?.length > 0) {
-            setExercisePreview({
-              exercise_name: exerciseData.exercises[0].exercise_name,
-              sets: exerciseData.exercises[0].sets || [],
-              overall_rpe: exerciseData.exercises[0].overall_rpe
-            });
+          if (!extractError && exerciseData?.success && exerciseData?.saved) {
+            // Exercise was successfully saved, show success
             toast.success('Übung erfolgreich gespeichert!');
+            // Don't set preview - exercise is already saved
+            setExercisePreview(null);
+            return; // Exit early as exercise is already saved
+          } else if (!extractError && exerciseData?.exerciseData) {
+            // Exercise was extracted but not saved, show preview for manual save
+            setExercisePreview({
+              exercise_name: exerciseData.exerciseData.exercise_name,
+              sets: exerciseData.exerciseData.sets || [],
+              overall_rpe: exerciseData.exerciseData.overall_rpe
+            });
+            toast.success('Übung erkannt! Bitte überprüfen und speichern.');
           } else {
             // Fallback to local extraction for preview
             await extractExerciseDataFromContext(userMessage, assistantMessage);

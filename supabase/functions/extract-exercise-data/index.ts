@@ -67,44 +67,54 @@ const extractExerciseFromText = (text: string) => {
     return null;
   }
   
-  // Enhanced sets and reps extraction with multiple patterns
-  const setsPatterns = [
-    // Pattern: "10x 90kg rpe 7 und 5x 110kg rpe 9"
-    /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
-    // Pattern: "10 reps 90kg"
-    /(\d+)\s*(?:wiederholung|wdh|rep|reps?)\s*(?:à|bei|mit|von)?\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
-    // Pattern: "90kg x 10 rpe 7"
-    /(\d+(?:\.\d+)?)\s*kg\s*[x×]\s*(\d+)(?:\s*rpe\s*(\d+))?/gi,
-    // Pattern: "10 mal 90kg"
-    /(\d+)\s*mal\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
-    // Pattern: simple "10 90 7" format
-    /(\d+)\s+(\d+(?:\.\d+)?)\s*kg?\s*(?:rpe\s*)?(\d+)?/gi
-  ];
-  
   const sets = [];
-  let match;
   
-  for (const pattern of setsPatterns) {
-    pattern.lastIndex = 0; // Reset regex
-    while ((match = pattern.exec(text)) !== null) {
-      let reps, weight, rpe;
+  // Enhanced German text parsing for "10x 90kg rpe 7 und 5x 110kg rpe 9"
+  const germanSetPattern = /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi;
+  
+  // Split by "und" to handle multiple sets
+  const setParts = text.split(/\s+und\s+/gi);
+  
+  for (const part of setParts) {
+    let match;
+    while ((match = germanSetPattern.exec(part)) !== null) {
+      const reps = parseInt(match[1]);
+      const weight = parseFloat(match[2]);
+      const rpe = match[3] ? parseInt(match[3]) : null;
       
-      // Check if weight or reps is first based on pattern
-      if (match[0].includes('kg') && match[0].indexOf('kg') < match[0].indexOf('x')) {
-        // Weight first: "90kg x 10"
-        weight = parseFloat(match[1]);
-        reps = parseInt(match[2]);
-        rpe = match[3] ? parseInt(match[3]) : null;
-      } else {
-        // Reps first: "10x 90kg"
-        reps = parseInt(match[1]);
-        weight = parseFloat(match[2]);
-        rpe = match[3] ? parseInt(match[3]) : null;
-      }
-      
-      if (reps > 0 && weight > 0) {
+      if (reps && weight && reps < 100 && weight < 1000) { // Sanity check
         sets.push({ reps, weight, rpe });
         console.log('📝 Added set:', { reps, weight, rpe });
+      }
+    }
+  }
+  // Fallback patterns if the German parsing didn't catch everything
+  const fallbackPatterns = [
+    /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+    /(\d+(?:\.\d+)?)\s*kg\s*[x×]\s*(\d+)(?:\s*rpe\s*(\d+))?/gi
+  ];
+  
+  if (sets.length === 0) {
+    for (const pattern of fallbackPatterns) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        let reps, weight, rpe;
+        
+        if (match[0].includes('kg') && match[0].indexOf('kg') < match[0].indexOf('x')) {
+          weight = parseFloat(match[1]);
+          reps = parseInt(match[2]);
+          rpe = match[3] ? parseInt(match[3]) : null;
+        } else {
+          reps = parseInt(match[1]);
+          weight = parseFloat(match[2]);
+          rpe = match[3] ? parseInt(match[3]) : null;
+        }
+        
+        if (reps > 0 && weight > 0 && reps < 100 && weight < 1000) {
+          sets.push({ reps, weight, rpe });
+          console.log('📝 Added fallback set:', { reps, weight, rpe });
+        }
       }
     }
   }
@@ -367,12 +377,12 @@ CRITICAL: Return ONLY the JSON, no additional text or explanations.`
                   return new Response(JSON.stringify({
                     success: true,
                     source: 'gpt-4.1-text',
+                    saved: true,
                     exerciseData: {
                       exercise_name: gptExtractedData.exercise_name,
                       sets: gptExtractedData.sets,
                       confidence: gptExtractedData.confidence || 0.9
                     },
-                    saved: true,
                     sessionData: saveResult.data
                   }), {
                     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -506,16 +516,32 @@ RULES:
 
     const saveResult = await saveExerciseData(supabase, userId, exerciseForSaving);
 
-    return new Response(JSON.stringify({
-      success: true,
-      source: 'vision',
-      exerciseData: extractedData,
-      saved: saveResult.success,
-      sessionData: saveResult.success ? saveResult.data : null,
-      saveError: saveResult.success ? null : saveResult.error
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    if (saveResult.success) {
+      return new Response(JSON.stringify({
+        success: true,
+        source: 'gpt-vision',
+        saved: true,
+        exerciseData: {
+          exercise_name: extractedData.exercise_name,
+          sets: extractedData.sets,
+          overall_rpe: extractedData.overall_rpe,
+          confidence: extractedData.confidence || 0.8
+        },
+        sessionData: saveResult.data
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } else {
+      return new Response(JSON.stringify({
+        success: false,
+        source: 'gpt-vision',
+        saved: false,
+        error: saveResult.error,
+        exerciseData: extractedData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
   } catch (error) {
     console.error('Error in extract-exercise-data function:', error);
