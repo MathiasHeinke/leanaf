@@ -801,6 +801,13 @@ serve(async (req) => {
       { role: 'user', content: message }
     ];
 
+    // Check if message contains exercise data and extract it
+    const exerciseData = await extractExerciseFromText(message);
+    if (exerciseData && exerciseData.exerciseName) {
+      console.log('💪 Exercise data detected:', exerciseData);
+      await saveExerciseData(supabase, userId, exerciseData);
+    }
+
     console.log('🔄 Sending request to OpenAI with enhanced context...', {
       messageCount: messages.length,
       systemMessageLength: systemMessage.length,
@@ -1040,4 +1047,223 @@ ${ragAddition}
 - Antworte auf Deutsch und halte dich an deinen Charaktertyp
 - Maksimal 3-4 Sätze pro Antwort, außer bei komplexen Erklärungen
 - Verwende Emojis sparsam und angemessen für deinen Charakter`;
+};
+
+// ============= EXERCISE EXTRACTION FUNCTIONS =============
+
+// Extract exercise data from text message
+const extractExerciseFromText = async (message: string) => {
+  try {
+    const lowerMessage = message.toLowerCase();
+    
+    // Check if message contains exercise-related keywords
+    const exerciseKeywords = [
+      'deadlift', 'kreuzheben', 'bankdrücken', 'kniebeuge', 'squat', 'bench press',
+      'übung', 'training', 'satz', 'sätze', 'reps', 'wiederholungen', 'kg', 'rpe',
+      'bizeps', 'trizeps', 'chest', 'brust', 'rücken', 'back', 'schulter', 'shoulder',
+      'bein', 'leg', 'curls', 'press', 'pull', 'push', 'row'
+    ];
+    
+    const hasExerciseKeywords = exerciseKeywords.some(keyword => lowerMessage.includes(keyword));
+    
+    if (!hasExerciseKeywords) {
+      return null;
+    }
+    
+    // Use regex patterns to extract exercise data
+    const patterns = {
+      // Pattern for: "deadlift 10x 90kg rpe 7"
+      basicPattern: /(\w+(?:\s+\w+)*)\s+(\d+)x?\s*(\d+)kg?\s*(?:rpe\s*(\d+))?/gi,
+      // Pattern for: "füge deadlift übung hinzu 10x 90kg rpe 7 und 5x 110kg rpe 9"
+      addPattern: /(?:füge|hinzufügen?|add)\s*(.+?)\s*(?:übung\s*)?(?:hinzu|dazu)?\s*((?:\d+x?\s*\d+kg?\s*(?:rpe\s*\d+)?\s*(?:und|,)?\s*)+)/gi,
+      // Pattern for multiple sets: "5x 110kg rpe 9"
+      setPattern: /(\d+)x?\s*(\d+)kg?\s*(?:rpe\s*(\d+))?/gi
+    };
+    
+    let exerciseData = null;
+    
+    // Try the add pattern first
+    const addMatch = patterns.addPattern.exec(message);
+    if (addMatch) {
+      const exerciseName = normalizeExerciseName(addMatch[1].trim());
+      const setsString = addMatch[2];
+      const sets = extractSetsFromString(setsString);
+      
+      if (sets.length > 0) {
+        const avgRpe = sets.reduce((sum, set) => sum + (set.rpe || 7), 0) / sets.length;
+        exerciseData = {
+          exerciseName,
+          sets,
+          rpe: Math.round(avgRpe),
+          confidence: 0.9
+        };
+      }
+    } else {
+      // Try basic pattern
+      const basicMatch = patterns.basicPattern.exec(message);
+      if (basicMatch) {
+        const exerciseName = normalizeExerciseName(basicMatch[1]);
+        const reps = parseInt(basicMatch[2]);
+        const weight = parseInt(basicMatch[3]);
+        const rpe = basicMatch[4] ? parseInt(basicMatch[4]) : 7;
+        
+        exerciseData = {
+          exerciseName,
+          sets: [{ reps, weight }],
+          rpe,
+          confidence: 0.8
+        };
+      }
+    }
+    
+    console.log('Exercise extraction result:', exerciseData);
+    return exerciseData;
+    
+  } catch (error) {
+    console.error('Error extracting exercise from text:', error);
+    return null;
+  }
+};
+
+// Extract multiple sets from a string like "10x 90kg rpe 7 und 5x 110kg rpe 9"
+const extractSetsFromString = (setsString: string) => {
+  const sets = [];
+  const pattern = /(\d+)x?\s*(\d+)kg?\s*(?:rpe\s*(\d+))?/gi;
+  let match;
+  
+  while ((match = pattern.exec(setsString)) !== null) {
+    sets.push({
+      reps: parseInt(match[1]),
+      weight: parseInt(match[2]),
+      rpe: match[3] ? parseInt(match[3]) : undefined
+    });
+  }
+  
+  return sets;
+};
+
+// Normalize exercise name to German standard
+const normalizeExerciseName = (name: string): string => {
+  const exerciseMap: { [key: string]: string } = {
+    'deadlift': 'Kreuzheben',
+    'squat': 'Kniebeuge',
+    'bench press': 'Bankdrücken',
+    'benchpress': 'Bankdrücken',
+    'curl': 'Bizeps Curls',
+    'curls': 'Bizeps Curls',
+    'row': 'Rudern',
+    'pull': 'Ziehen',
+    'push': 'Drücken',
+    'press': 'Drücken',
+    'kreuzheben': 'Kreuzheben',
+    'kniebeuge': 'Kniebeuge',
+    'bankdrücken': 'Bankdrücken'
+  };
+  
+  const lowerName = name.toLowerCase().trim();
+  
+  // Check for exact matches
+  if (exerciseMap[lowerName]) {
+    return exerciseMap[lowerName];
+  }
+  
+  // Check for partial matches
+  for (const [key, value] of Object.entries(exerciseMap)) {
+    if (lowerName.includes(key)) {
+      return value;
+    }
+  }
+  
+  // Capitalize first letter if no match found
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+};
+
+// Save exercise data to database
+const saveExerciseData = async (supabase: any, userId: string, exerciseData: any) => {
+  try {
+    // First, find or create the exercise
+    let exerciseId;
+    
+    // Try to find existing exercise
+    const { data: existingExercise } = await supabase
+      .from('exercises')
+      .select('id')
+      .ilike('name', `%${exerciseData.exerciseName}%`)
+      .limit(1)
+      .single();
+    
+    if (existingExercise) {
+      exerciseId = existingExercise.id;
+    } else {
+      // Create new exercise
+      const { data: newExercise, error: exerciseError } = await supabase
+        .from('exercises')
+        .insert({
+          name: exerciseData.exerciseName,
+          category: 'strength',
+          muscle_groups: ['general'],
+          is_public: false,
+          created_by: userId
+        })
+        .select('id')
+        .single();
+      
+      if (exerciseError) {
+        console.error('Error creating exercise:', exerciseError);
+        return false;
+      }
+      
+      exerciseId = newExercise.id;
+    }
+    
+    // Create exercise session
+    const { data: session, error: sessionError } = await supabase
+      .from('exercise_sessions')
+      .insert({
+        user_id: userId,
+        session_name: `${exerciseData.exerciseName} Session`,
+        date: new Date().toISOString().split('T')[0],
+        notes: 'Eingegeben über Coach Chat',
+        overall_rpe: exerciseData.rpe
+      })
+      .select('id')
+      .single();
+    
+    if (sessionError) {
+      console.error('Error creating exercise session:', sessionError);
+      return false;
+    }
+    
+    // Create exercise sets
+    const setsToInsert = exerciseData.sets.map((set: any, index: number) => ({
+      user_id: userId,
+      session_id: session.id,
+      exercise_id: exerciseId,
+      set_number: index + 1,
+      reps: set.reps,
+      weight_kg: set.weight,
+      rpe: set.rpe || exerciseData.rpe
+    }));
+    
+    const { error: setsError } = await supabase
+      .from('exercise_sets')
+      .insert(setsToInsert);
+    
+    if (setsError) {
+      console.error('Error creating exercise sets:', setsError);
+      return false;
+    }
+    
+    console.log('✅ Exercise data saved successfully:', {
+      exercise: exerciseData.exerciseName,
+      sets: exerciseData.sets.length,
+      sessionId: session.id
+    });
+    
+    return true;
+    
+  } catch (error) {
+    console.error('Error saving exercise data:', error);
+    return false;
+  }
 };
