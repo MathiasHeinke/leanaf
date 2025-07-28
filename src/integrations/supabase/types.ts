@@ -2278,6 +2278,86 @@ export type Database = {
         }
         Relationships: []
       }
+      supplement_database: {
+        Row: {
+          category: string
+          common_timing: string[] | null
+          created_at: string
+          default_dosage: string | null
+          default_unit: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          common_timing?: string[] | null
+          created_at?: string
+          default_dosage?: string | null
+          default_unit?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          common_timing?: string[] | null
+          created_at?: string
+          default_dosage?: string | null
+          default_unit?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      supplement_intake_log: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          taken: boolean
+          timing: string
+          updated_at: string
+          user_id: string
+          user_supplement_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          taken?: boolean
+          timing: string
+          updated_at?: string
+          user_id: string
+          user_supplement_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          taken?: boolean
+          timing?: string
+          updated_at?: string
+          user_id?: string
+          user_supplement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplement_intake_log_user_supplement_id_fkey"
+            columns: ["user_supplement_id"]
+            isOneToOne: false
+            referencedRelation: "user_supplements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_email_preferences: {
         Row: {
           activity_reminders: boolean | null
@@ -2445,6 +2525,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_supplements: {
+        Row: {
+          created_at: string
+          custom_name: string | null
+          dosage: string
+          frequency_days: number | null
+          goal: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          rating: number | null
+          supplement_id: string | null
+          timing: string[]
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_name?: string | null
+          dosage: string
+          frequency_days?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          rating?: number | null
+          supplement_id?: string | null
+          timing?: string[]
+          unit?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_name?: string | null
+          dosage?: string
+          frequency_days?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          rating?: number | null
+          supplement_id?: string | null
+          timing?: string[]
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_supplements_supplement_id_fkey"
+            columns: ["supplement_id"]
+            isOneToOne: false
+            referencedRelation: "supplement_database"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_trials: {
         Row: {
