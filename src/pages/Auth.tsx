@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
@@ -14,6 +15,7 @@ import { signUpSchema, signInSchema, ClientRateLimit } from '@/utils/validationS
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -26,6 +28,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [privacyAccepted, setPrivacyAccepted] = useState(true); // Vorausgewählt wie gewünscht
   const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000)); // 5 attempts per 15 minutes
   
   const { user } = useAuth();
@@ -71,6 +74,11 @@ const Auth = () => {
     
     try {
       if (isSignUp) {
+        // Check privacy acceptance for sign up
+        if (!privacyAccepted) {
+          errors.privacy = 'Sie müssen der Datenschutzerklärung zustimmen, um sich zu registrieren.';
+        }
+        
         const result = signUpSchema.safeParse({
           email,
           password,
@@ -441,6 +449,40 @@ const Auth = () => {
                 </div>
                 {validationErrors.confirmPassword && (
                   <p className="text-sm text-destructive">{validationErrors.confirmPassword}</p>
+                )}
+              </div>
+            )}
+            
+            {/* Datenschutz-Zustimmung für Registrierung */}
+            {isSignUp && !isPasswordReset && (
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="privacy"
+                    checked={privacyAccepted}
+                    onCheckedChange={(checked) => {
+                      setPrivacyAccepted(!!checked);
+                      if (validationErrors.privacy) {
+                        setValidationErrors(prev => ({ ...prev, privacy: '' }));
+                        setError('');
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                  <label htmlFor="privacy" className="text-sm leading-tight cursor-pointer">
+                    Ich stimme der{' '}
+                    <Link 
+                      to="/privacy" 
+                      target="_blank"
+                      className="text-primary hover:underline"
+                    >
+                      Datenschutzerklärung
+                    </Link>
+                    {' '}zu und erlaube die Verarbeitung meiner Daten entsprechend den darin beschriebenen Zwecken.
+                  </label>
+                </div>
+                {validationErrors.privacy && (
+                  <p className="text-sm text-destructive">{validationErrors.privacy}</p>
                 )}
               </div>
             )}
