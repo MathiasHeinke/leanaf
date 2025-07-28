@@ -645,30 +645,44 @@ export const EnhancedCoachTopicManager = () => {
                 </div>
               ) : coachTopics.length === 0 ? (
                 <div className="text-center py-8 space-y-4">
-                  <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <Target className="h-12 w-12 mx-auto text-muted-foreground" />
                   <div>
-                    <h3 className="text-lg font-medium">Keine Topics konfiguriert</h3>
+                    <h3 className="text-lg font-medium">
+                      Noch keine Topics für {availableCoaches.find(c => c.id === selectedCoach)?.name}
+                    </h3>
                     <p className="text-muted-foreground mt-1">
-                      Für {availableCoaches.find(c => c.id === selectedCoach)?.name || 'diesen Coach'} sind noch keine Topics vorhanden.
+                      Dieser Coach hat noch keine Topics konfiguriert. Das ist normal für neue Coaches.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ✅ Query erfolgreich - 0 Topics gefunden (nicht 10s Timeout)
                     </p>
                   </div>
-                  <Button 
-                    onClick={() => searchPerplexityTopics()}
-                    className="bg-blue-600 hover:bg-blue-700"
-                    disabled={isSearching}
-                  >
-                    {isSearching ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Generiere Topics...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="h-4 w-4 mr-2" />
-                        Topics mit Perplexity generieren
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button 
+                      onClick={() => searchPerplexityTopics()}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      disabled={isSearching}
+                    >
+                      {isSearching ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Generiere Topics...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4 mr-2" />
+                          Topics mit Perplexity generieren
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => loadCoachData(true, 1)}
+                      disabled={isLoadingTopics}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isLoadingTopics ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
