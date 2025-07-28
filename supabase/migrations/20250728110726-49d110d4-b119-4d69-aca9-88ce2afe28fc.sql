@@ -1,0 +1,22 @@
+-- Deutsche Übersetzungen für weitere Sascha Knowledge Base Einträge (Batch 3/6)
+
+INSERT INTO public.coach_knowledge_base (title, expertise_area, knowledge_type, content, coach_id, priority_level, tags, created_at, updated_at) VALUES
+('HIIT für Rückschlagsportarten', 'hiit_de', 'meta_analysis', 'HIIT verbessert Sprungkraft, Sprintgeschwindigkeit und VO2max signifikant bei Rückschlagsportlern. Kurz-Intervalle (30s–1min), 2–3x/Woche. Auch im sportarten-übergreifenden Training HIIT-Blöcke integrieren für maximale Performance-Steigerung.', 'sascha', 2, ARRAY['hiit', 'rückschlagsport', 'sprungkraft', 'tennis'], now(), now()),
+
+('HIIT für Rückschlagsportarten (Detailliert)', 'hiit_de', 'meta_analysis', 'Steigerung von VO2max, Sprungkraft und Schnelligkeit. Kurzintervalle (30-60s), 2-3x/Woche. HIIT für unspezifische Leistungssteigerungen nutzen bei Tennis, Badminton und anderen Rückschlagsportarten.', 'sascha', 2, ARRAY['rückschlagsport', 'tennis', 'kampfsport', 'schnelligkeit'], now(), now()),
+
+('Krafttests (1RM, Push-up etc.)', 'performance_monitoring_de', 'standard_protocol', 'Regelmäßige 1RM-, Körpergewicht- und Lauf-Tests als Leitindikatoren. Alle 4 Wochen 1RM, Push-ups etc. erfassen. Progress-Daten in Trainingsplanung rückkoppeln für optimierte Periodisierung.', 'sascha', 2, ARRAY['1rm', 'push_up', '4_wochen', 'krafttests'], now(), now()),
+
+('Militärische Energiedefizite im Einsatz', 'nutrition_de', 'field_study', 'Tatsächliche Kalorienzufuhr im Feld oft 16–42% unter Bedarf. Hochkalorische, kompakte Snacks, Fokus auf Recovery Nutrition. Falls Beschwerden/Leistungsverlust: Ernährungstracking + Supplementierung prüfen für optimale Einsatzbereitschaft.', 'sascha', 2, ARRAY['militär', 'nutrition', 'energiedefizit', 'field_conditions', 'recovery'], now(), now()),
+
+('Militärische Energiedefizite im Einsatz (Detailliert)', 'nutrition_de', 'field_study', '16–42% Kaloriendefizit im Feldbetrieb. Kalorien-, Protein- und Rehydrierungsstrategie. Energiezufuhr im Feld/Einsatz kraftvoll tracken für Leistungserhaltung unter extremen Bedingungen.', 'sascha', 2, ARRAY['energiedefizit', '16_42_prozent', 'feldbetrieb', 'rehydrierung'], now(), now()),
+
+('Military HIIT: Battle-Tested Conditioning', 'military_conditioning_de', 'protocol', 'High-Intensity Functional Training (HIFT) ist nicht nur Übung - es ist Vorbereitung auf die Schlachten des Lebens. 20-Minuten-Protokolle: 40 Sekunden maximale nachhaltige Intensität, 20 Sekunden taktische Atem-Erholung. Fokus auf Compound-Bewegungen: Burpees, Mountain Climbers, Jump Squats, Push-up zu T. Finnische Militärstudie zeigte 11.6% Verbesserung im 12-Minuten-Lauftest vs 5.7% traditionelles Training.', 'sascha', 2, ARRAY['hift', 'militärtraining', 'compound_bewegungen', 'zeiteffizient'], now(), now()),
+
+('Monitoring und Prävention', 'injury_prevention_de', 'meta_review', 'Regelmäßiges Screening, Mobility und Techniktraining senken Verletzungsraten um bis zu 31%. Mindestens alle 8 Wochen Mobility/FMS & Technik prüfen. Präventionsblöcke im Makrozyklus mitplanen für nachhaltige Leistungsentwicklung.', 'sascha', 2, ARRAY['injury_prevention', '31_prozent_reduktion', '8_wochen', 'screening'], now(), now()),
+
+('Plyometrisches Training in Combatzonen', 'hiit_de', 'exercise_intervention', 'Explosivkraft-Training (Plyometrics) erhöht sprintbasierte Leistungsfähigkeit um bis zu 12% in 6 Wochen. Box Jumps, Burpees, Jump Squats – 2x/Woche als HIIT-Integration. Baue plyometrische Sets in Warmup/HIIT ein für maximale Power-Entwicklung.', 'sascha', 2, ARRAY['plyometrics', 'explosivkraft', 'sprint', 'combat'], now(), now()),
+
+('Plyometrisches Training in HIIT', 'hiit_de', 'exercise_study', 'Explosivkraft mit Box Jumps, Burpees etc. in 6 Wochen um ≥10% steigerbar. Plyos als HIIT-Integrationsbaustein. Wöchentlich plyometrische Komponenten einbauen für explosive Power-Entwicklung.', 'sascha', 2, ARRAY['plyometrics', 'explosivkraft', 'box_jumps', '10_prozent_steigerung'], now(), now()),
+
+('Smart Periodization (Automation)', 'periodization_de', 'application_trend', 'Automatisierte Phasenwechsel nach 6 Einheiten steigern Adhärenz + Leistung. Training und Progression smart steuern. Phase automatisch umschalten lassen für optimale Anpassung ohne mentale Überlastung.', 'sascha', 2, ARRAY['smart_training', 'automatisierung', '6_einheiten', 'adhärenz'], now(), now());
