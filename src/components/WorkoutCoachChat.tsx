@@ -522,13 +522,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="h-[calc(100dvh-200px)] flex flex-col">
-      {/* Chat Area - with proper height calculation for fixed input */}
-      <div className="flex-1 flex relative min-h-0">
-        {/* Messages */}
-        <div className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 px-4 py-2" ref={scrollAreaRef}>
-            <div className="space-y-4 pb-25">
+    <div className="h-full flex flex-col">
+      {/* Chat Area */}
+      <div className="flex flex-col h-[calc(100dvh-210px)]">
+        <div className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4">
+              <div className="space-y-4 pb-4">
               {messages.map((message) => (
                 <div key={message.id} className="flex">
                   {message.role === "assistant" && (
@@ -657,6 +657,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   </div>
                 </div>
               )}
+              <div ref={scrollAreaRef} />
+            </div>
             </div>
           </ScrollArea>
         </div>
@@ -694,7 +696,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       )}
 
       {/* Fixed Input Area at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border/20 bg-background/95 backdrop-blur-sm z-10">
+      <div className="border-t border-border/20 bg-background">
         {/* Quick Actions */}
         <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
           <div className="px-3 pt-2">
@@ -810,14 +812,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </Collapsible>
 
         {/* Input */}
-        <div className="px-3 py-1">
-          <div className="flex items-stretch gap-3">
-            {/* Textarea - takes full available height */}
+        <div className="p-3">
+          <div className="flex space-x-2">
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
-              className="flex-1 min-h-[120px] resize-none border-input focus:border-primary"
+              className="flex-1 min-h-[60px] resize-none"
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -826,23 +827,21 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               }}
             />
             
-            {/* Button column - vertically stacked */}
-            <div className="flex flex-col gap-3 justify-between">
+            <div className="flex flex-col space-y-2">
               <Button
                 variant="outline"
-                size="icon"
+                size="sm"
                 onClick={() => setShowUpload(!showUpload)}
-                className="h-[38px] w-[38px] flex-shrink-0"
+                className={showUpload ? 'bg-primary/10 text-primary' : ''}
               >
                 <Paperclip className="h-4 w-4" />
               </Button>
               
               <Button
                 variant={isRecording ? "destructive" : "outline"}
-                size="icon"
+                size="sm"
                 onClick={handleVoiceToggle}
                 disabled={isLoading || isProcessing}
-                className="h-[38px] w-[38px] flex-shrink-0"
               >
                 {isRecording ? (
                   <div className="h-4 w-4 bg-white rounded-full animate-pulse" />
@@ -856,8 +855,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               <Button
                 onClick={handleSendMessage}
                 disabled={!inputText.trim() && uploadedMedia.length === 0}
-                size="icon"
-                className="h-[38px] w-[38px] flex-shrink-0"
+                size="sm"
               >
                 <Send className="h-4 w-4" />
               </Button>
