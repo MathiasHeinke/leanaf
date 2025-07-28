@@ -133,60 +133,81 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
             <Target className="h-4 w-4 text-primary" />
             Trainingsübersicht ({timeRange === 'week' ? 'Woche' : timeRange === 'month' ? 'Monat' : 'Jahr'})
           </h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Weekly Workouts */}
             <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/30">
-              <div className="text-xs text-blue-600 dark:text-blue-400 mb-1">Workouts/Woche</div>
-              <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+              <div className="text-xs text-blue-600 dark:text-blue-400 mb-1 truncate">Workouts/Woche</div>
+              <div className="text-lg sm:text-xl font-bold text-blue-700 dark:text-blue-300">
                 {trainingPrognosis.weeklyWorkouts.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground">
-                {trainingPrognosis.weeklyWorkouts >= 3 ? '💪 Sehr gut' : trainingPrognosis.weeklyWorkouts >= 2 ? '👍 Gut' : '⚠️ Zu wenig'}
+                <span className="hidden sm:inline">
+                  {trainingPrognosis.weeklyWorkouts >= 3 ? '💪 Sehr gut' : trainingPrognosis.weeklyWorkouts >= 2 ? '👍 Gut' : '⚠️ Zu wenig'}
+                </span>
+                <span className="sm:hidden">
+                  {trainingPrognosis.weeklyWorkouts >= 3 ? '💪' : trainingPrognosis.weeklyWorkouts >= 2 ? '👍' : '⚠️'}
+                </span>
               </div>
             </div>
 
             {/* Average RPE */}
             <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/30">
-              <div className="text-xs text-green-600 dark:text-green-400 mb-1">Ø RPE</div>
-              <div className="text-lg font-bold text-green-700 dark:text-green-300">
+              <div className="text-xs text-green-600 dark:text-green-400 mb-1 truncate">Ø RPE</div>
+              <div className="text-lg sm:text-xl font-bold text-green-700 dark:text-green-300">
                 {trainingPrognosis.averageRPE.toFixed(1)}
               </div>
               <div className="text-xs text-muted-foreground">
-                {trainingPrognosis.averageRPE >= 8 ? '🔥 Sehr hart' : trainingPrognosis.averageRPE >= 6.5 ? '💪 Hart' : '📈 Moderat'}
+                <span className="hidden sm:inline">
+                  {trainingPrognosis.averageRPE >= 8 ? '🔥 Sehr hart' : trainingPrognosis.averageRPE >= 6.5 ? '💪 Hart' : '📈 Moderat'}
+                </span>
+                <span className="sm:hidden">
+                  {trainingPrognosis.averageRPE >= 8 ? '🔥' : trainingPrognosis.averageRPE >= 6.5 ? '💪' : '📈'}
+                </span>
               </div>
             </div>
 
             {/* Total Volume */}
             <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-700/30">
-              <div className="text-xs text-purple-600 dark:text-purple-400 mb-1">Volumen</div>
-              <div className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                {Math.round(trainingPrognosis.totalVolume)}kg
+              <div className="text-xs text-purple-600 dark:text-purple-400 mb-1 truncate">Volumen</div>
+              <div className="text-lg sm:text-xl font-bold text-purple-700 dark:text-purple-300">
+                <span className="hidden sm:inline">{Math.round(trainingPrognosis.totalVolume)}kg</span>
+                <span className="sm:hidden">{(trainingPrognosis.totalVolume / 1000).toFixed(1)}t</span>
               </div>
               <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                 {trainingPrognosis.volumeTrend === 'up' ? (
                   <>
                     <TrendingUp className="h-3 w-3 text-green-500" />
-                    <span className="text-green-600">Steigend</span>
+                    <span className="text-green-600 hidden sm:inline">Steigend</span>
+                    <span className="text-green-600 sm:hidden">↗</span>
                   </>
                 ) : trainingPrognosis.volumeTrend === 'down' ? (
                   <>
                     <TrendingDown className="h-3 w-3 text-red-500" />
-                    <span className="text-red-600">Sinkend</span>
+                    <span className="text-red-600 hidden sm:inline">Sinkend</span>
+                    <span className="text-red-600 sm:hidden">↘</span>
                   </>
                 ) : (
-                  <span className="text-blue-600">Stabil</span>
+                  <>
+                    <span className="text-blue-600 hidden sm:inline">Stabil</span>
+                    <span className="text-blue-600 sm:hidden">→</span>
+                  </>
                 )}
               </div>
             </div>
 
             {/* Discrepancies */}
             <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30">
-              <div className="text-xs text-orange-600 dark:text-orange-400 mb-1">Diskrepanzen</div>
-              <div className="text-lg font-bold text-orange-700 dark:text-orange-300">
+              <div className="text-xs text-orange-600 dark:text-orange-400 mb-1 truncate">Diskrepanzen</div>
+              <div className="text-lg sm:text-xl font-bold text-orange-700 dark:text-orange-300">
                 {trainingPrognosis.discrepancies.length}
               </div>
               <div className="text-xs text-muted-foreground">
-                {trainingPrognosis.discrepancies.length === 0 ? '✅ Keine' : trainingPrognosis.discrepancies.length <= 2 ? '⚠️ Wenige' : '🚨 Viele'}
+                <span className="hidden sm:inline">
+                  {trainingPrognosis.discrepancies.length === 0 ? '✅ Keine' : trainingPrognosis.discrepancies.length <= 2 ? '⚠️ Wenige' : '🚨 Viele'}
+                </span>
+                <span className="sm:hidden">
+                  {trainingPrognosis.discrepancies.length === 0 ? '✅' : trainingPrognosis.discrepancies.length <= 2 ? '⚠️' : '🚨'}
+                </span>
               </div>
             </div>
           </div>
@@ -236,17 +257,17 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
               <Trophy className="h-4 w-4 text-primary" />
               Top Fortschritte
             </h4>
-            <div className="grid gap-3">
+            <div className="grid gap-3 sm:gap-4">
               {trainingPrognosis.topProgressions.map((progression, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200 dark:border-emerald-700/30">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-lg border border-emerald-200 dark:border-emerald-700/30 gap-2 sm:gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold shrink-0">
                       {index + 1}
                     </div>
-                    <span className="font-medium text-emerald-700 dark:text-emerald-300">{progression.exercise}</span>
+                    <span className="font-medium text-emerald-700 dark:text-emerald-300 truncate">{progression.exercise}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="border-emerald-500 text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-2 shrink-0 ml-11 sm:ml-0">
+                    <Badge variant="outline" className="border-emerald-500 text-emerald-600 dark:text-emerald-400 text-xs">
                       {progression.improvement}
                     </Badge>
                     <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -266,18 +287,20 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
             </h4>
             <div className="space-y-2">
               {trainingPrognosis.discrepancies.slice(0, 3).map((discrepancy, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-orange-600" />
+                <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700/30 gap-2 sm:gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Calendar className="h-4 w-4 text-orange-600 shrink-0" />
                     <span className="text-sm font-medium">{new Date(discrepancy.date).toLocaleDateString('de-DE')}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Gefühlt:</span>
-                    <Badge variant="outline" className="border-blue-500 text-blue-600">
+                  <div className="flex flex-wrap items-center gap-2 text-sm ml-7 sm:ml-0">
+                    <span className="text-muted-foreground hidden sm:inline">Gefühlt:</span>
+                    <span className="text-muted-foreground sm:hidden">G:</span>
+                    <Badge variant="outline" className="border-blue-500 text-blue-600 text-xs">
                       {discrepancy.quickIntensity}/10
                     </Badge>
-                    <span className="text-muted-foreground">Tatsächlich:</span>
-                    <Badge variant="outline" className="border-green-500 text-green-600">
+                    <span className="text-muted-foreground hidden sm:inline">Tatsächlich:</span>
+                    <span className="text-muted-foreground sm:hidden">T:</span>
+                    <Badge variant="outline" className="border-green-500 text-green-600 text-xs">
                       {discrepancy.actualRPE} RPE
                     </Badge>
                     <span className="text-xs text-orange-600">Δ {discrepancy.difference}</span>
