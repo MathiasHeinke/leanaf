@@ -450,7 +450,33 @@ const saveExerciseData = async (supabase: any, userId: string, exerciseData: any
       userId: userId.substring(0, 8) + '...'
     });
     
-    // First, find or create the exercise
+    // 1. Create exercise session first (without exercise_id - that column doesn't exist)
+    const today = new Date().toISOString().split('T')[0];
+    console.log('📝 Creating exercise session for date:', today);
+    
+    const { data: session, error: sessionError } = await supabase
+      .from('exercise_sessions')
+      .insert({
+        user_id: userId,
+        date: today,
+        session_name: `${exerciseData.exerciseName} Session`,
+        workout_type: 'strength',
+        notes: `Automatisch hinzugefügt: ${exerciseData.originalText}`,
+        overall_rpe: exerciseData.sets.filter((s: any) => s.rpe).length > 0 
+          ? Math.round(exerciseData.sets.filter((s: any) => s.rpe).reduce((sum: number, set: any) => sum + set.rpe, 0) / exerciseData.sets.filter((s: any) => s.rpe).length)
+          : null
+      })
+      .select()
+      .single();
+    
+    if (sessionError) {
+      console.error('❌ Error creating exercise session:', sessionError);
+      return false;
+    }
+    
+    console.log('✅ Exercise session created with ID:', session.id);
+    
+    // 2. Find or create the exercise
     let { data: exercise, error: exerciseError } = await supabase
       .from('exercises')
       .select('*')
@@ -486,40 +512,7 @@ const saveExerciseData = async (supabase: any, userId: string, exerciseData: any
       console.log('✅ Exercise found:', exercise.name);
     }
     
-    // Create exercise session
-    const today = new Date().toISOString().split('T')[0];
-    const totalVolume = exerciseData.sets.reduce((sum: number, set: any) => sum + (set.reps * set.weight), 0);
-    const avgRpe = exerciseData.sets.filter((s: any) => s.rpe).length > 0 
-      ? exerciseData.sets.filter((s: any) => s.rpe).reduce((sum: number, set: any) => sum + set.rpe, 0) / exerciseData.sets.filter((s: any) => s.rpe).length
-      : null;
-    
-    console.log('📊 Session stats:', { totalVolume, avgRpe, setsCount: exerciseData.sets.length });
-    
-    const { data: session, error: sessionError } = await supabase
-      .from('exercise_sessions')
-      .insert({
-        user_id: userId,
-        exercise_id: exercise.id,
-        date: today,
-        total_sets: exerciseData.sets.length,
-        total_reps: exerciseData.sets.reduce((sum: number, set: any) => sum + set.reps, 0),
-        total_volume: totalVolume,
-        overall_rpe: avgRpe,
-        session_name: `${exerciseData.exerciseName} Session`,
-        workout_type: 'strength',
-        notes: `Automatisch hinzugefügt: ${exerciseData.originalText}`
-      })
-      .select()
-      .single();
-    
-    if (sessionError) {
-      console.error('❌ Error creating exercise session:', sessionError);
-      return false;
-    }
-    
-    console.log('✅ Exercise session created with ID:', session.id);
-    
-    // Create individual sets
+    // 3. Create individual sets with proper foreign keys
     const setsData = exerciseData.sets.map((set: any, index: number) => ({
       session_id: session.id,
       user_id: userId,
@@ -530,7 +523,7 @@ const saveExerciseData = async (supabase: any, userId: string, exerciseData: any
       rpe: set.rpe
     }));
     
-    console.log('📝 Creating sets:', setsData.length);
+    console.log('📝 Creating sets:', setsData.length, 'sets for exercise:', exercise.name);
     
     const { error: setsError } = await supabase
       .from('exercise_sets')
