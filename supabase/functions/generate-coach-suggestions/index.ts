@@ -1,7 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -182,6 +187,32 @@ serve(async (req) => {
 
     const conversationContext = analyzeConversationContext();
 
+    // Fetch supplement data for context
+    const today = new Date().toISOString().split('T')[0];
+    const { data: userSupplements } = await supabase
+      .from('user_supplements')
+      .select(`
+        id, supplement_id, custom_name, dosage, unit, timing, goal,
+        supplement_database (name, category, description)
+      `)
+      .eq('user_id', userData.userId)
+      .eq('is_active', true);
+
+    const { data: todayIntake } = await supabase
+      .from('supplement_intake_log')
+      .select('user_supplement_id, timing, taken')
+      .eq('user_id', userData.userId)
+      .eq('date', today);
+
+    // Process supplement data for context
+    const supplementContext = {
+      hasSupplements: userSupplements && userSupplements.length > 0,
+      totalSupplements: userSupplements?.length || 0,
+      takenToday: todayIntake?.filter(log => log.taken).length || 0,
+      missedToday: (userSupplements?.reduce((sum, s) => sum + (s.timing?.length || 0), 0) || 0) - (todayIntake?.filter(log => log.taken).length || 0),
+      categories: [...new Set(userSupplements?.map(s => s.supplement_database?.category || 'Custom').filter(Boolean))] || []
+    };
+
     const systemPrompt = `Du bist ein intelligenter Assistent, der PERPLEXITY-STYLE Follow-up-Fragen für spezialisierte Fitness-Coaches generiert.
 
 🎯 PERPLEXITY-PRINZIPIEN (KRITISCH):
@@ -199,6 +230,14 @@ COACH & SPEZIALISIERUNG:
 
 AKTUELLE DATEN (${coachId}-spezifisch):
 ${coachContext.relevantData}
+
+💊 SUPPLEMENT-DATEN:
+${supplementContext.hasSupplements ? `
+- Aktive Supplements: ${supplementContext.totalSupplements}
+- Heute genommen: ${supplementContext.takenToday}/${supplementContext.takenToday + supplementContext.missedToday}
+- Kategorien: ${supplementContext.categories.join(', ')}
+- Fehlende Einnahmen heute: ${supplementContext.missedToday}
+` : '- Keine aktiven Supplements - perfekt für Empfehlungen!'}
 
 CONVERSATION-ANALYSE:
 📍 Letzter User: "${lastUserMessage}"

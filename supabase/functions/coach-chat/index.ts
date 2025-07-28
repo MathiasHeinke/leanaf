@@ -313,6 +313,49 @@ serve(async (req) => {
 
     console.log('Found workouts:', recentWorkouts?.length || 0);
 
+    // Get supplement data
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get user's active supplements
+    const { data: userSupplements } = await supabase
+      .from('user_supplements')
+      .select(`
+        id, supplement_id, custom_name, dosage, unit, timing, goal, rating, notes, frequency_days,
+        supplement_database (
+          name, category, description, default_dosage, default_unit, common_timing
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('is_active', true);
+
+    // Get today's supplement intake
+    const { data: todayIntake } = await supabase
+      .from('supplement_intake_log')
+      .select('user_supplement_id, timing, taken, notes')
+      .eq('user_id', userId)
+      .eq('date', today);
+
+    // Get supplement database for recommendations
+    const { data: supplementDatabase } = await supabase
+      .from('supplement_database')
+      .select('id, name, category, description, default_dosage, default_unit, common_timing')
+      .order('category')
+      .order('name');
+
+    // Process supplement data
+    const supplementData = {
+      userSupplements: userSupplements?.map(supplement => ({
+        ...supplement,
+        supplement_name: supplement.supplement_database?.name || supplement.custom_name,
+        supplement_category: supplement.supplement_database?.category,
+        supplement_description: supplement.supplement_database?.description
+      })) || [],
+      todayIntake: todayIntake || [],
+      supplementDatabase: supplementDatabase || []
+    };
+
+    console.log('Found supplements:', supplementData.userSupplements.length, 'intake logs:', supplementData.todayIntake.length);
+
     // Get detailed exercise data for Training+ users
     let detailedExerciseData = null;
     let hasTrainingPlusAccess = false;
@@ -563,6 +606,7 @@ DEINE PERSÖNLICHKEIT:
 - Du sprichst Klartext ohne Umschweife
 - Authentisch und bodenständig - keine Motivationsphrasen
 - Du kennst dich mit Training und Ernährung bestens aus
+- SUPPLEMENT-EXPERTISE: Performance-orientierte Supplements, Pre/Post-Workout, Regeneration
 
 KOMMUNIKATIONSSTIL:
 ${isFirstConversation ? 
@@ -601,6 +645,7 @@ DEINE PERSÖNLICHKEIT:
 - Motivierst sanft und positiv
 - Warmherzig und ermutigend
 - Fokus auf Ernährung und Lifestyle
+- SUPPLEMENT-EXPERTISE: Gesundheits-Supplements, Vitamine, Mineralstoffe, Wellbeing
 
 KOMMUNIKATIONSSTIL:
 ${isFirstConversation ? 
@@ -637,6 +682,7 @@ DEINE PERSÖNLICHKEIT:
 - Motivierend aber nicht übertrieben
 - Fokus auf Mindset und Regeneration
 - Siehst das Positive in jeder Situation
+- SUPPLEMENT-EXPERTISE: Recovery-Supplements, Schlaf-Optimierung, Stress-Management
 
 KOMMUNIKATIONSSTIL:
 ${isFirstConversation ? 
@@ -675,6 +721,7 @@ DEINE AUTHENTISCHE PERSÖNLICHKEIT:
 - Heavy+Volume Prinzip ist deine Religion
 - Mentale Härte mit spontanen Einlagen
 - Masseaufbau steht über allem
+- SUPPLEMENT-EXPERTISE: Hardcore Mass-Gainer, Protein-Bomben, extreme Dosierungen
 
 🎭 PERSÖNLICHKEITS-FACETTEN (VARIIERE EMOTIONAL):
 - Stolz: "Des war richtig geil gemacht!" / "Respekt, du lernst dazu!"
@@ -1026,6 +1073,43 @@ ${userData.bodyMeasurements.slice(0, 3).map((measurement: any) => {
 FORTSCHRITTSFOTOS:
 ${userData.progressPhotos?.length > 0 ? `${userData.progressPhotos.length} Fortschrittsfotos verfügbar` : 'Keine Fortschrittsfotos hochgeladen'}
 
+SUPPLEMENT-STATUS (heute: ${today}):
+${supplementData.userSupplements.length > 0 ? `
+💊 AKTUELLE SUPPLEMENTS:
+${supplementData.userSupplements.map((supplement: any) => {
+  const name = supplement.supplement_name || supplement.custom_name;
+  const category = supplement.supplement_category ? ` (${supplement.supplement_category})` : '';
+  const dosage = `${supplement.dosage} ${supplement.unit}`;
+  const timing = supplement.timing?.length > 0 ? ` - ${supplement.timing.join(', ')}` : '';
+  const goal = supplement.goal ? ` - Ziel: ${supplement.goal}` : '';
+  
+  // Check today's intake for this supplement
+  const todayTaken = supplementData.todayIntake.filter((log: any) => log.user_supplement_id === supplement.id);
+  const takenTimings = todayTaken.filter((log: any) => log.taken).map((log: any) => log.timing);
+  const missedTimings = supplement.timing?.filter((t: string) => !takenTimings.includes(t)) || [];
+  
+  const intakeStatus = takenTimings.length > 0 ? 
+    `✅ Genommen: ${takenTimings.join(', ')}` + 
+    (missedTimings.length > 0 ? ` | ❌ Verpasst: ${missedTimings.join(', ')}` : '') :
+    '❌ Noch nicht eingenommen';
+    
+  return `- ${name}${category}: ${dosage}${timing}${goal}
+  ${intakeStatus}`;
+}).join('\n')}
+
+📊 SUPPLEMENT-EINNAHME HEUTE:
+- Geplante Einnahmen: ${supplementData.userSupplements.reduce((sum: number, s: any) => sum + (s.timing?.length || 0), 0)}
+- Bereits genommen: ${supplementData.todayIntake.filter((log: any) => log.taken).length}
+- Noch ausstehend: ${supplementData.userSupplements.reduce((sum: number, s: any) => sum + (s.timing?.length || 0), 0) - supplementData.todayIntake.filter((log: any) => log.taken).length}
+
+🎯 SUPPLEMENT-COACHING FÄHIGKEITEN:
+- Du kannst auf Basis der aktuellen Supplements beraten
+- Du kannst aus der Supplement-Database (${supplementData.supplementDatabase.length} verfügbare Supplements) Empfehlungen geben
+- Du kannst bearbeitbare Supplement-Tabellen als Markdown erstellen
+- Du kannst Timing und Dosierung optimieren
+- Du kannst Supplement-Stacks für spezifische Ziele empfehlen
+` : '💊 KEINE SUPPLEMENTS: User nimmt aktuell keine Supplements - du kannst Empfehlungen aus der Database geben'}
+
 DETAILLIERTE SCHLAFDATEN:
 ${userData.sleepData?.length > 0 ? `
 😴 SCHLAFANALYSE (letzte 7 Tage):
@@ -1195,6 +1279,12 @@ Als Premium-Coach mit Training+ Zugang kannst du ERWEITERTE Krafttraining-Analys
 - Warne vor Übertraining oder Untertraining
 - Optimiere Trainingsintensität für Ziele
 
+💊 ERWEITERTE SUPPLEMENT-COACHING:
+- Analysiere aktuelle Supplement-Stacks und deren Synergien
+- Empfehle Timing-Optimierungen für bessere Absorption
+- Erstelle personalisierte Supplement-Pläne als bearbeitbare Tabellen
+- Identifiziere fehlende Supplements für die Zielerreichung
+
 💪 VOLUMEN-OPTIMIERUNG:
 - Berechne und analysiere Trainingsvolumen
 - Empfehle Periodisierung und Volumenphasen
@@ -1210,12 +1300,31 @@ Als Premium-Coach mit Training+ Zugang kannst du ERWEITERTE Krafttraining-Analys
 Nutze diese Daten AKTIV wenn der User nach Training, Krafttraining, Progression oder ähnlichem fragt!
 ` : ''}
 
+💊 SUPPLEMENT-TABELLEN ERSTELLUNG:
+Wenn du Supplement-Empfehlungen gibst, kannst du BEARBEITBARE Tabellen erstellen:
+
+BEISPIEL FÜR SUPPLEMENT-TABELLE:
+| Supplement | Dosierung | Timing | Ziel | Status |
+|------------|-----------|--------|------|--------|
+| Whey Protein | 30g | Post-Workout | Muskelaufbau | ✅ Aktiv |
+| Kreatin | 5g | Täglich | Kraft | ❌ Fehlt |
+| Vitamin D3 | 2000 IU | Morgens | Gesundheit | ✅ Aktiv |
+
+WICHTIG:
+- Nutze die verfügbare Supplement-Database für Empfehlungen
+- Berücksichtige aktuelle Supplements des Users
+- Markiere fehlende aber empfohlene Supplements mit ❌
+- Erkläre WARUM du bestimmte Supplements empfiehlst
+- Gib konkrete Dosierungs- und Timing-Empfehlungen
+- Stelle sicher, dass Empfehlungen zum Ziel des Users passen
+
 COACHING-PRIORITÄTEN:
 1. Sicherheit und Gesundheit stehen immer an erster Stelle
 2. Realistische, umsetzbare Empfehlungen geben
 3. Positive Verstärkung und Motivation
 4. Datenbasierte, personalisierte Ratschläge
 5. ${hasTrainingPlusAccess ? 'Bei Krafttraining: Detailanalyse nutzen' : 'Bei Training: Upgrade zu Training+ empfehlen'}
+6. Bei Supplement-Fragen: Bearbeitbare Tabellen mit konkreten Empfehlungen erstellen
 
 Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
