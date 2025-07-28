@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { 
   Send, 
   Mic, 
-  StopCircle,
   Dumbbell, 
   Paperclip,
   ChevronDown,
@@ -54,7 +53,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [exercisePreview, setExercisePreview] = useState<any | null>(null);
   const [formcheckSummary, setFormcheckSummary] = useState<any>(null);
   const [isFormcheckMode, setIsFormcheckMode] = useState(false);
-  const [uploadedMedia, setUploadedMedia] = useState<{url: string; type: 'image' | 'video'}[]>([]);
+  const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -70,7 +69,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     stopRecording
   } = useVoiceRecording();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const currentDate = new Date().toISOString().split('T')[0];
 
@@ -368,16 +366,16 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       id: Date.now().toString(),
       role: 'user',
       content: inputText,
-      mediaUrls: uploadedMedia.length > 0 ? uploadedMedia.map(m => m.url) : undefined,
+      mediaUrls: uploadedMedia.length > 0 ? [...uploadedMedia] : undefined,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    await saveMessage('user', inputText, { mediaUrls: uploadedMedia.map(m => m.url) });
+    await saveMessage('user', inputText, { mediaUrls: uploadedMedia });
 
     // If media was uploaded, analyze it
     if (uploadedMedia.length > 0) {
-      await analyzeWorkoutMedia(uploadedMedia.map(m => m.url), inputText);
+      await analyzeWorkoutMedia(uploadedMedia, inputText);
       setUploadedMedia([]);
     } else {
       // Regular chat without media
@@ -483,66 +481,103 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   const handleMediaUploaded = (urls: string[]) => {
-    const mediaObjects = urls.map(url => ({
-      url,
-      type: url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? 'video' as const : 'image' as const
-    }));
-    setUploadedMedia(prev => [...prev, ...mediaObjects]);
-  };
-
-  const removeMedia = (index: number) => {
-    setUploadedMedia(prev => prev.filter((_, i) => i !== index));
+    setUploadedMedia(prev => [...prev, ...urls]);
+    analyzeWorkoutMedia(urls, '');
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Chat Area - Full height with fixed input */}
-      <div className="flex-1 flex flex-col min-h-0">
+    <div className="h-full flex flex-col">
+      {/* Chat Area - with proper height calculation for fixed input */}
+      <div className="flex-1 flex relative min-h-0" style={{ height: 'calc(100vh - 140px)' }}>
         {/* Messages */}
-        <ScrollArea className="flex-1 px-4 py-4" ref={scrollAreaRef}>
-          <div className="space-y-4 pb-4">
-            {messages.map((message) => (
-              <div key={message.id} className="flex">
-                {message.role === "assistant" && (
-                  <div className="w-full flex flex-col gap-2 items-start">
-                    {/* Message bubble */}
-                    <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                      {message.mediaUrls && message.mediaUrls.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          {message.mediaUrls.map((url, index) => (
-                            <div key={index} className="relative">
-                              {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                <video 
-                                  controls 
-                                  className="w-full h-16 object-cover rounded"
-                                >
-                                  <source src={url} type="video/mp4" />
-                                </video>
-                              ) : (
-                                <img 
-                                  src={url} 
-                                  alt="Uploaded content" 
-                                  className="w-full h-16 object-cover rounded"
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <ReactMarkdown>
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                    
-                    {/* Profile picture and time row UNTER der Nachricht */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                        <img 
-                          src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
-                          alt="Sascha" 
-                          className="w-full h-full object-cover"
-                        />
+        <div className="flex-1 flex flex-col">
+          <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
+            <div className="space-y-4 pb-25">
+              {messages.map((message) => (
+                <div key={message.id} className="flex">
+                  {message.role === "assistant" && (
+                    <div className="w-full flex flex-col gap-2 items-start">
+                      {/* Message bubble */}
+                      <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                        {message.mediaUrls && message.mediaUrls.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            {message.mediaUrls.map((url, index) => (
+                              <div key={index} className="relative">
+                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                  <video 
+                                    controls 
+                                    className="w-full h-16 object-cover rounded"
+                                  >
+                                    <source src={url} type="video/mp4" />
+                                  </video>
+                                ) : (
+                                  <img 
+                                    src={url} 
+                                    alt="Uploaded content" 
+                                    className="w-full h-16 object-cover rounded"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <ReactMarkdown>
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
+                      
+                      {/* Profile picture and time row UNTER der Nachricht */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                          <img 
+                            src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
+                            alt="Sascha" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {message.timestamp.toLocaleTimeString('de-DE', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  
+                  {message.role === "user" && (
+                    <div className="w-full flex flex-col gap-2 items-end">
+                      {/* Message bubble */}
+                      <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                        {message.mediaUrls && message.mediaUrls.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 mb-2">
+                            {message.mediaUrls.map((url, index) => (
+                              <div key={index} className="relative">
+                                {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
+                                  <video 
+                                    controls 
+                                    className="w-full h-16 object-cover rounded"
+                                  >
+                                    <source src={url} type="video/mp4" />
+                                  </video>
+                                ) : (
+                                  <img 
+                                    src={url} 
+                                    alt="Uploaded content" 
+                                    className="w-full h-16 object-cover rounded"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <ReactMarkdown>
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                      
+                      {/* Timestamp */}
                       <div className="text-xs text-muted-foreground">
                         {message.timestamp.toLocaleTimeString('de-DE', {
                           hour: '2-digit',
@@ -550,218 +585,264 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                         })}
                       </div>
                     </div>
-                  </div>
-                )}
-                
-                {message.role === "user" && (
-                  <div className="w-full flex flex-col gap-2 items-end">
-                    {/* Message bubble */}
-                    <div className="bg-primary text-primary-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                      {message.mediaUrls && message.mediaUrls.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          {message.mediaUrls.map((url, index) => (
-                            <div key={index} className="relative">
-                              {url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? (
-                                <video 
-                                  controls 
-                                  className="w-full h-16 object-cover rounded"
-                                >
-                                  <source src={url} type="video/mp4" />
-                                </video>
-                              ) : (
-                                <img 
-                                  src={url} 
-                                  alt="Uploaded content" 
-                                  className="w-full h-16 object-cover rounded"
-                                />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <ReactMarkdown>
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                    
-                    {/* Timestamp */}
-                    <div className="text-xs text-muted-foreground">
-                      {message.timestamp.toLocaleTimeString('de-DE', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex flex-col gap-2 items-start">
-                {/* Coach name */}
-                <div className="text-sm font-medium text-foreground">
-                  Sascha
+                  )}
                 </div>
-                
-                {/* Typing bubble */}
-                <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-                
-                {/* Profile picture and "schreibt..." */}
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                    <img 
-                      src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
-                      alt="Sascha" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    schreibt...
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={scrollRef} />
-          </div>
-        </ScrollArea>
-
-        {/* Fixed Input Area */}
-        <div className="flex-shrink-0 border-t border-border/20 bg-card/95 backdrop-blur-sm">
-          <div className="px-4 py-4">
-            {/* Exercise Preview Card */}
-            {exercisePreview && (
-              <div className="mb-4">
-                <ExercisePreviewCard
-                  data={exercisePreview}
-                  onSave={handleExercisePreviewSave}
-                  onCancel={() => setExercisePreview(null)}
-                />
-              </div>
-            )}
-
-            {/* Formcheck Summary Card */}
-            {formcheckSummary && (
-              <div className="mb-4">
-                <FormcheckSummaryCard
-                  data={formcheckSummary}
-                  onSave={handleFormcheckSummarySave}
-                  onCancel={handleFormcheckSummaryCancel}
-                />
-              </div>
-            )}
-
-            {/* Media Upload Zone */}
-            {uploadedMedia.length > 0 && (
-              <div className="mb-4">
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {uploadedMedia.map((media, index) => (
-                    <div key={index} className="relative flex-shrink-0">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-background border">
-                        {media.type === 'image' ? (
-                          <img 
-                            src={media.url} 
-                            alt={`Upload ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-muted">
-                            <span className="text-xs text-muted-foreground">Video</span>
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0"
-                        onClick={() => removeMedia(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <MediaUploadZone
-              onMediaUploaded={handleMediaUploaded}
-              maxFiles={5}
-              accept={['image/*', 'video/*']}
-              className="mb-4"
-            />
-
-            {/* Input area */}
-            <div className="flex gap-2 items-end">
-              <div className="flex-1">
-                <Textarea
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder="Frage Sascha nach Training, Übungen oder lade Bilder/Videos hoch..."
-                  className="min-h-[60px] max-h-32 resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
-              </div>
+              ))}
               
-              <div className="flex flex-col gap-2">
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="flex flex-col gap-2 items-start">
+                  {/* Coach name */}
+                  <div className="text-sm font-medium text-foreground">
+                    Sascha
+                  </div>
+                  
+                  {/* Typing bubble */}
+                  <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-muted-foreground/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                  
+                  {/* Profile picture and "schreibt..." */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                      <img 
+                        src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
+                        alt="Sascha" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      schreibt...
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Chat History Sidebar */}
+        {showHistory && (
+          <ChatHistorySidebar
+            selectedCoach="sascha"
+            onSelectDate={handleSelectDate}
+            onClose={() => setShowHistory(false)}
+          />
+        )}
+      </div>
+
+      {/* Exercise Preview */}
+      {exercisePreview && (
+        <div className="p-3 border-t border-border/20">
+          <ExercisePreviewCard
+            data={exercisePreview}
+            onSave={handleExercisePreviewSave}
+            onCancel={() => setExercisePreview(null)}
+          />
+        </div>
+      )}
+
+      {/* Formcheck Summary */}
+      {formcheckSummary && (
+        <div className="p-3 border-t border-border/20">
+          <FormcheckSummaryCard
+            data={formcheckSummary}
+            onSave={handleFormcheckSummarySave}
+            onCancel={handleFormcheckSummaryCancel}
+          />
+        </div>
+      )}
+
+      {/* Fixed Input Area at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border/20 bg-background/95 backdrop-blur-sm z-10">
+        {/* Quick Actions */}
+        <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
+          <div className="px-3 pt-2">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Schnellaktionen</span>
+                </div>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", showQuickActions && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 pb-2">
+              <div className="grid grid-cols-2 gap-2">
+                {quickActions.map((action, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setInputText(action);
+                      setShowQuickActions(false);
+                    }}
+                    className="text-xs h-auto p-2 text-left justify-start"
+                  >
+                    {action}
+                  </Button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+
+        {/* Media Upload */}
+        <Collapsible open={showUpload} onOpenChange={setShowUpload}>
+          <CollapsibleContent>
+            <div className="p-3 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Medien hochladen</h4>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleVoiceToggle}
-                  disabled={isLoading || isThinking}
-                  className={cn(
-                    "p-2 transition-colors",
-                    isRecording && "text-red-500 hover:text-red-600"
-                  )}
+                  onClick={() => setShowUpload(false)}
                 >
-                  {isRecording ? <StopCircle className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  <X className="h-4 w-4" />
                 </Button>
-                
+              </div>
+              
+              <div className="grid grid-cols-4 gap-2 mb-3">
                 <Button
-                  onClick={handleSendMessage}
-                  disabled={(!inputText.trim() && uploadedMedia.length === 0) || isLoading || isThinking}
+                  variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
                   size="sm"
-                  className="p-2"
+                  onClick={() => setAnalysisType('exercise_form')}
+                  className="text-xs"
                 >
-                  {isLoading || isThinking ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  🏋️ Übung
+                </Button>
+                <Button
+                  variant={analysisType === 'meal_analysis' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('meal_analysis')}
+                  className="text-xs"
+                >
+                  🍽️ Essen
+                </Button>
+                <Button
+                  variant={analysisType === 'progress_photo' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('progress_photo')}
+                  className="text-xs"
+                >
+                  📸 Fortschritt
+                </Button>
+                <Button
+                  variant={analysisType === 'general' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setAnalysisType('general')}
+                  className="text-xs"
+                >
+                  💬 Allgemein
                 </Button>
               </div>
+              
+              <MediaUploadZone
+                onMediaUploaded={handleMediaUploaded}
+                maxFiles={3}
+                accept={['image/*', 'video/*']}
+                className="max-h-64"
+              />
+              
+              {uploadedMedia.length > 0 && (
+                <Button
+                  onClick={() => analyzeWorkoutMedia(uploadedMedia, getAnalysisPrompt(analysisType))}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analysiere...
+                    </>
+                  ) : (
+                    <>
+                      Medien analysieren ({analysisType === 'exercise_form' ? 'Übung' : 
+                                        analysisType === 'meal_analysis' ? 'Essen' : 
+                                        analysisType === 'progress_photo' ? 'Fortschritt' : 'Allgemein'})
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-            {/* Voice recording indicator */}
-            {(isRecording || isProcessing) && (
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                {isRecording ? 'Aufnahme läuft...' : 'Verarbeitung...'}
-              </div>
-            )}
+        {/* Input */}
+        <div className="p-3">
+          <div className="flex items-stretch gap-3">
+            {/* Textarea - takes full available height */}
+            <Textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
+              className="flex-1 min-h-[120px] resize-none border-input focus:border-primary"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+            />
+            
+            {/* Button column - vertically stacked */}
+            <div className="flex flex-col gap-3 justify-between">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowUpload(!showUpload)}
+                className="h-[38px] w-[38px] flex-shrink-0"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant={isRecording ? "destructive" : "outline"}
+                size="icon"
+                onClick={handleVoiceToggle}
+                disabled={isLoading || isProcessing}
+                className="h-[38px] w-[38px] flex-shrink-0"
+              >
+                {isRecording ? (
+                  <div className="h-4 w-4 bg-white rounded-full animate-pulse" />
+                ) : isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </Button>
+              
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputText.trim() && uploadedMedia.length === 0}
+                size="icon"
+                className="h-[38px] w-[38px] flex-shrink-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+          
+          {/* Voice recording indicator */}
+          {(isRecording || isProcessing) && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg mt-2">
+              <div className="flex gap-1">
+                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
+                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
+              </div>
+              <span>
+                {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Chat History Sidebar */}
-      {showHistory && (
-        <ChatHistorySidebar
-          selectedCoach="sascha"
-          onSelectDate={handleSelectDate}
-          onClose={() => setShowHistory(false)}
-        />
-      )}
     </div>
   );
 };
