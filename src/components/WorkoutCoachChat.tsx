@@ -54,7 +54,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [exercisePreview, setExercisePreview] = useState<any | null>(null);
   const [formcheckSummary, setFormcheckSummary] = useState<any>(null);
   const [isFormcheckMode, setIsFormcheckMode] = useState(false);
-  const [uploadedMedia, setUploadedMedia] = useState<string[]>([]);
+  const [uploadedMedia, setUploadedMedia] = useState<{url: string; type: 'image' | 'video'}[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [showQuickActions, setShowQuickActions] = useState(false);
@@ -368,16 +368,16 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       id: Date.now().toString(),
       role: 'user',
       content: inputText,
-      mediaUrls: uploadedMedia.length > 0 ? [...uploadedMedia] : undefined,
+      mediaUrls: uploadedMedia.length > 0 ? uploadedMedia.map(m => m.url) : undefined,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    await saveMessage('user', inputText, { mediaUrls: uploadedMedia });
+    await saveMessage('user', inputText, { mediaUrls: uploadedMedia.map(m => m.url) });
 
     // If media was uploaded, analyze it
     if (uploadedMedia.length > 0) {
-      await analyzeWorkoutMedia(uploadedMedia, inputText);
+      await analyzeWorkoutMedia(uploadedMedia.map(m => m.url), inputText);
       setUploadedMedia([]);
     } else {
       // Regular chat without media
@@ -483,8 +483,15 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   const handleMediaUploaded = (urls: string[]) => {
-    setUploadedMedia(prev => [...prev, ...urls]);
-    analyzeWorkoutMedia(urls, '');
+    const mediaObjects = urls.map(url => ({
+      url,
+      type: url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ? 'video' as const : 'image' as const
+    }));
+    setUploadedMedia(prev => [...prev, ...mediaObjects]);
+  };
+
+  const removeMedia = (index: number) => {
+    setUploadedMedia(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -650,6 +657,46 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               </div>
             )}
 
+            {/* Media Upload Zone */}
+            {uploadedMedia.length > 0 && (
+              <div className="mb-4">
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {uploadedMedia.map((media, index) => (
+                    <div key={index} className="relative flex-shrink-0">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-background border">
+                        {media.type === 'image' ? (
+                          <img 
+                            src={media.url} 
+                            alt={`Upload ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-muted">
+                            <span className="text-xs text-muted-foreground">Video</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0"
+                        onClick={() => removeMedia(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <MediaUploadZone
+              onMediaUploaded={handleMediaUploaded}
+              maxFiles={5}
+              accept={['image/*', 'video/*']}
+              className="mb-4"
+            />
+
             {/* Input area */}
             <div className="flex gap-2 items-end">
               <div className="flex-1">
@@ -683,7 +730,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!inputText.trim() || isLoading || isThinking}
+                  disabled={(!inputText.trim() && uploadedMedia.length === 0) || isLoading || isThinking}
                   size="sm"
                   className="p-2"
                 >
