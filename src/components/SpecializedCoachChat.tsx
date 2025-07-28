@@ -756,14 +756,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             }
           });
 
-          if (!extractError && exerciseData?.success && exerciseData?.saved) {
-            // Exercise was successfully saved, show success
-            toast.success('Übung erfolgreich gespeichert!');
-            // Don't set preview - exercise is already saved
-            setExercisePreview(null);
-            return; // Exit early as exercise is already saved
-          } else if (!extractError && exerciseData?.exerciseData) {
-            // Exercise was extracted but not saved, show preview for manual save
+          if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
+            // Exercise was extracted, show preview for manual confirmation
             setExercisePreview({
               exercise_name: exerciseData.exerciseData.exercise_name,
               sets: exerciseData.exerciseData.sets || [],

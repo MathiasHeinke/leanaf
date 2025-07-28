@@ -285,30 +285,23 @@ serve(async (req) => {
       const textExtractionResult = extractExerciseFromText(userMessage);
       
       if (textExtractionResult) {
-        console.log('💪 Exercise found in text, saving to database...');
-        const saveResult = await saveExerciseData(supabase, userId, textExtractionResult);
+        console.log('💪 Exercise found in text, returning for preview...');
         
-        if (saveResult.success) {
-          return new Response(JSON.stringify({
-            success: true,
-            source: 'text',
-            exerciseData: {
-              exercise_name: textExtractionResult.exerciseName,
-              sets: textExtractionResult.sets.map(set => ({
-                reps: set.reps,
-                weight: set.weight,
-                rpe: set.rpe
-              })),
-              confidence: 0.9
-            },
-            saved: true,
-            sessionData: saveResult.data
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        } else {
-          console.error('Failed to save text-extracted exercise data:', saveResult.error);
-        }
+        return new Response(JSON.stringify({
+          success: true,
+          source: 'text',
+          saved: false,
+          exerciseData: {
+            exercise_name: textExtractionResult.exerciseName,
+            sets: textExtractionResult.sets,
+            overall_rpe: textExtractionResult.sets.filter((s: any) => s.rpe).length > 0 
+              ? Math.round(textExtractionResult.sets.filter((s: any) => s.rpe).reduce((sum: number, set: any) => sum + set.rpe, 0) / textExtractionResult.sets.filter((s: any) => s.rpe).length)
+              : null,
+            confidence: 0.95
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       } else {
         console.log('❌ No exercise data found in text using regex, trying GPT-4.1...');
         
@@ -364,30 +357,20 @@ CRITICAL: Return ONLY the JSON, no additional text or explanations.`
               const gptExtractedData = JSON.parse(gptResponse);
               
               if (gptExtractedData.exercise_name && gptExtractedData.sets && Array.isArray(gptExtractedData.sets)) {
-                const exerciseForSaving = {
-                  exerciseName: gptExtractedData.exercise_name,
-                  sets: gptExtractedData.sets,
-                  originalText: userMessage
-                };
+                console.log('💪 GPT-4.1 extracted exercise data, returning for preview...');
                 
-                console.log('💪 GPT-4.1 extracted exercise data, saving to database...');
-                const saveResult = await saveExerciseData(supabase, userId, exerciseForSaving);
-                
-                if (saveResult.success) {
-                  return new Response(JSON.stringify({
-                    success: true,
-                    source: 'gpt-4.1-text',
-                    saved: true,
-                    exerciseData: {
-                      exercise_name: gptExtractedData.exercise_name,
-                      sets: gptExtractedData.sets,
-                      confidence: gptExtractedData.confidence || 0.9
-                    },
-                    sessionData: saveResult.data
-                  }), {
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                  });
-                }
+                return new Response(JSON.stringify({
+                  success: true,
+                  source: 'gpt-4.1-text',
+                  saved: false,
+                  exerciseData: {
+                    exercise_name: gptExtractedData.exercise_name,
+                    sets: gptExtractedData.sets,
+                    confidence: gptExtractedData.confidence || 0.9
+                  }
+                }), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
               }
             } catch (parseError) {
               console.error('Failed to parse GPT-4.1 text extraction response:', parseError);
@@ -501,47 +484,21 @@ RULES:
       throw new Error('Invalid exercise data structure');
     }
 
-    console.log('Successfully extracted exercise data from vision:', extractedData);
-
-    // Convert to our format and save
-    const exerciseForSaving = {
-      exerciseName: extractedData.exercise_name,
-      sets: extractedData.sets.map((set: any) => ({
-        reps: set.reps,
-        weight: set.weight,
-        rpe: set.rpe || null
-      })),
-      originalText: `Vision extraction: ${userMessage || 'Image analysis'}`
-    };
-
-    const saveResult = await saveExerciseData(supabase, userId, exerciseForSaving);
-
-    if (saveResult.success) {
-      return new Response(JSON.stringify({
-        success: true,
-        source: 'gpt-vision',
-        saved: true,
-        exerciseData: {
-          exercise_name: extractedData.exercise_name,
-          sets: extractedData.sets,
-          overall_rpe: extractedData.overall_rpe,
-          confidence: extractedData.confidence || 0.8
-        },
-        sessionData: saveResult.data
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } else {
-      return new Response(JSON.stringify({
-        success: false,
-        source: 'gpt-vision',
-        saved: false,
-        error: saveResult.error,
-        exerciseData: extractedData
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    console.log('💪 Vision analysis found exercise data, returning for preview...');
+    
+    return new Response(JSON.stringify({
+      success: true,
+      source: 'gpt-vision',
+      saved: false,
+      exerciseData: {
+        exercise_name: extractedData.exercise_name,
+        sets: extractedData.sets,
+        overall_rpe: extractedData.overall_rpe,
+        confidence: extractedData.confidence || 0.8
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
     console.error('Error in extract-exercise-data function:', error);
