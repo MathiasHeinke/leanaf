@@ -50,6 +50,239 @@ const securityHelpers = {
   }
 };
 
+// ============= HUMAN-LIKE COACH FEATURES =============
+
+// Sentiment Analysis Function
+const analyzeSentiment = async (text: string) => {
+  if (!text || text.trim().length === 0) {
+    return {
+      sentiment: 'neutral',
+      emotion: 'neutral',
+      confidence: 0,
+      intensity: 0
+    };
+  }
+
+  try {
+    const lowerText = text.toLowerCase();
+    
+    // Emotion keywords mapping
+    const emotionPatterns = {
+      happy: ['freue', 'glücklich', 'super', 'toll', 'fantastisch', 'klasse', 'perfekt', 'prima', 'großartig'],
+      sad: ['traurig', 'deprimiert', 'niedergeschlagen', 'schlecht', 'mies', 'down'],
+      angry: ['wütend', 'sauer', 'ärgerlich', 'verärgert', 'genervt', 'kotzt an'],
+      frustrated: ['frustriert', 'verzweifelt', 'aufgeben', 'schaffe nicht', 'klappt nicht', 'nervt'],
+      excited: ['aufgeregt', 'gespannt', 'motiviert', 'lust', 'energie', 'power'],
+      anxious: ['ängstlich', 'sorge', 'unsicher', 'stress', 'nervös', 'beunruhigt'],
+      motivated: ['motiviert', 'ziel', 'schaffen', 'durchziehen', 'dranbleiben', 'weiter'],
+      tired: ['müde', 'erschöpft', 'kaputt', 'schlapp', 'energie los', 'ausgelaugt']
+    };
+
+    // Sentiment patterns
+    const positiveWords = ['gut', 'super', 'toll', 'klasse', 'perfekt', 'prima', 'großartig', 'freue', 'glücklich', 'motiviert'];
+    const negativeWords = ['schlecht', 'mies', 'traurig', 'frustriert', 'wütend', 'ärgerlich', 'stress', 'problem'];
+
+    let detectedEmotion = 'neutral';
+    let maxMatches = 0;
+    let intensity = 0;
+
+    // Find dominant emotion
+    Object.entries(emotionPatterns).forEach(([emotion, patterns]) => {
+      const matches = patterns.filter(pattern => lowerText.includes(pattern)).length;
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        detectedEmotion = emotion;
+        intensity = Math.min(matches / 3, 1);
+      }
+    });
+
+    // Determine overall sentiment
+    const positiveMatches = positiveWords.filter(word => lowerText.includes(word)).length;
+    const negativeMatches = negativeWords.filter(word => lowerText.includes(word)).length;
+    
+    let sentiment = 'neutral';
+    if (positiveMatches > negativeMatches) {
+      sentiment = 'positive';
+    } else if (negativeMatches > positiveMatches) {
+      sentiment = 'negative';
+    }
+
+    // Calculate confidence
+    const totalMatches = positiveMatches + negativeMatches + maxMatches;
+    const confidence = Math.min(totalMatches / 5, 1);
+
+    return {
+      sentiment,
+      emotion: detectedEmotion,
+      confidence,
+      intensity
+    };
+
+  } catch (error) {
+    console.error('Error analyzing sentiment:', error);
+    return {
+      sentiment: 'neutral',
+      emotion: 'neutral',
+      confidence: 0,
+      intensity: 0
+    };
+  }
+};
+
+// Coach Memory Functions
+const createDefaultMemory = () => ({
+  user_preferences: [],
+  conversation_context: {
+    topics_discussed: [],
+    mood_history: [],
+    success_moments: [],
+    struggles_mentioned: []
+  },
+  relationship_stage: 'new',
+  trust_level: 0,
+  communication_style_preference: 'balanced'
+});
+
+const loadCoachMemory = async (supabase: any, userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('coach_memory')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error loading coach memory:', error);
+      return createDefaultMemory();
+    }
+
+    return data?.memory_data || createDefaultMemory();
+  } catch (error) {
+    console.error('Error in loadCoachMemory:', error);
+    return createDefaultMemory();
+  }
+};
+
+const saveCoachMemory = async (supabase: any, userId: string, memoryData: any) => {
+  try {
+    const { error } = await supabase
+      .from('coach_memory')
+      .upsert({
+        user_id: userId,
+        memory_data: memoryData,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('Error saving coach memory:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in saveCoachMemory:', error);
+    return false;
+  }
+};
+
+const updateConversationContext = async (supabase: any, userId: string, message: string, sentimentResult: any, coachMemory: any) => {
+  try {
+    // Add current message topic to discussed topics
+    const currentTopic = extractTopic(message);
+    if (currentTopic && !coachMemory.conversation_context.topics_discussed.includes(currentTopic)) {
+      coachMemory.conversation_context.topics_discussed.push(currentTopic);
+      
+      // Keep only last 50 topics
+      if (coachMemory.conversation_context.topics_discussed.length > 50) {
+        coachMemory.conversation_context.topics_discussed = 
+          coachMemory.conversation_context.topics_discussed.slice(-50);
+      }
+    }
+
+    // Add mood entry
+    if (sentimentResult.emotion !== 'neutral') {
+      coachMemory.conversation_context.mood_history.push({
+        timestamp: new Date().toISOString(),
+        mood: sentimentResult.emotion,
+        intensity: sentimentResult.intensity
+      });
+
+      // Keep only last 50 mood entries
+      if (coachMemory.conversation_context.mood_history.length > 50) {
+        coachMemory.conversation_context.mood_history = 
+          coachMemory.conversation_context.mood_history.slice(-50);
+      }
+    }
+
+    // Detect success moments
+    if (detectSuccessInMessage(message)) {
+      coachMemory.conversation_context.success_moments.push({
+        timestamp: new Date().toISOString(),
+        achievement: message.substring(0, 100),
+        celebration_given: false
+      });
+
+      // Increase trust level
+      coachMemory.trust_level = Math.min(100, coachMemory.trust_level + 2);
+    }
+
+    // Detect struggles
+    if (detectStruggleInMessage(message)) {
+      coachMemory.conversation_context.struggles_mentioned.push({
+        timestamp: new Date().toISOString(),
+        struggle: message.substring(0, 100),
+        support_given: false
+      });
+    }
+
+    // Update relationship stage
+    const totalInteractions = coachMemory.conversation_context.topics_discussed.length;
+    if (totalInteractions >= 50 && coachMemory.trust_level >= 80) {
+      coachMemory.relationship_stage = 'close';
+    } else if (totalInteractions >= 20 && coachMemory.trust_level >= 60) {
+      coachMemory.relationship_stage = 'established';
+    } else if (totalInteractions >= 5) {
+      coachMemory.relationship_stage = 'getting_familiar';
+    } else {
+      coachMemory.relationship_stage = 'new';
+    }
+
+    // Save updated memory
+    await saveCoachMemory(supabase, userId, coachMemory);
+
+    return coachMemory;
+  } catch (error) {
+    console.error('Error updating conversation context:', error);
+    return coachMemory;
+  }
+};
+
+// Helper functions for context analysis
+const extractTopic = (message: string) => {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('essen') || lowerMessage.includes('mahlzeit') || lowerMessage.includes('kochen')) return 'nutrition';
+  if (lowerMessage.includes('training') || lowerMessage.includes('sport') || lowerMessage.includes('workout')) return 'training';
+  if (lowerMessage.includes('gewicht') || lowerMessage.includes('abnehmen') || lowerMessage.includes('zunehmen')) return 'weight';
+  if (lowerMessage.includes('müde') || lowerMessage.includes('schlaf') || lowerMessage.includes('erholen')) return 'sleep';
+  if (lowerMessage.includes('motivation') || lowerMessage.includes('durchhalten') || lowerMessage.includes('ziel')) return 'motivation';
+  if (lowerMessage.includes('problem') || lowerMessage.includes('schwierig') || lowerMessage.includes('hilfe')) return 'support';
+  
+  return null;
+};
+
+const detectSuccessInMessage = (message: string) => {
+  const successWords = ['geschafft', 'erreicht', 'erfolgreich', 'stolz', 'freue mich', 'gelungen', 'geklappt'];
+  const lowerMessage = message.toLowerCase();
+  return successWords.some(word => lowerMessage.includes(word));
+};
+
+const detectStruggleInMessage = (message: string) => {
+  const struggleWords = ['schwer', 'schwierig', 'problem', 'schaffe nicht', 'frustriert', 'hilfe', 'verzweifelt'];
+  const lowerMessage = message.toLowerCase();
+  return struggleWords.some(word => lowerMessage.includes(word));
+};
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -94,7 +327,7 @@ const sanitizeUserData = (userData: any): any => {
 };
 
 serve(async (req) => {
-  console.log('Coach chat request received at:', new Date().toISOString());
+  console.log('Enhanced Human-Like Coach chat request received at:', new Date().toISOString());
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -131,6 +364,25 @@ serve(async (req) => {
         }
       );
     }
+
+    // ============= HUMAN-LIKE FEATURES INTEGRATION =============
+    console.log('🧠 Integrating Human-Like Coach Features...');
+
+    // 1. SENTIMENT ANALYSIS
+    const sentimentResult = await analyzeSentiment(message);
+    console.log('😊 Sentiment Analysis:', sentimentResult);
+
+    // 2. LOAD COACH MEMORY
+    const coachMemory = await loadCoachMemory(supabase, userId);
+    console.log('🧠 Coach Memory loaded:', {
+      preferences: coachMemory.user_preferences.length,
+      relationship_stage: coachMemory.relationship_stage,
+      trust_level: coachMemory.trust_level
+    });
+
+    // 3. UPDATE CONVERSATION CONTEXT
+    await updateConversationContext(supabase, userId, message, sentimentResult, coachMemory);
+    console.log('💭 Conversation context updated');
     
     // Validate and sanitize chat history
     let chatHistory = [];
@@ -980,7 +1232,51 @@ Methodik: ${coachSpecialization.methodology}
 WICHTIG: Alle deine Antworten sollten diese Spezialisierung widerspiegeln!
 ` : '';
 
-    const systemMessage = `${personalityPrompt}${responseStrategy}${coachSpecializationContext}${coachKnowledgeContext}
+    // ============= HUMAN-LIKE MEMORY CONTEXT FOR PROMPT =============
+    const memoryContext = `
+
+🧠 HUMAN-LIKE COACH MEMORY & BEZIEHUNG:
+👥 BEZIEHUNGSSTAND: ${coachMemory.relationship_stage} (Vertrauenslevel: ${coachMemory.trust_level}/100)
+📚 DISKUTIERTE THEMEN: ${coachMemory.conversation_context.topics_discussed.slice(-10).join(', ') || 'Erste Gespräche'}
+
+😊 AKTUELLE EMOTION: ${sentimentResult.emotion} (${sentimentResult.sentiment}, Intensität: ${(sentimentResult.intensity * 100).toFixed(0)}%)
+
+💭 PERSÖNLICHE ERINNERUNGEN:
+${coachMemory.user_preferences.length > 0 ? 
+  coachMemory.user_preferences.slice(-5).map(pref => 
+    `- ${pref.category}: ${pref.key} = ${pref.value} (Vertrauen: ${(pref.confidence * 100).toFixed(0)}%)`
+  ).join('\n') : 
+  '- Lerne noch die Präferenzen des Users kennen'
+}
+
+🌟 ERFOLGSMOMENTE (letzte):
+${coachMemory.conversation_context.success_moments.slice(-3).map(success => 
+  `- ${success.timestamp.split('T')[0]}: ${success.achievement.substring(0, 50)}...`
+).join('\n') || '- Noch keine besonderen Erfolge dokumentiert'}
+
+😓 ERWÄHNTE STRUGGLES (letzte):
+${coachMemory.conversation_context.struggles_mentioned.slice(-3).map(struggle => 
+  `- ${struggle.timestamp.split('T')[0]}: ${struggle.struggle.substring(0, 50)}...`
+).join('\n') || '- Keine besonderen Herausforderungen erwähnt'}
+
+📈 STIMMUNGSHISTORIE (letzte 5):
+${coachMemory.conversation_context.mood_history.slice(-5).map(mood => 
+  `- ${mood.mood} (Intensität: ${(mood.intensity * 100).toFixed(0)}%) - ${mood.timestamp.split('T')[0]}`
+).join('\n') || '- Noch keine Stimmungsdaten'}
+
+🎯 COACHING-STIL PRÄFERENZ: ${coachMemory.communication_style_preference}
+
+💬 MENSCHLICHE COACHING-INSTRUKTIONEN:
+- BEZIEHE DICH AUF VERGANGENE GESPRÄCHE: "Erinnerst du dich, als du mir erzählt hast..."
+- REAGIERE AUF AKTUELLE EMOTION: ${sentimentResult.emotion !== 'neutral' ? `User ist aktuell ${sentimentResult.emotion} - reagiere empathisch darauf` : 'User ist emotional neutral'}
+- NUTZE PERSÖNLICHE PRÄFERENZEN: Berücksichtige bekannte Vorlieben und Abneigungen
+- FEIERE ERFOLGE: Referenziere vergangene Erfolgsmomente für Motivation
+- UNTERSTÜTZE BEI STRUGGLES: Zeige Verständnis für bekannte Herausforderungen
+- ENTWICKLE BEZIEHUNG: Je nach Vertrauenslevel (${coachMemory.trust_level}/100) anpassen
+- SEI MENSCHLICH: Zeige Verletzlichkeit, Humor und echte Anteilnahme
+`;
+
+    const systemMessage = `${personalityPrompt}${responseStrategy}${coachSpecializationContext}${coachKnowledgeContext}${memoryContext}
 
 Du hilfst ${firstName} bei Ernährung, Training und Fitness. Du hast vollständigen Zugang zu allen Benutzerdaten.
 
@@ -1376,6 +1672,32 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
     }
 
     console.log(`Generated enhanced chat response successfully from ${coachInfo.name} using GPT-4.1`);
+
+    // ============= UPDATE COACH MEMORY AFTER RESPONSE =============
+    try {
+      // Update memory with coach response and user interaction
+      const updatedMemory = await updateConversationContext(supabase, userId, message, sentimentResult, coachMemory);
+      
+      // Track coach response patterns for learning
+      const responseSentiment = await analyzeSentiment(reply);
+      
+      // Update memory with coach's response style for better personalization
+      if (responseSentiment.sentiment !== 'neutral') {
+        updatedMemory.conversation_context.mood_history.push({
+          timestamp: new Date().toISOString(),
+          mood: `coach_${responseSentiment.emotion}`,
+          intensity: responseSentiment.intensity
+        });
+      }
+
+      // Save final memory state
+      await saveCoachMemory(supabase, userId, updatedMemory);
+      console.log('🧠 Coach memory updated successfully');
+
+    } catch (memoryError) {
+      console.error('Error updating coach memory:', memoryError);
+      // Don't fail the request if memory update fails
+    }
 
     return new Response(JSON.stringify({ 
       response: reply,
