@@ -6,10 +6,10 @@ import EmailMarketingAdmin from '@/components/EmailMarketingAdmin';
 
 const Marketing = () => {
   const { user } = useAuth();
-  const { subscription } = useSubscription();
+  const { subscriptionTier } = useSubscription();
 
   // Check if user is super admin
-  if (!user || subscription?.tier !== 'Super Admin') {
+  if (!user || subscriptionTier !== 'Super Admin') {
     return <Navigate to="/" replace />;
   }
 
