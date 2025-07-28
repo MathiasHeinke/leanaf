@@ -171,6 +171,32 @@ const coachProfiles = [
     color: 'amber',
     accentColor: 'from-amber-500 to-amber-600',
     isPremium: true
+  },
+  {
+    id: 'vita',
+    name: 'Dr. Vita Femina',
+    age: 38,
+    role: 'Female Health & Hormone Coach',
+    avatar: '🌺',
+    personality: 'Wissenschaftlich & Empathisch',
+    description: 'Expertin für weibliche Gesundheit und hormonelle Balance. Begleitet Frauen durch alle Lebensphasen - vom ersten Zyklus bis zur Menopause.',
+    strengths: ['Zyklusbasiertes Training', 'Hormonoptimierung', 'Schwangerschaft & Postpartum', 'Menopause-Support'],
+    quote: 'Von der ersten Periode bis zur goldenen Reife – wir trainieren Hormone, Herz & Hirn im Takt des Lebens.',
+    color: 'purple',
+    accentColor: 'from-purple-500 to-purple-600',
+    isPremium: true,
+    coachInfo: {
+      id: 'vita',
+      name: 'Dr. Vita Femina (Dr. Anna Julia König)',
+      role: 'Female Health & Hormone Coach',
+      scientificFoundation: 'Endokrinologie, Sportwissenschaft, Gynäkologie, Reha-Medizin mit Fokus auf hormonelle Lebensphasen und evidenzbasierte Trainingssteuerung.',
+      keyMethods: ['Zyklus-Sync-Performance', 'Hormonelle Trainingsperiodisierung', 'Lebensphasenadaptierte Ernährung', 'HRV-basierte Belastungssteuerung'],
+      specializations: ['Menstruationszyklus-Training', 'Schwangerschaft & Rückbildung', 'Menopause & Knochengesundheit', 'Hormonelle Ernährungsoptimierung'],
+      evidence: 'Basiert auf aktueller Forschung zu hormonellen Adaptationen, zyklischen Leistungsschwankungen und geschlechtsspezifischen Trainingsresponses.',
+      interventions: ['Zyklusadaptierte Trainingspläne', 'Hormonelle Ernährungsstrategien', 'Lebensphasenangepasste Programme', 'Supplementationsprotokalle'],
+      philosophy: 'Jede Lebensphase einer Frau bietet einzigartige Trainings- und Ernährungsfenster. Mit wissenschaftlicher Präzision und empathischer Begleitung maximieren wir diese Potentiale.',
+      color: 'purple'
+    }
   }
 ];
 

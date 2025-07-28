@@ -345,6 +345,9 @@ export const KnowledgeBaseExportImport = () => {
               <strong>CSV-Format:</strong> title, expertise_area, knowledge_type, content, coach_id, priority_level, tags, source_url
             </p>
             <p>
+              <strong>Coach IDs:</strong> sascha, lucy, kai, markus, vita (Dr. Vita Femina)
+            </p>
+            <p>
               <strong>Tags:</strong> Mehrere Tags mit Semikolon (;) trennen
             </p>
             <p>

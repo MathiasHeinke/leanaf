@@ -151,6 +151,41 @@ const coachProfiles = [
       { text: 'Bis zum Schlaganfall!', prompt: 'Wie entwickel isch die richtige mentale Härte für echtes Beast-Training?' },
       { text: 'Gewicht bringt Muskeln!', prompt: 'Isch stagniere - wie bring isch wieder mehr Gewicht aufs Eisen und durchbrech das Plateau?' }
     ]
+  },
+  {
+    id: 'vita',
+    name: 'Dr. Vita Femina',
+    age: 38,
+    role: 'Female Health & Hormone Coach',
+    avatar: '🌺',
+    icon: Heart,
+    imageUrl: '/coach-images/dr-vita-femina.jpg',
+    personality: 'Wissenschaftlich & Empathisch',
+    description: 'Expertin für weibliche Gesundheit und hormonelle Balance. Evidenzbasiertes Training von der ersten Periode bis zur Menopause.',
+    expertise: ['Zyklusbasiertes Training', 'Hormonoptimierung', 'Schwangerschaft & Postpartum', 'Menopause-Support'],
+    color: 'purple',
+    accentColor: 'from-purple-500 to-purple-600',
+    coachInfo: {
+      id: 'vita',
+      name: 'Dr. Vita Femina',
+      role: 'Female Health & Hormone Coach',
+      color: 'purple',
+      imageUrl: '/coach-images/dr-vita-femina.jpg',
+      avatar: '🌺',
+      philosophy: 'Von der ersten Periode bis zur goldenen Reife – wir trainieren Hormone, Herz & Hirn im Takt des Lebens. Jede Lebensphase einer Frau bietet einzigartige Trainings- und Ernährungsfenster.',
+      scientificFoundation: 'Endokrinologie, Sportwissenschaft, Gynäkologie, Reha-Medizin mit Spezialisierung auf hormonelle Lebensphasen und evidenzbasierte Trainingssteuerung.',
+      specializations: ['Menstruationszyklus-Training', 'Follikel- & Lutealphase-Optimierung', 'Schwangerschaft & Rückbildung', 'Menopause & Knochengesundheit', 'Hormonelle Ernährungsstrategien', 'PMS & PMDD Management'],
+      keyMethods: ['Zyklus-Sync-Performance', 'HRV-basierte Belastungssteuerung', 'Hormonelle Trainingsperiodisierung', 'Lebensphasenadaptierte Ernährung'],
+      evidence: 'Basiert auf aktueller Forschung zu hormonellen Adaptationen, zyklischen Leistungsschwankungen und geschlechtsspezifischen Trainingsresponses',
+      evidenceBase: 'Aktuelle Forschung zu Menstruationszyklus, Schwangerschaftsphysiologie, Menopause und hormonoptimiertem Training',
+      interventions: ['Zyklusadaptierte Trainingspläne', 'Hormonelle Ernährungsstrategien', 'Lebensphasenangepasste Programme', 'Supplementationsprotokalle']
+    },
+    quickActions: [
+      { text: 'Zyklusbasiertes Training', prompt: 'Wie kann ich mein Training an meinen Menstruationszyklus anpassen für optimale Performance?' },
+      { text: 'Hormonbalance optimieren', prompt: 'Welche evidenzbasierten Strategien helfen mir bei hormoneller Balance und PMS-Management?' },
+      { text: 'Training in der Schwangerschaft', prompt: 'Wie trainiere ich sicher und effektiv während der Schwangerschaft und im Postpartum?' },
+      { text: 'Menopause & Krafttraining', prompt: 'Welche Trainings- und Ernährungsstrategien sind optimal für die Menopause?' }
+    ]
   }
 ];
 
