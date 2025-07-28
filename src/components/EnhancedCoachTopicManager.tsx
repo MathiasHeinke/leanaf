@@ -157,20 +157,32 @@ export const EnhancedCoachTopicManager = () => {
   };
 
   const loadCoachData = async () => {
+    if (!selectedCoach) {
+      console.log('🚫 No coach selected, skipping data load');
+      return;
+    }
+
     console.log('🔍 Loading coach data for:', selectedCoach);
     setIsLoadingTopics(true);
+    
     try {
-      // Load existing topics for selected coach
+      // Load existing topics for selected coach with retry mechanism
+      console.log('📡 Querying coach_topic_configurations for coach_id:', selectedCoach);
+      
       const { data: topicsData, error: topicsError } = await supabase
         .from('coach_topic_configurations')
         .select('*')
         .eq('coach_id', selectedCoach)
         .order('priority_level', { ascending: false });
 
-      console.log('📊 Raw topics data:', topicsData);
-      console.log('❌ Topics error:', topicsError);
+      console.log('📊 Raw query result - Data:', topicsData);
+      console.log('📊 Raw query result - Error:', topicsError);
+      console.log('📊 Query parameters - coach_id:', selectedCoach);
 
-      if (topicsError) throw topicsError;
+      if (topicsError) {
+        console.error('❌ Database query error:', topicsError);
+        throw topicsError;
+      }
 
       // Load coach pipeline status
       const { data: statusData, error: statusError } = await supabase
@@ -180,11 +192,11 @@ export const EnhancedCoachTopicManager = () => {
         .single();
 
       if (statusError && statusError.code !== 'PGRST116') {
-        console.error('Status error:', statusError);
+        console.error('⚠️ Status error (non-critical):', statusError);
       }
 
-      console.log('✅ Setting coach topics:', topicsData?.length, 'topics');
-      console.log('📝 Sample topic:', topicsData?.[0]);
+      console.log('✅ Query successful - Found topics:', topicsData?.length || 0);
+      console.log('📝 First topic sample:', topicsData?.[0]);
       
       // Cast the data to ensure search_keywords is properly typed
       const typedTopicsData = (topicsData || []).map(topic => ({
@@ -194,17 +206,19 @@ export const EnhancedCoachTopicManager = () => {
           : []
       })) as CoachTopicConfig[];
       
+      console.log('🎯 Setting state with', typedTopicsData.length, 'topics');
       setCoachTopics(typedTopicsData);
       setCoachStatus(statusData || null);
 
-      console.log(`Loaded ${topicsData?.length || 0} topics for coach ${selectedCoach}`);
+      console.log(`✅ Successfully loaded ${typedTopicsData.length} topics for coach ${selectedCoach}`);
     } catch (error) {
-      console.error('Error loading coach data:', error);
+      console.error('💥 Error loading coach data:', error);
       toast({
         title: "Fehler beim Laden",
         description: "Coach-Daten konnten nicht geladen werden",
         variant: "destructive"
       });
+      // Don't reset topics on error, keep existing state
     } finally {
       setIsLoadingTopics(false);
     }
