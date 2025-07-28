@@ -7,7 +7,7 @@ export const Footer = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="text-center space-y-2">
           <p className="text-xs text-muted-foreground">
-            © 2025 KaloAI. Made with ❤️ in Germany
+            © 2025 GetleanAI. Made with ❤️ in Germany
           </p>
         </div>
       </div>

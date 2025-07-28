@@ -19,7 +19,7 @@ export default function Privacy() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <p>
-              Verantwortlicher für die Datenverarbeitung ist der Betreiber der KaloAI-App. 
+              Verantwortlicher für die Datenverarbeitung ist der Betreiber der GetleanAI-App. 
               Kontaktdaten finden Sie im Impressum.
             </p>
           </CardContent>

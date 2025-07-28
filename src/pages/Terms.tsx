@@ -19,7 +19,7 @@ export default function Terms() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <p>
-              Diese Allgemeinen Geschäftsbedingungen (nachfolgend "AGB") gelten für die Nutzung der KaloAI-Anwendung 
+              Diese Allgemeinen Geschäftsbedingungen (nachfolgend "AGB") gelten für die Nutzung der GetleanAI-Anwendung 
               (nachfolgend "App"), einem intelligenten Gesundheits- und Fitness-Coach mit KI-Unterstützung.
             </p>
             <p>
@@ -34,7 +34,7 @@ export default function Terms() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <p>
-              KaloAI bietet folgende Dienstleistungen:
+              GetleanAI bietet folgende Dienstleistungen:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Personalisierte Ernährungs- und Trainingsberatung durch KI-gestützte Coaches</li>
@@ -102,7 +102,7 @@ export default function Terms() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <p>
-              Die Haftung von KaloAI ist auf Vorsatz und grobe Fahrlässigkeit beschränkt. 
+              Die Haftung von GetleanAI ist auf Vorsatz und grobe Fahrlässigkeit beschränkt. 
               Eine Haftung für die Richtigkeit der KI-generierten Empfehlungen wird ausgeschlossen.
             </p>
             <p>

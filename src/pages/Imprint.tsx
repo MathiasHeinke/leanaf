@@ -19,7 +19,7 @@ export default function Imprint() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <p className="font-medium">KaloAI GmbH</p>
+              <p className="font-medium">GetleanAI GmbH</p>
               <p>Musterstraße 123</p>
               <p>12345 Musterstadt</p>
               <p>Deutschland</p>
@@ -34,8 +34,8 @@ export default function Imprint() {
           <CardContent className="space-y-4 text-sm">
             <div>
               <p><strong>Telefon:</strong> +49 (0) 123 456789</p>
-              <p><strong>E-Mail:</strong> info@kaloai.com</p>
-              <p><strong>Website:</strong> www.kaloai.com</p>
+              <p><strong>E-Mail:</strong> info@getleanai.com</p>
+              <p><strong>Website:</strong> www.getleanai.com</p>
             </div>
           </CardContent>
         </Card>
@@ -161,7 +161,7 @@ export default function Imprint() {
               WICHTIGER HINWEIS:
             </p>
             <p>
-              Die in der KaloAI-App bereitgestellten Informationen dienen ausschließlich der allgemeinen Information 
+              Die in der GetleanAI-App bereitgestellten Informationen dienen ausschließlich der allgemeinen Information 
               und ersetzen in keinem Fall eine professionelle medizinische Beratung, Diagnose oder Behandlung. 
               Konsultieren Sie bei gesundheitlichen Fragen oder Beschwerden immer einen Arzt oder qualifizierten 
               Gesundheitsdienstleister.

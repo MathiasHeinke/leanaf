@@ -503,7 +503,7 @@ export const CoachChat = ({ coachPersonality = 'motivierend' }: CoachChatProps) 
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">KaloAI Coach</span>
+              <span className="text-lg font-bold">GetleanAI Coach</span>
               <Badge variant="secondary" className="text-xs">
                 {getCoachIcon(currentCoachPersonality)} {getCoachName(currentCoachPersonality)}
               </Badge>

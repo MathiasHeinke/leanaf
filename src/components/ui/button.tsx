@@ -18,7 +18,7 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        // kaloAI Varianten
+        // GetleanAI Varianten
         hero: "bg-gradient-to-r from-primary to-primary-glow text-primary-foreground hover:shadow-lg hover:scale-105 transition-all duration-300 font-semibold",
         warm: "bg-gradient-to-r from-accent to-accent/80 text-accent-foreground hover:shadow-md hover:scale-105 transition-all duration-300",
         soft: "bg-muted text-muted-foreground hover:bg-muted/80 border border-border/50"
@@ -28,7 +28,7 @@ const buttonVariants = cva(
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
-        // kaloAI Größen
+        // GetleanAI Größen
         xl: "h-14 rounded-xl px-12 text-base font-semibold",
         card: "h-16 rounded-2xl px-6 text-lg"
       },

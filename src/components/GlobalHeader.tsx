@@ -39,7 +39,7 @@ export const GlobalHeader = ({
       case '/science': return 'Wissenschaft';
       case '/subscription': return 'Abonnement';
       case '/account': return 'Account';
-      default: return 'KaloAI';
+      default: return 'GetleanAI';
     }
   };
 
