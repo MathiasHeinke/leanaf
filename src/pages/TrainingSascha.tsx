@@ -470,7 +470,7 @@ const TrainingSascha = () => {
   const averages = calculateAverages();
 
   return (
-    <div className="h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <SpecializedCoachChat
           coach={{
             id: 'sascha',
