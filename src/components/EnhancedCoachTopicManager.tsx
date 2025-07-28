@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +103,9 @@ export const EnhancedCoachTopicManager = () => {
   const [isLoadingToRAG, setIsLoadingToRAG] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+  const [topicsCache, setTopicsCache] = useState<Record<string, CoachTopicConfig[]>>({});
+  const [lastLoadTime, setLastLoadTime] = useState<Record<string, number>>({});
   const [newTopic, setNewTopic] = useState({
     category: '',
     name: '',
@@ -111,53 +114,111 @@ export const EnhancedCoachTopicManager = () => {
   });
   
   const { toast } = useToast();
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const loadCoachData = useCallback(async () => {
+  const loadCoachData = useCallback(async (forceReload = false, attempt = 1) => {
     if (!selectedCoach) {
       console.log('🚫 No coach selected, skipping data load');
-      setCoachTopics([]); // Clear topics when no coach selected
+      setCoachTopics([]);
       setCoachStatus(null);
+      setRetryCount(0);
       return;
     }
 
-    console.log('🔍 [STATE] Loading coach data for:', selectedCoach);
+    const timestamp = new Date().toISOString();
+    const cacheKey = selectedCoach;
+    const lastLoad = lastLoadTime[cacheKey] || 0;
+    const cacheAge = Date.now() - lastLoad;
+    const MAX_CACHE_AGE = 30000; // 30 seconds cache
+
+    // Use cache if available and not forcing reload
+    if (!forceReload && topicsCache[cacheKey] && cacheAge < MAX_CACHE_AGE) {
+      console.log(`💾 [CACHE] Using cached data for ${selectedCoach} (age: ${Math.round(cacheAge/1000)}s)`);
+      setCoachTopics(topicsCache[cacheKey]);
+      return;
+    }
+
+    console.log(`🔍 [${timestamp}] Loading coach data for: ${selectedCoach} (attempt ${attempt}/3)`);
     setIsLoadingTopics(true);
+    setRetryCount(attempt - 1);
+
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
     
     try {
-      // Load existing topics for selected coach with retry mechanism
-      console.log('📡 [QUERY] Querying coach_topic_configurations for coach_id:', selectedCoach);
+      console.log(`📡 [${timestamp}] Querying coach_topic_configurations for coach_id:`, selectedCoach);
       
-      const { data: topicsData, error: topicsError } = await supabase
+      // Create timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout')), 10000); // 10 second timeout
+      });
+
+      // Query with timeout (note: Supabase doesn't support abort signals directly, so we'll use Promise.race)
+      const queryPromise = supabase
         .from('coach_topic_configurations')
         .select('*')
         .eq('coach_id', selectedCoach)
         .order('priority_level', { ascending: false });
 
-      console.log('📊 [RESULT] Raw query result - Data length:', topicsData?.length || 0);
-      console.log('📊 [RESULT] Raw query result - Error:', topicsError);
-      console.log('📊 [RESULT] Query parameters - coach_id:', selectedCoach);
-      console.log('📊 [RESULT] First few topics:', topicsData?.slice(0, 3));
+      const { data: topicsData, error: topicsError } = await Promise.race([
+        queryPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log(`📊 [${timestamp}] Query result - Data length:`, topicsData?.length || 0);
+      console.log(`📊 [${timestamp}] Query error:`, topicsError);
+      console.log(`📊 [${timestamp}] Network latency: ${Date.now() - new Date(timestamp).getTime()}ms`);
 
       if (topicsError) {
-        console.error('❌ [ERROR] Database query error:', topicsError);
+        console.error(`❌ [${timestamp}] Database query error:`, topicsError);
         throw topicsError;
       }
 
-      // Load coach pipeline status
-      const { data: statusData, error: statusError } = await supabase
-        .from('coach_pipeline_status')
-        .select('*')
-        .eq('coach_id', selectedCoach)
-        .single();
-
-      if (statusError && statusError.code !== 'PGRST116') {
-        console.error('⚠️ [WARNING] Status error (non-critical):', statusError);
+      // Check if we got empty results unexpectedly
+      if (!topicsData || topicsData.length === 0) {
+        console.warn(`⚠️ [${timestamp}] Empty result for coach ${selectedCoach}, this might be unexpected`);
+        
+        // Retry if this is the first attempt and we know this coach should have topics
+        if (attempt < 3 && selectedCoach === 'sascha') {
+          console.log(`🔄 [${timestamp}] Retrying query for ${selectedCoach} (attempt ${attempt + 1})`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+          return loadCoachData(forceReload, attempt + 1);
+        }
       }
 
-      console.log('✅ [SUCCESS] Query successful - Found topics:', topicsData?.length || 0);
-      console.log('📝 [SAMPLE] First topic sample:', topicsData?.[0]);
+      // Load coach pipeline status with shorter timeout
+      const statusTimeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Status query timeout')), 5000);
+      });
+
+      try {
+        const statusQueryPromise = supabase
+          .from('coach_pipeline_status')
+          .select('*')
+          .eq('coach_id', selectedCoach)
+          .single();
+
+        const { data: statusData, error: statusError } = await Promise.race([
+          statusQueryPromise,
+          statusTimeoutPromise
+        ]) as any;
+
+        if (statusError && statusError.code !== 'PGRST116') {
+          console.error(`⚠️ [${timestamp}] Status error (non-critical):`, statusError);
+        }
+        setCoachStatus(statusData || null);
+      } catch (statusErr) {
+        console.warn(`⚠️ [${timestamp}] Status query failed (non-critical):`, statusErr);
+        setCoachStatus(null);
+      }
+
+      console.log(`✅ [${timestamp}] Query successful - Found topics:`, topicsData?.length || 0);
       
-      // Cast the data to ensure search_keywords is properly typed
+      // Process and type the data
       const typedTopicsData = (topicsData || []).map(topic => ({
         ...topic,
         search_keywords: Array.isArray(topic.search_keywords) 
@@ -165,28 +226,50 @@ export const EnhancedCoachTopicManager = () => {
           : []
       })) as CoachTopicConfig[];
       
-      console.log('🎯 [STATE] Setting state with', typedTopicsData.length, 'topics for coach:', selectedCoach);
-      console.log('🎯 [STATE] Topic names:', typedTopicsData.map(t => t.topic_name));
+      console.log(`🎯 [${timestamp}] Setting state with ${typedTopicsData.length} topics for coach: ${selectedCoach}`);
+      console.log(`🎯 [${timestamp}] Topic categories:`, [...new Set(typedTopicsData.map(t => t.topic_category))]);
+      
+      // Update cache
+      setTopicsCache(prev => ({ ...prev, [cacheKey]: typedTopicsData }));
+      setLastLoadTime(prev => ({ ...prev, [cacheKey]: Date.now() }));
       
       setCoachTopics(typedTopicsData);
-      setCoachStatus(statusData || null);
+      setRetryCount(0);
 
-      console.log(`✅ [FINAL] Successfully loaded ${typedTopicsData.length} topics for coach ${selectedCoach}`);
-    } catch (error) {
-      console.error('💥 [ERROR] Error loading coach data:', error);
-      toast({
-        title: "Fehler beim Laden",
-        description: "Coach-Daten konnten nicht geladen werden",
-        variant: "destructive"
-      });
-      // On error, clear the state to prevent stale data
-      setCoachTopics([]);
-      setCoachStatus(null);
+      console.log(`✅ [${timestamp}] Successfully loaded ${typedTopicsData.length} topics for coach ${selectedCoach}`);
+    } catch (error: any) {
+      console.error(`💥 [${timestamp}] Error loading coach data (attempt ${attempt}):`, error);
+      
+      // Retry logic
+      if (attempt < 3 && !abortControllerRef.current?.signal.aborted) {
+        console.log(`🔄 [${timestamp}] Retrying in ${attempt * 2} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000)); // Progressive delay
+        return loadCoachData(forceReload, attempt + 1);
+      }
+      
+      // Show error only on final attempt
+      if (attempt === 3) {
+        toast({
+          title: "Fehler beim Laden",
+          description: `Coach-Daten konnten nach ${attempt} Versuchen nicht geladen werden`,
+          variant: "destructive"
+        });
+      }
+      
+      // Use cache as fallback if available
+      if (topicsCache[cacheKey]) {
+        console.log(`💾 [${timestamp}] Using stale cache as fallback`);
+        setCoachTopics(topicsCache[cacheKey]);
+      } else {
+        setCoachTopics([]);
+        setCoachStatus(null);
+      }
     } finally {
-      console.log('🏁 [LOADING] Setting isLoadingTopics to false');
+      console.log(`🏁 [${timestamp}] Setting isLoadingTopics to false (attempt ${attempt})`);
       setIsLoadingTopics(false);
+      abortControllerRef.current = null;
     }
-  }, [selectedCoach, toast]);
+  }, [selectedCoach, toast, topicsCache, lastLoadTime]);
 
   useEffect(() => {
     loadAvailableCoaches();
@@ -194,14 +277,36 @@ export const EnhancedCoachTopicManager = () => {
 
   useEffect(() => {
     console.log('🔄 [EFFECT] selectedCoach changed to:', selectedCoach);
+    
+    // Clear previous debounce
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
     if (selectedCoach) {
-      console.log('✅ [EFFECT] Calling loadCoachData for coach:', selectedCoach);
-      loadCoachData();
+      console.log('✅ [EFFECT] Debouncing loadCoachData for coach:', selectedCoach);
+      
+      // Debounce the load to prevent rapid successive calls
+      debounceTimeoutRef.current = setTimeout(() => {
+        console.log('🚀 [EFFECT] Executing loadCoachData for coach:', selectedCoach);
+        loadCoachData(false, 1);
+      }, 300); // 300ms debounce
     } else {
       console.log('❌ [EFFECT] No coach selected, clearing state');
       setCoachTopics([]);
       setCoachStatus(null);
+      setRetryCount(0);
     }
+    
+    // Cleanup function
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [selectedCoach, loadCoachData]);
 
   const loadAvailableCoaches = async () => {
@@ -480,11 +585,14 @@ export const EnhancedCoachTopicManager = () => {
                     {isLoadingTopics ? (
                       <div className="flex items-center gap-2">
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Lade Topics...</span>
+                        <span>Lade Topics...{retryCount > 0 && ` (Versuch ${retryCount + 1}/3)`}</span>
                       </div>
                     ) : (
                       <>
                         <span className="font-semibold text-2xl text-primary">{coachTopics.length}</span> Topics gefunden
+                        {topicsCache[selectedCoach] && (
+                          <Badge variant="outline" className="text-xs">Cached</Badge>
+                        )}
                       </>
                     )}
                   </div>
@@ -492,13 +600,26 @@ export const EnhancedCoachTopicManager = () => {
                     <div>Coach ID: {selectedCoach}</div>
                     <div>State: {isLoadingTopics ? 'Loading' : 'Loaded'}</div>
                     <div>DB Result: {coachTopics.length} items</div>
+                    {lastLoadTime[selectedCoach] && (
+                      <div>Last Load: {new Date(lastLoadTime[selectedCoach]).toLocaleTimeString()}</div>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => loadCoachData(true, 1)}
+                    disabled={isLoadingTopics}
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isLoadingTopics ? 'animate-spin' : ''}`} />
+                    Aktualisieren
+                  </Button>
+                  <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={loadCoachData}
+                    onClick={() => loadCoachData(false, 1)}
                     disabled={isLoadingTopics}
                   >
                     <RefreshCw className={`h-4 w-4 ${isLoadingTopics ? 'animate-spin' : ''}`} />
