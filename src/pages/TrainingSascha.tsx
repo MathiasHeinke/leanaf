@@ -38,54 +38,8 @@ const TrainingSascha = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Coach Profile Header */}
-      <div className="flex-shrink-0 border-b border-border/20 bg-card/95 backdrop-blur-sm">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/training')}
-                className="text-muted-foreground hover:text-foreground p-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              
-              {/* Coach Profile Info */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden">
-                  <img 
-                    src="/lovable-uploads/a684839c-6310-41c3-bd23-9ba6fb3cdf31.png" 
-                    alt="Sascha" 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold">Sascha</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Performance- & Trainingsexperte
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="p-2">
-                <History className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="p-2">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Full Height Chat Interface */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <SpecializedCoachChat 
+    <div className="h-screen bg-background">
+      <SpecializedCoachChat
           coach={{
             id: 'sascha',
             name: 'Sascha',
@@ -112,7 +66,6 @@ const TrainingSascha = () => {
           trendData={null}
           weightHistory={[]}
         />
-      </div>
     </div>
   );
 };
