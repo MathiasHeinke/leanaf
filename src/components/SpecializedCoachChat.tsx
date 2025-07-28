@@ -698,10 +698,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 </Button>
                 
                 <div className="flex items-center space-x-3">
-                  {coach.imageUrl ? (
+                  {coach.avatar && coach.avatar.startsWith('/') ? (
                     <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg">
                       <img 
-                        src={coach.imageUrl} 
+                        src={coach.avatar} 
                         alt={coach.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -711,12 +711,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                         }}
                       />
                       <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden`}>
-                        {coach.avatar}
+                        {coach.name.charAt(0)}
                       </div>
                     </div>
                   ) : (
                     <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg`}>
-                      {coach.avatar}
+                      {coach.name.charAt(0)}
                     </div>
                   )}
                   <div>
@@ -801,25 +801,25 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                         <div className={`flex items-center mt-1 space-x-2 ${
                           message.role === 'user' ? 'justify-end' : 'justify-start'
                         }`}>
-                        {message.role === 'assistant' && (
-                          <div className="w-4 h-4 rounded-full overflow-hidden">
-                            {coach.imageUrl ? (
-                              <img 
-                                src={coach.imageUrl} 
-                                alt={coach.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  target.nextElementSibling?.classList.remove('hidden');
-                                }}
-                              />
-                            ) : null}
-                            <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center ${coach.imageUrl ? 'hidden' : ''}`}>
-                              <span className="text-[8px] text-white">{coach.avatar}</span>
-                            </div>
-                          </div>
-                        )}
+                         {message.role === 'assistant' && (
+                           <div className="w-4 h-4 rounded-full overflow-hidden">
+                             {coach.avatar && coach.avatar.startsWith('/') ? (
+                               <img 
+                                 src={coach.avatar} 
+                                 alt={coach.name}
+                                 className="w-full h-full object-cover"
+                                 onError={(e) => {
+                                   const target = e.target as HTMLImageElement;
+                                   target.style.display = 'none';
+                                   target.nextElementSibling?.classList.remove('hidden');
+                                 }}
+                               />
+                             ) : null}
+                             <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center ${coach.avatar && coach.avatar.startsWith('/') ? 'hidden' : ''}`}>
+                               <span className="text-[8px] text-white">{coach.name.charAt(0)}</span>
+                             </div>
+                           </div>
+                         )}
                           {message.role === 'user' && <User className="h-3 w-3 text-muted-foreground" />}
                           <span className="text-xs text-muted-foreground">
                             {formatMessageTime(message.created_at)}
@@ -835,20 +835,22 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                         <div className="bg-muted rounded-lg p-3">
                           <div className="flex items-center space-x-3">
                             <div className="relative">
-                              <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg">
-                                <img 
-                                  src={coach.imageUrl} 
-                                  alt={coach.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                  }}
-                                />
-                                <div className={`w-8 h-8 bg-gradient-to-br ${getCoachColors(coach.color)} rounded-full flex items-center justify-center text-white text-sm hidden`}>
-                                  {coach.avatar}
-                                </div>
-                              </div>
+                               <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg">
+                                 {coach.avatar && coach.avatar.startsWith('/') ? (
+                                   <img 
+                                     src={coach.avatar} 
+                                     alt={coach.name}
+                                     className="w-full h-full object-cover"
+                                     onError={(e) => {
+                                       e.currentTarget.style.display = 'none';
+                                       e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                     }}
+                                   />
+                                 ) : null}
+                                 <div className={`w-8 h-8 bg-gradient-to-br ${getCoachColors(coach.color)} rounded-full flex items-center justify-center text-white text-sm ${coach.avatar && coach.avatar.startsWith('/') ? 'hidden' : ''}`}>
+                                   {coach.name.charAt(0)}
+                                 </div>
+                               </div>
                               <div className="absolute -inset-0.5">
                                 <div className="w-9 h-9 bg-primary/30 rounded-full animate-ping"></div>
                               </div>
