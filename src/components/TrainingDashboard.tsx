@@ -181,20 +181,9 @@ export const TrainingDashboard: React.FC = () => {
         </Badge>
       </div>
 
-      {/* Responsive Grid Layout */}
-      <div className="grid gap-6 grid-cols-1 xl:grid-cols-2">
-        <TrainingStats stats={weeklyStats} />
-        
-        <TodaysTrainingStatus 
-          todaysSessions={getTodaysSessions()}
-          onStartTraining={() => setShowQuickAdd(true)}
-        />
-      </div>
-
-      {/* Quick Actions - Enhanced Responsive Grid */}
+      {/* Enhanced Prominent Coach Sascha Card - Top Priority */}
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        {/* Enhanced Prominent Coach Sascha Card */}
-        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
+        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px] md:col-span-2 xl:col-span-1"
               onClick={() => navigate('/training/sascha')}>
           <CardContent className="p-8">
             <div className="flex flex-col items-center text-center gap-4">
@@ -223,6 +212,22 @@ export const TrainingDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Training Stats */}
+        <div className="xl:col-span-1">
+          <TrainingStats stats={weeklyStats} />
+        </div>
+        
+        {/* Today's Training Status */}
+        <div className="xl:col-span-1">
+          <TodaysTrainingStatus 
+            todaysSessions={getTodaysSessions()}
+            onStartTraining={() => setShowQuickAdd(true)}
+          />
+        </div>
+      </div>
+
+      {/* Secondary Actions */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
         {/* Training History Card */}
         <Card className="border-accent/20 hover:border-accent/40 transition-all cursor-pointer group hover:shadow-lg"
               onClick={() => setShowHistory(true)}>
@@ -248,11 +253,11 @@ export const TrainingDashboard: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Custom Exercise Manager - Desktop Third Column */}
-      <div className="xl:col-span-1 md:col-span-2">
-        <CustomExerciseManager onExerciseAdded={loadSessions} />
+        {/* Custom Exercise Manager */}
+        <div>
+          <CustomExerciseManager onExerciseAdded={loadSessions} />
+        </div>
       </div>
 
       {/* Recent Activity Preview */}
