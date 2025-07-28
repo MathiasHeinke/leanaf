@@ -979,6 +979,7 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          duration_minutes: number | null
           end_time: string | null
           id: string
           notes: string | null
@@ -992,6 +993,7 @@ export type Database = {
         Insert: {
           created_at?: string
           date?: string
+          duration_minutes?: number | null
           end_time?: string | null
           id?: string
           notes?: string | null
@@ -1005,6 +1007,7 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          duration_minutes?: number | null
           end_time?: string | null
           id?: string
           notes?: string | null
