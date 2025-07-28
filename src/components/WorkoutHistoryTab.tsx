@@ -70,7 +70,7 @@ export const WorkoutHistoryTab = ({ timeRange }: WorkoutHistoryTabProps) => {
   return (
     <div className="space-y-4">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
           <CardContent className="p-4 text-center">
             <Activity className="h-6 w-6 mx-auto mb-2 text-primary" />
