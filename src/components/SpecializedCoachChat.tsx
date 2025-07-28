@@ -95,6 +95,11 @@ interface SpecializedCoachChatProps {
   historyData: any[];
   trendData: any;
   weightHistory: any[];
+  sleepData?: any[];
+  bodyMeasurements?: any[];
+  workoutData?: any[];
+  profileData?: any;
+  progressPhotos?: string[];
 }
 
 export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
@@ -105,7 +110,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   averages,
   historyData,
   trendData,
-  weightHistory
+  weightHistory,
+  sleepData = [],
+  bodyMeasurements = [],
+  workoutData = [],
+  profileData = null,
+  progressPhotos = []
 }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -522,7 +532,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             averages,
             historyData: historyData.slice(0, 7),
             trendData,
-            weightHistory: weightHistory.slice(0, 10)
+            weightHistory: weightHistory.slice(0, 10),
+            sleepData: sleepData?.slice(0, 7),
+            bodyMeasurements: bodyMeasurements?.slice(0, 5),
+            workoutData: workoutData?.slice(0, 14),
+            profileData,
+            progressPhotos: progressPhotos?.slice(0, 5)
           },
           // Enhanced with human-like features
           sentimentAnalysis: sentimentResult,
@@ -628,7 +643,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             averages,
             historyData: historyData.slice(0, 7),
             trendData,
-            weightHistory: weightHistory.slice(0, 10)
+            weightHistory: weightHistory.slice(0, 10),
+            sleepData: sleepData?.slice(0, 7),
+            bodyMeasurements: bodyMeasurements?.slice(0, 5),
+            workoutData: workoutData?.slice(0, 14),
+            profileData,
+            progressPhotos: progressPhotos?.slice(0, 5)
           },
           userId: user.id
         }

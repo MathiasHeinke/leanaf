@@ -84,7 +84,12 @@ const sanitizeUserData = (userData: any): any => {
     averages: userData.averages,
     historyData: Array.isArray(userData.historyData) ? userData.historyData.slice(0, 50) : [],
     trendData: userData.trendData,
-    weightHistory: Array.isArray(userData.weightHistory) ? userData.weightHistory.slice(0, 100) : []
+    weightHistory: Array.isArray(userData.weightHistory) ? userData.weightHistory.slice(0, 100) : [],
+    sleepData: Array.isArray(userData.sleepData) ? userData.sleepData.slice(0, 30) : [],
+    bodyMeasurements: Array.isArray(userData.bodyMeasurements) ? userData.bodyMeasurements.slice(0, 30) : [],
+    workoutData: Array.isArray(userData.workoutData) ? userData.workoutData.slice(0, 30) : [],
+    profileData: userData.profileData || null,
+    progressPhotos: Array.isArray(userData.progressPhotos) ? userData.progressPhotos.slice(0, 10) : []
   };
 };
 
@@ -1003,6 +1008,95 @@ ${recentSleep?.length ? recentSleep.slice(0, 3).map((s: any) => `- ${s.date}: ${
 ERNÄHRUNGSHISTORIE (letzte Tage):
 ${recentHistory.length > 0 ? recentHistory.slice(0, 3).map((day: any) => `- ${day.date}: ${day.totals.calories}kcal (${day.meals.length} Mahlzeiten)`).join('\n') : '- Noch keine Ernährungshistorie'}
 
+KÖRPERMASSE & FORTSCHRITT:
+${userData.bodyMeasurements?.length > 0 ? `
+📏 AKTUELLE KÖRPERMASSE (neueste Messungen):
+${userData.bodyMeasurements.slice(0, 3).map((measurement: any) => {
+  const measurements = [];
+  if (measurement.chest) measurements.push(`Brust: ${measurement.chest}cm`);
+  if (measurement.waist) measurements.push(`Taille: ${measurement.waist}cm`);
+  if (measurement.belly) measurements.push(`Bauch: ${measurement.belly}cm`);
+  if (measurement.arms) measurements.push(`Arme: ${measurement.arms}cm`);
+  if (measurement.thigh) measurements.push(`Oberschenkel: ${measurement.thigh}cm`);
+  if (measurement.neck) measurements.push(`Hals: ${measurement.neck}cm`);
+  return `- ${measurement.date}: ${measurements.join(', ')}${measurement.notes ? ` (${measurement.notes})` : ''}`;
+}).join('\n')}
+` : '- Noch keine Körpermaße erfasst'}
+
+FORTSCHRITTSFOTOS:
+${userData.progressPhotos?.length > 0 ? `${userData.progressPhotos.length} Fortschrittsfotos verfügbar` : 'Keine Fortschrittsfotos hochgeladen'}
+
+DETAILLIERTE SCHLAFDATEN:
+${userData.sleepData?.length > 0 ? `
+😴 SCHLAFANALYSE (letzte 7 Tage):
+${userData.sleepData.slice(0, 7).map((sleep: any) => {
+  const details = [];
+  if (sleep.sleep_hours) details.push(`${sleep.sleep_hours}h Schlaf`);
+  if (sleep.sleep_quality) details.push(`Qualität: ${sleep.sleep_quality}/10`);
+  if (sleep.libido) details.push(`Libido: ${sleep.libido}/10`);
+  if (sleep.motivation) details.push(`Motivation: ${sleep.motivation}/10`);
+  if (sleep.stress_level) details.push(`Stress: ${sleep.stress_level}/10`);
+  return `- ${sleep.date}: ${details.join(', ')}`;
+}).join('\n')}
+
+📊 SCHLAF-TRENDS:
+${userData.sleepData.length >= 3 ? (() => {
+  const avgHours = userData.sleepData.slice(0, 7).reduce((sum: number, s: any) => sum + (s.sleep_hours || 0), 0) / Math.min(7, userData.sleepData.length);
+  const avgQuality = userData.sleepData.slice(0, 7).reduce((sum: number, s: any) => sum + (s.sleep_quality || 0), 0) / Math.min(7, userData.sleepData.length);
+  const avgLibido = userData.sleepData.filter((s: any) => s.libido).slice(0, 7).reduce((sum: number, s: any) => sum + (s.libido || 0), 0) / userData.sleepData.filter((s: any) => s.libido).slice(0, 7).length;
+  const avgMotivation = userData.sleepData.filter((s: any) => s.motivation).slice(0, 7).reduce((sum: number, s: any) => sum + (s.motivation || 0), 0) / userData.sleepData.filter((s: any) => s.motivation).slice(0, 7).length;
+  
+  return `- Durchschnittlicher Schlaf: ${avgHours.toFixed(1)}h/Nacht
+- Durchschnittliche Qualität: ${avgQuality.toFixed(1)}/10
+${avgLibido ? `- Durchschnittliche Libido: ${avgLibido.toFixed(1)}/10` : ''}
+${avgMotivation ? `- Durchschnittliche Motivation: ${avgMotivation.toFixed(1)}/10` : ''}`;
+})() : 'Mehr Daten benötigt für Trend-Analyse'}
+` : '- Keine detaillierten Schlafdaten verfügbar'}
+
+DETAILLIERTE TRAININGSHISTORIE:
+${userData.workoutData?.length > 0 ? `
+🏃‍♂️ WORKOUT-DETAILS (letzte 14 Tage):
+${userData.workoutData.slice(0, 10).map((workout: any) => {
+  const details = [];
+  if (workout.duration_minutes) details.push(`${workout.duration_minutes}min`);
+  if (workout.intensity) details.push(`Intensität: ${workout.intensity}/10`);
+  if (workout.distance_km) details.push(`${workout.distance_km}km`);
+  if (workout.steps) details.push(`${workout.steps} Schritte`);
+  
+  const status = workout.did_workout ? '✅' : '❌';
+  const isRest = workout.workout_type === 'pause' ? '(Ruhetag)' : '';
+  
+  return `- ${workout.date}: ${status} ${workout.workout_type}${isRest}${details.length ? ` (${details.join(', ')})` : ''}${workout.notes ? ` - ${workout.notes}` : ''}`;
+}).join('\n')}
+
+📈 TRAININGS-PERFORMANCE:
+${userData.workoutData.length >= 3 ? (() => {
+  const completedWorkouts = userData.workoutData.filter((w: any) => w.did_workout && w.workout_type !== 'pause');
+  const avgDuration = completedWorkouts.filter((w: any) => w.duration_minutes).reduce((sum: number, w: any) => sum + w.duration_minutes, 0) / completedWorkouts.filter((w: any) => w.duration_minutes).length;
+  const avgIntensity = completedWorkouts.filter((w: any) => w.intensity).reduce((sum: number, w: any) => sum + w.intensity, 0) / completedWorkouts.filter((w: any) => w.intensity).length;
+  const consistency = (completedWorkouts.length / userData.workoutData.length * 100);
+  
+  return `- Trainingskonsequenz: ${consistency.toFixed(0)}% (${completedWorkouts.length}/${userData.workoutData.length} Tage)
+${avgDuration ? `- Durchschnittliche Dauer: ${avgDuration.toFixed(0)}min` : ''}
+${avgIntensity ? `- Durchschnittliche Intensität: ${avgIntensity.toFixed(1)}/10` : ''}
+- Trainingsarten: ${[...new Set(completedWorkouts.map((w: any) => w.workout_type))].join(', ')}`;
+})() : 'Mehr Daten benötigt für Performance-Analyse'}
+` : '- Keine detaillierten Trainingsdaten verfügbar'}
+
+VOLLSTÄNDIGES NUTZERPROFIL:
+${userData.profileData ? `
+👤 PERSÖNLICHE DATEN:
+- Name: ${userData.profileData.display_name || firstName}
+- Alter: ${userData.profileData.age || 'Nicht angegeben'} Jahre
+- Geschlecht: ${userData.profileData.gender || 'Nicht angegeben'}
+- Größe: ${userData.profileData.height || 'Nicht angegeben'}cm
+- Aktuelles Gewicht: ${userData.profileData.weight || 'Nicht angegeben'}kg
+- Ziel: ${userData.profileData.goal || 'Nicht definiert'}
+- Aktivitätslevel: ${userData.profileData.activity_level || 'Nicht angegeben'}
+${userData.profileData.body_fat_percentage ? `- Körperfettanteil: ${userData.profileData.body_fat_percentage}%` : ''}
+${userData.profileData.muscle_mass_kg ? `- Muskelmasse: ${userData.profileData.muscle_mass_kg}kg` : ''}
+` : '- Basisprofil vorhanden, detaillierte Daten können ergänzt werden'}
+
 ${hasTrainingPlusAccess && detailedExerciseData ? `
 🏋️ TRAINING+ DETAILANALYSE (PREMIUM FEATURE):
 📊 GESAMTSTATISTIKEN:
@@ -1065,6 +1159,11 @@ WICHTIGE ANWEISUNGEN:
 - Gib konkrete, umsetzbare Ratschläge basierend auf den Daten
 - Berücksichtige das Ziel "${profile?.goal}" in allen Empfehlungen
 - ${profile?.muscle_maintenance_priority ? 'Fokussiere stark auf Muskelerhalt und Protein' : ''}
+- NUTZE ALLE VERFÜGBAREN DATEN: Schlaf, Libido, Motivation, Körpermaße, Fortschrittsfotos, detaillierte Trainingshistorie
+- Bei Schlafproblemen oder niedriger Libido/Motivation: Verbinde dies mit Ernährung, Training und Regeneration
+- Bei Körpermaß-Veränderungen: Analysiere Zusammenhänge mit Ernährung und Training
+- Bei Trainingsinkonsistenz: Gib konkrete, personalisierte Lösungsansätze basierend auf Schlaf und Motivation
+- Erkenne Muster zwischen allen Datenpunkten (Schlaf ↔ Training ↔ Ernährung ↔ Motivation ↔ Fortschritt)
 - ${personality === 'integral' ? 'NUTZE AKTIV die 4-Quadranten-Analyse: Individual-Innerlich (Gedanken/Gefühle), Individual-Äußerlich (Verhalten/Körper), Kollektiv-Innerlich (Kultur/Werte), Kollektiv-Äußerlich (Systeme/Umgebung)' : ''}
 - ${personality === 'integral' ? 'Verwende Entwicklungsstufen-Denken und identifiziere nächste Wachstumsschritte' : ''}
 - ${personality === 'integral' ? 'Stelle genius-level Fragen die neue Perspektiven eröffnen' : ''}

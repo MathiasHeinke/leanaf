@@ -52,6 +52,55 @@ interface TrendData {
   weeklyGoalReach: number;
 }
 
+interface SleepData {
+  id: string;
+  sleep_hours: number;
+  sleep_quality: number;
+  date: string;
+  libido?: number;
+  motivation?: number;
+  stress_level?: number;
+}
+
+interface BodyMeasurement {
+  id: string;
+  date: string;
+  chest?: number;
+  waist?: number;
+  belly?: number;
+  hips?: number;
+  thigh?: number;
+  arms?: number;
+  neck?: number;
+  photo_url?: string;
+  notes?: string;
+}
+
+interface WorkoutData {
+  id: string;
+  date: string;
+  workout_type: string;
+  duration_minutes?: number;
+  intensity?: number;
+  did_workout: boolean;
+  distance_km?: number;
+  steps?: number;
+  notes?: string;
+}
+
+interface ProfileData {
+  user_id: string;
+  display_name?: string;
+  age?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  goal?: string;
+  activity_level?: string;
+  body_fat_percentage?: number;
+  muscle_mass_kg?: number;
+}
+
 const TrainingMarkus = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -62,6 +111,11 @@ const TrainingMarkus = () => {
   const [todaysMeals, setTodaysMeals] = useState<MealData[]>([]);
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [trendData, setTrendData] = useState<TrendData | null>(null);
+  const [sleepData, setSleepData] = useState<SleepData[]>([]);
+  const [bodyMeasurements, setBodyMeasurements] = useState<BodyMeasurement[]>([]);
+  const [workoutData, setWorkoutData] = useState<WorkoutData[]>([]);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [progressPhotos, setProgressPhotos] = useState<string[]>([]);
 
   const loadWeightHistoryData = useCallback(async () => {
     if (!user?.id) return;
@@ -91,7 +145,12 @@ const TrainingMarkus = () => {
           loadDailyGoals(),
           loadTodaysMeals(),
           loadHistoryData(),
-          loadWeightHistoryData()
+          loadWeightHistoryData(),
+          loadSleepData(),
+          loadBodyMeasurements(),
+          loadWorkoutData(),
+          loadProfileData(),
+          loadProgressPhotos()
         ]);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -272,6 +331,108 @@ const TrainingMarkus = () => {
     }
   };
 
+  const loadSleepData = async () => {
+    if (!user) return;
+    
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: sleepData, error } = await supabase
+        .from('sleep_tracking')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      setSleepData(sleepData || []);
+    } catch (error) {
+      console.error('Error loading sleep data:', error);
+      setSleepData([]);
+    }
+  };
+
+  const loadBodyMeasurements = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: measurements, error } = await supabase
+        .from('body_measurements')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(30);
+      
+      if (error) throw error;
+      setBodyMeasurements(measurements || []);
+    } catch (error) {
+      console.error('Error loading body measurements:', error);
+      setBodyMeasurements([]);
+    }
+  };
+
+  const loadWorkoutData = async () => {
+    if (!user) return;
+    
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { data: workouts, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false });
+      
+      if (error) throw error;
+      setWorkoutData(workouts || []);
+    } catch (error) {
+      console.error('Error loading workout data:', error);
+      setWorkoutData([]);
+    }
+  };
+
+  const loadProfileData = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error) throw error;
+      setProfileData(profile);
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      setProfileData(null);
+    }
+  };
+
+  const loadProgressPhotos = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: measurements, error } = await supabase
+        .from('body_measurements')
+        .select('photo_url')
+        .eq('user_id', user.id)
+        .not('photo_url', 'is', null)
+        .order('date', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      const photos = measurements?.map(m => m.photo_url).filter(Boolean) || [];
+      setProgressPhotos(photos);
+    } catch (error) {
+      console.error('Error loading progress photos:', error);
+      setProgressPhotos([]);
+    }
+  };
+
   // Calculate today's totals
   const todaysTotals = todaysMeals.reduce(
     (sum, meal) => ({
@@ -336,6 +497,11 @@ const TrainingMarkus = () => {
           historyData={historyData}
           trendData={trendData}
           weightHistory={weightHistory}
+          sleepData={sleepData}
+          bodyMeasurements={bodyMeasurements}
+          workoutData={workoutData}
+          profileData={profileData}
+          progressPhotos={progressPhotos}
         />
     </div>
   );
