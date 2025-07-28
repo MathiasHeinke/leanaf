@@ -810,7 +810,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </Collapsible>
 
         {/* Input */}
-        <div className="p-3">
+        <div className="px-3 py-1">
           <div className="flex items-stretch gap-3">
             {/* Textarea - takes full available height */}
             <Textarea
