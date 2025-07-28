@@ -522,9 +522,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-210px)]">
+    <div className="flex flex-col h-[calc(100vh-77px)] absolute top-[77px] left-0 right-0">
         <div className="flex-1 p-0 overflow-hidden">
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-[calc(100%-120px)]">
             <div className="p-4">
               <div className="space-y-4 pb-4">
               {messages.map((message) => (
@@ -809,7 +809,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </Collapsible>
 
         {/* Input */}
-        <div className="p-4">
+        <div className="sticky bottom-0 p-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 border-t">
           <div className="flex items-center space-x-2">
             <Textarea
               value={inputText}

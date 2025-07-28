@@ -806,9 +806,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         </Card>
 
       {/* Chat Area */}
-      <Card className="flex flex-col h-[calc(100vh-210px)]">
-        <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-full">
+      <Card className="flex flex-col h-[calc(100vh-77px)] absolute top-[77px] left-0 right-0">
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <ScrollArea className="h-[calc(100%-120px)]">
             <div className="p-4">
               {isLoading ? (
                 <div className="flex items-center justify-center h-32">
@@ -1066,7 +1066,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         )}
         
         {/* Input Area */}
-        <div className="border-t p-3">
+        <div className="sticky bottom-0 border-t p-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
           {uploadedImages.length > 0 && (
             <div className="mb-3">
               <div className="flex items-center space-x-2 mb-2">
