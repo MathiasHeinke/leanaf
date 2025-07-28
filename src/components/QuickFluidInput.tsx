@@ -3,6 +3,7 @@ import { CollapsibleQuickInput } from './CollapsibleQuickInput';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
+import { NumericInput } from './ui/numeric-input';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { Calendar } from './ui/calendar';
@@ -70,7 +71,7 @@ export const QuickFluidInput = () => {
   const [loading, setLoading] = useState(false);
   const [selectedFluid, setSelectedFluid] = useState<string>('');
   const [customName, setCustomName] = useState('');
-  const [amount, setAmount] = useState<number>(250);
+  const [amount, setAmount] = useState<string>('250');
   const [notes, setNotes] = useState('');
   const [abstinenceStartDate, setAbstinenceStartDate] = useState<Date | undefined>(undefined);
   const [abstinenceReason, setAbstinenceReason] = useState('');
@@ -153,7 +154,8 @@ export const QuickFluidInput = () => {
   };
 
   const handleAddFluid = async () => {
-    if (!user || (!selectedFluid && !customName) || !amount) {
+    const amountValue = parseFloat(amount);
+    if (!user || (!selectedFluid && !customName) || !amount || isNaN(amountValue)) {
       toast.error('Bitte alle Pflichtfelder ausfüllen');
       return;
     }
@@ -165,7 +167,7 @@ export const QuickFluidInput = () => {
         user_id: user.id,
         fluid_id: selectedFluid || null,
         custom_name: selectedFluid ? null : customName,
-        amount_ml: amount,
+        amount_ml: amountValue,
         notes: notes || null
       };
 
@@ -180,7 +182,7 @@ export const QuickFluidInput = () => {
       // Reset form
       setSelectedFluid('');
       setCustomName('');
-      setAmount(250);
+      setAmount('250');
       setNotes('');
       setShowAddForm(false);
       
@@ -199,7 +201,7 @@ export const QuickFluidInput = () => {
     setSelectedFluid(value);
     const fluid = fluids.find(f => f.id === value);
     if (fluid) {
-      setAmount(fluid.default_amount);
+      setAmount(String(fluid.default_amount));
     }
   };
 
@@ -458,11 +460,12 @@ export const QuickFluidInput = () => {
               <label className="text-xs font-medium text-muted-foreground">
                 Menge (ml)
               </label>
-              <Input
-                type="number"
+              <NumericInput
                 placeholder="250"
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                onChange={setAmount}
+                allowDecimals={false}
+                min={1}
               />
             </div>
 
@@ -480,7 +483,7 @@ export const QuickFluidInput = () => {
 
             <Button
               onClick={handleAddFluid}
-              disabled={loading || (!selectedFluid && !customName) || !amount}
+              disabled={loading || (!selectedFluid && !customName) || !amount || isNaN(parseFloat(amount))}
               className="w-full"
               size="sm"
             >
