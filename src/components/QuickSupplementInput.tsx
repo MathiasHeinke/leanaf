@@ -256,13 +256,22 @@ export const QuickSupplementInput = () => {
     supplement.frequency_days === 1 || supplement.frequency_days === null
   );
 
+  // Calculate completion status
+  const totalToday = todaySupplements.reduce((sum, supplement) => sum + supplement.timing.length, 0);
+  const takenToday = todaySupplements.reduce((sum, supplement) => {
+    const taken = Object.values(todayIntake[supplement.id] || {}).filter(Boolean).length;
+    return sum + taken;
+  }, 0);
+  const isCompleted = hasSupplements && totalToday > 0 && takenToday > 0;
+
   return (
     <CollapsibleQuickInput
       title="Supplemente"
       icon={<Pill className="h-4 w-4" />}
       theme="blue"
-      isCompleted={false}
+      isCompleted={isCompleted}
       defaultOpen={false}
+      completedText={hasSupplements ? `${takenToday}/${totalToday} eingenommen` : undefined}
     >
       <div className="space-y-4">
         {/* Today's Supplements Check-off */}

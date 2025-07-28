@@ -273,14 +273,20 @@ export const QuickFluidInput = () => {
   const hasAlcoholToday = todaysFluids.some(f => f.has_alcohol);
   const totalWater = getTotalWaterIntake();
   const totalCalories = getTotalCaloriesFromDrinks();
+  
+  // Calculate completion status
+  const hasFluidEntries = todaysFluids.length > 0;
+  const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
+  const isCompleted = hasFluidEntries;
 
   return (
     <CollapsibleQuickInput
       title="Flüssigkeiten"
       icon={<Droplets className="h-4 w-4" />}
       theme="cyan"
-      isCompleted={false}
+      isCompleted={isCompleted}
       defaultOpen={false}
+      completedText={hasFluidEntries ? `${totalFluidAmount}ml getrunken` : undefined}
     >
       <div className="space-y-4">
         {/* Summary Stats */}

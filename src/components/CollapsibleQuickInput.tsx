@@ -11,6 +11,7 @@ interface CollapsibleQuickInputProps {
   defaultOpen?: boolean;
   className?: string;
   theme?: 'blue' | 'indigo' | 'cyan' | 'sky' | 'teal';
+  completedText?: string;
 }
 
 const themeStyles = {
@@ -63,7 +64,8 @@ export const CollapsibleQuickInput = ({
   children,
   defaultOpen = false,
   className,
-  theme = 'blue'
+  theme = 'blue',
+  completedText
 }: CollapsibleQuickInputProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const styles = themeStyles[theme];
@@ -92,7 +94,9 @@ export const CollapsibleQuickInput = ({
         </div>
         <div className="flex items-center gap-2">
           {isCompleted ? (
-            <span className={cn("text-xs font-medium", styles.completedText)}>✓ Erledigt</span>
+            <span className={cn("text-xs font-medium", styles.completedText)}>
+              {completedText || '✓ Erledigt'}
+            </span>
           ) : (
             <span className="text-xs font-medium text-muted-foreground">jetzt ausfüllen</span>
           )}
