@@ -196,7 +196,7 @@ export const FloatingCoachChat = ({
                       {message.role === 'assistant' && (
                         <div className="flex items-center gap-1 mb-2">
                           <Brain className="h-3 w-3 text-accent" />
-                          <span className="text-accent font-medium text-xs">{t('coach.kaloaiCoach')}</span>
+                          <span className="text-accent font-medium text-xs">{t('coach.getleanaiCoach')}</span>
                         </div>
                       )}
                       <p className="leading-relaxed">{message.content}</p>

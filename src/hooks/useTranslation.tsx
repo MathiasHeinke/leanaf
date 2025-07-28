@@ -253,7 +253,7 @@ const translations = {
     'coach.close': 'Schließen',
     'coach.recording': 'Aufnahme läuft...',
     'coach.processing': 'Verarbeitung...',
-    'coach.kaloaiCoach': 'GetleanAI Coach',
+    'coach.getleanaiCoach': 'GetleanAI Coach',
     
     // Profile
     'profile.title': 'Profil',
@@ -749,7 +749,7 @@ const translations = {
     'coach.close': 'Close',
     'coach.recording': 'Recording...',
     'coach.processing': 'Processing...',
-    'coach.kaloaiCoach': 'GetleanAI Coach',
+    'coach.getleanaiCoach': 'GetleanAI Coach',
     
     // Profile
     'profile.title': 'Profile',
