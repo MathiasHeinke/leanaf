@@ -40,10 +40,10 @@ export const calculateTrainingPrognosis = ({
   const weeks = timeRange === 'week' ? 1 : timeRange === 'month' ? 4 : 52;
   const weeklyWorkouts = totalWorkouts / weeks;
 
-  // Calculate average RPE from advanced sessions
+  // Calculate average RPE from advanced sessions - fix data structure
   const allSets = workoutData.flatMap((day) => 
     day.advancedSessions.flatMap((session: any) => 
-      session.exercises?.flatMap((ex: any) => ex.sets || []) || []
+      session.exercise_sets || []
     )
   );
   const rpeValues = allSets.filter((set: any) => set.rpe).map((set: any) => set.rpe);
@@ -56,16 +56,16 @@ export const calculateTrainingPrognosis = ({
     return sum + (weight * reps);
   }, 0);
 
-  // Calculate volume trend
+  // Calculate volume trend - fix data structure
   const recentVolume = workoutData.slice(0, Math.floor(workoutData.length / 2))
     .flatMap((day) => day.advancedSessions.flatMap((session: any) => 
-      session.exercises?.flatMap((ex: any) => ex.sets || []) || []
+      session.exercise_sets || []
     ))
     .reduce((sum, set: any) => sum + ((set.weight_kg || 0) * (set.reps || 0)), 0);
   
   const olderVolume = workoutData.slice(Math.floor(workoutData.length / 2))
     .flatMap((day) => day.advancedSessions.flatMap((session: any) => 
-      session.exercises?.flatMap((ex: any) => ex.sets || []) || []
+      session.exercise_sets || []
     ))
     .reduce((sum, set: any) => sum + ((set.weight_kg || 0) * (set.reps || 0)), 0);
 
@@ -81,9 +81,9 @@ export const calculateTrainingPrognosis = ({
       if (!quickWorkout) return null;
       
       const sessionRPEs = day.advancedSessions.flatMap((session: any) => 
-        session.exercises?.flatMap((ex: any) => 
-          ex.sets?.filter((set: any) => set.rpe).map((set: any) => set.rpe) || []
-        ) || []
+        (session.exercise_sets || [])
+          .filter((set: any) => set.rpe)
+          .map((set: any) => set.rpe)
       );
       
       if (sessionRPEs.length === 0) return null;
@@ -155,12 +155,45 @@ export const calculateTrainingPrognosis = ({
     });
   }
 
-  // Calculate top progressions (mock data for now)
-  const topProgressions = [
-    { exercise: 'Bankdrücken', improvement: '+5kg', trend: 'up' },
-    { exercise: 'Kniebeugen', improvement: '+3kg', trend: 'up' },
-    { exercise: 'Kreuzheben', improvement: '+2kg', trend: 'stable' }
-  ].slice(0, 3);
+  // Calculate real progressions from exercise data
+  const exerciseProgressions = new Map<string, { weights: number[], dates: string[] }>();
+  
+  // Collect exercise data by name
+  workoutData.forEach(day => {
+    day.advancedSessions.forEach((session: any) => {
+      (session.exercise_sets || []).forEach((set: any) => {
+        if (set.exercises?.name && set.weight_kg) {
+          const exerciseName = set.exercises.name;
+          if (!exerciseProgressions.has(exerciseName)) {
+            exerciseProgressions.set(exerciseName, { weights: [], dates: [] });
+          }
+          const progression = exerciseProgressions.get(exerciseName)!;
+          progression.weights.push(set.weight_kg);
+          progression.dates.push(day.date);
+        }
+      });
+    });
+  });
+
+  // Calculate top progressions based on real data
+  const topProgressions = Array.from(exerciseProgressions.entries())
+    .map(([exercise, data]) => {
+      if (data.weights.length < 2) return null;
+      const firstWeight = data.weights[data.weights.length - 1]; // oldest
+      const lastWeight = data.weights[0]; // newest
+      const improvement = lastWeight - firstWeight;
+      
+      if (improvement <= 0) return null;
+      
+      return {
+        exercise,
+        improvement: `+${improvement.toFixed(1)}kg`,
+        trend: 'up'
+      };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => parseFloat(b.improvement.replace('+', '').replace('kg', '')) - parseFloat(a.improvement.replace('+', '').replace('kg', '')))
+    .slice(0, 3) as any[];
 
   return {
     weeklyWorkouts,
