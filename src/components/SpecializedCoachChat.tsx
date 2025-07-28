@@ -745,8 +745,33 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       const assistantMessage = coachResponse.response || coachResponse.reply;
       
       // Check for exercise data extraction if this is a workout coach
-      if ((coach.id === 'sascha' || coach.id === 'markus') && (coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData)) {
-        setExercisePreview(coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData);
+      if ((coach.id === 'sascha' || coach.id === 'markus')) {
+        // Call extract-exercise-data function to save to database
+        try {
+          const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
+            body: {
+              userId: user.id,
+              userMessage,
+              mediaUrls: uploadedImages
+            }
+          });
+
+          if (!extractError && exerciseData?.success && exerciseData?.exercises?.length > 0) {
+            setExercisePreview({
+              exercise_name: exerciseData.exercises[0].exercise_name,
+              sets: exerciseData.exercises[0].sets || [],
+              overall_rpe: exerciseData.exercises[0].overall_rpe
+            });
+            toast.success('Übung erfolgreich gespeichert!');
+          } else {
+            // Fallback to local extraction for preview
+            await extractExerciseDataFromContext(userMessage, assistantMessage);
+          }
+        } catch (error) {
+          console.error('Error calling extract-exercise-data:', error);
+          // Fallback to local extraction
+          await extractExerciseDataFromContext(userMessage, assistantMessage);
+        }
       } else {
         // Try to extract exercise data from the conversation context
         await extractExerciseDataFromContext(userMessage, assistantMessage);
