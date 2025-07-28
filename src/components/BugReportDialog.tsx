@@ -3,6 +3,7 @@ import { Bug, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { MediaUploadZone } from '@/components/MediaUploadZone';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export const BugReportDialog = ({ trigger }: BugReportDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
+  const [screenshots, setScreenshots] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
 
@@ -60,6 +62,7 @@ export const BugReportDialog = ({ trigger }: BugReportDialogProps) => {
           user_id: user.id,
           category,
           description: description.trim(),
+          screenshot_url: screenshots.length > 0 ? screenshots[0].url : null
         });
 
       if (error) throw error;
@@ -81,6 +84,11 @@ export const BugReportDialog = ({ trigger }: BugReportDialogProps) => {
   const handleReset = () => {
     setCategory('');
     setDescription('');
+    setScreenshots([]);
+  };
+
+  const handleMediaUploaded = (urls: string[]) => {
+    setScreenshots(urls.map(url => ({ url, type: 'image' as const })));
   };
 
   return (
@@ -135,6 +143,16 @@ export const BugReportDialog = ({ trigger }: BugReportDialogProps) => {
               placeholder="Beschreibe das Problem so detailliert wie möglich:&#10;- Was ist passiert?&#10;- Was hast du erwartet?&#10;- Wann tritt es auf?&#10;- Welche Schritte führen zum Problem?"
               className="mt-1"
               rows={6}
+            />
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium">Screenshots (optional)</Label>
+            <MediaUploadZone
+              onMediaUploaded={handleMediaUploaded}
+              maxFiles={3}
+              accept={['.png', '.jpg', '.jpeg', '.webp']}
+              className="mt-2"
             />
           </div>
 

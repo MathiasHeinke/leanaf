@@ -1036,6 +1036,83 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_requests: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          estimated_effort: string | null
+          id: string
+          implementation_notes: string | null
+          priority: string
+          status: string
+          target_version: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          vote_count: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          estimated_effort?: string | null
+          id?: string
+          implementation_notes?: string | null
+          priority?: string
+          status?: string
+          target_version?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          vote_count?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          estimated_effort?: string | null
+          id?: string
+          implementation_notes?: string | null
+          priority?: string
+          status?: string
+          target_version?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          vote_count?: number
+        }
+        Relationships: []
+      }
+      feature_votes: {
+        Row: {
+          created_at: string
+          feature_request_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feature_request_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feature_request_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_votes_feature_request_id_fkey"
+            columns: ["feature_request_id"]
+            isOneToOne: false
+            referencedRelation: "feature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       food_aliases: {
         Row: {
           alias: string
@@ -1629,6 +1706,62 @@ export type Database = {
           user_rating?: number | null
         }
         Relationships: []
+      }
+      roadmap_items: {
+        Row: {
+          category: string
+          completion_percentage: number | null
+          created_at: string
+          description: string
+          estimated_completion: string | null
+          feature_request_id: string | null
+          id: string
+          is_public: boolean
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          category: string
+          completion_percentage?: number | null
+          created_at?: string
+          description: string
+          estimated_completion?: string | null
+          feature_request_id?: string | null
+          id?: string
+          is_public?: boolean
+          priority?: string
+          status: string
+          title: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          category?: string
+          completion_percentage?: number | null
+          created_at?: string
+          description?: string
+          estimated_completion?: string | null
+          feature_request_id?: string | null
+          id?: string
+          is_public?: boolean
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_items_feature_request_id_fkey"
+            columns: ["feature_request_id"]
+            isOneToOne: false
+            referencedRelation: "feature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_formchecks: {
         Row: {

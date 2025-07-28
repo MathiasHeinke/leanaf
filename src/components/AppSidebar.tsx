@@ -13,7 +13,9 @@ import {
   LogOut,
   Star,
   Award,
-  Crown
+  Crown,
+  Lightbulb,
+  MapPin
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { BugReportDialog } from "./BugReportDialog";
+import { FeatureRequestDialog } from "./FeatureRequestDialog";
 import { LevelBadge } from "./LevelBadge";
 
 const navigationItems = [
@@ -47,6 +50,8 @@ const settingsItems = [
   { title: "Subscription", url: "/subscription", icon: CreditCard, key: "header.subscription" },
   { title: "Erfolge", url: "/achievements", icon: Trophy },
   { title: "Wissenschaft", url: "/science", icon: Microscope },
+  { title: "Features", url: "/features", icon: Lightbulb },
+  { title: "Roadmap", url: "/roadmap", icon: MapPin },
 ];
 
 export function AppSidebar() {
@@ -218,6 +223,21 @@ export function AppSidebar() {
                     >
                       <Bug className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
                       {!collapsed && <span>Bug melden</span>}
+                    </SidebarMenuButton>
+                  }
+                />
+              </SidebarMenuItem>
+
+              {/* Feature Request */}
+              <SidebarMenuItem>
+                <FeatureRequestDialog 
+                  trigger={
+                    <SidebarMenuButton 
+                      className="hover:bg-accent/50 w-full justify-start"
+                      size={collapsed ? "sm" : "default"}
+                    >
+                      <Lightbulb className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                      {!collapsed && <span>Feature anfragen</span>}
                     </SidebarMenuButton>
                   }
                 />

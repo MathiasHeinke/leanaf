@@ -20,6 +20,8 @@ import TrainingSascha from "./pages/TrainingSascha";
 import HistoryPage from "./pages/History";
 import Achievements from "./pages/Achievements";
 import Science from "./pages/Science";
+import Features from "./pages/Features";
+import Roadmap from "./pages/Roadmap";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +54,8 @@ const App = () => (
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/science" element={<Science />} />
+                      <Route path="/features" element={<Features />} />
+                      <Route path="/roadmap" element={<Roadmap />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
