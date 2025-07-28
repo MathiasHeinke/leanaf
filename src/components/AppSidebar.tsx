@@ -15,7 +15,10 @@ import {
   Award,
   Crown,
   Lightbulb,
-  MapPin
+  MapPin,
+  FileText,
+  Shield,
+  Info
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,6 +55,12 @@ const settingsItems = [
   { title: "Wissenschaft", url: "/science", icon: Microscope },
   { title: "Features", url: "/features", icon: Lightbulb },
   { title: "Roadmap", url: "/roadmap", icon: MapPin },
+];
+
+const legalItems = [
+  { title: "AGB", url: "/terms", icon: FileText },
+  { title: "Datenschutz", url: "/privacy", icon: Shield },
+  { title: "Impressum", url: "/imprint", icon: Info },
 ];
 
 export function AppSidebar() {
@@ -242,6 +251,36 @@ export function AppSidebar() {
                   }
                 />
               </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Legal */}
+        <SidebarGroup>
+          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
+            Rechtliches
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {legalItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton 
+                    asChild 
+                    className={getNavClass(item.url)}
+                    size={collapsed ? "sm" : "default"}
+                  >
+                    <button
+                      onClick={() => navigate(item.url)}
+                      className="flex items-center w-full"
+                    >
+                      <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                      {!collapsed && (
+                        <span>{item.title}</span>
+                      )}
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
               
               {/* Logout */}
               <SidebarMenuItem>
