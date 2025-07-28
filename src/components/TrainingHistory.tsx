@@ -124,19 +124,19 @@ export const TrainingHistory: React.FC<TrainingHistoryProps> = ({
             <div className="grid grid-cols-3 gap-4">
               <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{totalSessions}</div>
+                  <div className="text-2xl font-bold text-foreground">{totalSessions}</div>
                   <p className="text-sm font-medium text-foreground">Sessions</p>
                 </CardContent>
               </Card>
               <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-secondary">{totalSets}</div>
+                  <div className="text-2xl font-bold text-foreground">{totalSets}</div>
                   <p className="text-sm font-medium text-foreground">Sätze</p>
                 </CardContent>
               </Card>
               <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-accent">{Math.round(totalVolume).toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-foreground">{Math.round(totalVolume).toLocaleString()}</div>
                   <p className="text-sm font-medium text-foreground">kg Volumen</p>
                 </CardContent>
               </Card>
