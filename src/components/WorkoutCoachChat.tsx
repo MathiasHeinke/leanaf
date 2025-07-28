@@ -199,9 +199,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       const analysisType = isFormcheck ? 'form_analysis' : 'workout_analysis';
       setIsFormcheckMode(isFormcheck);
 
-      // Provide default message if user sends only media without text
-      const defaultMessage = isFormcheck ? 'Bewerte meine Trainingsform.' : 'Analysiere mein Training und gib mir Feedback.';
-      const finalUserMessage = userMessage.trim() || defaultMessage;
+      // Use the analysis type prompt if no user message is provided
+      const defaultMessage = userMessage.trim() || getAnalysisPrompt(analysisType);
 
       const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
         body: {
@@ -210,7 +209,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
           mediaType: 'mixed',
           analysisType,
           coachPersonality: 'sascha',
-          userQuestion: finalUserMessage,
+          userQuestion: defaultMessage,
           userProfile: {
             goal: 'muscle_building',
             experience_level: 'intermediate'
