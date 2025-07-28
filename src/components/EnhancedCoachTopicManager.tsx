@@ -119,118 +119,74 @@ export const EnhancedCoachTopicManager = () => {
 
   const loadCoachData = useCallback(async (forceReload = false, attempt = 1) => {
     if (!selectedCoach) {
-      console.log('🚫 No coach selected, skipping data load');
       setCoachTopics([]);
       setCoachStatus(null);
-      setRetryCount(0);
       return;
     }
 
-    const timestamp = new Date().toISOString();
-    console.log(`🔍 [${timestamp}] Starting debug search for coach: ${selectedCoach}`);
     setIsLoadingTopics(true);
-    setRetryCount(attempt - 1);
-
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
     
     try {
-      // Debug: First check what coach_ids exist in the database
-      console.log(`🔍 [${timestamp}] Checking all existing coach_ids...`);
-      const { data: allCoaches, error: allCoachesError } = await supabase
+      // Load coach topics - try both exact match and case variations
+      let { data: topics, error } = await supabase
         .from('coach_topic_configurations')
-        .select('coach_id');
+        .select('*')
+        .eq('coach_id', selectedCoach)
+        .order('priority_level', { ascending: false });
 
-      if (allCoachesError) {
-        console.error(`❌ [${timestamp}] Error getting all coaches:`, allCoachesError);
-      } else {
-        const uniqueCoaches = [...new Set(allCoaches?.map(c => c.coach_id) || [])];
-        console.log(`📋 [${timestamp}] All coach_ids in database:`, uniqueCoaches);
+      // If no exact match, try case-insensitive
+      if (!topics || topics.length === 0) {
+        const { data: caseTopics, error: caseError } = await supabase
+          .from('coach_topic_configurations')
+          .select('*')
+          .ilike('coach_id', selectedCoach)
+          .order('priority_level', { ascending: false });
+        
+        if (!caseError && caseTopics) {
+          topics = caseTopics;
+          error = null;
+        }
       }
+
+      if (error) throw error;
+
+      // Transform the data to match our interface
+      const transformedTopics: CoachTopicConfig[] = (topics || []).map(topic => ({
+        ...topic,
+        search_keywords: Array.isArray(topic.search_keywords) 
+          ? topic.search_keywords.filter((k): k is string => typeof k === 'string')
+          : typeof topic.search_keywords === 'string' 
+            ? [topic.search_keywords]
+            : []
+      }));
       
-      // Try exact match first
-      console.log(`🎯 [${timestamp}] Trying exact match for coach: "${selectedCoach}"`);
-      const { count: exactCount, error: exactError } = await supabase
-        .from('coach_topic_configurations')
-        .select('*', { count: 'exact', head: true })
-        .eq('coach_id', selectedCoach);
-
-      if (exactError) {
-        console.error(`❌ [${timestamp}] Exact match error:`, exactError);
-      } else {
-        console.log(`🎯 [${timestamp}] Exact match result: ${exactCount || 0} topics`);
-      }
-
-      // Try case-insensitive match
-      console.log(`🔤 [${timestamp}] Trying case-insensitive match for coach: "${selectedCoach}"`);
-      const { count: caseCount, error: caseError } = await supabase
-        .from('coach_topic_configurations')
-        .select('*', { count: 'exact', head: true })
-        .ilike('coach_id', selectedCoach);
-
-      if (caseError) {
-        console.error(`❌ [${timestamp}] Case-insensitive match error:`, caseError);
-      } else {
-        console.log(`🔤 [${timestamp}] Case-insensitive match result: ${caseCount || 0} topics`);
-      }
-
-      // Try capitalized version
-      const capitalizedCoach = selectedCoach.charAt(0).toUpperCase() + selectedCoach.slice(1);
-      console.log(`🅰️ [${timestamp}] Trying capitalized version: "${capitalizedCoach}"`);
-      const { count: capCount, error: capError } = await supabase
-        .from('coach_topic_configurations')
-        .select('*', { count: 'exact', head: true })
-        .eq('coach_id', capitalizedCoach);
-
-      if (capError) {
-        console.error(`❌ [${timestamp}] Capitalized match error:`, capError);
-      } else {
-        console.log(`🅰️ [${timestamp}] Capitalized match result: ${capCount || 0} topics`);
-      }
-
-      // Use the best result
-      const finalCount = exactCount || caseCount || capCount || 0;
+      setCoachTopics(transformedTopics);
       
-      console.log(`📊 [${timestamp}] Final result: ${finalCount} topics for coach ${selectedCoach}`);
-      
-      // Show detailed results in toast
+      // Load coach pipeline status
+      const { data: statusData } = await supabase
+        .from('coach_pipeline_status')
+        .select('*')
+        .eq('coach_id', selectedCoach)
+        .maybeSingle();
+
+      setCoachStatus(statusData);
+
       toast({
-        title: "🔍 Database-Debug abgeschlossen",
-        description: `Exact: ${exactCount || 0} | Case-insensitive: ${caseCount || 0} | Capitalized: ${capCount || 0}`,
+        title: "Topics geladen",
+        description: `${topics?.length || 0} Topics für ${selectedCoach} gefunden`,
       });
 
-      // Set empty array - we're just debugging counts for now
-      setCoachTopics([]);
-      console.log(`✅ [${timestamp}] Debug search completed for ${selectedCoach}`);
-      
     } catch (error: any) {
-      console.error(`💥 [${timestamp}] Error in debug search (attempt ${attempt}):`, error);
-      
-      // Retry logic
-      if (attempt < 3 && !abortControllerRef.current?.signal.aborted) {
-        console.log(`🔄 [${timestamp}] Retrying debug search in ${attempt * 2} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
-        return loadCoachData(forceReload, attempt + 1);
-      }
-      
-      // Show error only on final attempt
-      if (attempt === 3) {
-        toast({
-          title: "❌ Debug-Suche fehlgeschlagen",
-          description: `Topics konnten nach ${attempt} Versuchen nicht gesucht werden`,
-          variant: "destructive"
-        });
-      }
-      
+      console.error('Error loading coach data:', error);
+      toast({
+        title: "Fehler beim Laden",
+        description: "Topics konnten nicht geladen werden",
+        variant: "destructive"
+      });
       setCoachTopics([]);
       setCoachStatus(null);
     } finally {
-      console.log(`🏁 [${timestamp}] Debug search completed (attempt ${attempt})`);
       setIsLoadingTopics(false);
-      abortControllerRef.current = null;
     }
   }, [selectedCoach, toast]);
 
