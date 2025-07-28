@@ -54,7 +54,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <GlobalHeader 
           onRefresh={() => setShowSubscriptionDebug(true)}
         />
-        <main className="container mx-auto px-3 pb-1 pt-2 max-w-md relative z-10 flex-1">
+        <main className="container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1">
           {children}
         </main>
         <Footer />
