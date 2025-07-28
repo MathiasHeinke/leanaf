@@ -2710,6 +2710,36 @@ export type Database = {
           },
         ]
       }
+      user_tracking_preferences: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          is_enabled: boolean
+          tracking_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_enabled?: boolean
+          tracking_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_enabled?: boolean
+          tracking_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_trials: {
         Row: {
           created_at: string

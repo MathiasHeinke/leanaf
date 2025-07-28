@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
 import { ProfileOnboardingOverlay } from '@/components/ProfileOnboardingOverlay';
 import { CompletionSuccessCard } from '@/components/CompletionSuccessCard';
+import { TrackingPreferences } from '@/components/TrackingPreferences';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { cn } from '@/lib/utils';
 
@@ -1103,6 +1104,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </div>
           )}
         </div>
+        
+        {/* 7. Tracking Preferences */}
+        <TrackingPreferences />
         </div>
 
         {/* Save Status */}

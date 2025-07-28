@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useTrackingPreferences } from "@/hooks/useTrackingPreferences";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -41,6 +42,7 @@ const Index = () => {
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
+  const { isTrackingEnabled } = useTrackingPreferences();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -399,6 +401,21 @@ const Index = () => {
   };
 
   const renderCardByType = (cardType: string) => {
+    // Check if tracking is enabled for this type
+    const trackingTypeMap = {
+      'sleep': 'sleep_tracking',
+      'weight': 'weight_tracking', 
+      'workout': 'workout_tracking',
+      'measurements': 'weight_tracking', // Body measurements grouped with weight tracking
+      'supplements': 'supplement_tracking',
+      'fluids': 'fluid_tracking'
+    };
+
+    const trackingType = trackingTypeMap[cardType as keyof typeof trackingTypeMap];
+    if (trackingType && !isTrackingEnabled(trackingType)) {
+      return null; // Don't render disabled tracking types
+    }
+
     switch (cardType) {
       case 'sleep':
         return (
@@ -502,7 +519,19 @@ const Index = () => {
             strategy={verticalListSortingStrategy}
           >
             <div className="space-y-4">
-              {cardOrder.map(cardType => renderCardByType(cardType))}
+              {/* Only render enabled tracking cards */}
+              {cardOrder.filter(cardType => {
+                const trackingTypeMap = {
+                  'sleep': 'sleep_tracking',
+                  'weight': 'weight_tracking',
+                  'workout': 'workout_tracking', 
+                  'measurements': 'weight_tracking',
+                  'supplements': 'supplement_tracking',
+                  'fluids': 'fluid_tracking'
+                };
+                const trackingType = trackingTypeMap[cardType as keyof typeof trackingTypeMap];
+                return !trackingType || isTrackingEnabled(trackingType);
+              }).map(cardType => renderCardByType(cardType))}
             </div>
           </SortableContext>
         </DndContext>
