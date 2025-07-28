@@ -182,7 +182,7 @@ export const TrainingDashboard: React.FC = () => {
       </div>
 
       {/* KI Training Coaches */}
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1">
         <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
               onClick={() => navigate('/training/sascha')}>
           <CardContent className="p-6">
