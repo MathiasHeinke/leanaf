@@ -35,6 +35,7 @@ import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
 import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dynamicCoachGreetings';
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
+import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { VideoCompressionProgress } from '@/components/VideoCompressionProgress';
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
@@ -136,6 +137,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [currentDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [exercisePreview, setExercisePreview] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -551,6 +553,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
 
       const assistantMessage = coachResponse.response || coachResponse.reply;
       
+      // Check for exercise data extraction if this is a workout coach
+      if ((coach.id === 'sascha' || coach.id === 'markus') && coachResponse.exerciseData) {
+        setExercisePreview(coachResponse.exerciseData);
+      }
+      
       // Split long messages into parts
       const messageParts = splitMessage(assistantMessage);
       
@@ -689,6 +696,36 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
   };
 
+  const handleExercisePreviewSave = async (exerciseData: any) => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('exercise_sessions')
+        .insert({
+          user_id: user.id,
+          exercise_name: exerciseData.exerciseName,
+          sets: exerciseData.sets,
+          overall_rpe: exerciseData.overallRpe || null,
+          session_date: new Date().toISOString().split('T')[0],
+          duration_minutes: null,
+          notes: 'Eingegeben über Coach Chat'
+        });
+
+      if (error) {
+        console.error('Error saving exercise:', error);
+        toast.error('Fehler beim Speichern der Übung');
+        return;
+      }
+
+      toast.success('Übung erfolgreich gespeichert!');
+      setExercisePreview(null);
+    } catch (error) {
+      console.error('Error in handleExercisePreviewSave:', error);
+      toast.error('Fehler beim Speichern der Übung');
+    }
+  };
+
   const getCoachColors = (color: string) => {
     switch (color) {
       case 'red':
@@ -769,7 +806,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         </Card>
 
       {/* Chat Area */}
-      <Card className="flex flex-col h-[600px]">
+      <Card className="flex flex-col h-[calc(100vh-200px)]">
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
@@ -1121,6 +1158,17 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
         </div>
       </Card>
+
+      {/* Exercise Preview Card */}
+      {exercisePreview && (
+        <div className="mt-4">
+          <ExercisePreviewCard
+            data={exercisePreview}
+            onSave={handleExercisePreviewSave}
+            onCancel={() => setExercisePreview(null)}
+          />
+        </div>
+      )}
       </div>
 
       {/* History Sidebar */}
