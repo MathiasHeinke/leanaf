@@ -554,8 +554,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       const assistantMessage = coachResponse.response || coachResponse.reply;
       
       // Check for exercise data extraction if this is a workout coach
-      if ((coach.id === 'sascha' || coach.id === 'markus') && coachResponse.exerciseData) {
-        setExercisePreview(coachResponse.exerciseData);
+      if ((coach.id === 'sascha' || coach.id === 'markus') && (coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData)) {
+        setExercisePreview(coachResponse.exerciseData || coachResponse.context?.trainingPlusAccess?.exerciseData);
       }
       
       // Split long messages into parts
@@ -806,7 +806,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         </Card>
 
       {/* Chat Area */}
-      <Card className="flex flex-col h-[calc(100dvh-180px)]">
+      <Card className="flex flex-col h-[calc(100dvh-210px)]">
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
