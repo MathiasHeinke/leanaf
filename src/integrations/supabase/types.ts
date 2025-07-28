@@ -1274,6 +1274,51 @@ export type Database = {
           },
         ]
       }
+      fluid_database: {
+        Row: {
+          alcohol_percentage: number | null
+          calories_per_100ml: number | null
+          category: string
+          created_at: string
+          default_amount: number | null
+          description: string | null
+          has_alcohol: boolean | null
+          has_caffeine: boolean | null
+          icon_name: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          alcohol_percentage?: number | null
+          calories_per_100ml?: number | null
+          category: string
+          created_at?: string
+          default_amount?: number | null
+          description?: string | null
+          has_alcohol?: boolean | null
+          has_caffeine?: boolean | null
+          icon_name?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          alcohol_percentage?: number | null
+          calories_per_100ml?: number | null
+          category?: string
+          created_at?: string
+          default_amount?: number | null
+          description?: string | null
+          has_alcohol?: boolean | null
+          has_caffeine?: boolean | null
+          icon_name?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       food_aliases: {
         Row: {
           alias: string
@@ -2358,6 +2403,39 @@ export type Database = {
           },
         ]
       }
+      user_alcohol_abstinence: {
+        Row: {
+          abstinence_reason: string | null
+          abstinence_start_date: string | null
+          created_at: string
+          id: string
+          is_abstinent: boolean
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          abstinence_reason?: string | null
+          abstinence_start_date?: string | null
+          created_at?: string
+          id?: string
+          is_abstinent?: boolean
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          abstinence_reason?: string | null
+          abstinence_start_date?: string | null
+          created_at?: string
+          id?: string
+          is_abstinent?: boolean
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_email_preferences: {
         Row: {
           activity_reminders: boolean | null
@@ -2402,6 +2480,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_fluids: {
+        Row: {
+          amount_ml: number
+          consumed_at: string
+          created_at: string
+          custom_name: string | null
+          date: string
+          fluid_id: string | null
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_ml: number
+          consumed_at?: string
+          created_at?: string
+          custom_name?: string | null
+          date?: string
+          fluid_id?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_ml?: number
+          consumed_at?: string
+          created_at?: string
+          custom_name?: string | null
+          date?: string
+          fluid_id?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_fluids_fluid_id_fkey"
+            columns: ["fluid_id"]
+            isOneToOne: false
+            referencedRelation: "fluid_database"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_food_corrections: {
         Row: {

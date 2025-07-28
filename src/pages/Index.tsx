@@ -12,6 +12,7 @@ import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
+import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
@@ -60,7 +61,7 @@ const Index = () => {
   // Card order state
   const [cardOrder, setCardOrder] = useState<string[]>(() => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
-    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements', 'supplements'];
+    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements', 'supplements', 'fluids'];
   });
 
   // Check authentication and redirect if needed
@@ -440,6 +441,12 @@ const Index = () => {
         return (
           <SortableCard key="supplements" id="supplements">
             <QuickSupplementInput />
+          </SortableCard>
+        );
+      case 'fluids':
+        return (
+          <SortableCard key="fluids" id="fluids">
+            <QuickFluidInput />
           </SortableCard>
         );
       default:
