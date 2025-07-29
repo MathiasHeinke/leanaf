@@ -42,6 +42,8 @@ import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { BugReportDialog } from "./BugReportDialog";
 import { FeatureRequestDialog } from "./FeatureRequestDialog";
 import { LevelBadge } from "./LevelBadge";
+import { useProfileCompletion } from "@/hooks/useProfileCompletion";
+import { Badge } from "@/components/ui/badge";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -72,6 +74,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { t } = useTranslation();
   const { userPoints } = usePointsSystem();
+  const { isProfileComplete } = useProfileCompletion();
   const navigate = useNavigate();
   const location = useLocation();
   const [hasMarketingRole, setHasMarketingRole] = useState<boolean>(false);
@@ -146,9 +149,20 @@ export function AppSidebar() {
   };
 
   const getNavClass = (path: string) => {
-    return isActive(path) 
+    const baseClass = isActive(path) 
       ? "bg-accent text-accent-foreground font-medium" 
       : "hover:bg-accent/50";
+    
+    // Disable navigation if profile not complete (except for Profile and Settings pages)
+    if (!isProfileComplete && path !== "/profile" && path !== "/account") {
+      return `${baseClass} opacity-50 cursor-not-allowed`;
+    }
+    
+    return baseClass;
+  };
+
+  const isNavDisabled = (path: string) => {
+    return !isProfileComplete && path !== "/profile" && path !== "/account";
   };
 
   return (
@@ -211,12 +225,24 @@ export function AppSidebar() {
                     size={collapsed ? "sm" : "default"}
                   >
                     <button
-                      onClick={() => navigate(item.url)}
-                      className="flex items-center w-full"
+                      onClick={() => {
+                        if (!isNavDisabled(item.url)) {
+                          navigate(item.url);
+                        }
+                      }}
+                      className="flex items-center w-full relative"
+                      disabled={isNavDisabled(item.url)}
                     >
                       <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
                       {!collapsed && (
-                        <span>{item.key ? t(item.key) : item.title}</span>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{item.key ? t(item.key) : item.title}</span>
+                          {item.url === "/profile" && !isProfileComplete && (
+                            <Badge variant="destructive" className="text-xs ml-2">
+                              Jetzt ausfüllen
+                            </Badge>
+                          )}
+                        </div>
                       )}
                     </button>
                   </SidebarMenuButton>

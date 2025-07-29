@@ -20,6 +20,8 @@ import { ProfileOnboardingOverlay } from '@/components/ProfileOnboardingOverlay'
 import { CompletionSuccessCard } from '@/components/CompletionSuccessCard';
 import { TrackingPreferences } from '@/components/TrackingPreferences';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { useProfileCompletion } from '@/hooks/useProfileCompletion';
+import { ProfileFieldIndicator } from '@/components/ProfileFieldIndicator';
 import { cn } from '@/lib/utils';
 
 
@@ -64,6 +66,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const { language, setLanguage } = useTranslation();
   const navigate = useNavigate();
   const { showProfileOnboarding, completeProfileOnboarding, showIndexOnboarding } = useOnboardingState();
+  const { completionStatus, isProfileComplete: profileComplete, refreshCompletion } = useProfileCompletion();
 
   // State for profile completion validation and success dialog
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -588,7 +591,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div>
+                <div className="relative">
                   <Label className="text-sm">Größe (cm)</Label>
                   <NumericInput
                     value={height}
@@ -596,8 +599,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     placeholder="175"
                     className={cn("mt-1", validationErrors.height && "border-red-500")}
                   />
+                  <ProfileFieldIndicator isComplete={completionStatus.height} />
                 </div>
-                <div>
+                <div className="relative">
                   <Label className="text-sm">Alter</Label>
                   <NumericInput
                     value={age}
@@ -605,8 +609,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     placeholder="30"
                     className={cn("mt-1", validationErrors.age && "border-red-500")}
                   />
+                  <ProfileFieldIndicator isComplete={completionStatus.age} />
                 </div>
-                <div>
+                <div className="relative">
                   <Label className="text-sm">Geschlecht</Label>
                   <Select value={gender} onValueChange={setGender}>
                     <SelectTrigger className={cn("mt-1", validationErrors.gender && "border-red-500")}>
@@ -617,6 +622,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       <SelectItem value="female">Weiblich</SelectItem>
                     </SelectContent>
                   </Select>
+                  <ProfileFieldIndicator isComplete={completionStatus.gender} />
                 </div>
               </div>
 
@@ -650,7 +656,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
           <Card>
             <CardContent className="space-y-4 pt-5">
-              <div>
+              <div className="relative">
                 <Label className="text-sm">Ziel</Label>
                 <Select value={goal} onValueChange={setGoal}>
                   <SelectTrigger className={cn("mt-1", validationErrors.goal && "border-red-500")}>
@@ -662,10 +668,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     <SelectItem value="gain">Gewicht aufbauen</SelectItem>
                   </SelectContent>
                 </Select>
+                <ProfileFieldIndicator isComplete={completionStatus.goal} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="relative">
                   <Label className="text-sm">Zielgewicht</Label>
                   <NumericInput
                     value={targetWeight}
@@ -673,6 +680,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     placeholder="70"
                     className="mt-1"
                   />
+                  <ProfileFieldIndicator isComplete={completionStatus.targetWeight} />
                 </div>
                 <div>
                   <Label className="text-sm">Zieldatum</Label>

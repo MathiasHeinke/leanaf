@@ -31,6 +31,9 @@ import { toast } from "sonner";
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { IndexOnboardingOverlay } from '@/components/IndexOnboardingOverlay';
+import { cn } from '@/lib/utils';
 
 
 const Index = () => {
@@ -43,6 +46,7 @@ const Index = () => {
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   const { isTrackingEnabled } = useTrackingPreferences();
+  const onboardingState = useOnboardingState();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -483,6 +487,17 @@ const Index = () => {
 
   return (
     <>
+      {onboardingState.showIndexOnboarding && (
+        <IndexOnboardingOverlay
+          isOpen={onboardingState.showIndexOnboarding}
+          onClose={onboardingState.completeIndexOnboarding}
+          onHighlightMealInput={() => {
+            onboardingState.completeIndexOnboarding();
+            setTimeout(() => onboardingState.highlightMealInput(), 500);
+          }}
+        />
+      )}
+      
       <div className="space-y-5">
         {/* Trial Banner */}
         <TrialBanner />
@@ -566,20 +581,36 @@ const Index = () => {
       {/* Floating Meal Input */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent">
         <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
-          <MealInput 
-            inputText={mealInputHook.inputText}
-            setInputText={mealInputHook.setInputText}
-            onSubmitMeal={mealInputHook.handleSubmitMeal}
-            onPhotoUpload={mealInputHook.handlePhotoUpload}
-            onVoiceRecord={mealInputHook.handleVoiceRecord}
-            isAnalyzing={mealInputHook.isAnalyzing}
-            isRecording={mealInputHook.isRecording}
-            isProcessing={mealInputHook.isProcessing}
-            uploadedImages={mealInputHook.uploadedImages}
-            onRemoveImage={mealInputHook.removeImage}
-            uploadProgress={mealInputHook.uploadProgress}
-            isUploading={mealInputHook.isUploading}
-          />
+          <div className={cn(
+            "relative",
+            onboardingState.mealInputHighlighted && "ring-4 ring-blue-500 ring-opacity-50 rounded-lg animate-pulse"
+          )}>
+            {onboardingState.mealInputHighlighted && (
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg z-10">
+                Gib hier deine erste Mahlzeit ein 👆
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
+              </div>
+            )}
+            <MealInput 
+              inputText={mealInputHook.inputText}
+              setInputText={mealInputHook.setInputText}
+              onSubmitMeal={() => {
+                mealInputHook.handleSubmitMeal();
+                if (onboardingState.mealInputHighlighted) {
+                  onboardingState.clearMealInputHighlight();
+                }
+              }}
+              onPhotoUpload={mealInputHook.handlePhotoUpload}
+              onVoiceRecord={mealInputHook.handleVoiceRecord}
+              isAnalyzing={mealInputHook.isAnalyzing}
+              isRecording={mealInputHook.isRecording}
+              isProcessing={mealInputHook.isProcessing}
+              uploadedImages={mealInputHook.uploadedImages}
+              onRemoveImage={mealInputHook.removeImage}
+              uploadProgress={mealInputHook.uploadProgress}
+              isUploading={mealInputHook.isUploading}
+            />
+          </div>
         </div>
       </div>
 
