@@ -1480,18 +1480,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
           
           {/* TEST BUTTON FOR DEBUGGING */}
-          <div className="mb-2 p-2 bg-yellow-100 rounded">
-            <Button 
-              onClick={() => {
-                console.log('TEST: Setting inputText to "TEST TEXT"');
-                setInputText("TEST TEXT");
-              }}
-              variant="outline"
-              size="sm"
-            >
-              TEST setInputText
-            </Button>
-          </div>
 
           <div className="flex space-x-2">
             <Textarea
