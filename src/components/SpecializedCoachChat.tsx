@@ -1024,13 +1024,15 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     if (!user?.id) return;
 
     try {
+      const today = new Date().toISOString().split('T')[0];
+      
       // Erst prüfen ob die Übung existiert oder erstellen
       let exerciseId;
       const { data: existingExercise } = await supabase
         .from('exercises')
         .select('id')
         .eq('name', exerciseData.exerciseName)
-        .single();
+        .maybeSingle();
 
       if (existingExercise) {
         exerciseId = existingExercise.id;
@@ -1054,29 +1056,56 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         exerciseId = newExercise.id;
       }
 
-      // Exercise Session erstellen
-      const { data: session, error: sessionError } = await supabase
+      // Schaue ob heute schon eine Session existiert
+      const { data: existingSession } = await supabase
         .from('exercise_sessions')
-        .insert({
-          user_id: user.id,
-          date: new Date().toISOString().split('T')[0],
-          session_name: `${exerciseData.exerciseName} Session`,
-          notes: 'Eingegeben über Coach Chat',
-          overall_rpe: exerciseData.overallRpe || null
-        })
-        .select('id')
-        .single();
+        .select('id, session_name')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (sessionError) {
-        console.error('Error creating session:', sessionError);
-        toast.error('Fehler beim Erstellen der Trainingseinheit');
-        return;
+      let sessionId;
+      let sessionName;
+
+      if (existingSession) {
+        // Nutze existierende Session
+        sessionId = existingSession.id;
+        sessionName = existingSession.session_name;
+      } else {
+        // Neue Session erstellen - versuche Workout-Typ zu bestimmen
+        const workoutType = exerciseData.exerciseName.toLowerCase().includes('deadlift') ? 'Pull Day' :
+                           exerciseData.exerciseName.toLowerCase().includes('bench') ? 'Push Day' :
+                           exerciseData.exerciseName.toLowerCase().includes('squat') ? 'Leg Day' :
+                           'Training Session';
+
+        const { data: newSession, error: sessionError } = await supabase
+          .from('exercise_sessions')
+          .insert({
+            user_id: user.id,
+            date: today,
+            session_name: workoutType,
+            notes: 'Eingegeben über Coach Chat',
+            start_time: new Date().toISOString(),
+            overall_rpe: exerciseData.overallRpe || null
+          })
+          .select('id, session_name')
+          .single();
+
+        if (sessionError) {
+          console.error('Error creating session:', sessionError);
+          toast.error('Fehler beim Erstellen der Trainingseinheit');
+          return;
+        }
+        sessionId = newSession.id;
+        sessionName = newSession.session_name;
       }
 
       // Sätze hinzufügen
       const setsToInsert = exerciseData.sets.map((set: any, index: number) => ({
         user_id: user.id,
-        session_id: session.id,
+        session_id: sessionId,
         exercise_id: exerciseId,
         set_number: index + 1,
         reps: set.reps,
@@ -1094,7 +1123,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         return;
       }
 
-      toast.success('Übung erfolgreich gespeichert!');
+      toast.success(`Übung zu "${sessionName}" hinzugefügt!`);
       setExercisePreview(null);
     } catch (error) {
       console.error('Error in handleExercisePreviewSave:', error);
