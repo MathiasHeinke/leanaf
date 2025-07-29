@@ -536,12 +536,16 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
   const handleMediaUploaded = (urls: string[]) => {
     setUploadedMedia(prev => [...prev, ...urls]);
-    // Auto-fill with analysis type label based on current selection
-    console.log('Media uploaded, current analysisType:', analysisType);
-    const label = getAnalysisTypeLabel(analysisType);
-    console.log('Setting input text to:', label);
-    setInputText(label);
   };
+
+  // Auto-fill input text when media is uploaded
+  useEffect(() => {
+    if (uploadedMedia.length > 0 && !inputText.trim()) {
+      const label = getAnalysisTypeLabel(analysisType);
+      console.log('Media uploaded, setting input text to:', label);
+      setInputText(label);
+    }
+  }, [uploadedMedia, analysisType]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-150px)]">
