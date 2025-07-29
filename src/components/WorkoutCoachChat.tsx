@@ -8,6 +8,7 @@ import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { FormcheckSummaryCard } from '@/components/FormcheckSummaryCard';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
+import { GlobalHeader } from '@/components/GlobalHeader';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -812,10 +813,39 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     setUploadedMedia(prev => [...prev, ...urls]);
   };
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-150px)]">
+  const clearConversation = async () => {
+    if (!user) return;
+    
+    try {
+      await supabase
+        .from('coach_conversations')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('coach_personality', 'sascha')
+        .eq('conversation_date', selectedDate || currentDate);
+      
+      setMessages([]);
+      toast.success('Gespräch gelöscht');
+    } catch (error) {
+      console.error('Error clearing conversation:', error);
+      toast.error('Fehler beim Löschen');
+    }
+  };
 
-      <div className="flex-1 overflow-hidden">
+  return (
+    <>
+      <GlobalHeader 
+        coachDropdownProps={{
+          coachName: "Sascha",
+          coachAvatar: "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png",
+          coachSpecialty: "Krafttraining & Formcheck",
+          onHistory: () => setShowHistory(true),
+          onDelete: clearConversation
+        }}
+      />
+      
+      <div className="flex flex-col h-[calc(100vh-150px)]">
+        <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
               <div className="space-y-4 pb-4">
@@ -1216,5 +1246,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };
