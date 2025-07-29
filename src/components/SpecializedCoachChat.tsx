@@ -27,8 +27,6 @@ import {
   Activity,
   Pill
 } from 'lucide-react';
-import { EnhancedMobileCoachChat } from '@/components/EnhancedMobileCoachChat';
-import { useIsMobile } from '@/hooks/use-mobile';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -140,7 +138,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
 }) => {
   const { user } = useAuth();
   const { stopTimer, hasActiveTimer } = useWorkoutTimer();
-  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -1480,26 +1477,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         return 'from-gray-500 to-gray-600';
     }
   };
-
-  // Use enhanced mobile chat on mobile devices
-  if (isMobile) {
-    return (
-      <EnhancedMobileCoachChat
-        coach={coach}
-        onBack={onBack}
-        messages={messages}
-        inputText={inputText}
-        setInputText={setInputText}
-        onSendMessage={handleSendMessage}
-        isThinking={isThinking}
-        isRecording={isRecording}
-        isProcessing={isProcessing}
-        onStartRecording={startRecording}
-        onStopRecording={stopRecording}
-        quickActions={dynamicSuggestions.length > 0 ? dynamicSuggestions : coach.quickActions}
-      />
-    );
-  }
 
   return (
     <div className="flex gap-4">
