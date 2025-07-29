@@ -178,7 +178,8 @@ export const GlobalHeader = ({
   // Check if we're on a coach chat route
   const isCoachChatRoute = 
     location.pathname.startsWith('/coach') || 
-    location.pathname.startsWith('/training/sascha');
+    location.pathname.startsWith('/training/sascha') ||
+    location.pathname.startsWith('/training/markus');
 
   return (
     <div className="relative">
@@ -235,6 +236,8 @@ export const GlobalHeader = ({
             <button 
               onClick={() => {
                 if (location.pathname.startsWith('/training/sascha')) {
+                  navigate('/training');
+                } else if (location.pathname.startsWith('/training/markus')) {
                   navigate('/training');
                 } else if (location.pathname.startsWith('/coach')) {
                   navigate('/coach');
