@@ -215,6 +215,25 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
   }, [user?.id, coach.id, selectedDate]);
 
+  // Prevent iOS rubber band scrolling on coach chat pages
+  useEffect(() => {
+    const isChat = window.location.pathname.includes("/coach");
+    
+    if (isChat) {
+      document.body.style.overscrollBehavior = "none";
+      document.body.style.touchAction = "none";
+      document.documentElement.style.overscrollBehavior = "none";
+      document.documentElement.style.touchAction = "none";
+    }
+    
+    return () => {
+      document.body.style.overscrollBehavior = "";
+      document.body.style.touchAction = "";
+      document.documentElement.style.overscrollBehavior = "";
+      document.documentElement.style.touchAction = "";
+    };
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
