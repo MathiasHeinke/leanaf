@@ -175,13 +175,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
                 scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
                 tips={[
-                  "🦢 **Halsumfang (8):** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
-                  "💪 **Oberarmumfang (6&7):** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
-                  "🫀 **Brustumfang (nicht nummeriert):** Miss waagerecht um die breiteste Stelle der Brust.",
-                  "🎯 **Taillenumfang (3):** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
-                  "🔄 **Bauchumfang (2):** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
-                  "🍑 **Hüftumfang (1):** Miss waagerecht am weitesten Punkt des Hinterns.",
-                  "🦵 **Oberschenkelumfang (4&5):** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
+                  "🦢 **Halsumfang:** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
+                  "💪 **Oberarmumfang:** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
+                  "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
+                  "🎯 **Taillenumfang:** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
+                  "🔄 **Bauchumfang:** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
+                  "🍑 **Hüftumfang:** Miss waagerecht am weitesten Punkt des Hinterns.",
+                  "🦵 **Oberschenkelumfang:** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
                   "",
                   "⏰ **Wichtige Tipps:**",
                   "• Miss zur gleichen Tageszeit (am besten morgens)",
@@ -305,13 +305,13 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
                 scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
                 tips={[
-                  "🦢 **Halsumfang (8):** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
-                  "💪 **Oberarmumfang (6&7):** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
+                  "🦢 **Halsumfang:** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
+                  "💪 **Oberarmumfang:** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
                   "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
-                  "🎯 **Taillenumfang (3):** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
-                  "🔄 **Bauchumfang (2):** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
-                  "🍑 **Hüftumfang (1):** Miss waagerecht am weitesten Punkt des Hinterns.",
-                  "🦵 **Oberschenkelumfang (4&5):** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
+                  "🎯 **Taillenumfang:** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
+                  "🔄 **Bauchumfang:** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
+                  "🍑 **Hüftumfang:** Miss waagerecht am weitesten Punkt des Hinterns.",
+                  "🦵 **Oberschenkelumfang:** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
                   "",
                   "⏰ **Wichtige Tipps:**",
                   "• Miss zur gleichen Tageszeit (am besten morgens)",
