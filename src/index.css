@@ -1,4 +1,4 @@
-/* iOS Safari Input Zoom Prevention & Mobile Optimizations */
+/* iOS Safari Input Zoom Prevention */
 @supports (-webkit-appearance: none) {
   input[type="text"],
   input[type="email"],
@@ -18,38 +18,6 @@
   textarea:focus,
   select:focus {
     font-size: 16px !important;
-  }
-}
-
-/* iOS Safe Area Support */
-html, body {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-}
-
-/* Touch Optimizations */
-@media (pointer: coarse) {
-  /* Ensure minimum touch target size */
-  button, 
-  [role="button"], 
-  input[type="button"], 
-  input[type="submit"], 
-  input[type="reset"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  /* Prevent text selection on touch */
-  .no-select {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-  }
-  
-  /* Smooth scrolling on touch devices */
-  * {
-    -webkit-overflow-scrolling: touch;
   }
 }
 

@@ -10,7 +10,6 @@ import { CoachInfoButton } from './CoachInfoButton';
 import { CoachRating, CoachRatingDisplay } from './CoachRating';
 import { AdvancedWorkoutSection } from './AdvancedWorkoutSection';
 import { PremiumGate } from './PremiumGate';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const coachProfiles = [
   {
@@ -259,7 +258,6 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
   weightHistory
 }) => {
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
-  const isMobile = useIsMobile();
 
   const handleCoachSelect = (coachId: string) => {
     setSelectedCoach(coachId);
@@ -296,13 +294,12 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
         </p>
       </div>
       
-      <div className={`grid grid-cols-1 gap-4 ${isMobile ? 'px-4' : 'max-w-md mx-auto'}`}>
+      <div className="grid grid-cols-1 gap-4 max-w-md mx-auto">
         {coachProfiles.map((coach) => (
           <CoachMiniCard
             key={coach.id}
             coach={coach}
             onSelect={handleCoachSelect}
-            isMobile={isMobile}
           />
         ))}
       </div>
@@ -313,10 +310,9 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
 interface CoachMiniCardProps {
   coach: (typeof coachProfiles)[0];
   onSelect: (coachId: string) => void;
-  isMobile?: boolean;
 }
 
-const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect, isMobile = false }) => {
+const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
   const [imageError, setImageError] = useState(false);
 
   const getCoachColors = (color: string) => {
