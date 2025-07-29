@@ -155,23 +155,35 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
       return;
     }
 
+    console.log('Starting AI verification with message:', verificationMessage);
+    console.log('Meal data:', editingMeal);
+
     setIsVerifying(true);
     try {
-      const { data, error } = await supabase.functions.invoke('verify-meal', {
-        body: {
-          message: verificationMessage,
-          mealData: {
-            title: editingMeal.text,
-            calories: editingMeal.calories,
-            protein: editingMeal.protein,
-            carbs: editingMeal.carbs,
-            fats: editingMeal.fats,
-            description: editingMeal.text
-          }
+      const requestBody = {
+        message: verificationMessage,
+        mealData: {
+          title: editingMeal.text,
+          calories: editingMeal.calories,
+          protein: editingMeal.protein,
+          carbs: editingMeal.carbs,
+          fats: editingMeal.fats,
+          description: editingMeal.text
         }
+      };
+      
+      console.log('Sending request to verify-meal:', requestBody);
+      
+      const { data, error } = await supabase.functions.invoke('verify-meal', {
+        body: requestBody
       });
 
-      if (error) throw error;
+      console.log('Verify-meal response:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
       if (data.adjustments && data.needsAdjustment) {
         setEditingMeal({
