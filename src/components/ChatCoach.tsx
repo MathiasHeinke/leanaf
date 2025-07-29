@@ -547,7 +547,7 @@ export const ChatCoach = ({
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
       {/* Top Coach Banner direkt unter globalem Header */}
       <div className="flex-shrink-0 px-4 pt-1 pb-2">
         <div className="flex items-center gap-3">
