@@ -30,13 +30,10 @@ export class ExtendedBadgeManager extends BadgeManager {
 
       // Award extended badges atomically and track which ones are actually new
       for (const badge of potentialBadges) {
-        try {
-          await this.awardBadge(badge);
-          actuallyNewBadges.push(badge);
+        const awardedBadge = await this.awardBadge(badge);
+        if (awardedBadge) {
+          actuallyNewBadges.push(awardedBadge);
           console.log('✅ Awarded new extended badge:', badge.badge_name);
-        } catch (error) {
-          // Badge already exists, skip silently
-          console.log('⚠️ Extended badge already exists:', badge.badge_name);
         }
       }
 

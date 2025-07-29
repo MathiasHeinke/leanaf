@@ -26,19 +26,27 @@ export const useBadgeChecker = () => {
       const badgeManager = new ExtendedBadgeManager(user.id);
       const newBadges = await badgeManager.checkAndAwardAllBadges();
 
-      // Show toast for new badges with enhanced styling
-      newBadges.forEach(badge => {
-        // Extract emoji from badge name for toast
-        const emojiMatch = badge.badge_name.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu);
-        const emoji = emojiMatch ? emojiMatch[0] : '🏆';
+      // Only show toasts for actually new badges (filter out null/empty results)
+      const actualNewBadges = newBadges.filter(badge => badge !== null);
+      
+      if (actualNewBadges.length > 0) {
+        console.log(`🎉 ${actualNewBadges.length} new badges awarded, showing toasts`);
         
-        toast.success(`${emoji} Neuer Badge: ${badge.badge_name}`, {
-          description: badge.badge_description,
-          duration: 6000,
+        actualNewBadges.forEach(badge => {
+          // Extract emoji from badge name for toast
+          const emojiMatch = badge.badge_name.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu);
+          const emoji = emojiMatch ? emojiMatch[0] : '🏆';
+          
+          toast.success(`${emoji} Neuer Badge: ${badge.badge_name}`, {
+            description: badge.badge_description,
+            duration: 6000,
+          });
         });
-      });
+      } else {
+        console.log('📝 No new badges to display toasts for');
+      }
 
-      return newBadges;
+      return actualNewBadges;
     } catch (error) {
       console.error('❌ Error checking badges:', error);
     } finally {

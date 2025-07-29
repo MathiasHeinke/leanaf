@@ -15,35 +15,37 @@ export class BadgeManager {
   }
 
   async checkAndAwardBadges(): Promise<BadgeCheck[]> {
-    const newBadges: BadgeCheck[] = [];
+    const actuallyNewBadges: BadgeCheck[] = [];
 
     try {
       // Check all badge types
+      const candidateBadges = [];
+      
       const measurementBadge = await this.checkMeasurementConsistency();
-      if (measurementBadge) newBadges.push(measurementBadge);
+      if (measurementBadge) candidateBadges.push(measurementBadge);
 
       const workoutBadge = await this.checkWorkoutStreak();
-      if (workoutBadge) newBadges.push(workoutBadge);
+      if (workoutBadge) candidateBadges.push(workoutBadge);
 
       const deficitBadge = await this.checkDeficitConsistency();
-      if (deficitBadge) newBadges.push(deficitBadge);
+      if (deficitBadge) candidateBadges.push(deficitBadge);
 
       const firstMeasurementBadge = await this.checkFirstMeasurement();
-      if (firstMeasurementBadge) newBadges.push(firstMeasurementBadge);
+      if (firstMeasurementBadge) candidateBadges.push(firstMeasurementBadge);
 
       const weeklyGoalBadge = await this.checkWeeklyGoal();
-      if (weeklyGoalBadge) newBadges.push(weeklyGoalBadge);
+      if (weeklyGoalBadge) candidateBadges.push(weeklyGoalBadge);
 
-      // Award new badges with duplicate prevention
-      for (const badge of newBadges) {
-        try {
-          await this.awardBadge(badge);
-        } catch (error) {
-          // Badge already exists, skip silently
+      // Award badges and only collect actually new ones
+      for (const badge of candidateBadges) {
+        const awardedBadge = await this.awardBadge(badge);
+        if (awardedBadge) {
+          actuallyNewBadges.push(awardedBadge);
         }
       }
 
-      return newBadges;
+      console.log(`🎯 Total new badges awarded (including base): ${actuallyNewBadges.length}`);
+      return actuallyNewBadges;
     } catch (error) {
       console.error('Error checking badges:', error);
       return [];
@@ -270,7 +272,7 @@ export class BadgeManager {
     return null;
   }
 
-  protected async awardBadge(badge: BadgeCheck): Promise<void> {
+  protected async awardBadge(badge: BadgeCheck): Promise<BadgeCheck | null> {
     try {
       console.log('🎯 Attempting to award badge atomically:', badge.badge_name);
       
@@ -285,18 +287,19 @@ export class BadgeManager {
 
       if (error) {
         console.error('❌ Error in atomic badge award:', error);
-        throw error;
+        return null;
       }
 
       if (data) {
         console.log('🎉 New badge successfully awarded:', badge.badge_name);
+        return badge; // Return the badge if it was actually awarded
       } else {
         console.log('⚠️ Badge already exists, atomic function prevented duplicate:', badge.badge_name);
-        throw new Error('Badge already exists');
+        return null; // Return null if badge already exists
       }
     } catch (error) {
       console.error('❌ Error awarding badge:', error);
-      throw error; // Re-throw to prevent duplicate processing
+      return null; // Return null on error instead of throwing
     }
   }
 
