@@ -15,7 +15,7 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
-import { TrainingAnalysis } from "@/components/TrainingAnalysis";
+import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
 import { ProgressCharts } from "@/components/ProgressCharts";
@@ -551,8 +551,8 @@ const Index = () => {
           </SortableContext>
         </DndContext>
 
-        {/* Training Analysis instead of generic coach insights */}
-        <TrainingAnalysis timeRange="month" />
+        {/* Smart Coach Insights with real data correlations */}
+        <SmartCoachInsights />
 
         <div>
           <div className="mb-4">
