@@ -175,13 +175,13 @@ const Analysis = () => {
         setWeightHistory(weightData);
       }
 
-      // Load body measurements history
+      // Load body measurements history (load more data to ensure we get all entries)
       const { data: bodyMeasurementsData } = await supabase
         .from('body_measurements')
         .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false })
-        .limit(30);
+        .limit(100); // Increased limit to ensure we get all historical data
 
       if (bodyMeasurementsData) {
         setBodyMeasurementsHistory(bodyMeasurementsData);
