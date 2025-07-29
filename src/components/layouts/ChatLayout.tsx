@@ -1,4 +1,3 @@
-import { GlobalHeader } from "@/components/GlobalHeader";
 import { ReactNode } from "react";
 
 interface ChatLayoutProps {
@@ -10,12 +9,7 @@ interface ChatLayoutProps {
 export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
   return (
     <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
-      {/* Global Header oben */}
-      <div className="flex-shrink-0">
-        <GlobalHeader />
-      </div>
-
-      {/* Coach Banner */}
+      {/* Coach Banner - nur wenn übergeben */}
       {coachBanner && (
         <div className="flex-shrink-0 px-4 pt-1 pb-2">
           {coachBanner}
