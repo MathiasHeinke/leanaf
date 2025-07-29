@@ -1023,6 +1023,14 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const handleExercisePreviewSave = async (exerciseData: any) => {
     if (!user?.id) return;
 
+    console.log('🔍 DEBUG: exerciseData received:', exerciseData);
+    console.log('🔍 DEBUG: exerciseData.exerciseName:', exerciseData.exerciseName);
+
+    if (!exerciseData.exerciseName) {
+      toast.error('Kein Übungsname gefunden! Bitte gib den Übungsnamen an.');
+      return;
+    }
+
     try {
       const today = new Date().toISOString().split('T')[0];
       
