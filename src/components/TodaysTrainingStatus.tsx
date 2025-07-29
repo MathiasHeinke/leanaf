@@ -50,15 +50,24 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
   };
 
   const getTrainingDuration = () => {
-    if (todaysSessions.length === 0) return 0;
+    if (todaysSessions.length === 0) return null;
     
-    const totalMinutes = todaysSessions.reduce((total, session) => {
-      const start = new Date(session.start_time);
-      const end = new Date(session.end_time);
-      return total + Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-    }, 0);
+    let totalMinutes = 0;
+    let hasValidTiming = false;
     
-    return totalMinutes;
+    todaysSessions.forEach(session => {
+      if (session.start_time && session.end_time) {
+        const start = new Date(session.start_time);
+        const end = new Date(session.end_time);
+        const duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+        if (duration > 0 && duration < 600) { // Reasonable duration (0-10 hours)
+          totalMinutes += duration;
+          hasValidTiming = true;
+        }
+      }
+    });
+    
+    return hasValidTiming ? totalMinutes : null;
   };
 
   if (!hasTrained) {
@@ -105,18 +114,20 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
               <Flame className="h-4 w-4 text-muted-foreground" />
-              <span className="text-2xl font-bold">{Math.round(getTotalVolume())}</span>
+              <span className="text-2xl font-bold">{Math.round(getTotalVolume()).toLocaleString()}</span>
             </div>
             <p className="text-sm text-muted-foreground">kg Volumen</p>
           </div>
           
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-2xl font-bold">{getTrainingDuration()}</span>
+          {getTrainingDuration() !== null && (
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-2xl font-bold">{getTrainingDuration()}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Minuten</p>
             </div>
-            <p className="text-sm text-muted-foreground">Minuten</p>
-          </div>
+          )}
           
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
