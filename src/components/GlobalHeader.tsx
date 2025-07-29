@@ -192,8 +192,10 @@ export const GlobalHeader = ({
           <div className="flex justify-between items-center px-4 py-2">
             <button 
               onClick={() => {
-                if (window.history.length > 1) {
-                  navigate(-1);
+                if (location.pathname.startsWith('/training/sascha')) {
+                  navigate('/training');
+                } else if (location.pathname.startsWith('/coach')) {
+                  navigate('/coach');
                 } else {
                   navigate('/');
                 }
@@ -243,15 +245,24 @@ export const GlobalHeader = ({
       {/* Chat History Dialog */}
       {showChatHistory && (
         <Dialog open={showChatHistory} onOpenChange={setShowChatHistory}>
-          <DialogContent className="max-w-md max-h-[80vh] overflow-hidden p-0">
-            <ChatHistorySidebar
-              selectedCoach="sascha"
-              onSelectDate={(date) => {
-                console.log('Selected date:', date);
-                setShowChatHistory(false);
-              }}
-              onClose={() => setShowChatHistory(false)}
-            />
+          <DialogContent className="max-w-md max-h-[80vh] overflow-hidden p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Chat-Verlauf
+                </h2>
+              </div>
+              <ChatHistorySidebar
+                selectedCoach="sascha"
+                onSelectDate={(date) => {
+                  console.log('Selected date:', date);
+                  setShowChatHistory(false);
+                }}
+                onClose={() => setShowChatHistory(false)}
+                className="border-0 shadow-none"
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}
