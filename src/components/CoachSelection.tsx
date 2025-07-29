@@ -150,6 +150,7 @@ const coachProfiles = [
     age: 31,
     role: 'Women\'s Health & Hormones Coach',
     avatar: '🌸',
+    imageUrl: '/lovable-uploads/1808538e-7080-4c46-9eac-b9d2521350fb.png',
     personality: 'Einfühlsam & Spezialisiert',
     description: 'Spezialistin für Frauengesundheit und hormonelle Balance. Versteht die einzigartigen Bedürfnisse des weiblichen Körpers.',
     strengths: ['Zyklusbasiertes Training', 'Hormonbalance', 'Frauengesundheit', 'PCOS & Endometriose'],
