@@ -24,7 +24,8 @@ import {
   ChevronDown,
   History,
   Calendar,
-  Activity
+  Activity,
+  Pill
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +39,7 @@ import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dyn
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
-import { SupplementPreviewCard } from '@/components/SupplementPreviewCard';
+import { InlineSupplementList } from '@/components/InlineSupplementList';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { VideoCompressionProgress } from '@/components/VideoCompressionProgress';
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
@@ -142,7 +143,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [exercisePreview, setExercisePreview] = useState<any>(null);
-  const [supplementPreview, setSupplementPreview] = useState<any>(null);
+  const [showSupplementPlan, setShowSupplementPlan] = useState(false);
+  const [pendingSupplementRecommendations, setPendingSupplementRecommendations] = useState<any[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -807,13 +809,15 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       // Check for supplement table in the response
       const supplementTable = parseSupplementTable(assistantMessage);
       if (supplementTable) {
-        setSupplementPreview(supplementTable);
-      } else {
-        // Try to extract supplement data from context
-        const supplementData = extractSupplementDataFromText(assistantMessage + ' ' + userMessage);
-        if (supplementData) {
-          setSupplementPreview(supplementData);
-          toast.success('Supplement erkannt! Bitte überprüfen und speichern.');
+        if ((supplementTable as any).showButton) {
+          // Show button to create supplement plan
+          const supplementData = extractSupplementDataFromText(assistantMessage + ' ' + userMessage);
+          if (supplementData && (supplementData as any).supplements && (supplementData as any).supplements.length > 0) {
+            setPendingSupplementRecommendations((supplementData as any).supplements);
+          }
+        } else if ((supplementTable as any).supplements && (supplementTable as any).supplements.length > 0) {
+          setPendingSupplementRecommendations((supplementTable as any).supplements);
+          setShowSupplementPlan(true);
         }
       }
       
@@ -1016,10 +1020,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     };
   };
 
-  const handleSupplementPreviewSave = async (supplementData: any) => {
-    setSupplementPreview(null);
-    // Event is triggered within SupplementPreviewCard
-    toast.success('Supplement-Empfehlungen werden zu deinen Supplementen hinzugefügt!');
+  const handleCreateSupplementPlan = () => {
+    setShowSupplementPlan(true);
+  };
+
+  const handleSupplementPlanConfirm = () => {
+    setShowSupplementPlan(false);
+    setPendingSupplementRecommendations([]);
   };
 
   const handleExercisePreviewSave = async (exerciseData: any) => {
@@ -1279,6 +1286,37 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                           
                           <div className="text-sm">
                             <ReactMarkdown>{message.content}</ReactMarkdown>
+                            
+                            {/* Show supplement plan button if recommendations are pending */}
+                            {message.role === 'assistant' && 
+                             pendingSupplementRecommendations.length > 0 && 
+                             !showSupplementPlan && 
+                             message.content.toLowerCase().includes('supplement') && (
+                              <div className="mt-3">
+                                <Button 
+                                  onClick={handleCreateSupplementPlan}
+                                  size="sm"
+                                  className="bg-primary hover:bg-primary/90"
+                                >
+                                  <Pill className="h-4 w-4 mr-2" />
+                                  Supplement-Plan erstellen
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {/* Show inline supplement list when plan is active */}
+                            {message.role === 'assistant' && 
+                             showSupplementPlan && 
+                             pendingSupplementRecommendations.length > 0 && 
+                             message.content.toLowerCase().includes('supplement') && (
+                              <div className="mt-3">
+                                <InlineSupplementList
+                                  recommendations={pendingSupplementRecommendations}
+                                  title="Empfohlener Supplement-Plan"
+                                  onConfirm={handleSupplementPlanConfirm}
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                         
@@ -1650,33 +1688,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
         </div>
 
-        {/* Exercise Preview Card */}
-        {exercisePreview && (
-          <div className="mt-2">
-            <ExercisePreviewCard
-            data={{
-              exercise_name: exercisePreview.exerciseName,
-              sets: exercisePreview.sets,
-              overall_rpe: exercisePreview.overall_rpe
-            }}
-            onSave={handleExercisePreviewSave}
-            onCancel={() => setExercisePreview(null)}
-          />
-        </div>
-      )}
-
-      {/* Supplement Preview Card */}
-        {supplementPreview && (
-          <div className="mt-2">
-            <SupplementPreviewCard
-            data={supplementPreview}
-            onSave={handleSupplementPreviewSave}
-            onCancel={() => setSupplementPreview(null)}
-          />
-        </div>
-      )}
-      </div>
-
       {/* Exercise Preview Card */}
       {exercisePreview && (
         <div className="mt-2">
@@ -1688,17 +1699,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             }}
             onSave={handleExercisePreviewSave}
             onCancel={() => setExercisePreview(null)}
-          />
-        </div>
-      )}
-
-      {/* Supplement Preview Card */}
-      {supplementPreview && (
-        <div className="mt-2">
-          <SupplementPreviewCard
-            data={supplementPreview}
-            onSave={handleSupplementPreviewSave}
-            onCancel={() => setSupplementPreview(null)}
           />
         </div>
       )}
@@ -1715,6 +1715,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           onClose={() => setShowHistory(false)}
         />
       )}
+      </div>
     </div>
   );
 };
