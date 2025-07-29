@@ -70,7 +70,7 @@ export const InlineSupplementList: React.FC<InlineSupplementListProps> = ({
         goal: item.goal || null,
         notes: item.notes || null,
         is_active: true,
-        frequency_days: 7 // Daily by default
+        frequency_days: 1 // Daily by default
       }));
 
       const { error } = await supabase

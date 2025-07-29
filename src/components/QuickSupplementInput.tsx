@@ -34,6 +34,7 @@ interface UserSupplement {
   rating: number | null;
   notes: string | null;
   frequency_days: number | null;
+  is_active?: boolean;
   supplement_name?: string;
   supplement_category?: string;
 }
@@ -381,9 +382,7 @@ export const QuickSupplementInput = () => {
   };
 
   const hasSupplements = userSupplements.length > 0;
-  const todaySupplements = userSupplements.filter(supplement => 
-    supplement.frequency_days === 1 || supplement.frequency_days === null
-  );
+  const todaySupplements = userSupplements;
 
   // Calculate completion status
   const totalToday = todaySupplements.reduce((sum, supplement) => sum + supplement.timing.length, 0);
