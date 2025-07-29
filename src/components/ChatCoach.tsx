@@ -591,8 +591,8 @@ export const ChatCoach = ({
       <CardContent className="flex-1 flex flex-col p-0 min-h-0">
         {/* Chat Messages - Scrollable area */}
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="space-y-4 p-4">
+          <ScrollArea className="h-full" style={{ pointerEvents: 'auto' }}>
+            <div className="space-y-4 p-4" style={{ pointerEvents: 'auto' }}>
               {messages.map((message, index) => (
                 <div key={message.id || index} className="space-y-2">
                   <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
