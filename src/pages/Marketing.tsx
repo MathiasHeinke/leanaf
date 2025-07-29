@@ -10,8 +10,13 @@ const Marketing = () => {
 
   useEffect(() => {
     const checkSuperAdmin = async () => {
-      if (!user?.email) {
-        console.log('No user or email found');
+      if (!user) {
+        console.log('No user found, waiting for auth...');
+        return; // Don't set false immediately, wait for auth to complete
+      }
+
+      if (!user.email) {
+        console.log('User found but no email:', user);
         setIsSuperAdmin(false);
         return;
       }
@@ -29,7 +34,7 @@ const Marketing = () => {
           .single();
         
         if (error) {
-          console.log('No admin record found for email:', user.email);
+          console.log('No admin record found for email:', user.email, error);
           setIsSuperAdmin(false);
         } else {
           console.log('Admin record found:', data);
@@ -41,7 +46,10 @@ const Marketing = () => {
       }
     };
 
-    checkSuperAdmin();
+    // Only check if we have a user, otherwise wait
+    if (user !== undefined) {
+      checkSuperAdmin();
+    }
   }, [user]);
 
   // Show loading while checking permissions
