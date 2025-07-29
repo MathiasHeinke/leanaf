@@ -139,8 +139,8 @@ export default function Roadmap() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card className="col-span-2 md:col-span-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Gesamt</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
@@ -180,18 +180,20 @@ export default function Roadmap() {
             <p className="text-xs text-muted-foreground mt-1">Fertiggestellt</p>
           </CardContent>
         </Card>
-        <Card className="col-span-2 md:col-span-3 lg:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fertigstellung</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{completionRate}%</div>
-            <Progress value={completionRate} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">Gesamt-Fortschritt</p>
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Completion Card */}
+      <Card className="max-w-md mx-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Fertigstellung</CardTitle>
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{completionRate}%</div>
+          <Progress value={completionRate} className="mt-2" />
+          <p className="text-xs text-muted-foreground mt-1">Gesamt-Fortschritt</p>
+        </CardContent>
+      </Card>
 
       {/* Filter */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -215,15 +217,13 @@ export default function Roadmap() {
       </div>
 
       {/* Roadmap Timeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="space-y-4">
         {roadmapItems.length === 0 ? (
-          <div className="col-span-full">
-            <Card>
-              <CardContent className="p-8 text-center">
-                <p className="text-muted-foreground">Keine Roadmap-Items gefunden.</p>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">Keine Roadmap-Items gefunden.</p>
+            </CardContent>
+          </Card>
         ) : (
           roadmapItems.map((item) => {
             const StatusIcon = statusIcons[item.status as keyof typeof statusIcons] || Clock;
@@ -260,13 +260,13 @@ export default function Roadmap() {
                         )}
                       </div>
                     </div>
+                    {item.estimated_completion && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>Ziel: {format(new Date(item.estimated_completion), 'MMM yyyy', { locale: de })}</span>
+                      </div>
+                    )}
                   </div>
-                  {item.estimated_completion && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground pt-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>Ziel: {format(new Date(item.estimated_completion), 'MMM yyyy', { locale: de })}</span>
-                    </div>
-                  )}
                 </CardHeader>
                 <CardContent className="pt-0">
                   <p className="text-muted-foreground text-sm leading-relaxed mb-4">{item.description}</p>
