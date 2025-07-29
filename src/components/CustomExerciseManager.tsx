@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, X, Dumbbell, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, X, Dumbbell, Trash2, Upload, Image as ImageIcon, Edit, Save, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 
@@ -50,6 +50,16 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
   const [isCompound, setIsCompound] = useState(false);
   const [newMuscleGroup, setNewMuscleGroup] = useState('');
   const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+  
+  // Edit states
+  const [editingExercise, setEditingExercise] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editMuscleGroups, setEditMuscleGroups] = useState<string[]>([]);
+  const [editDescription, setEditDescription] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
+  const [editEquipment, setEditEquipment] = useState('');
+  const [editDifficulty, setEditDifficulty] = useState(1);
 
   const categories = [
     'Kraft',
@@ -63,7 +73,9 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
 
   const commonMuscleGroups = [
     'Brust', 'Rücken', 'Schultern', 'Bizeps', 'Trizeps', 'Unterarme',
-    'Quadrizeps', 'Hamstrings', 'Gesäß', 'Waden', 'Core', 'Bauch'
+    'Beine', 'Quadrizeps', 'Hamstrings', 'Gesäß', 'Waden', 
+    'Core', 'Bauch', 'Nacken', 'Oberschenkel', 'Unterschenkel',
+    'Hüfte', 'Schienbein', 'Oberkörper', 'Unterkörper'
   ];
 
   useEffect(() => {
@@ -185,6 +197,72 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
     }
   };
 
+  const startEditing = (exercise: CustomExercise) => {
+    setEditingExercise(exercise.id);
+    setEditName(exercise.name);
+    setEditCategory(exercise.category);
+    setEditMuscleGroups(exercise.muscle_groups);
+    setEditDescription(exercise.description || '');
+    setEditInstructions(exercise.instructions || '');
+    setEditEquipment(exercise.equipment || '');
+    setEditDifficulty(exercise.difficulty_level);
+  };
+
+  const cancelEditing = () => {
+    setEditingExercise(null);
+    setEditName('');
+    setEditCategory('');
+    setEditMuscleGroups([]);
+    setEditDescription('');
+    setEditInstructions('');
+    setEditEquipment('');
+    setEditDifficulty(1);
+  };
+
+  const saveEdit = async (exerciseId: string) => {
+    if (!user || !editName.trim() || !editCategory || editMuscleGroups.length === 0) {
+      toast({
+        title: "Fehler",
+        description: "Bitte fülle alle Pflichtfelder aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('exercises')
+        .update({
+          name: editName.trim(),
+          category: editCategory,
+          muscle_groups: editMuscleGroups,
+          description: editDescription.trim() || null,
+          instructions: editInstructions.trim() || null,
+          equipment: editEquipment.trim() || null,
+          difficulty_level: editDifficulty,
+        })
+        .eq('id', exerciseId)
+        .eq('created_by', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Übung gespeichert",
+        description: "Die Änderungen wurden erfolgreich gespeichert.",
+      });
+
+      setEditingExercise(null);
+      loadCustomExercises();
+    } catch (error) {
+      console.error('Error updating exercise:', error);
+      toast({
+        title: "Fehler",
+        description: "Die Übung konnte nicht aktualisiert werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteExercise = async (exerciseId: string) => {
     if (!user) return;
 
@@ -221,7 +299,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
           Eigene Übungen verwalten
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Dumbbell className="h-5 w-5" />
@@ -229,7 +307,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-[400px_1fr]">
           {/* Add Exercise Form */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Neue Übung hinzufügen</h3>
@@ -414,20 +492,62 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
                 <p>Noch keine eigenen Übungen erstellt</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 min-h-[600px] overflow-y-auto">
                 {customExercises.map((exercise) => (
                   <Card key={exercise.id} className="hover:shadow-md transition-shadow">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{exercise.name}</CardTitle>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteExercise(exercise.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {editingExercise === exercise.id ? (
+                          <Input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="text-lg font-semibold"
+                            placeholder="Übungsname"
+                          />
+                        ) : (
+                          <CardTitle className="text-lg">{exercise.name}</CardTitle>
+                        )}
+                        <div className="flex gap-1">
+                          {editingExercise === exercise.id ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => saveEdit(exercise.id)}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={cancelEditing}
+                                className="text-gray-600 hover:text-gray-700"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startEditing(exercise)}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteExercise(exercise.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -442,30 +562,136 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
                         </div>
                       )}
                       
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant="secondary">{exercise.category}</Badge>
-                        {exercise.muscle_groups.map((muscle) => (
-                          <Badge key={muscle} variant="outline" className="text-xs">
-                            {muscle}
-                          </Badge>
-                        ))}
-                      </div>
+                      {/* Category */}
+                      {editingExercise === exercise.id ? (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Kategorie</Label>
+                          <Select value={editCategory} onValueChange={setEditCategory}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border shadow-lg z-50">
+                              {categories.map((cat) => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="secondary">{exercise.category}</Badge>
+                          {exercise.muscle_groups.map((muscle) => (
+                            <Badge key={muscle} variant="outline" className="text-xs">
+                              {muscle}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Muscle Groups */}
+                      {editingExercise === exercise.id && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Muskelgruppen</Label>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {editMuscleGroups.map((muscle) => (
+                              <Badge key={muscle} variant="secondary" className="flex items-center gap-1">
+                                {muscle}
+                                <X 
+                                  className="h-3 w-3 cursor-pointer" 
+                                  onClick={() => setEditMuscleGroups(editMuscleGroups.filter(m => m !== muscle))}
+                                />
+                              </Badge>
+                            ))}
+                          </div>
+                          <Select value="" onValueChange={(value) => {
+                            if (value && !editMuscleGroups.includes(value)) {
+                              setEditMuscleGroups([...editMuscleGroups, value]);
+                            }
+                          }}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Muskelgruppe hinzufügen" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border shadow-lg z-50">
+                              {commonMuscleGroups
+                                .filter(mg => !editMuscleGroups.includes(mg))
+                                .map((muscle) => (
+                                  <SelectItem key={muscle} value={muscle}>{muscle}</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       
-                      {exercise.description && (
+                      {/* Description */}
+                      {editingExercise === exercise.id ? (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Beschreibung</Label>
+                          <Textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Kurze Beschreibung der Übung"
+                            rows={2}
+                          />
+                        </div>
+                      ) : exercise.description && (
                         <p className="text-sm text-muted-foreground">
                           {exercise.description}
                         </p>
                       )}
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Level: {exercise.difficulty_level}</span>
-                        {exercise.is_compound && (
-                          <Badge variant="outline" className="text-xs">Compound</Badge>
-                        )}
-                        {exercise.equipment && (
-                          <span>Equipment: {exercise.equipment}</span>
-                        )}
-                      </div>
+
+                      {/* Instructions */}
+                      {editingExercise === exercise.id && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Ausführung</Label>
+                          <Textarea
+                            value={editInstructions}
+                            onChange={(e) => setEditInstructions(e.target.value)}
+                            placeholder="Schritt-für-Schritt Anleitung"
+                            rows={3}
+                          />
+                        </div>
+                      )}
+
+                      {/* Equipment */}
+                      {editingExercise === exercise.id ? (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Equipment</Label>
+                          <Input
+                            value={editEquipment}
+                            onChange={(e) => setEditEquipment(e.target.value)}
+                            placeholder="z.B. Langhantel, Kurzhanteln"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>Level: {exercise.difficulty_level}</span>
+                          {exercise.is_compound && (
+                            <Badge variant="outline" className="text-xs">Compound</Badge>
+                          )}
+                          {exercise.equipment && (
+                            <span>Equipment: {exercise.equipment}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Difficulty */}
+                      {editingExercise === exercise.id && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">Schwierigkeitsgrad</Label>
+                          <Select value={editDifficulty.toString()} onValueChange={(value) => setEditDifficulty(parseInt(value))}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border shadow-lg z-50">
+                              <SelectItem value="1">1 - Anfänger</SelectItem>
+                              <SelectItem value="2">2 - Leicht Fortgeschritten</SelectItem>
+                              <SelectItem value="3">3 - Mittelstufe</SelectItem>
+                              <SelectItem value="4">4 - Fortgeschritten</SelectItem>
+                              <SelectItem value="5">5 - Experte</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
