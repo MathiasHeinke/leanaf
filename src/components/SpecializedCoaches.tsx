@@ -287,9 +287,9 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold mb-2">Wähle deinen Experten</h3>
-        <p className="text-sm text-muted-foreground">
+      <div className="text-center mb-6 px-4">
+        <h3 className="text-xl font-semibold mb-3">Wähle deinen Experten</h3>
+        <p className="text-base text-muted-foreground leading-relaxed">
           Jeder Coach ist auf ein spezielles Gebiet fokussiert - wähle den passenden Experten für deine Frage!
         </p>
       </div>
