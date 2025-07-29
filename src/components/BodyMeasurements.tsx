@@ -171,15 +171,24 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
-                title="Körpermaße"
-                description="Regelmäßige Körpermaße-Messungen helfen dir, Fortschritte zu verfolgen, die die Waage nicht anzeigt. Besonders beim Muskelaufbau!"
-                scientificBasis="Studien zeigen: Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht."
+                title="Körpermaße - Messanleitung"
+                description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
+                scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
                 tips={[
-                  "Miss zur gleichen Tageszeit für beste Vergleichbarkeit!",
-                  "Morgens vor dem Essen für konsistente Werte",
-                  "Maßband parallel zum Boden halten",
-                  "Nicht zu fest anziehen, aber auch nicht zu locker",
-                  "Wöchentliche Messungen reichen meist aus"
+                  "🦢 **Halsumfang (8):** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
+                  "💪 **Oberarmumfang (6&7):** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
+                  "🫀 **Brustumfang (nicht nummeriert):** Miss waagerecht um die breiteste Stelle der Brust.",
+                  "🎯 **Taillenumfang (3):** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
+                  "🔄 **Bauchumfang (2):** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
+                  "🍑 **Hüftumfang (1):** Miss waagerecht am weitesten Punkt des Hinterns.",
+                  "🦵 **Oberschenkelumfang (4&5):** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
+                  "",
+                  "⏰ **Wichtige Tipps:**",
+                  "• Miss zur gleichen Tageszeit (am besten morgens)",
+                  "• Maßband parallel zum Boden halten",
+                  "• Nicht zu fest anziehen, aber auch nicht zu locker",
+                  "• Bei normaler Atmung messen, Bauch nicht anspannen",
+                  "• Wöchentliche Messungen für beste Trends"
                 ]}
               />
               <Button
@@ -292,14 +301,24 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 </h3>
               </div>
               <InfoButton
-                title="Körpermaß-Tracking"
-                description="Körpermaße geben dir einen detaillierten Einblick in deine körperlichen Veränderungen, auch wenn sich das Gewicht nicht verändert."
-                scientificBasis="Körpermaße sind oft aussagekräftiger als das Gewicht, da sie Muskelaufbau und Fettabbau separat erfassen können."
+                title="Körpermaße - Messanleitung"
+                description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
+                scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
                 tips={[
-                  "Miss immer zur gleichen Tageszeit",
-                  "Halte das Maßband parallel zum Boden",
-                  "Nicht zu fest anziehen, aber auch nicht zu locker",
-                  "Wöchentliche Messungen reichen meist aus"
+                  "🦢 **Halsumfang (8):** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
+                  "💪 **Oberarmumfang (6&7):** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
+                  "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
+                  "🎯 **Taillenumfang (3):** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
+                  "🔄 **Bauchumfang (2):** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
+                  "🍑 **Hüftumfang (1):** Miss waagerecht am weitesten Punkt des Hinterns.",
+                  "🦵 **Oberschenkelumfang (4&5):** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
+                  "",
+                  "⏰ **Wichtige Tipps:**",
+                  "• Miss zur gleichen Tageszeit (am besten morgens)",
+                  "• Maßband parallel zum Boden halten",
+                  "• Nicht zu fest anziehen, aber auch nicht zu locker",
+                  "• Bei normaler Atmung messen, Bauch nicht anspannen",
+                  "• Wöchentliche Messungen für beste Trends"
                 ]}
               />
             </div>
