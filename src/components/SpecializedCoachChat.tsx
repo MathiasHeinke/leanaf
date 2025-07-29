@@ -1901,6 +1901,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             />
           </div>
         )}
+        </div>
         
         {/* Input Area */}
         <div className="px-3 py-1 border-t border-border/20 bg-background">
@@ -2002,6 +2003,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               <span>{isProcessing ? 'Verarbeite Spracheingabe...' : 'Aufnahme läuft...'}</span>
             </div>
           )}
+        </div>
+
+        {/* Input Area and Footer */}
+        <div className="border-t border-border/20 bg-background">
+          {/* Input content will be here - this div structure needs to be properly maintained */}
         </div>
       </div>
 
