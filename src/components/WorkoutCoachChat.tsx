@@ -380,18 +380,26 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   const getAnalysisTypeLabel = (type: string) => {
+    console.log('getAnalysisTypeLabel called with:', type);
+    let label;
     switch (type) {
       case 'exercise_form':
-        return 'Analysiere meine Übung';
+        label = 'Analysiere meine Übung';
+        break;
       case 'meal_analysis':
-        return 'Analysiere meine Mahlzeit';
+        label = 'Analysiere meine Mahlzeit';
+        break;
       case 'progress_photo':
-        return 'Analysiere meinen Fortschritt';
+        label = 'Analysiere meinen Fortschritt';
+        break;
       case 'general':
-        return 'Analysiere das Bild';
+        label = 'Analysiere das Bild';
+        break;
       default:
-        return 'Analysiere das Bild';
+        label = 'Analysiere das Bild';
     }
+    console.log('getAnalysisTypeLabel returning:', label);
+    return label;
   };
 
   const sendMessage = async () => {
@@ -781,8 +789,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
+                    console.log('Exercise button clicked, setting analysisType to exercise_form');
                     setAnalysisType('exercise_form');
-                    setInputText(getAnalysisTypeLabel('exercise_form'));
+                    const label = getAnalysisTypeLabel('exercise_form');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
                   }}
                   className="text-xs"
                 >
@@ -792,8 +803,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   variant={analysisType === 'meal_analysis' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
+                    console.log('Meal button clicked, setting analysisType to meal_analysis');
                     setAnalysisType('meal_analysis');
-                    setInputText(getAnalysisTypeLabel('meal_analysis'));
+                    const label = getAnalysisTypeLabel('meal_analysis');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
                   }}
                   className="text-xs"
                 >
@@ -803,8 +817,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   variant={analysisType === 'progress_photo' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
+                    console.log('Progress button clicked, setting analysisType to progress_photo');
                     setAnalysisType('progress_photo');
-                    setInputText(getAnalysisTypeLabel('progress_photo'));
+                    const label = getAnalysisTypeLabel('progress_photo');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
                   }}
                   className="text-xs"
                 >
@@ -814,8 +831,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   variant={analysisType === 'general' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
+                    console.log('General button clicked, setting analysisType to general');
                     setAnalysisType('general');
-                    setInputText(getAnalysisTypeLabel('general'));
+                    const label = getAnalysisTypeLabel('general');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
                   }}
                   className="text-xs"
                 >
