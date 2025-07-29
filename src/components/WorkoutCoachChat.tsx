@@ -536,10 +536,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
 
   const handleMediaUploaded = (urls: string[]) => {
     setUploadedMedia(prev => [...prev, ...urls]);
-    // If no text is entered, auto-fill with analysis type label
-    if (!inputText.trim()) {
-      setInputText(getAnalysisTypeLabel(analysisType));
-    }
+    // Auto-fill with analysis type label based on current selection
+    console.log('Media uploaded, current analysisType:', analysisType);
+    const label = getAnalysisTypeLabel(analysisType);
+    console.log('Setting input text to:', label);
+    setInputText(label);
   };
 
   return (
