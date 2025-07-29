@@ -187,7 +187,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
       icon={<Dumbbell className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
       defaultOpen={false}
-      theme="cyan"
+      theme="purple"
     >
       {hasWorkoutToday && !isEditing ? (
         <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-cyan-200 dark:border-cyan-800">

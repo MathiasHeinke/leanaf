@@ -283,7 +283,7 @@ export const QuickFluidInput = () => {
     <CollapsibleQuickInput
       title="Flüssigkeiten"
       icon={<Droplets className="h-4 w-4" />}
-      theme="cyan"
+      theme="jade"
       isCompleted={isCompleted}
       defaultOpen={false}
       completedText={hasFluidEntries ? `${totalFluidAmount}ml getrunken` : undefined}

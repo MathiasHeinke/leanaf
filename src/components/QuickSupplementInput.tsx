@@ -397,7 +397,7 @@ export const QuickSupplementInput = () => {
     <CollapsibleQuickInput
       title="Supplemente"
       icon={<Pill className="h-4 w-4" />}
-      theme="blue"
+      theme="teal"
       isCompleted={isCompleted}
       defaultOpen={false}
       completedText={hasSupplements ? `${takenToday}/${totalToday} eingenommen` : undefined}

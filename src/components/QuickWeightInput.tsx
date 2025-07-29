@@ -304,7 +304,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       icon={<Scale className="h-4 w-4 text-white" />}
       isCompleted={isCompleted}
       defaultOpen={false}
-      theme="blue"
+      theme="violet"
     >
       {hasWeightToday && !isEditing ? (
         <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">

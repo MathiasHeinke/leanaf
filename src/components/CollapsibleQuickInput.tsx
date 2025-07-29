@@ -10,7 +10,7 @@ interface CollapsibleQuickInputProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   className?: string;
-  theme?: 'blue' | 'indigo' | 'cyan' | 'sky' | 'teal';
+  theme?: 'blue' | 'indigo' | 'cyan' | 'sky' | 'teal' | 'violet' | 'purple' | 'emerald' | 'jade';
   completedText?: string;
 }
 
@@ -30,6 +30,22 @@ const themeStyles = {
     iconCompleted: "bg-indigo-600 dark:bg-indigo-500",
     completedText: "text-indigo-700 dark:text-indigo-300",
     completedDot: "bg-indigo-500 dark:bg-indigo-400"
+  },
+  violet: {
+    header: "bg-gradient-to-r from-violet-500/10 to-violet-600/10 backdrop-blur-sm border border-violet-200/20 hover:from-violet-500/15 hover:to-violet-600/15 dark:from-violet-400/10 dark:to-violet-500/10 dark:border-violet-700/20 dark:hover:from-violet-400/15 dark:hover:to-violet-500/15",
+    headerCompleted: "bg-gradient-to-r from-violet-600/15 to-violet-700/15 backdrop-blur-sm border border-violet-300/25 dark:from-violet-500/15 dark:to-violet-600/15 dark:border-violet-600/25",
+    icon: "bg-violet-500 dark:bg-violet-600",
+    iconCompleted: "bg-violet-600 dark:bg-violet-500",
+    completedText: "text-violet-700 dark:text-violet-300",
+    completedDot: "bg-violet-500 dark:bg-violet-400"
+  },
+  purple: {
+    header: "bg-gradient-to-r from-purple-500/10 to-purple-600/10 backdrop-blur-sm border border-purple-200/20 hover:from-purple-500/15 hover:to-purple-600/15 dark:from-purple-400/10 dark:to-purple-500/10 dark:border-purple-700/20 dark:hover:from-purple-400/15 dark:hover:to-purple-500/15",
+    headerCompleted: "bg-gradient-to-r from-purple-600/15 to-purple-700/15 backdrop-blur-sm border border-purple-300/25 dark:from-purple-500/15 dark:to-purple-600/15 dark:border-purple-600/25",
+    icon: "bg-purple-500 dark:bg-purple-600",
+    iconCompleted: "bg-purple-600 dark:bg-purple-500",
+    completedText: "text-purple-700 dark:text-purple-300",
+    completedDot: "bg-purple-500 dark:bg-purple-400"
   },
   cyan: {
     header: "bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 backdrop-blur-sm border border-cyan-200/20 hover:from-cyan-500/15 hover:to-cyan-600/15 dark:from-cyan-400/10 dark:to-cyan-500/10 dark:border-cyan-700/20 dark:hover:from-cyan-400/15 dark:hover:to-cyan-500/15",
@@ -54,6 +70,22 @@ const themeStyles = {
     iconCompleted: "bg-teal-600 dark:bg-teal-500",
     completedText: "text-teal-700 dark:text-teal-300",
     completedDot: "bg-teal-500 dark:bg-teal-400"
+  },
+  emerald: {
+    header: "bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 backdrop-blur-sm border border-emerald-200/20 hover:from-emerald-500/15 hover:to-emerald-600/15 dark:from-emerald-400/10 dark:to-emerald-500/10 dark:border-emerald-700/20 dark:hover:from-emerald-400/15 dark:hover:to-emerald-500/15",
+    headerCompleted: "bg-gradient-to-r from-emerald-600/15 to-emerald-700/15 backdrop-blur-sm border border-emerald-300/25 dark:from-emerald-500/15 dark:to-emerald-600/15 dark:border-emerald-600/25",
+    icon: "bg-emerald-500 dark:bg-emerald-600",
+    iconCompleted: "bg-emerald-600 dark:bg-emerald-500",
+    completedText: "text-emerald-700 dark:text-emerald-300",
+    completedDot: "bg-emerald-500 dark:bg-emerald-400"
+  },
+  jade: {
+    header: "bg-gradient-to-r from-green-500/10 to-emerald-500/10 backdrop-blur-sm border border-emerald-200/20 hover:from-green-500/15 hover:to-emerald-500/15 dark:from-green-400/10 dark:to-emerald-400/10 dark:border-emerald-700/20 dark:hover:from-green-400/15 dark:hover:to-emerald-400/15",
+    headerCompleted: "bg-gradient-to-r from-green-600/15 to-emerald-600/15 backdrop-blur-sm border border-emerald-300/25 dark:from-green-500/15 dark:to-emerald-500/15 dark:border-emerald-600/25",
+    icon: "bg-green-600 dark:bg-emerald-500",
+    iconCompleted: "bg-emerald-600 dark:bg-green-500",
+    completedText: "text-emerald-700 dark:text-emerald-300",
+    completedDot: "bg-emerald-500 dark:bg-green-400"
   }
 };
 
