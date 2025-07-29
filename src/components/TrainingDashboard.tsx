@@ -209,7 +209,7 @@ export const TrainingDashboard: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <Button onClick={handleStartWorkout} size="lg" className="bg-gradient-primary text-white font-medium px-8 py-4 text-lg">
+            <Button onClick={handleStartWorkout} size="lg" variant="default" className="font-medium px-8 py-4 text-lg">
               <Play className="h-5 w-5 mr-3" />
               Workout starten
             </Button>
