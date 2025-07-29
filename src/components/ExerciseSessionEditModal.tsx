@@ -50,6 +50,7 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
   const { user } = useAuth();
   const { toast } = useToast();
   const [sessionName, setSessionName] = useState('');
+  const [sessionDate, setSessionDate] = useState('');
   const [notes, setNotes] = useState('');
   const [sets, setSets] = useState<ExerciseSet[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +61,7 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
   useEffect(() => {
     if (session) {
       setSessionName(session.session_name || '');
+      setSessionDate(session.date || '');
       setNotes(session.notes || '');
       setSets(session.exercise_sets || []);
     }
@@ -189,6 +191,7 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
         .from('exercise_sessions')
         .update({
           session_name: sessionName,
+          date: sessionDate,
           notes: notes,
           updated_at: new Date().toISOString()
         })
@@ -283,8 +286,13 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
               />
             </div>
             <div>
-              <Label>Datum</Label>
-              <Input value={session.date} disabled />
+              <Label htmlFor="sessionDate">Datum</Label>
+              <Input
+                id="sessionDate"
+                type="date"
+                value={sessionDate}
+                onChange={(e) => setSessionDate(e.target.value)}
+              />
             </div>
           </div>
 
