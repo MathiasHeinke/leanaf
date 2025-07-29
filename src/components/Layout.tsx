@@ -36,6 +36,14 @@ export const Layout = ({ children }: LayoutProps) => {
     return <>{children}</>;
   }
 
+  // Hide normal layout for specialized coach chat pages
+  const isSpecializedCoachRoute = location.pathname === '/coach' || 
+                                  location.pathname === '/training/sascha' ||
+                                  location.pathname === '/training/markus';
+
+  if (isSpecializedCoachRoute) {
+    return <div className="min-h-screen bg-background">{children}</div>;
+  }
 
   return (
     <div 
