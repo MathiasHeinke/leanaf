@@ -17,6 +17,7 @@ import { getCurrentDateString } from "@/utils/dateHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 import { CoachFeedbackCard } from "./CoachFeedbackCard";
+import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
