@@ -50,12 +50,13 @@ export const CoachCard: React.FC<CoachCardProps> = ({
   const [imageError, setImageError] = useState(false);
 
   const handleImageError = () => {
-    console.log(`Image load error for coach ${coach.name}:`, coach.imageUrl);
+    console.error(`Image load error for coach ${coach.name}:`, coach.imageUrl);
     setImageError(true);
   };
 
   const handleImageLoad = () => {
     console.log(`Image loaded successfully for coach ${coach.name}:`, coach.imageUrl);
+    setImageError(false);
   };
 
   const handleCardClick = () => {
