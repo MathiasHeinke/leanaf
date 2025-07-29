@@ -33,12 +33,17 @@ export const calculateTrainingPrognosis = ({
     return null;
   }
 
-  // Calculate weekly workouts
-  const totalWorkouts = workoutData.reduce((sum, day) => 
-    sum + day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length, 0
-  );
-  const weeks = timeRange === 'week' ? 1 : timeRange === 'month' ? 4 : 52;
-  const weeklyWorkouts = totalWorkouts / weeks;
+  // Calculate weekly workouts - fix calculation
+  const actualWorkoutDays = workoutData.filter(day => {
+    const hasActiveQuickWorkout = day.quickWorkouts.some((w: any) => w.did_workout);
+    const hasAdvancedSession = day.advancedSessions.length > 0;
+    return hasActiveQuickWorkout || hasAdvancedSession;
+  }).length;
+  
+  const daysInData = workoutData.length > 0 ? workoutData.length : 
+    (timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365);
+  const weeksInData = daysInData / 7;
+  const weeklyWorkouts = actualWorkoutDays / weeksInData;
 
   // Calculate average RPE from advanced sessions - fix data structure
   const allSets = workoutData.flatMap((day) => 
