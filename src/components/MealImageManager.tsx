@@ -27,17 +27,45 @@ export const MealImageManager = ({
   });
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📸 [MealImageManager] File selection event triggered');
+    
     const files = Array.from(event.target.files || []);
-    if (files.length > 0 && user) {
+    console.log('📸 [MealImageManager] Selected files:', files.length);
+    
+    if (files.length === 0) {
+      console.log('📸 [MealImageManager] No files selected');
+      return;
+    }
+    
+    if (!user) {
+      console.error('📸 [MealImageManager] No user available');
+      return;
+    }
+    
+    try {
+      console.log('📸 [MealImageManager] Starting upload for meal:', mealId);
       await uploadImages(files, user.id);
+      console.log('📸 [MealImageManager] Upload completed successfully');
+      
+      // Clear the input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    } catch (error) {
+      console.error('📸 [MealImageManager] Upload failed:', error);
     }
   };
 
   const handleAddPhoto = () => {
-    fileInputRef.current?.click();
+    console.log('📸 [MealImageManager] Add photo button clicked');
+    
+    if (!fileInputRef.current) {
+      console.error('📸 [MealImageManager] File input ref not available');
+      return;
+    }
+    
+    console.log('📸 [MealImageManager] Triggering file picker');
+    fileInputRef.current.click();
   };
 
   if (compact) {
