@@ -289,28 +289,16 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         setMessages(prev => [...prev, assistantMessage]);
         await saveMessage('assistant', data.response, data);
 
-        // Try to extract exercise data if coach recognized exercises
-        if (data.response && (data.response.includes('erkenne') || data.response.includes('Übung'))) {
-          try {
-            const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
-              body: {
-                userId: user.id,
-                mediaUrls,
-                userMessage: userMessage.trim() || 'Erkenne Übungen aus dem Bild/Video'
-              }
-            });
-
-            console.log('Extract exercise data response:', exerciseData);
-
-            if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
-              // Start exercise recognition conversation flow
-              setTimeout(() => {
-                handleExerciseRecognition(exerciseData.exerciseData);
-              }, 1000);
-            }
-          } catch (extractError) {
-            console.error('Exercise extraction error:', extractError);
-          }
+        // Check if the coach response suggests exercise recognition
+        if (data.response && (
+          data.response.includes('erkenne') || 
+          data.response.includes('Übung') ||
+          data.response.includes('Exercise') ||
+          data.response.includes('Training')
+        )) {
+          // Don't call extract-exercise-data directly anymore
+          // Let the natural conversation flow handle exercise recognition
+          console.log('Coach recognized potential exercise, conversation will guide user');
         }
 
         toast.success('Training analysiert!');

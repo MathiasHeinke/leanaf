@@ -57,6 +57,20 @@ interface ChatMessage {
   images?: string[];
 }
 
+interface ConversationState {
+  type: 'exercise_recognition' | 'awaiting_details' | 'exercise_summary';
+  exerciseData?: {
+    exerciseName: string;
+    confidence: number;
+  };
+  awaitingConfirmation?: boolean;
+  actionButtons?: Array<{
+    text: string;
+    action: string;
+    data?: any;
+  }>;
+}
+
 interface CoachProfile {
   id: string;
   name: string;
@@ -145,6 +159,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [exercisePreview, setExercisePreview] = useState<any>(null);
   const [showSupplementPlan, setShowSupplementPlan] = useState(false);
   const [pendingSupplementRecommendations, setPendingSupplementRecommendations] = useState<any[]>([]);
+  const [conversationState, setConversationState] = useState<ConversationState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -511,18 +526,59 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
 
   const extractExerciseDataFromContext = async (userMessage: string, assistantResponse: string) => {
     try {
-      // Combine recent chat context
-      const recentMessages = messages.slice(-3); // Last 3 messages for context
+      // Check if the coach response suggests exercise recognition
+      const exerciseRecognitionPatterns = [
+        /erkenne.*übung/i,
+        /sehe.*training/i,
+        /das ist.*exercise/i,
+        /das sieht aus wie/i,
+        /ist das.*übung/i,
+        /machst du.*übung/i
+      ];
+
+      const hasExerciseRecognition = exerciseRecognitionPatterns.some(pattern => 
+        pattern.test(assistantResponse)
+      );
+
+      // Check if there are media attachments in the current conversation
+      const lastUserMessage = messages[messages.length - 1];
+      const hasMediaAttachment = lastUserMessage?.images && lastUserMessage.images.length > 0;
+
+      if (hasExerciseRecognition && hasMediaAttachment) {
+        // Call extract-exercise-data to get structured data, then start conversation flow
+        try {
+          const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
+            body: {
+              userId: user.id,
+              userMessage,
+              mediaUrls: lastUserMessage.images
+            }
+          });
+
+          if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
+            // Start the conversation flow instead of showing preview directly
+            setTimeout(() => {
+              handleExerciseRecognition(exerciseData.exerciseData);
+            }, 1000);
+            return;
+          }
+        } catch (error) {
+          console.log('Extract-exercise-data call failed, falling back to context extraction');
+        }
+      }
+
+      // Fallback: Use simple extraction function for context analysis only (no conversation flow)
+      const recentMessages = messages.slice(-3);
       const chatContext = recentMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + 
                          `\nuser: ${userMessage}\nassistant: ${assistantResponse}`;
       
-      console.log('Extracting exercise data from context:', chatContext);
+      console.log('Extracting exercise data from context (fallback):', chatContext);
       
-      // Use a simple extraction function first (no API call needed)
       const extractedData = extractExerciseDataFromText(chatContext);
       
-      if (extractedData) {
-        console.log('Exercise data extracted:', extractedData);
+      if (extractedData && !hasExerciseRecognition) {
+        // Only show direct preview if it's not from coach recognition
+        console.log('Exercise data extracted from context:', extractedData);
         setExercisePreview(extractedData);
         toast.success('Übungsdaten erkannt! Bitte überprüfen und speichern.');
       }
@@ -701,6 +757,16 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     const userMessage = messageText || inputText.trim();
     if ((!userMessage && uploadedImages.length === 0) || isThinking || !user?.id) return;
 
+    // Check if we're in exercise details conversation flow
+    if (conversationState && conversationState.type === 'awaiting_details') {
+      const handled = await handleExerciseDetailsInput(userMessage);
+      if (handled) {
+        setInputText('');
+        setIsThinking(false);
+        return;
+      }
+    }
+
     const imagesToSend = [...uploadedImages];
     setInputText('');
     setUploadedImages([]);
@@ -774,33 +840,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       
       // Check for exercise data extraction if this is a workout coach
       if ((coach.id === 'sascha' || coach.id === 'markus')) {
-        // Call extract-exercise-data function to save to database
-        try {
-          const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
-            body: {
-              userId: user.id,
-              userMessage,
-              mediaUrls: uploadedImages
-            }
-          });
-
-          if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
-            // Exercise was extracted, show preview for manual confirmation
-            setExercisePreview({
-              exerciseName: exerciseData.exerciseData.exercise_name,
-              sets: exerciseData.exerciseData.sets || [],
-              overall_rpe: exerciseData.exerciseData.overall_rpe
-            });
-            toast.success('Übung erkannt! Bitte überprüfen und speichern.');
-          } else {
-            // Fallback to local extraction for preview
-            await extractExerciseDataFromContext(userMessage, assistantMessage);
-          }
-        } catch (error) {
-          console.error('Error calling extract-exercise-data:', error);
-          // Fallback to local extraction
-          await extractExerciseDataFromContext(userMessage, assistantMessage);
-        }
+        // Don't call extract-exercise-data directly anymore
+        // Let the natural conversation flow handle exercise recognition
+        console.log('Workout coach response received, letting conversation guide exercise recognition');
+        
+        // Only try to extract exercise data from context for conversation flow
+        await extractExerciseDataFromContext(userMessage, assistantMessage);
       } else {
         // Try to extract exercise data from the conversation context
         await extractExerciseDataFromContext(userMessage, assistantMessage);
@@ -1051,6 +1096,196 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('supplementListUpdated'));
     }, 100);
+  };
+
+  // ============= EXERCISE RECOGNITION CONVERSATION FLOW =============
+  
+  const handleExerciseRecognition = async (exerciseData: any) => {
+    try {
+      // Step 1: Ask for confirmation
+      const confirmationMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `💪 **Übung erkannt!**\n\nIch erkenne **${exerciseData.exercise_name}** in deinem Bild/Video.\n\nIst das korrekt und möchtest du die Details eingeben (Wiederholungen, Gewicht, RPE)?`,
+        created_at: new Date().toISOString(),
+        coach_personality: coach.id
+      };
+
+      setMessages(prev => [...prev, confirmationMessage]);
+      await saveMessage('assistant', confirmationMessage.content);
+      
+      // Set conversation state for action buttons
+      setConversationState({
+        type: 'exercise_recognition',
+        exerciseData: {
+          exerciseName: exerciseData.exercise_name,
+          confidence: exerciseData.confidence || 0.9
+        },
+        awaitingConfirmation: true,
+        actionButtons: [
+          { text: '✅ Ja, Details eingeben', action: 'confirm_exercise', data: exerciseData },
+          { text: '❌ Falsche Übung', action: 'reject_exercise', data: null }
+        ]
+      });
+    } catch (error) {
+      console.error('Error in exercise recognition flow:', error);
+    }
+  };
+
+  const handleConversationAction = async (action: string, data?: any) => {
+    try {
+      if (action === 'confirm_exercise') {
+        // Step 2: Ask for all details at once
+        const detailsMessage: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Perfekt! **${data.exercise_name}**\n\nGib mir bitte alle Details in einer Nachricht ein:\n\n📝 **Format:** "Wiederholungen x Gewicht kg, RPE"\n\n💡 **Beispiele:**\n- "10x90kg rpe7"\n- "5x110kg rpe9 und 3x120kg rpe8"\n- "12x60kg" (ohne RPE)`,
+          created_at: new Date().toISOString(),
+          coach_personality: coach.id
+        };
+
+        setMessages(prev => [...prev, detailsMessage]);
+        await saveMessage('assistant', detailsMessage.content);
+        
+        setConversationState({
+          type: 'awaiting_details',
+          exerciseData: {
+            exerciseName: data.exercise_name,
+            confidence: data.confidence || 0.9
+          }
+        });
+      } else if (action === 'reject_exercise') {
+        const rejectionMessage: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Verstanden! Welche Übung war es denn? Du kannst mir auch einfach schreiben: "Füge [Übungsname] hinzu" und ich helfe dir dabei.',
+          created_at: new Date().toISOString(),
+          coach_personality: coach.id
+        };
+
+        setMessages(prev => [...prev, rejectionMessage]);
+        await saveMessage('assistant', rejectionMessage.content);
+        setConversationState(null);
+      } else if (action === 'save_exercise') {
+        // Handle final save
+        await handleFinalExerciseSave(data);
+      }
+    } catch (error) {
+      console.error('Error handling conversation action:', error);
+    }
+  };
+
+  const parseExerciseDetails = (input: string, exerciseName: string) => {
+    // Parse input like "10x90kg rpe7 und 5x110kg rpe9"
+    const sets = [];
+    
+    // Split by "und" to handle multiple sets
+    const setParts = input.toLowerCase().split(/\s+und\s+/);
+    
+    for (const part of setParts) {
+      // Try different patterns
+      const patterns = [
+        /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+        /(\d+)\s*wdh\s*[x×]?\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+        /(\d+(?:\.\d+)?)\s*kg\s*[x×]\s*(\d+)(?:\s*rpe\s*(\d+))?/gi
+      ];
+      
+      for (const pattern of patterns) {
+        pattern.lastIndex = 0;
+        let match;
+        while ((match = pattern.exec(part)) !== null) {
+          const reps = parseInt(match[1]);
+          const weight = parseFloat(match[2]);
+          const rpe = match[3] ? parseInt(match[3]) : null;
+          
+          if (reps > 0 && weight >= 0 && reps < 100 && weight < 1000) {
+            sets.push({ reps, weight, rpe });
+          }
+        }
+      }
+    }
+    
+    return {
+      exercise_name: exerciseName,
+      sets,
+      confidence: 0.95
+    };
+  };
+
+  const handleExerciseDetailsInput = async (userInput: string) => {
+    // Check if we're in the right conversation state
+    if (!conversationState || conversationState.type !== 'awaiting_details') {
+      return false;
+    }
+
+    const exerciseName = conversationState.exerciseData.exerciseName;
+    const parsedData = parseExerciseDetails(userInput, exerciseName);
+
+    if (parsedData.sets.length === 0) {
+      // Ask for clarification
+      const clarificationMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Hmm, ich konnte die Details nicht verstehen. 🤔\n\nBitte verwende das Format:\n- "10x90kg rpe7"\n- "5 Wiederholungen mit 60kg"\n- "12x50kg rpe6 und 8x70kg rpe8"\n\nVersuch es nochmal!`,
+        created_at: new Date().toISOString(),
+        coach_personality: coach.id
+      };
+      
+      setMessages(prev => [...prev, clarificationMessage]);
+      await saveMessage('assistant', clarificationMessage.content);
+      return true;
+    }
+
+    // Show summary and save button
+    const setsDescription = parsedData.sets.map(set => 
+      `${set.reps}x${set.weight}kg${set.rpe ? ` (RPE ${set.rpe})` : ''}`
+    ).join(', ');
+
+    const summaryMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `✅ **Zusammenfassung**\n\n🏋️ **${parsedData.exercise_name}**\n📊 **Sätze:** ${setsDescription}\n\nSieht das richtig aus?`,
+      created_at: new Date().toISOString(),
+      coach_personality: coach.id
+    };
+
+    setMessages(prev => [...prev, summaryMessage]);
+    await saveMessage('assistant', summaryMessage.content);
+    
+    setConversationState({
+      type: 'exercise_summary',
+      exerciseData: {
+        exerciseName: parsedData.exercise_name,
+        confidence: parsedData.confidence
+      },
+      actionButtons: [
+        { text: '💾 Als Training speichern', action: 'save_exercise', data: parsedData },
+        { text: '✏️ Bearbeiten', action: 'edit_exercise', data: parsedData }
+      ]
+    });
+    
+    return true;
+  };
+
+  const handleFinalExerciseSave = async (exerciseData: any) => {
+    try {
+      // Use the existing handleExercisePreviewSave logic
+      await handleExercisePreviewSave(exerciseData);
+
+      const successMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `🎉 **Training erfolgreich gespeichert!**\n\n💪 **${exerciseData.exercise_name}**\nSätze: ${exerciseData.sets.length}\n\nSuper Arbeit! Weiter so! 🔥`,
+        created_at: new Date().toISOString(),
+        coach_personality: coach.id
+      };
+
+      setMessages(prev => [...prev, successMessage]);
+      await saveMessage('assistant', successMessage.content);
+      setConversationState(null);
+    } catch (error) {
+      console.error('Error saving final exercise:', error);
+    }
   };
 
   const handleExercisePreviewSave = async (exerciseData: any) => {
@@ -1311,26 +1546,45 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                             </div>
                           )}
                           
-                          <div className="text-sm">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
-                            
-                            {/* Show supplement plan button ONLY for the last assistant message with supplements */}
-                            {message.role === 'assistant' && 
-                             isLastMessage &&
-                             pendingSupplementRecommendations.length > 0 && 
-                             !showSupplementPlan && 
-                             message.content.toLowerCase().includes('supplement') && (
-                              <div className="mt-3">
-                                <Button 
-                                  onClick={handleCreateSupplementPlan}
-                                  size="sm"
-                                  className="bg-primary hover:bg-primary/90"
-                                >
-                                  <Pill className="h-4 w-4 mr-2" />
-                                  Supplement-Plan erstellen
-                                </Button>
-                              </div>
-                            )}
+                           <div className="text-sm">
+                             <ReactMarkdown>{message.content}</ReactMarkdown>
+                             
+                             {/* Show action buttons for conversation flow */}
+                             {message.role === 'assistant' && 
+                              isLastMessage &&
+                              conversationState?.actionButtons && (
+                               <div className="mt-3 space-y-2">
+                                 {conversationState.actionButtons.map((button, index) => (
+                                   <Button 
+                                     key={index}
+                                     onClick={() => handleConversationAction(button.action, button.data)}
+                                     size="sm"
+                                     variant={button.action.includes('save') ? 'default' : 'outline'}
+                                     className="mr-2"
+                                   >
+                                     {button.text}
+                                   </Button>
+                                 ))}
+                               </div>
+                             )}
+                             
+                             {/* Show supplement plan button ONLY for the last assistant message with supplements */}
+                             {message.role === 'assistant' && 
+                              isLastMessage &&
+                              pendingSupplementRecommendations.length > 0 && 
+                              !showSupplementPlan && 
+                              message.content.toLowerCase().includes('supplement') && (
+                               <div className="mt-3">
+                                 <Button 
+                                   onClick={handleCreateSupplementPlan}
+                                   size="sm"
+                                   className="bg-primary hover:bg-primary/90"
+                                 >
+                                   <Pill className="h-4 w-4 mr-2" />
+                                   Supplement-Plan erstellen
+                                 </Button>
+                               </div>
+                             )}
                             
                             {/* Show inline supplement list ONLY for the last message when plan is active */}
                             {message.role === 'assistant' && 
