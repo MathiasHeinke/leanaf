@@ -641,7 +641,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     }
 
     const result = { 
-      exercise_name: exerciseName, 
+      exerciseName: exerciseName,  // Hier war der Fehler! 
       sets: sets.length > 0 ? sets : [], 
       overall_rpe: overallRpe 
     };
@@ -783,7 +783,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
             // Exercise was extracted, show preview for manual confirmation
             setExercisePreview({
-              exercise_name: exerciseData.exerciseData.exercise_name,
+              exerciseName: exerciseData.exerciseData.exercise_name,
               sets: exerciseData.exerciseData.sets || [],
               overall_rpe: exerciseData.exerciseData.overall_rpe
             });
@@ -1380,13 +1380,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                        const combinedText = recentMessages.map(m => m.content).join(' ') + ' ' + inputText;
                        const exerciseData = extractExerciseDataFromText(combinedText);
                        
-                       if (exerciseData && (exerciseData.sets.length > 0 || exerciseData.exercise_name !== 'Krafttraining')) {
+                       if (exerciseData && (exerciseData.sets.length > 0 || exerciseData.exerciseName !== 'Krafttraining')) {
                          setExercisePreview({
-                           exercise_name: exerciseData.exercise_name,
+                           exerciseName: exerciseData.exerciseName,
                            sets: exerciseData.sets.length > 0 ? exerciseData.sets : [{ reps: 10, weight: 0 }],
                            overall_rpe: exerciseData.overall_rpe
                          });
-                         toast.success(`Übungsdaten erkannt: ${exerciseData.exercise_name} mit ${exerciseData.sets.length} Sätzen`);
+                         toast.success(`Übungsdaten erkannt: ${exerciseData.exerciseName} mit ${exerciseData.sets.length} Sätzen`);
                        } else {
                          toast.error("Keine Übungsdaten gefunden. Beschreibe dein Training detaillierter (z.B. '3x10 Bankdrücken mit 80kg')");
                        }
