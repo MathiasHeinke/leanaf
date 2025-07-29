@@ -85,7 +85,7 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
       
       if (uploadResult.success && uploadResult.urls) {
         setLeftoverImages([...leftoverImages, ...uploadResult.urls]);
-        toast.success('Reste-Foto hochgeladen');
+        // UI zeigt Upload-Status bereits
       } else {
         toast.error('Fehler beim Hochladen des Fotos');
       }

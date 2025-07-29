@@ -183,7 +183,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         }
         
         // Weight entry updated successfully
-        toast.success('Gewicht aktualisiert!');
+        // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
         // Create new weight entry with fallback strategy
         // Creating new weight entry

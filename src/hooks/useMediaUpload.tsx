@@ -152,7 +152,7 @@ export const useMediaUpload = () => {
               )
             );
             
-            toast.success(`${processedFile.name} erfolgreich hochgeladen`);
+            // Upload-Fortschritt bereits visuell dargestellt
           }
         } catch (uploadError) {
           console.error(`Error uploading ${processedFile.name}:`, uploadError);

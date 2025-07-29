@@ -233,7 +233,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
         // Sleep update completed
         if (error) throw error;
-        toast.success('Schlaf aktualisiert!');
+        // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
         // Create new sleep entry using UPSERT with correct constraint reference
         // Creating new sleep entry

@@ -284,7 +284,7 @@ export const useGlobalMealInput = () => {
       }
 
       if (result.success) {
-        toast.success(`${result.urls.length} Bild(er) erfolgreich hochgeladen`);
+        // UI zeigt bereits visuelles Feedback
       }
 
       return result.urls;

@@ -253,7 +253,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       }
 
       console.log('✅ [WeightHistory] Database update successful');
-      toast.success('Wert erfolgreich aktualisiert');
+      // UI-Feedback bereits durch direkte Anzeige der Änderung
       onDataUpdate();
       cancelEditing();
     } catch (error: any) {
@@ -373,7 +373,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
         
         result = 'updated';
         console.log('✅ [WeightHistory] Weight entry updated successfully');
-        toast.success('Gewicht erfolgreich aktualisiert');
+        // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
         // Insert new entry with fallback strategy
         console.log('🆕 [WeightHistory] Creating new weight entry');

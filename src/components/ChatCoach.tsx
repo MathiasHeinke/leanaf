@@ -387,7 +387,7 @@ export const ChatCoach = ({
 
       if (result.success && result.urls.length > 0) {
         setUploadedImages(prev => [...prev, ...result.urls]);
-        toast.success(`${result.urls.length} Bild(er) hochgeladen`);
+        // Visuelles Feedback bereits durch UI vorhanden
       }
 
       if (result.errors.length > 0) {

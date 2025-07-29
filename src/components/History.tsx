@@ -382,7 +382,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       if (error) throw error;
 
-      toast.success('Mahlzeit aktualisiert');
+      // UI-Aktualisierung zeigt bereits Erfolg
       await loadHistoryData();
     } catch (error) {
       console.error('Error updating meal:', error);

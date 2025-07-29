@@ -107,7 +107,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           .eq('id', editingWorkoutId);
 
         if (error) throw error;
-        toast.success('Workout aktualisiert!');
+        // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
         // Create new workout using INSERT (not UPSERT to allow multiple workouts per day)
         const { error } = await supabase
