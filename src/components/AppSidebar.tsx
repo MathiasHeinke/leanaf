@@ -58,7 +58,7 @@ const settingsItems = [
   { title: "Wissenschaft", url: "/science", icon: Microscope },
   { title: "Features", url: "/features", icon: Lightbulb },
   { title: "Roadmap", url: "/roadmap", icon: MapPin },
-  { title: "Marketing", url: "/marketing", icon: Mail },
+  { title: "Email", url: "/marketing", icon: Mail },
 ];
 
 const legalItems = [
