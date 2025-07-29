@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, Sun, Moon, Clock } from "lucide-react";
+import { Menu, Sun, Moon, Clock, ChevronDown, ArrowLeft, History, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
@@ -19,6 +19,7 @@ export const GlobalHeader = ({
 }: GlobalHeaderProps) => {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
+  const [showCoachHeader, setShowCoachHeader] = useState(false);
   
   const { subscriptionTier } = useSubscription();
   const { t } = useTranslation();
@@ -72,6 +73,27 @@ export const GlobalHeader = ({
     }
   };
 
+  // Check if current route is a coach chat route
+  const isCoachChatRoute = 
+    location.pathname === '/coach' || 
+    location.pathname === '/training/sascha';
+
+  // Get coach info based on route
+  const getCoachInfo = () => {
+    if (location.pathname === '/training/sascha') {
+      return {
+        name: 'Coach Sascha',
+        avatar: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
+        role: 'Workout Coach'
+      };
+    }
+    return {
+      name: 'GetleanAI Coach',
+      avatar: '/coach-images/dr-vita-femina.png',
+      role: 'Personal Coach'
+    };
+  };
+
   const themeStatus = getThemeStatus();
   const themeIconType = getThemeIcon();
 
@@ -122,21 +144,93 @@ export const GlobalHeader = ({
             </h1>
           </div>
           
-          {/* Right: Dark Mode Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleTheme}
-            className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
-            title={getThemeTooltip()}
-          >
-            {renderThemeIcon()}
-          </Button>
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2">
+            {/* Coach Toggle Button (only on coach routes) */}
+            {isCoachChatRoute && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCoachHeader(prev => !prev)}
+                className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+                title="Coach Info anzeigen"
+              >
+                <ChevronDown className={`h-4 w-4 text-primary transition-transform ${showCoachHeader ? 'rotate-180' : ''}`} />
+              </Button>
+            )}
+            
+            {/* Dark Mode Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+              title={getThemeTooltip()}
+            >
+              {renderThemeIcon()}
+            </Button>
+          </div>
         </div>
       </div>
 
+      {/* Coach Dropdown Header (only on coach routes) */}
+      {isCoachChatRoute && showCoachHeader && (
+        <div className="fixed top-[73px] left-0 right-0 z-40 border-b border-border/20 bg-secondary/90 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-secondary/70 animate-fade-in">
+          <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
+            {/* Left: Back Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+              onClick={() => window.history.back()}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            
+            {/* Center: Coach Info */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg flex-shrink-0">
+                <img 
+                  src={getCoachInfo().avatar} 
+                  alt={getCoachInfo().name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/coach-images/dr-vita-femina.png';
+                  }}
+                />
+              </div>
+              <div className="text-center">
+                <h3 className="font-medium text-sm text-foreground/90">{getCoachInfo().name}</h3>
+                <p className="text-xs text-muted-foreground">{getCoachInfo().role}</p>
+              </div>
+            </div>
+            
+            {/* Right: Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+                title="Chat-Verlauf"
+              >
+                <History className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 hover:bg-destructive/60 rounded-lg transition-colors"
+                title="Chat löschen"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Spacer to prevent content overlap */}
-      <div className="h-[73px]" />
+      <div className={`${isCoachChatRoute && showCoachHeader ? 'h-[146px]' : 'h-[73px]'} transition-all`} />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
