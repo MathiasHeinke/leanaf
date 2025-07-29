@@ -179,7 +179,8 @@ export const QuickSupplementInput = () => {
       if (!intakeMap[record.user_supplement_id]) {
         intakeMap[record.user_supplement_id] = {};
       }
-      intakeMap[record.user_supplement_id][record.timing] = record.taken;
+      // Only set to true if actually taken, otherwise leave undefined/false
+      intakeMap[record.user_supplement_id][record.timing] = record.taken === true;
     });
 
     setTodayIntake(intakeMap);
@@ -281,13 +282,8 @@ export const QuickSupplementInput = () => {
         // If no existing entry, we don't need to do anything (already not taken)
       }
 
-      setTodayIntake(prev => ({
-        ...prev,
-        [supplementId]: {
-          ...prev[supplementId],
-          [timing]: taken
-        }
-      }));
+      // Reload intake data to ensure UI is in sync with database
+      await loadTodayIntake();
 
       if (taken) {
         toast.success('Einnahme markiert');
