@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { WorkoutCoachChat } from '@/components/WorkoutCoachChat';
-import { MessageCircle, X, Minimize2, Maximize2 } from 'lucide-react';
+import { WorkoutTimer } from '@/components/WorkoutTimer';
+import { MessageCircle, X, Minimize2, Maximize2, Timer } from 'lucide-react';
 
 interface TrainingFloatingCoachProps {
   isOpen: boolean;
@@ -20,15 +21,24 @@ export const TrainingFloatingCoach: React.FC<TrainingFloatingCoachProps> = ({
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          onClick={onToggle}
-          size="lg"
-          className="rounded-full w-14 h-14 bg-gradient-primary shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      </div>
+      <>
+        {/* Floating Timer Display */}
+        <WorkoutTimer variant="floating" showControls={false} />
+        
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+          {/* Timer Button */}
+          <WorkoutTimer variant="compact" className="self-end" />
+          
+          {/* Chat Button */}
+          <Button
+            onClick={onToggle}
+            size="lg"
+            className="rounded-full w-14 h-14 bg-gradient-primary shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+          >
+            <MessageCircle className="h-6 w-6" />
+          </Button>
+        </div>
+      </>
     );
   }
 
@@ -109,8 +119,13 @@ export const TrainingFloatingCoach: React.FC<TrainingFloatingCoachProps> = ({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          <div className="h-full">
+        <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
+          {/* Timer in Chat Header */}
+          <div className="p-3 border-b bg-secondary/20">
+            <WorkoutTimer variant="compact" />
+          </div>
+          
+          <div className="flex-1 overflow-hidden">
             <WorkoutCoachChat onExerciseLogged={onExerciseLogged} />
           </div>
         </CardContent>

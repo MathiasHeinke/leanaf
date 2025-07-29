@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CustomExerciseManager } from './CustomExerciseManager';
+import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 
 interface Exercise {
   id: string;
@@ -36,6 +37,7 @@ interface ExerciseQuickAddProps {
 
 export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSaved }) => {
   const { user } = useAuth();
+  const { stopTimer, hasActiveTimer } = useWorkoutTimer();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
   const [workoutType, setWorkoutType] = useState<string>('strength');
@@ -118,6 +120,18 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
     try {
       setIsSaving(true);
 
+      // Get timer data if active
+      let startTime = new Date();
+      let endTime = new Date();
+      
+      if (hasActiveTimer) {
+        const timerResult = stopTimer();
+        if (timerResult.actualStartTime) {
+          startTime = timerResult.actualStartTime;
+          endTime = new Date(startTime.getTime() + timerResult.totalDurationMs);
+        }
+      }
+
       // Create exercise session
       const { data: sessionData, error: sessionError } = await supabase
         .from('exercise_sessions')
@@ -126,8 +140,8 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
           session_name: sessionName || 'Quick Training',
           workout_type: workoutType,
           date: new Date().toISOString().split('T')[0],
-          start_time: new Date().toISOString(),
-          end_time: new Date().toISOString()
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString()
         })
         .select()
         .single();

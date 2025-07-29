@@ -33,6 +33,7 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useSentimentAnalysis } from '@/hooks/useSentimentAnalysis';
 import { useCoachMemory } from '@/hooks/useCoachMemory';
 import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
+import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dynamicCoachGreetings';
 import { UploadProgress } from '@/components/UploadProgress';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -121,6 +122,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   progressPhotos = []
 }) => {
   const { user } = useAuth();
+  const { stopTimer, hasActiveTimer } = useWorkoutTimer();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isThinking, setIsThinking] = useState(false);
@@ -1088,6 +1090,18 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                            exerciseData.exercise_name.toLowerCase().includes('squat') ? 'Leg Day' :
                            'Training Session';
 
+        // Get timer data if active
+        let startTime = new Date();
+        let endTime = null;
+        
+        if (hasActiveTimer) {
+          const timerResult = stopTimer();
+          if (timerResult.actualStartTime) {
+            startTime = timerResult.actualStartTime;
+            endTime = new Date(startTime.getTime() + timerResult.totalDurationMs);
+          }
+        }
+
         const { data: newSession, error: sessionError } = await supabase
           .from('exercise_sessions')
           .insert({
@@ -1095,7 +1109,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             date: today,
             session_name: workoutType,
             notes: 'Eingegeben über Coach Chat',
-            start_time: new Date().toISOString(),
+            start_time: startTime.toISOString(),
+            end_time: endTime?.toISOString() || null,
             overall_rpe: exerciseData.overallRpe || null
           })
           .select('id, session_name')
