@@ -961,10 +961,29 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
 
   // Supplement parsing functions
   const parseSupplementTable = (content: string) => {
-    const supplementRegex = /\*\*Supplement[-\s]*Plan?\*\*:?\s*(.*?)(?=\n\n|\n\*\*|$)/s;
-    const match = content.match(supplementRegex);
+    console.log('🔍 Checking for supplement table in:', content.substring(0, 200) + '...');
     
-    if (!match) return null;
+    // Suche nach jeglicher Tabelle die Supplement-Keywords enthält
+    const hasSupplementKeywords = content.toLowerCase().includes('supplement') || 
+                                 content.toLowerCase().includes('vitamin') || 
+                                 content.toLowerCase().includes('magnesium') ||
+                                 content.toLowerCase().includes('kreatin');
+    
+    if (!hasSupplementKeywords) {
+      console.log('❌ No supplement keywords found');
+      return null;
+    }
+    
+    // Vereinfachte Regex: Suche nach allen Tabellen mit Name/Dosierung/Timing
+    const tableRegex = /\|[^|]*Name[^|]*\|[^|]*Dosierung[^|]*\|[^|]*Timing[^|]*\|([\s\S]*?)(?=\n\n|\n\*\*|$)/i;
+    const match = content.match(tableRegex);
+    
+    console.log('📋 Table regex match:', match ? 'FOUND' : 'NOT FOUND');
+    
+    if (!match) {
+      console.log('❌ No table structure found');
+      return null;
+    }
 
     const tableContent = match[1];
     const lines = tableContent.split('\n').filter(line => line.trim() && !line.includes('---'));
