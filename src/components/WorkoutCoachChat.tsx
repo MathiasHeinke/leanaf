@@ -813,9 +813,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-150px)]">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Chat Header */}
-       <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 p-4 shrink-0">
+       <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 px-4 py-2 shrink-0">
          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex-shrink-0">
               <img 
@@ -1158,7 +1158,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         </Collapsible>
 
         {/* Input */}
-        <div className="border-t p-4 bg-background">
+        <div className="border-t px-3 py-2 bg-background">
           <div className="flex items-center space-x-2">
             <Textarea
               value={inputText}

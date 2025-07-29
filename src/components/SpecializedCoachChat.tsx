@@ -1911,7 +1911,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         )}
         
         {/* Input Area */}
-        <div className="border-t p-3 bg-background">
+        <div className="border-t px-3 py-2 bg-background">
           {uploadedImages.length > 0 && (
             <div className="mb-3">
               <div className="flex items-center space-x-2 mb-2">
