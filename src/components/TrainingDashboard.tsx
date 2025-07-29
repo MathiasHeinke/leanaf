@@ -182,34 +182,35 @@ export const TrainingDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header with Timer */}
-      <div className="flex items-center justify-between">
+      {/* Header with Timer - Centered Layout */}
+      <div className="text-center space-y-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Dumbbell className="h-8 w-8 text-primary" />
+          <h1 className="text-4xl font-bold flex items-center justify-center gap-3 mb-2">
+            <Dumbbell className="h-10 w-10 text-primary" />
             Workout
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-lg text-muted-foreground">
             Intelligentes Training mit KI-Coach
           </p>
         </div>
-        {/* Timer Control in Top Right */}
-        <div className="flex items-center gap-3">
+        
+        {/* Timer Control Centered */}
+        <div className="flex justify-center">
           {hasActiveTimer ? (
-            <div className="flex items-center gap-2">
-              <Badge variant={isRunning ? "default" : "secondary"} className="text-lg px-4 py-2 font-mono">
-                <Timer className="h-4 w-4 mr-2" />
+            <div className="flex items-center gap-3">
+              <Badge variant={isRunning ? "default" : "secondary"} className="text-xl px-6 py-3 font-mono">
+                <Timer className="h-5 w-5 mr-3" />
                 {formattedTime}
-                {isRunning && <div className="ml-2 w-2 h-2 bg-white rounded-full animate-pulse" />}
+                {isRunning && <div className="ml-3 w-3 h-3 bg-white rounded-full animate-pulse" />}
               </Badge>
-              <Button variant="outline" size="sm" onClick={handleStopWorkout}>
-                <Square className="h-4 w-4 mr-1" />
+              <Button variant="outline" size="lg" onClick={handleStopWorkout}>
+                <Square className="h-5 w-5 mr-2" />
                 Stop
               </Button>
             </div>
           ) : (
-            <Button onClick={handleStartWorkout} className="bg-gradient-primary text-white font-medium px-6 py-3">
-              <Play className="h-4 w-4 mr-2" />
+            <Button onClick={handleStartWorkout} size="lg" className="bg-gradient-primary text-white font-medium px-8 py-4 text-lg">
+              <Play className="h-5 w-5 mr-3" />
               Workout starten
             </Button>
           )}
