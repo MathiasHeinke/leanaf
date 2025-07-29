@@ -406,7 +406,7 @@ const CoachMiniCard: React.FC<CoachMiniCardProps> = ({ coach, onSelect }) => {
           {(coach.id === 'sascha' || coach.id === 'markus') && (
             <Button 
               size="sm" 
-              variant="outline"
+              variant="default"
               className="flex-1"
               onClick={() => {
                 if (coach.id === 'sascha') {
