@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { 
   LayoutDashboard, 
   MessageCircle, 
@@ -21,6 +22,7 @@ import {
   Info,
   Mail
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -67,13 +69,38 @@ const legalItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { t } = useTranslation();
   const { userPoints } = usePointsSystem();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   
   const collapsed = state === "collapsed";
+
+  useEffect(() => {
+    const checkSuperAdmin = async () => {
+      if (!user) {
+        setIsSuperAdmin(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('is_super_admin_by_email');
+        if (error) {
+          console.error('Error checking super admin status:', error);
+          setIsSuperAdmin(false);
+        } else {
+          setIsSuperAdmin(data || false);
+        }
+      } catch (error) {
+        console.error('Error checking super admin status:', error);
+        setIsSuperAdmin(false);
+      }
+    };
+
+    checkSuperAdmin();
+  }, [user]);
 
   // Helper functions for level calculations
   const getMinPointsForLevel = (level: number): number => {
@@ -204,25 +231,32 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton 
-                    asChild 
-                    className={getNavClass(item.url)}
-                    size={collapsed ? "sm" : "default"}
-                  >
-                    <button
-                      onClick={() => navigate(item.url)}
-                      className="flex items-center w-full"
+              {settingsItems.map((item) => {
+                // Only show Marketing item if user is super admin
+                if (item.url === '/marketing' && !isSuperAdmin) {
+                  return null;
+                }
+                
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={getNavClass(item.url)}
+                      size={collapsed ? "sm" : "default"}
                     >
-                      <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                      {!collapsed && (
-                        <span>{item.key ? t(item.key) : item.title}</span>
-                      )}
-                    </button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <button
+                        onClick={() => navigate(item.url)}
+                        className="flex items-center w-full"
+                      >
+                        <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                        {!collapsed && (
+                          <span>{item.key ? t(item.key) : item.title}</span>
+                        )}
+                      </button>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
               
               {/* Bug Report */}
               <SidebarMenuItem>
