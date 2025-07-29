@@ -1129,7 +1129,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               <MediaUploadZone
                 onMediaUploaded={handleMediaUploaded}
                 maxFiles={3}
-                accept={['image/*', 'video/*']}
+                accept={['image/*']}
                 className="max-h-64"
               />
               

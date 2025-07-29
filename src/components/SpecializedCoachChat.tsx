@@ -1883,6 +1883,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               <MediaUploadZone
                 onMediaUploaded={handleMediaUploaded}
                 maxFiles={3}
+                accept={['image/*']}
                 className="max-h-64"
               />
               
