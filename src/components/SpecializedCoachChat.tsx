@@ -1024,9 +1024,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     if (!user?.id) return;
 
     console.log('🔍 DEBUG: exerciseData received:', exerciseData);
-    console.log('🔍 DEBUG: exerciseData.exerciseName:', exerciseData.exerciseName);
+    console.log('🔍 DEBUG: exerciseData.exercise_name:', exerciseData.exercise_name);
 
-    if (!exerciseData.exerciseName) {
+    if (!exerciseData.exercise_name) {
       toast.error('Kein Übungsname gefunden! Bitte gib den Übungsnamen an.');
       return;
     }
@@ -1039,7 +1039,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       const { data: existingExercise } = await supabase
         .from('exercises')
         .select('id')
-        .eq('name', exerciseData.exerciseName)
+        .eq('name', exerciseData.exercise_name)
         .maybeSingle();
 
       if (existingExercise) {
@@ -1049,7 +1049,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         const { data: newExercise, error: exerciseError } = await supabase
           .from('exercises')
           .insert({
-            name: exerciseData.exerciseName,
+            name: exerciseData.exercise_name,
             category: 'strength',
             created_by: user.id
           })
@@ -1083,9 +1083,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         sessionName = existingSession.session_name;
       } else {
         // Neue Session erstellen - versuche Workout-Typ zu bestimmen
-        const workoutType = exerciseData.exerciseName.toLowerCase().includes('deadlift') ? 'Pull Day' :
-                           exerciseData.exerciseName.toLowerCase().includes('bench') ? 'Push Day' :
-                           exerciseData.exerciseName.toLowerCase().includes('squat') ? 'Leg Day' :
+        const workoutType = exerciseData.exercise_name.toLowerCase().includes('deadlift') ? 'Pull Day' :
+                           exerciseData.exercise_name.toLowerCase().includes('bench') ? 'Push Day' :
+                           exerciseData.exercise_name.toLowerCase().includes('squat') ? 'Leg Day' :
                            'Training Session';
 
         const { data: newSession, error: sessionError } = await supabase
@@ -1639,7 +1639,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         {exercisePreview && (
           <div className="mt-2">
             <ExercisePreviewCard
-            data={exercisePreview}
+            data={{
+              exercise_name: exercisePreview.exerciseName,
+              sets: exercisePreview.sets,
+              overall_rpe: exercisePreview.overall_rpe
+            }}
             onSave={handleExercisePreviewSave}
             onCancel={() => setExercisePreview(null)}
           />
