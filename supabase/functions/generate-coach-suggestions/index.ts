@@ -162,6 +162,7 @@ serve(async (req) => {
       let emotionalState = 'neutral';
       let conversationGaps = [];
       let nextLogicalStep = '';
+      let contextualActions = [];
       
       // Detect emotional state
       for (const [emotion, markers] of Object.entries(emotionalMarkers)) {
@@ -169,6 +170,34 @@ serve(async (req) => {
           emotionalState = emotion;
           break;
         }
+      }
+      
+      // Detect specific contextual actions based on coach response
+      if (lastCoachContent.includes('supplement') && 
+          (lastCoachContent.includes('empfehle') || lastCoachContent.includes('plan') || lastCoachContent.includes('sinnvoll'))) {
+        contextualActions.push({
+          type: 'supplement_plan',
+          text: 'Ja, Supplement-Plan erstellen',
+          urgency: 'high'
+        });
+      }
+      
+      if (lastCoachContent.includes('analysier') && 
+          (lastCoachContent.includes('soll ich') || lastCoachContent.includes('detailliert'))) {
+        contextualActions.push({
+          type: 'detailed_analysis',
+          text: 'Ja, bitte analysieren',
+          urgency: 'high'
+        });
+      }
+      
+      if (lastCoachContent.includes('training') && 
+          (lastCoachContent.includes('plan') || lastCoachContent.includes('programm'))) {
+        contextualActions.push({
+          type: 'training_plan',
+          text: 'Ja, Trainingsplan erstellen',
+          urgency: 'high'
+        });
       }
       
       // Identify conversation gaps and natural follow-ups
@@ -182,7 +211,7 @@ serve(async (req) => {
         conversationGaps.push('barrier_exploration');
       }
       
-      return { emotionalState, conversationGaps, conversationLength };
+      return { emotionalState, conversationGaps, conversationLength, contextualActions };
     };
 
     const conversationContext = analyzeConversationContext();
@@ -244,6 +273,7 @@ CONVERSATION-ANALYSE:
 📍 Letzter Coach: "${lastAssistantMessage}"
 📍 Emotional State: ${conversationContext.emotionalState}
 📍 Conversation Length: ${conversationContext.conversationLength} Nachrichten
+📍 Kontextuelle Aktionen: ${conversationContext.contextualActions.map(a => a.text).join(', ') || 'Keine erkannt'}
 
 PERPLEXITY-REGELN (ZWINGEND):
 ✅ Nutze EXAKTE Zahlen aus den Daten (${userData.todaysTotals.calories} kcal, ${userData.todaysTotals.protein}g Protein)
@@ -251,6 +281,7 @@ PERPLEXITY-REGELN (ZWINGEND):
 ✅ Erkenne NATÜRLICHE NEUGIER-GAPS im Gespräch
 ✅ Berücksichtige ${conversationContext.emotionalState}-Zustand für Frage-Typ
 ✅ Nur ${coachContext.focus}-relevante Themen
+✅ PRIORITÄT: Erkannte kontextuelle Aktionen: ${conversationContext.contextualActions.map(a => a.text).join(', ')}
 
 COACH-SPEZIFISCHE EINSCHRÄNKUNGEN:
 ${coachId === 'sascha' ? '⚠️ SASCHA: KEINE Ernährungs-/Kalorien-/Protein-Fragen! NUR Training/Performance' : ''}
@@ -296,7 +327,12 @@ PERPLEXITY-BEISPIELE pro Coach:
           { role: 'system', content: systemPrompt },
           { 
             role: 'user', 
-            content: `Generiere jetzt 3 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext. WICHTIG: Alle Fragen müssen aus der ICH-Perspektive des Benutzers formuliert werden.` 
+            content: `Generiere jetzt 3 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext. 
+
+WICHTIG: 
+1. Alle Fragen müssen aus der ICH-Perspektive des Benutzers formuliert werden
+2. PRIORITÄT: Falls kontextuelle Aktionen erkannt wurden (${conversationContext.contextualActions.map(a => a.text).join(', ')}), MÜSSEN diese als erste Vorschläge erscheinen
+3. Ergänze mit weiteren coach-spezifischen Follow-up-Fragen basierend auf dem Gespräch`
           }
         ],
         temperature: 0.7,

@@ -459,10 +459,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Remove the aggressive message splitting since the edge function now handles intelligent responses
+  // Enhanced message splitting with higher limits for detailed analyses
   const splitMessage = (message: string): string[] => {
-    // Only split very long messages (over 800 characters) as a fallback
-    if (message.length <= 800) {
+    // Increased limit to 2000 characters for detailed supplement analyses
+    if (message.length <= 2000) {
       return [message];
     }
     
@@ -472,7 +472,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     let currentPart = '';
     
     for (const sentence of sentences) {
-      if (currentPart.length + sentence.length > 400 && currentPart.length > 0) {
+      if (currentPart.length + sentence.length > 1500 && currentPart.length > 0) {
         parts.push(currentPart.trim());
         currentPart = sentence;
       } else {
