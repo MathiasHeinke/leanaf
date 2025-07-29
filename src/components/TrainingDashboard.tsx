@@ -7,7 +7,9 @@ import { TrainingHistory } from '@/components/TrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { TrainingStats } from '@/components/TrainingStats';
+import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { useAuth } from '@/hooks/useAuth';
+import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -18,8 +20,12 @@ import {
   Plus,
   BarChart3,
   MessageCircle,
-  Clock
+  Clock,
+  Timer,
+  Play,
+  Square
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ExerciseSession {
   id: string;
@@ -53,6 +59,7 @@ interface WeeklyStats {
 export const TrainingDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isRunning, hasActiveTimer, formattedTime, startTimer, stopTimer } = useWorkoutTimer();
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
     totalSets: 0,
@@ -62,6 +69,16 @@ export const TrainingDashboard: React.FC = () => {
     sessionsThisWeek: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleStartWorkout = () => {
+    startTimer();
+    toast.success('Workout Timer gestartet! 🏋️‍♂️');
+  };
+
+  const handleStopWorkout = () => {
+    const result = stopTimer();
+    toast.success(`Workout beendet! Dauer: ${Math.floor(result.totalDurationMs / 60000)} Minuten`);
+  };
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -165,7 +182,7 @@ export const TrainingDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
+      {/* Header with Timer */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -176,9 +193,27 @@ export const TrainingDashboard: React.FC = () => {
             Intelligentes Training mit KI-Coach
           </p>
         </div>
-        <Badge className="bg-gradient-primary text-white px-4 py-2">
-          Advanced
-        </Badge>
+        {/* Timer Control in Top Right */}
+        <div className="flex items-center gap-3">
+          {hasActiveTimer ? (
+            <div className="flex items-center gap-2">
+              <Badge variant={isRunning ? "default" : "secondary"} className="text-lg px-4 py-2 font-mono">
+                <Timer className="h-4 w-4 mr-2" />
+                {formattedTime}
+                {isRunning && <div className="ml-2 w-2 h-2 bg-white rounded-full animate-pulse" />}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={handleStopWorkout}>
+                <Square className="h-4 w-4 mr-1" />
+                Stop
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={handleStartWorkout} className="bg-gradient-primary text-white font-medium px-6 py-3">
+              <Play className="h-4 w-4 mr-2" />
+              Workout starten
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* KI Training Coaches */}
