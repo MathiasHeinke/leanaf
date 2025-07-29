@@ -22,8 +22,10 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
       )}
 
       {/* Scrollbarer Chat */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-2">
-        {children}
+      <div className="flex-1 min-h-0 px-4">
+        <div className="h-full overflow-y-auto space-y-2" style={{ pointerEvents: 'auto' }}>
+          {children}
+        </div>
       </div>
 
       {/* Eingabemaske + Footer (gemeinsamer Block!) */}
