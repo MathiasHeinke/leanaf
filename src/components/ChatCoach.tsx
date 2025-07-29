@@ -186,6 +186,59 @@ export const ChatCoach = ({
     return baseActions;
   };
 
+  // Load user data and coach personality
+  useEffect(() => {
+    if (user?.id) {
+      loadUserData();
+      loadChatHistory();
+      updateCalories();
+    }
+  }, [user?.id]);
+
+  // Update remaining calories periodically
+  useEffect(() => {
+    const interval = setInterval(updateCalories, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [todaysTotals, dailyGoals]);
+
+  const updateCalories = () => {
+    const remaining = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
+    setRemainingCalories(remaining);
+  };
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      setTimeout(() => {
+        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  const formatMessageTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return date.toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      });
+    } else {
+      return date.toLocaleDateString('de-DE', { 
+        day: '2-digit', 
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  };
+
   const loadUserData = async () => {
     if (!user?.id) return;
 
@@ -316,63 +369,12 @@ export const ChatCoach = ({
     }
   };
 
-  const formatMessageTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    
-    if (isToday) {
-      return date.toLocaleTimeString('de-DE', { 
-        hour: '2-digit', 
-        minute: '2-digit'
-      });
-    } else {
-      return date.toLocaleDateString('de-DE', { 
-        day: '2-digit', 
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-  };
-
-  // Load user data and coach personality
-  useEffect(() => {
-    if (user?.id) {
-      loadUserData();
-      loadChatHistory();
-      updateCalories();
-    }
-  }, [user?.id]);
-
-  // Update remaining calories periodically
-  useEffect(() => {
-    const interval = setInterval(updateCalories, 60000); // Update every minute
-    return () => clearInterval(interval);
-  }, [todaysTotals, dailyGoals]);
-
-  const updateCalories = () => {
-    const remaining = dailyGoals?.calories ? Math.max(0, dailyGoals.calories - todaysTotals.calories) : 0;
-    setRemainingCalories(remaining);
-  };
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      setTimeout(() => {
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }
-  };
-
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || !user?.id) return;
 
+    // Starting photo upload for coach chat
+    
     setIsUploading(true);
     setUploadProgress([]);
 
@@ -385,6 +387,7 @@ export const ChatCoach = ({
 
       if (result.success && result.urls.length > 0) {
         setUploadedImages(prev => [...prev, ...result.urls]);
+        // Visuelles Feedback bereits durch UI vorhanden
       }
 
       if (result.errors.length > 0) {
@@ -395,6 +398,7 @@ export const ChatCoach = ({
       toast.error('Fehler beim Upload der Bilder');
     } finally {
       setIsUploading(false);
+      // Reset file input
       if (event.target) {
         event.target.value = '';
       }
@@ -537,20 +541,19 @@ export const ChatCoach = ({
 
   if (isLoading) {
     return (
-      <div className="flex-1 min-h-0 flex items-center justify-center">
+      <Card className="h-[calc(100vh-140px)] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Lade Chat-Verlauf...</p>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
-      {/* Top Coach Banner direkt unter globalem Header */}
-      <div className="flex-shrink-0 px-4 pt-1 pb-2">
-        <div className="flex items-center gap-3">
+    <Card className="h-[calc(100vh-140px)] flex flex-col">
+      <CardHeader className="pb-2 flex-shrink-0">
+        <CardTitle className="flex items-center gap-3">
           <div className={`h-10 w-10 bg-gradient-to-br ${coachInfo.accentColor} rounded-xl flex items-center justify-center shadow-lg`}>
             <Brain className="h-5 w-5 text-white" />
           </div>
@@ -580,143 +583,148 @@ export const ChatCoach = ({
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
-        </div>
-      </div>
+        </CardTitle>
+      </CardHeader>
       
-      {/* Scrollbarer Chatbereich */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-4">
-        {messages.map((message, index) => (
-          <div key={message.id || index} className="space-y-2">
-            <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] ${message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
-                <div className={`rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted border'
-                }`}>
-                  {message.role === 'assistant' && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                        <img 
-                          src={coachInfo.imageUrl} 
-                          alt={coachInfo.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                          }}
-                        />
-                        <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
-                          {coachInfo.emoji}
-                        </div>
+      <Separator className="flex-shrink-0" />
+      
+      <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+        {/* Chat Messages - Scrollable area */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="space-y-4 p-4">
+              {messages.map((message, index) => (
+                <div key={message.id || index} className="space-y-2">
+                  <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] ${message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+                      <div className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted border'
+                      }`}>
+                        {message.role === 'assistant' && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                              <img 
+                                src={coachInfo.imageUrl} 
+                                alt={coachInfo.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                                {coachInfo.emoji}
+                              </div>
+                            </div>
+                            <span className="text-xs font-medium text-primary truncate">
+                              {coachInfo.name}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Show images if available */}
+                        {message.images && message.images.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {message.images.map((imageUrl, imgIndex) => (
+                              <img
+                                key={imgIndex}
+                                src={imageUrl}
+                                alt={`Message image ${imgIndex + 1}`}
+                                className="w-16 h-16 object-cover rounded-lg border"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
+                        {message.role === 'assistant' ? (
+                          <div className="text-sm leading-relaxed">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                        )}
                       </div>
-                      <span className="text-xs font-medium text-primary truncate">
-                        {coachInfo.name}
+                      
+                      {/* Timestamp outside bubble */}
+                      <span className="text-xs text-muted-foreground mt-1 px-1">
+                        {formatMessageTime(message.created_at)}
                       </span>
                     </div>
-                  )}
-                  
-                  {/* Show images if available */}
-                  {message.images && message.images.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {message.images.map((imageUrl, imgIndex) => (
-                        <img
-                          key={imgIndex}
-                          src={imageUrl}
-                          alt={`Message image ${imgIndex + 1}`}
-                          className="w-16 h-16 object-cover rounded-lg border"
-                        />
+                  </div>
+                </div>
+              ))}
+              
+              {isThinking && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] flex flex-col items-start">
+                    <div className="bg-muted border rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                          <img 
+                            src={coachInfo.imageUrl} 
+                            alt={coachInfo.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                            {coachInfo.emoji}
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium text-primary">{coachInfo.name} schreibt...</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1 px-1">
+                      jetzt
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Enhanced Quick Actions with time and calorie context */}
+              {quickActionsShown && !isThinking && (
+                <div className="flex justify-start">
+                  <div className="max-w-[90%] space-y-2">
+                    <div className="text-xs text-muted-foreground px-2">Oder frag mich:</div>
+                    <div className="grid gap-2">
+                      {quickActions.map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          className="h-auto p-3 text-left justify-start hover:bg-muted/80"
+                          onClick={() => {
+                            setQuickActionsShown(false);
+                            handleSendMessage(action.prompt);
+                          }}
+                        >
+                          <action.icon className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
+                          <span className="text-xs">{action.text}</span>
+                        </Button>
                       ))}
                     </div>
-                  )}
-                  
-                  {message.role === 'assistant' ? (
-                    <div className="text-sm leading-relaxed">
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  )}
-                </div>
-                
-                {/* Timestamp outside bubble */}
-                <span className="text-xs text-muted-foreground mt-1 px-1">
-                  {formatMessageTime(message.created_at)}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-        
-        {isThinking && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] flex flex-col items-start">
-              <div className="bg-muted border rounded-2xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                    <img 
-                      src={coachInfo.imageUrl} 
-                      alt={coachInfo.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                      }}
-                    />
-                    <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
-                      {coachInfo.emoji}
-                    </div>
                   </div>
-                  <span className="text-xs font-medium text-primary">{coachInfo.name} schreibt...</span>
                 </div>
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                </div>
-              </div>
-              <span className="text-xs text-muted-foreground mt-1 px-1">
-                jetzt
-              </span>
+              )}
+              
+              <div ref={scrollRef} />
             </div>
-          </div>
-        )}
-        
-        {/* Enhanced Quick Actions with time and calorie context */}
-        {quickActionsShown && !isThinking && (
-          <div className="flex justify-start">
-            <div className="max-w-[90%] space-y-2">
-              <div className="text-xs text-muted-foreground px-2">Oder frag mich:</div>
-              <div className="grid gap-2">
-                {quickActions.map((action, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="h-auto p-3 text-left justify-start hover:bg-muted/80"
-                    onClick={() => {
-                      setQuickActionsShown(false);
-                      handleSendMessage(action.prompt);
-                    }}
-                  >
-                    <action.icon className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-                    <span className="text-xs">{action.text}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div ref={scrollRef} />
-      </div>
+          </ScrollArea>
+        </div>
 
-      {/* Input + Footer */}
-      <div className="flex-shrink-0">
-        {/* Input direkt auf Footer sitzend */}
-        <div className="px-3 py-1 bg-background border-t border-border">
+        {/* Input Area - Fixed at bottom */}
+        <div className="flex-shrink-0 p-4 border-t bg-background">
           {/* Upload Progress */}
           <UploadProgress 
             progress={uploadProgress} 
@@ -725,7 +733,7 @@ export const ChatCoach = ({
 
           {/* Image Thumbnails */}
           {uploadedImages.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-2 animate-fade-in">
+            <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
               {uploadedImages.map((imageUrl, index) => (
                 <div key={index} className="relative group animate-scale-in">
                   <img
@@ -746,7 +754,7 @@ export const ChatCoach = ({
           )}
           
           {(isRecording || isProcessing) && (
-            <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
               <div className="flex gap-1">
                 <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
                 <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
@@ -859,12 +867,7 @@ export const ChatCoach = ({
             </div>
           </div>
         </div>
-
-        {/* Footer ohne Abstand, direkt unten fix */}
-        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-background">
-          © 2025 GetleanAI. Made with ❤️ in Germany
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };

@@ -40,7 +40,7 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <div 
       ref={swipeRef}
-      className="h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full"
+      className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full"
     >
       {/* Background Geometric Shapes for Glass Effect - Animated */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -59,7 +59,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <GlobalHeader 
           onRefresh={() => setShowSubscriptionDebug(true)}
         />
-        <main className="container mx-auto px-3 pb-1 pt-2 max-w-md relative z-10 flex-1 flex flex-col min-h-0">
+        <main className="container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1">
           {children}
         </main>
         <Footer />
