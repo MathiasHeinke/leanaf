@@ -538,15 +538,6 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     setUploadedMedia(prev => [...prev, ...urls]);
   };
 
-  // Auto-fill input text when media is uploaded
-  useEffect(() => {
-    if (uploadedMedia.length > 0 && !inputText.trim()) {
-      const label = getAnalysisTypeLabel(analysisType);
-      console.log('Media uploaded, setting input text to:', label);
-      setInputText(label);
-    }
-  }, [uploadedMedia, analysisType]);
-
   return (
     <div className="flex flex-col h-[calc(100vh-150px)]">
       {/* Chat Header */}
@@ -789,7 +780,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('exercise_form')}
+                  onClick={() => {
+                    setAnalysisType('exercise_form');
+                    setInputText(getAnalysisTypeLabel('exercise_form'));
+                  }}
                   className="text-xs"
                 >
                   🏋️ Übung
@@ -797,7 +791,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'meal_analysis' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('meal_analysis')}
+                  onClick={() => {
+                    setAnalysisType('meal_analysis');
+                    setInputText(getAnalysisTypeLabel('meal_analysis'));
+                  }}
                   className="text-xs"
                 >
                   🍽️ Essen
@@ -805,7 +802,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'progress_photo' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('progress_photo')}
+                  onClick={() => {
+                    setAnalysisType('progress_photo');
+                    setInputText(getAnalysisTypeLabel('progress_photo'));
+                  }}
                   className="text-xs"
                 >
                   📸 Fortschritt
@@ -813,7 +813,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'general' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('general')}
+                  onClick={() => {
+                    setAnalysisType('general');
+                    setInputText(getAnalysisTypeLabel('general'));
+                  }}
                   className="text-xs"
                 >
                   💬 Allgemein
@@ -870,7 +873,14 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowUpload(!showUpload)}
+              onClick={() => {
+                const newShowUpload = !showUpload;
+                setShowUpload(newShowUpload);
+                // Wenn Upload-Fenster geöffnet wird und kein Text im Eingabefeld steht, setze Default-Text
+                if (newShowUpload && !inputText.trim()) {
+                  setInputText(getAnalysisTypeLabel('general'));
+                }
+              }}
               className={showUpload ? 'bg-primary/10 text-primary' : ''}
             >
               <Paperclip className="h-4 w-4" />
