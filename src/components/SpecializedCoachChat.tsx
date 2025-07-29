@@ -163,6 +163,30 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   } = useCoachMemory();
   const { checkForProactiveOpportunities } = useProactiveCoaching();
 
+  // Helper function to get analysis type labels
+  const getAnalysisTypeLabel = (type: string) => {
+    console.log('getAnalysisTypeLabel called with:', type);
+    let label;
+    switch (type) {
+      case 'exercise_form':
+        label = 'Analysiere meine Übung';
+        break;
+      case 'meal_analysis':
+        label = 'Analysiere meine Mahlzeit';
+        break;
+      case 'progress_photo':
+        label = 'Analysiere meinen Fortschritt';
+        break;
+      case 'general':
+        label = 'Analysiere das Bild';
+        break;
+      default:
+        label = 'Analysiere das Bild';
+    }
+    console.log('getAnalysisTypeLabel returning:', label);
+    return label;
+  };
+
   useEffect(() => {
     if (user?.id) {
       loadUserData();
@@ -1333,7 +1357,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('exercise_form')}
+                  onClick={() => {
+                    console.log('Exercise button clicked, setting analysisType to exercise_form');
+                    setAnalysisType('exercise_form');
+                    const label = getAnalysisTypeLabel('exercise_form');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
+                  }}
                   className="text-xs"
                 >
                   🏋️ Übung
@@ -1341,7 +1371,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'meal_analysis' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('meal_analysis')}
+                  onClick={() => {
+                    console.log('Meal button clicked, setting analysisType to meal_analysis');
+                    setAnalysisType('meal_analysis');
+                    const label = getAnalysisTypeLabel('meal_analysis');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
+                  }}
                   className="text-xs"
                 >
                   🍽️ Essen
@@ -1349,7 +1385,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'progress_photo' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('progress_photo')}
+                  onClick={() => {
+                    console.log('Progress button clicked, setting analysisType to progress_photo');
+                    setAnalysisType('progress_photo');
+                    const label = getAnalysisTypeLabel('progress_photo');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
+                  }}
                   className="text-xs"
                 >
                   📸 Fortschritt
@@ -1357,7 +1399,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 <Button
                   variant={analysisType === 'general' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setAnalysisType('general')}
+                  onClick={() => {
+                    console.log('General button clicked, setting analysisType to general');
+                    setAnalysisType('general');
+                    const label = getAnalysisTypeLabel('general');
+                    console.log('Setting inputText to:', label);
+                    setInputText(label);
+                  }}
                   className="text-xs"
                 >
                   💬 Allgemein
@@ -1431,6 +1479,20 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             </div>
           )}
           
+          {/* TEST BUTTON FOR DEBUGGING */}
+          <div className="mb-2 p-2 bg-yellow-100 rounded">
+            <Button 
+              onClick={() => {
+                console.log('TEST: Setting inputText to "TEST TEXT"');
+                setInputText("TEST TEXT");
+              }}
+              variant="outline"
+              size="sm"
+            >
+              TEST setInputText
+            </Button>
+          </div>
+
           <div className="flex space-x-2">
             <Textarea
               value={inputText}
@@ -1451,7 +1513,17 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowMediaUpload(!showMediaUpload)}
+                onClick={() => {
+                  console.log('Upload button clicked, current showMediaUpload:', showMediaUpload);
+                  console.log('Current inputText:', inputText);
+                  const newShowUpload = !showMediaUpload;
+                  setShowMediaUpload(newShowUpload);
+                  // Wenn Upload-Fenster geöffnet wird und kein Text im Eingabefeld steht, setze Default-Text
+                  if (newShowUpload && !inputText.trim()) {
+                    console.log('Setting default text: Analysiere das Bild');
+                    setInputText(getAnalysisTypeLabel('general'));
+                  }
+                }}
                 disabled={isThinking}
                 className={showMediaUpload ? 'bg-primary/10 text-primary' : ''}
               >
