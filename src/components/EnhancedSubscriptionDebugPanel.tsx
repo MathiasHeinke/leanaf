@@ -71,14 +71,7 @@ export const EnhancedSubscriptionDebugPanel: React.FC<EnhancedSubscriptionDebugP
   };
 
   const getSubscriptionStatus = (user: any) => {
-    // Debug specific users
-    if (user.user_id === '84b0664f-0934-49ce-9c35-c99546b792bf') {
-      console.log("🔍 [Debug Panel] Subscription status for mi.brandl78:", {
-        subscribed: user.subscribed,
-        subscription_tier: user.subscription_tier,
-        subscription_end: user.subscription_end
-      });
-    }
+    // Debug für spezifische Subscription-Mappings falls nötig
 
     if (!user.subscribed) return { status: 'Free', color: 'secondary' };
     if (user.subscription_end && new Date(user.subscription_end) < new Date()) {

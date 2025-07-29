@@ -203,7 +203,7 @@ export const EnhancedCoachTopicManager = () => {
     }
     
     if (selectedCoach) {
-      console.log('✅ [EFFECT] Debouncing loadCoachData for coach:', selectedCoach);
+      // Lade Coach-Daten nach Debounce
       
       // Debounce the load to prevent rapid successive calls
       debounceTimeoutRef.current = setTimeout(() => {
@@ -211,7 +211,7 @@ export const EnhancedCoachTopicManager = () => {
         loadCoachData(false, 1);
       }, 300); // 300ms debounce
     } else {
-      console.log('❌ [EFFECT] No coach selected, clearing state');
+      // Kein Coach ausgewählt, State leeren
       setCoachTopics([]);
       setCoachStatus(null);
       setRetryCount(0);
@@ -421,20 +421,19 @@ export const EnhancedCoachTopicManager = () => {
   };
 
   const getTopicsByCategory = () => {
-    console.log('🗂️ Categorizing topics. Total topics:', coachTopics.length);
-    console.log('📊 Topics array:', coachTopics);
+    // Kategorisiere Topics nach Status
+    if (!coachTopics?.length) {
+      return {};
+    }
     
     const categories: Record<string, CoachTopicConfig[]> = {};
     coachTopics.forEach(topic => {
-      console.log('Processing topic:', topic.topic_name, 'Category:', topic.topic_category);
       if (!categories[topic.topic_category]) {
         categories[topic.topic_category] = [];
       }
       categories[topic.topic_category].push(topic);
     });
-    
-    console.log('📂 Final categories:', Object.keys(categories));
-    console.log('📊 Categories with counts:', Object.entries(categories).map(([cat, topics]) => `${cat}: ${topics.length}`));
+    // Kategorien erstellt
     
     return categories;
   };

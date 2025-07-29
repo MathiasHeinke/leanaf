@@ -114,7 +114,7 @@ export function ImportOpenfoodfacts() {
         }
       }
 
-      console.log('✅ Import completed - Focus: German/European basic foods');
+      // Import erfolgreich abgeschlossen
       setResult({
         success: true,
         message: `Import abgeschlossen: ${totalImported} deutsche/europäische Produkte importiert (${totalSkipped} übersprungen)`,
@@ -146,7 +146,7 @@ export function ImportOpenfoodfacts() {
         throw new Error(`Stats failed: ${statsError.message}`);
       }
 
-      console.log('📊 Current stats:', data);
+      // Aktuelle Statistiken geladen
       setStats(data); // Update stats state
       setResult(data);
     } catch (err) {

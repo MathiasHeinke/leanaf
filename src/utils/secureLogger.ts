@@ -1,4 +1,4 @@
-// Secure logging utility that respects environment and security
+// Secure logging utility for production-ready applications
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname.includes('lovableapp.com');
 
 export const secureLogger = {
