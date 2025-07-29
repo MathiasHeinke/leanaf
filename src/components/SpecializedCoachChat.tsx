@@ -1031,7 +1031,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           exercise_name: exerciseData.exerciseName,
           sets: exerciseData.sets,
           overall_rpe: exerciseData.overallRpe || null,
-          session_date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split('T')[0],
           duration_minutes: null,
           notes: 'Eingegeben über Coach Chat'
         });
