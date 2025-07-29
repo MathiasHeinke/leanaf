@@ -50,7 +50,15 @@ export const SupplementPreviewCard: React.FC<SupplementPreviewCardProps> = ({
   onCancel
 }) => {
   const { user } = useAuth();
-  const [supplementData, setSupplementData] = useState<SupplementPreviewData>(data);
+  
+  // Ensure data has proper structure with fallbacks
+  const initialData: SupplementPreviewData = {
+    title: data?.title || 'Supplement Plan',
+    description: data?.description || '',
+    supplements: data?.supplements || []
+  };
+  
+  const [supplementData, setSupplementData] = useState<SupplementPreviewData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
