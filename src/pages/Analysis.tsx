@@ -14,6 +14,7 @@ const Analysis = () => {
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [bodyMeasurementsHistory, setBodyMeasurementsHistory] = useState<any[]>([]);
 
   // Today's nutritional totals
   const [todaysTotals, setTodaysTotals] = useState({
@@ -174,6 +175,18 @@ const Analysis = () => {
         setWeightHistory(weightData);
       }
 
+      // Load body measurements history
+      const { data: bodyMeasurementsData } = await supabase
+        .from('body_measurements')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(30);
+
+      if (bodyMeasurementsData) {
+        setBodyMeasurementsHistory(bodyMeasurementsData);
+      }
+
     } catch (error) {
       console.error('Error loading analysis data:', error);
     } finally {
@@ -236,6 +249,7 @@ const Analysis = () => {
       <HistoryCharts 
         data={historyData}
         weightHistory={weightHistory}
+        bodyMeasurementsHistory={bodyMeasurementsHistory}
         timeRange="month"
         loading={loading}
       />
