@@ -1134,6 +1134,7 @@ export type Database = {
           difficulty_level: number | null
           equipment: string | null
           id: string
+          image_url: string | null
           instructions: string | null
           is_compound: boolean | null
           is_public: boolean | null
@@ -1149,6 +1150,7 @@ export type Database = {
           difficulty_level?: number | null
           equipment?: string | null
           id?: string
+          image_url?: string | null
           instructions?: string | null
           is_compound?: boolean | null
           is_public?: boolean | null
@@ -1164,6 +1166,7 @@ export type Database = {
           difficulty_level?: number | null
           equipment?: string | null
           id?: string
+          image_url?: string | null
           instructions?: string | null
           is_compound?: boolean | null
           is_public?: boolean | null
