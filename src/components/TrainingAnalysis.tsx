@@ -100,6 +100,9 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
       case 'strength': return Dumbbell;
       case 'discrepancy': return AlertTriangle;
       case 'progression': return TrendingUp;
+      case 'correlation': return Activity;
+      case 'habit': return Calendar;
+      case 'trend': return TrendingUp;
       default: return Activity;
     }
   };

@@ -5,13 +5,15 @@ export interface TrainingPrognosisData {
 }
 
 export interface StrengthInsight {
-  type: 'strength' | 'volume' | 'rpe' | 'progression' | 'discrepancy';
+  type: 'strength' | 'volume' | 'rpe' | 'progression' | 'discrepancy' | 'correlation' | 'habit' | 'trend';
   priority: 'high' | 'medium' | 'low';
   title: string;
   description: string;
   value?: number;
   trend?: 'up' | 'down' | 'stable';
   color?: string;
+  correlation?: number;
+  pattern?: string;
 }
 
 export interface TrainingPrognosis {
@@ -163,6 +165,14 @@ export const calculateTrainingPrognosis = ({
     });
   }
 
+  // Analyze workout patterns and habits
+  const habitInsights = analyzeWorkoutHabits(workoutData);
+  insights.push(...habitInsights);
+
+  // Analyze correlations and trends
+  const correlationInsights = analyzeCorrelations(workoutData, allSets);
+  insights.push(...correlationInsights);
+
   // Calculate real progressions from exercise data
   const exerciseProgressions = new Map<string, { weights: number[], dates: string[] }>();
   
@@ -212,4 +222,154 @@ export const calculateTrainingPrognosis = ({
     topProgressions,
     discrepancies
   };
+};
+
+// Analyze workout habits and patterns
+const analyzeWorkoutHabits = (workoutData: any[]): StrengthInsight[] => {
+  const insights: StrengthInsight[] = [];
+  
+  // Analyze preferred workout days
+  const dayFrequency = new Map<string, number>();
+  const dayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  
+  workoutData.forEach(day => {
+    const workoutCount = day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length;
+    if (workoutCount > 0) {
+      const dayOfWeek = new Date(day.date).getDay();
+      const dayName = dayNames[dayOfWeek];
+      dayFrequency.set(dayName, (dayFrequency.get(dayName) || 0) + 1);
+    }
+  });
+  
+  if (dayFrequency.size > 0) {
+    const sortedDays = Array.from(dayFrequency.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2);
+    
+    if (sortedDays.length > 0) {
+      insights.push({
+        type: 'habit',
+        priority: 'low',
+        title: 'Lieblings-Trainingstage',
+        description: `Du trainierst am liebsten ${sortedDays.map(([day, count]) => `${day} (${count}x)`).join(' und ')}`,
+        pattern: sortedDays.map(([day]) => day).join(', '),
+        color: 'text-blue-600'
+      });
+    }
+  }
+  
+  // Analyze rest day patterns
+  const consecutiveRestDays = [];
+  let currentRestStreak = 0;
+  
+  workoutData.forEach(day => {
+    const workoutCount = day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length;
+    if (workoutCount === 0) {
+      currentRestStreak++;
+    } else {
+      if (currentRestStreak > 0) {
+        consecutiveRestDays.push(currentRestStreak);
+      }
+      currentRestStreak = 0;
+    }
+  });
+  
+  if (consecutiveRestDays.length > 0) {
+    const avgRestDays = consecutiveRestDays.reduce((sum, days) => sum + days, 0) / consecutiveRestDays.length;
+    const maxRestDays = Math.max(...consecutiveRestDays);
+    
+    insights.push({
+      type: 'habit',
+      priority: maxRestDays > 5 ? 'high' : 'low',
+      title: 'Pausenmuster',
+      description: `Durchschnittlich ${avgRestDays.toFixed(1)} Ruhetage am Stück, Maximum: ${maxRestDays} Tage`,
+      value: avgRestDays,
+      color: maxRestDays > 5 ? 'text-orange-600' : 'text-green-600'
+    });
+  }
+  
+  return insights;
+};
+
+// Analyze correlations between different metrics
+const analyzeCorrelations = (workoutData: any[], allSets: any[]): StrengthInsight[] => {
+  const insights: StrengthInsight[] = [];
+  
+  // Volume vs RPE correlation
+  const dailyMetrics = workoutData.map(day => {
+    const dayVolume = day.advancedSessions.flatMap((session: any) => 
+      session.exercise_sets || []
+    ).reduce((sum: number, set: any) => sum + ((set.weight_kg || 0) * (set.reps || 0)), 0);
+    
+    const dayRPEs = day.advancedSessions.flatMap((session: any) => 
+      (session.exercise_sets || [])
+        .filter((set: any) => set.rpe)
+        .map((set: any) => set.rpe)
+    );
+    
+    const avgRPE = dayRPEs.length > 0 ? dayRPEs.reduce((sum: number, rpe: number) => sum + rpe, 0) / dayRPEs.length : null;
+    
+    return { volume: dayVolume, rpe: avgRPE, date: day.date };
+  }).filter(metric => metric.volume > 0 && metric.rpe !== null);
+  
+  if (dailyMetrics.length >= 3) {
+    const correlation = calculateCorrelation(
+      dailyMetrics.map(m => m.volume), 
+      dailyMetrics.map(m => m.rpe!)
+    );
+    
+    if (Math.abs(correlation) > 0.3) {
+      insights.push({
+        type: 'correlation',
+        priority: Math.abs(correlation) > 0.6 ? 'high' : 'medium',
+        title: 'Volumen-Intensitäts-Zusammenhang',
+        description: correlation > 0 
+          ? `Höheres Volumen führt zu höherer wahrgenommener Intensität (r=${correlation.toFixed(2)})`
+          : `Höheres Volumen bei niedrigerer Intensität - gute Effizienz! (r=${correlation.toFixed(2)})`,
+        correlation,
+        color: correlation > 0.5 ? 'text-orange-600' : correlation < -0.3 ? 'text-green-600' : 'text-blue-600'
+      });
+    }
+  }
+  
+  // Exercise variety analysis
+  const exerciseTypes = new Set();
+  allSets.forEach((set: any) => {
+    if (set.exercises?.name) {
+      exerciseTypes.add(set.exercises.name);
+    }
+  });
+  
+  if (exerciseTypes.size > 0) {
+    const variety = exerciseTypes.size;
+    insights.push({
+      type: 'trend',
+      priority: variety < 3 ? 'high' : 'low',
+      title: 'Übungsvielfalt',
+      description: variety < 3 
+        ? `Nur ${variety} verschiedene Übungen - mehr Abwechslung könnte helfen!`
+        : `Gute Vielfalt mit ${variety} verschiedenen Übungen`,
+      value: variety,
+      color: variety < 3 ? 'text-orange-600' : 'text-green-600'
+    });
+  }
+  
+  return insights;
+};
+
+// Helper function to calculate Pearson correlation coefficient
+const calculateCorrelation = (x: number[], y: number[]): number => {
+  if (x.length !== y.length || x.length === 0) return 0;
+  
+  const n = x.length;
+  const sumX = x.reduce((sum, val) => sum + val, 0);
+  const sumY = y.reduce((sum, val) => sum + val, 0);
+  const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
+  const sumX2 = x.reduce((sum, val) => sum + val * val, 0);
+  const sumY2 = y.reduce((sum, val) => sum + val * val, 0);
+  
+  const numerator = n * sumXY - sumX * sumY;
+  const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+  
+  return denominator === 0 ? 0 : numerator / denominator;
 };
