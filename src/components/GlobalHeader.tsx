@@ -12,6 +12,12 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+interface CoachData {
+  coach_id: string;
+  name: string;
+  specialization_description: string;
+}
+
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
@@ -25,6 +31,7 @@ export const GlobalHeader = ({
   const [clickCount, setClickCount] = useState(0);
   const [showCoachBanner, setShowCoachBanner] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [coachData, setCoachData] = useState<CoachData | null>(null);
   
   const { user } = useAuth();
   const { subscriptionTier } = useSubscription();
@@ -32,6 +39,41 @@ export const GlobalHeader = ({
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Get current coach ID from route
+  const getCurrentCoachId = () => {
+    if (location.pathname.startsWith('/training/sascha')) return 'sascha';
+    if (location.pathname.startsWith('/training/markus')) return 'markus';
+    if (location.pathname.startsWith('/coach')) return 'sascha'; // Default für Coach-Seite
+    return null;
+  };
+
+  // Load coach data from database
+  useEffect(() => {
+    const loadCoachData = async () => {
+      const coachId = getCurrentCoachId();
+      if (!coachId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('coach_specializations')
+          .select('coach_id, name, specialization_description')
+          .eq('coach_id', coachId)
+          .single();
+
+        if (error) {
+          console.error('Error loading coach data:', error);
+          return;
+        }
+
+        setCoachData(data);
+      } catch (error) {
+        console.error('Error fetching coach data:', error);
+      }
+    };
+
+    loadCoachData();
+  }, [location.pathname]);
 
   // Route to title mapping
   const getPageTitle = (pathname: string) => {
@@ -208,11 +250,11 @@ export const GlobalHeader = ({
 
             <div className="flex items-center gap-2">
               <img
-                src="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
-                alt="Coach Sascha"
-                className="w-6 h-6 rounded-full"
+                src={`/coach-images/${getCurrentCoachId() === 'sascha' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' : 'markus-ruehl.jpg'}`}
+                alt={coachData?.name || 'Coach'}
+                className="w-6 h-6 rounded-full object-cover"
               />
-              <span className="font-medium text-sm">Coach Sascha</span>
+              <span className="font-medium text-sm">{coachData?.name || 'Coach'}</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -254,7 +296,7 @@ export const GlobalHeader = ({
                 </h2>
               </div>
               <ChatHistorySidebar
-                selectedCoach="sascha"
+                selectedCoach={getCurrentCoachId() || 'sascha'}
                 onSelectDate={(date) => {
                   console.log('Selected date:', date);
                   setShowChatHistory(false);
