@@ -832,6 +832,14 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   };
 
+  // Debug logging
+  console.log("Current route:", location.pathname);
+  console.log("CoachDropdownProps:", {
+    coachName: "Coach Sascha",
+    coachAvatar: "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png",
+    coachSpecialty: "Krafttraining & Formcheck"
+  });
+
   return (
     <>
       <GlobalHeader 

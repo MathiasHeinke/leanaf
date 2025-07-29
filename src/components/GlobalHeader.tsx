@@ -146,10 +146,10 @@ export const GlobalHeader = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsCoachDropdownOpen(!isCoachDropdownOpen)}
-                className="p-2 hover:bg-accent/60 rounded-lg transition-all duration-200"
+                className="p-2 hover:bg-accent hover:scale-110 transition-all duration-200 border border-border/50 hover:border-border rounded-lg"
                 title="Coach Details"
               >
-                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCoachDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-5 w-5 text-primary transition-transform duration-200 ${isCoachDropdownOpen ? 'rotate-180' : ''}`} />
               </Button>
             )}
             

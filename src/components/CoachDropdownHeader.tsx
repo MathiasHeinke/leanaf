@@ -32,7 +32,7 @@ export const CoachDropdownHeader: React.FC<CoachDropdownHeaderProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-background/95 backdrop-blur-sm border-b border-border/30 animate-slide-in-down">
+    <div className="flex items-center justify-between px-4 py-3 bg-card border-b border-border shadow-lg animate-slide-in-down z-40">
       {/* Left: Back Button + Coach Info */}
       <div className="flex items-center gap-3">
         <Button
