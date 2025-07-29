@@ -1046,6 +1046,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const handleSupplementPlanConfirm = () => {
     setShowSupplementPlan(false);
     setPendingSupplementRecommendations([]);
+    
+    // Force a re-render to clear any cached supplement data
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('supplementListUpdated'));
+    }, 100);
   };
 
   const handleExercisePreviewSave = async (exerciseData: any) => {
@@ -1277,7 +1282,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
+                  {messages.map((message, messageIndex) => {
+                    const isLastMessage = messageIndex === messages.length - 1;
+                    
+                    return (
                     <div
                       key={message.id}
                       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -1306,8 +1314,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                           <div className="text-sm">
                             <ReactMarkdown>{message.content}</ReactMarkdown>
                             
-                            {/* Show supplement plan button if recommendations are pending */}
+                            {/* Show supplement plan button ONLY for the last assistant message with supplements */}
                             {message.role === 'assistant' && 
+                             isLastMessage &&
                              pendingSupplementRecommendations.length > 0 && 
                              !showSupplementPlan && 
                              message.content.toLowerCase().includes('supplement') && (
@@ -1323,8 +1332,9 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                               </div>
                             )}
                             
-                            {/* Show inline supplement list when plan is active */}
+                            {/* Show inline supplement list ONLY for the last message when plan is active */}
                             {message.role === 'assistant' && 
+                             isLastMessage &&
                              showSupplementPlan && 
                              pendingSupplementRecommendations.length > 0 && 
                              message.content.toLowerCase().includes('supplement') && (
@@ -1366,10 +1376,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                             {formatMessageTime(message.created_at)}
                           </span>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                  
+                       </div>
+                     </div>
+                   );
+                   })}
                   {isThinking && (
                     <div className="flex justify-start">
                       <div className="max-w-[80%]">
