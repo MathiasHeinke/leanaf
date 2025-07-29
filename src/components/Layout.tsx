@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
+import { useSidebarSwipeGestures } from "@/hooks/useSidebarSwipeGestures";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
   const [showSubscriptionDebug, setShowSubscriptionDebug] = useState(false);
+  const { ref: swipeRef } = useSidebarSwipeGestures();
   
   // Keyboard shortcut for subscription debug panel
   useEffect(() => {
@@ -36,7 +38,10 @@ export const Layout = ({ children }: LayoutProps) => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full">
+    <div 
+      ref={swipeRef}
+      className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full"
+    >
       {/* Background Geometric Shapes for Glass Effect - Animated */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-primary/20 to-primary-glow/10 rounded-full blur-2xl animate-float-1"></div>
