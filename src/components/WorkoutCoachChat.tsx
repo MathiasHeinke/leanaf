@@ -120,6 +120,25 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     scrollAreaRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Prevent iOS rubber band scrolling on workout coach chat pages
+  useEffect(() => {
+    const isWorkoutChat = window.location.pathname.includes("/training") || window.location.pathname.includes("/coach");
+    
+    if (isWorkoutChat) {
+      document.body.style.overscrollBehavior = "none";
+      document.body.style.touchAction = "none";
+      document.documentElement.style.overscrollBehavior = "none";
+      document.documentElement.style.touchAction = "none";
+    }
+    
+    return () => {
+      document.body.style.overscrollBehavior = "";
+      document.body.style.touchAction = "";
+      document.documentElement.style.overscrollBehavior = "";
+      document.documentElement.style.touchAction = "";
+    };
+  }, []);
+
   useEffect(() => {
     if (user) {
       const timer = setTimeout(() => {
