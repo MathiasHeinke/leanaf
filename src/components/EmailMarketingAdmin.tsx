@@ -78,8 +78,20 @@ const EmailMarketingAdmin = () => {
         supabase.from('email_campaigns').select('*').order('created_at', { ascending: false })
       ]);
 
+      console.log('Templates loaded:', templatesData);
+      console.log('Campaigns loaded:', campaignsData);
+
       if (templatesData.data) setTemplates(templatesData.data);
       if (campaignsData.data) setCampaigns(campaignsData.data);
+      
+      if (templatesData.error) {
+        console.error('Templates error:', templatesData.error);
+        toast.error('Fehler beim Laden der Templates');
+      }
+      if (campaignsData.error) {
+        console.error('Campaigns error:', campaignsData.error);
+        toast.error('Fehler beim Laden der Kampagnen');
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Fehler beim Laden der Daten');
