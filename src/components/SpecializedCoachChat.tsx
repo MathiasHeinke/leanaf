@@ -1517,10 +1517,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      {/* Global Header with Coach Dropdown */}
-      <GlobalHeader coachDropdownProps={coachDropdownProps} />
-      
+    <div className="h-full flex flex-col bg-background">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Chat Messages - Scrollable Area */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-2">
