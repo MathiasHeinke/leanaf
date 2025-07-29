@@ -290,7 +290,7 @@ export const GlobalHeader = ({
       {/* Chat History Dialog */}
       {showChatHistory && (
         <Dialog open={showChatHistory} onOpenChange={setShowChatHistory}>
-          <DialogContent className="max-w-md max-h-[80vh] overflow-hidden p-4">
+          <DialogContent className="max-w-md max-h-[80vh] overflow-hidden p-4 mt-16 top-[20%]">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
