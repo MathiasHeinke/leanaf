@@ -1650,7 +1650,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
         </div>
 
-      {/* Exercise Preview Card */}
+        {/* Exercise Preview Card */}
         {exercisePreview && (
           <div className="mt-2">
             <ExercisePreviewCard
@@ -1675,11 +1675,33 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           />
         </div>
       )}
-      
-      <div ref={scrollRef} />
-            </div>
-          </ScrollArea>
+      </div>
+
+      {/* Exercise Preview Card */}
+      {exercisePreview && (
+        <div className="mt-2">
+          <ExercisePreviewCard
+            data={{
+              exercise_name: exercisePreview.exerciseName,
+              sets: exercisePreview.sets,
+              overall_rpe: exercisePreview.overall_rpe
+            }}
+            onSave={handleExercisePreviewSave}
+            onCancel={() => setExercisePreview(null)}
+          />
         </div>
+      )}
+
+      {/* Supplement Preview Card */}
+      {supplementPreview && (
+        <div className="mt-2">
+          <SupplementPreviewCard
+            data={supplementPreview}
+            onSave={handleSupplementPreviewSave}
+            onCancel={() => setSupplementPreview(null)}
+          />
+        </div>
+      )}
       </div>
 
       {/* History Sidebar */}
