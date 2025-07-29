@@ -302,7 +302,7 @@ async function testOpenFoodFactsAPI(strategy = 'global_popular', limit = 15, bat
 
       const response = await fetch(fullUrl, {
         headers: {
-          'User-Agent': 'KaloAI-FoodImport/1.0 (+https://kaloai.app)',
+          'User-Agent': 'GetleanAI-FoodImport/1.0 (+https://getleanai.app)',
           'Accept': 'application/json'
         },
         signal: AbortSignal.timeout(30000)
