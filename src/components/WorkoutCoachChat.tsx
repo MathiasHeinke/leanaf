@@ -874,6 +874,20 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
           </CollapsibleContent>
         </Collapsible>
 
+        {/* TEST BUTTON FOR DEBUGGING */}
+        <div className="p-2 bg-yellow-100">
+          <Button 
+            onClick={() => {
+              console.log('TEST: Setting inputText to "TEST TEXT"');
+              setInputText("TEST TEXT");
+            }}
+            variant="outline"
+            size="sm"
+          >
+            TEST setInputText
+          </Button>
+        </div>
+
         {/* Input */}
         <div className="border-t p-4 bg-background">
           <div className="flex items-center space-x-2">
