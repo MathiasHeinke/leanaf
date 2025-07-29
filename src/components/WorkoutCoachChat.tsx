@@ -382,15 +382,15 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const getAnalysisTypeLabel = (type: string) => {
     switch (type) {
       case 'exercise_form':
-        return '🏋️ Übungsanalyse';
+        return 'Analysiere meine Übung';
       case 'meal_analysis':
-        return '🍽️ Mahlzeit-Analyse';
+        return 'Analysiere meine Mahlzeit';
       case 'progress_photo':
-        return '📸 Fortschritts-Analyse';
+        return 'Analysiere meinen Fortschritt';
       case 'general':
-        return '💬 Allgemeine Analyse';
+        return 'Analysiere das Bild';
       default:
-        return '📊 Medien-Analyse';
+        return 'Analysiere das Bild';
     }
   };
 
