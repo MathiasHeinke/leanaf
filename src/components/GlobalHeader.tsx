@@ -159,8 +159,8 @@ export const GlobalHeader = ({
       {/* Coach-Banner direkt unter Header (ohne Abstand) */}
       {isCoachChatRoute && (
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background/70 backdrop-blur-md border-b border-border/20 shadow-md w-full fixed top-[73px] z-40 ${
-            showCoachBanner ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background/70 backdrop-blur-md border-b border-border/20 shadow-md w-full fixed top-[65px] z-40 ${
+            showCoachBanner ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
           <div className="flex justify-between items-center px-4 py-2">
@@ -182,10 +182,26 @@ export const GlobalHeader = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="text-sm hover:text-primary transition-colors">
+              <button 
+                onClick={() => {
+                  // Placeholder für Chat-History
+                  console.log('Chat History clicked');
+                }}
+                className="text-sm hover:text-primary transition-colors"
+                title="Chat-Verlauf"
+              >
                 <History className="h-4 w-4" />
               </button>
-              <button className="text-sm hover:text-destructive transition-colors">
+              <button 
+                onClick={() => {
+                  if (confirm('Chat-Verlauf wirklich löschen?')) {
+                    // Placeholder für Chat löschen
+                    console.log('Clear chat clicked');
+                  }
+                }}
+                className="text-sm hover:text-destructive transition-colors"
+                title="Chat löschen"
+              >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
@@ -194,7 +210,7 @@ export const GlobalHeader = ({
       )}
 
       {/* Spacer to prevent content overlap */}
-      <div className={`${isCoachChatRoute && showCoachBanner ? 'h-[153px]' : 'h-[73px]'} transition-all duration-500`} />
+      <div className={`${isCoachChatRoute && showCoachBanner ? 'h-[129px]' : 'h-[65px]'} transition-all duration-500`} />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
