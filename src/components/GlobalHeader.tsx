@@ -173,9 +173,26 @@ export const GlobalHeader = ({
         </div>
       </div>
 
-      {/* Coach Dropdown Header (only on coach routes) */}
+      {/* Coach Toggle Button (centered below header) */}
+      {isCoachChatRoute && (
+        <div className="fixed top-[73px] left-0 right-0 z-50 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60 border-b border-border/20">
+          <div className="container mx-auto px-4 py-2 max-w-4xl flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowCoachHeader(prev => !prev)}
+              className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+              title="Coach Info anzeigen"
+            >
+              <ChevronDown className={`h-4 w-4 text-primary transition-transform duration-300 ${showCoachHeader ? 'rotate-180' : ''}`} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Coach Dropdown Header (slides down from chevron) */}
       {isCoachChatRoute && showCoachHeader && (
-        <div className="fixed top-[73px] left-0 right-0 z-40 border-b border-border/20 bg-secondary/90 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-secondary/70 animate-fade-in">
+        <div className="fixed top-[115px] left-0 right-0 z-40 border-b border-border/20 bg-secondary/90 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-secondary/70 animate-in slide-in-from-top-2 duration-500">
           <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
             {/* Left: Back Button */}
             <Button
@@ -230,7 +247,7 @@ export const GlobalHeader = ({
       )}
 
       {/* Spacer to prevent content overlap */}
-      <div className={`${isCoachChatRoute && showCoachHeader ? 'h-[146px]' : 'h-[73px]'} transition-all`} />
+      <div className={`${isCoachChatRoute ? (showCoachHeader ? 'h-[188px]' : 'h-[115px]') : 'h-[73px]'} transition-all duration-500`} />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
