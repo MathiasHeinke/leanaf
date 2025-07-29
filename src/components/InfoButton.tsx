@@ -136,14 +136,21 @@ export const InfoButton = ({
               <Badge variant="outline" className="text-xs">
                 💡 Tipps
               </Badge>
-              <ul className="space-y-1">
+              <div className="space-y-1">
                 {tips.map((tip, index) => (
-                  <li key={index} className="text-xs text-muted-foreground flex items-start gap-1">
-                    <span className="text-primary mt-0.5">•</span>
-                    <span>{tip}</span>
-                  </li>
+                  <div key={index} className="text-xs text-muted-foreground">
+                    {tip.includes('**') ? (
+                      <div dangerouslySetInnerHTML={{
+                        __html: tip
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\n/g, '<br/>')
+                      }} />
+                    ) : (
+                      tip
+                    )}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
