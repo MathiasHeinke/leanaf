@@ -37,8 +37,16 @@ export const calculateTrainingPrognosis = ({
   const totalWorkouts = workoutData.reduce((sum, day) => 
     sum + day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length, 0
   );
-  const weeks = timeRange === 'week' ? 1 : timeRange === 'month' ? 4 : 52;
-  const weeklyWorkouts = totalWorkouts / weeks;
+  
+  // Calculate actual weeks from data instead of using fixed values
+  const dates = workoutData.map(day => new Date(day.date)).sort((a, b) => a.getTime() - b.getTime());
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+  const daysDifference = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const actualWeeks = Math.max(1, daysDifference / 7);
+  
+  // Cap unrealistic values
+  const weeklyWorkouts = Math.min(10, totalWorkouts / actualWeeks);
 
   // Calculate average RPE from advanced sessions - fix data structure
   const allSets = workoutData.flatMap((day) => 
