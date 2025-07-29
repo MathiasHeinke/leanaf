@@ -6,6 +6,8 @@ interface OnboardingState {
   showIndexOnboarding: boolean;
   profileCompleted: boolean;
   mealInputHighlighted: boolean;
+  showProfileIndicators: boolean;
+  profileCompletedAt?: string;
 }
 
 export const useOnboardingState = () => {
@@ -15,6 +17,7 @@ export const useOnboardingState = () => {
     showIndexOnboarding: false,
     profileCompleted: false,
     mealInputHighlighted: false,
+    showProfileIndicators: true,
   });
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export const useOnboardingState = () => {
           showIndexOnboarding: false,
           profileCompleted: false,
           mealInputHighlighted: false,
+          showProfileIndicators: true,
         });
       }
     } else {
@@ -42,6 +46,7 @@ export const useOnboardingState = () => {
         showIndexOnboarding: false,
         profileCompleted: false,
         mealInputHighlighted: false,
+        showProfileIndicators: true,
       });
     }
   }, [user]);
@@ -60,7 +65,8 @@ export const useOnboardingState = () => {
     updateOnboardingState({ 
       showProfileOnboarding: false, 
       profileCompleted: true,
-      showIndexOnboarding: true 
+      showIndexOnboarding: true,
+      profileCompletedAt: new Date().toISOString()
     });
   };
 
@@ -92,7 +98,22 @@ export const useOnboardingState = () => {
       showIndexOnboarding: false,
       profileCompleted: false,
       mealInputHighlighted: false,
+      showProfileIndicators: true,
     });
+  };
+
+  const shouldShowProfileIndicators = () => {
+    if (!onboardingState.showProfileIndicators) return false;
+    if (!onboardingState.profileCompletedAt) return true;
+    
+    const completedAt = new Date(onboardingState.profileCompletedAt);
+    const daysSinceCompletion = Math.floor((Date.now() - completedAt.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return daysSinceCompletion < 7; // Hide after 7 days
+  };
+
+  const hideProfileIndicators = () => {
+    updateOnboardingState({ showProfileIndicators: false });
   };
 
   return {
@@ -103,5 +124,7 @@ export const useOnboardingState = () => {
     clearMealInputHighlight,
     resetOnboarding,
     updateOnboardingState,
+    shouldShowProfileIndicators,
+    hideProfileIndicators,
   };
 };

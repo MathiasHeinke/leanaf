@@ -5,15 +5,18 @@ import { cn } from '@/lib/utils';
 interface ProfileFieldIndicatorProps {
   isComplete: boolean;
   className?: string;
+  shouldShow?: boolean;
 }
 
-export const ProfileFieldIndicator = ({ isComplete, className }: ProfileFieldIndicatorProps) => {
+export const ProfileFieldIndicator = ({ isComplete, className, shouldShow = true }: ProfileFieldIndicatorProps) => {
+  if (!shouldShow) return null;
+  
   return (
     <div className={cn(
-      "absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center text-xs z-10",
+      "absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-background flex items-center justify-center text-xs z-10 transition-all duration-300",
       isComplete 
-        ? "bg-green-500 text-white" 
-        : "bg-red-500 text-white animate-pulse",
+        ? "bg-green-500 text-white scale-100" 
+        : "bg-red-500 text-white animate-pulse scale-100",
       className
     )}>
       {isComplete ? (
