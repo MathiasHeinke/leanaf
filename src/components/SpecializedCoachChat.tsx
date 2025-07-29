@@ -1483,64 +1483,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     <div className="flex gap-4">
       {/* Main Chat Area */}
       <div className="flex-1 space-y-4">
-        {/* Header */}
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Button variant="ghost" size="sm" onClick={onBack}>
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                
-                <div className="flex items-center space-x-3">
-                  {coach.imageUrl ? (
-                    <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex-shrink-0">
-                      <img 
-                        src={coach.imageUrl} 
-                        alt={coach.name}
-                        className="w-full h-full object-cover aspect-square"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden flex-shrink-0`}>
-                        {coach.avatar}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg flex-shrink-0`}>
-                      {coach.avatar}
-                    </div>
-                  )}
-                  <div>
-                    <CardTitle className="text-lg">{coach.name}</CardTitle>
-                    {selectedDate && selectedDate !== currentDate && (
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {format(new Date(selectedDate), 'dd.MM.yyyy', { locale: de })}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setShowHistory(!showHistory)}
-                  className={showHistory ? 'bg-primary/10 text-primary' : ''}
-                >
-                  <History className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={clearChat}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
 
       {/* Chat Area */}
       <div className="flex flex-col h-[calc(100vh-320px)] min-h-[400px]">
