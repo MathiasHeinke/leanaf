@@ -185,13 +185,19 @@ export const GlobalHeader = ({
       {/* Coach-Banner direkt unter Header (ohne Abstand) */}
       {isCoachChatRoute && (
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background backdrop-blur-md border-b border-border/20 shadow-md w-full fixed top-[61px] z-40 ${
+          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60 border-b border-border/20 shadow-md w-full fixed top-[61px] z-40 ${
             showCoachBanner ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
           <div className="flex justify-between items-center px-4 py-2">
             <button 
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate('/');
+                }
+              }}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             >
               <ArrowLeft className="h-4 w-4" />
