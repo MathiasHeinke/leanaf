@@ -665,16 +665,6 @@ export const MealConfirmationDialog = ({
             {t('meal.cancel')}
           </Button>
           
-          {/* AI Verification Toggle */}
-          <Button
-            variant="secondary"
-            onClick={() => setShowVerification(!showVerification)}
-            disabled={isEvaluating}
-          >
-            <MessageSquare className="w-4 h-4 mr-2" />
-            AI-Check
-          </Button>
-          
           {/* Confirm Button */}
           <Button 
             onClick={handleConfirmMeal}
