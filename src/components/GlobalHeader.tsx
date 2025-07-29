@@ -7,17 +7,18 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useLocation } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import CoachDropdownHeader from "./CoachDropdownHeader";
+import { CoachDropdownHeader } from "./CoachDropdownHeader";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
   coachDropdownProps?: {
-    onBack: () => void;
-    avatarUrl: string;
-    name: string;
-    onDelete: () => void;
-    onHistory: () => void;
+    coachName: string;
+    coachAvatar?: string;
+    coachSpecialty?: string;
+    onHistory?: () => void;
+    onDelete?: () => void;
+    onBack?: () => void;
   };
 }
 
@@ -28,21 +29,17 @@ export const GlobalHeader = ({
 }: GlobalHeaderProps) => {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [isDropdownVisible, setDropdownVisible] = useState(false);
+  const [isCoachDropdownOpen, setIsCoachDropdownOpen] = useState(false);
   
   const { subscriptionTier } = useSubscription();
   const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
   const location = useLocation();
 
-  const isCoachRoute =
-    location.pathname.startsWith("/training/") ||
-    location.pathname.startsWith("/coach/") ||
-    (location.pathname === "/coach" && coachDropdownProps);
-
-  const toggleDropdown = () => {
-    setDropdownVisible(!isDropdownVisible);
-  };
+  // Check if current route is a coach route
+  const isCoachRoute = location.pathname.startsWith('/training/') || 
+                      location.pathname.startsWith('/coach/') ||
+                      (location.pathname === '/coach' && coachDropdownProps);
 
   // Route to title mapping
   const getPageTitle = (pathname: string) => {
@@ -127,8 +124,8 @@ export const GlobalHeader = ({
   return (
     <>
       {/* Fixed Minimalist Header with Glassmorphism */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between relative">
+      <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
           {/* Left: Sidebar Toggle */}
           <SidebarTrigger className="p-2 hover:bg-accent/60 rounded-lg transition-colors">
             <Menu className="h-5 w-5" />
@@ -141,38 +138,41 @@ export const GlobalHeader = ({
             </h1>
           </div>
           
-          {/* Right: Dark Mode Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleTheme}
-            className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
-            title={getThemeTooltip()}
-          >
-            {renderThemeIcon()}
-          </Button>
-
-          {/* Coach Dropdown Toggle Button */}
-          {isCoachRoute && coachDropdownProps && (
-            <button
-              onClick={toggleDropdown}
-              className="absolute left-1/2 -translate-x-1/2 bottom-[-8px] bg-background rounded-full p-1 shadow-md border border-border z-40 hover:bg-accent/60 transition-colors"
+          {/* Right: Dark Mode Toggle + Coach Dropdown Trigger */}
+          <div className="flex items-center gap-2">
+            {/* Coach Dropdown Trigger - only show on coach routes */}
+            {isCoachRoute && coachDropdownProps && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCoachDropdownOpen(!isCoachDropdownOpen)}
+                className="p-2 hover:bg-accent/60 rounded-lg transition-all duration-200"
+                title="Coach Details"
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCoachDropdownOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            )}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+              title={getThemeTooltip()}
             >
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
+              {renderThemeIcon()}
+            </Button>
+          </div>
         </div>
 
         {/* Coach Dropdown Header */}
-        {isDropdownVisible && coachDropdownProps && (
-          <div className="absolute top-full left-0 w-full z-20">
-            <CoachDropdownHeader {...coachDropdownProps} />
-          </div>
+        {isCoachRoute && coachDropdownProps && isCoachDropdownOpen && (
+          <CoachDropdownHeader {...coachDropdownProps} />
         )}
-      </header>
+      </div>
 
-      {/* Spacer to prevent content overlap */}
-      <div className="h-[73px]" />
+      {/* Dynamic Spacer to prevent content overlap */}
+      <div className={`${isCoachRoute && coachDropdownProps && isCoachDropdownOpen ? 'h-[130px]' : 'h-[73px]'} transition-all duration-200`} />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
