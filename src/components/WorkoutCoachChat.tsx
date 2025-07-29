@@ -28,6 +28,15 @@ import {
   Loader2
 } from 'lucide-react';
 
+interface ConversationState {
+  type: 'exercise_recognition' | 'awaiting_details' | null;
+  exerciseData?: {
+    exerciseName: string;
+    confidence: number;
+  };
+  awaitingConfirmation?: boolean;
+}
+
 interface WorkoutMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -40,6 +49,16 @@ interface WorkoutMessage {
     needsRpeInput?: boolean;
     pendingExercise?: any;
     isWelcome?: boolean;
+    conversationState?: ConversationState;
+    actionButtons?: Array<{
+      text: string;
+      action: string;
+      data?: any;
+    }>;
+    inlineForm?: {
+      type: 'exercise_edit';
+      data: any;
+    };
   };
 }
 
@@ -239,7 +258,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         }, 2000); // Wait 2 seconds after the analysis is shown
       }
 
-      // If it's workout logging, try to extract exercise data
+      // If it's workout logging, try new exercise recognition flow
       if (!isFormcheck) {
         try {
           const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
@@ -250,12 +269,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             }
           });
 
-          if (!extractError && exerciseData?.success && exerciseData?.exercises?.length > 0) {
-            setExercisePreview({
-              exercise_name: exerciseData.exercises[0].name,
-              sets: exerciseData.exercises[0].sets || [],
-              overall_rpe: exerciseData.exercises[0].rpe
-            });
+          if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
+            // Start exercise recognition conversation flow
+            handleExerciseRecognition(exerciseData.exerciseData);
           }
         } catch (extractError) {
           console.error('Exercise extraction error:', extractError);
@@ -364,6 +380,188 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     return [...new Set(tips)].slice(0, 4); // Remove duplicates and limit to 4 tips
   };
 
+  // ============= NEW EXERCISE RECOGNITION FLOW =============
+  
+  const handleExerciseRecognition = async (exerciseData: any) => {
+    try {
+      // Step 1: Ask for confirmation
+      const confirmationMessage: WorkoutMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `💪 **Übung erkannt!**\n\nIch erkenne **${exerciseData.exercise_name}** in deinem Bild/Video.\n\nIst das korrekt und möchtest du die Details eingeben (Wiederholungen, Gewicht, RPE)?`,
+        timestamp: new Date(),
+        metadata: {
+          conversationState: {
+            type: 'exercise_recognition',
+            exerciseData: {
+              exerciseName: exerciseData.exercise_name,
+              confidence: exerciseData.confidence || 0.9
+            },
+            awaitingConfirmation: true
+          },
+          actionButtons: [
+            { text: '✅ Ja, Details eingeben', action: 'confirm_exercise', data: exerciseData },
+            { text: '❌ Falsche Übung', action: 'reject_exercise', data: null }
+          ]
+        }
+      };
+
+      setMessages(prev => [...prev, confirmationMessage]);
+      await saveMessage('assistant', confirmationMessage.content, confirmationMessage.metadata);
+    } catch (error) {
+      console.error('Error in exercise recognition flow:', error);
+    }
+  };
+
+  const handleConversationAction = async (action: string, data?: any) => {
+    try {
+      if (action === 'confirm_exercise') {
+        // Step 2: Ask for all details at once
+        const detailsMessage: WorkoutMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `Perfekt! **${data.exercise_name}**\n\nGib mir bitte alle Details in einer Nachricht ein:\n\n📝 **Format:** "Wiederholungen x Gewicht kg, RPE"\n\n💡 **Beispiele:**\n- "10x90kg rpe7"\n- "5x110kg rpe9 und 3x120kg rpe8"\n- "12x60kg" (ohne RPE)`,
+          timestamp: new Date(),
+          metadata: {
+            conversationState: {
+              type: 'awaiting_details',
+              exerciseData: {
+                exerciseName: data.exercise_name,
+                confidence: data.confidence || 0.9
+              }
+            }
+          }
+        };
+
+        setMessages(prev => [...prev, detailsMessage]);
+        await saveMessage('assistant', detailsMessage.content, detailsMessage.metadata);
+      } else if (action === 'reject_exercise') {
+        const rejectionMessage: WorkoutMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: 'Verstanden! Welche Übung war es denn? Du kannst mir auch einfach schreiben: "Füge [Übungsname] hinzu" und ich helfe dir dabei.',
+          timestamp: new Date()
+        };
+
+        setMessages(prev => [...prev, rejectionMessage]);
+        await saveMessage('assistant', rejectionMessage.content);
+      } else if (action === 'save_exercise') {
+        // Handle final save
+        await handleFinalExerciseSave(data);
+      }
+    } catch (error) {
+      console.error('Error handling conversation action:', error);
+    }
+  };
+
+  const parseExerciseDetails = (input: string, exerciseName: string) => {
+    // Parse input like "10x90kg rpe7 und 5x110kg rpe9"
+    const sets = [];
+    
+    // Split by "und" to handle multiple sets
+    const setParts = input.toLowerCase().split(/\s+und\s+/);
+    
+    for (const part of setParts) {
+      // Try different patterns
+      const patterns = [
+        /(\d+)\s*[x×]\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+        /(\d+)\s*wdh\s*[x×]?\s*(\d+(?:\.\d+)?)\s*kg(?:\s*rpe\s*(\d+))?/gi,
+        /(\d+(?:\.\d+)?)\s*kg\s*[x×]\s*(\d+)(?:\s*rpe\s*(\d+))?/gi
+      ];
+      
+      for (const pattern of patterns) {
+        pattern.lastIndex = 0;
+        let match;
+        while ((match = pattern.exec(part)) !== null) {
+          const reps = parseInt(match[1]);
+          const weight = parseFloat(match[2]);
+          const rpe = match[3] ? parseInt(match[3]) : null;
+          
+          if (reps > 0 && weight >= 0 && reps < 100 && weight < 1000) {
+            sets.push({ reps, weight, rpe });
+          }
+        }
+      }
+    }
+    
+    return {
+      exercise_name: exerciseName,
+      sets,
+      confidence: 0.95
+    };
+  };
+
+  const handleExerciseDetailsInput = async (userInput: string) => {
+    // Find the conversation state from the last assistant message
+    const lastAssistantMessage = [...messages].reverse().find(m => 
+      m.role === 'assistant' && 
+      m.metadata?.conversationState?.type === 'awaiting_details'
+    );
+
+    if (!lastAssistantMessage?.metadata?.conversationState?.exerciseData) {
+      return false; // Not in the right state
+    }
+
+    const exerciseName = lastAssistantMessage.metadata.conversationState.exerciseData.exerciseName;
+    const parsedData = parseExerciseDetails(userInput, exerciseName);
+
+    if (parsedData.sets.length === 0) {
+      // Ask for clarification
+      const clarificationMessage: WorkoutMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `Hmm, ich konnte die Details nicht verstehen. 🤔\n\nBitte verwende das Format:\n- "10x90kg rpe7"\n- "5 Wiederholungen mit 60kg"\n- "12x50kg rpe6 und 8x70kg rpe8"\n\nVersuch es nochmal!`,
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, clarificationMessage]);
+      await saveMessage('assistant', clarificationMessage.content);
+      return true;
+    }
+
+    // Show summary and save button
+    const setsDescription = parsedData.sets.map(set => 
+      `${set.reps}x${set.weight}kg${set.rpe ? ` (RPE ${set.rpe})` : ''}`
+    ).join(', ');
+
+    const summaryMessage: WorkoutMessage = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `✅ **Zusammenfassung**\n\n🏋️ **${parsedData.exercise_name}**\n📊 **Sätze:** ${setsDescription}\n\nSieht das richtig aus?`,
+      timestamp: new Date(),
+      metadata: {
+        actionButtons: [
+          { text: '💾 Als Training speichern', action: 'save_exercise', data: parsedData },
+          { text: '✏️ Bearbeiten', action: 'edit_exercise', data: parsedData }
+        ]
+      }
+    };
+
+    setMessages(prev => [...prev, summaryMessage]);
+    await saveMessage('assistant', summaryMessage.content, summaryMessage.metadata);
+    return true;
+  };
+
+  const handleFinalExerciseSave = async (exerciseData: any) => {
+    try {
+      if (onExerciseLogged) {
+        onExerciseLogged(exerciseData);
+      }
+
+      const successMessage: WorkoutMessage = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `🎉 **Training erfolgreich gespeichert!**\n\n💪 **${exerciseData.exercise_name}**\nSätze: ${exerciseData.sets.length}\n\nSuper Arbeit! Weiter so! 🔥`,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, successMessage]);
+      await saveMessage('assistant', successMessage.content);
+    } catch (error) {
+      console.error('Error saving final exercise:', error);
+    }
+  };
+
   const getAnalysisPrompt = (analysisType: string) => {
     switch (analysisType) {
       case 'exercise_form':
@@ -422,53 +620,78 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       await analyzeWorkoutMedia(uploadedMedia, inputText);
       setUploadedMedia([]);
       } else if (inputText.trim()) {
-        // Regular chat without media - only if there's actual text
-        try {
-          setIsLoading(true);
-          
-          // Analyze sentiment of user message
-          const sentimentResult = await analyzeSentiment(inputText);
-          
-          // Add mood entry based on sentiment
-          if (sentimentResult.emotion && sentimentResult.intensity > 0.5) {
-            addMoodEntry(sentimentResult.emotion, sentimentResult.intensity);
-          }
-          
-          // Detect achievements and struggles
-          if (inputText.toLowerCase().includes('geschafft') || inputText.toLowerCase().includes('erfolgreich')) {
-            addSuccessMoment(inputText.substring(0, 100));
-          }
-          if (inputText.toLowerCase().includes('schwer') || inputText.toLowerCase().includes('problem')) {
-            addStruggleMention(inputText.substring(0, 100));
-          }
-          
-          const { data, error } = await supabase.functions.invoke('coach-chat', {
-            body: {
-              message: inputText,
-              userId: user.id,
-              coachPersonality: 'sascha',
-              context: 'workout_coaching',
-              memory: memory,
-              sentiment: sentimentResult
+        // Check if we're in exercise details input mode
+        const wasHandled = await handleExerciseDetailsInput(inputText.trim());
+        
+        if (!wasHandled) {
+          // Check for text-based exercise recognition first
+          try {
+            const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
+              body: {
+                userId: user.id,
+                mediaUrls: [],
+                userMessage: inputText.trim()
+              }
+            });
+
+            if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
+              // Start exercise recognition conversation flow
+              handleExerciseRecognition(exerciseData.exerciseData);
+              return; // Don't proceed to regular chat
             }
-          });
+          } catch (extractError) {
+            console.error('Text exercise extraction error:', extractError);
+            // Continue to regular chat if extraction fails
+          }
 
-          if (error) throw error;
+          // Regular chat without media - only if there's actual text
+          try {
+            setIsLoading(true);
+            
+            // Analyze sentiment of user message
+            const sentimentResult = await analyzeSentiment(inputText);
+            
+            // Add mood entry based on sentiment
+            if (sentimentResult.emotion && sentimentResult.intensity > 0.5) {
+              addMoodEntry(sentimentResult.emotion, sentimentResult.intensity);
+            }
+            
+            // Detect achievements and struggles
+            if (inputText.toLowerCase().includes('geschafft') || inputText.toLowerCase().includes('erfolgreich')) {
+              addSuccessMoment(inputText.substring(0, 100));
+            }
+            if (inputText.toLowerCase().includes('schwer') || inputText.toLowerCase().includes('problem')) {
+              addStruggleMention(inputText.substring(0, 100));
+            }
+            
+            const { data, error } = await supabase.functions.invoke('coach-chat', {
+              body: {
+                message: inputText,
+                userId: user.id,
+                coachPersonality: 'sascha',
+                context: 'workout_coaching',
+                memory: memory,
+                sentiment: sentimentResult
+              }
+            });
 
-          const assistantMessage: WorkoutMessage = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: data.response,
-            timestamp: new Date()
-          };
+            if (error) throw error;
 
-          setMessages(prev => [...prev, assistantMessage]);
-          await saveMessage('assistant', data.response);
-        } catch (error) {
-          console.error('Error sending message:', error);
-          toast.error('Fehler beim Senden der Nachricht');
-        } finally {
-          setIsLoading(false);
+            const assistantMessage: WorkoutMessage = {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: data.response,
+              timestamp: new Date()
+            };
+
+            setMessages(prev => [...prev, assistantMessage]);
+            await saveMessage('assistant', data.response);
+          } catch (error) {
+            console.error('Error sending message:', error);
+            toast.error('Fehler beim Senden der Nachricht');
+          } finally {
+            setIsLoading(false);
+          }
         }
       }
 
@@ -600,24 +823,41 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                         <ReactMarkdown>
                           {message.content}
                         </ReactMarkdown>
-                      </div>
-                      
-                      {/* Profile picture and time row UNTER der Nachricht */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                          <img 
-                             src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
-                            alt="Sascha" 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {message.timestamp.toLocaleTimeString('de-DE', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
-                      </div>
+                       </div>
+                       
+                       {/* Action Buttons */}
+                       {message.metadata?.actionButtons && (
+                         <div className="flex flex-wrap gap-2 mt-2 max-w-[85%]">
+                           {message.metadata.actionButtons.map((button, index) => (
+                             <Button
+                               key={index}
+                               variant="outline"
+                               size="sm"
+                               onClick={() => handleConversationAction(button.action, button.data)}
+                               className="text-xs h-8"
+                             >
+                               {button.text}
+                             </Button>
+                           ))}
+                         </div>
+                       )}
+                       
+                       {/* Profile picture and time row UNTER der Nachricht */}
+                       <div className="flex items-center gap-2">
+                         <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                           <img 
+                              src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
+                             alt="Sascha" 
+                             className="w-full h-full object-cover"
+                           />
+                         </div>
+                         <div className="text-xs text-muted-foreground">
+                           {message.timestamp.toLocaleTimeString('de-DE', {
+                             hour: '2-digit',
+                             minute: '2-digit'
+                           })}
+                         </div>
+                       </div>
                     </div>
                   )}
                   
