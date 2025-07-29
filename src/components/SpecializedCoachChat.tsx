@@ -44,6 +44,7 @@ import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
 import { VideoCompressionProgress } from '@/components/VideoCompressionProgress';
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
 import { VideoCompressor, CompressionProgress } from '@/utils/videoCompression';
+import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';

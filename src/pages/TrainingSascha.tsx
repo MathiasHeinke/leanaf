@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SpecializedCoachChat } from '@/components/SpecializedCoachChat';
+import { SpecializedCoachChatWrapped } from '@/components/SpecializedCoachChatWrapped';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debounce, clearCache } from '@/utils/supabaseHelpers';
@@ -471,7 +471,7 @@ const TrainingSascha = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <SpecializedCoachChat
+      <SpecializedCoachChatWrapped
           coach={{
             id: 'sascha',
             name: 'Sascha',
