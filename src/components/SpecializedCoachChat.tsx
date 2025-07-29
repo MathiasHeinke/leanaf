@@ -1480,203 +1480,197 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   return (
-    <div className="flex gap-4">
-      {/* Main Chat Area */}
-      <div className="flex-1 space-y-4">
-
-      {/* Chat Area */}
-      <div className="flex flex-col h-[calc(100vh-320px)] min-h-[400px]">
-        <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              {isLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="flex items-center space-x-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span className="text-sm text-muted-foreground">Lade Chat-Verlauf...</span>
-                  </div>
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Noch keine Nachrichten. Starte das Gespräch!</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {messages.map((message, messageIndex) => {
-                    const isLastMessage = messageIndex === messages.length - 1;
+    <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
+      {/* Chat Messages - Scrollable Area */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-2">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm text-muted-foreground">Lade Chat-Verlauf...</span>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-8">
+            <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Noch keine Nachrichten. Starte das Gespräch!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((message, messageIndex) => {
+              const isLastMessage = messageIndex === messages.length - 1;
+              
+              return (
+              <div
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
+                  <div
+                    className={`rounded-lg p-3 ${
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {message.images && message.images.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        {message.images.map((imageUrl, index) => (
+                          <img
+                            key={index}
+                            src={imageUrl}
+                            alt={`Uploaded image ${index + 1}`}
+                            className="w-full h-24 object-cover rounded"
+                          />
+                        ))}
+                      </div>
+                    )}
                     
-                    return (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
-                        <div
-                          className={`rounded-lg p-3 ${
-                            message.role === 'user'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {message.images && message.images.length > 0 && (
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                              {message.images.map((imageUrl, index) => (
-                                <img
-                                  key={index}
-                                  src={imageUrl}
-                                  alt={`Uploaded image ${index + 1}`}
-                                  className="w-full h-24 object-cover rounded"
-                                />
-                              ))}
-                            </div>
-                          )}
-                          
-                           <div className="text-sm">
-                             <ReactMarkdown>{message.content}</ReactMarkdown>
-                             
-                             {/* Show action buttons for conversation flow */}
-                             {message.role === 'assistant' && 
-                              isLastMessage &&
-                              conversationState?.actionButtons && (
-                               <div className="mt-3 space-y-2">
-                                 {conversationState.actionButtons.map((button, index) => (
-                                   <Button 
-                                     key={index}
-                                     onClick={() => handleConversationAction(button.action, button.data)}
-                                     size="sm"
-                                     variant={button.action.includes('save') ? 'default' : 'outline'}
-                                     className="mr-2"
-                                   >
-                                     {button.text}
-                                   </Button>
-                                 ))}
-                               </div>
-                             )}
-                             
-                             {/* Show supplement plan button ONLY for the last assistant message with supplements */}
-                             {message.role === 'assistant' && 
-                              isLastMessage &&
-                              pendingSupplementRecommendations.length > 0 && 
-                              !showSupplementPlan && 
-                              message.content.toLowerCase().includes('supplement') && (
-                               <div className="mt-3">
-                                 <Button 
-                                   onClick={handleCreateSupplementPlan}
-                                   size="sm"
-                                   className="bg-primary hover:bg-primary/90"
-                                 >
-                                   <Pill className="h-4 w-4 mr-2" />
-                                   Supplement-Plan erstellen
-                                 </Button>
-                               </div>
-                             )}
-                            
-                            {/* Show inline supplement list ONLY for the last message when plan is active */}
-                            {message.role === 'assistant' && 
-                             isLastMessage &&
-                             showSupplementPlan && 
-                             pendingSupplementRecommendations.length > 0 && 
-                             message.content.toLowerCase().includes('supplement') && (
-                              <div className="mt-3">
-                                <InlineSupplementList
-                                  recommendations={pendingSupplementRecommendations}
-                                  title="Empfohlener Supplement-Plan"
-                                  onConfirm={handleSupplementPlanConfirm}
-                                />
-                              </div>
-                            )}
-                          </div>
+                     <div className="text-sm">
+                       <ReactMarkdown>{message.content}</ReactMarkdown>
+                       
+                       {/* Show action buttons for conversation flow */}
+                       {message.role === 'assistant' && 
+                        isLastMessage &&
+                        conversationState?.actionButtons && (
+                         <div className="mt-3 space-y-2">
+                           {conversationState.actionButtons.map((button, index) => (
+                             <Button 
+                               key={index}
+                               onClick={() => handleConversationAction(button.action, button.data)}
+                               size="sm"
+                               variant={button.action.includes('save') ? 'default' : 'outline'}
+                               className="mr-2"
+                             >
+                               {button.text}
+                             </Button>
+                           ))}
+                         </div>
+                       )}
+                       
+                       {/* Show supplement plan button ONLY for the last assistant message with supplements */}
+                       {message.role === 'assistant' && 
+                        isLastMessage &&
+                        pendingSupplementRecommendations.length > 0 && 
+                        !showSupplementPlan && 
+                        message.content.toLowerCase().includes('supplement') && (
+                         <div className="mt-3">
+                           <Button 
+                             onClick={handleCreateSupplementPlan}
+                             size="sm"
+                             className="bg-primary hover:bg-primary/90"
+                           >
+                             <Pill className="h-4 w-4 mr-2" />
+                             Supplement-Plan erstellen
+                           </Button>
+                         </div>
+                       )}
+                      
+                      {/* Show inline supplement list ONLY for the last message when plan is active */}
+                      {message.role === 'assistant' && 
+                       isLastMessage &&
+                       showSupplementPlan && 
+                       pendingSupplementRecommendations.length > 0 && 
+                       message.content.toLowerCase().includes('supplement') && (
+                        <div className="mt-3">
+                          <InlineSupplementList
+                            recommendations={pendingSupplementRecommendations}
+                            title="Empfohlener Supplement-Plan"
+                            onConfirm={handleSupplementPlanConfirm}
+                          />
                         </div>
-                        
-                        <div className={`flex items-center mt-1 space-x-2 ${
-                          message.role === 'user' ? 'justify-end' : 'justify-start'
-                        }`}>
-                         {message.role === 'assistant' && (
-                            <div className="w-4 h-4 rounded-full overflow-hidden">
-                              {coach.imageUrl ? (
-                                <img 
-                                  src={coach.imageUrl} 
-                                  alt={coach.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    target.nextElementSibling?.classList.remove('hidden');
-                                  }}
-                                />
-                              ) : null}
-                              <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center ${coach.imageUrl ? 'hidden' : ''}`}>
-                                <span className="text-[8px] text-white">{coach.name.charAt(0)}</span>
-                              </div>
-                            </div>
-                         )}
-                          {message.role === 'user' && <User className="h-3 w-3 text-muted-foreground" />}
-                          <span className="text-xs text-muted-foreground">
-                            {formatMessageTime(message.created_at)}
-                          </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className={`flex items-center mt-1 space-x-2 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}>
+                   {message.role === 'assistant' && (
+                      <div className="w-4 h-4 rounded-full overflow-hidden">
+                        {coach.imageUrl ? (
+                          <img 
+                            src={coach.imageUrl} 
+                            alt={coach.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-4 h-4 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center ${coach.imageUrl ? 'hidden' : ''}`}>
+                          <span className="text-[8px] text-white">{coach.name.charAt(0)}</span>
                         </div>
-                       </div>
-                     </div>
-                   );
-                   })}
-                  {isThinking && (
-                    <div className="flex justify-start">
-                      <div className="max-w-[80%]">
-                        <div className="bg-muted rounded-lg p-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="relative">
-                                <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg">
-                                  {coach.imageUrl ? (
-                                    <img 
-                                      src={coach.imageUrl} 
-                                      alt={coach.name}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                      }}
-                                    />
-                                  ) : null}
-                                  <div className={`w-8 h-8 bg-gradient-to-br ${getCoachColors(coach.color)} rounded-full flex items-center justify-center text-white text-sm ${coach.imageUrl ? 'hidden' : ''}`}>
-                                    {coach.name.charAt(0)}
-                                  </div>
-                                </div>
-                              <div className="absolute -inset-0.5">
-                                <div className="w-9 h-9 bg-primary/30 rounded-full animate-ping"></div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-primary">
-                                {coach.name} schreibt...
-                              </span>
-                              <div className="flex gap-1">
-                                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                                <div className="w-2 h-2 bg-primary/70 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                                <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                              </div>
+                      </div>
+                   )}
+                    {message.role === 'user' && <User className="h-3 w-3 text-muted-foreground" />}
+                    <span className="text-xs text-muted-foreground">
+                      {formatMessageTime(message.created_at)}
+                    </span>
+                  </div>
+                 </div>
+               </div>
+             );
+             })}
+            {isThinking && (
+              <div className="flex justify-start">
+                <div className="max-w-[80%]">
+                  <div className="bg-muted rounded-lg p-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                          <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg">
+                            {coach.imageUrl ? (
+                              <img 
+                                src={coach.imageUrl} 
+                                alt={coach.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-8 h-8 bg-gradient-to-br ${getCoachColors(coach.color)} rounded-full flex items-center justify-center text-white text-sm ${coach.imageUrl ? 'hidden' : ''}`}>
+                              {coach.name.charAt(0)}
                             </div>
                           </div>
+                        <div className="absolute -inset-0.5">
+                          <div className="w-9 h-9 bg-primary/30 rounded-full animate-ping"></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-primary">
+                          {coach.name} schreibt...
+                        </span>
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                          <div className="w-2 h-2 bg-primary/70 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                          <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                         </div>
                       </div>
                     </div>
-                  )}
-                  
-                  <div ref={scrollRef} />
+                  </div>
                 </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-        
+              </div>
+            )}
+            
+            <div ref={scrollRef} />
+          </div>
+        )}
+      </div>
+      
+      {/* Input Area + Footer Block */}
+      <div className="flex-shrink-0">
         {/* Dynamic Quick Actions - Collapsible */}
         {quickActionsShown && !isThinking && (
           <Collapsible>
-            <div className="border-t">
+            <div className="border-t border-border/20">
               <CollapsibleTrigger asChild>
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-between p-4 rounded-none border-none"
+                  className="w-full justify-between px-3 py-2 rounded-none border-none"
                 >
                   <div className="flex items-center space-x-2">
                     <MessageSquare className="h-4 w-4" />
@@ -1748,11 +1742,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           </Collapsible>
         )}
         
-        
         {/* Media Upload Zone */}
         {showMediaUpload && (
-          <div className="border-t p-3">
-            <div className="space-y-4">
+          <div className="border-t border-border/20 px-3 py-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium">Medien hochladen</h4>
                 <Button
@@ -1764,7 +1757,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                 </Button>
               </div>
               
-              <div className="grid grid-cols-4 gap-2 mb-3">
+              <div className="grid grid-cols-4 gap-2">
                 <Button
                   variant={analysisType === 'exercise_form' ? 'default' : 'outline'}
                   size="sm"
@@ -1852,11 +1845,26 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             </div>
           </div>
         )}
+
+        {/* Exercise Preview Card */}
+        {exercisePreview && (
+          <div className="border-t border-border/20 px-3 py-2">
+            <ExercisePreviewCard
+              data={{
+                exercise_name: exercisePreview.exerciseName,
+                sets: exercisePreview.sets,
+                overall_rpe: exercisePreview.overall_rpe
+              }}
+              onSave={handleExercisePreviewSave}
+              onCancel={() => setExercisePreview(null)}
+            />
+          </div>
+        )}
         
         {/* Input Area */}
-        <div className="border-t p-3 bg-background">
+        <div className="px-3 py-1 border-t border-border/20 bg-background">
           {uploadedImages.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-2">
               <div className="flex items-center space-x-2 mb-2">
                 <Paperclip className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
@@ -1886,13 +1894,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
           
           {isUploading && uploadProgress.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-2">
               <UploadProgress progress={uploadProgress} isVisible={true} />
             </div>
           )}
           
-          {/* TEST BUTTON FOR DEBUGGING */}
-
           <div className="flex space-x-2">
             <Textarea
               value={inputText}
@@ -1909,7 +1915,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             />
             
             <div className="flex flex-col space-y-2">
-              
               <Button
                 variant="outline"
                 size="sm"
@@ -1958,20 +1963,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           )}
         </div>
 
-      {/* Exercise Preview Card */}
-      {exercisePreview && (
-        <div className="mt-2">
-          <ExercisePreviewCard
-            data={{
-              exercise_name: exercisePreview.exerciseName,
-              sets: exercisePreview.sets,
-              overall_rpe: exercisePreview.overall_rpe
-            }}
-            onSave={handleExercisePreviewSave}
-            onCancel={() => setExercisePreview(null)}
-          />
+        {/* Footer */}
+        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-background">
+          © 2025 GetleanAI. Made with ❤️ in Germany
         </div>
-      )}
       </div>
 
       {/* History Sidebar */}
@@ -1985,7 +1980,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           onClose={() => setShowHistory(false)}
         />
       )}
-      </div>
     </div>
   );
 };
