@@ -51,8 +51,15 @@ const timingOptions = [
   { value: 'evening', label: 'Abends' },
   { value: 'pre_workout', label: 'Vor dem Training' },
   { value: 'post_workout', label: 'Nach dem Training' },
-  { value: 'before_bed', label: 'Vor dem Schlafengehen' }
+  { value: 'before_bed', label: 'Vor dem Schlafengehen' },
+  { value: 'with_meals', label: 'Zu den Mahlzeiten' }
 ];
+
+// Helper function to get German label for timing value
+const getTimingLabel = (timing: string): string => {
+  const option = timingOptions.find(opt => opt.value === timing);
+  return option ? option.label : timing;
+};
 
 export const QuickSupplementInput = () => {
   const { user } = useAuth();
@@ -521,7 +528,7 @@ export const QuickSupplementInput = () => {
                       {/* Daily Intake Checkboxes */}
                       <div className="flex flex-wrap gap-2">
                         {supplement.timing.map(timing => {
-                          const timingLabel = timingOptions.find(t => t.value === timing)?.label || timing;
+                          const timingLabel = getTimingLabel(timing);
                           const isTaken = todayIntake[supplement.id]?.[timing] || false;
                           
                           return (
