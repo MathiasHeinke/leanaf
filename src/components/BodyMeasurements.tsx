@@ -205,7 +205,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     notes: ""
                   });
                   setIsEditing(true);
-                  toast.success("Feld für neue Messung freigebeben! 📏");
+                  // Toast entfernt - UI-Feedback ist selbsterklärend
                 }}
                 className="text-green-600 border-green-300 hover:bg-green-50"
               >

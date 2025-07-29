@@ -133,7 +133,9 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
         leftover_analysis_metadata: data
       });
 
-      toast.success(`Analyse abgeschlossen: ${consumptionPercentage}% verzehrt`);
+      toast.success(`Reste-Analyse abgeschlossen: ${consumptionPercentage}% der ursprünglichen Portion verzehrt. Die Nährwerte wurden automatisch angepasst.`, {
+        duration: 8000, // 8 Sekunden statt Standard 4 Sekunden
+      });
     } catch (error) {
       console.error('Error analyzing leftovers:', error);
       toast.error('Fehler bei der Reste-Analyse');
