@@ -1,11 +1,8 @@
-
 import { GlobalHeader } from "@/components/GlobalHeader";
 import { Footer } from "@/components/Footer";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,26 +11,11 @@ interface LayoutProps {
 export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
-  const [showSubscriptionDebug, setShowSubscriptionDebug] = useState(false);
-  
-  // Keyboard shortcut for subscription debug panel
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.shiftKey && event.key === 'S') {
-        event.preventDefault();
-        setShowSubscriptionDebug(prev => !prev);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-  
-  // Don't show header on auth page - early return AFTER hook calls
+
+  // If the current path is '/auth' or no user is logged in, only render children
   if (location.pathname === '/auth' || !user) {
     return <>{children}</>;
   }
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full">
@@ -51,20 +33,14 @@ export const Layout = ({ children }: LayoutProps) => {
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <GlobalHeader 
-          onRefresh={() => setShowSubscriptionDebug(true)}
-        />
-        <main className="container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1">
+        <GlobalHeader />
+        
+        <main className="flex-1 p-2 pb-6">
           {children}
         </main>
+        
         <Footer />
       </div>
-      
-      {/* Debug Panels */}
-      <EnhancedSubscriptionDebugPanel 
-        isOpen={showSubscriptionDebug} 
-        onClose={() => setShowSubscriptionDebug(false)} 
-      />
     </div>
   );
 };
