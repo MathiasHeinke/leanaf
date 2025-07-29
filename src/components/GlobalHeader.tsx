@@ -144,57 +144,45 @@ export const GlobalHeader = ({
             </h1>
           </div>
           
-          {/* Right: Dark Mode Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleTheme}
-            className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
-            title={getThemeTooltip()}
-          >
-            {renderThemeIcon()}
-          </Button>
-        </div>
-      </div>
-
-      
-      {/* Coach Toggle Button - Centered under GlobalHeader (only on coach routes) */}
-      {isCoachChatRoute && (
-        <div className="fixed top-[73px] left-0 right-0 z-40 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
-          <div className="container mx-auto px-4 py-2 max-w-4xl flex justify-center">
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2">
+            {/* Coach Toggle Button (only on coach routes) */}
+            {isCoachChatRoute && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCoachHeader(prev => !prev)}
+                className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+                title="Coach Info anzeigen"
+              >
+                <ChevronDown className={`h-4 w-4 text-primary transition-transform ${showCoachHeader ? 'rotate-180' : ''}`} />
+              </Button>
+            )}
+            
+            {/* Dark Mode Toggle */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowCoachHeader(prev => !prev)}
-              className="p-2 hover:bg-accent/60 rounded-lg transition-all duration-300"
-              title="Coach Info anzeigen"
+              onClick={toggleTheme}
+              className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+              title={getThemeTooltip()}
             >
-              <ChevronDown className={`h-4 w-4 text-primary transition-transform duration-300 ${showCoachHeader ? 'rotate-180' : ''}`} />
+              {renderThemeIcon()}
             </Button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Coach Dropdown Header (only on coach routes) */}
-      {isCoachChatRoute && (
-        <div className={`fixed left-0 right-0 z-30 border-b border-border/20 bg-secondary/90 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-secondary/70 transition-all duration-500 ease-in-out ${
-          showCoachHeader 
-            ? 'top-[122px] opacity-100 translate-y-0' 
-            : 'top-[73px] opacity-0 -translate-y-full pointer-events-none'
-        }`}>
+      {isCoachChatRoute && showCoachHeader && (
+        <div className="fixed top-[73px] left-0 right-0 z-40 border-b border-border/20 bg-secondary/90 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-secondary/70 animate-fade-in">
           <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
             {/* Left: Back Button */}
             <Button
               variant="ghost"
               size="sm"
               className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
-              onClick={() => {
-                if (location.pathname === '/training/sascha') {
-                  window.location.href = '/training';
-                } else {
-                  window.location.href = '/';
-                }
-              }}
+              onClick={() => window.history.back()}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -225,10 +213,6 @@ export const GlobalHeader = ({
                 size="sm"
                 className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
                 title="Chat-Verlauf"
-                onClick={() => {
-                  // TODO: Chat-Verlauf anzeigen
-                  console.log('Chat-Verlauf öffnen');
-                }}
               >
                 <History className="h-4 w-4" />
               </Button>
@@ -237,12 +221,6 @@ export const GlobalHeader = ({
                 size="sm"
                 className="p-2 hover:bg-destructive/60 rounded-lg transition-colors"
                 title="Chat löschen"
-                onClick={() => {
-                  if (confirm('Möchten Sie wirklich den gesamten Chat-Verlauf löschen?')) {
-                    // TODO: Chat löschen
-                    console.log('Chat wird gelöscht');
-                  }
-                }}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -252,10 +230,7 @@ export const GlobalHeader = ({
       )}
 
       {/* Spacer to prevent content overlap */}
-      <div className={`transition-all duration-300 ${
-        isCoachChatRoute && showCoachHeader ? 'h-[195px]' : 
-        isCoachChatRoute ? 'h-[122px]' : 'h-[73px]'
-      }`} />
+      <div className={`${isCoachChatRoute && showCoachHeader ? 'h-[146px]' : 'h-[73px]'} transition-all`} />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
