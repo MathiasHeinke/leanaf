@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, Sun, Moon, Clock } from "lucide-react";
+import { Menu, Sun, Moon, Clock, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
@@ -7,23 +7,42 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useLocation } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import CoachDropdownHeader from "./CoachDropdownHeader";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  coachDropdownProps?: {
+    onBack: () => void;
+    avatarUrl: string;
+    name: string;
+    onDelete: () => void;
+    onHistory: () => void;
+  };
 }
 
 export const GlobalHeader = ({ 
   onRefresh, 
-  isRefreshing = false
+  isRefreshing = false,
+  coachDropdownProps
 }: GlobalHeaderProps) => {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
+  const [isDropdownVisible, setDropdownVisible] = useState(false);
   
   const { subscriptionTier } = useSubscription();
   const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
   const location = useLocation();
+
+  const isCoachRoute =
+    location.pathname.startsWith("/training/") ||
+    location.pathname.startsWith("/coach/") ||
+    (location.pathname === "/coach" && coachDropdownProps);
+
+  const toggleDropdown = () => {
+    setDropdownVisible(!isDropdownVisible);
+  };
 
   // Route to title mapping
   const getPageTitle = (pathname: string) => {
@@ -108,8 +127,8 @@ export const GlobalHeader = ({
   return (
     <>
       {/* Fixed Minimalist Header with Glassmorphism */}
-      <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between relative">
           {/* Left: Sidebar Toggle */}
           <SidebarTrigger className="p-2 hover:bg-accent/60 rounded-lg transition-colors">
             <Menu className="h-5 w-5" />
@@ -132,8 +151,25 @@ export const GlobalHeader = ({
           >
             {renderThemeIcon()}
           </Button>
+
+          {/* Coach Dropdown Toggle Button */}
+          {isCoachRoute && coachDropdownProps && (
+            <button
+              onClick={toggleDropdown}
+              className="absolute left-1/2 -translate-x-1/2 bottom-[-8px] bg-background rounded-full p-1 shadow-md border border-border z-40 hover:bg-accent/60 transition-colors"
+            >
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
         </div>
-      </div>
+
+        {/* Coach Dropdown Header */}
+        {isDropdownVisible && coachDropdownProps && (
+          <div className="absolute top-full left-0 w-full z-20">
+            <CoachDropdownHeader {...coachDropdownProps} />
+          </div>
+        )}
+      </header>
 
       {/* Spacer to prevent content overlap */}
       <div className="h-[73px]" />

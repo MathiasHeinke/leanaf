@@ -8,6 +8,7 @@ import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { FormcheckSummaryCard } from '@/components/FormcheckSummaryCard';
 import { ChatHistorySidebar } from '@/components/ChatHistorySidebar';
+import { GlobalHeader } from '@/components/GlobalHeader';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -17,6 +18,7 @@ import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
 import { createGreetingContext, generateDynamicCoachGreeting } from '@/utils/dynamicCoachGreetings';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import { 
   Send, 
   Mic, 
@@ -70,6 +72,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   onExerciseLogged
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<WorkoutMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +86,21 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const [showUpload, setShowUpload] = useState(false);
   const [analysisType, setAnalysisType] = useState<'exercise_form' | 'meal_analysis' | 'progress_photo' | 'general'>('exercise_form');
   const [isThinking, setIsThinking] = useState(false);
+
+  // Coach dropdown props for GlobalHeader
+  const coachDropdownProps = {
+    onBack: () => navigate("/coach"),
+    avatarUrl: "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png",
+    name: "Coach Sascha",
+    onDelete: () => {
+      console.log("Delete chat clicked");
+      toast.success("Chat wird gelöscht...");
+    },
+    onHistory: () => {
+      console.log("History clicked");
+      setShowHistory(true);
+    },
+  };
   
   // Human-like features
   const { analyzeSentiment } = useSentimentAnalysis();
@@ -813,12 +831,25 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-150px)]">
+    <div className="h-screen flex flex-col bg-background">
+      {/* Global Header with Coach Dropdown */}
+      <GlobalHeader coachDropdownProps={coachDropdownProps} />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Chat History Sidebar */}
+        {showHistory && (
+          <ChatHistorySidebar
+            selectedCoach="sascha"
+            onSelectDate={handleSelectDate}
+            onClose={() => setShowHistory(false)}
+          />
+        )}
 
-      <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-4">
-              <div className="space-y-4 pb-4">
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+            <div className="max-w-4xl mx-auto space-y-4">
+              {/* Welcome and Messages */}
               {messages.map((message) => (
                 <div key={message.id} className="flex">
                   {message.role === "assistant" && (
@@ -964,42 +995,40 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   </div>
                 </div>
               )}
-              <div ref={scrollAreaRef} />
-            </div>
+              
+              {/* Loading indicators */}
+              {(isLoading || isThinking) && (
+                <div className="flex justify-center py-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">
+                      {isThinking ? 'Sascha denkt nach...' : 'Analysiert dein Training...'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Exercise Preview */}
+              {exercisePreview && (
+                <ExercisePreviewCard
+                  data={exercisePreview}
+                  onSave={handleExercisePreviewSave}
+                  onCancel={() => setExercisePreview(null)}
+                />
+              )}
+
+              {/* Formcheck Summary */}
+              {formcheckSummary && isFormcheckMode && (
+                <FormcheckSummaryCard
+                  data={formcheckSummary}
+                  onSave={handleFormcheckSummarySave}
+                  onCancel={() => setFormcheckSummary(null)}
+                />
+              )}
             </div>
           </ScrollArea>
         </div>
-
-        {/* Chat History Sidebar */}
-        {showHistory && (
-          <ChatHistorySidebar
-            selectedCoach="sascha"
-            onSelectDate={handleSelectDate}
-            onClose={() => setShowHistory(false)}
-          />
-        )}
-
-      {/* Exercise Preview */}
-      {exercisePreview && (
-        <div className="px-3 py-1 border-t border-border/20">
-          <ExercisePreviewCard
-            data={exercisePreview}
-            onSave={handleExercisePreviewSave}
-            onCancel={() => setExercisePreview(null)}
-          />
-        </div>
-      )}
-
-      {/* Formcheck Summary */}
-      {formcheckSummary && (
-        <div className="px-3 py-1 border-t border-border/20">
-          <FormcheckSummaryCard
-            data={formcheckSummary}
-            onSave={handleFormcheckSummarySave}
-            onCancel={handleFormcheckSummaryCancel}
-          />
-        </div>
-      )}
+      </div>
 
       {/* Fixed Input Area at bottom */}
       <div className="border-t border-border/20 bg-background">
