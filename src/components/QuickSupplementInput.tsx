@@ -235,22 +235,51 @@ export const QuickSupplementInput = () => {
   };
 
   const handleIntakeChange = async (supplementId: string, timing: string, taken: boolean) => {
-    if (!user) return;
+    if (!user || !supplementId) {
+      console.error('Missing user or supplementId');
+      return;
+    }
 
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const { error } = await supabase
-        .from('supplement_intake_log')
-        .upsert({
-          user_id: user.id,
-          user_supplement_id: supplementId,
-          date: today,
-          timing,
-          taken
-        });
+      if (taken) {
+        // For marking as taken, use upsert
+        const { error } = await supabase
+          .from('supplement_intake_log')
+          .upsert({
+            user_id: user.id,
+            user_supplement_id: supplementId,
+            date: today,
+            timing,
+            taken: true
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // For unmarking (taken = false), first check if entry exists and update it
+        const { data: existingEntry, error: selectError } = await supabase
+          .from('supplement_intake_log')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('user_supplement_id', supplementId)
+          .eq('date', today)
+          .eq('timing', timing)
+          .maybeSingle();
+
+        if (selectError) throw selectError;
+
+        if (existingEntry) {
+          // Update existing entry to mark as not taken
+          const { error: updateError } = await supabase
+            .from('supplement_intake_log')
+            .update({ taken: false })
+            .eq('id', existingEntry.id);
+
+          if (updateError) throw updateError;
+        }
+        // If no existing entry, we don't need to do anything (already not taken)
+      }
 
       setTodayIntake(prev => ({
         ...prev,
@@ -262,6 +291,8 @@ export const QuickSupplementInput = () => {
 
       if (taken) {
         toast.success('Einnahme markiert');
+      } else {
+        toast.success('Einnahme rückgängig gemacht');
       }
 
     } catch (error) {
