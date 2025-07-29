@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Settings, Utensils, Weight, Moon, Droplets, Dumbbell, Pill } from 'lucide-react';
+import { useProactiveTooltips } from '@/hooks/useProactiveTooltips';
+import { ProactiveTooltip } from './ProactiveTooltip';
 
 interface TrackingPreference {
   id: string;
@@ -63,6 +65,7 @@ export const TrackingPreferences = () => {
   const [preferences, setPreferences] = useState<TrackingPreference[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const { getVisibleTooltip, dismissTooltip } = useProactiveTooltips();
 
   useEffect(() => {
     if (user) {
@@ -183,7 +186,9 @@ export const TrackingPreferences = () => {
     );
   }
 
-  return (
+  const visibleTooltip = getVisibleTooltip('tracking-preferences');
+
+  const cardContent = (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -254,4 +259,17 @@ export const TrackingPreferences = () => {
       </CardContent>
     </Card>
   );
+
+  if (visibleTooltip) {
+    return (
+      <ProactiveTooltip
+        message={visibleTooltip.message}
+        onDismiss={() => dismissTooltip(visibleTooltip.id)}
+      >
+        {cardContent}
+      </ProactiveTooltip>
+    );
+  }
+
+  return cardContent;
 };
