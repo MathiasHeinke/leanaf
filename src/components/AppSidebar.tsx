@@ -18,7 +18,8 @@ import {
   MapPin,
   FileText,
   Shield,
-  Info
+  Info,
+  Mail
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,7 @@ const settingsItems = [
   { title: "Wissenschaft", url: "/science", icon: Microscope },
   { title: "Features", url: "/features", icon: Lightbulb },
   { title: "Roadmap", url: "/roadmap", icon: MapPin },
+  { title: "Marketing", url: "/marketing", icon: Mail },
 ];
 
 const legalItems = [
@@ -237,20 +239,6 @@ export function AppSidebar() {
                 />
               </SidebarMenuItem>
 
-              {/* Feature Request */}
-              <SidebarMenuItem>
-                <FeatureRequestDialog 
-                  trigger={
-                    <SidebarMenuButton 
-                      className="hover:bg-accent/50 w-full justify-start"
-                      size={collapsed ? "sm" : "default"}
-                    >
-                      <Lightbulb className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                      {!collapsed && <span>Feature anfragen</span>}
-                    </SidebarMenuButton>
-                  }
-                />
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
