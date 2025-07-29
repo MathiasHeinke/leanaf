@@ -47,6 +47,9 @@ import { VideoCompressor, CompressionProgress } from '@/utils/videoCompression';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useMobileOptimizations } from '@/hooks/useMobileOptimizations';
+import { EnhancedMobileCoachChat } from '@/components/EnhancedMobileCoachChat';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatMessage {
   id: string;
@@ -161,6 +164,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [pendingSupplementRecommendations, setPendingSupplementRecommendations] = useState<any[]>([]);
   const [conversationState, setConversationState] = useState<ConversationState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   const {
     isRecording,
