@@ -379,20 +379,38 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   };
 
+  const getAnalysisTypeLabel = (type: string) => {
+    switch (type) {
+      case 'exercise_form':
+        return '🏋️ Übungsanalyse';
+      case 'meal_analysis':
+        return '🍽️ Mahlzeit-Analyse';
+      case 'progress_photo':
+        return '📸 Fortschritts-Analyse';
+      case 'general':
+        return '💬 Allgemeine Analyse';
+      default:
+        return '📊 Medien-Analyse';
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedMedia.length === 0) return;
     if (!user) return;
 
+    // If media is uploaded without text, use the analysis type as message
+    const messageContent = inputText.trim() || (uploadedMedia.length > 0 ? getAnalysisTypeLabel(analysisType) : '');
+    
     const userMessage: WorkoutMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputText,
+      content: messageContent,
       mediaUrls: uploadedMedia.length > 0 ? [...uploadedMedia] : undefined,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    await saveMessage('user', inputText, { mediaUrls: uploadedMedia });
+    await saveMessage('user', messageContent, { mediaUrls: uploadedMedia });
 
     // If media was uploaded, analyze it
     if (uploadedMedia.length > 0) {
