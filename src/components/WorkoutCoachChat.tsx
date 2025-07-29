@@ -874,10 +874,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               variant="outline"
               size="icon"
               onClick={() => {
+                console.log('Upload button clicked, current showUpload:', showUpload);
+                console.log('Current inputText:', inputText);
                 const newShowUpload = !showUpload;
                 setShowUpload(newShowUpload);
                 // Wenn Upload-Fenster geöffnet wird und kein Text im Eingabefeld steht, setze Default-Text
                 if (newShowUpload && !inputText.trim()) {
+                  console.log('Setting default text: Analysiere das Bild');
                   setInputText(getAnalysisTypeLabel('general'));
                 }
               }}
