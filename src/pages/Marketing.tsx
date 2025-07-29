@@ -53,7 +53,7 @@ const Marketing = () => {
   }
 
   return (
-    <div className="w-full max-w-none px-8 py-6">
+    <div className="w-full h-full min-h-screen p-0 m-0">
       <EmailMarketingAdmin />
     </div>
   );
