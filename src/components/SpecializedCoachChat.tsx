@@ -1024,21 +1024,73 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     if (!user?.id) return;
 
     try {
-      const { error } = await supabase
+      // Erst prüfen ob die Übung existiert oder erstellen
+      let exerciseId;
+      const { data: existingExercise } = await supabase
+        .from('exercises')
+        .select('id')
+        .eq('name', exerciseData.exerciseName)
+        .single();
+
+      if (existingExercise) {
+        exerciseId = existingExercise.id;
+      } else {
+        // Übung erstellen falls sie nicht existiert
+        const { data: newExercise, error: exerciseError } = await supabase
+          .from('exercises')
+          .insert({
+            name: exerciseData.exerciseName,
+            category: 'strength',
+            created_by: user.id
+          })
+          .select('id')
+          .single();
+
+        if (exerciseError) {
+          console.error('Error creating exercise:', exerciseError);
+          toast.error('Fehler beim Erstellen der Übung');
+          return;
+        }
+        exerciseId = newExercise.id;
+      }
+
+      // Exercise Session erstellen
+      const { data: session, error: sessionError } = await supabase
         .from('exercise_sessions')
         .insert({
           user_id: user.id,
-          exercise_name: exerciseData.exerciseName,
-          sets: exerciseData.sets,
-          overall_rpe: exerciseData.overallRpe || null,
           date: new Date().toISOString().split('T')[0],
-          duration_minutes: null,
-          notes: 'Eingegeben über Coach Chat'
-        });
+          session_name: `${exerciseData.exerciseName} Session`,
+          notes: 'Eingegeben über Coach Chat',
+          overall_rpe: exerciseData.overallRpe || null
+        })
+        .select('id')
+        .single();
 
-      if (error) {
-        console.error('Error saving exercise:', error);
-        toast.error('Fehler beim Speichern der Übung');
+      if (sessionError) {
+        console.error('Error creating session:', sessionError);
+        toast.error('Fehler beim Erstellen der Trainingseinheit');
+        return;
+      }
+
+      // Sätze hinzufügen
+      const setsToInsert = exerciseData.sets.map((set: any, index: number) => ({
+        user_id: user.id,
+        session_id: session.id,
+        exercise_id: exerciseId,
+        set_number: index + 1,
+        reps: set.reps,
+        weight_kg: set.weight,
+        rpe: set.rpe
+      }));
+
+      const { error: setsError } = await supabase
+        .from('exercise_sets')
+        .insert(setsToInsert);
+
+      if (setsError) {
+        console.error('Error saving sets:', setsError);
+        toast.error('Fehler beim Speichern der Sätze');
         return;
       }
 
