@@ -52,6 +52,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   const [isEditing, setIsEditing] = useState(false);
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -60,7 +61,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   const hasWeightToday = todaysWeight && todaysWeight.weight !== null;
 
   useEffect(() => {
-    if (hasWeightToday && !isEditing) {
+    if (hasWeightToday && !isEditing && !isTyping) {
       const weightValue = todaysWeight.weight?.toString() || "";
       setWeight(weightValue);
       setDebouncedWeight(weightValue);
@@ -70,16 +71,24 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       setExistingPhotos(parsePhotoUrls(todaysWeight.photo_urls));
       setShowPhotoUpload(parsePhotoUrls(todaysWeight.photo_urls).length > 0);
     }
-  }, [hasWeightToday, todaysWeight, isEditing]);
+  }, [hasWeightToday, todaysWeight, isEditing, isTyping]);
 
-  // Debounce weight input for processing (500ms delay)
+  // Debounce weight input for processing (4000ms delay to prevent interference)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setDebouncedWeight(weight);
-    }, 500);
+      setIsTyping(false);
+    }, 4000);
 
     return () => clearTimeout(timeoutId);
   }, [weight]);
+
+  // Track when user is actively typing
+  useEffect(() => {
+    if (weight !== debouncedWeight) {
+      setIsTyping(true);
+    }
+  }, [weight, debouncedWeight]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
