@@ -1,0 +1,457 @@
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
+import { toast } from 'sonner';
+
+interface User {
+  user_id: string;
+  display_name: string | null;
+  email: string | null;
+  subscribed: boolean | null;
+  subscription_tier: string | null;
+  subscription_end: string | null;
+  profile_created: string;
+  subscription_created: string | null;
+  // Aktivitätsstatistiken
+  meals_count: number;
+  workouts_count: number;
+  weight_entries_count: number;
+  sleep_entries_count: number;
+  body_measurements_count: number;
+  // Punkte & Level
+  total_points: number;
+  current_level: number;
+  level_name: string;
+  // Trial Info
+  has_active_trial: boolean;
+  trial_expires_at: string | null;
+  trial_type: string | null;
+  // Letzte Aktivität
+  last_meal_date: string | null;
+  last_workout_date: string | null;
+  last_weight_date: string | null;
+  last_login_approximate: string | null;
+}
+
+interface AdminAction {
+  id: string;
+  admin_user_id: string;
+  target_user_id: string | null;
+  action_type: string;
+  action_details: any;
+  old_values: any;
+  new_values: any;
+  created_at: string;
+}
+
+export const useAdminDebug = () => {
+  const { user } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [adminLogs, setAdminLogs] = useState<AdminAction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const logAdminAction = async (
+    actionType: string,
+    targetUserId: string | null,
+    actionDetails: any,
+    oldValues: any = {},
+    newValues: any = {}
+  ) => {
+    if (!user?.id) return;
+
+    try {
+      await supabase
+        .from('admin_logs')
+        .insert({
+          admin_user_id: user.id,
+          target_user_id: targetUserId,
+          action_type: actionType,
+          action_details: actionDetails,
+          old_values: oldValues,
+          new_values: newValues
+        });
+    } catch (error) {
+      console.error('Error logging admin action:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      // Get profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, email, created_at')
+        .order('display_name', { ascending: true });
+
+      if (profilesError) throw profilesError;
+
+      // Get subscribers
+      const { data: subscribersData, error: subscribersError } = await supabase
+        .from('subscribers')
+        .select('user_id, email, subscribed, subscription_tier, subscription_end, created_at');
+
+      if (subscribersError) throw subscribersError;
+
+      // Get user trials
+      const { data: trialsData, error: trialsError } = await supabase
+        .from('user_trials')
+        .select('user_id, is_active, expires_at, trial_type, created_at')
+        .eq('is_active', true);
+
+      if (trialsError) throw trialsError;
+
+      // Get user points
+      const { data: pointsData, error: pointsError } = await supabase
+        .from('user_points')
+        .select('user_id, total_points, current_level, level_name');
+
+      if (pointsError) throw pointsError;
+
+      // Sammle alle Benutzer-IDs für Bulk-Abfragen
+      const userIds = profilesData?.map(p => p.user_id) || [];
+
+      // Parallel Abfragen für Aktivitätsstatistiken
+      const [mealsCount, workoutsCount, weightCount, sleepCount, measurementsCount] = await Promise.all([
+        // Meals Count + Latest
+        supabase
+          .from('meals')
+          .select('user_id, created_at')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Workouts Count + Latest  
+        supabase
+          .from('workouts')
+          .select('user_id, created_at, date')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Weight entries count + Latest
+        supabase
+          .from('weight_history')
+          .select('user_id, created_at, date')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Sleep entries count + Latest
+        supabase
+          .from('sleep_tracking')
+          .select('user_id, created_at, date')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false }),
+        
+        // Body measurements count
+        supabase
+          .from('body_measurements')
+          .select('user_id, created_at')
+          .in('user_id', userIds)
+          .order('created_at', { ascending: false })
+      ]);
+
+      // Überprüfe auf Fehler in den Parallel-Abfragen
+      const hasErrors = [mealsCount, workoutsCount, weightCount, sleepCount, measurementsCount]
+        .some(result => result.error);
+      
+      if (hasErrors) {
+        console.error('Fehler bei Aktivitätsstatistiken:', {
+          meals: mealsCount.error,
+          workouts: workoutsCount.error,
+          weight: weightCount.error,
+          sleep: sleepCount.error,
+          measurements: measurementsCount.error
+        });
+      }
+
+      // Verarbeite Statistiken
+      const getUserStats = (userId: string) => {
+        const userMeals = mealsCount.data?.filter(m => m.user_id === userId) || [];
+        const userWorkouts = workoutsCount.data?.filter(w => w.user_id === userId) || [];
+        const userWeights = weightCount.data?.filter(w => w.user_id === userId) || [];
+        const userSleep = sleepCount.data?.filter(s => s.user_id === userId) || [];
+        const userMeasurements = measurementsCount.data?.filter(m => m.user_id === userId) || [];
+
+        // Statistiken berechnen
+
+        return {
+          meals_count: userMeals.length,
+          workouts_count: userWorkouts.length,
+          weight_entries_count: userWeights.length,
+          sleep_entries_count: userSleep.length,
+          body_measurements_count: userMeasurements.length,
+          last_meal_date: userMeals[0]?.created_at || null,
+          last_workout_date: userWorkouts[0]?.created_at || null,
+          last_weight_date: userWeights[0]?.created_at || null,
+          // Approximate last login from most recent activity
+          last_login_approximate: [
+            ...userMeals.map(m => m.created_at),
+            ...userWorkouts.map(w => w.created_at),
+            ...userWeights.map(w => w.created_at),
+            ...userSleep.map(s => s.created_at)
+          ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
+        };
+      };
+
+        const formattedUsers: User[] = profilesData?.map(profile => {
+        // Try to find subscriber by user_id first, then by email as fallback
+        let subscriber = subscribersData?.find(s => s.user_id === profile.user_id);
+        if (!subscriber && profile.email) {
+          subscriber = subscribersData?.find(s => s.email === profile.email);
+        }
+        
+        const trial = trialsData?.find(t => t.user_id === profile.user_id);
+        const points = pointsData?.find(p => p.user_id === profile.user_id);
+        const stats = getUserStats(profile.user_id);
+
+        // Subscription-Mapping
+
+        const user = {
+          user_id: profile.user_id,
+          display_name: profile.display_name,
+          email: profile.email,
+          subscribed: subscriber?.subscribed ?? false,
+          subscription_tier: subscriber?.subscription_tier ?? null,
+          subscription_end: subscriber?.subscription_end ?? null,
+          profile_created: profile.created_at,
+          subscription_created: subscriber?.created_at ?? null,
+          // Aktivitätsstatistiken
+          meals_count: stats.meals_count,
+          workouts_count: stats.workouts_count,
+          weight_entries_count: stats.weight_entries_count,
+          sleep_entries_count: stats.sleep_entries_count,
+          body_measurements_count: stats.body_measurements_count,
+          // Punkte & Level
+          total_points: points?.total_points || 0,
+          current_level: points?.current_level || 1,
+          level_name: points?.level_name || 'Rookie',
+          // Trial Info
+          has_active_trial: !!trial?.is_active,
+          trial_expires_at: trial?.expires_at || null,
+          trial_type: trial?.trial_type || null,
+          // Letzte Aktivität
+          last_meal_date: stats.last_meal_date,
+          last_workout_date: stats.last_workout_date,
+          last_weight_date: stats.last_weight_date,
+          last_login_approximate: stats.last_login_approximate
+        };
+
+        // User-Objekt erstellt
+
+        return user;
+      }) || [];
+
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Fehler beim Laden der Benutzer');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAdminLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setAdminLogs(data || []);
+    } catch (error) {
+      console.error('Error fetching admin logs:', error);
+    }
+  };
+
+  const grantPremium = async (targetUserId: string, duration: string, tier: string = 'Premium') => {
+    if (!user?.id) return;
+
+    try {
+      // Get user profile to check email
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email, display_name')
+        .eq('user_id', targetUserId)
+        .single();
+
+      if (profileError || !profile?.email) {
+        toast.error('Benutzer nicht gefunden oder keine E-Mail vorhanden');
+        return;
+      }
+
+      // Premium vergeben
+
+      // Calculate end date
+      const calculateEndDate = (duration: string): Date | null => {
+        if (duration === 'permanent') return null;
+        
+        const durationMap: Record<string, number> = {
+          '1week': 7 * 24 * 60 * 60 * 1000,
+          '1month': 30 * 24 * 60 * 60 * 1000,
+          '3months': 90 * 24 * 60 * 60 * 1000,
+          '6months': 180 * 24 * 60 * 60 * 1000,
+          '12months': 365 * 24 * 60 * 60 * 1000
+        };
+        
+        const milliseconds = durationMap[duration] || durationMap['1month'];
+        return new Date(Date.now() + milliseconds);
+      };
+
+      const endDate = calculateEndDate(duration);
+
+      // Check current subscription status
+      const { data: existingSubscriber } = await supabase
+        .from('subscribers')
+        .select('*')
+        .eq('email', profile.email)
+        .maybeSingle();
+
+      let result;
+      
+      // Subscription aktualisieren oder erstellen
+      if (existingSubscriber) {
+        const { data: updateData, error: updateError } = await supabase
+          .from('subscribers')
+          .update({
+            user_id: targetUserId,
+            subscribed: true,
+            subscription_tier: tier,
+            subscription_end: endDate?.toISOString() || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('email', profile.email)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        result = updateData;
+      } else {
+        const { data: insertData, error: insertError } = await supabase
+          .from('subscribers')
+          .insert({
+            user_id: targetUserId,
+            email: profile.email,
+            subscribed: true,
+            subscription_tier: tier,
+            subscription_end: endDate?.toISOString() || null,
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        result = insertData;
+      }
+
+      // Log the action with detailed information
+      await logAdminAction(
+        tier === 'Enterprise' ? 'GRANT_ENTERPRISE' : 'GRANT_PREMIUM',
+        targetUserId,
+        { 
+          duration, 
+          tier, 
+          endDate: endDate?.toISOString() || 'permanent',
+          method: existingSubscriber ? 'update' : 'create',
+          userEmail: profile.email,
+          userName: profile.display_name
+        },
+        existingSubscriber || {},
+        result
+      );
+
+      const action = existingSubscriber ? 'aktualisiert' : 'vergeben';
+      toast.success(`${tier} für ${duration} ${action} (${profile.display_name || profile.email})`);
+      
+      await fetchUsers();
+      await fetchAdminLogs();
+    } catch (error: any) {
+      console.error('Error granting subscription:', error);
+      
+      // Provide detailed error information
+      const errorMessage = error?.message || 'Unbekannter Fehler';
+      toast.error(`Fehler beim Vergeben von ${tier}: ${errorMessage}`);
+    }
+  };
+
+  const revokePremium = async (targetUserId: string) => {
+    if (!user?.id) return;
+
+    try {
+      const { data: oldData } = await supabase
+        .from('subscribers')
+        .select('*')
+        .eq('user_id', targetUserId)
+        .single();
+
+      const { error } = await supabase
+        .from('subscribers')
+        .update({
+          subscribed: false,
+          subscription_tier: null,
+          subscription_end: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', targetUserId);
+
+      if (error) throw error;
+
+      await logAdminAction(
+        'REVOKE_SUBSCRIPTION',
+        targetUserId,
+        {},
+        oldData || {},
+        { subscribed: false, subscription_tier: null, subscription_end: null }
+      );
+
+      toast.success('Subscription widerrufen');
+      await fetchUsers();
+    } catch (error) {
+      console.error('Error revoking subscription:', error);
+      toast.error('Fehler beim Widerrufen der Subscription');
+    }
+  };
+
+  const switchToUser = async (targetUserId: string) => {
+    try {
+      // This would need to be implemented with proper session management
+      await logAdminAction(
+        'SWITCH_USER',
+        targetUserId,
+        { action: 'account_switch' }
+      );
+      
+      toast.info('Account-Wechsel Funktion noch nicht implementiert');
+    } catch (error) {
+      console.error('Error switching user:', error);
+      toast.error('Fehler beim Account-Wechsel');
+    }
+  };
+
+  const filteredUsers = users.filter(user =>
+    (user.display_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (user.email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    user.user_id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    fetchUsers();
+    fetchAdminLogs();
+  }, []);
+
+  return {
+    users: filteredUsers,
+    adminLogs,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    grantPremium,
+    revokePremium,
+    switchToUser,
+    fetchUsers,
+    fetchAdminLogs,
+    logAdminAction
+  };
+};
