@@ -184,7 +184,7 @@ Sei hilfreich und erkläre deine Anpassungen. Wenn keine Anpassungen nötig sind
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages,
         temperature: 0.2,
         max_tokens: 1000,
