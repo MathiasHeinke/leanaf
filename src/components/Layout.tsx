@@ -40,7 +40,7 @@ export const Layout = ({ children }: LayoutProps) => {
   return (
     <div 
       ref={swipeRef}
-      className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full"
+      className="h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full"
     >
       {/* Background Geometric Shapes for Glass Effect - Animated */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
