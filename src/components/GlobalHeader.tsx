@@ -7,6 +7,10 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ChatHistorySidebar } from "./ChatHistorySidebar";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -20,7 +24,9 @@ export const GlobalHeader = ({
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   const [showCoachBanner, setShowCoachBanner] = useState(false);
+  const [showChatHistory, setShowChatHistory] = useState(false);
   
+  const { user } = useAuth();
   const { subscriptionTier } = useSubscription();
   const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
@@ -107,6 +113,26 @@ export const GlobalHeader = ({
   return themeStatus.current === 'dark' ? t('settings.darkModeLight') : t('settings.darkModeDark');
   };
 
+  // Clear chat function
+  const handleClearChat = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('coach_conversations')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('coach_personality', 'sascha');
+        
+      if (error) throw error;
+      
+      // Refresh page to clear local state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+    }
+  };
+
   // Check if we're on a coach chat route
   const isCoachChatRoute = 
     location.pathname.startsWith('/coach') || 
@@ -159,7 +185,7 @@ export const GlobalHeader = ({
       {/* Coach-Banner direkt unter Header (ohne Abstand) */}
       {isCoachChatRoute && (
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background/70 backdrop-blur-md border-b border-border/20 shadow-md w-full fixed top-[65px] z-40 ${
+          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background backdrop-blur-md border-b border-border/20 shadow-md w-full fixed top-[61px] z-40 ${
             showCoachBanner ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
@@ -183,10 +209,7 @@ export const GlobalHeader = ({
 
             <div className="flex items-center gap-3">
               <button 
-                onClick={() => {
-                  // Placeholder für Chat-History
-                  console.log('Chat History clicked');
-                }}
+                onClick={() => setShowChatHistory(true)}
                 className="text-sm hover:text-primary transition-colors"
                 title="Chat-Verlauf"
               >
@@ -195,8 +218,7 @@ export const GlobalHeader = ({
               <button 
                 onClick={() => {
                   if (confirm('Chat-Verlauf wirklich löschen?')) {
-                    // Placeholder für Chat löschen
-                    console.log('Clear chat clicked');
+                    handleClearChat();
                   }
                 }}
                 className="text-sm hover:text-destructive transition-colors"
@@ -210,7 +232,23 @@ export const GlobalHeader = ({
       )}
 
       {/* Spacer to prevent content overlap */}
-      <div className={`${isCoachChatRoute && showCoachBanner ? 'h-[129px]' : 'h-[65px]'} transition-all duration-500`} />
+      <div className={`${isCoachChatRoute && showCoachBanner ? 'h-[125px]' : 'h-[61px]'} transition-all duration-500`} />
+
+      {/* Chat History Dialog */}
+      {showChatHistory && (
+        <Dialog open={showChatHistory} onOpenChange={setShowChatHistory}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-hidden p-0">
+            <ChatHistorySidebar
+              selectedCoach="sascha"
+              onSelectDate={(date) => {
+                console.log('Selected date:', date);
+                setShowChatHistory(false);
+              }}
+              onClose={() => setShowChatHistory(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
