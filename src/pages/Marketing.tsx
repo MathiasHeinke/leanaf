@@ -10,18 +10,30 @@ const Marketing = () => {
 
   useEffect(() => {
     const checkSuperAdmin = async () => {
-      if (!user) {
+      if (!user?.email) {
+        console.log('No user or email found');
         setIsSuperAdmin(false);
         return;
       }
 
+      console.log('Checking super admin status for:', user.email);
+
       try {
-        const { data, error } = await supabase.rpc('is_super_admin_by_email');
+        // Direct query to admin_emails table instead of RPC function
+        const { data, error } = await supabase
+          .from('admin_emails')
+          .select('role, is_active')
+          .eq('email', user.email)
+          .eq('is_active', true)
+          .in('role', ['super_admin', 'admin'])
+          .single();
+        
         if (error) {
-          console.error('Error checking super admin status:', error);
+          console.log('No admin record found for email:', user.email);
           setIsSuperAdmin(false);
         } else {
-          setIsSuperAdmin(data);
+          console.log('Admin record found:', data);
+          setIsSuperAdmin(true);
         }
       } catch (error) {
         console.error('Error checking super admin status:', error);
