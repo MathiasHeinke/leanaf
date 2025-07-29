@@ -269,13 +269,14 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             // Continue without failing the entire operation
           }
 
-          toast.success('Gewicht erfolgreich eingetragen!');
+        toast.success('Gewicht erfolgreich eingetragen!');
         } catch (saveError) {
           console.error('💥 [QuickWeightInput] All save strategies failed:', saveError);
           throw saveError;
         }
       }
 
+      triggerDataRefresh();
       setIsEditing(false);
       setSelectedFiles([]);
       setShowPhotoUpload(false);

@@ -129,6 +129,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
         toast.success('Workout erfolgreich eingetragen!');
       }
 
+      triggerDataRefresh();
       resetForm();
       onWorkoutAdded?.();
     } catch (error) {

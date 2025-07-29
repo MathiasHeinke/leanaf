@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Brain, TrendingUp, RefreshCw, AlertTriangle, CheckCircle, Info, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { EnhancedCoachAnalyzer, loadTransformationData, CoachInsight } from "@/utils/enhancedCoachAnalyzer";
 import { PremiumGate } from "@/components/PremiumGate";
 
@@ -20,6 +21,13 @@ export const SmartCoachInsights = () => {
       generateInsights();
     }
   }, [user]);
+
+  // Auto-refresh when data changes
+  useDataRefresh(() => {
+    if (user) {
+      generateInsights();
+    }
+  });
 
   const generateInsights = async () => {
     if (!user) return;

@@ -302,6 +302,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         toast.success('Schlaf erfolgreich eingetragen!');
       }
 
+      triggerDataRefresh();
       setIsEditing(false);
       onSleepAdded?.();
     } catch (error) {
