@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   const [showOptionalFields, setShowOptionalFields] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [activeThumb, setActiveThumb] = useState<'bedtime' | 'waketime' | null>(null);
+  const [isEditingBedtime, setIsEditingBedtime] = useState(false);
+  const [isEditingWaketime, setIsEditingWaketime] = useState(false);
+  const [bedtimeInput, setBedtimeInput] = useState("");
+  const [waketimeInput, setWaketimeInput] = useState("");
   
   // Individual tracking states for optional fields
   const [trackInterruptions, setTrackInterruptions] = useState(false);
@@ -70,6 +75,46 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  // Parse time string to hours
+  const parseTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours + (minutes || 0) / 60;
+  };
+
+  // Validate time input format
+  const isValidTime = (time: string) => {
+    const regex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    return regex.test(time);
+  };
+
+  // Handle inline time editing
+  const handleTimeEdit = (type: 'bedtime' | 'waketime', timeString: string) => {
+    if (!isValidTime(timeString)) {
+      toast.error('Ungültiges Zeitformat. Bitte verwende HH:MM (z.B. 22:30)');
+      return;
+    }
+    
+    const hours = parseTime(timeString);
+    if (type === 'bedtime') {
+      setBedtime([hours]);
+      setIsEditingBedtime(false);
+    } else {
+      setWakeTime([hours]);
+      setIsEditingWaketime(false);
+    }
+  };
+
+  // Start editing time
+  const startTimeEdit = (type: 'bedtime' | 'waketime') => {
+    if (type === 'bedtime') {
+      setBedtimeInput(formatTime(bedtime[0]));
+      setIsEditingBedtime(true);
+    } else {
+      setWaketimeInput(formatTime(wakeTime[0]));
+      setIsEditingWaketime(true);
+    }
   };
 
   // Custom timeline interaction handlers
@@ -427,9 +472,85 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Interactive 24-Stunden Timeline Bar */}
               <div className="space-y-4">
-                <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                  <Clock className="inline h-4 w-4 mr-1" />
-                  Schlafzeiten: {formatTime(bedtime[0])} bis {formatTime(wakeTime[0])} ({sleepDuration}h)
+                <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Schlafzeiten:</span>
+                  
+                  {/* Inline editable bedtime */}
+                  {isEditingBedtime ? (
+                    <Input
+                      type="text"
+                      value={bedtimeInput}
+                      onChange={(e) => setBedtimeInput(e.target.value)}
+                      onBlur={() => {
+                        if (bedtimeInput && isValidTime(bedtimeInput)) {
+                          handleTimeEdit('bedtime', bedtimeInput);
+                        } else {
+                          setIsEditingBedtime(false);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (bedtimeInput && isValidTime(bedtimeInput)) {
+                            handleTimeEdit('bedtime', bedtimeInput);
+                          }
+                        } else if (e.key === 'Escape') {
+                          setIsEditingBedtime(false);
+                        }
+                      }}
+                      placeholder="HH:MM"
+                      className="w-16 h-6 text-sm px-1 py-0 text-center"
+                      autoFocus
+                    />
+                  ) : (
+                    <span 
+                      className="cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800 px-1 py-0.5 rounded transition-colors"
+                      onClick={() => startTimeEdit('bedtime')}
+                      title="Klicken zum Bearbeiten"
+                    >
+                      {formatTime(bedtime[0])}
+                    </span>
+                  )}
+                  
+                  <span>bis</span>
+                  
+                  {/* Inline editable waketime */}
+                  {isEditingWaketime ? (
+                    <Input
+                      type="text"
+                      value={waketimeInput}
+                      onChange={(e) => setWaketimeInput(e.target.value)}
+                      onBlur={() => {
+                        if (waketimeInput && isValidTime(waketimeInput)) {
+                          handleTimeEdit('waketime', waketimeInput);
+                        } else {
+                          setIsEditingWaketime(false);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (waketimeInput && isValidTime(waketimeInput)) {
+                            handleTimeEdit('waketime', waketimeInput);
+                          }
+                        } else if (e.key === 'Escape') {
+                          setIsEditingWaketime(false);
+                        }
+                      }}
+                      placeholder="HH:MM"
+                      className="w-16 h-6 text-sm px-1 py-0 text-center"
+                      autoFocus
+                    />
+                  ) : (
+                    <span 
+                      className="cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800 px-1 py-0.5 rounded transition-colors"
+                      onClick={() => startTimeEdit('waketime')}
+                      title="Klicken zum Bearbeiten"
+                    >
+                      {formatTime(wakeTime[0])}
+                    </span>
+                  )}
+                  
+                  <span className="text-indigo-600 dark:text-indigo-400">({sleepDuration}h)</span>
                 </div>
                 
                 {/* Interactive 24-Hour Timeline */}
