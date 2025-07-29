@@ -112,48 +112,73 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       cleanupAuthState();
+      setSession(null);
+      setUser(null);
       await supabase.auth.signOut({ scope: 'global' });
       window.location.replace('/auth');
     } catch (error) {
-      // Secure error logging for sign out
+      // Force cleanup even if signOut fails
+      cleanupAuthState();
+      setSession(null);
+      setUser(null);
       console.error('Sign out error occurred');
+      window.location.replace('/auth');
     }
   };
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Removed console.log for production security
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle auth events more carefully
+        // Handle auth events with debouncing
         if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
-          // Check if user is new and redirect to profile
-          checkIfNewUserAndRedirect(session.user);
+          timeoutId = setTimeout(() => {
+            checkIfNewUserAndRedirect(session.user);
+          }, 100);
         }
         
         if (event === 'SIGNED_OUT') {
+          cleanupAuthState();
           setSession(null);
           setUser(null);
           if (window.location.pathname !== '/auth') {
             window.location.href = '/auth';
           }
         }
+
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // Removed console.log for production security
+    // Check for existing session only once
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Session fetch error:', error.message);
+        cleanupAuthState();
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+    }).catch(() => {
+      cleanupAuthState();
+      setSession(null);
+      setUser(null);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = {
