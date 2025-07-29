@@ -648,24 +648,43 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         const wasHandled = await handleExerciseDetailsInput(inputText.trim());
         
         if (!wasHandled) {
-          // Check for text-based exercise recognition first
-          try {
-            const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
-              body: {
-                userId: user.id,
-                mediaUrls: [],
-                userMessage: inputText.trim()
-              }
-            });
-
-            if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
-              // Start exercise recognition conversation flow
-              handleExerciseRecognition(exerciseData.exerciseData);
+          // Check for exercise recognition in text input (like image recognition)
+          const exerciseKeywords = [
+            'brustpresse', 'bankdrücken', 'kreuzheben', 'kniebeugen', 'klimmzüge',
+            'bizeps', 'trizeps', 'schulterdrücken', 'rudern', 'dips', 'beinpresse',
+            'crunches', 'planks', 'liegestütze', 'sit-ups', 'übung', 'training',
+            'sätze', 'wiederholungen', 'reps', 'kg', 'rpe', 'gewicht'
+          ];
+          
+          const hasExerciseKeywords = exerciseKeywords.some(keyword => 
+            inputText.toLowerCase().includes(keyword.toLowerCase())
+          );
+          
+          if (hasExerciseKeywords) {
+            // Try to parse exercise data from text using the same logic as parseExerciseDetails
+            const possibleExercises = [
+              'brustpresse', 'bankdrücken', 'kreuzheben', 'kniebeugen', 'klimmzüge',
+              'bizeps', 'trizeps', 'schulterdrücken', 'rudern', 'dips', 'beinpresse',
+              'crunches', 'planks', 'liegestütze', 'sit-ups'
+            ];
+            
+            const foundExercise = possibleExercises.find(ex => 
+              inputText.toLowerCase().includes(ex)
+            );
+            
+            if (foundExercise) {
+              const exerciseData = { 
+                exercise_name: foundExercise, 
+                exerciseName: foundExercise,
+                confidence: 0.8 
+              };
+              
+              // Start conversation flow before regular chat
+              setTimeout(() => {
+                handleExerciseRecognition(exerciseData);
+              }, 500);
               return; // Don't proceed to regular chat
             }
-          } catch (extractError) {
-            console.error('Text exercise extraction error:', extractError);
-            // Continue to regular chat if extraction fails
           }
 
           // Regular chat without media - only if there's actual text

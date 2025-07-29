@@ -767,6 +767,49 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       }
     }
 
+    // Check for exercise recognition in text input (like image recognition)
+    if ((coach.id === 'sascha' || coach.id === 'markus') && uploadedImages.length === 0) {
+      const exerciseKeywords = [
+        'brustpresse', 'bankdrücken', 'kreuzheben', 'kniebeugen', 'klimmzüge',
+        'bizeps', 'trizeps', 'schulterdrücken', 'rudern', 'dips', 'beinpresse',
+        'crunches', 'planks', 'liegestütze', 'sit-ups', 'übung', 'training',
+        'sätze', 'wiederholungen', 'reps', 'kg', 'rpe', 'gewicht'
+      ];
+      
+      const hasExerciseKeywords = exerciseKeywords.some(keyword => 
+        userMessage.toLowerCase().includes(keyword.toLowerCase())
+      );
+      
+      if (hasExerciseKeywords) {
+        // Try to parse exercise data from text using the same logic as parseExerciseDetails
+        const possibleExercises = [
+          'brustpresse', 'bankdrücken', 'kreuzheben', 'kniebeugen', 'klimmzüge',
+          'bizeps', 'trizeps', 'schulterdrücken', 'rudern', 'dips', 'beinpresse',
+          'crunches', 'planks', 'liegestütze', 'sit-ups'
+        ];
+        
+        const foundExercise = possibleExercises.find(ex => 
+          userMessage.toLowerCase().includes(ex)
+        );
+        
+        if (foundExercise) {
+          const exerciseData = { 
+            exercise_name: foundExercise, 
+            exerciseName: foundExercise,
+            confidence: 0.8 
+          };
+          
+          // Start conversation flow before sending to chat
+          setTimeout(() => {
+            handleExerciseRecognition(exerciseData);
+          }, 500);
+          
+          setInputText('');
+          return;
+        }
+      }
+    }
+
     const imagesToSend = [...uploadedImages];
     setInputText('');
     setUploadedImages([]);
