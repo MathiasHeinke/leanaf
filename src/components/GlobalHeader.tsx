@@ -7,7 +7,6 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { CoachDropdownHeader } from "./CoachDropdownHeader";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -146,12 +145,12 @@ export const GlobalHeader = ({
         {isCoachChatRoute && (
           <button
             onClick={() => setShowCoachBanner(prev => !prev)}
-            className="absolute left-1/2 -bottom-2 transform -translate-x-1/2 bg-blue-500 rounded-full p-1 shadow-sm hover:bg-blue-600 z-50 transition-colors"
+            className="absolute left-1/2 -bottom-2 transform -translate-x-1/2 bg-background/70 backdrop-blur-md border border-border/20 rounded-full p-1 shadow-sm hover:bg-accent/60 z-50 transition-colors"
           >
             {showCoachBanner ? (
-              <ChevronUp className="h-4 w-4 text-white" />
+              <ChevronUp className="h-4 w-4 text-blue-500" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-white" />
+              <ChevronDown className="h-4 w-4 text-blue-500" />
             )}
           </button>
         )}
@@ -160,11 +159,37 @@ export const GlobalHeader = ({
       {/* Coach-Banner direkt unter Header (ohne Abstand) */}
       {isCoachChatRoute && (
         <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden w-full fixed top-[73px] z-40 ${
+          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background/70 backdrop-blur-md border-b border-border/20 shadow-md w-full fixed top-[73px] z-40 ${
             showCoachBanner ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <CoachDropdownHeader />
+          <div className="flex justify-between items-center px-4 py-2">
+            <button 
+              onClick={() => navigate(-1)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Zurück
+            </button>
+
+            <div className="flex items-center gap-2">
+              <img
+                src="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+                alt="Coach Sascha"
+                className="w-6 h-6 rounded-full"
+              />
+              <span className="font-medium text-sm">Coach Sascha</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button className="text-sm hover:text-primary transition-colors">
+                <History className="h-4 w-4" />
+              </button>
+              <button className="text-sm hover:text-destructive transition-colors">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
