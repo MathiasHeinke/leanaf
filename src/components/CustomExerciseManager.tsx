@@ -72,7 +72,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
   ];
 
   const commonMuscleGroups = [
-    'Brust', 'Rücken', 'Schultern', 'Bizeps', 'Trizeps', 'Unterarme',
+    'Brust', 'Rücken', 'Lat', 'Schultern', 'Bizeps', 'Trizeps', 'Unterarme',
     'Beine', 'Quadrizeps', 'Hamstrings', 'Gesäß', 'Waden', 
     'Core', 'Bauch', 'Nacken', 'Oberschenkel', 'Unterschenkel',
     'Hüfte', 'Schienbein', 'Oberkörper', 'Unterkörper'
