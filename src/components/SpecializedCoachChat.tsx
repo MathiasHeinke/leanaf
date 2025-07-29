@@ -1233,7 +1233,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
         </Card>
 
       {/* Chat Area */}
-      <div className="flex flex-col h-[calc(100vh-150px)]">
+      <div className="flex flex-col h-[50vh] md:h-[60vh] lg:h-[65vh] min-h-[400px] max-h-[80vh]">
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
