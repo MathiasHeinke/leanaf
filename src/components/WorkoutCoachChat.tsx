@@ -831,7 +831,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background">
+      {/* Global Header with Coach Dropdown */}
+      <GlobalHeader coachDropdownProps={coachDropdownProps} />
+      
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Chat History Sidebar */}
         {showHistory && (
