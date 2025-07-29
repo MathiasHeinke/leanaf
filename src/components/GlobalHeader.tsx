@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, Sun, Moon, Clock, ChevronDown } from "lucide-react";
+import { Menu, Sun, Moon, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
@@ -7,39 +7,23 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useLocation } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { CoachDropdownHeader } from "./CoachDropdownHeader";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
-  coachDropdownProps?: {
-    coachName: string;
-    coachAvatar?: string;
-    coachSpecialty?: string;
-    onHistory?: () => void;
-    onDelete?: () => void;
-    onBack?: () => void;
-  };
 }
 
 export const GlobalHeader = ({ 
   onRefresh, 
-  isRefreshing = false,
-  coachDropdownProps
+  isRefreshing = false
 }: GlobalHeaderProps) => {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [isCoachDropdownOpen, setIsCoachDropdownOpen] = useState(false);
   
   const { subscriptionTier } = useSubscription();
   const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
   const location = useLocation();
-
-  // Check if current route is a coach route
-  const isCoachRoute = location.pathname.startsWith('/training/') || 
-                      location.pathname.startsWith('/coach/') ||
-                      (location.pathname === '/coach' && coachDropdownProps);
 
   // Route to title mapping
   const getPageTitle = (pathname: string) => {
@@ -138,41 +122,21 @@ export const GlobalHeader = ({
             </h1>
           </div>
           
-          {/* Right: Dark Mode Toggle + Coach Dropdown Trigger */}
-          <div className="flex items-center gap-2">
-            {/* Coach Dropdown Trigger - only show on coach routes */}
-            {isCoachRoute && coachDropdownProps && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCoachDropdownOpen(!isCoachDropdownOpen)}
-                className="p-2 hover:bg-accent hover:scale-110 transition-all duration-200 border border-border/50 hover:border-border rounded-lg"
-                title="Coach Details"
-              >
-                <ChevronDown className={`h-5 w-5 text-primary transition-transform duration-200 ${isCoachDropdownOpen ? 'rotate-180' : ''}`} />
-              </Button>
-            )}
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
-              title={getThemeTooltip()}
-            >
-              {renderThemeIcon()}
-            </Button>
-          </div>
+          {/* Right: Dark Mode Toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
+            title={getThemeTooltip()}
+          >
+            {renderThemeIcon()}
+          </Button>
         </div>
-
-        {/* Coach Dropdown Header */}
-        {isCoachRoute && coachDropdownProps && isCoachDropdownOpen && (
-          <CoachDropdownHeader {...coachDropdownProps} />
-        )}
       </div>
 
-      {/* Dynamic Spacer to prevent content overlap */}
-      <div className={`${isCoachRoute && coachDropdownProps && isCoachDropdownOpen ? 'h-[130px]' : 'h-[73px]'} transition-all duration-200`} />
+      {/* Spacer to prevent content overlap */}
+      <div className="h-[73px]" />
 
       {/* Debug Panel for Super Admins */}
       {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
