@@ -1675,7 +1675,11 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
           />
         </div>
       )}
-      </div>
+      
+      <div ref={scrollRef} />
+            </div>
+          </ScrollArea>
+        </div>
       </div>
 
       {/* History Sidebar */}
