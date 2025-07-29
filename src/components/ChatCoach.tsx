@@ -1,19 +1,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChatLayout } from "@/components/layouts/ChatLayout";
-import { CoachDropdownHeader } from "@/components/CoachDropdownHeader";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { 
+  Brain, 
   Send, 
   Mic, 
   StopCircle, 
   User,
+  MessageSquare,
+  Trash2,
   Loader2,
   Target,
   TrendingUp,
   Apple,
   Paperclip,
   X,
+  Clock,
+  Zap,
   Dumbbell,
   Activity,
   BarChart3
@@ -366,6 +373,8 @@ export const ChatCoach = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || !user?.id) return;
 
+    // Starting photo upload for coach chat
+    
     setIsUploading(true);
     setUploadProgress([]);
 
@@ -378,6 +387,7 @@ export const ChatCoach = ({
 
       if (result.success && result.urls.length > 0) {
         setUploadedImages(prev => [...prev, ...result.urls]);
+        // Visuelles Feedback bereits durch UI vorhanden
       }
 
       if (result.errors.length > 0) {
@@ -503,307 +513,361 @@ export const ChatCoach = ({
 
   const clearChat = async () => {
     if (!user?.id) return;
-    
+
     try {
-      await supabase
+      const { error } = await supabase
         .from('coach_conversations')
         .delete()
         .eq('user_id', user.id);
-      
+
+      if (error) {
+        console.error('Error clearing chat:', error);
+        toast.error('Fehler beim Löschen des Chat-Verlaufs');
+        return;
+      }
+
       setMessages([]);
+      setQuickActionsShown(false);
+      toast.success('Chat-Verlauf gelöscht');
       generateWelcomeMessage();
-      toast.success('Chat gelöscht');
     } catch (error) {
-      console.error('Error clearing chat:', error);
-      toast.error('Fehler beim Löschen des Chats');
+      console.error('Error in clearChat:', error);
+      toast.error('Fehler beim Löschen des Chat-Verlaufs');
     }
   };
 
-  const handleViewHistory = () => {
-    // Navigate to history view or open history modal
-    console.log('View chat history');
-  };
-
   const coachInfo = getCoachInfo(coachPersonality);
+  const quickActions = getQuickActions();
+
+  if (isLoading) {
+    return (
+      <Card className="h-[calc(100vh-140px)] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Lade Chat-Verlauf...</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
-    <ChatLayout
-      header={
-        <CoachDropdownHeader
-          name={coachInfo.name}
-          image={coachInfo.imageUrl}
-          onClearHistory={clearChat}
-          onViewHistory={handleViewHistory}
-        />
-      }
-      chatInput={
-        <div className="space-y-3">
-          {/* Quick Actions */}
-          {quickActionsShown && !isThinking && (
-            <div className="mb-3">
-              <h4 className="text-sm font-medium text-muted-foreground mb-2">Schnellaktionen</h4>
-              <div className="grid grid-cols-1 gap-2">
-                {getQuickActions().map((action, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSendMessage(action.prompt)}
-                    className="justify-start h-auto p-3 text-left hover:bg-accent/50 transition-colors"
-                  >
-                    <action.icon className="h-4 w-4 mr-2 flex-shrink-0 text-primary" />
-                    <span className="text-sm">{action.text}</span>
-                  </Button>
-                ))}
-              </div>
+    <Card className="h-[calc(100vh-140px)] flex flex-col">
+      <CardHeader className="pb-2 flex-shrink-0">
+        <CardTitle className="flex items-center gap-3">
+          <div className={`h-10 w-10 bg-gradient-to-br ${coachInfo.accentColor} rounded-xl flex items-center justify-center shadow-lg`}>
+            <Brain className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-lg font-bold whitespace-nowrap">{coachInfo.name} {coachInfo.emoji}</span>
+              <Badge variant="secondary" className="text-xs flex-shrink-0">
+                {coachInfo.profession}
+              </Badge>
             </div>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <p className="text-sm text-muted-foreground font-normal">
+                Für {firstName} • {remainingCalories}kcal übrig heute
+              </p>
+              {remainingCalories > 0 && (
+                <Zap className="h-3 w-3 text-green-500 flex-shrink-0" />
+              )}
+            </div>
+          </div>
+          {messages.length > 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearChat}
+              className="text-muted-foreground hover:text-destructive flex-shrink-0"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
+        </CardTitle>
+      </CardHeader>
+      
+      <Separator className="flex-shrink-0" />
+      
+      <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+        {/* Chat Messages - Scrollable area */}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full" style={{ pointerEvents: 'auto' }}>
+            <div className="space-y-4 p-4" style={{ pointerEvents: 'auto' }}>
+              {messages.map((message, index) => (
+                <div key={message.id || index} className="space-y-2">
+                  <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] ${message.role === 'user' ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+                      <div className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted border'
+                      }`}>
+                        {message.role === 'assistant' && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                              <img 
+                                src={coachInfo.imageUrl} 
+                                alt={coachInfo.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                                {coachInfo.emoji}
+                              </div>
+                            </div>
+                            <span className="text-xs font-medium text-primary truncate">
+                              {coachInfo.name}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Show images if available */}
+                        {message.images && message.images.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {message.images.map((imageUrl, imgIndex) => (
+                              <img
+                                key={imgIndex}
+                                src={imageUrl}
+                                alt={`Message image ${imgIndex + 1}`}
+                                className="w-16 h-16 object-cover rounded-lg border"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
+                        {message.role === 'assistant' ? (
+                          <div className="text-sm leading-relaxed">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Timestamp outside bubble */}
+                      <span className="text-xs text-muted-foreground mt-1 px-1">
+                        {formatMessageTime(message.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {isThinking && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] flex flex-col items-start">
+                    <div className="bg-muted border rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
+                          <img 
+                            src={coachInfo.imageUrl} 
+                            alt={coachInfo.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className={`w-6 h-6 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center text-white text-xs hidden`}>
+                            {coachInfo.emoji}
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium text-primary">{coachInfo.name} schreibt...</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1 px-1">
+                      jetzt
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              {/* Enhanced Quick Actions with time and calorie context */}
+              {quickActionsShown && !isThinking && (
+                <div className="flex justify-start">
+                  <div className="max-w-[90%] space-y-2">
+                    <div className="text-xs text-muted-foreground px-2">Oder frag mich:</div>
+                    <div className="grid gap-2">
+                      {quickActions.map((action, index) => (
+                        <Button
+                          key={index}
+                          variant="outline"
+                          size="sm"
+                          className="h-auto p-3 text-left justify-start hover:bg-muted/80"
+                          onClick={() => {
+                            setQuickActionsShown(false);
+                            handleSendMessage(action.prompt);
+                          }}
+                        >
+                          <action.icon className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
+                          <span className="text-xs">{action.text}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={scrollRef} />
+            </div>
+          </ScrollArea>
+        </div>
 
+        {/* Input Area - Fixed at bottom */}
+        <div className="flex-shrink-0 p-4 border-t bg-background">
           {/* Upload Progress */}
-          {isUploading && uploadProgress.length > 0 && (
-            <div className="space-y-2 mb-3">
-              {uploadProgress.map((progress, index) => (
-                <UploadProgress
-                  key={index}
-                  fileName={progress.fileName}
-                  progress={progress.progress}
-                  status={progress.status}
-                  error={progress.error}
-                />
+          <UploadProgress 
+            progress={uploadProgress} 
+            isVisible={isUploading && uploadProgress.length > 0} 
+          />
+
+          {/* Image Thumbnails */}
+          {uploadedImages.length > 0 && (
+            <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
+              {uploadedImages.map((imageUrl, index) => (
+                <div key={index} className="relative group animate-scale-in">
+                  <img
+                    src={imageUrl}
+                    alt={`Uploaded ${index + 1}`}
+                    className="w-14 h-14 object-cover rounded-xl border-2 border-border/20 shadow-md hover:scale-105 transition-all duration-300"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute -top-2 -right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110 z-10"
+                    disabled={isThinking || isUploading}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
-
-          {/* Uploaded Images Preview */}
-          {uploadedImages.length > 0 && (
-            <div className="mb-3">
-              <div className="flex gap-2 flex-wrap">
-                {uploadedImages.map((url, index) => (
-                  <div key={index} className="relative group">
-                    <img 
-                      src={url} 
-                      alt={`Upload ${index + 1}`}
-                      className="w-16 h-16 object-cover rounded-lg border border-border/50"
-                    />
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => handleRemoveImage(index)}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+          
+          {(isRecording || isProcessing) && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+              <div className="flex gap-1">
+                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" />
+                <div className="w-1 h-4 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
+                <div className="w-1 h-3 bg-red-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
               </div>
+              <span>
+                {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
+              </span>
             </div>
           )}
-
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
+          
+          <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group">
+            <div className="relative">
               <Textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Nachricht an ${coachInfo.name}...`}
-                className="resize-none pr-12 min-h-[48px] max-h-32 bg-background/80 border-border/50 focus:border-primary/50"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
+                placeholder={`Frage ${coachInfo.name} etwas...`}
+                className="min-h-[60px] max-h-[120px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter' && !e.shiftKey) {
+                   // Allow default Enter behavior (new line)
+                   return;
+                 }
+                 if (e.key === 'Enter' && e.shiftKey) {
+                   e.preventDefault();
+                   handleSendMessage();
+                 }
                 }}
+                disabled={isThinking || isUploading}
               />
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              {/* Voice button */}
-              <Button
-                variant={isRecording ? "destructive" : "outline"}
-                size="sm"
-                type="button"
-                className={`h-12 w-12 p-0 rounded-xl transition-all duration-300 ${
-                  isRecording 
-                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground animate-pulse shadow-lg' 
-                    : 'bg-card hover:bg-accent text-muted-foreground hover:text-accent-foreground border-border/50'
-                }`}
-                onClick={handleVoiceToggle}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                ) : isRecording ? (
-                  <StopCircle className="h-5 w-5" />
-                ) : (
-                  <Mic className="h-5 w-5" />
-                )}
-              </Button>
               
-              {/* Photo upload button */}
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                  disabled={isUploading}
-                />
+              {/* Left Action Button - Photo Upload */}
+              <div className="absolute left-4 bottom-2 flex items-center">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   type="button"
-                  asChild
-                  className={`h-12 w-12 p-0 rounded-xl transition-all duration-300 ${
-                    isUploading
-                      ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground'
-                      : 'bg-card hover:bg-accent text-muted-foreground hover:text-accent-foreground border-border/50'
+                  className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${
+                    isUploading || isThinking ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
                   }`}
+                  onClick={() => {
+                    if (!isUploading && !isThinking) {
+                      document.getElementById('coach-gallery-upload')?.click();
+                    }
+                  }}
+                  disabled={isUploading || isThinking}
                 >
-                  <div>
-                    {isUploading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                    ) : (
-                      <Paperclip className="h-5 w-5" />
-                    )}
-                  </div>
+                  {isUploading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  )}
                 </Button>
-              </label>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="text-xs text-muted-foreground">
-              {isRecording && "🎤 Aufnahme läuft..."}
-              {isProcessing && "🤖 Verarbeite Sprache..."}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="default"
-                size="sm"
-                type="button"
-                className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
-                  ((!inputText.trim() && uploadedImages.length === 0) || isThinking)
-                    ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
-                    : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
-                }`}
-                onClick={() => handleSendMessage()}
-                disabled={(!inputText.trim() && uploadedImages.length === 0) || isThinking}
-              >
-                {isThinking ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-              </Button>
+                
+                {/* Hidden file input */}
+                <input
+                  id="coach-gallery-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  multiple
+                  disabled={isUploading || isThinking}
+                />
+              </div>
+              
+              {/* Right Action Buttons - Voice + Send */}
+              <div className="absolute right-4 bottom-2 flex items-center gap-2">
+                {/* Voice Recording Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 ${
+                    isRecording
+                      ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30' 
+                      : 'hover:bg-muted/90 hover:scale-105'
+                  } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={handleVoiceToggle}
+                  disabled={isProcessing}
+                >
+                  {isRecording ? (
+                    <StopCircle className="h-5 w-5" />
+                  ) : isProcessing ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+                  )}
+                </Button>
+                
+                {/* Send Button */}
+                <Button
+                  size="sm"
+                  type="button"
+                  className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
+                    ((!inputText.trim() && uploadedImages.length === 0) || isThinking)
+                      ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
+                      : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
+                  }`}
+                  onClick={() => handleSendMessage()}
+                  disabled={(!inputText.trim() && uploadedImages.length === 0) || isThinking}
+                >
+                  {isThinking ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      }
-    >
-      <div className="space-y-4 p-4">
-        {isLoading && messages.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : (
-          <>
-            {/* Messages */}
-            {messages.map((message, index) => (
-              <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {message.role === 'assistant' && (
-                  <div className={`w-8 h-8 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
-                    <span className="text-xs text-white font-bold">
-                      {coachInfo.emoji}
-                    </span>
-                  </div>
-                )}
-                
-                <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
-                  message.role === 'user' 
-                    ? 'bg-primary text-primary-foreground ml-8' 
-                    : 'bg-muted/80 text-foreground'
-                }`}>
-                  <div className="space-y-2">
-                    {/* Image display */}
-                    {message.images && message.images.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        {message.images.map((url, imgIndex) => (
-                          <img 
-                            key={imgIndex}
-                            src={url} 
-                            alt={`Uploaded image ${imgIndex + 1}`}
-                            className="rounded-lg max-w-full h-32 object-cover border border-border/20"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className={`prose prose-sm max-w-none ${
-                        message.role === 'user' 
-                          ? 'prose-invert' 
-                          : 'prose-slate dark:prose-invert'
-                      }`}>
-                      <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="mb-2 pl-4">{children}</ul>,
-                        ol: ({ children }) => <ol className="mb-2 pl-4">{children}</ol>,
-                        li: ({ children }) => <li className="mb-1">{children}</li>
-                      }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                  </div>
-                  
-                  <div className={`text-xs mt-2 ${
-                    message.role === 'user' 
-                      ? 'text-primary-foreground/70' 
-                      : 'text-muted-foreground'
-                  }`}>
-                    {formatMessageTime(message.created_at)}
-                  </div>
-                </div>
-                
-                {message.role === 'user' && (
-                  <div className="w-8 h-8 bg-gradient-to-br from-accent to-accent/80 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <User className="h-4 w-4 text-accent-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
-            
-            {/* Thinking indicator */}
-            {isThinking && (
-              <div className="flex gap-3 justify-start">
-                <div className={`w-8 h-8 bg-gradient-to-br ${coachInfo.accentColor} rounded-full flex items-center justify-center flex-shrink-0 shadow-sm`}>
-                  <span className="text-xs text-white font-bold">
-                    {coachInfo.emoji}
-                  </span>
-                </div>
-                <div className="bg-muted/80 rounded-2xl px-4 py-3 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      {coachInfo.name} denkt nach...
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div ref={scrollRef}></div>
-          </>
-        )}
-      </div>
-    </ChatLayout>
+      </CardContent>
+    </Card>
   );
 };

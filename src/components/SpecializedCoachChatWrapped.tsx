@@ -1,7 +1,6 @@
 import React from 'react';
 import { SpecializedCoachChat } from './SpecializedCoachChat';
 import { ChatLayout } from './layouts/ChatLayout';
-import { CoachDropdownHeader } from './CoachDropdownHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, History, Trash2 } from 'lucide-react';
@@ -76,27 +75,58 @@ export const SpecializedCoachChatWrapped: React.FC<SpecializedCoachChatWrappedPr
     }
   };
 
-  const handleClearHistory = () => {
-    // TODO: Implement clear history functionality
-    console.log('Clear history for coach:', coach.name);
-  };
-
-  const handleViewHistory = () => {
-    // TODO: Implement view history functionality
-    console.log('View history for coach:', coach.name);
-  };
+  // Coach Banner Component
+  const CoachBanner = () => (
+    <div className="flex items-center justify-between bg-card/80 backdrop-blur-sm rounded-lg p-3">
+      <div className="flex items-center space-x-3">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        
+        <div className="flex items-center space-x-3">
+          {coach.imageUrl ? (
+            <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex-shrink-0">
+              <img 
+                src={coach.imageUrl} 
+                alt={coach.name}
+                className="w-full h-full object-cover aspect-square"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden flex-shrink-0`}>
+                {coach.avatar}
+              </div>
+            </div>
+          ) : (
+            <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg flex-shrink-0`}>
+              {coach.avatar}
+            </div>
+          )}
+          <div>
+            <h2 className="text-lg font-semibold">{coach.name}</h2>
+            <Badge variant="outline" className="text-xs">
+              {coach.expertise[0]}
+            </Badge>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <Button variant="ghost" size="sm">
+          <History className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="sm">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
-    <ChatLayout 
-      header={
-        <CoachDropdownHeader
-          name={coach.name}
-          image={coach.imageUrl || '/placeholder.svg'}
-          onClearHistory={handleClearHistory}
-          onViewHistory={handleViewHistory}
-        />
-      }
-    >
+    <ChatLayout coachBanner={<CoachBanner />}>
       <SpecializedCoachChat {...props} />
     </ChatLayout>
   );
