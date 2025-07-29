@@ -94,7 +94,13 @@ export const UnifiedWorkoutCard = ({
     if (!session.start_time || !session.end_time) return 0;
     const start = new Date(session.start_time);
     const end = new Date(session.end_time);
-    return Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+    const durationMinutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+    
+    // Nur positive und realistische Dauern zurückgeben (max 8 Stunden)
+    if (durationMinutes > 0 && durationMinutes <= 480) {
+      return durationMinutes;
+    }
+    return 0;
   };
 
   const getWorkoutTypeEmoji = (type: string) => {

@@ -79,7 +79,12 @@ export const DayCard: React.FC<DayCardProps> = ({
       if (session.start_time && session.end_time) {
         const start = new Date(session.start_time);
         const end = new Date(session.end_time);
-        return sum + Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+        const durationMinutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+        
+        // Nur positive und realistische Dauern verwenden (max 8 Stunden)
+        if (durationMinutes > 0 && durationMinutes <= 480) {
+          return sum + durationMinutes;
+        }
       }
       return sum;
     }, 0);
@@ -359,11 +364,21 @@ export const DayCard: React.FC<DayCardProps> = ({
                           {session.session_name}
                         </h4>
                       )}
-                      {session.start_time && session.end_time && (
-                        <p className="text-sm text-muted-foreground">
-                          Dauer: {Math.round((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / (1000 * 60))} Min
-                        </p>
-                      )}
+                       {session.start_time && session.end_time && (() => {
+                         const start = new Date(session.start_time);
+                         const end = new Date(session.end_time);
+                         const durationMinutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+                         
+                         // Nur positive und realistische Dauern anzeigen
+                         if (durationMinutes > 0 && durationMinutes <= 480) {
+                           return (
+                             <p className="text-sm text-muted-foreground">
+                               Dauer: {durationMinutes} Min
+                             </p>
+                           );
+                         }
+                         return null;
+                       })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
