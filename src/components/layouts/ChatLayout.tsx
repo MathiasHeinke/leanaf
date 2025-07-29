@@ -11,9 +11,6 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
   return (
     <div className="fixed inset-0 flex flex-col bg-black text-white z-50">
       
-      {/* Header */}
-      <GlobalHeader />
-
       {/* Coach-Banner */}
       {coachBanner && (
         <div className="flex-shrink-0 px-4 pt-1 pb-2">
