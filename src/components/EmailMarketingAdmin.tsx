@@ -265,7 +265,7 @@ const EmailMarketingAdmin = () => {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Templates</CardTitle>
@@ -349,7 +349,7 @@ const EmailMarketingAdmin = () => {
 
         {/* Templates Tab */}
         <TabsContent value="templates" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Neues Template erstellen</CardTitle>
@@ -491,7 +491,7 @@ const EmailMarketingAdmin = () => {
 
         {/* Campaigns Tab */}
         <TabsContent value="campaigns" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Neue Kampagne erstellen</CardTitle>
@@ -623,7 +623,7 @@ const EmailMarketingAdmin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Onboarding-Sequenz</h3>
                   <div className="space-y-3">
@@ -683,7 +683,7 @@ const EmailMarketingAdmin = () => {
 
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">KI-gesteuerte Personalisierung</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Bot className="h-5 w-5 text-blue-500" />
@@ -712,7 +712,7 @@ const EmailMarketingAdmin = () => {
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Gesamt-Performance</CardTitle>
