@@ -45,9 +45,11 @@ import { VideoCompressionProgress } from '@/components/VideoCompressionProgress'
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from '@/utils/uploadHelpers';
 import { VideoCompressor, CompressionProgress } from '@/utils/videoCompression';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
+import { GlobalHeader } from '@/components/GlobalHeader';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface ChatMessage {
   id: string;
@@ -138,6 +140,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   progressPhotos = []
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { stopTimer, hasActiveTimer } = useWorkoutTimer();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -162,6 +165,21 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   const [pendingSupplementRecommendations, setPendingSupplementRecommendations] = useState<any[]>([]);
   const [conversationState, setConversationState] = useState<ConversationState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Coach dropdown props for GlobalHeader
+  const coachDropdownProps = {
+    onBack: () => navigate("/coach"),
+    avatarUrl: coach.imageUrl || coach.avatar || "/coach-images/dr-vita-femina.png",
+    name: coach.name,
+    onDelete: () => {
+      console.log("Delete chat clicked");
+      toast.success("Chat wird gelöscht...");
+    },
+    onHistory: () => {
+      console.log("History clicked");
+      setShowHistory(true);
+    },
+  };
 
   const {
     isRecording,
@@ -1499,9 +1517,13 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
-      {/* Chat Messages - Scrollable Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-2">
+    <div className="h-screen flex flex-col bg-background">
+      {/* Global Header with Coach Dropdown */}
+      <GlobalHeader coachDropdownProps={coachDropdownProps} />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Chat Messages - Scrollable Area */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-2">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
             <div className="flex items-center space-x-2">
@@ -1980,11 +2002,6 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               <span>{isProcessing ? 'Verarbeite Spracheingabe...' : 'Aufnahme läuft...'}</span>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-background">
-          © 2025 GetleanAI. Made with ❤️ in Germany
         </div>
       </div>
 
