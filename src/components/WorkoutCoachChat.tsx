@@ -215,70 +215,106 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                          userMessage.toLowerCase().includes('korrekt') ||
                          userMessage.toLowerCase().includes('bewert');
 
-      const analysisType = isFormcheck ? 'form_analysis' : 'workout_analysis';
       setIsFormcheckMode(isFormcheck);
 
-      // Use the analysis type prompt if no user message is provided
-      const defaultMessage = userMessage.trim() || getAnalysisPrompt(analysisType);
-
-      const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
-        body: {
-          userId: user.id,
-          mediaUrls,
-          mediaType: 'mixed',
-          analysisType,
-          coachPersonality: 'sascha',
-          userQuestion: defaultMessage,
-          userProfile: {
-            goal: 'muscle_building',
-            experience_level: 'intermediate'
+      if (isFormcheck) {
+        // For formcheck: Use coach-media-analysis
+        const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
+          body: {
+            userId: user.id,
+            mediaUrls,
+            mediaType: 'mixed',
+            analysisType: 'form_analysis',
+            coachPersonality: 'sascha',
+            userQuestion: userMessage.trim() || getAnalysisPrompt('form_analysis'),
+            userProfile: {
+              goal: 'muscle_building',
+              experience_level: 'intermediate'
+            }
           }
-        }
-      });
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const assistantMessage: WorkoutMessage = {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: data.analysis,
-        timestamp: new Date(),
-        metadata: {
-          suggestions: data.suggestions || []
-        }
-      };
+        const assistantMessage: WorkoutMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: data.analysis,
+          timestamp: new Date(),
+          metadata: {
+            suggestions: data.suggestions || []
+          }
+        };
 
-      setMessages(prev => [...prev, assistantMessage]);
-      await saveMessage('assistant', data.analysis, data);
+        setMessages(prev => [...prev, assistantMessage]);
+        await saveMessage('assistant', data.analysis, data);
 
-      // If it's a formcheck, trigger the extraction of summary data after the analysis
-      if (isFormcheck && data?.analysis) {
+        // Extract formcheck summary after analysis
         setTimeout(() => {
           extractFormcheckSummary(mediaUrls, data.analysis, userMessage);
-        }, 2000); // Wait 2 seconds after the analysis is shown
-      }
+        }, 2000);
 
-      // If it's workout logging, try new exercise recognition flow
-      if (!isFormcheck) {
-        try {
-          const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
-            body: {
-              userId: user.id,
-              mediaUrls,
-              userMessage
-            }
-          });
-
-          if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
-            // Start exercise recognition conversation flow
-            handleExerciseRecognition(exerciseData.exerciseData);
+        toast.success('Formcheck abgeschlossen!');
+      } else {
+        // For workout logging: Use enhanced-coach-chat with media directly
+        console.log('Sending media to enhanced-coach-chat:', { mediaUrls, userMessage });
+        
+        const { data, error } = await supabase.functions.invoke('enhanced-coach-chat', {
+          body: {
+            userId: user.id,
+            message: userMessage.trim() || 'Analysiere mein Training und erkenne die Übungen',
+            coachPersonality: 'sascha',
+            mediaUrls,
+            conversationHistory: messages.slice(-5).map(msg => ({
+              role: msg.role,
+              content: msg.content
+            }))
           }
-        } catch (extractError) {
-          console.error('Exercise extraction error:', extractError);
-        }
-      }
+        });
 
-      toast.success(isFormcheck ? 'Formcheck abgeschlossen!' : 'Training analysiert! Sascha hat dein Workout bewertet.');
+        if (error) throw error;
+
+        console.log('Enhanced coach chat response:', data);
+
+        const assistantMessage: WorkoutMessage = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: data.response,
+          timestamp: new Date(),
+          metadata: {
+            suggestions: data.suggestions || []
+          }
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        await saveMessage('assistant', data.response, data);
+
+        // Try to extract exercise data if coach recognized exercises
+        if (data.response && (data.response.includes('erkenne') || data.response.includes('Übung'))) {
+          try {
+            const { data: exerciseData, error: extractError } = await supabase.functions.invoke('extract-exercise-data', {
+              body: {
+                userId: user.id,
+                mediaUrls,
+                userMessage: userMessage.trim() || 'Erkenne Übungen aus dem Bild/Video'
+              }
+            });
+
+            console.log('Extract exercise data response:', exerciseData);
+
+            if (!extractError && exerciseData?.success && exerciseData?.exerciseData) {
+              // Start exercise recognition conversation flow
+              setTimeout(() => {
+                handleExerciseRecognition(exerciseData.exerciseData);
+              }, 1000);
+            }
+          } catch (extractError) {
+            console.error('Exercise extraction error:', extractError);
+          }
+        }
+
+        toast.success('Training analysiert!');
+      }
     } catch (error) {
       console.error('Error analyzing media:', error);
       toast.error('Fehler bei der Trainingsanalyse');
