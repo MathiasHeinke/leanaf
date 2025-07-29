@@ -1,23 +1,19 @@
-import { GlobalHeader } from "@/components/GlobalHeader";
 import { ReactNode } from "react";
 
 interface ChatLayoutProps {
+  header?: ReactNode;
   children: ReactNode;
-  coachBanner?: ReactNode;
+  footer?: ReactNode;
   chatInput?: ReactNode;
 }
 
-export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
+export const ChatLayout = ({ header, children, footer, chatInput }: ChatLayoutProps) => {
   return (
-    <div className="fixed inset-0 flex flex-col bg-black text-white z-50">
-      
+    <div className="flex flex-col h-screen w-full bg-background">
       {/* Header */}
-      <GlobalHeader />
-
-      {/* Coach-Banner */}
-      {coachBanner && (
-        <div className="flex-shrink-0 px-4 pt-1 pb-2">
-          {coachBanner}
+      {header && (
+        <div className="z-10 sticky top-0 flex-shrink-0">
+          {header}
         </div>
       )}
 
@@ -28,22 +24,26 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
         </div>
       </div>
 
-      {/* Eingabemaske + Footer (gemeinsamer Block!) */}
-      <div className="flex-shrink-0">
-        
-        {/* Eingabefeld direkt auf Footer */}
-        {chatInput && (
-          <div className="px-3 py-1 bg-neutral-900 border-t border-neutral-800">
-            {chatInput}
-          </div>
-        )}
+      {/* Chat Input */}
+      {chatInput && (
+        <div className="flex-shrink-0 px-3 py-1 bg-card/80 backdrop-blur-sm border-t border-border">
+          {chatInput}
+        </div>
+      )}
 
-        {/* Footer: kein zusätzlicher Abstand */}
-        <div className="h-[32px] flex items-center justify-center text-xs text-neutral-500 bg-neutral-900 m-0 p-0">
+      {/* Footer */}
+      {footer && (
+        <div className="flex-shrink-0 z-10 sticky bottom-0">
+          {footer}
+        </div>
+      )}
+
+      {/* Default Footer wenn kein Footer übergeben wird */}
+      {!footer && !chatInput && (
+        <div className="h-8 flex items-center justify-center text-xs text-muted-foreground bg-card/80 backdrop-blur-sm border-t border-border">
           © 2025 GetleanAI. Made with ❤️ in Germany
         </div>
-
-      </div>
+      )}
     </div>
   );
 };
