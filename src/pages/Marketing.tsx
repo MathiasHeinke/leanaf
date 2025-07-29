@@ -6,59 +6,49 @@ import EmailMarketingAdmin from '@/components/EmailMarketingAdmin';
 
 const Marketing = () => {
   const { user } = useAuth();
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
+  const [hasMarketingRole, setHasMarketingRole] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkSuperAdmin = async () => {
+    const checkMarketingRole = async () => {
       if (!user) {
         console.log('No user found, waiting for auth...');
         return; // Don't set false immediately, wait for auth to complete
       }
 
-      if (!user.email) {
-        console.log('User found but no email:', user);
-        setIsSuperAdmin(false);
-        return;
-      }
-
-      console.log('Checking super admin status for:', user.email);
+      console.log('Checking marketing role for user:', user.id);
 
       try {
-        // Direct query to admin_emails table instead of RPC function
-        const { data, error } = await supabase
-          .from('admin_emails')
-          .select('role, is_active')
-          .eq('email', user.email)
-          .eq('is_active', true)
-          .in('role', ['super_admin', 'admin'])
-          .single();
+        // Check if user has marketing role using RPC function
+        const { data, error } = await supabase.rpc('current_user_has_role', {
+          _role: 'marketing'
+        });
         
         if (error) {
-          console.log('No admin record found for email:', user.email, error);
-          setIsSuperAdmin(false);
+          console.error('Error checking marketing role:', error);
+          setHasMarketingRole(false);
         } else {
-          console.log('Admin record found:', data);
-          setIsSuperAdmin(true);
+          console.log('Marketing role check result:', data);
+          setHasMarketingRole(data);
         }
       } catch (error) {
-        console.error('Error checking super admin status:', error);
-        setIsSuperAdmin(false);
+        console.error('Error checking marketing role:', error);
+        setHasMarketingRole(false);
       }
     };
 
     // Only check if we have a user, otherwise wait
     if (user !== undefined) {
-      checkSuperAdmin();
+      checkMarketingRole();
     }
   }, [user]);
 
   // Show loading while checking permissions
-  if (isSuperAdmin === null) {
+  if (hasMarketingRole === null) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  // Check if user is super admin
-  if (!user || !isSuperAdmin) {
+  // Check if user has marketing role
+  if (!user || !hasMarketingRole) {
     return <Navigate to="/" replace />;
   }
 

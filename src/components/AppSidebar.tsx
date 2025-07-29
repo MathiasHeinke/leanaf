@@ -74,32 +74,34 @@ export function AppSidebar() {
   const { userPoints } = usePointsSystem();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const [hasMarketingRole, setHasMarketingRole] = useState<boolean>(false);
   
   const collapsed = state === "collapsed";
 
   useEffect(() => {
-    const checkSuperAdmin = async () => {
+    const checkMarketingRole = async () => {
       if (!user) {
-        setIsSuperAdmin(false);
+        setHasMarketingRole(false);
         return;
       }
 
       try {
-        const { data, error } = await supabase.rpc('is_super_admin_by_email');
+        const { data, error } = await supabase.rpc('current_user_has_role', {
+          _role: 'marketing'
+        });
         if (error) {
-          console.error('Error checking super admin status:', error);
-          setIsSuperAdmin(false);
+          console.error('Error checking marketing role:', error);
+          setHasMarketingRole(false);
         } else {
-          setIsSuperAdmin(data || false);
+          setHasMarketingRole(data || false);
         }
       } catch (error) {
-        console.error('Error checking super admin status:', error);
-        setIsSuperAdmin(false);
+        console.error('Error checking marketing role:', error);
+        setHasMarketingRole(false);
       }
     };
 
-    checkSuperAdmin();
+    checkMarketingRole();
   }, [user]);
 
   // Helper functions for level calculations
@@ -232,8 +234,8 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {settingsItems.map((item) => {
-                // Only show Marketing item if user is super admin
-                if (item.url === '/marketing' && !isSuperAdmin) {
+                // Only show Email item if user has marketing role
+                if (item.url === '/marketing' && !hasMarketingRole) {
                   return null;
                 }
                 
