@@ -52,11 +52,19 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
   };
 
   const handleTimeClick = () => {
-    if (!hasActiveTimer) return;
+    console.log('Timer clicked - hasActiveTimer:', hasActiveTimer, 'isRunning:', isRunning);
+    
+    if (!hasActiveTimer) {
+      console.log('No active timer, starting...');
+      handleStart();
+      return;
+    }
     
     if (isRunning) {
+      console.log('Timer is running, pausing...');
       handlePause();
     } else {
+      console.log('Timer is paused, resuming...');
       handleResume();
     }
   };
