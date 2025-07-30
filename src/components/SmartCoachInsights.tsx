@@ -16,7 +16,6 @@ import {
   Activity,
   Calendar,
   Scale,
-  Apple,
   Moon,
   Utensils,
   Heart,
