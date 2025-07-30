@@ -2439,7 +2439,9 @@ export type Database = {
           default_unit: string
           description: string | null
           id: string
+          image_url: string | null
           name: string
+          recognition_keywords: string[] | null
           updated_at: string
         }
         Insert: {
@@ -2450,7 +2452,9 @@ export type Database = {
           default_unit?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           name: string
+          recognition_keywords?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -2461,7 +2465,9 @@ export type Database = {
           default_unit?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           name?: string
+          recognition_keywords?: string[] | null
           updated_at?: string
         }
         Relationships: []
@@ -2509,6 +2515,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      supplement_recognition_log: {
+        Row: {
+          analysis_result: string | null
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          image_url: string
+          recognized_supplements: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_result?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          image_url: string
+          recognized_supplements?: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_result?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          recognized_supplements?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_alcohol_abstinence: {
         Row: {

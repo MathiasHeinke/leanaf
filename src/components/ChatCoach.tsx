@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
 import { UploadProgress } from "@/components/UploadProgress";
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 import { toast } from "sonner";
@@ -96,6 +97,12 @@ export const ChatCoach = ({
     startRecording,
     stopRecording
   } = useVoiceRecording();
+
+  const {
+    recognizeSupplements,
+    addRecognizedSupplementsToStack,
+    isAnalyzing: isAnalyzingSupplements
+  } = useSupplementRecognition();
 
   // Enhanced coach personality mapping with professions
   const getCoachInfo = (personality: string) => {
@@ -473,6 +480,31 @@ export const ChatCoach = ({
     setQuickActionsShown(false);
 
     try {
+      // Check if we should analyze supplements in images
+      let supplementAnalysisResult = null;
+      if (imagesToSend.length > 0) {
+        // Check if user is asking about supplements or if we should auto-detect
+        const supplementKeywords = ['supplement', 'nahrungsergänzung', 'vitamin', 'protein', 'kreatin', 'pillen', 'kapseln', 'pulver', 'tabletten'];
+        const shouldAnalyzeSupplements = supplementKeywords.some(keyword => 
+          userMessage.toLowerCase().includes(keyword)
+        ) || userMessage.toLowerCase().includes('erkennen') || userMessage.trim() === '';
+
+        if (shouldAnalyzeSupplements) {
+          try {
+            console.log('🔍 Analyzing image for supplements...');
+            supplementAnalysisResult = await recognizeSupplements(imagesToSend[0], userMessage);
+            
+            // If supplements were found with good confidence, add them to stack
+            if (supplementAnalysisResult.success && supplementAnalysisResult.recognized_supplements.length > 0) {
+              await addRecognizedSupplementsToStack(supplementAnalysisResult.recognized_supplements);
+            }
+          } catch (error) {
+            console.error('Error analyzing supplements:', error);
+            // Continue with normal chat flow even if supplement analysis fails
+          }
+        }
+      }
+
       // Save user message and add to UI
       const savedUserMessage = await saveMessage('user', userMessage, imagesToSend);
       if (savedUserMessage) {
@@ -487,10 +519,16 @@ export const ChatCoach = ({
         setMessages(prev => [...prev, mappedMessage]);
       }
 
+      // Enhanced message to include supplement analysis if available
+      let enhancedMessage = userMessage;
+      if (supplementAnalysisResult && supplementAnalysisResult.success) {
+        enhancedMessage += `\n\n[SUPPLEMENT-ANALYSE: ${supplementAnalysisResult.recognized_supplements.length} Supplement(s) erkannt: ${supplementAnalysisResult.analysis}]`;
+      }
+
       // Call enhanced coach-chat function with full context
       const { data: coachResponse, error } = await supabase.functions.invoke('coach-chat', {
         body: {
-          message: userMessage,
+          message: enhancedMessage,
           userId: user.id,
           chatHistory: messages.slice(-10),
           images: imagesToSend,
@@ -815,6 +853,19 @@ export const ChatCoach = ({
               </div>
               <span>
                 {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Spracheingabe...'}
+              </span>
+            </div>
+          )}
+
+          {isAnalyzingSupplements && (
+            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex gap-1">
+                <div className="w-1 h-3 bg-blue-500 animate-pulse rounded-full" />
+                <div className="w-1 h-4 bg-blue-500 animate-pulse rounded-full" style={{ animationDelay: '0.1s' }} />
+                <div className="w-1 h-3 bg-blue-500 animate-pulse rounded-full" style={{ animationDelay: '0.2s' }} />
+              </div>
+              <span className="text-blue-700 dark:text-blue-300">
+                Erkenne Supplements im Bild...
               </span>
             </div>
           )}
