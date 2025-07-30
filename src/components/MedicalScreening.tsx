@@ -287,6 +287,39 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
     }
   };
 
+  const resetMedicalScreening = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      // Reset all local state
+      setHasMedicalConditions(false);
+      setTakesMedications(false);
+      setSelectedConditions([]);
+      setSelectedMedications([]);
+      setCustomConditions([]);
+      setCustomMedications([]);
+      setRiskAssessment(null);
+      setScreeningCompleted(false);
+      onScreeningComplete?.(false);
+
+      // Delete the medical profile from database
+      const { error } = await supabase
+        .from('user_medical_profile')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast.success('Medizinisches Screening zurückgesetzt');
+    } catch (error) {
+      console.error('Error resetting medical screening:', error);
+      toast.error('Fehler beim Zurücksetzen');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getRiskLevelColor = (level: string) => {
     switch (level) {
       case 'low': return 'text-green-600';
@@ -557,6 +590,20 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Reset Button for completed screenings */}
+          {screeningCompleted && (
+            <div className="flex gap-2">
+              <Button
+                onClick={resetMedicalScreening}
+                disabled={loading}
+                variant="outline"
+                className="w-full"
+              >
+                {loading ? 'Zurücksetzen...' : 'Screening bearbeiten / zurücksetzen'}
+              </Button>
             </div>
           )}
 
