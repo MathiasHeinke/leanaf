@@ -621,7 +621,6 @@ serve(async (req) => {
     const message = securityHelpers.sanitizeInput.text(body.message);
     const userId = body.userId;
     const coachPersonality = validateCoachPersonality(body.coachPersonality || null);
-    const images = body.images || [];
     
     // Enhanced user ID validation
     if (!userId || typeof userId !== 'string' || !securityHelpers.validateInput.uuid(userId)) {
