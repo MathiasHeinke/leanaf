@@ -273,11 +273,8 @@ export const GlobalHeader = ({
                 className="w-6 h-6 rounded-full object-cover"
               />
               <span className="font-medium text-sm">
-                {coachData?.coach_id === 'lucy' 
-                  ? coachData.name 
-                  : coachData?.name && coachData?.specialization_description 
-                    ? `${coachData.name} - ${coachData.specialization_description}` 
-                    : coachData?.name || 'Coach'}
+                {/* Für alle Coaches: zeige nur den Namen, nicht die lange Beschreibung */}
+                {coachData?.name || 'Coach'}
               </span>
             </div>
 
