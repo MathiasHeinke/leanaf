@@ -85,29 +85,29 @@ const LUCY_GREETINGS = {
 
 const SASCHA_GREETINGS = {
   new: [
-    "Hi {firstName}! 🎯 Ich bin Sascha, dein Personal Trainer. Was ist dein aktuelles Trainingsziel?",
-    "Hey {firstName}! 💪 Sascha hier - dein Trainer für effektives Training. Bereit durchzustarten?",
-    "Hallo {firstName}! 🏋️ Willkommen im Team! Ich bin Sascha und helfe dir, deine Ziele zu erreichen. Was steht an?"
+    "Hi {firstName}! 🎯 Sascha hier - dein Performance-Optimizer. Bereit für systematischen Kraftaufbau?",
+    "Hey {firstName}! 🏋️ Willkommen bei evidenzbasiertem Training! Ich bin Sascha - lass uns deine Progression optimieren.",
+    "Hallo {firstName}! 💪 Sascha hier - Spezialist für Progressive Overload. Was ist dein aktuelles Leistungsziel?"
   ],
   morning: [
-    "Morgen {firstName}! 💪 Bereit für ein produktives Training heute? Was ist der Plan?",
-    "Hey {firstName}! 🔥 Früh am Start - das gefällt mir! Was steht heute auf dem Trainingsplan?",
-    "Guten Morgen {firstName}! 🎯 Motivation ist da, oder? Lass uns das nutzen!",
-    "Morgen {firstName}! 🏃 Early Bird! Respekt. Was wollen wir heute erreichen?",
-    "Hi {firstName}! ⚡ Starker Start in den Tag! Worauf fokussieren wir uns heute?"
+    "Morgen {firstName}! 💪 Perfekte Zeit für Kraft-Fokus! Wie sieht deine Progression aus?",
+    "Hey {firstName}! 🔥 Early Gains! Lass uns dein Training systematisch angehen.",
+    "Guten Morgen {firstName}! 🎯 Frische Energie für Progressive Overload! Was steht an?",
+    "Morgen {firstName}! 🏃 Optimale Regeneration für maximale Performance! Bereit?",
+    "Hi {firstName}! ⚡ Morgendliche Kraft-Session? Biomechanisch perfektes Timing!"
   ],
   afternoon: [
-    "Hi {firstName}! 🎯 Zeit für das Training oder erstmal Check-in? Wie läuft der Tag?",
-    "Hey {firstName}! 💪 Mittag geschafft! Wie sieht's aus - Energie für's Training da?",
-    "Servus {firstName}! 🔥 Halbzeit! Wie stehst du heute da? Alles nach Plan?",
-    "Hi {firstName}! ⚡ Wie war der Vormittag? Ready für den nächsten Move?",
-    "Hey {firstName}! 🎲 Zeit für Action oder brauchst du erstmal ein Update? Du entscheidest!"
+    "Hi {firstName}! 🏋️ Kraft-Peak-Zeit! Wie sieht deine Periodisierung heute aus?",
+    "Hey {firstName}! 💪 Perfekt für intensive Sets! Welche Übungen optimieren wir?",
+    "Hallo {firstName}! 🎯 Performance-Time! Lass uns deine Form analysieren.",
+    "Hi {firstName}! 🔥 Nachmittags-Power! Was steht auf dem Progressionsplan?",
+    "Hey {firstName}! ⚡ Zeit für systematisches Krafttraining! Bereit für Gains?"
   ],
   evening: [
-    "Abend {firstName}! 🌆 Langer Tag? Zeit für entspanntes Training oder Recovery?",
-    "Hey {firstName}! 💪 Feierabend-Modus? Lass uns schauen, was heute noch geht.",
-    "Hi {firstName}! 🎯 Der Tag neigt sich - wie steht's um deine Energie? Was ist möglich?",
-    "Guten Abend {firstName}! 🔥 Noch Kraft für eine Session oder eher Recovery-Talk?",
+    "Abend {firstName}! 🌟 Späte Kraft-Session? Zeigt echte Disziplin! Respekt.",
+    "Hi {firstName}! 🎯 Abend-Training für Progression! Biomechanik checken wir auch.",
+    "Hey {firstName}! 💪 Evening Gains mit System! Was ist heute dran?",
+    "Hallo {firstName}! 🏋️ Abends trainieren = Elite-Mindset! Lass uns optimieren.",
     "Servus {firstName}! ⚡ Ende vom Tag - wie geht's dir? Was brauchst du jetzt?"
   ],
   weekend: [
