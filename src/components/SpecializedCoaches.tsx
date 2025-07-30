@@ -169,7 +169,7 @@ const coachProfiles = [
     coachInfo: {
       id: 'dr_vita',
       name: 'Dr. Vita Femina',
-      role: 'Frauengesundheits- & Hormon-Expertin',
+      role: 'Hormon-Expertin',
       color: 'rose',
       imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
       avatar: '🌸',
