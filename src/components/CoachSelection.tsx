@@ -177,7 +177,7 @@ const coachProfiles = [
     age: 38,
     role: 'Female Health & Hormone Coach',
     avatar: '🌺',
-    imageUrl: '/coach-images/dr-vita-femina.png',
+    imageUrl: '/lovable-uploads/954a7ee8-1579-4a1b-bf4c-87b4ef4588b1.png',
     personality: 'Wissenschaftlich & Empathisch',
     description: 'Expertin für weibliche Gesundheit und hormonelle Balance. Begleitet Frauen durch alle Lebensphasen - vom ersten Zyklus bis zur Menopause.',
     strengths: ['Zyklusbasiertes Training', 'Hormonoptimierung', 'Schwangerschaft & Postpartum', 'Menopause-Support'],
