@@ -157,7 +157,7 @@ const coachProfiles = [
     id: 'dr_vita',
     name: 'Dr. Vita Femina',
     age: 38,
-    role: 'Frauengesundheits- & Hormon-Expertin',
+    role: 'Hormon-Expertin',
     avatar: '🌸',
     icon: Heart,
     imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
