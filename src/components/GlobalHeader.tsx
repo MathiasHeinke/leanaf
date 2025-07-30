@@ -269,7 +269,7 @@ export const GlobalHeader = ({
                   getCurrentCoachId() === 'lucy' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
                   getCurrentCoachId() === 'kai' ? '2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
                   getCurrentCoachId() === 'dr_vita' ? '/lovable-uploads/954a7ee8-1579-4a1b-bf4c-87b4ef4588b1.png' :
-                  getCurrentCoachId() === 'integral' ? '/lovable-uploads/b3492178-21c3-4023-b833-54d78e113f2e.png' :
+                  getCurrentCoachId() === 'integral' ? '/lovable-uploads/ea8ea3bb-ceaa-4809-9cec-580177f741d1.png' :
                   'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
                 }`}
                 alt={coachData?.name || 'Coach'}

@@ -136,7 +136,7 @@ const coachProfiles = [
     age: 42,
     role: 'Integral Theory & Entwicklungscoach',
     avatar: '🌟',
-    imageUrl: '/lovable-uploads/b3492178-21c3-4023-b833-54d78e113f2e.png',
+    imageUrl: '/lovable-uploads/ea8ea3bb-ceaa-4809-9cec-580177f741d1.png',
     personality: 'Tiefgreifend & Entwicklungsorientiert',
     description: 'Spezialistin für ganzheitliche Persönlichkeitsentwicklung und Integral Theory. Begleitet dich auf allen Ebenen der persönlichen Evolution.',
     strengths: ['Persönlichkeitsentwicklung', 'Integral Theory', 'Coaching', 'Bewusstseinsentwicklung'],
