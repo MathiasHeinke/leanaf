@@ -16,6 +16,7 @@ import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
 import { TrainingHistory } from '@/components/TrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
+import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
 import { TrainingStats } from '@/components/TrainingStats';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { useAuth } from '@/hooks/useAuth';
@@ -187,8 +188,121 @@ export const TrainingDashboard: React.FC = () => {
     stopTimer();
     setShowStopDialog(false);
   };
+
+  // Session management handlers
+  const handleEditSession = async (sessionId: string) => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('exercise_sessions')
+        .select(`
+          *,
+          exercise_sets (
+            *,
+            exercises (
+              name,
+              category
+            )
+          )
+        `)
+        .eq('id', sessionId)
+        .eq('user_id', user.id)
+        .single();
+
+      setEditSessionData(data);
+    } catch (error) {
+      console.error('Error loading session for edit:', error);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!user) return;
+    
+    try {
+      // Delete all exercise sets for this session
+      await supabase
+        .from('exercise_sets')
+        .delete()
+        .eq('session_id', sessionId);
+      
+      // Delete the session
+      await supabase
+        .from('exercise_sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+      
+      loadSessions(); // Refresh
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  };
+
+  const handleDuplicateSession = async (sessionId: string) => {
+    if (!user) return;
+    
+    try {
+      // Get the original session and its sets
+      const { data: originalSession } = await supabase
+        .from('exercise_sessions')
+        .select(`
+          *,
+          exercise_sets (
+            exercise_id,
+            set_number,
+            weight_kg,
+            reps,
+            rpe,
+            notes
+          )
+        `)
+        .eq('id', sessionId)
+        .single();
+
+      if (!originalSession) return;
+
+      // Create new session
+      const { data: newSession } = await supabase
+        .from('exercise_sessions')
+        .insert({
+          user_id: user.id,
+          session_name: `${originalSession.session_name} (Kopie)`,
+          workout_type: originalSession.workout_type,
+          date: new Date().toISOString().split('T')[0],
+          notes: originalSession.notes
+        })
+        .select()
+        .single();
+
+      if (!newSession) return;
+
+      // Duplicate all exercise sets
+      if (originalSession.exercise_sets && originalSession.exercise_sets.length > 0) {
+        const setsToInsert = originalSession.exercise_sets.map(set => ({
+          session_id: newSession.id,
+          user_id: user.id,
+          exercise_id: set.exercise_id,
+          set_number: set.set_number,
+          weight_kg: set.weight_kg,
+          reps: set.reps,
+          rpe: set.rpe,
+          notes: set.notes
+        }));
+
+        await supabase
+          .from('exercise_sets')
+          .insert(setsToInsert);
+      }
+
+      loadSessions(); // Refresh
+    } catch (error) {
+      console.error('Error duplicating session:', error);
+    }
+  };
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [editSessionData, setEditSessionData] = useState<any>(null);
   const [showStopDialog, setShowStopDialog] = useState(false);
 
   useEffect(() => {
@@ -462,6 +576,9 @@ export const TrainingDashboard: React.FC = () => {
         <TodaysTrainingStatus 
           todaysSessions={getTodaysSessions()}
           onStartTraining={() => setShowQuickAdd(true)}
+          onEditSession={handleEditSession}
+          onDeleteSession={handleDeleteSession}
+          onDuplicateSession={handleDuplicateSession}
         />
 
         {/* Training Stats */}
@@ -553,6 +670,17 @@ export const TrainingDashboard: React.FC = () => {
           onSessionUpdated={loadSessions}
         />
       )}
+
+      {/* Edit Session Modal */}
+      <ExerciseSessionEditModal
+        session={editSessionData}
+        isOpen={!!editSessionData}
+        onClose={() => setEditSessionData(null)}
+        onSessionUpdated={() => {
+          loadSessions();
+          setEditSessionData(null);
+        }}
+      />
 
       {/* Stop Workout Confirmation Dialog */}
       <AlertDialog open={showStopDialog} onOpenChange={setShowStopDialog}>

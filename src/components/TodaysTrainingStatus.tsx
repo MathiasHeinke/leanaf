@@ -3,7 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Plus, Clock, Target, Flame } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { CheckCircle, Plus, Clock, Target, Flame, Edit, Trash2, Copy, MoreHorizontal } from 'lucide-react';
 
 interface ExerciseSession {
   id: string;
@@ -23,12 +34,19 @@ interface ExerciseSession {
 interface TodaysTrainingStatusProps {
   todaysSessions: ExerciseSession[];
   onStartTraining: () => void;
+  onEditSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onDuplicateSession?: (sessionId: string) => void;
 }
 
 export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
   todaysSessions,
-  onStartTraining
+  onStartTraining,
+  onEditSession,
+  onDeleteSession,
+  onDuplicateSession
 }) => {
+  const [deleteSessionId, setDeleteSessionId] = React.useState<string | null>(null);
   const hasTrained = todaysSessions.length > 0;
   
   const getTotalSets = () => {
@@ -141,7 +159,7 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
           <h4 className="font-medium">Heutige Sessions:</h4>
           {todaysSessions.map((session, index) => (
             <div key={session.id} className="flex items-center justify-between p-3 bg-background/50 rounded-lg">
-              <div>
+              <div className="flex-1">
                 <h5 className="font-medium">{session.session_name}</h5>
                 <p className="text-sm text-muted-foreground">
                   {session.exercise_sets.length} Sätze • 
@@ -149,9 +167,42 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
                   {session.exercise_sets.length > 1 && ' +' + (session.exercise_sets.length - 1) + ' weitere'}
                 </p>
               </div>
-              <Badge variant="outline" className="bg-green-100 dark:bg-green-900">
-                Abgeschlossen
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-green-100 dark:bg-green-900">
+                  Abgeschlossen
+                </Badge>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {onEditSession && (
+                      <DropdownMenuItem onClick={() => onEditSession(session.id)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Bearbeiten
+                      </DropdownMenuItem>
+                    )}
+                    {onDuplicateSession && (
+                      <DropdownMenuItem onClick={() => onDuplicateSession(session.id)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplizieren
+                      </DropdownMenuItem>
+                    )}
+                    {onDeleteSession && (
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteSessionId(session.id)}
+                        className="text-red-600 dark:text-red-400"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Löschen
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           ))}
         </div>
@@ -160,6 +211,32 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
           <Plus className="h-4 w-4 mr-2" />
           Weiteres Training hinzufügen
         </Button>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteSessionId} onOpenChange={() => setDeleteSessionId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Training löschen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bist du sicher, dass du dieses Training löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  if (deleteSessionId && onDeleteSession) {
+                    onDeleteSession(deleteSessionId);
+                    setDeleteSessionId(null);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Löschen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
