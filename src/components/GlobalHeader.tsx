@@ -40,11 +40,16 @@ export const GlobalHeader = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Get current coach ID from route
+  // Get current coach ID from route and URL params
   const getCurrentCoachId = () => {
     if (location.pathname.startsWith('/training/sascha')) return 'sascha';
     if (location.pathname.startsWith('/training/markus')) return 'markus';
-    if (location.pathname.startsWith('/coach')) return 'sascha'; // Default für Coach-Seite
+    if (location.pathname.startsWith('/coach')) {
+      // Check URL params for coach selection
+      const params = new URLSearchParams(location.search);
+      const selectedCoach = params.get('coach');
+      return selectedCoach || 'sascha'; // Default to sascha if no coach param
+    }
     return null;
   };
 
@@ -73,7 +78,7 @@ export const GlobalHeader = ({
     };
 
     loadCoachData();
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   // Route to title mapping
   const getPageTitle = (pathname: string) => {
@@ -253,7 +258,12 @@ export const GlobalHeader = ({
 
             <div className="flex items-center gap-2">
               <img
-                src={`/coach-images/${getCurrentCoachId() === 'sascha' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' : 'markus-ruehl.jpg'}`}
+                src={`/coach-images/${
+                  getCurrentCoachId() === 'sascha' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' : 
+                  getCurrentCoachId() === 'markus' ? 'markus-ruehl.jpg' :
+                  getCurrentCoachId() === 'lucy' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' :
+                  'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
+                }`}
                 alt={coachData?.name || 'Coach'}
                 className="w-6 h-6 rounded-full object-cover"
               />
