@@ -21,15 +21,18 @@ interface CoachData {
 interface GlobalHeaderProps {
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  showCoachBanner?: boolean;
+  onToggleCoachBanner?: () => void;
 }
 
 export const GlobalHeader = ({ 
   onRefresh, 
-  isRefreshing = false
+  isRefreshing = false,
+  showCoachBanner = false,
+  onToggleCoachBanner
 }: GlobalHeaderProps) => {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [showCoachBanner, setShowCoachBanner] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [coachData, setCoachData] = useState<CoachData | null>(null);
   
@@ -221,9 +224,9 @@ export const GlobalHeader = ({
         </div>
 
         {/* Chevron-Button als Knubbel unten am Header */}
-        {isCoachChatRoute && (
+        {isCoachChatRoute && onToggleCoachBanner && (
           <button
-            onClick={() => setShowCoachBanner(prev => !prev)}
+            onClick={onToggleCoachBanner}
             className="absolute left-1/2 -bottom-2 transform -translate-x-1/2 bg-background/70 backdrop-blur-md border border-border/20 rounded-full p-1 shadow-sm hover:bg-accent/60 z-50 transition-colors"
           >
             {showCoachBanner ? (

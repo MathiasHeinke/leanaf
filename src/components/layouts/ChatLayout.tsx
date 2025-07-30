@@ -1,5 +1,5 @@
 import { GlobalHeader } from "@/components/GlobalHeader";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 interface ChatLayoutProps {
   children: ReactNode;
@@ -8,11 +8,21 @@ interface ChatLayoutProps {
 }
 
 export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
+  const [showCoachBanner, setShowCoachBanner] = useState(false);
+  
+  // Calculate dynamic padding based on header height and banner state
+  const headerHeight = 64; // 64px für GlobalHeader
+  const bannerHeight = showCoachBanner ? 48 : 0; // 48px wenn Banner aufgeklappt
+  const totalPadding = headerHeight + bannerHeight + 16; // +16px für zusätzlichen Abstand
+  
   return (
     <div className="fixed inset-0 flex flex-col bg-black text-white z-50">
       
       {/* Header */}
-      <GlobalHeader />
+      <GlobalHeader 
+        showCoachBanner={showCoachBanner}
+        onToggleCoachBanner={() => setShowCoachBanner(prev => !prev)}
+      />
 
       {/* Coach-Banner */}
       {coachBanner && (
@@ -21,9 +31,15 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
         </div>
       )}
 
-      {/* Scrollbarer Chat */}
+      {/* Scrollbarer Chat mit dynamischem oberen Padding */}
       <div className="flex-1 min-h-0 px-4">
-        <div className="h-full overflow-y-auto space-y-2" style={{ pointerEvents: 'auto' }}>
+        <div 
+          className="h-full overflow-y-auto space-y-2" 
+          style={{ 
+            pointerEvents: 'auto',
+            paddingTop: `${totalPadding}px`
+          }}
+        >
           {children}
         </div>
       </div>
