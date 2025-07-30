@@ -44,9 +44,8 @@ export const DualCoachAccess: React.FC = () => {
           <Users className="h-6 w-6 text-primary" />
           Persönliches Training & Coaching
         </CardTitle>
-        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Wähle deinen Experten-Coach für individuelles Training, detaillierte Analyse und professionelle Betreuung. 
-          Beide Coaches erstellen dir maßgeschneiderte Trainingspläne und helfen bei der Optimierung deiner Fortschritte.
+        <p className="text-sm text-muted-foreground mt-2">
+          Persönliche Betreuung • Individuelle Trainingspläne • Detaillierte Analyse
         </p>
       </CardHeader>
       <CardContent>
