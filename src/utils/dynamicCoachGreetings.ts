@@ -85,48 +85,30 @@ const LUCY_GREETINGS = {
 
 const SASCHA_GREETINGS = {
   new: [
-    "Hi {firstName}! 🎯 Sascha hier - dein Performance-Optimizer. Bereit für systematischen Kraftaufbau?",
-    "Hey {firstName}! 🏋️ Willkommen bei evidenzbasiertem Training! Ich bin Sascha - lass uns deine Progression optimieren.",
-    "Hallo {firstName}! 💪 Sascha hier - Spezialist für Progressive Overload. Was ist dein aktuelles Leistungsziel?"
+    "Hey {firstName}! 🎯 Bereit durchzustarten? Zeig mir mal deine aktuellen Zahlen!",
+    "Hi {firstName}! 💪 Lass uns schauen, wie sich deine Performance entwickelt hat.",
+    "Moin {firstName}! 🏋️ Zeit für ehrliche Analyse - wie sehen deine Werte aus?"
   ],
   morning: [
-    "Morgen {firstName}! 💪 Perfekte Zeit für Kraft-Fokus! Wie sieht deine Progression aus?",
-    "Hey {firstName}! 🔥 Early Gains! Lass uns dein Training systematisch angehen.",
-    "Guten Morgen {firstName}! 🎯 Frische Energie für Progressive Overload! Was steht an?",
-    "Morgen {firstName}! 🏃 Optimale Regeneration für maximale Performance! Bereit?",
-    "Hi {firstName}! ⚡ Morgendliche Kraft-Session? Biomechanisch perfektes Timing!"
+    "Morgen {firstName}! 💪 Gut geschlafen? Dann lass uns mal deine gestrigen Daten checken.",
+    "Hey {firstName}! 🔥 Früh dran heute - perfekt! Wie war dein Schlaf?",
+    "Moin {firstName}! 🎯 Ausgeruht? Dann schauen wir mal auf deine Progression.",
+    "Morgen {firstName}! 🏃 Schön früh - zeig mir mal, wie du gestern gegessen hast.",
+    "Hi {firstName}! ⚡ Morgendliche Energie gespürt? Lass uns deine Werte anschauen."
   ],
   afternoon: [
-    "Hi {firstName}! 🏋️ Kraft-Peak-Zeit! Wie sieht deine Periodisierung heute aus?",
-    "Hey {firstName}! 💪 Perfekt für intensive Sets! Welche Übungen optimieren wir?",
-    "Hallo {firstName}! 🎯 Performance-Time! Lass uns deine Form analysieren.",
-    "Hi {firstName}! 🔥 Nachmittags-Power! Was steht auf dem Progressionsplan?",
-    "Hey {firstName}! ⚡ Zeit für systematisches Krafttraining! Bereit für Gains?"
+    "Hi {firstName}! 🏋️ Wie läuft der Tag? Schon was Vernünftiges gegessen?",
+    "Hey {firstName}! 💪 Mittags-Check: Wie sehen deine Kalorien heute aus?",
+    "Moin {firstName}! 🎯 Halbzeit! Erzähl mir von deinem heutigen Training.",
+    "Hi {firstName}! 🔥 Wie ist dein Energielevel? Protein schon getrackt?",
+    "Hey {firstName}! ⚡ Nachmittags-Power! Zeig mir deine bisherigen Zahlen heute."
   ],
   evening: [
-    "Abend {firstName}! 🌟 Späte Kraft-Session? Zeigt echte Disziplin! Respekt.",
-    "Hi {firstName}! 🎯 Abend-Training für Progression! Biomechanik checken wir auch.",
-    "Hey {firstName}! 💪 Evening Gains mit System! Was ist heute dran?",
-    "Hallo {firstName}! 🏋️ Abends trainieren = Elite-Mindset! Lass uns optimieren.",
-    "Servus {firstName}! ⚡ Ende vom Tag - wie geht's dir? Was brauchst du jetzt?"
-  ],
-  weekend: [
-    "Wochenende {firstName}! 🎉 Zeit für intensives Training oder eher entspannt angehen?",
-    "Hey {firstName}! 💪 Wochenend-Power! Wie nutzen wir die freie Zeit optimal?",
-    "Hi {firstName}! 🔥 Samstag/Sonntag - deine Zeit! Was ist der Plan?",
-    "Wochenende, {firstName}! 🎯 Entspannung oder Challenge? Du entscheidest!"
-  ],
-  motivational: [
-    "Hey {firstName}! 🚀 Du machst Fortschritte! Wie fühlst du dich mit deiner Entwicklung?",
-    "Hi {firstName}! 💪 Stark wie immer! Was steht heute an? Lass uns weitermachen!",
-    "Servus {firstName}! 🔥 Deine Konstanz zahlt sich aus! Ready für den nächsten Schritt?",
-    "Hey {firstName}! ⚡ Momentum ist da! Wie wollen wir das heute nutzen?"
-  ],
-  challenge_focused: [
-    "Hi {firstName}! 🎯 Bereit für eine neue Herausforderung heute? Was sagst du?",
-    "Hey {firstName}! 💪 Zeit, Grenzen zu verschieben! Bock auf was Neues?",
-    "Servus {firstName}! 🔥 Comfort Zone verlassen? Lass uns schauen, was geht!",
-    "Hi {firstName}! ⚡ Next Level wartet! Ready to push?"
+    "Abend {firstName}! 🌟 Langer Tag? Lass uns mal deine Bilanz anschauen.",
+    "Hey {firstName}! 💪 Feierabend! Wie sehen deine Tageszahlen aus?",
+    "Hi {firstName}! 🎯 Tag geschafft? Zeit für ehrliche Analyse deiner Daten.",
+    "Moin {firstName}! 🏋️ Abends noch motiviert? Respekt! Wie war dein Tag?",
+    "Hey {firstName}! 🔥 Späte Session? Zeig mir, wie du heute performed hast."
   ]
 };
 
