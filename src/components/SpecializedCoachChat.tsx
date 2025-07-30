@@ -1515,7 +1515,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
             <p className="text-muted-foreground">Noch keine Nachrichten. Starte das Gespräch!</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 pt-[96px]">
             {messages.map((message, messageIndex) => {
               const isLastMessage = messageIndex === messages.length - 1;
               

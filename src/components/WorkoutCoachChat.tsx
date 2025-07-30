@@ -818,7 +818,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4">
-              <div className="space-y-4 pb-4">
+              <div className="space-y-4 pb-4 pt-[96px]">
               {messages.map((message) => (
                 <div key={message.id} className="flex">
                   {message.role === "assistant" && (
