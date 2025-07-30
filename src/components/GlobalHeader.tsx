@@ -180,13 +180,11 @@ export const GlobalHeader = ({
     }
   };
 
-  // Check if we're on a coach chat route (not the main coach selection page)
+  // Check if we're on a coach chat route (show dropdown when in actual coach conversation)
   const isCoachChatRoute = 
     location.pathname.startsWith('/training/sascha') ||
     location.pathname.startsWith('/training/markus') ||
-    (location.pathname === '/coach' && new URLSearchParams(location.search).get('coach')) ||
-    location.pathname.startsWith('/coach/') || // For any /coach/specific-coach routes
-    (location.pathname.startsWith('/coach') && location.search.includes('coach='));
+    (location.pathname.startsWith('/coach') && new URLSearchParams(location.search).get('coach'));
 
   return (
     <div className="relative">
