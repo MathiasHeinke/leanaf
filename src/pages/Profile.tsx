@@ -1122,18 +1122,18 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </div>
 
         {/* Save Status */}
-        <div className="fixed bottom-4 left-4 right-4 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg">
-          <div className="flex items-center justify-between max-w-lg mx-auto">
-            <div className="flex items-center gap-2 text-sm">
+        <div className="fixed bottom-4 left-4 right-4 z-30 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg sm:left-8 sm:right-8 lg:left-16 lg:right-16 xl:left-72 xl:right-72">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
               {autoSaving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span>Speichere automatisch...</span>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary flex-shrink-0"></div>
+                  <span className="truncate">Speichere automatisch...</span>
                 </>
               ) : lastSaved ? (
                 <>
-                  <Check className="h-4 w-4 text-green-500" />
-                  <span className="text-muted-foreground">
+                  <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  <span className="text-muted-foreground truncate">
                     Gespeichert um {lastSaved.toLocaleTimeString()}
                   </span>
                 </>
@@ -1145,10 +1145,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               onClick={handleSave} 
               disabled={loading || autoSaving}
               size="sm"
-              className="ml-2 profile-save-button"
+              className="ml-2 profile-save-button flex-shrink-0"
             >
               <Save className="h-4 w-4 mr-1" />
-              Speichern
+              <span className="hidden sm:inline">Speichern</span>
+              <span className="sm:hidden">Save</span>
             </Button>
           </div>
         </div>
