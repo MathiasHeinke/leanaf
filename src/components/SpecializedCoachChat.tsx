@@ -1522,25 +1522,8 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
               return (
               <div
                 key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start items-start'} gap-2`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {/* Coach Profile Image for assistant messages */}
-                {message.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full overflow-hidden bg-muted">
-                    {coach.imageUrl ? (
-                      <img 
-                        src={coach.imageUrl}
-                        alt={coach.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className={`w-full h-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center text-white text-xs font-bold`}>
-                        {coach.avatar}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
                 <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : 'order-2'}`}>
                   <div
                     className={`rounded-lg p-3 ${
