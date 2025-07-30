@@ -475,7 +475,7 @@ const TrainingMarkus = () => {
           coach={{
             id: 'markus',
             name: 'Markus Rühl',
-            role: 'Hardcore Bodybuilding-Legende',
+            role: 'The German Beast',
             description: 'The German Beast - Schwer und falsch trainieren für maximale Muskelmasse!',
             expertise: ['Hardcore Bodybuilding', 'Heavy Training', 'Volume Training', 'Mental Toughness'],
             personality: 'hart',
