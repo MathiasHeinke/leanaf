@@ -365,7 +365,10 @@ const getFirstTimeGreeting = (coachId: string, firstName: string): string => {
     kai: KAI_GREETINGS.new,
     markus: MARKUS_GREETINGS.new,
     dr_vita_femina: DR_VITA_GREETINGS.new,
-    integral: DR_SOPHIA_GREETINGS.new
+    dr_vita: DR_VITA_GREETINGS.new,
+    vita: DR_VITA_GREETINGS.new,
+    integral: DR_SOPHIA_GREETINGS.new,
+    sophia: DR_SOPHIA_GREETINGS.new
   };
 
   const coachGreetings = greetings[coachId] || greetings.sascha;
@@ -380,7 +383,10 @@ const getSuccessGreetingCategory = (coachId: string): string => {
     kai: 'mindset_focused',
     markus: 'motivational',
     dr_vita_femina: 'empathetic',
-    integral: 'transformational'
+    dr_vita: 'empathetic',
+    vita: 'empathetic',
+    integral: 'transformational',
+    sophia: 'transformational'
   };
   return successCategories[coachId] || 'motivational';
 };
@@ -392,7 +398,10 @@ const getSupportiveGreetingCategory = (coachId: string): string => {
     kai: 'recovery_focused',
     markus: 'tough_love',
     dr_vita_femina: 'empathetic',
-    integral: 'philosophical'
+    dr_vita: 'empathetic',
+    vita: 'empathetic',
+    integral: 'philosophical',
+    sophia: 'philosophical'
   };
   return supportCategories[coachId] || 'supportive';
 };
@@ -404,7 +413,10 @@ const getSpecialGreetingCategory = (coachId: string): string => {
     kai: 'mindset_focused',
     markus: 'tough_love',
     dr_vita_femina: 'scientific',
-    integral: 'philosophical'
+    dr_vita: 'scientific',
+    vita: 'scientific',
+    integral: 'philosophical',
+    sophia: 'philosophical'
   };
   return specialCategories[coachId] || 'morning';
 };
@@ -416,7 +428,10 @@ const getGreetingByCoachAndCategory = (coachId: string, category: string, firstN
     kai: KAI_GREETINGS,
     markus: MARKUS_GREETINGS,
     dr_vita_femina: DR_VITA_GREETINGS,
-    integral: DR_SOPHIA_GREETINGS
+    dr_vita: DR_VITA_GREETINGS,
+    vita: DR_VITA_GREETINGS,
+    integral: DR_SOPHIA_GREETINGS,
+    sophia: DR_SOPHIA_GREETINGS
   };
 
   const coachGreetings = allGreetings[coachId] || allGreetings.sascha;
