@@ -1122,7 +1122,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         </div>
 
         {/* Save Status */}
-        <div className="fixed bottom-4 left-4 right-4 z-30 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg sm:left-8 sm:right-8 lg:left-16 lg:right-16 xl:left-72 xl:right-72">
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-background/90 backdrop-blur-sm border rounded-xl p-3 shadow-lg w-[400px] max-w-[calc(100vw-2rem)]">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
               {autoSaving ? (
