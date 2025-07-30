@@ -254,7 +254,7 @@ export const TrainingDashboard: React.FC = () => {
             <div className="flex flex-col items-center text-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-orange-600/20 to-red-600/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
                 <img 
-                  src="/lovable-uploads/e96e839c-c781-4825-bb29-7c45b9febcdf.png" 
+                  src="/coach-images/markus-ruehl.jpg" 
                   alt="Coach Markus Rühl"
                   className="w-14 h-14 rounded-full object-cover"
                 />
