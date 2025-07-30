@@ -378,10 +378,6 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
         <h2 className="text-xl font-bold">Medizinische Informationen</h2>
       </div>
 
-      {/* Debug Info */}
-      <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-        Debug: hasMedicalConditions={hasMedicalConditions.toString()}, takesMedications={takesMedications.toString()}, screeningCompleted={screeningCompleted.toString()}, availableConditions={availableConditions.length}, availableMedications={availableMedications.length}, user={user ? 'exists' : 'null'}
-      </div>
 
       {/* Disclaimer Card */}
       <Alert>
@@ -528,12 +524,6 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
             </div>
           )}
 
-          {/* Debug Info */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-              Debug: hasMedicalConditions={hasMedicalConditions.toString()}, takesMedications={takesMedications.toString()}, screeningCompleted={screeningCompleted.toString()}, selectedConditions={selectedConditions.length}, selectedMedications={selectedMedications.length}
-            </div>
-          )}
 
           {/* Assessment Button */}
           {(hasMedicalConditions || takesMedications) && !screeningCompleted && (
