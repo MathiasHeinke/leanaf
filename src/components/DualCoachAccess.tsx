@@ -45,7 +45,7 @@ export const DualCoachAccess: React.FC = () => {
           Persönliches Training & Coaching
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-2">
-          Persönliche Betreuung • Individuelle Trainingspläne • Detaillierte Analyse
+          Persönliche Betreuung • Individuelle Trainingspläne • Detaillierte Analyse • Motivations-Coaching
         </p>
       </CardHeader>
       <CardContent>
