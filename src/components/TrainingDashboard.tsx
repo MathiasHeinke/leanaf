@@ -274,77 +274,15 @@ export const TrainingDashboard: React.FC = () => {
           </p>
         </div>
         
-        {/* Timer Control Centered */}
-        <div className="flex flex-col items-center gap-3">
-          {hasActiveTimer ? (
-            <>
-              {/* Timer Display */}
-              <div className="flex flex-col items-center gap-2">
-                <Badge 
-                  variant={isRunning ? "default" : "secondary"} 
-                  className="text-lg sm:text-xl px-4 sm:px-6 py-2 sm:py-3 font-mono"
-                >
-                  <Timer className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />
-                  {formattedTime}
-                  {isRunning ? (
-                    <div className="ml-2 sm:ml-3 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse" />
-                  ) : (
-                    <div className="ml-2 sm:ml-3 w-2 h-2 sm:w-3 sm:h-3 bg-yellow-500 rounded-full" />
-                  )}
-                </Badge>
-                
-                {/* Pause Duration Display */}
-                {isPaused && (
-                  <div className="text-sm text-muted-foreground font-mono">
-                    Pause: {pauseDurationFormatted}
-                  </div>
-                )}
-              </div>
-
-              {/* Timer Controls */}
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                {isRunning ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500 hover:border-yellow-600 px-3 sm:px-4 py-2"
-                    onClick={handlePauseWorkout}
-                  >
-                    <Pause className="h-4 w-4 mr-1 sm:mr-2" />
-                    Pause
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600 px-3 sm:px-4 py-2"
-                    onClick={handleResumeWorkout}
-                  >
-                    <Play className="h-4 w-4 mr-1 sm:mr-2" />
-                    Resume
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="bg-red-500 hover:bg-red-600 text-white border-red-500 hover:border-red-600 px-3 sm:px-4 py-2"
-                  onClick={handleStopWorkout}
-                >
-                  <Square className="h-4 w-4 mr-1 sm:mr-2" />
-                  Stop
-                </Button>
-              </div>
-            </>
-          ) : (
-            <Button 
-              onClick={handleStartWorkout} 
-              size="lg" 
-              className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600 font-medium px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg"
-            >
-              <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />
-              Workout starten
-            </Button>
-          )}
+        {/* Workout Timer Component */}
+        <div className="max-w-2xl mx-auto">
+          <WorkoutTimer 
+            onStartWorkout={handleStartWorkout}
+            onStopWorkout={(result) => {
+              setShowStopDialog(true);
+            }}
+            variant="default"
+          />
         </div>
       </div>
 
