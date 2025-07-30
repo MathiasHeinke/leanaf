@@ -648,9 +648,6 @@ export const TrainingDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="training-plans" className="space-y-6">
-            {/* Dual Coach Access */}
-            <DualCoachAccess />
-
             {/* Workout Plans */}
             <WorkoutPlanManager 
               onStartPlan={handleStartWorkoutPlan}
@@ -662,6 +659,9 @@ export const TrainingDashboard: React.FC = () => {
               sessions={sessions}
               onSessionUpdated={loadSessions}
             />
+
+            {/* Dual Coach Access */}
+            <DualCoachAccess />
 
           </TabsContent>
         </Tabs>
