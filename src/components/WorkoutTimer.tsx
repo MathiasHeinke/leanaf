@@ -51,23 +51,7 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
     resumeTimer();
   };
 
-  const handleTimeClick = () => {
-    console.log('Timer clicked - hasActiveTimer:', hasActiveTimer, 'isRunning:', isRunning);
-    
-    if (!hasActiveTimer) {
-      console.log('No active timer, starting...');
-      handleStart();
-      return;
-    }
-    
-    if (isRunning) {
-      console.log('Timer is running, pausing...');
-      handlePause();
-    } else {
-      console.log('Timer is paused, resuming...');
-      handleResume();
-    }
-  };
+  // Time display is now display-only, no click functionality
 
   if (variant === 'floating') {
     if (!hasActiveTimer) return null;
@@ -75,16 +59,13 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
     return (
       <div className={cn("fixed top-4 left-1/2 transform -translate-x-1/2 z-40", className)}>
         <Badge 
-          variant="secondary" 
-          className={cn(
-            "px-4 py-2 text-base font-mono transition-colors",
-            hasActiveTimer && "cursor-pointer hover:bg-secondary/80"
-          )}
-          onClick={handleTimeClick}
+          variant={isRunning ? "default" : "secondary"} 
+          className="px-4 py-2 text-base font-mono"
         >
           <Timer className="h-4 w-4 mr-2" />
           {formattedTime}
-          {isRunning && <div className="ml-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+          {isRunning && <div className="ml-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
+          {!isRunning && <div className="ml-2 w-2 h-2 bg-yellow-500 rounded-full" />}
         </Badge>
       </div>
     );
@@ -95,35 +76,32 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
       <div className={cn("flex items-center gap-2", className)}>
         <Badge 
           variant={isRunning ? "default" : "secondary"} 
-          className={cn(
-            "font-mono transition-colors",
-            hasActiveTimer && "cursor-pointer hover:opacity-80"
-          )}
-          onClick={handleTimeClick}
+          className="font-mono"
         >
           <Timer className="h-3 w-3 mr-1" />
           {formattedTime}
-          {isRunning && <div className="ml-1 w-1.5 h-1.5 bg-white rounded-full animate-pulse" />}
+          {isRunning && <div className="ml-1 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />}
+          {hasActiveTimer && !isRunning && <div className="ml-1 w-1.5 h-1.5 bg-yellow-500 rounded-full" />}
         </Badge>
         
         {showControls && (
           <div className="flex gap-1">
             {!hasActiveTimer ? (
-              <Button size="sm" variant="outline" onClick={handleStart}>
+              <Button size="sm" variant="outline" onClick={handleStart} className="text-green-600 hover:text-green-700">
                 <Play className="h-3 w-3" />
               </Button>
             ) : (
               <>
                 {isRunning ? (
-                  <Button size="sm" variant="outline" onClick={handlePause}>
+                  <Button size="sm" variant="outline" onClick={handlePause} className="text-yellow-600 hover:text-yellow-700">
                     <Pause className="h-3 w-3" />
                   </Button>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={handleResume}>
+                  <Button size="sm" variant="outline" onClick={handleResume} className="text-green-600 hover:text-green-700">
                     <Play className="h-3 w-3" />
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={handleStop}>
+                <Button size="sm" variant="outline" onClick={handleStop} className="text-red-600 hover:text-red-700">
                   <Square className="h-3 w-3" />
                 </Button>
               </>
@@ -144,13 +122,7 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-center">
-          <div 
-            className={cn(
-              "text-4xl font-mono font-bold text-primary mb-2 transition-colors",
-              hasActiveTimer && "cursor-pointer hover:text-primary/80"
-            )}
-            onClick={handleTimeClick}
-          >
+          <div className="text-4xl font-mono font-bold text-primary mb-2">
             {formattedTime}
           </div>
           <div className="flex items-center justify-center gap-2">
