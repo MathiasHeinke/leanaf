@@ -76,6 +76,7 @@ export const TrainingDashboard: React.FC = () => {
     formattedTime, 
     pauseDurationFormatted,
     isPaused,
+    currentDuration,
     startTimer, 
     stopTimer, 
     pauseTimer, 
@@ -108,6 +109,18 @@ export const TrainingDashboard: React.FC = () => {
 
   const handleStopWorkout = () => {
     setShowStopDialog(true);
+  };
+  
+  const formatDuration = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const handleConfirmStop = async () => {
@@ -499,8 +512,24 @@ export const TrainingDashboard: React.FC = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Workout beenden?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Möchtest du das Workout beenden und speichern? Die Trainingszeit wird in deinem Verlauf gespeichert.
+            <AlertDialogDescription className="space-y-3">
+              <div className="text-center space-y-2 p-4 bg-muted/50 rounded-lg">
+                <div className="text-lg font-mono font-bold text-primary">
+                  {formatDuration(currentDuration * 1000)}
+                </div>
+                <div className="text-sm text-muted-foreground">Gesamte Trainingszeit</div>
+                {isPaused && pauseDurationFormatted && (
+                  <>
+                    <div className="text-base font-mono text-yellow-600">
+                      {pauseDurationFormatted}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Pausenzeit</div>
+                  </>
+                )}
+              </div>
+              <p className="text-center">
+                Möchtest du das Workout beenden und speichern? Die Trainingszeit wird in deinem Verlauf gespeichert.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
