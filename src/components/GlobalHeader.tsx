@@ -168,12 +168,15 @@ export const GlobalHeader = ({
   const handleClearChat = async () => {
     if (!user?.id) return;
     
+    const currentCoachId = getCurrentCoachId();
+    if (!currentCoachId) return;
+    
     try {
       const { error } = await supabase
         .from('coach_conversations')
         .delete()
         .eq('user_id', user.id)
-        .eq('coach_personality', 'sascha');
+        .eq('coach_personality', currentCoachId);
         
       if (error) throw error;
       
