@@ -177,7 +177,7 @@ const coachProfiles = [
     age: 38,
     role: 'Female Health & Hormone Coach',
     avatar: '🌺',
-    imageUrl: '/lovable-uploads/216a2d4a-9390-4203-bb1d-cba4ff7d4cc6.png',
+    imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
     personality: 'Wissenschaftlich & Empathisch',
     description: 'Expertin für weibliche Gesundheit und hormonelle Balance. Begleitet Frauen durch alle Lebensphasen - vom ersten Zyklus bis zur Menopause.',
     strengths: ['Zyklusbasiertes Training', 'Hormonoptimierung', 'Schwangerschaft & Postpartum', 'Menopause-Support'],
