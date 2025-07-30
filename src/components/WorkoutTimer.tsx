@@ -199,9 +199,9 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
           </div>
         )}
 
-        {currentDuration > 300 && ( // Show after 5 minutes
+        {currentDuration > 300000 && ( // Show after 5 minutes (300000ms)
           <div className="text-center text-sm text-muted-foreground">
-            {Math.floor(currentDuration / 60)} Minuten Training
+            {Math.floor(currentDuration / 60000)} Minuten Training
           </div>
         )}
       </CardContent>
