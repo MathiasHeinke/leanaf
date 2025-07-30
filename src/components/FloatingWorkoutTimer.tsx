@@ -30,57 +30,57 @@ export const FloatingWorkoutTimer: React.FC<FloatingWorkoutTimerProps> = ({
   const pauseDurationFormatted = `${Math.floor(pauseDuration / 60000)}:${Math.floor((pauseDuration % 60000) / 1000).toString().padStart(2, '0')}`;
 
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-      <div className="bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 transition-all duration-300 px-6 py-4 mx-4 max-w-sm w-full">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full flex justify-center">
+      <div className="bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 transition-all duration-300 px-7 py-5 mx-4 max-w-md w-full">
         {!isActive ? (
           // Not started state
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-5">
             <Button 
               onClick={onStart}
-              className="bg-green-600 hover:bg-green-700 text-white w-12 h-12 rounded-full p-0 hover-scale transition-all"
+              className="bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full p-0 hover-scale transition-all"
               size="lg"
             >
-              <Play className="h-6 w-6" />
+              <Play className="h-7 w-7" />
             </Button>
             <div className="text-center">
-              <div className="text-2xl font-mono font-bold text-muted-foreground">
-                0:00<span className="text-lg text-muted-foreground/60">.00</span>
+              <div className="text-3xl font-mono font-bold text-muted-foreground">
+                0:00<span className="text-xl text-muted-foreground/60">.00</span>
               </div>
             </div>
             <Button 
-              className="bg-red-600/50 hover:bg-red-600/50 text-white/50 w-12 h-12 rounded-full p-0 cursor-not-allowed"
+              className="bg-red-600/50 hover:bg-red-600/50 text-white/50 w-14 h-14 rounded-full p-0 cursor-not-allowed"
               size="lg"
               disabled
             >
-              <Square className="h-6 w-6" />
+              <Square className="h-7 w-7" />
             </Button>
           </div>
         ) : (
           // Active state
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-5">
             {/* Left: Pause/Resume Button */}
             {isRunning ? (
               <Button 
                 onClick={onPause}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white w-12 h-12 rounded-full p-0 hover-scale transition-all"
+                className="bg-yellow-500 hover:bg-yellow-600 text-white w-14 h-14 rounded-full p-0 hover-scale transition-all"
                 size="lg"
               >
-                <Pause className="h-6 w-6" />
+                <Pause className="h-7 w-7" />
               </Button>
             ) : (
               <Button 
                 onClick={onResume}
-                className="bg-green-600 hover:bg-green-700 text-white w-12 h-12 rounded-full p-0 hover-scale transition-all"
+                className="bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full p-0 hover-scale transition-all"
                 size="lg"
               >
-                <Play className="h-6 w-6" />
+                <Play className="h-7 w-7" />
               </Button>
             )}
 
             {/* Center: Timer Display */}
             <div className="text-center">
-              <div className="text-2xl font-mono font-bold text-foreground">
-                {formattedTime}<span className="text-lg text-muted-foreground/60">.{Math.floor((currentDuration % 1000) / 10).toString().padStart(2, '0')}</span>
+              <div className="text-3xl font-mono font-bold text-foreground">
+                {formattedTime}<span className="text-xl text-muted-foreground/60">.{Math.floor((currentDuration % 1000) / 10).toString().padStart(2, '0')}</span>
               </div>
               {isPaused && (
                 <div className="text-sm font-mono text-yellow-500 font-semibold">
@@ -92,10 +92,10 @@ export const FloatingWorkoutTimer: React.FC<FloatingWorkoutTimerProps> = ({
             {/* Right: Stop Button */}
             <Button 
               onClick={onStop}
-              className="bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full p-0 hover-scale transition-all"
+              className="bg-red-600 hover:bg-red-700 text-white w-14 h-14 rounded-full p-0 hover-scale transition-all"
               size="lg"
             >
-              <Square className="h-6 w-6" />
+              <Square className="h-7 w-7" />
             </Button>
           </div>
         )}
