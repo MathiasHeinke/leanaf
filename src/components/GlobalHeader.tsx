@@ -272,7 +272,11 @@ export const GlobalHeader = ({
                 alt={coachData?.name || 'Coach'}
                 className="w-6 h-6 rounded-full object-cover"
               />
-              <span className="font-medium text-sm">{coachData?.name || 'Coach'}</span>
+              <span className="font-medium text-sm">
+                {coachData?.name && coachData?.specialization_description 
+                  ? `${coachData.name} - ${coachData.specialization_description}` 
+                  : coachData?.name || 'Coach'}
+              </span>
             </div>
 
             <div className="flex items-center gap-3">
