@@ -390,10 +390,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                   Bildschirmzeit: {todaysSleep.screen_time_evening} min
                 </div>
               )}
-              {todaysSleep.morning_libido && (
+                {todaysSleep.morning_libido && (
                 <div className="flex items-center gap-1">
                   <Heart className="h-3 w-3" />
-                  Morgendliche Energie: {todaysSleep.morning_libido}/10
+                  Hormon-Vitalität: {todaysSleep.morning_libido}/10
                 </div>
               )}
               {todaysSleep.motivation_level && (
@@ -840,22 +840,26 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       </Button>
                     </div>
 
-                    {/* Morgendliche Energie/Lust */}
+                    {/* Hormon-Vitalität (Morgendliche Energie/Libido) */}
                     <div className={`flex justify-between items-center ${!trackLibido ? 'opacity-50' : ''}`}>
                       <div className="flex-1">
                         <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Heart className="inline h-3 w-3 mr-1" />
-                          Morgendliche Energie: {morningLibido[0]}/10
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Indikator für Hormonbalance und Regeneration<br/>1 = keine Energie/Lust, 10 = sehr energiegeladen</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          Hormon-Vitalität: {morningLibido[0]}/10
+                          <InfoButton
+                            title="Hormon-Vitalität als Gesundheitsmarker"
+                            description="Morgendliche Energie und Libido sind entscheidende Indikatoren für die hormonelle Gesundheit. Sie spiegeln den Testosteronspiegel, die Cortisolbalance und die nächtliche Regeneration wider."
+                            scientificBasis="Studien zeigen: Niedrige morgendliche Libido korreliert mit Testosteronmangel, schlechter Schlafqualität und erhöhtem Stressniveau. Bei Männern ist die morgendliche Erektion ein direkter Hormonmarker, bei Frauen zeigt sich die hormonelle Balance durch Energie und Lust."
+                            tips={[
+                              "Chronisch niedrige Werte (< 4/10) können auf Hormonmangel hinweisen",
+                              "Regelmäßiges Tracking hilft, Muster zu erkennen",
+                              "Bei dauerhaft niedrigen Werten ärztliche Abklärung empfohlen",
+                              "Stress, schlechter Schlaf und schlechte Ernährung beeinflussen diese Werte",
+                              "7-9 Stunden Schlaf und Stressreduktion können Verbesserung bringen"
+                            ]}
+                            linkToScience={true}
+                            className="ml-1"
+                          />
                         </label>
                         <Slider
                           value={morningLibido}
