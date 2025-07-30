@@ -23,7 +23,8 @@ import {
   Clock,
   Timer,
   Play,
-  Square
+  Square,
+  Pause
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -59,7 +60,7 @@ interface WeeklyStats {
 export const TrainingDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isRunning, hasActiveTimer, formattedTime, startTimer, stopTimer } = useWorkoutTimer();
+  const { isRunning, hasActiveTimer, formattedTime, startTimer, stopTimer, pauseTimer, resumeTimer } = useWorkoutTimer();
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
     totalSets: 0,
@@ -73,6 +74,16 @@ export const TrainingDashboard: React.FC = () => {
   const handleStartWorkout = () => {
     startTimer();
     toast.success('Workout Timer gestartet! 🏋️‍♂️');
+  };
+
+  const handlePauseWorkout = () => {
+    pauseTimer();
+    toast.info('Workout pausiert ⏸️');
+  };
+
+  const handleResumeWorkout = () => {
+    resumeTimer();
+    toast.success('Workout fortgesetzt! 🏋️‍♂️');
   };
 
   const handleStopWorkout = () => {
@@ -201,15 +212,30 @@ export const TrainingDashboard: React.FC = () => {
               <Badge variant={isRunning ? "default" : "secondary"} className="text-xl px-6 py-3 font-mono">
                 <Timer className="h-5 w-5 mr-3" />
                 {formattedTime}
-                {isRunning && <div className="ml-3 w-3 h-3 bg-white rounded-full animate-pulse" />}
+                {isRunning ? (
+                  <div className="ml-3 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                ) : (
+                  <div className="ml-3 w-3 h-3 bg-yellow-500 rounded-full" />
+                )}
               </Badge>
-              <Button variant="outline" size="lg" onClick={handleStopWorkout}>
+              {isRunning ? (
+                <Button variant="outline" size="lg" onClick={handlePauseWorkout} className="text-yellow-600 hover:text-yellow-700">
+                  <Pause className="h-5 w-5 mr-2" />
+                  Pause
+                </Button>
+              ) : (
+                <Button variant="outline" size="lg" onClick={handleResumeWorkout} className="text-green-600 hover:text-green-700">
+                  <Play className="h-5 w-5 mr-2" />
+                  Resume
+                </Button>
+              )}
+              <Button variant="outline" size="lg" onClick={handleStopWorkout} className="text-red-600 hover:text-red-700">
                 <Square className="h-5 w-5 mr-2" />
                 Stop
               </Button>
             </div>
           ) : (
-            <Button onClick={handleStartWorkout} size="lg" variant="default" className="font-medium px-8 py-4 text-lg">
+            <Button onClick={handleStartWorkout} size="lg" variant="default" className="font-medium px-8 py-4 text-lg text-green-600 hover:text-green-700">
               <Play className="h-5 w-5 mr-3" />
               Workout starten
             </Button>
