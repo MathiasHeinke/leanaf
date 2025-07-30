@@ -27,6 +27,7 @@ import { TrainingStats } from '@/components/TrainingStats';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
 import { ActiveWorkoutPlan } from '@/components/ActiveWorkoutPlan';
+import { FloatingWorkoutTimer } from '@/components/FloatingWorkoutTimer';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { useNavigate } from 'react-router-dom';
@@ -434,87 +435,19 @@ export const TrainingDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header with Timer - Centered Layout */}
-      <div className="text-center space-y-4">
-        {/* Timer Control - New 3-Column Layout */}
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-gradient-primary">
-            <CardContent className="pt-6">
-              {!hasActiveTimer ? (
-                <div className="flex items-center gap-4">
-                  <Button 
-                    onClick={handleStartWorkout} 
-                    className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
-                    size="lg"
-                  >
-                    <Play className="h-8 w-8" />
-                  </Button>
-                  <div className="flex-1 text-center">
-                    <div className="text-4xl font-mono font-bold text-muted-foreground">
-                      0:00<span className="text-2xl text-muted-foreground/60">.00</span>
-                    </div>
-                  </div>
-                  <Button 
-                    className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0 opacity-50 cursor-not-allowed"
-                    size="lg"
-                    disabled
-                  >
-                    <Square className="h-8 w-8" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  {/* Left: Pause/Resume Button */}
-                  {isRunning ? (
-                    <Button 
-                      onClick={handlePauseWorkout}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white w-16 h-16 rounded-full p-0"
-                      size="lg"
-                    >
-                      <Pause className="h-8 w-8" />
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={handleResumeWorkout}
-                      className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
-                      size="lg"
-                    >
-                      <Play className="h-8 w-8" />
-                    </Button>
-                  )}
-
-                  {/* Center: Timer Display */}
-                  <div className="flex-1 text-center">
-                    <div className="text-4xl font-mono font-bold text-muted-foreground">
-                      {formattedTime}<span className="text-2xl text-muted-foreground/60">.{Math.floor((currentDuration % 1000) / 10).toString().padStart(2, '0')}</span>
-                    </div>
-                    {isPaused && (
-                      <div className="text-lg font-mono text-yellow-500 font-semibold mt-1">
-                        Pause: {pauseDurationFormatted}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right: Stop Button */}
-                  <Button 
-                    onClick={handleStopWorkout}
-                    className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0"
-                    size="lg"
-                  >
-                    <Square className="h-8 w-8" />
-                  </Button>
-                </div>
-              )}
-
-              {currentDuration > 300000 && ( // Show after 5 minutes (300000ms)
-                <div className="text-center text-sm text-muted-foreground">
-                  {Math.floor(currentDuration / 60000)} Minuten Training
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      {/* Floating Workout Timer */}
+      <FloatingWorkoutTimer
+        isRunning={isRunning}
+        isPaused={isPaused}
+        currentDuration={currentDuration}
+        pauseDuration={currentDuration - (currentDuration - (isPaused ? currentDuration : 0))}
+        formattedTime={formattedTime}
+        onStart={handleStartWorkout}
+        onPause={handlePauseWorkout}
+        onResume={handleResumeWorkout}
+        onStop={handleStopWorkout}
+        isActive={hasActiveTimer}
+      />
 
       {/* KI Training Coaches - TEMPORARILY HIDDEN */}
       {false && (
