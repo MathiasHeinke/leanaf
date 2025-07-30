@@ -434,7 +434,7 @@ export const TrainingDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-2 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Floating Workout Timer */}
       <FloatingWorkoutTimer
         isRunning={isRunning}
