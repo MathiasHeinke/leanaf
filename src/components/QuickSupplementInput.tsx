@@ -9,9 +9,10 @@ import { Card, CardContent } from './ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Pill, Plus, Check, X, Clock, Edit, Trash2, Save } from 'lucide-react';
+import { Pill, Plus, Check, X, Clock, Edit, Trash2, Save, Sun, Utensils, Dumbbell, Moon, ChevronDown, ChevronUp } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 interface SupplementOption {
   id: string;
@@ -61,6 +62,85 @@ const getTimingLabel = (timing: string): string => {
   return option ? option.label : timing;
 };
 
+// Time group definitions
+const timeGroups = [
+  {
+    id: 'morning',
+    title: '🌅 Morgens/Nüchtern',
+    timings: ['morning'],
+    icon: Sun,
+    description: 'Auf nüchternen Magen'
+  },
+  {
+    id: 'meals',
+    title: '🍽️ Zu den Mahlzeiten',
+    timings: ['with_meals', 'noon'],
+    icon: Utensils,
+    description: 'Mit oder nach dem Essen'
+  },
+  {
+    id: 'training',
+    title: '🏋️ Training',
+    timings: ['pre_workout', 'post_workout'],
+    icon: Dumbbell,
+    description: 'Rund ums Training'
+  },
+  {
+    id: 'evening',
+    title: '🌙 Abends/Vor dem Schlafen',
+    timings: ['evening', 'before_bed'],
+    icon: Moon,
+    description: 'Abends oder vor dem Schlafen'
+  }
+];
+
+// Helper function to group supplements by time
+const groupSupplementsByTime = (supplements: UserSupplement[]) => {
+  const groups: { [key: string]: UserSupplement[] } = {};
+  
+  timeGroups.forEach(group => {
+    groups[group.id] = [];
+  });
+  
+  supplements.forEach(supplement => {
+    const addedToGroups = new Set<string>();
+    
+    supplement.timing.forEach(timing => {
+      timeGroups.forEach(group => {
+        if (group.timings.includes(timing) && !addedToGroups.has(group.id)) {
+          groups[group.id].push(supplement);
+          addedToGroups.add(group.id);
+        }
+      });
+    });
+  });
+  
+  // Sort supplements within each group alphabetically
+  Object.keys(groups).forEach(groupId => {
+    groups[groupId].sort((a, b) => 
+      (a.supplement_name || '').localeCompare(b.supplement_name || '')
+    );
+  });
+  
+  return groups;
+};
+
+// Helper function to get current time-based default open groups
+const getDefaultOpenGroups = () => {
+  const currentHour = new Date().getHours();
+  const openGroups: string[] = [];
+  
+  if (currentHour >= 6 && currentHour < 12) {
+    openGroups.push('morning');
+  } else if (currentHour >= 12 && currentHour < 18) {
+    openGroups.push('meals');
+  } else if (currentHour >= 18 || currentHour < 6) {
+    openGroups.push('evening');
+  }
+  
+  return openGroups;
+};
+
 export const QuickSupplementInput = () => {
   const { user } = useAuth();
   const [supplements, setSupplements] = useState<SupplementOption[]>([]);
@@ -86,6 +166,7 @@ export const QuickSupplementInput = () => {
   });
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [openGroups, setOpenGroups] = useState<string[]>(getDefaultOpenGroups());
 
   // Load supplements and user supplements
   useEffect(() => {
@@ -426,6 +507,17 @@ export const QuickSupplementInput = () => {
   }, 0);
   const isCompleted = hasSupplements && totalToday > 0 && takenToday > 0;
 
+  // Group supplements by time
+  const groupedSupplements = groupSupplementsByTime(userSupplements);
+
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
   return (
     <CollapsibleQuickInput
       title="Supplemente"
@@ -436,191 +528,239 @@ export const QuickSupplementInput = () => {
       completedText={hasSupplements ? `${takenToday}/${totalToday} eingenommen` : undefined}
     >
       <div className="space-y-4">
-        {/* Unified Supplements List */}
+        {/* Time-Grouped Supplements List */}
         {userSupplements.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h4 className="text-sm font-medium text-foreground">Meine Supplemente</h4>
-            {userSupplements.map(supplement => {
-              const isEditing = editingSupplementId === supplement.id;
+            
+            {timeGroups.map(group => {
+              const groupSupplements = groupedSupplements[group.id];
+              if (groupSupplements.length === 0) return null;
               
-              if (isEditing) {
-                return (
-                  <Card key={supplement.id} className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-sm font-medium">Supplement bearbeiten</h5>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCancelEdit}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Name"
-                        value={editForm.customName}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, customName: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="Dosierung"
-                        value={editForm.dosage}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, dosage: e.target.value }))}
-                        className="flex-1"
-                      />
-                      <Select 
-                        value={editForm.unit} 
-                        onValueChange={(value) => setEditForm(prev => ({ ...prev, unit: value }))}
-                      >
-                        <SelectTrigger className="w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="mg">mg</SelectItem>
-                          <SelectItem value="g">g</SelectItem>
-                          <SelectItem value="mcg">mcg</SelectItem>
-                          <SelectItem value="ml">ml</SelectItem>
-                          <SelectItem value="Stück">Stück</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground">Einnahmezeiten</label>
-                      <div className="flex flex-wrap gap-2">
-                        {timingOptions.map(timing => (
-                          <Button
-                            key={timing.value}
-                            variant={editForm.timing.includes(timing.value) ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => toggleEditTiming(timing.value)}
-                          >
-                            {timing.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Input
-                      placeholder="Ziel (optional)"
-                      value={editForm.goal}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, goal: e.target.value }))}
-                    />
-
-                    <Textarea
-                      placeholder="Notizen (optional)"
-                      value={editForm.notes}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
-                      rows={2}
-                    />
-
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={handleCancelEdit}>
-                        Abbrechen
-                      </Button>
-                      <Button onClick={handleSaveEdit} disabled={editLoading}>
-                        {editLoading ? 'Speichern...' : 'Speichern'}
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              }
-
+              const isOpen = openGroups.includes(group.id);
+              const IconComponent = group.icon;
+              
+              // Calculate group progress
+              const groupTotal = groupSupplements.reduce((sum, supplement) => {
+                return sum + supplement.timing.filter(timing => group.timings.includes(timing)).length;
+              }, 0);
+              
+              const groupTaken = groupSupplements.reduce((sum, supplement) => {
+                return sum + supplement.timing.filter(timing => {
+                  return group.timings.includes(timing) && todayIntake[supplement.id]?.[timing];
+                }).length;
+              }, 0);
+              
               return (
-                <Card key={supplement.id} className="p-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-3">
-                      {/* Supplement Info */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm">{supplement.supplement_name}</p>
-                          {supplement.supplement_category && (
-                            <Badge variant="secondary" className="text-xs">
-                              {supplement.supplement_category}
-                            </Badge>
-                          )}
+                <div key={group.id} className="space-y-2">
+                  <Collapsible open={isOpen} onOpenChange={() => toggleGroup(group.id)}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-between p-3 h-auto">
+                        <div className="flex items-center gap-3">
+                          <IconComponent className="h-4 w-4" />
+                          <div className="text-left">
+                            <div className="font-medium text-sm">{group.title}</div>
+                            <div className="text-xs text-muted-foreground">{group.description}</div>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {supplement.dosage} {supplement.unit}
-                        </p>
-                        {supplement.goal && (
-                          <p className="text-xs text-muted-foreground">Ziel: {supplement.goal}</p>
-                        )}
-                      </div>
-                      
-                      {/* Daily Intake Checkboxes */}
-                      <div className="flex flex-wrap gap-2">
-                        {supplement.timing.map(timing => {
-                          const timingLabel = getTimingLabel(timing);
-                          const isTaken = todayIntake[supplement.id]?.[timing] || false;
-                          
-                          return (
-                            <div key={timing} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`${supplement.id}-${timing}`}
-                                checked={isTaken}
-                                onCheckedChange={(checked) => 
-                                  handleIntakeChange(supplement.id, timing, checked as boolean)
-                                }
-                              />
-                              <label 
-                                htmlFor={`${supplement.id}-${timing}`}
-                                className={`text-xs cursor-pointer ${isTaken ? 'text-green-600' : 'text-muted-foreground'}`}
-                              >
-                                {timingLabel}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    
-                    {/* Management Buttons */}
-                    <div className="flex space-x-1 ml-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditSupplement(supplement)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit className="h-3 w-3" />
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {groupTaken}/{groupTotal}
+                          </Badge>
+                          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </div>
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            disabled={deleteLoading === supplement.id}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Supplement entfernen?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Möchtest du "{supplement.supplement_name}" wirklich aus deiner Liste entfernen?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteSupplement(supplement.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Entfernen
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </Card>
+                    </CollapsibleTrigger>
+                    
+                    <CollapsibleContent className="space-y-2">
+                      {groupSupplements.map(supplement => {
+                        const isEditing = editingSupplementId === supplement.id;
+                        
+                        if (isEditing) {
+                          return (
+                            <Card key={supplement.id} className="p-4 space-y-4 ml-4">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-sm font-medium">Supplement bearbeiten</h5>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleCancelEdit}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Input
+                                  placeholder="Name"
+                                  value={editForm.customName}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, customName: e.target.value }))}
+                                />
+                              </div>
+
+                              <div className="flex space-x-2">
+                                <Input
+                                  placeholder="Dosierung"
+                                  value={editForm.dosage}
+                                  onChange={(e) => setEditForm(prev => ({ ...prev, dosage: e.target.value }))}
+                                  className="flex-1"
+                                />
+                                <Select 
+                                  value={editForm.unit} 
+                                  onValueChange={(value) => setEditForm(prev => ({ ...prev, unit: value }))}
+                                >
+                                  <SelectTrigger className="w-20">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="mg">mg</SelectItem>
+                                    <SelectItem value="g">g</SelectItem>
+                                    <SelectItem value="mcg">mcg</SelectItem>
+                                    <SelectItem value="ml">ml</SelectItem>
+                                    <SelectItem value="Stück">Stück</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-xs font-medium text-muted-foreground">Einnahmezeiten</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {timingOptions.map(timing => (
+                                    <Button
+                                      key={timing.value}
+                                      variant={editForm.timing.includes(timing.value) ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => toggleEditTiming(timing.value)}
+                                    >
+                                      {timing.label}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <Input
+                                placeholder="Ziel (optional)"
+                                value={editForm.goal}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, goal: e.target.value }))}
+                              />
+
+                              <Textarea
+                                placeholder="Notizen (optional)"
+                                value={editForm.notes}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                                rows={2}
+                              />
+
+                              <div className="flex justify-end space-x-2">
+                                <Button variant="outline" onClick={handleCancelEdit}>
+                                  Abbrechen
+                                </Button>
+                                <Button onClick={handleSaveEdit} disabled={editLoading}>
+                                  {editLoading ? 'Speichern...' : 'Speichern'}
+                                </Button>
+                              </div>
+                            </Card>
+                          );
+                        }
+
+                        return (
+                          <Card key={supplement.id} className="p-3 ml-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 space-y-3">
+                                {/* Supplement Info */}
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-medium text-sm">{supplement.supplement_name}</p>
+                                    {supplement.supplement_category && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {supplement.supplement_category}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {supplement.dosage} {supplement.unit}
+                                  </p>
+                                  {supplement.goal && (
+                                    <p className="text-xs text-muted-foreground">Ziel: {supplement.goal}</p>
+                                  )}
+                                </div>
+                                
+                                {/* Daily Intake Checkboxes - Only show relevant timings for this group */}
+                                <div className="flex flex-wrap gap-2">
+                                  {supplement.timing
+                                    .filter(timing => group.timings.includes(timing))
+                                    .map(timing => {
+                                      const timingLabel = getTimingLabel(timing);
+                                      const isTaken = todayIntake[supplement.id]?.[timing] || false;
+                                      
+                                      return (
+                                        <div key={timing} className="flex items-center space-x-2">
+                                          <Checkbox
+                                            id={`${supplement.id}-${timing}`}
+                                            checked={isTaken}
+                                            onCheckedChange={(checked) => 
+                                              handleIntakeChange(supplement.id, timing, checked as boolean)
+                                            }
+                                          />
+                                          <label 
+                                            htmlFor={`${supplement.id}-${timing}`}
+                                            className={`text-xs cursor-pointer ${isTaken ? 'text-green-600' : 'text-muted-foreground'}`}
+                                          >
+                                            {timingLabel}
+                                          </label>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                              
+                              {/* Management Buttons */}
+                              <div className="flex space-x-1 ml-3">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditSupplement(supplement)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                      disabled={deleteLoading === supplement.id}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Supplement entfernen?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Möchtest du "{supplement.supplement_name}" wirklich aus deiner Liste entfernen?
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteSupplement(supplement.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Entfernen
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
               );
             })}
           </div>
