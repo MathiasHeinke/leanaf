@@ -123,98 +123,80 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Timer Display */}
-        <div className="text-center">
-          <div className="text-4xl font-mono font-bold text-primary mb-2">
-            {formattedTime}
-          </div>
-          {isPaused && (
-            <div className="text-lg font-mono text-yellow-600 mb-2">
-              Pause: {pauseDurationFormatted}
+        {!hasActiveTimer ? (
+          <div className="text-center space-y-4">
+            <div className="text-4xl font-mono font-bold text-muted-foreground mb-6">
+              {formattedTime}
             </div>
-          )}
-          <div className="flex items-center justify-center gap-2">
-            {isRunning && (
-              <div className="flex items-center gap-1 text-sm text-green-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                Läuft
-              </div>
-            )}
-            {isPaused && (
-              <div className="flex items-center gap-1 text-sm text-yellow-600">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                Pausiert
-              </div>
-            )}
+            <Button 
+              onClick={handleStart} 
+              className="bg-green-600 hover:bg-green-700 text-white w-full max-w-xs"
+              size="lg"
+            >
+              <Play className="h-5 w-5 mr-2" />
+              Workout starten
+            </Button>
           </div>
-        </div>
-
-        {showControls && (
-          <>
-            {!hasActiveTimer ? (
-              <div className="flex justify-center">
+        ) : (
+          <div className="grid grid-cols-3 gap-4 items-center">
+            {/* Left: Pause/Resume Button */}
+            <div className="flex justify-center">
+              {isRunning ? (
                 <Button 
-                  onClick={handleStart} 
-                  className="bg-green-600 hover:bg-green-700 text-white w-full max-w-xs"
+                  onClick={handlePause}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white w-16 h-16 rounded-full p-0"
                   size="lg"
                 >
-                  <Play className="h-5 w-5 mr-2" />
-                  Workout starten
+                  <Pause className="h-8 w-8" />
                 </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-4 items-center">
-                {/* Left: Pause/Resume Button */}
-                <div className="flex justify-center">
-                  {isRunning ? (
-                    <Button 
-                      variant="outline" 
-                      onClick={handlePause}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500 w-full"
-                      size="lg"
-                    >
-                      <Pause className="h-5 w-5 mr-2" />
-                      Pause
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={handleResume}
-                      className="bg-green-600 hover:bg-green-700 text-white w-full"
-                      size="lg"
-                    >
-                      <Play className="h-5 w-5 mr-2" />
-                      Weiter
-                    </Button>
-                  )}
-                </div>
+              ) : (
+                <Button 
+                  onClick={handleResume}
+                  className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
+                  size="lg"
+                >
+                  <Play className="h-8 w-8" />
+                </Button>
+              )}
+            </div>
 
-                {/* Middle: Status/Info */}
-                <div className="flex justify-center">
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    {isRunning && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    )}
-                    {isPaused && (
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                    )}
+            {/* Center: Timer Display */}
+            <div className="text-center">
+              <div className="text-4xl font-mono font-bold text-muted-foreground mb-2">
+                {formattedTime}
+              </div>
+              {isPaused && (
+                <div className="text-lg font-mono text-yellow-600">
+                  Pause: {pauseDurationFormatted}
+                </div>
+              )}
+              <div className="flex items-center justify-center gap-2 mt-2">
+                {isRunning && (
+                  <div className="flex items-center gap-1 text-sm text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    Läuft
                   </div>
-                </div>
-
-                {/* Right: Stop Button */}
-                <div className="flex justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={handleStop}
-                    className="bg-red-600 hover:bg-red-700 text-white border-red-600 w-full"
-                    size="lg"
-                  >
-                    <Square className="h-5 w-5 mr-2" />
-                    Stop
-                  </Button>
-                </div>
+                )}
+                {isPaused && (
+                  <div className="flex items-center gap-1 text-sm text-yellow-600">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                    Pausiert
+                  </div>
+                )}
               </div>
-            )}
-          </>
+            </div>
+
+            {/* Right: Stop Button */}
+            <div className="flex justify-center">
+              <Button 
+                onClick={handleStop}
+                className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0"
+                size="lg"
+              >
+                <Square className="h-8 w-8" />
+              </Button>
+            </div>
+          </div>
         )}
 
         {currentDuration > 300 && ( // Show after 5 minutes
