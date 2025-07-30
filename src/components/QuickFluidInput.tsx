@@ -11,9 +11,11 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle, Edit, Trash2, Copy, Check } from 'lucide-react';
+import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+
 import { de } from 'date-fns/locale';
 
 interface FluidOption {
@@ -92,6 +94,11 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const [abstinenceStartDate, setAbstinenceStartDate] = useState<Date | undefined>(undefined);
   const [abstinenceReason, setAbstinenceReason] = useState('');
   const [abstinenceNotes, setAbstinenceNotes] = useState('');
+  
+  // Editing state
+  const [editingFluidId, setEditingFluidId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  const [editNotes, setEditNotes] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -272,6 +279,97 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     }
   };
 
+  const handleDeleteFluid = async (fluidId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_fluids')
+        .delete()
+        .eq('id', fluidId);
+
+      if (error) throw error;
+
+      toast.success('Getränk gelöscht');
+      loadTodaysFluids();
+      onFluidUpdate?.();
+    } catch (error) {
+      console.error('Error deleting fluid:', error);
+      toast.error('Fehler beim Löschen des Getränks');
+    }
+  };
+
+  const handleEditFluid = (fluid: UserFluid) => {
+    setEditingFluidId(fluid.id);
+    setEditAmount(fluid.amount_ml.toString());
+    setEditNotes(fluid.notes || '');
+  };
+
+  const handleSaveEdit = async (fluidId: string) => {
+    if (!user || !editAmount) return;
+
+    const amountValue = parseFloat(editAmount);
+    if (isNaN(amountValue)) {
+      toast.error('Ungültiger Mengenwert');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_fluids')
+        .update({
+          amount_ml: amountValue,
+          notes: editNotes || null
+        })
+        .eq('id', fluidId);
+
+      if (error) throw error;
+
+      toast.success('Getränk aktualisiert');
+      setEditingFluidId(null);
+      setEditAmount('');
+      setEditNotes('');
+      loadTodaysFluids();
+      onFluidUpdate?.();
+    } catch (error) {
+      console.error('Error updating fluid:', error);
+      toast.error('Fehler beim Aktualisieren des Getränks');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFluidId(null);
+    setEditAmount('');
+    setEditNotes('');
+  };
+
+  const handleDuplicateFluid = async (fluid: UserFluid) => {
+    if (!user) return;
+
+    try {
+      const duplicateData = {
+        user_id: user.id,
+        fluid_id: fluid.fluid_id,
+        custom_name: fluid.custom_name,
+        amount_ml: fluid.amount_ml,
+        notes: fluid.notes ? `${fluid.notes} (Kopie)` : 'Kopie'
+      };
+
+      const { error } = await supabase
+        .from('user_fluids')
+        .insert([duplicateData]);
+
+      if (error) throw error;
+
+      toast.success('Getränk dupliziert');
+      loadTodaysFluids();
+      onFluidUpdate?.();
+    } catch (error) {
+      console.error('Error duplicating fluid:', error);
+      toast.error('Fehler beim Duplizieren des Getränks');
+    }
+  };
+
   const calculateAbstinenceDays = () => {
     if (!alcoholAbstinence?.abstinence_start_date) return 0;
     
@@ -399,60 +497,149 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-foreground">Heute getrunken</h4>
             <div className="space-y-2">
-              {todaysFluids.map(fluid => (
-                <Card key={fluid.id} className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">{fluid.fluid_name}</p>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <p>{fluid.amount_ml}ml • {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}</p>
-                        {(fluid.fluid_database?.calories_per_100ml || 0) > 0 && (
-                          <p className="text-orange-600">
-                            {Math.round((fluid.fluid_database?.calories_per_100ml || 0) * (fluid.amount_ml / 100))} kcal
-                          </p>
-                        )}
-                        {/* Show macros if available */}
-                        {((fluid.fluid_database?.protein_per_100ml || 0) > 0 || 
-                          (fluid.fluid_database?.carbs_per_100ml || 0) > 0 || 
-                          (fluid.fluid_database?.fats_per_100ml || 0) > 0) && (
-                          <div className="flex gap-2 text-xs">
-                            {(fluid.fluid_database?.protein_per_100ml || 0) > 0 && (
-                              <span className="text-blue-600">
-                                P: {Math.round((fluid.fluid_database?.protein_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
-                              </span>
+              {todaysFluids.map(fluid => {
+                const isEditing = editingFluidId === fluid.id;
+                
+                return (
+                  <Card key={fluid.id} className="p-3">
+                    {isEditing ? (
+                      // Edit Mode
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm">{fluid.fluid_name}</p>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleSaveEdit(fluid.id)}
+                              className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                            >
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelEdit}
+                              className="h-6 w-6 p-0 text-gray-500 hover:text-gray-600"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted-foreground">Menge (ml)</label>
+                            <NumericInput
+                              value={editAmount}
+                              onChange={setEditAmount}
+                              className="h-8 text-sm"
+                              allowDecimals={false}
+                              min={1}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted-foreground">Zeit</label>
+                            <p className="text-xs pt-2 text-muted-foreground">
+                              {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="text-xs text-muted-foreground">Notizen</label>
+                          <Textarea
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            className="h-16 text-sm resize-none"
+                            placeholder="Notizen..."
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      // View Mode
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{fluid.fluid_name}</p>
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p>{fluid.amount_ml}ml • {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}</p>
+                            {(fluid.fluid_database?.calories_per_100ml || 0) > 0 && (
+                              <p className="text-orange-600">
+                                {Math.round((fluid.fluid_database?.calories_per_100ml || 0) * (fluid.amount_ml / 100))} kcal
+                              </p>
                             )}
-                            {(fluid.fluid_database?.carbs_per_100ml || 0) > 0 && (
-                              <span className="text-green-600">
-                                C: {Math.round((fluid.fluid_database?.carbs_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
-                              </span>
+                            {/* Show macros if available */}
+                            {((fluid.fluid_database?.protein_per_100ml || 0) > 0 || 
+                              (fluid.fluid_database?.carbs_per_100ml || 0) > 0 || 
+                              (fluid.fluid_database?.fats_per_100ml || 0) > 0) && (
+                              <div className="flex gap-2 text-xs">
+                                {(fluid.fluid_database?.protein_per_100ml || 0) > 0 && (
+                                  <span className="text-blue-600">
+                                    P: {Math.round((fluid.fluid_database?.protein_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                                  </span>
+                                )}
+                                {(fluid.fluid_database?.carbs_per_100ml || 0) > 0 && (
+                                  <span className="text-green-600">
+                                    C: {Math.round((fluid.fluid_database?.carbs_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                                  </span>
+                                )}
+                                {(fluid.fluid_database?.fats_per_100ml || 0) > 0 && (
+                                  <span className="text-yellow-600">
+                                    F: {Math.round((fluid.fluid_database?.fats_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                                  </span>
+                                )}
+                              </div>
                             )}
-                            {(fluid.fluid_database?.fats_per_100ml || 0) > 0 && (
-                              <span className="text-yellow-600">
-                                F: {Math.round((fluid.fluid_database?.fats_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
-                              </span>
+                            {fluid.notes && (
+                              <p className="text-muted-foreground">{fluid.notes}</p>
                             )}
                           </div>
-                        )}
-                        {fluid.notes && (
-                          <p className="text-muted-foreground">{fluid.notes}</p>
-                        )}
+                        </div>
+                        
+                        <div className="flex items-center gap-1 ml-2">
+                          {fluid.fluid_category && (
+                            <Badge variant="outline" className="text-xs">
+                              {categoryLabels[fluid.fluid_category as keyof typeof categoryLabels] || fluid.fluid_category}
+                            </Badge>
+                          )}
+                          {fluid.has_alcohol && (
+                            <Badge variant="destructive" className="text-xs">
+                              Alkohol
+                            </Badge>
+                          )}
+                          
+                          <div className="flex gap-1 ml-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditFluid(fluid)}
+                              className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDuplicateFluid(fluid)}
+                              className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteFluid(fluid.id)}
+                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {fluid.fluid_category && (
-                        <Badge variant="outline" className="text-xs">
-                          {categoryLabels[fluid.fluid_category as keyof typeof categoryLabels] || fluid.fluid_category}
-                        </Badge>
-                      )}
-                      {fluid.has_alcohol && (
-                        <Badge variant="destructive" className="text-xs">
-                          Alkohol
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
