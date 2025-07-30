@@ -477,11 +477,18 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
             </div>
           )}
 
+          {/* Debug Info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+              Debug: hasMedicalConditions={hasMedicalConditions.toString()}, takesMedications={takesMedications.toString()}, screeningCompleted={screeningCompleted.toString()}, selectedConditions={selectedConditions.length}, selectedMedications={selectedMedications.length}
+            </div>
+          )}
+
           {/* Assessment Button */}
           {(hasMedicalConditions || takesMedications) && !screeningCompleted && (
             <Button
               onClick={saveSelectionAndAssess}
-              disabled={loading}
+              disabled={loading || (hasMedicalConditions && selectedConditions.length === 0 && customConditions.length === 0) || (takesMedications && selectedMedications.length === 0 && customMedications.length === 0)}
               className="w-full"
             >
               {loading ? 'Bewertung läuft...' : 'Risikobewertung durchführen'}
