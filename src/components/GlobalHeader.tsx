@@ -86,6 +86,23 @@ export const GlobalHeader = ({
 
   // Route to title mapping
   const getPageTitle = (pathname: string) => {
+    // Handle coach routes dynamically
+    if (pathname.startsWith('/coach/')) {
+      const coachId = pathname.split('/coach/')[1];
+      switch (coachId) {
+        case 'sascha': return 'Coaching/Sascha';
+        case 'markus': return 'Coaching/Markus';
+        case 'lucy': return 'Coaching/Lucy';
+        case 'kai': return 'Coaching/Kai';
+        case 'dr-vita': 
+        case 'dr_vita': 
+        case 'vita': return 'Coaching/Dr. Vita';
+        case 'integral':
+        case 'sophia': return 'Coaching/Sophia';
+        default: return 'Coaching';
+      }
+    }
+    
     switch (pathname) {
       case '/': return 'Dashboard';
       case '/profile': return 'Profil';
