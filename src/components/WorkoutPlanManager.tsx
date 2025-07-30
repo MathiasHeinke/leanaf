@@ -6,6 +6,7 @@ import { Plus, Play, Edit, Trash2, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { WorkoutPlanCreationModal } from './WorkoutPlanCreationModal';
 
 interface WorkoutPlan {
   id: string;
@@ -19,6 +20,7 @@ interface WorkoutPlan {
 interface WorkoutPlanManagerProps {
   onStartPlan: (plan: WorkoutPlan) => void;
   className?: string;
+  pastSessions?: any[];
 }
 
 const categoryColors = {
@@ -29,10 +31,11 @@ const categoryColors = {
   'Cardio': 'bg-orange-500/10 text-orange-700 border-orange-200'
 };
 
-export const WorkoutPlanManager: React.FC<WorkoutPlanManagerProps> = ({ onStartPlan, className }) => {
+export const WorkoutPlanManager: React.FC<WorkoutPlanManagerProps> = ({ onStartPlan, className, pastSessions = [] }) => {
   const { user } = useAuth();
   const [workoutPlans, setWorkoutPlans] = useState<WorkoutPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -123,7 +126,7 @@ export const WorkoutPlanManager: React.FC<WorkoutPlanManagerProps> = ({ onStartP
     <div className={`space-y-3 ${className}`}>
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Trainingspläne</h3>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => setShowCreateModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Neuen Plan erstellen
         </Button>
@@ -133,7 +136,7 @@ export const WorkoutPlanManager: React.FC<WorkoutPlanManagerProps> = ({ onStartP
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground">Noch keine Trainingspläne vorhanden</p>
-            <Button variant="outline" className="mt-3">
+            <Button variant="outline" className="mt-3" onClick={() => setShowCreateModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Ersten Plan erstellen
             </Button>
@@ -198,6 +201,16 @@ export const WorkoutPlanManager: React.FC<WorkoutPlanManagerProps> = ({ onStartP
           </Card>
         ))
       )}
+
+      <WorkoutPlanCreationModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onPlanCreated={() => {
+          loadWorkoutPlans();
+          setShowCreateModal(false);
+        }}
+        pastSessions={pastSessions}
+      />
     </div>
   );
 };

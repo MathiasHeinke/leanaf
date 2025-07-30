@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
 import { TrainingHistory } from '@/components/TrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
@@ -37,7 +38,9 @@ import {
   Timer,
   Play,
   Square,
-  Pause
+  Pause,
+  Edit,
+  Copy
 } from 'lucide-react';
 
 
@@ -307,6 +310,7 @@ export const TrainingDashboard: React.FC = () => {
   const [editSessionData, setEditSessionData] = useState<any>(null);
   const [showStopDialog, setShowStopDialog] = useState(false);
   const [activeWorkoutPlan, setActiveWorkoutPlan] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     if (user) {
@@ -590,105 +594,260 @@ export const TrainingDashboard: React.FC = () => {
       </div>
       )}
 
-      {/* Active Workout Plan or Training Dashboard */}
-      {activeWorkoutPlan ? (
+      {/* Show Active Workout Plan if one is running */}
+      {activeWorkoutPlan && (
         <ActiveWorkoutPlan
           workoutPlan={activeWorkoutPlan}
           onComplete={handleCompleteWorkoutPlan}
           onCancel={handleCancelWorkoutPlan}
-          isTimerRunning={isRunning}
+          isTimerRunning={hasActiveTimer}
           timerDuration={currentDuration}
         />
-      ) : (
-        <>
-          {/* Workout Plans Section */}
-          <WorkoutPlanManager 
-            onStartPlan={handleStartWorkoutPlan}
-            className="mb-6"
-          />
-
-          {/* Training Status and Stats */}
-          <div className="grid gap-6 grid-cols-1">
-            {/* Today's Training Status */}
-            <TodaysTrainingStatus 
-              todaysSessions={getTodaysSessions()}
-              onStartTraining={() => setShowQuickAdd(true)}
-              onEditSession={handleEditSession}
-              onDeleteSession={handleDeleteSession}
-              onDuplicateSession={handleDuplicateSession}
-            />
-
-            {/* Training Stats */}
-            <TrainingStats stats={weeklyStats} />
-          </div>
-        </>
       )}
 
-      {/* Secondary Actions */}
-      <div className="grid gap-6 grid-cols-1">        
-        {/* Training History Card */}
-        <Card className="border-accent/20 hover:border-accent/40 transition-all cursor-pointer group hover:shadow-lg"
-              onClick={() => setShowHistory(true)}>
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
-                <BarChart3 className="h-8 w-8 text-accent" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1">Trainingshistorie</h3>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Analysiere deine Fortschritte und Entwicklung
-                </p>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">
-                    <strong className="text-foreground">{sessions.length}</strong> Sessions
-                  </span>
-                  <span className="text-muted-foreground">
-                    <strong className="text-foreground">{weeklyStats.totalSets}</strong> Sätze diese Woche
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tab System */}
+      {!activeWorkoutPlan && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="training-plans">Trainingspläne</TabsTrigger>
+          </TabsList>
 
-        {/* Custom Exercise Manager */}
-        <CustomExerciseManager onExerciseAdded={loadSessions} />
-      </div>
-
-      {/* Recent Activity Preview */}
-      {sessions.length > 0 && !showHistory && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                Letzte Aktivität
-              </CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setShowHistory(true)}>
-                Alle anzeigen
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {sessions.slice(0, 3).map((session) => (
-                <div key={session.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{session.session_name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(session.date).toLocaleDateString('de-DE')} • 
-                      {session.exercise_sets.length} Sätze
-                    </p>
+          <TabsContent value="dashboard" className="space-y-6">
+            {/* Quick Actions Row */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="hover:shadow-md transition-shadow border-dashed border-2 border-primary/20 hover:border-primary/40">
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="p-3 bg-primary/10 rounded-full w-fit mx-auto">
+                    <Plus className="h-8 w-8 text-primary" />
                   </div>
-                  <Badge variant="outline">
-                    {session.exercise_sets[0]?.exercises.category}
-                  </Badge>
-                </div>
-              ))}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Übung hinzufügen</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Schnell eine einzelne Übung tracken
+                    </p>
+                    <Button 
+                      onClick={() => setShowQuickAdd(true)}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Übung hinzufügen
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-md transition-shadow border-dashed border-2 border-secondary/20 hover:border-secondary/40">
+                <CardContent className="p-6 text-center space-y-4">
+                  <div className="p-3 bg-secondary/10 rounded-full w-fit mx-auto">
+                    <Dumbbell className="h-8 w-8 text-secondary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Training Session</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Komplette Session mit mehreren Übungen
+                    </p>
+                    <Button 
+                      onClick={() => setShowQuickAdd(true)}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      <Dumbbell className="h-4 w-4 mr-2" />
+                      Session erstellen
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Main Content Grid */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Left Column */}
+              <div className="space-y-6">
+                <TodaysTrainingStatus
+                  todaysSessions={getTodaysSessions()}
+                  onStartTraining={() => setShowQuickAdd(true)}
+                  onEditSession={handleEditSession}
+                  onDeleteSession={handleDeleteSession}
+                  onDuplicateSession={handleDuplicateSession}
+                />
+                
+                <TrainingStats stats={weeklyStats} />
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                <CustomExerciseManager onExerciseAdded={loadSessions} />
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageCircle className="h-5 w-5 text-primary" />
+                      Coach & Analyse
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button 
+                      onClick={() => navigate('/coach')}
+                      variant="outline" 
+                      className="w-full"
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Mit Coach chatten
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Workout Tips */}
+            {hasActiveTimer && currentDuration > 300000 && ( // Show after 5 minutes
+              <Card className="bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/20 rounded-full">
+                      <Target className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium">Tipp für dein Workout</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Du trainierst bereits {formatDuration(currentDuration)}! Vergiss nicht, ausreichend Wasser zu trinken und auf deine Form zu achten.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Recent Workouts */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Letzte Workouts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sessions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Dumbbell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-medium mb-2">Noch keine Trainings</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Starte mit deinem ersten Training und tracke deinen Fortschritt!
+                    </p>
+                    <Button onClick={() => setShowQuickAdd(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Erstes Training starten
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sessions.slice(0, 3).map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-full">
+                            <Dumbbell className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{session.session_name}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(session.date).toLocaleDateString('de-DE')} • {session.exercise_sets?.length || 0} Übungen
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSession(session.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDuplicateSession(session.id)}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {sessions.length > 3 && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setShowHistory(true)}
+                      >
+                        Alle Trainings anzeigen ({sessions.length})
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="training-plans" className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Left Column - Workout Plans */}
+              <div className="space-y-6">
+                <WorkoutPlanManager 
+                  onStartPlan={handleStartWorkoutPlan}
+                  pastSessions={sessions}
+                />
+              </div>
+
+              {/* Right Column - Training History */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      Trainingshistorie
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={() => setShowHistory(true)}
+                      variant="outline" 
+                      className="w-full"
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Vollständige Historie anzeigen
+                    </Button>
+                    
+                    {sessions.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h4 className="font-medium">Letzte Trainings:</h4>
+                        {sessions.slice(0, 5).map((session) => (
+                          <div
+                            key={session.id}
+                            className="flex items-center justify-between p-2 rounded border"
+                          >
+                            <div>
+                              <div className="font-medium text-sm">{session.session_name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {new Date(session.date).toLocaleDateString('de-DE')}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {session.exercise_sets?.length || 0} Übungen
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Modals/Overlays */}
