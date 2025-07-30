@@ -412,6 +412,39 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_history: {
+        Row: {
+          coach_personality: string
+          content: string
+          created_at: string
+          id: string
+          images: string[] | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_personality?: string
+          content: string
+          created_at?: string
+          id?: string
+          images?: string[] | null
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_personality?: string
+          content?: string
+          created_at?: string
+          id?: string
+          images?: string[] | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coach_conversations: {
         Row: {
           coach_personality: string | null

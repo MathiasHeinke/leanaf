@@ -148,7 +148,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Load chat history - using chat_history table instead
+  // Load chat history from existing conversations table
   useEffect(() => {
     if (user?.id) {
       loadChatHistory();
@@ -160,9 +160,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     if (!user?.id) return;
 
     try {
-      // Use existing chat_history table
+      // Use existing coach_conversations table
       const { data, error } = await supabase
-        .from('chat_history')
+        .from('coach_conversations')
         .select('*')
         .eq('user_id', user.id)
         .eq('coach_personality', coach?.personality || 'motivierend')
@@ -175,11 +175,11 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       if (data && data.length > 0) {
         const formattedMessages: ChatMessage[] = data.map(msg => ({
           id: msg.id,
-          role: msg.role,
-          content: msg.content,
+          role: msg.message_role as 'user' | 'assistant',
+          content: msg.message_content,
           created_at: msg.created_at,
           coach_personality: msg.coach_personality,
-          images: msg.images || [],
+          images: [], // coach_conversations doesn't store images, use empty array
           mode: mode
         }));
         setMessages(formattedMessages);
@@ -324,17 +324,17 @@ Wie kann ich dir helfen?`;
 
   const saveChatMessages = async (messagesToSave: ChatMessage[]) => {
     try {
-      // Save to chat_history table
+      // Save to coach_conversations table
       const { error } = await supabase
-        .from('chat_history')
+        .from('coach_conversations')
         .insert(
           messagesToSave.map(msg => ({
             user_id: user?.id,
-            role: msg.role,
-            content: msg.content,
+            message_role: msg.role,
+            message_content: msg.content,
             coach_personality: msg.coach_personality,
-            images: msg.images || [],
-            created_at: msg.created_at
+            created_at: msg.created_at,
+            conversation_date: new Date().toISOString().split('T')[0]
           }))
         );
 
@@ -369,7 +369,7 @@ Wie kann ich dir helfen?`;
   const clearChat = async () => {
     try {
       await supabase
-        .from('chat_history')
+        .from('coach_conversations')
         .delete()
         .eq('user_id', user?.id)
         .eq('coach_personality', coach?.personality || 'motivierend');
