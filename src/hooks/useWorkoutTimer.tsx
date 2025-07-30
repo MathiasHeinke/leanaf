@@ -15,13 +15,14 @@ interface UseWorkoutTimerReturn {
   formattedTime: string;
   pauseDurationFormatted: string;
   currentPauseDuration: number;
-  startTimer: (sessionId?: string) => void;
-  stopTimer: () => { totalDurationMs: number; actualStartTime: Date | null };
+  startTimer: (sessionId?: string) => string; // Returns session ID
+  stopTimer: () => { totalDurationMs: number; actualStartTime: Date | null; sessionId: string | null };
   pauseTimer: () => void;
   resumeTimer: () => void;
   resetTimer: () => void;
   hasActiveTimer: boolean;
   isPaused: boolean;
+  currentSessionId: string | null;
 }
 
 const STORAGE_KEY = 'workout_timer_state';
@@ -112,16 +113,20 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     }
   }, [timerState.isRunning, timerState.pauseStartTime, getCurrentPauseDuration]);
 
-  const startTimer = useCallback((sessionId?: string) => {
+  const startTimer = useCallback((sessionId?: string): string => {
     const now = new Date();
+    const generatedSessionId = sessionId || crypto.randomUUID();
+    
     setTimerState({
       isRunning: true,
       startTime: now,
       pausedDuration: 0,
       currentDuration: 0,
-      sessionId: sessionId || null,
+      sessionId: generatedSessionId,
       pauseStartTime: null
     });
+    
+    return generatedSessionId;
   }, []);
 
   const stopTimer = useCallback(() => {
@@ -129,7 +134,8 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
       totalDurationMs: timerState.startTime 
         ? (new Date().getTime() - timerState.startTime.getTime() - timerState.pausedDuration)
         : 0,
-      actualStartTime: timerState.startTime
+      actualStartTime: timerState.startTime,
+      sessionId: timerState.sessionId
     };
 
     setTimerState({
@@ -216,6 +222,7 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     resumeTimer,
     resetTimer,
     hasActiveTimer: timerState.startTime !== null,
-    isPaused: !timerState.isRunning && timerState.startTime !== null
+    isPaused: !timerState.isRunning && timerState.startTime !== null,
+    currentSessionId: timerState.sessionId
   };
 };

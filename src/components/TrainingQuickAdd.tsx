@@ -42,7 +42,7 @@ type Step = 'exercise' | 'session' | 'sets' | 'review';
 
 export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onSessionSaved }) => {
   const { user } = useAuth();
-  const { stopTimer, hasActiveTimer } = useWorkoutTimer();
+  const { stopTimer, hasActiveTimer, currentSessionId } = useWorkoutTimer();
   const [currentStep, setCurrentStep] = useState<Step>('exercise');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
@@ -185,17 +185,39 @@ export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onS
     try {
       setIsSaving(true);
 
-      // Get timer data if active
-      let startTime = new Date();
-      let endTime = new Date();
+      // Check if timer is running and create a timer session if needed
+      let sessionId: string;
       
-      if (hasActiveTimer) {
-        const timerResult = stopTimer();
-        if (timerResult.actualStartTime) {
-          startTime = timerResult.actualStartTime;
-          endTime = new Date(startTime.getTime() + timerResult.totalDurationMs);
-        }
+      if (hasActiveTimer && currentSessionId) {
+        // Timer is running - add exercise sets directly to temporary session
+        // They will be collected when timer stops
+        const setsToInsert = sets.map((set, index) => ({
+          session_id: currentSessionId, // Use temporary session ID
+          exercise_id: selectedExercise,
+          user_id: user.id,
+          set_number: index + 1,
+          weight_kg: set.weight_kg,
+          reps: set.reps,
+          rpe: set.rpe,
+          notes: set.notes
+        }));
+
+        // Insert sets with the current timer session ID
+        const { error: setsError } = await supabase
+          .from('exercise_sets')
+          .insert(setsToInsert);
+
+        if (setsError) throw setsError;
+
+        toast.success('Übung zu laufendem Workout hinzugefügt!');
+        onSessionSaved?.();
+        onClose();
+        return;
       }
+
+      // No timer running - create standalone session
+      const startTime = new Date();
+      const endTime = new Date();
 
       // Create exercise session
       const { data: sessionData, error: sessionError } = await supabase

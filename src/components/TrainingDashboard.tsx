@@ -77,6 +77,7 @@ export const TrainingDashboard: React.FC = () => {
     pauseDurationFormatted,
     isPaused,
     currentDuration,
+    currentSessionId,
     startTimer, 
     stopTimer, 
     pauseTimer, 
@@ -125,21 +126,55 @@ export const TrainingDashboard: React.FC = () => {
     setShowStopDialog(false);
     
     // Save workout session to database
-    if (user && result.actualStartTime) {
+    if (user && result.actualStartTime && result.sessionId) {
       try {
-        const durationMinutes = Math.floor(result.totalDurationMs / 60000);
         const endTime = new Date();
+        const durationMinutes = Math.round(result.totalDurationMs / 60000);
         
-        await supabase.from('exercise_sessions').insert({
-          user_id: user.id,
-          session_name: `Workout ${new Date().toLocaleDateString('de-DE')}`,
-          date: result.actualStartTime.toISOString().split('T')[0],
-          start_time: result.actualStartTime.toISOString(),
-          end_time: endTime.toISOString(),
-          duration_minutes: durationMinutes,
-          notes: `Timer-basiertes Workout`,
-          workout_type: 'strength'
-        });
+        // Collect all exercises that were added during this timer session
+        const { data: sessionExercises } = await supabase
+          .from('exercise_sets')
+          .select(`
+            *,
+            exercises (
+              name,
+              category
+            ),
+            exercise_sessions!inner (
+              session_name,
+              start_time
+            )
+          `)
+          .eq('user_id', user.id)
+          .gte('created_at', result.actualStartTime.toISOString())
+          .lte('created_at', endTime.toISOString());
+
+        // Create the main session record
+        const { data: sessionData, error: sessionError } = await supabase
+          .from('exercise_sessions')
+          .insert({
+            user_id: user.id,
+            session_name: `Workout ${new Date().toLocaleDateString('de-DE')}`,
+            date: result.actualStartTime.toISOString().split('T')[0],
+            start_time: result.actualStartTime.toISOString(),
+            end_time: endTime.toISOString(),
+            duration_minutes: durationMinutes,
+            notes: `Timer-basierte Session (${formattedTime})${sessionExercises?.length ? ` - ${sessionExercises.length} Übungen` : ''}`,
+            workout_type: 'strength'
+          })
+          .select()
+          .single();
+
+        if (sessionError) throw sessionError;
+
+        // Update all exercises from this timer session to be linked to the main session
+        if (sessionExercises && sessionExercises.length > 0 && sessionData) {
+          const exerciseSetIds = sessionExercises.map(ex => ex.id);
+          await supabase
+            .from('exercise_sets')
+            .update({ session_id: sessionData.id })
+            .in('id', exerciseSetIds);
+        }
 
         loadSessions(); // Refresh the sessions list
       } catch (error) {
