@@ -36,6 +36,7 @@ import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
 import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
+import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -490,6 +491,21 @@ Wie kann ich dir helfen?`;
                         onCancel={() => setExercisePreview(null)}
                       />
                     </div>
+                  )}
+
+                  {/* Workout Plan Saver */}
+                  {message.role === 'assistant' && (
+                    message.content.includes('Sätze') && 
+                    message.content.includes('Wiederholungen') &&
+                    message.content.includes('RPE') &&
+                    (message.content.includes('**1.') || message.content.includes('1.')) &&
+                    (mode === 'training' || mode === 'specialized')
+                  ) && (
+                    <CoachWorkoutPlanSaver
+                      planText={message.content}
+                      coachName={coach?.name || 'Coach'}
+                      onSaved={() => toast.success('Trainingsplan wurde erfolgreich gespeichert!')}
+                    />
                   )}
 
                   {/* Action Buttons */}
