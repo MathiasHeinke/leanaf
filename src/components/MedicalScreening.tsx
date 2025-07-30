@@ -174,11 +174,28 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
     );
   };
 
-  const performRiskAssessment = async () => {
+  const saveSelectionAndAssess = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
+      // Zuerst die Auswahl speichern
+      const { error: saveError } = await supabase
+        .from('user_medical_profile')
+        .upsert({
+          user_id: user.id,
+          has_medical_conditions: hasMedicalConditions,
+          takes_medications: takesMedications,
+          medical_conditions: selectedConditions,
+          medications: selectedMedications,
+          custom_conditions: customConditions,
+          custom_medications: customMedications,
+          updated_at: new Date().toISOString()
+        });
+
+      if (saveError) throw saveError;
+
+      // Dann die Risikobewertung durchführen
       const { data, error } = await supabase.rpc('perform_medical_risk_assessment', {
         p_user_id: user.id,
         p_conditions: selectedConditions,
@@ -410,7 +427,7 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
           {/* Assessment Button */}
           {(hasMedicalConditions || takesMedications) && !screeningCompleted && (
             <Button
-              onClick={performRiskAssessment}
+              onClick={saveSelectionAndAssess}
               disabled={loading}
               className="w-full"
             >
@@ -471,7 +488,7 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
               onClick={() => {
                 setScreeningCompleted(true);
                 onScreeningComplete?.(true);
-                performRiskAssessment(); // This will create a "low risk" profile
+                saveSelectionAndAssess(); // This will create a "low risk" profile
               }}
               className="w-full"
             >
