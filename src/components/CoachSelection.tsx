@@ -131,33 +131,6 @@ const coachProfiles = [
     isPremium: true
   },
   {
-    id: 'sophia',
-    name: 'Dr. Sophia Integral',
-    age: 42,
-    role: 'Integral Theory & Entwicklungscoach',
-    avatar: '🌟',
-    imageUrl: '/lovable-uploads/fa896878-ee7e-4b4b-9e03-e10d55543ca2.png',
-    personality: 'Tiefgreifend & Entwicklungsorientiert',
-    description: 'Spezialistin für ganzheitliche Persönlichkeitsentwicklung und Integral Theory. Begleitet dich auf allen Ebenen der persönlichen Evolution.',
-    strengths: ['Persönlichkeitsentwicklung', 'Integral Theory', 'Coaching', 'Bewusstseinsentwicklung'],
-    quote: 'Wahre Transformation geschieht, wenn wir Körper, Geist und Seele in Einklang bringen.',
-    color: 'indigo',
-    accentColor: 'from-indigo-500 to-indigo-600',
-    isPremium: true,
-    coachInfo: {
-      id: 'sophia',
-      name: 'Dr. Sophia Integral',
-      role: 'Integral Theory & Entwicklungscoach',
-      scientificFoundation: 'Entwicklungspsychologie (Ph.D.), Integral Theory, Transpersonale Psychologie mit Fokus auf Bewusstseinsentwicklung und Lebensintegration.',
-      keyMethods: ['Integral Life Practice', 'Spiral Dynamics', 'Entwicklungspsychologie', 'Holarchische Coaching-Methoden'],
-      specializations: ['Persönlichkeitsentwicklung', 'Bewusstseinsarbeit', 'Life Design', 'Transformationale Prozesse'],
-      evidence: 'Basiert auf Ken Wilbers Integral Theory, entwicklungspsychologischen Modellen und transpersonaler Forschung zu Bewusstseinsstufen.',
-      interventions: ['Integral Assessment', 'Entwicklungsorientiertes Coaching', 'Meditation & Achtsamkeit', 'Lebensvision-Arbeit'],
-      philosophy: 'Ganzheitliche Entwicklung auf allen Ebenen - individuell, kollektiv, innerlich und äußerlich für ein authentisches und erfülltes Leben.',
-      color: 'indigo'
-    }
-  },
-  {
     id: 'david',
     name: 'David',
     age: 39,

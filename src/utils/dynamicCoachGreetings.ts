@@ -481,7 +481,22 @@ const getSuccessReference = (coachId: string, success: string): string => {
       "Deine bewusste Selbstfürsorge zahlt sich aus! 💚",
       "Du hörst so gut auf deinen Körper! 🌿"
     ],
+    dr_vita: [
+      "Ich bewundere, wie achtsam du mit dir umgehst! 🌸",
+      "Deine bewusste Selbstfürsorge zahlt sich aus! 💚",
+      "Du hörst so gut auf deinen Körper! 🌿"
+    ],
+    vita: [
+      "Ich bewundere, wie achtsam du mit dir umgehst! 🌸",
+      "Deine bewusste Selbstfürsorge zahlt sich aus! 💚",
+      "Du hörst so gut auf deinen Körper! 🌿"
+    ],
     integral: [
+      "Deine ganzheitliche Entwicklung ist wunderschön zu beobachten! ✨",
+      "Ich sehe, wie du Körper, Geist und Seele integrierst! 🌟",
+      "Deine Transformation geschieht auf allen Ebenen! 💫"
+    ],
+    sophia: [
       "Deine ganzheitliche Entwicklung ist wunderschön zu beobachten! ✨",
       "Ich sehe, wie du Körper, Geist und Seele integrierst! 🌟",
       "Deine Transformation geschieht auf allen Ebenen! 💫"
