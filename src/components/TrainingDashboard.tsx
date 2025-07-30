@@ -525,7 +525,7 @@ export const TrainingDashboard: React.FC = () => {
 
       {/* Tab System */}
       {!activeWorkoutPlan && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="training-plans">Trainingspläne</TabsTrigger>
