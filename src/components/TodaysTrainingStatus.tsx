@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CheckCircle, Plus, Clock, Target, Flame, Edit, Trash2, Copy, MoreHorizontal } from 'lucide-react';
+import { ProgressiveOverloadWidget } from './ProgressiveOverloadWidget';
 
 interface ExerciseSession {
   id: string;
@@ -211,6 +212,11 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
           <Plus className="h-4 w-4 mr-2" />
           Weiteres Training hinzufügen
         </Button>
+
+        {/* Progressive Overload Widget */}
+        <div className="mt-4">
+          <ProgressiveOverloadWidget />
+        </div>
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deleteSessionId} onOpenChange={() => setDeleteSessionId(null)}>

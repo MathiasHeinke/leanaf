@@ -20,6 +20,9 @@ import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
 import { DualCoachAccess } from '@/components/DualCoachAccess';
+import { QuickBodyDataWidget } from '@/components/QuickBodyDataWidget';
+import { GoalProgressWidget } from '@/components/GoalProgressWidget';
+import { RPERecoveryWidget } from '@/components/RPERecoveryWidget';
 import { TrainingStats } from '@/components/TrainingStats';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
@@ -616,28 +619,36 @@ export const TrainingDashboard: React.FC = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Main Content Grid */}
-            <div className="grid gap-6 grid-cols-1">
-              {/* Left Column */}
-              <div className="space-y-6">
-                <TodaysTrainingStatus
-                  todaysSessions={getTodaysSessions()}
-                  onStartTraining={() => setShowQuickAdd(true)}
-                  onEditSession={handleEditSession}
-                  onDeleteSession={handleDeleteSession}
-                  onDuplicateSession={handleDuplicateSession}
-                />
-                
+            {/* Todays Training Status with Progressive Overload */}
+            <TodaysTrainingStatus
+              todaysSessions={getTodaysSessions()}
+              onStartTraining={() => setShowQuickAdd(true)}
+              onEditSession={handleEditSession}
+              onDeleteSession={handleDeleteSession}
+              onDuplicateSession={handleDuplicateSession}
+            />
+
+            {/* Quick Body Data & Goal Progress */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <QuickBodyDataWidget />
+              <GoalProgressWidget />
+            </div>
+
+            {/* Training Stats with RPE Recovery */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="md:col-span-2">
                 <TrainingStats stats={weeklyStats} />
               </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                <CustomExerciseManager onExerciseAdded={loadSessions} />
-                
-                <DualCoachAccess />
+              <div>
+                <RPERecoveryWidget />
               </div>
             </div>
+
+            {/* Custom Exercise Manager */}
+            <CustomExerciseManager onExerciseAdded={loadSessions} />
+
+            {/* Dual Coach Access */}
+            <DualCoachAccess />
 
             {/* Workout Tips */}
             {hasActiveTimer && currentDuration > 300000 && ( // Show after 5 minutes
