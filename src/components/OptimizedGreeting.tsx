@@ -1,59 +1,60 @@
 
 import { RandomQuote } from "@/components/RandomQuote";
 import { useAuth } from "@/hooks/useAuth";
+import { generateDynamicCoachGreeting, createGreetingContext } from "@/utils/dynamicCoachGreetings";
+import { useGlobalCoachMemory } from "@/hooks/useGlobalCoachMemory";
+import { useParams } from "react-router-dom";
 
 interface OptimizedGreetingProps {
   userProfile?: any;
+  coachId?: string;
 }
 
-export const OptimizedGreeting = ({ userProfile }: OptimizedGreetingProps) => {
+export const OptimizedGreeting = ({ userProfile, coachId }: OptimizedGreetingProps) => {
   const { user } = useAuth();
+  const { memory } = useGlobalCoachMemory();
+  const params = useParams();
 
-  const getUserAddress = () => {
-    // If we have a display name, use only the first name
+  // Determine current coach from route or prop
+  const currentCoachId = coachId || (params['*']?.split('/')[0]) || 'lucy';
+  
+  const getUserName = () => {
     if (userProfile?.display_name) {
       return userProfile.display_name.split(' ')[0];
     }
-    
-    // If we have email, use first name from email
     if (user?.email) {
       const emailName = user.email.split('@')[0];
-      // If it looks like a name (contains letters), use it
       if (/^[a-zA-Z]/.test(emailName)) {
-        return emailName.split('.')[0]; // Take first part if email is like "max.mustermann@..."
+        return emailName.split('.')[0];
       }
     }
-    
-    // Fallback based on coaching style
-    const coachStyle = userProfile?.coach_personality || 'motivierend';
-    switch (coachStyle) {
-      case 'motivierend':
-        return 'Champion';
-      case 'freundlich':
-        return 'Freund';
-      case 'professionell':
-        return '';
-      case 'entspannt':
-        return 'Kumpel';
-      default:
-        return 'Champion';
-    }
+    return 'Du';
   };
 
-  // Only show greeting if we have gender-specific content or it's a new user
-  const shouldShowGreeting = userProfile?.gender === 'male' || userProfile?.gender === 'female';
+  // Generate personalized coach greeting
+  const generateCoachGreeting = () => {
+    const firstName = getUserName();
+    const context = createGreetingContext(firstName, currentCoachId, memory, false);
+    return generateDynamicCoachGreeting(context);
+  };
+
+  // Show coach-specific greeting when we have a coach context
+  const shouldShowGreeting = currentCoachId && ['lucy', 'sascha', 'kai', 'markus', 'dr-vita', 'integral'].includes(currentCoachId);
 
   if (!shouldShowGreeting) {
-    return null; // No intrusive content for users without gender data
+    return null;
   }
 
   return (
-    <div className="mb-4 p-3 bg-gradient-to-r from-primary/5 to-primary-glow/5 rounded-xl border border-primary/10">
-      <div className="text-center space-y-2">
-        <div className="max-w-sm mx-auto">
+    <div className="mb-4 p-4 bg-gradient-to-r from-primary/10 to-primary-glow/5 rounded-xl border border-primary/20">
+      <div className="text-center space-y-3">
+        <div className="text-lg font-medium text-primary">
+          {generateCoachGreeting()}
+        </div>
+        <div className="max-w-sm mx-auto opacity-75">
           <RandomQuote 
             userGender={userProfile?.gender}
-            fallbackText="" // No fallback text to avoid redundancy
+            fallbackText=""
           />
         </div>
       </div>

@@ -273,21 +273,21 @@ const DR_VITA_GREETINGS = {
 
 const DR_SOPHIA_GREETINGS = {
   new: [
-    "Namaste {firstName}! 🙏 Ich bin Dr. Sophia Integral - deine ganzheitliche Begleiterin auf dem Weg zu optimaler Gesundheit. Bereit für eine transformative Reise?",
-    "Hallo {firstName}! 🌟 Dr. Sophia hier - ich betrachte Gesundheit integral: Körper, Geist und Seele als Einheit. Wie kann ich dich unterstützen?",
-    "Grüße {firstName}! ✨ Willkommen in unserem Raum der ganzheitlichen Entwicklung. Ich bin Dr. Sophia - bereit für tiefere Ebenen?"
+    "Namaste {firstName}! 🙏 Ich bin Dr. Sophia Integral - bereit für eine transformative Reise durch die 4 Quadranten deiner Gesundheit?",
+    "Hallo {firstName}! 🧠 Dr. Sophia hier - ich betrachte dich integral: Individuum & System, Innerlich & Äußerlich. Lass uns alle Perspektiven erkunden.",
+    "Grüße {firstName}! ✨ Willkommen zur ganzheitlichen Entwicklung. Bereit, deine Entwicklungslinien zu entfalten?"
   ],
   morning: [
-    "Guten Morgen {firstName}! 🌅 Ein neuer Tag ist eine neue Chance für Wachstum. Wie empfängst du diese Energie?",
-    "Morgen {firstName}! ☀️ Die Morgensonne bringt neue Möglichkeiten. Welche Intention setzt du für heute?",
-    "Namaste {firstName}! 🙏 Der Tag erwacht, genau wie dein Potenzial. Wie möchtest du heute wachsen?",
-    "Guten Morgen {firstName}! 🌻 Jeder Sonnenaufgang erinnert uns an unsere Erneuerungskraft. Wie startest du bewusst?",
-    "Morgen {firstName}! ✨ Das Universum bietet uns täglich neue Chancen. Welche nimmst du heute an?"
+    "Guten Morgen {firstName}! 🌅 Heute erforschen wir neue Entwicklungsebenen. In welchem Quadranten startest du?",
+    "Namaste {firstName}! ☀️ Jeder Morgen ist eine Entwicklungschance. Welche Perspektive nehmen wir heute ein?",
+    "Morgen {firstName}! 🧠 Die Integral Theory zeigt: Wachstum entsteht durch Perspektivenwechsel. Wo stehst du?",
+    "Guten Morgen {firstName}! 🌟 4 Quadranten, unendliche Möglichkeiten. Welchen erkunden wir zuerst?",
+    "Morgen {firstName}! 💫 Bewusstseinsentwicklung kennt keine Grenzen. Bereit für den nächsten Level?"
   ],
   afternoon: [
-    "Namaste {firstName}! 🌞 Die Mittagsenergie unterstützt klare Entscheidungen. Wo stehst du gerade?",
-    "Hallo {firstName}! 🌿 Halbzeit des Tages - perfekt für bewusste Reflektion. Wie fühlst du dich in deinem Flow?",
-    "Grüße {firstName}! 💫 Die Sonne steht hoch - Zeit für kraftvolle Transformation. Was möchtest du manifestieren?",
+    "Namaste {firstName}! 🌞 Zeit für systemische Betrachtung - wie interagieren deine Entwicklungslinien heute?",
+    "Hallo {firstName}! 🧠 Halbzeit des Tages - perfect für Quadranten-Analyse. Wo siehst du Dissonanzen?",
+    "Grüße {firstName}! 💫 Integral bedeutet: Alle Perspektiven gelten. Welche übersehen wir noch?",
     "Guten Tag {firstName}! 🌱 Wie ist dein Energiefluss heute? Balance zwischen Aktion und Sein?",
     "Hallo {firstName}! ✨ Der Tag entfaltet sich - genau wie dein Bewusstsein. Welche Erkenntnisse zeigen sich?"
   ],

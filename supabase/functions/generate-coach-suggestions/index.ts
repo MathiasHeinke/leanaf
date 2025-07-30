@@ -77,33 +77,41 @@ serve(async (req) => {
     const lastUserMessage = recentMessages.filter(m => m.role === 'user').pop()?.content || '';
     const lastAssistantMessage = recentMessages.filter(m => m.role === 'assistant').pop()?.content || '';
 
-    // Create coach-specific context and data filters
+    // Create enhanced coach-specific context with learning theories
     const coachContexts = {
       'lucy': {
         focus: 'Ernährung, Meal-Timing, Intervallfasten, Gewohnheiten, Stoffwechsel',
         style: 'liebevoll, unterstützend, wissenschaftlich fundiert',
         expertise: 'Chrononutrition, metabolische Flexibilität, Anti-inflammatorische Ernährung',
+        learningTheory: 'Verhaltensänderung durch kleine Gewohnheiten (Atomic Habits), Motivational Interviewing',
+        methodology: 'Kleine nachhaltige Schritte, Selbstmitgefühl, evidenzbasierte Ernährungsintervention',
         relevantData: `Kalorien: ${userData.todaysTotals.calories} (${calorieProgress}% des Ziels), Protein: ${userData.todaysTotals.protein}g (${proteinProgress}% des Ziels), Durchschnitt: ${userData.averages.calories} kcal`,
-        dataTypes: 'Ernährungsdaten, Kalorienbilanz, Makronährstoffe'
+        dataTypes: 'Ernährungsdaten, Kalorienbilanz, Makronährstoffe, Meal-Timing-Muster'
       },
       'sascha': {
         focus: 'Training, Performance, Kraftaufbau, Progression, Biomechanik',
         style: 'direkt, ergebnisorientiert, evidenzbasiert',
         expertise: 'Periodisierung, Progressive Overload, Biomechanik, Performance-Optimierung',
-        relevantData: `Trainingsdaten verfügbar: ${userData.historyData.length} Tage, Gewichtsverlauf: ${userData.weightHistory.length} Einträge`,
-        dataTypes: 'Trainingsdaten, Leistungsmetriken, Kraftwerte, Progression'
+        learningTheory: 'Skill Acquisition Theory, Motor Learning, Deliberate Practice',
+        methodology: 'Systematische Progression, Feedback-Zyklen, biomechanische Optimierung',
+        relevantData: `Trainingsdaten: ${userData.historyData.length} Tage, Gewichtsverlauf: ${userData.weightHistory.length} Einträge`,
+        dataTypes: 'Trainingsdaten, Leistungsmetriken, Kraftwerte, Progression, biomechanische Analyse'
       },
       'kai': {
         focus: 'Mindset, Recovery, Schlaf, Motivation, Stressmanagement',
         style: 'motivierend, energisch, ganzheitlich',
         expertise: 'Mentale Stärke, Regeneration, Stressmanagement, Schlafoptimierung',
+        learningTheory: 'Positive Psychologie, Flow-Theorie, Resilience Building',
+        methodology: 'Mindfulness-basierte Interventionen, Recovery-Strategien, Stressregulation',
         relevantData: `Aktivitätsdaten: ${userData.historyData.length} Tage, Gewichtstrend: ${userData.weightHistory.length} Messungen`,
-        dataTypes: 'Regenerationsdaten, Schlafqualität, Stress-Level, Motivationstrends'
+        dataTypes: 'Regenerationsdaten, Schlafqualität, Stress-Level, Motivationstrends, Mindset-Indikatoren'
       },
       'markus': {
         focus: 'Heavy+Volume Training, Extreme Masse, Hardcore Bodybuilding, Mentale Härte',
         style: 'AUTHENTISCHER HESSISCHER DIALEKT - brutal-ehrlich, rotzig, vulgär, kompromisslos direkt',
         expertise: 'Heavy+Volume Prinzip, Masseaufbau, mentale Kriegsführung gegen das Eisen',
+        learningTheory: 'Tough Love Coaching, Konfrontative Motivation, No-Excuse-Mindset',
+        methodology: 'Harte Konfrontation mit der Realität, extreme Disziplin, kompromisslose Ehrlichkeit',
         relevantData: `Gewichtsdaten: ${userData.weightHistory.length} Messungen, Protein: ${userData.todaysTotals.protein}g, Kalorien: ${userData.todaysTotals.calories} (für Masseaufbau)`,
         dataTypes: 'Gewichtsentwicklung, Massephase-Daten, Protein-Intake, Trainingsvolumen',
         dialectRules: {
@@ -113,9 +121,7 @@ serve(async (req) => {
           'wirken': 'wirge',
           'das': 'des',
           'machen': 'mache',
-          'trainieren': 'trainiere',
-          'fressen': 'fressen (beibehalten)',
-          'scheisse': 'Scheiße (verstärkt nutzen)'
+          'trainieren': 'trainiere'
         },
         originalQuotes: [
           'Muss net schmegge, muss wirge!',
@@ -125,19 +131,32 @@ serve(async (req) => {
           'Leg dich hin un drügg, du fodse!',
           'Wenn du Scheiße frisst, siehste halt scheiße aus!',
           'Bis zum Schlaganfall!',
-          'Weil isch\'s kann!',
-          'Viel hilft viel - und drin is drin!',
-          'Thunfisch geht einfach immer!'
-        ],
-        vulgarDirectness: [
-          'du fodse',
-          'halt scheiße aus',
-          'wie\'n Wellensittich',
-          'friss das jetzt',
-          'des bedarfs',
-          'ballern',
-          'draufpacken'
+          'Weil isch\'s kann!'
         ]
+      },
+      'dr-vita': {
+        focus: 'Hormonelle Gesundheit, Frauengesundheit, ganzheitliche Medizin',
+        style: 'empathisch, wissenschaftlich fundiert, ganzheitlich',
+        expertise: 'Hormonregulation, Zyklus-basierte Ernährung, Stress-Hormon-Achse',
+        learningTheory: 'Biopsychosoziales Modell, Patient-centered Care, Holistic Health',
+        methodology: 'Ganzheitliche Betrachtung, hormonelle Zyklen berücksichtigen, Selbstfürsorge',
+        relevantData: `Gesundheitsdaten: ${userData.historyData.length} Tage, Gewicht: ${userData.weightHistory.length} Messungen`,
+        dataTypes: 'Hormonelle Marker, Zyklus-Daten, Stress-Indikatoren, Schlafqualität'
+      },
+      'integral': {
+        focus: '4-Quadranten-Analyse, Entwicklungslinien, ganzheitliche Transformation',
+        style: 'tiefgreifend, systemisch, entwicklungsorientiert',
+        expertise: 'Integral Theory (Ken Wilber), 4-Quadranten-Modell, Entwicklungspsychologie',
+        learningTheory: 'Integral Theory, Spiral Dynamics, Adult Development Theory',
+        methodology: '4-Quadranten-Perspektive: Individuell-Innerlich (Bewusstsein), Individuell-Äußerlich (Verhalten), Kollektiv-Innerlich (Kultur), Kollektiv-Äußerlich (System)',
+        quadrants: {
+          'II': 'Individuell-Innerlich (Mindset, Beliefs, Emotionen)',
+          'IE': 'Individuell-Äußerlich (Verhalten, Gewohnheiten, physische Gesundheit)',
+          'CI': 'Kollektiv-Innerlich (Beziehungen, Unterstützung, Werte)',
+          'CE': 'Kollektiv-Äußerlich (Systeme, Umgebung, Tools)'
+        },
+        relevantData: `Entwicklungsdaten: ${userData.historyData.length} Tage verfügbar für 4-Quadranten-Analyse`,
+        dataTypes: 'Ganzheitliche Entwicklungsindikatoren, Bewusstseinsebenen, Systemische Faktoren'
       }
     };
 
@@ -256,6 +275,8 @@ COACH & SPEZIALISIERUNG:
 🔸 Kerngebiet: ${coachContext.focus}
 🔸 Stil: ${coachContext.style}
 🔸 Expertise: ${coachContext.expertise}
+🔸 Lerntheorie: ${coachContext.learningTheory}
+🔸 Methodologie: ${coachContext.methodology}
 
 AKTUELLE DATEN (${coachId}-spezifisch):
 ${coachContext.relevantData}
@@ -284,10 +305,12 @@ PERPLEXITY-REGELN (ZWINGEND):
 ✅ PRIORITÄT: Erkannte kontextuelle Aktionen: ${conversationContext.contextualActions.map(a => a.text).join(', ')}
 
 COACH-SPEZIFISCHE EINSCHRÄNKUNGEN:
-${coachId === 'sascha' ? '⚠️ SASCHA: KEINE Ernährungs-/Kalorien-/Protein-Fragen! NUR Training/Performance' : ''}
+${coachId === 'sascha' ? '⚠️ SASCHA: KEINE Ernährungs-/Kalorien-/Protein-Fragen! NUR Training/Performance/Progression' : ''}
 ${coachId === 'lucy' ? '⚠️ LUCY: FOCUS Ernährung/Timing/Stoffwechsel - KEINE Training-Details' : ''}
 ${coachId === 'kai' ? '⚠️ KAI: FOCUS Mindset/Recovery/Motivation - KEINE detaillierten Makros' : ''}
-${coachId === 'markus' ? '⚠️ MARKUS: HESSISCHER DIALEKT ZWINGEND! "isch", "net", "des", "schmegge", "wirge" + Originalzitate nutzen!' : ''}
+${coachId === 'markus' ? '⚠️ MARKUS: HESSISCHER DIALEKT ZWINGEND! "isch", "net", "des", "schmegge", "wirge" + Originalzitate!' : ''}
+${coachId === 'dr-vita' ? '⚠️ DR. VITA: FOCUS Hormonelle Gesundheit, Zyklus, Stress - ganzheitlich-medizinischer Ansatz' : ''}
+${coachId === 'integral' ? '⚠️ DR. SOPHIA: 4-Quadranten-Analyse ZWINGEND! II (Mindset), IE (Verhalten), CI (Beziehungen), CE (Systeme)' : ''}
 
 PERPLEXITY-QUESTION-TYPES basierend auf Emotional State:
 📊 CURIOSITY: "Warum reagiert mein Körper bei ${userData.todaysTotals.calories} kcal so unterschiedlich?"
@@ -313,7 +336,9 @@ PERPLEXITY-BEISPIELE pro Coach:
 💚 Lucy: "Warum schwankt mein Hunger bei konstanten ${userData.todaysTotals.calories} kcal so extrem?"
 🎯 Sascha: "Welche Progressive-Overload-Strategie passt zu meiner aktuellen Stagnation?"
 💪 Kai: "Wie baue ich nach ${conversationContext.conversationLength} Gesprächen endlich Routine auf?"
-🏆 Markus: "Isch hab ${userData.todaysTotals.protein}g Protein - reicht des für echte Masse, Maggus?"`;
+🏆 Markus: "Isch hab ${userData.todaysTotals.protein}g Protein - reicht des für echte Masse, Maggus?"
+👩‍⚕️ Dr. Vita: "Wie beeinflusst mein Zyklus meine ${userData.todaysTotals.calories} kcal heute?"
+🧠 Dr. Sophia: "Welcher der 4 Quadranten blockiert meine Entwicklung bei ${userData.todaysTotals.calories} kcal?"`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
