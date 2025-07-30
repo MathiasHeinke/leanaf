@@ -1622,12 +1622,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                   }`}>
                    {message.role === 'assistant' && (
                       <div className="w-4 h-4 rounded-full overflow-hidden">
-                        {coach.imageUrl ? (
-                          <img 
-                            src={coach.imageUrl} 
-                            alt={coach.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
+                         {coach.imageUrl ? (
+                           <img 
+                             src={`${coach.imageUrl}?v=${Date.now()}`} 
+                             alt={coach.name}
+                             className="w-full h-full object-cover"
+                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
                               target.nextElementSibling?.classList.remove('hidden');
@@ -1655,12 +1655,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                     <div className="flex items-center space-x-3">
                       <div className="relative">
                           <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg">
-                            {coach.imageUrl ? (
-                              <img 
-                                src={coach.imageUrl} 
-                                alt={coach.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
+                             {coach.imageUrl ? (
+                               <img 
+                                 src={`${coach.imageUrl}?v=${Date.now()}`} 
+                                 alt={coach.name}
+                                 className="w-full h-full object-cover"
+                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
                                 }}
