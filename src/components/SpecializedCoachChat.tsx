@@ -1624,7 +1624,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                       <div className="w-4 h-4 rounded-full overflow-hidden">
                          {coach.imageUrl ? (
                            <img 
-                             src={`${coach.imageUrl}?v=${Date.now()}`} 
+                             src={coach.imageUrl} 
                              alt={coach.name}
                              className="w-full h-full object-cover"
                              onError={(e) => {
@@ -1657,7 +1657,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
                           <div className="w-8 h-8 rounded-full overflow-hidden shadow-lg">
                              {coach.imageUrl ? (
                                <img 
-                                 src={`${coach.imageUrl}?v=${Date.now()}`} 
+                                 src={coach.imageUrl} 
                                  alt={coach.name}
                                  className="w-full h-full object-cover"
                                  onError={(e) => {
