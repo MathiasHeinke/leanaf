@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CheckCircle, Plus, Clock, Target, Flame, Edit, Trash2, Copy, MoreHorizontal, Calendar, PlaySquare } from 'lucide-react';
+import { CheckCircle, Plus, Clock, Target, Flame, Edit, Trash2, Copy, MoreHorizontal, Calendar, Dumbbell } from 'lucide-react';
 import { ProgressiveOverloadWidget } from './ProgressiveOverloadWidget';
 
 interface ExerciseSession {
@@ -93,31 +93,28 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
 
   if (!hasTrained) {
     return (
-      <Card 
-        className="border-dashed border-2 border-muted-foreground/20 bg-gradient-to-br from-background to-muted/20 cursor-pointer hover:border-primary/40 transition-all group"
-        onClick={onStartTraining}
-      >
-        <CardContent className="p-8 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform">
-            <Plus className="h-8 w-8 text-primary" />
+      <Card className="border-dashed border-2 border-muted-foreground/20 bg-gradient-to-br from-background to-muted/20">
+        <CardContent className="p-6 text-center">
+          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Dumbbell className="h-6 w-6 text-primary" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">Bereit für dein Training?</h3>
-          <p className="text-muted-foreground mb-6">
+          <h3 className="text-lg font-semibold mb-2">Bereit für dein Training?</h3>
+          <p className="text-muted-foreground mb-4">
             Du hast heute noch nicht trainiert. Starte jetzt dein Workout!
           </p>
-          <div className="space-y-3 w-full max-w-sm mx-auto">
+          <div className="space-y-2 w-full max-w-xs mx-auto">
             {onStartWorkoutPlan && (
               <Button 
-                onClick={(e) => { e.stopPropagation(); onStartWorkoutPlan(); }} 
+                onClick={onStartWorkoutPlan} 
                 size="lg" 
-                className="w-full bg-gradient-primary"
+                className="w-full bg-green-600 hover:bg-green-700 text-white hover-scale transition-all"
               >
                 <Calendar className="h-5 w-5 mr-2" />
                 Trainings-Plan starten
               </Button>
             )}
             <Button 
-              onClick={(e) => { e.stopPropagation(); onStartTraining(); }} 
+              onClick={onStartTraining} 
               size="lg" 
               variant="outline"
               className="w-full"
