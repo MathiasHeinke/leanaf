@@ -39,11 +39,15 @@ export const DualCoachAccess: React.FC = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          Coach & Analyse
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <Users className="h-6 w-6 text-primary" />
+          Persönliches Training & Coaching
         </CardTitle>
+        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+          Wähle deinen Experten-Coach für individuelles Training, detaillierte Analyse und professionelle Betreuung. 
+          Beide Coaches erstellen dir maßgeschneiderte Trainingspläne und helfen bei der Optimierung deiner Fortschritte.
+        </p>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-4">
