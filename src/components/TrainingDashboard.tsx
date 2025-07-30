@@ -708,7 +708,7 @@ export const TrainingDashboard: React.FC = () => {
             <AlertDialogDescription className="space-y-3">
               <div className="text-center space-y-2 p-4 bg-muted/50 rounded-lg">
                 <div className="text-lg font-mono font-bold text-primary">
-                  {formatDuration(currentDuration * 1000)}
+                  {formatDuration(currentDuration)}
                 </div>
                 <div className="text-sm text-muted-foreground">Gesamte Trainingszeit</div>
                 {isPaused && pauseDurationFormatted && (
