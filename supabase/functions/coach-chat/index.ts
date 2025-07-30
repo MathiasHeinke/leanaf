@@ -621,6 +621,7 @@ serve(async (req) => {
     const message = securityHelpers.sanitizeInput.text(body.message);
     const userId = body.userId;
     const coachPersonality = validateCoachPersonality(body.coachPersonality || null);
+    const images = body.images || [];
     
     // Enhanced user ID validation
     if (!userId || typeof userId !== 'string' || !securityHelpers.validateInput.uuid(userId)) {
@@ -1925,15 +1926,45 @@ COACHING-PRIORITÄTEN:
 
 Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
 
-    // Prepare messages for OpenAI
+    // Prepare messages for OpenAI with image support
     const messages = [
       { role: 'system', content: systemMessage },
       ...chatHistory.slice(-8).map((msg: any) => ({
         role: msg.role,
         content: msg.content
-      })),
-      { role: 'user', content: message }
+      }))
     ];
+
+    // Add user message with potential images
+    const userMessage: any = {
+      role: 'user',
+      content: []
+    };
+
+    // Always add text content
+    userMessage.content.push({
+      type: 'text',
+      text: message || 'Analysiere das Bild'
+    });
+
+    // Add images if provided
+    if (images && images.length > 0) {
+      console.log(`📸 Processing ${images.length} images for OpenAI Vision API`);
+      
+      for (const imageUrl of images) {
+        if (imageUrl && typeof imageUrl === 'string') {
+          userMessage.content.push({
+            type: 'image_url',
+            image_url: {
+              url: imageUrl,
+              detail: 'high'
+            }
+          });
+        }
+      }
+    }
+
+    messages.push(userMessage);
 
     console.log(`Sending enhanced request to OpenAI GPT-4.1 with personality: ${personality} (${coachInfo.name})`);
 
@@ -1945,7 +1976,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: images && images.length > 0 ? 'gpt-4o-mini' : 'gpt-4.1-2025-04-14',
         messages: messages,
         temperature: coachInfo.temp,
         max_tokens: 800,
