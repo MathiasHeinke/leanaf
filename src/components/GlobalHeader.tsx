@@ -180,11 +180,11 @@ export const GlobalHeader = ({
     }
   };
 
-  // Check if we're on a coach chat route
+  // Check if we're on a coach chat route (not the main coach selection page)
   const isCoachChatRoute = 
-    location.pathname.startsWith('/coach') || 
     location.pathname.startsWith('/training/sascha') ||
-    location.pathname.startsWith('/training/markus');
+    location.pathname.startsWith('/training/markus') ||
+    (location.pathname.startsWith('/coach') && new URLSearchParams(location.search).get('coach'));
 
   return (
     <div className="relative">
