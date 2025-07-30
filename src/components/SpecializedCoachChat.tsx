@@ -286,6 +286,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       }
       
       const extractedFirstName = displayName.split(' ')[0] || displayName;
+      console.log('Setting firstName to:', extractedFirstName);
       setFirstName(extractedFirstName);
     } catch (error) {
       console.error('Error in loadUserData:', error);
@@ -361,7 +362,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     // Check if this is the first conversation with this coach
     const isFirstConversation = messages.length === 0;
     
-    console.log(`Generating welcome message for coach: ${coach.id}, firstName: ${firstName}`);
+    console.log(`Generating welcome message for coach: ${coach.id}, firstName: "${firstName}"`);
     
     const welcomeText = getWelcomeMessage(isFirstConversation);
     
@@ -387,6 +388,7 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
   };
 
   const getWelcomeMessage = (isFirstConversation: boolean) => {
+    console.log('getWelcomeMessage called with firstName:', firstName);
     const greetingContext = createGreetingContext(firstName, coach.id, memory, isFirstConversation);
     return generateDynamicCoachGreeting(greetingContext);
   };
