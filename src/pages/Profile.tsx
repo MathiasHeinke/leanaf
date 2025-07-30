@@ -22,6 +22,7 @@ import { TrackingPreferences } from '@/components/TrackingPreferences';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { ProfileFieldIndicator } from '@/components/ProfileFieldIndicator';
+import { MedicalScreening } from '@/components/MedicalScreening';
 import { cn } from '@/lib/utils';
 
 
@@ -835,7 +836,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* 4. Daily Macros */}
+        {/* 4. Medical Screening */}
+        <MedicalScreening onScreeningComplete={refreshCompletion} />
+
+        {/* 5. Daily Macros */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
@@ -867,7 +871,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* 5. Intelligent Calorie Analysis */}
+        {/* 6. Intelligent Calorie Analysis */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
@@ -929,7 +933,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </Card>
           </div>
 
-          {/* 6. Target Analysis */}
+          {/* 7. Target Analysis */}
           {targetWeight && targetDate && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
@@ -1113,7 +1117,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           )}
         </div>
         
-        {/* 7. Tracking Preferences */}
+        {/* 8. Tracking Preferences */}
         <TrackingPreferences />
         </div>
 

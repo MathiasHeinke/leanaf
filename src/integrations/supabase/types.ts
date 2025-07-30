@@ -3069,6 +3069,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assess_medical_risk: {
+        Args: {
+          p_user_id: string
+          p_conditions?: string[]
+          p_custom_conditions?: string[]
+          p_medications?: string[]
+          p_custom_medications?: string[]
+        }
+        Returns: Json
+      }
       award_badge_atomically: {
         Args: {
           p_user_id: string
