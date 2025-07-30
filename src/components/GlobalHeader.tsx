@@ -264,7 +264,7 @@ export const GlobalHeader = ({
             <div className="flex items-center gap-2">
               <img
                 src={`/coach-images/${
-                  getCurrentCoachId() === 'sascha' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' : 
+                  getCurrentCoachId() === 'sascha' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
                   getCurrentCoachId() === 'markus' ? 'markus-ruehl.jpg' :
                   getCurrentCoachId() === 'lucy' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' :
                   'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
