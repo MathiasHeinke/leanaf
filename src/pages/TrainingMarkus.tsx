@@ -474,8 +474,8 @@ const TrainingMarkus = () => {
       <SpecializedCoachChatWrapped
           coach={{
             id: 'markus',
-            name: 'Markus Rühl',
-            role: 'The German Beast',
+            name: 'Markus Rühl - The German Beast',
+            role: 'Hardcore Bodybuilding-Legende',
             description: 'The German Beast - Schwer und falsch trainieren für maximale Muskelmasse!',
             expertise: ['Hardcore Bodybuilding', 'Heavy Training', 'Volume Training', 'Mental Toughness'],
             personality: 'hart',
