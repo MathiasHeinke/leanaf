@@ -135,14 +135,24 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   }, [user]);
 
-  // Add initial welcome message with dynamic greetings
+  // Add initial welcome message with dynamic greetings - WAIT for memory to load
   useEffect(() => {
     if (user && messages.length === 0) {
       const timer = setTimeout(async () => {
-        // Get personalized greeting
+        console.log('Starting welcome message generation...');
+        
+        // Ensure memory is loaded before creating welcome message
+        try {
+          await loadCoachMemory();
+          console.log('Memory loaded, generating personalized greeting...');
+        } catch (error) {
+          console.error('Error loading memory for greeting:', error);
+        }
+        
+        // Get personalized greeting after memory is loaded
         const welcomeMessage = await getWelcomeMessage();
         setMessages([welcomeMessage]);
-      }, 200);
+      }, 500); // Increased delay to ensure memory loads
       return () => clearTimeout(timer);
     }
   }, [user]);
@@ -150,17 +160,29 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   const getWelcomeMessage = async (): Promise<WorkoutMessage> => {
     try {
       const coachPersonality = isMarkusRoute ? 'markus' : 'sascha';
+      const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Freund';
+      
+      console.log('Debug - getWelcomeMessage:', {
+        firstName,
+        coachPersonality,
+        memory: memory ? 'loaded' : 'null',
+        memoryKeys: memory ? Object.keys(memory) : 'none'
+      });
       
       // Create greeting context with correct parameters
       const greetingContext = createGreetingContext(
-        user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Freund',
+        firstName,
         coachPersonality,
         memory,
         !messages.length
       );
       
+      console.log('Debug - greetingContext:', greetingContext);
+      
       // Generate dynamic greeting
       const dynamicGreeting = generateDynamicCoachGreeting(greetingContext);
+      
+      console.log('Debug - Generated dynamic greeting:', dynamicGreeting);
       
       return {
         id: 'welcome-' + Date.now(),
@@ -173,18 +195,38 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       console.error('Error generating dynamic greeting:', error);
       const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || '';
       const coachPersonality = isMarkusRoute ? 'markus' : 'sascha';
-      console.log('Debug: firstName =', firstName, 'coachPersonality =', coachPersonality, 'memory =', memory);
-      
-      // Generate a better personalized fallback
       const timeOfDay = new Date().getHours() < 12 ? 'Morgen' : new Date().getHours() < 18 ? 'Tag' : 'Abend';
+      
+      console.log('Debug - Fallback params:', { firstName, coachPersonality, timeOfDay, memory });
+      
+      // Create MUCH better personalized fallback that uses actual dynamic greeting logic
       const personalizedGreeting = firstName ? ` ${firstName}` : '';
+      
+      let fallbackMessage = '';
+      if (isMarkusRoute) {
+        // Markus-style without generic "hartes Training"
+        if (timeOfDay === 'Morgen') {
+          fallbackMessage = `Morsche${personalizedGreeting}! Maggus hier - früh am Start, des gefällt mir! Wie läuft dein Training heute? 💪`;
+        } else if (timeOfDay === 'Tag') {
+          fallbackMessage = `Na${personalizedGreeting}! Markus Rühl hier - schon fleißig am trainieren? Erzähl dem Maggus von deinem Workout! 💪`;
+        } else {
+          fallbackMessage = `Abend${personalizedGreeting}! Markus hier - Zeit für den Pump! Wie war dein Training heute? 💪`;
+        }
+      } else {
+        // Sascha-style - professional but personal
+        if (timeOfDay === 'Morgen') {
+          fallbackMessage = `Guten Morgen${personalizedGreeting}! Sascha hier - perfekte Zeit für dein Training. Wie sehen deine Pläne heute aus?`;
+        } else if (timeOfDay === 'Tag') {
+          fallbackMessage = `Hallo${personalizedGreeting}! Sascha hier - wie läuft dein Training heute? Lass uns deine Form optimieren!`;
+        } else {
+          fallbackMessage = `Guten Abend${personalizedGreeting}! Sascha hier - Zeit für Regeneration oder noch ein Workout geplant?`;
+        }
+      }
       
       return {
         id: 'welcome-' + Date.now(),
         role: 'assistant',
-        content: isMarkusRoute 
-          ? `Guten ${timeOfDay}${personalizedGreeting}! Markus Rühl hier - bereit für ein hartes Training? Lass uns heute wieder alles geben! 💪`
-          : `Guten ${timeOfDay}${personalizedGreeting}! Ich bin Sascha, dein Trainer. Wie läuft dein Training heute?`,
+        content: fallbackMessage,
         timestamp: new Date(),
         metadata: { isWelcome: true }
       };

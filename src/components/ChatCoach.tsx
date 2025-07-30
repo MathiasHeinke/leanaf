@@ -324,20 +324,73 @@ export const ChatCoach = ({
   };
 
   const generateWelcomeMessage = async () => {
-    const coachInfo = getCoachInfo(coachPersonality);
-    const welcomeText = coachInfo.greeting.replace('{name}', firstName);
-    
-    const savedMessage = await saveMessage('assistant', welcomeText);
-    if (savedMessage) {
-      const mappedMessage: ChatMessage = {
-        id: savedMessage.id,
-        role: savedMessage.message_role as 'user' | 'assistant',
-        content: savedMessage.message_content,
-        created_at: savedMessage.created_at,
-        coach_personality: savedMessage.coach_personality
-      };
-      setMessages([mappedMessage]);
-      setQuickActionsShown(true);
+    try {
+      // Import dynamic greeting components
+      const { createGreetingContext, generateDynamicCoachGreeting } = await import('@/utils/dynamicCoachGreetings');
+      
+      console.log('Debug - ChatCoach generateWelcomeMessage:', {
+        firstName,
+        coachPersonality,
+        userMetadata: user?.user_metadata
+      });
+      
+      // Create greeting context for ChatCoach
+      const greetingContext = createGreetingContext(
+        firstName || 'Freund',
+        coachPersonality,
+        null, // memory not loaded here yet
+        true
+      );
+      
+      // Generate dynamic greeting
+      const dynamicGreeting = generateDynamicCoachGreeting(greetingContext);
+      
+      console.log('Debug - ChatCoach dynamic greeting:', dynamicGreeting);
+      
+      const savedMessage = await saveMessage('assistant', dynamicGreeting);
+      if (savedMessage) {
+        const mappedMessage: ChatMessage = {
+          id: savedMessage.id,
+          role: savedMessage.message_role as 'user' | 'assistant',
+          content: savedMessage.message_content,
+          created_at: savedMessage.created_at,
+          coach_personality: savedMessage.coach_personality
+        };
+        setMessages([mappedMessage]);
+        setQuickActionsShown(true);
+      }
+    } catch (error) {
+      console.error('Error generating dynamic greeting in ChatCoach:', error);
+      
+      // Better personalized fallback for ChatCoach too
+      const timeOfDay = new Date().getHours() < 12 ? 'Morgen' : new Date().getHours() < 18 ? 'Tag' : 'Abend';
+      const coachInfo = getCoachInfo(coachPersonality);
+      
+      let personalizedFallback = '';
+      switch (coachPersonality) {
+        case 'hart':
+          personalizedFallback = `Guten ${timeOfDay} ${firstName}! Sascha hier - lass uns deine Ernährung analysieren und optimieren!`;
+          break;
+        case 'soft':
+          personalizedFallback = `Hallo ${firstName}! Lucy hier - wie geht's dir heute? Lass uns gemeinsam deine Ziele erreichen! ❤️`;
+          break;
+        default:
+          personalizedFallback = `Hey ${firstName}! Kai hier - bereit für Fortschritt? Lass uns deine Daten analysieren! 💪`;
+          break;
+      }
+      
+      const savedMessage = await saveMessage('assistant', personalizedFallback);
+      if (savedMessage) {
+        const mappedMessage: ChatMessage = {
+          id: savedMessage.id,
+          role: savedMessage.message_role as 'user' | 'assistant',
+          content: savedMessage.message_content,
+          created_at: savedMessage.created_at,
+          coach_personality: savedMessage.coach_personality
+        };
+        setMessages([mappedMessage]);
+        setQuickActionsShown(true);
+      }
     }
   };
 
