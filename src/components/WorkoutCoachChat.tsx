@@ -70,6 +70,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   onExerciseLogged
 }) => {
   const { user } = useAuth();
+  
+  // Check if we're on a Markus route
+  const currentPath = window.location.pathname;
+  const isMarkusRoute = currentPath.includes('/training/markus') || currentPath.includes('/coach/markus');
   const [messages, setMessages] = useState<WorkoutMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -135,10 +139,14 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
   useEffect(() => {
     if (user && messages.length === 0) {
       const timer = setTimeout(() => {
+        // Dynamic coach welcome message based on current route
+        
         const welcomeMessage: WorkoutMessage = {
           id: 'welcome-' + Date.now(),
           role: 'assistant',
-          content: 'Hallo! Ich bin Coach Sascha, dein persönlicher Trainer. Erzähle mir von deinem Training oder frage mich nach Übungen und Trainingsplänen!',
+          content: isMarkusRoute 
+            ? 'Hallo! Ich bin Coach Markus Rühl - The German Beast. Erzähle mir von deinem Training und lass uns gemeinsam richtig zerstören! 💪'
+            : 'Hallo! Ich bin Coach Sascha, dein persönlicher Trainer. Erzähle mir von deinem Training oder frage mich nach Übungen und Trainingsplänen!',
           timestamp: new Date(),
           metadata: { isWelcome: true }
         };
@@ -152,12 +160,13 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     if (!user) return;
 
     try {
+      
       const targetDate = date || currentDate;
       const { data, error } = await supabase
         .from('coach_conversations')
         .select('*')
         .eq('user_id', user.id)
-        .eq('coach_personality', 'sascha')
+        .eq('coach_personality', isMarkusRoute ? 'markus' : 'sascha')
         .eq('conversation_date', targetDate)
         .order('created_at', { ascending: true });
 
@@ -182,11 +191,12 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     if (!user) return;
 
     try {
+      
       await supabase
         .from('coach_conversations')
         .insert({
           user_id: user.id,
-          coach_personality: 'sascha',
+          coach_personality: isMarkusRoute ? 'markus' : 'sascha',
           message_role: role,
           message_content: content,
           conversation_date: selectedDate || currentDate,
@@ -225,7 +235,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             mediaUrls,
             mediaType: 'mixed',
             analysisType: 'form_analysis',
-            coachPersonality: 'sascha',
+            coachPersonality: isMarkusRoute ? 'markus' : 'sascha',
             userQuestion: userMessage.trim() || getAnalysisPrompt('form_analysis'),
             userProfile: {
               goal: 'muscle_building',
@@ -263,7 +273,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
           body: {
             userId: user.id,
             message: userMessage.trim() || 'Analysiere mein Training und erkenne die Übungen',
-            coachPersonality: 'sascha',
+            coachPersonality: isMarkusRoute ? 'markus' : 'sascha',
             mediaUrls,
             conversationHistory: messages.slice(-5).map(msg => ({
               role: msg.role,
@@ -711,7 +721,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               body: {
                 message: inputText,
                 userId: user.id,
-                coachPersonality: 'sascha',
+                coachPersonality: isMarkusRoute ? 'markus' : 'sascha',
                 context: 'workout_coaching',
                 memory: memory,
                 sentiment: sentimentResult
@@ -873,8 +883,8 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                        <div className="flex items-center gap-2">
                          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                            <img 
-                              src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
-                             alt="Sascha" 
+                               src={isMarkusRoute ? "/coach-images/markus-ruehl.jpg" : "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"}
+                              alt={isMarkusRoute ? "Markus" : "Sascha"}
                              className="w-full h-full object-cover"
                            />
                          </div>
@@ -936,9 +946,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
               {isLoading && (
                 <div className="flex flex-col gap-2 items-start">
                   {/* Coach name */}
-                  <div className="text-sm font-medium text-foreground">
-                    Sascha
-                  </div>
+                     <div className="text-sm font-medium text-foreground">
+                     {isMarkusRoute ? 'Markus' : 'Sascha'}
+                   </div>
                   
                   {/* Typing bubble */}
                   <div className="bg-muted text-foreground rounded-lg px-3 py-2 max-w-[85%]">
@@ -952,9 +962,9 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   {/* Profile picture and "schreibt..." */}
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                      <img 
-                        src="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png" 
-                        alt="Sascha" 
+                       <img 
+                         src={isMarkusRoute ? "/coach-images/markus-ruehl.jpg" : "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"}
+                         alt={isMarkusRoute ? "Markus" : "Sascha"}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -973,7 +983,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
         {/* Chat History Sidebar */}
         {showHistory && (
           <ChatHistorySidebar
-            selectedCoach="sascha"
+            selectedCoach={isMarkusRoute ? "markus" : "sascha"}
             onSelectDate={handleSelectDate}
             onClose={() => setShowHistory(false)}
           />
@@ -1147,7 +1157,7 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
             <Textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Frage Sascha nach Training, Übungen oder lade Medien hoch..."
+              placeholder={isMarkusRoute ? "Frage Markus nach Training, Übungen oder lade Medien hoch..." : "Frage Sascha nach Training, Übungen oder lade Medien hoch..."}
               className="flex-1 min-h-[36px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.shiftKey) {

@@ -108,7 +108,7 @@ export const SpecializedCoachChatWrapped: React.FC<SpecializedCoachChatWrappedPr
           <div>
             <h2 className="text-lg font-semibold">{coach.name}</h2>
             <Badge variant="outline" className="text-xs">
-              {coach.expertise[0]}
+              {coach.role}
             </Badge>
           </div>
         </div>
