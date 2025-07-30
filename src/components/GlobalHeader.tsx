@@ -265,7 +265,7 @@ export const GlobalHeader = ({
               <img
                 src={`/coach-images/${
                   getCurrentCoachId() === 'sascha' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
-                  getCurrentCoachId() === 'markus' ? 'markus-ruehl.jpg' :
+                  getCurrentCoachId() === 'markus' ? '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png' :
                   getCurrentCoachId() === 'lucy' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
                   getCurrentCoachId() === 'kai' ? '2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
                   getCurrentCoachId() === 'dr_vita' ? '/lovable-uploads/954a7ee8-1579-4a1b-bf4c-87b4ef4588b1.png' :

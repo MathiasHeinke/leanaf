@@ -95,7 +95,7 @@ const coachProfiles = [
     age: 42,
     role: 'Bodybuilding & Transformation Coach',
     avatar: '🏆',
-    imageUrl: '/coach-images/markus-ruehl.jpg',
+    imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
     personality: 'Direkt & Motivierend',
     description: 'Legendärer Bodybuilder und Transformations-Experte. Bringt dich mit seiner direkten Art und jahrzehntelanger Erfahrung zu neuen Höchstleistungen.',
     strengths: ['Muskelaufbau', 'Wettkampfvorbereitung', 'Körpertransformation', 'Mentale Stärke'],
