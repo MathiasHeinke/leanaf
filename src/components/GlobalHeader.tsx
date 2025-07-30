@@ -266,7 +266,10 @@ export const GlobalHeader = ({
                 src={`/coach-images/${
                   getCurrentCoachId() === 'sascha' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
                   getCurrentCoachId() === 'markus' ? 'markus-ruehl.jpg' :
-                  getCurrentCoachId() === 'lucy' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' :
+                  getCurrentCoachId() === 'lucy' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
+                  getCurrentCoachId() === 'kai' ? '2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
+                  getCurrentCoachId() === 'dr_vita' ? 'dr-vita-femina.png' :
+                  getCurrentCoachId() === 'integral' ? '/lovable-uploads/b3492178-21c3-4023-b833-54d78e113f2e.png' :
                   'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
                 }`}
                 alt={coachData?.name || 'Coach'}
