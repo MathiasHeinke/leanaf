@@ -226,7 +226,7 @@ const MARKUS_GREETINGS = {
 
 const DR_VITA_GREETINGS = {
   new: [
-    "Hallo {firstName}! 👩‍⚕️ Ich bin Dr. Vita Femina, deine Spezialistin für Frauengesundheit. Wie kann ich dir helfen?",
+    "Hallo {firstName}! 👩‍⚕️ Ich bin Dr. Vita Femina, deine Hormon-Expertin. Wie kann ich dir helfen?",
     "Guten Tag {firstName}! 🌸 Dr. Vita hier - ich begleite dich ganzheitlich bei deiner Gesundheit. Was beschäftigt dich?",
     "Hallo {firstName}! 💚 Schön, dass du da bist! Ich bin Dr. Vita und freue mich darauf, dich zu unterstützen."
   ],
