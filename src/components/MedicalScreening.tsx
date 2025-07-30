@@ -504,14 +504,14 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
               </div>
 
               <div className="space-y-3">
-                {riskAssessment.recommendations.map((recommendation, index) => (
+                {riskAssessment.recommendations?.map((recommendation, index) => (
                   <div key={index} className="text-sm">
                     • {recommendation}
                   </div>
                 ))}
               </div>
 
-              {riskAssessment.considerations.length > 0 && (
+              {riskAssessment.considerations?.length > 0 && (
                 <div className="mt-4 pt-3 border-t">
                   <h4 className="font-medium mb-2">Wichtige Hinweise:</h4>
                   {riskAssessment.considerations.map((consideration, index) => (
@@ -522,7 +522,7 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
                 </div>
               )}
 
-              {riskAssessment.contraindications.length > 0 && (
+              {riskAssessment.contraindications?.length > 0 && (
                 <div className="mt-4 pt-3 border-t">
                   <h4 className="font-medium mb-2 text-red-600">Kontraindikationen:</h4>
                   {riskAssessment.contraindications.map((contraindication, index) => (
