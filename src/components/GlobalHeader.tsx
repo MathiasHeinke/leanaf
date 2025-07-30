@@ -164,7 +164,7 @@ export const GlobalHeader = ({
   return themeStatus.current === 'dark' ? t('settings.darkModeLight') : t('settings.darkModeDark');
   };
 
-  // Clear chat function
+  // Clear chat function - only delete today's messages
   const handleClearChat = async () => {
     if (!user?.id) return;
     
@@ -172,18 +172,20 @@ export const GlobalHeader = ({
     if (!currentCoachId) return;
     
     try {
+      const today = new Date().toISOString().split('T')[0];
       const { error } = await supabase
         .from('coach_conversations')
         .delete()
         .eq('user_id', user.id)
-        .eq('coach_personality', currentCoachId);
+        .eq('coach_personality', currentCoachId)
+        .eq('conversation_date', today);
         
       if (error) throw error;
       
       // Refresh page to clear local state
       window.location.reload();
     } catch (error) {
-      console.error('Error clearing chat:', error);
+      console.error('Error clearing today\'s chat:', error);
     }
   };
 
@@ -294,12 +296,12 @@ export const GlobalHeader = ({
               </button>
               <button 
                 onClick={() => {
-                  if (confirm('Chat-Verlauf wirklich löschen?')) {
+                  if (confirm('Heutigen Chat-Verlauf wirklich löschen?')) {
                     handleClearChat();
                   }
                 }}
                 className="text-sm hover:text-destructive transition-colors"
-                title="Chat löschen"
+                title="Heutigen Chat löschen"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

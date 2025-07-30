@@ -168,19 +168,10 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
       <Dialog open={true} onOpenChange={onClose}>
         <DialogContent className="max-w-sm mx-auto h-[80vh] flex flex-col p-0">
           <DialogHeader className="px-4 py-3 border-b">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-lg flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Chat-Verlauf
-              </DialogTitle>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-lg flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Chat-Verlauf
+            </DialogTitle>
           </DialogHeader>
           
           <ScrollArea className="flex-1 px-4">
