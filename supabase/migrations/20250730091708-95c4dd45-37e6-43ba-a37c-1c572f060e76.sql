@@ -1,0 +1,2 @@
+-- Drop the old version of assess_medical_risk function to resolve function overloading conflict
+DROP FUNCTION IF EXISTS assess_medical_risk(p_user_id uuid, p_conditions uuid[], p_custom_conditions text[], p_medications uuid[], p_custom_medications text[]);
