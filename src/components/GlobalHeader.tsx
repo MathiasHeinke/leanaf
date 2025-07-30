@@ -184,7 +184,9 @@ export const GlobalHeader = ({
   const isCoachChatRoute = 
     location.pathname.startsWith('/training/sascha') ||
     location.pathname.startsWith('/training/markus') ||
-    (location.pathname.startsWith('/coach') && new URLSearchParams(location.search).get('coach'));
+    (location.pathname === '/coach' && new URLSearchParams(location.search).get('coach')) ||
+    location.pathname.startsWith('/coach/') || // For any /coach/specific-coach routes
+    (location.pathname.startsWith('/coach') && location.search.includes('coach='));
 
   return (
     <div className="relative">
