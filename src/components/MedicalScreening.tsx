@@ -119,17 +119,28 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data) {
-        setHasMedicalConditions(data.has_medical_conditions);
-        setTakesMedications(data.takes_medications);
+        setHasMedicalConditions(data.has_medical_conditions || false);
+        setTakesMedications(data.takes_medications || false);
         setSelectedConditions(data.medical_conditions || []);
         setSelectedMedications(data.medications || []);
         setCustomConditions(data.custom_conditions || []);
         setCustomMedications(data.custom_medications || []);
-        if (data.risk_assessment && typeof data.risk_assessment === 'object') {
+        
+        // Check if risk_assessment is valid and not empty
+        if (data.risk_assessment && typeof data.risk_assessment === 'object' && !Array.isArray(data.risk_assessment) && (data.risk_assessment as any).risk_level) {
           setRiskAssessment(data.risk_assessment as unknown as RiskAssessment);
+          setScreeningCompleted(true);
+          onScreeningComplete?.(true);
+        } else if ((data.has_medical_conditions || data.takes_medications) && (data.medical_conditions?.length > 0 || data.medications?.length > 0 || data.custom_conditions?.length > 0 || data.custom_medications?.length > 0)) {
+          // If user has conditions/medications but empty or invalid risk assessment, reset screening
+          console.log('Found existing profile with empty risk assessment, resetting screening');
+          setRiskAssessment(null);
+          setScreeningCompleted(false);
+          onScreeningComplete?.(false);
+        } else {
+          setScreeningCompleted(true);
+          onScreeningComplete?.(true);
         }
-        setScreeningCompleted(true);
-        onScreeningComplete?.(true);
       }
     } catch (error) {
       console.error('Error loading medical profile:', error);
