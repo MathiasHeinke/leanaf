@@ -19,6 +19,7 @@ import { EmbeddedTrainingHistory } from '@/components/EmbeddedTrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
+import { DualCoachAccess } from '@/components/DualCoachAccess';
 import { TrainingStats } from '@/components/TrainingStats';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
@@ -634,24 +635,7 @@ export const TrainingDashboard: React.FC = () => {
               <div className="space-y-6">
                 <CustomExerciseManager onExerciseAdded={loadSessions} />
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageCircle className="h-5 w-5 text-primary" />
-                      Coach & Analyse
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Button 
-                      onClick={() => navigate('/coach')}
-                      variant="outline" 
-                      className="w-full"
-                    >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Mit Coach chatten
-                    </Button>
-                  </CardContent>
-                </Card>
+                <DualCoachAccess />
               </div>
             </div>
 
