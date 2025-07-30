@@ -171,13 +171,20 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
       };
     } catch (error) {
       console.error('Error generating dynamic greeting:', error);
-      // Fallback to static greeting
+      const firstName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || '';
+      const coachPersonality = isMarkusRoute ? 'markus' : 'sascha';
+      console.log('Debug: firstName =', firstName, 'coachPersonality =', coachPersonality, 'memory =', memory);
+      
+      // Generate a better personalized fallback
+      const timeOfDay = new Date().getHours() < 12 ? 'Morgen' : new Date().getHours() < 18 ? 'Tag' : 'Abend';
+      const personalizedGreeting = firstName ? ` ${firstName}` : '';
+      
       return {
         id: 'welcome-' + Date.now(),
         role: 'assistant',
         content: isMarkusRoute 
-          ? 'Hallo! Ich bin Coach Markus Rühl - The German Beast. Erzähle mir von deinem Training und lass uns gemeinsam richtig zerstören! 💪'
-          : 'Hallo! Ich bin Coach Sascha, dein persönlicher Trainer. Erzähle mir von deinem Training oder frage mich nach Übungen und Trainingsplänen!',
+          ? `Guten ${timeOfDay}${personalizedGreeting}! Markus Rühl hier - bereit für ein hartes Training? Lass uns heute wieder alles geben! 💪`
+          : `Guten ${timeOfDay}${personalizedGreeting}! Ich bin Sascha, dein Trainer. Wie läuft dein Training heute?`,
         timestamp: new Date(),
         metadata: { isWelcome: true }
       };

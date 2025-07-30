@@ -266,15 +266,15 @@ export const GlobalHeader = ({
 
             <div className="flex items-center gap-2">
               <img
-                src={`/coach-images/${
-                  getCurrentCoachId() === 'sascha' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
+                src={
+                  getCurrentCoachId() === 'sascha' ? '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
                   getCurrentCoachId() === 'markus' ? '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png' :
-                  getCurrentCoachId() === 'lucy' ? 'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
-                  getCurrentCoachId() === 'kai' ? '2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
+                  getCurrentCoachId() === 'lucy' ? '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
+                  getCurrentCoachId() === 'kai' ? '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
                   getCurrentCoachId() === 'dr_vita' ? '/lovable-uploads/954a7ee8-1579-4a1b-bf4c-87b4ef4588b1.png' :
                   getCurrentCoachId() === 'integral' ? '/lovable-uploads/ea8ea3bb-ceaa-4809-9cec-580177f741d1.png' :
                   'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
-                }`}
+                }
                 alt={coachData?.name || 'Coach'}
                 className="w-6 h-6 rounded-full object-cover"
               />
