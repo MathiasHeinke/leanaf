@@ -202,6 +202,8 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
           custom_conditions: customConditions,
           custom_medications: customMedications,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
         });
 
       if (saveError) throw saveError;
