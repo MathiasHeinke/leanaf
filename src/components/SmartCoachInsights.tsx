@@ -483,7 +483,10 @@ export const SmartCoachInsights = () => {
     
     let score = 0;
     let maxScore = 0;
-    const factors = [];
+    const factors: string[] = [];
+    const improvementTips: string[] = [];
+    const categoryScores: any = { consistency: 0, quality: 0, trends: 0, balance: 0 };
+    const categoryMax: any = { consistency: 25, quality: 25, trends: 25, balance: 25 };
 
     // Consistency scoring (0-25 points)
     const last7Days = new Date();
@@ -494,9 +497,48 @@ export const SmartCoachInsights = () => {
     const recentWorkouts = userData.workoutData.filter(w => new Date(w.date) >= last7Days);
 
     maxScore += 25;
-    if (recentMeals.length >= 14) { score += 10; factors.push('Regelmäßige Mahlzeiten'); }
-    if (recentSleep.length >= 5) { score += 8; factors.push('Konsequente Schlafaufzeichnung'); }
-    if (recentWorkouts.length >= 2) { score += 7; factors.push('Aktives Training'); }
+    
+    // Meal consistency
+    if (recentMeals.length >= 14) { 
+      score += 10; 
+      categoryScores.consistency += 10;
+      factors.push('Regelmäßige Mahlzeiten'); 
+    } else if (recentMeals.length >= 7) {
+      score += 6; 
+      categoryScores.consistency += 6;
+      factors.push('Gute Mahlzeitenerfassung');
+      improvementTips.push('📱 Erfasse 2 Mahlzeiten täglich für maximale Konsistenz-Punkte');
+    } else {
+      improvementTips.push('📱 Starte mit täglicher Erfassung von 2 Mahlzeiten (+10 Punkte möglich)');
+    }
+    
+    // Sleep consistency
+    if (recentSleep.length >= 5) { 
+      score += 8; 
+      categoryScores.consistency += 8;
+      factors.push('Konsequente Schlafaufzeichnung'); 
+    } else if (recentSleep.length >= 3) {
+      score += 5; 
+      categoryScores.consistency += 5;
+      factors.push('Guter Schlaftrack');
+      improvementTips.push('😴 Trage deinen Schlaf 5x pro Woche ein für mehr Punkte');
+    } else {
+      improvementTips.push('😴 Trage deinen Schlaf regelmäßig ein (+8 Punkte möglich)');
+    }
+    
+    // Workout consistency
+    if (recentWorkouts.length >= 2) { 
+      score += 7; 
+      categoryScores.consistency += 7;
+      factors.push('Aktives Training'); 
+    } else if (recentWorkouts.length >= 1) {
+      score += 4; 
+      categoryScores.consistency += 4;
+      factors.push('Sportliche Aktivität');
+      improvementTips.push('💪 Trainiere 2-3x pro Woche für optimalen Konsistenz-Score');
+    } else {
+      improvementTips.push('💪 Starte mit 2 Trainings pro Woche (+7 Punkte möglich)');
+    }
 
     // Data quality scoring (0-25 points)
     maxScore += 25;
@@ -504,37 +546,110 @@ export const SmartCoachInsights = () => {
       ? recentSleep.reduce((sum, s) => sum + (s.sleep_quality || 0), 0) / recentSleep.length 
       : 0;
     
-    if (avgSleepQuality >= 8) { score += 15; factors.push('Exzellente Schlafqualität'); }
-    else if (avgSleepQuality >= 6) { score += 10; factors.push('Gute Schlafqualität'); }
-    else if (avgSleepQuality >= 4) { score += 5; factors.push('Moderate Schlafqualität'); }
+    if (avgSleepQuality >= 8) { 
+      score += 15; 
+      categoryScores.quality += 15;
+      factors.push('Exzellente Schlafqualität'); 
+    } else if (avgSleepQuality >= 6) { 
+      score += 10; 
+      categoryScores.quality += 10;
+      factors.push('Gute Schlafqualität'); 
+      improvementTips.push('🌙 Verbessere deine Schlafqualität auf 8+ für Bonuspunkte');
+    } else if (avgSleepQuality >= 4) { 
+      score += 5; 
+      categoryScores.quality += 5;
+      factors.push('Moderate Schlafqualität'); 
+      improvementTips.push('🌙 Arbeite an deiner Schlafqualität - Ziel: 6+ Rating');
+    } else if (recentSleep.length > 0) {
+      improvementTips.push('🌙 Verbessere deine Schlafqualität für bis zu 15 Bonuspunkte');
+    }
 
-    if (recentWorkouts.some(w => w.intensity >= 7)) { score += 10; factors.push('Hochintensive Workouts'); }
+    if (recentWorkouts.some(w => w.intensity >= 7)) { 
+      score += 10; 
+      categoryScores.quality += 10;
+      factors.push('Hochintensive Workouts'); 
+    } else if (recentWorkouts.length > 0) {
+      improvementTips.push('🔥 Steigere deine Trainingsintensität auf 7+ für 10 Bonuspunkte');
+    }
 
     // Trend scoring (0-25 points)
     maxScore += 25;
     if (userData.weightData.length >= 3) {
       const weightTrend = userData.weightData[0].weight - userData.weightData[userData.weightData.length - 1].weight;
-      if (Math.abs(weightTrend) <= 2) { score += 15; factors.push('Stabiles Gewicht'); }
-      else if (Math.abs(weightTrend) <= 5) { score += 10; factors.push('Kontrollierte Gewichtsveränderung'); }
+      if (Math.abs(weightTrend) <= 2) { 
+        score += 15; 
+        categoryScores.trends += 15;
+        factors.push('Stabiles Gewicht'); 
+      } else if (Math.abs(weightTrend) <= 5) { 
+        score += 10; 
+        categoryScores.trends += 10;
+        factors.push('Kontrollierte Gewichtsveränderung'); 
+        improvementTips.push('⚖️ Halte dein Gewicht stabiler (±2kg) für maximale Trend-Punkte');
+      } else {
+        improvementTips.push('⚖️ Arbeite an einer stabileren Gewichtsentwicklung (+15 Punkte möglich)');
+      }
+    } else {
+      improvementTips.push('⚖️ Erfasse regelmäßig dein Gewicht für Trend-Analyse (+15 Punkte möglich)');
     }
 
-    if (userData.measurementData.length >= 2) { score += 10; factors.push('Körpermaße überwacht'); }
+    if (userData.measurementData.length >= 2) { 
+      score += 10; 
+      categoryScores.trends += 10;
+      factors.push('Körpermaße überwacht'); 
+    } else {
+      improvementTips.push('📏 Erfasse deine Körpermaße für weitere 10 Punkte');
+    }
 
     // Balance scoring (0-25 points)
     maxScore += 25;
     const hasAllTypes = recentMeals.length > 0 && recentSleep.length > 0 && recentWorkouts.length > 0;
-    if (hasAllTypes) { score += 20; factors.push('Ganzheitlicher Ansatz'); }
-    if (userData.supplementData.length > 0) { score += 5; factors.push('Ergänzende Supplements'); }
+    if (hasAllTypes) { 
+      score += 20; 
+      categoryScores.balance += 20;
+      factors.push('Ganzheitlicher Ansatz'); 
+    } else {
+      const missing = [];
+      if (recentMeals.length === 0) missing.push('Mahlzeiten');
+      if (recentSleep.length === 0) missing.push('Schlaf');
+      if (recentWorkouts.length === 0) missing.push('Training');
+      improvementTips.push(`🎯 Nutze alle Bereiche: ${missing.join(', ')} für ganzheitlichen Ansatz (+20 Punkte)`);
+    }
+    
+    if (userData.supplementData.length > 0) { 
+      score += 5; 
+      categoryScores.balance += 5;
+      factors.push('Ergänzende Supplements'); 
+    } else {
+      improvementTips.push('💊 Ergänze mit Supplements für weitere 5 Punkte');
+    }
 
     const percentage = Math.round((score / maxScore) * 100);
+    const missingPoints = maxScore - score;
+    const nextMilestone = percentage < 50 ? 50 : percentage < 75 ? 75 : percentage < 90 ? 90 : 100;
+    const pointsToNext = Math.ceil(((nextMilestone / 100) * maxScore) - score);
     
     insights.push({
       type: percentage >= 80 ? 'success' : percentage >= 60 ? 'info' : 'motivation',
       priority: 'high',
       title: 'Gesundheits-Score',
-      message: `Du erreichst ${percentage}% deines Gesundheitspotentials! ${factors.slice(0, 3).join(', ')} sind deine Stärken.`,
-      icon: percentage >= 80 ? '🏆' : percentage >= 60 ? '🎯' : '📈',
-      data: { score, maxScore, percentage, factors }
+      message: percentage >= 90 
+        ? `Fantastisch! Du erreichst ${percentage}% deines Gesundheitspotentials. Du bist auf dem perfekten Weg! 🏆`
+        : percentage >= 75
+        ? `Sehr gut! Du erreichst ${percentage}% deines Potentials. Noch ${pointsToNext} Punkte bis zu ${nextMilestone}%. 🎯`
+        : `Du erreichst ${percentage}% deines Gesundheitspotentials. ${missingPoints} Punkte sind noch möglich! 📈`,
+      icon: percentage >= 90 ? '🏆' : percentage >= 75 ? '🎯' : percentage >= 50 ? '📈' : '🚀',
+      data: { 
+        score, 
+        maxScore, 
+        percentage, 
+        factors,
+        missingPoints,
+        improvementTips: improvementTips.slice(0, 5),
+        categoryScores,
+        categoryMax,
+        nextMilestone,
+        pointsToNext
+      }
     });
 
     return insights;
@@ -688,19 +803,124 @@ export const SmartCoachInsights = () => {
                           {insight.message}
                         </p>
                         
-                        {insight.data && (
-                          <div className="mt-3 flex gap-2 flex-wrap">
-                            {Object.entries(insight.data).slice(0, 4).map(([key, value]) => (
-                              <Badge 
-                                key={key} 
-                                variant="outline" 
-                                className="text-xs"
-                              >
-                                {key}: {typeof value === 'number' ? value.toFixed(1) : String(value)}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                         {insight.data && (
+                           <div className="mt-3">
+                             {insight.title === 'Gesundheits-Score' ? (
+                               <div className="space-y-4">
+                                 {/* Score Display */}
+                                 <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950/50 dark:to-indigo-900/30 rounded-lg p-3">
+                                   <div>
+                                     <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+                                       {insight.data.score}/{insight.data.maxScore} Punkte
+                                     </div>
+                                     <div className="text-sm text-indigo-600 dark:text-indigo-400">
+                                       {insight.data.percentage >= 100 ? 'Perfekt!' : `Noch ${insight.data.missingPoints} Punkte möglich`}
+                                     </div>
+                                   </div>
+                                   <div className="text-right">
+                                     <div className="text-lg font-medium text-indigo-600 dark:text-indigo-400">
+                                       {insight.data.nextMilestone < 100 && `Nächstes Ziel: ${insight.data.nextMilestone}%`}
+                                     </div>
+                                     {insight.data.pointsToNext > 0 && insight.data.nextMilestone < 100 && (
+                                       <div className="text-xs text-indigo-500 dark:text-indigo-500">
+                                         Noch {insight.data.pointsToNext} Punkte
+                                       </div>
+                                     )}
+                                   </div>
+                                 </div>
+
+                                 {/* Category Breakdown */}
+                                 <div className="grid grid-cols-2 gap-3">
+                                   {Object.entries(insight.data.categoryScores).map(([category, score]: [string, any]) => {
+                                     const maxScore = insight.data.categoryMax[category];
+                                     const percentage = Math.round((score / maxScore) * 100);
+                                     const categoryNames: any = {
+                                       consistency: 'Konsistenz',
+                                       quality: 'Qualität', 
+                                       trends: 'Trends',
+                                       balance: 'Balance'
+                                     };
+                                     
+                                     return (
+                                       <div key={category} className="bg-white/50 dark:bg-gray-800/30 rounded-lg p-3">
+                                         <div className="flex justify-between items-center mb-2">
+                                           <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                             {categoryNames[category]}
+                                           </span>
+                                           <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                             {score}/{maxScore}
+                                           </span>
+                                         </div>
+                                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                           <div 
+                                             className={`h-2 rounded-full transition-all duration-500 ${
+                                               percentage >= 80 ? 'bg-green-500' : 
+                                               percentage >= 60 ? 'bg-yellow-500' : 
+                                               percentage >= 40 ? 'bg-orange-500' : 'bg-red-500'
+                                             }`}
+                                             style={{ width: `${percentage}%` }}
+                                           />
+                                         </div>
+                                       </div>
+                                     );
+                                   })}
+                                 </div>
+
+                                 {/* Improvement Tips */}
+                                 {insight.data.improvementTips && insight.data.improvementTips.length > 0 && (
+                                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                                     <div className="flex items-center gap-2 mb-3">
+                                       <Target className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                       <span className="font-medium text-green-700 dark:text-green-300">
+                                         Weg zu 100% Gesundheits-Score:
+                                       </span>
+                                     </div>
+                                     <div className="space-y-2">
+                                       {insight.data.improvementTips.map((tip: string, tipIndex: number) => (
+                                         <div key={tipIndex} className="flex items-start gap-2 text-sm text-green-700 dark:text-green-300">
+                                           <span className="text-green-500 dark:text-green-400 font-bold">•</span>
+                                           <span>{tip}</span>
+                                         </div>
+                                       ))}
+                                     </div>
+                                   </div>
+                                 )}
+
+                                 {/* Current Strengths */}
+                                 {insight.data.factors && insight.data.factors.length > 0 && (
+                                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                                     <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
+                                       🏆 Deine Stärken:
+                                     </div>
+                                     <div className="flex gap-1 flex-wrap">
+                                       {insight.data.factors.slice(0, 6).map((factor: string, factorIndex: number) => (
+                                         <Badge 
+                                           key={factorIndex} 
+                                           variant="outline" 
+                                           className="text-xs bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                                         >
+                                           {factor}
+                                         </Badge>
+                                       ))}
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+                             ) : (
+                               <div className="flex gap-2 flex-wrap">
+                                 {Object.entries(insight.data).slice(0, 4).map(([key, value]) => (
+                                   <Badge 
+                                     key={key} 
+                                     variant="outline" 
+                                     className="text-xs"
+                                   >
+                                     {key}: {typeof value === 'number' ? value.toFixed(1) : String(value)}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             )}
+                           </div>
+                         )}
                       </div>
                     </div>
                   </div>
