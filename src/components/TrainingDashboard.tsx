@@ -616,7 +616,7 @@ export const TrainingDashboard: React.FC = () => {
 
           <TabsContent value="dashboard" className="space-y-6">
             {/* Quick Actions Row */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1">
               <Card className="hover:shadow-md transition-shadow border-dashed border-2 border-primary/20 hover:border-primary/40">
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="p-3 bg-primary/10 rounded-full w-fit mx-auto">
@@ -662,7 +662,7 @@ export const TrainingDashboard: React.FC = () => {
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1">
               {/* Left Column */}
               <div className="space-y-6">
                 <TodaysTrainingStatus
