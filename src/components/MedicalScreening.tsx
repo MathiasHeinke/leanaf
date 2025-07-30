@@ -195,8 +195,8 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
         .from('user_medical_profile')
         .upsert({
           user_id: user.id,
-          has_medical_conditions: hasMedicalConditions,
-          takes_medications: takesMedications,
+          has_medical_conditions: Boolean(hasMedicalConditions),
+          takes_medications: Boolean(takesMedications),
           medical_conditions: selectedConditions,
           medications: selectedMedications,
           custom_conditions: customConditions,
