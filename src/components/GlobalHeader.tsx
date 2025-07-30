@@ -273,9 +273,11 @@ export const GlobalHeader = ({
                 className="w-6 h-6 rounded-full object-cover"
               />
               <span className="font-medium text-sm">
-                {coachData?.name && coachData?.specialization_description 
-                  ? `${coachData.name} - ${coachData.specialization_description}` 
-                  : coachData?.name || 'Coach'}
+                {coachData?.coach_id === 'lucy' 
+                  ? coachData.name 
+                  : coachData?.name && coachData?.specialization_description 
+                    ? `${coachData.name} - ${coachData.specialization_description}` 
+                    : coachData?.name || 'Coach'}
               </span>
             </div>
 
