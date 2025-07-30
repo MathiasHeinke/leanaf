@@ -332,11 +332,19 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       if (mappedMessages.length === 0) {
         generateWelcomeMessage();
       } else {
-        const lastMessage = mappedMessages[mappedMessages.length - 1];
-        if (lastMessage?.role === 'assistant') {
-          setQuickActionsShown(true);
-          // Generate dynamic suggestions for existing conversation
-          generateDynamicSuggestions();
+        // Check if the first message is from the correct coach
+        const firstMessage = mappedMessages[0];
+        if (firstMessage?.role === 'assistant' && firstMessage.coach_personality !== coach.id) {
+          // Wrong coach personality, generate new welcome message
+          console.log(`Wrong coach personality detected: ${firstMessage.coach_personality} vs ${coach.id}`);
+          generateWelcomeMessage();
+        } else {
+          const lastMessage = mappedMessages[mappedMessages.length - 1];
+          if (lastMessage?.role === 'assistant') {
+            setQuickActionsShown(true);
+            // Generate dynamic suggestions for existing conversation
+            generateDynamicSuggestions();
+          }
         }
       }
     } catch (error) {
@@ -350,7 +358,14 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
     // Check if this is the first conversation with this coach
     const isFirstConversation = messages.length === 0;
     
+    console.log(`Generating welcome message for coach: ${coach.id}, firstName: ${firstName}`);
+    
     const welcomeText = getWelcomeMessage(isFirstConversation);
+    
+    console.log(`Generated welcome text: ${welcomeText}`);
+    
+    // Clear existing messages first if regenerating
+    setMessages([]);
     
     const savedMessage = await saveMessage('assistant', welcomeText);
     if (savedMessage) {
