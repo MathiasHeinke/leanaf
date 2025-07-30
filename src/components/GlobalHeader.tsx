@@ -305,15 +305,14 @@ export const GlobalHeader = ({
       {/* Chat History Dialog */}
       {showChatHistory && (
         <Dialog open={showChatHistory} onOpenChange={setShowChatHistory}>
-          <DialogContent className="max-w-md max-h-[70vh] overflow-hidden p-4 mt-20 top-[25%]">
-            <DialogTitle className="sr-only">Chat-Verlauf</DialogTitle>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  Chat-Verlauf
-                </h2>
-              </div>
+          <DialogContent className="max-w-md max-h-[70vh] overflow-hidden p-0 mt-20 top-[25%]">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Chat-Verlauf
+              </h2>
+            </div>
+            <div className="p-4">
               <ChatHistorySidebar
                 selectedCoach={getCurrentCoachId() || 'sascha'}
                 onSelectDate={(date) => {
