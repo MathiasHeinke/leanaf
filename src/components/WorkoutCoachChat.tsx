@@ -135,26 +135,54 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
     }
   }, [user]);
 
-  // Add initial welcome message
+  // Add initial welcome message with dynamic greetings
   useEffect(() => {
     if (user && messages.length === 0) {
-      const timer = setTimeout(() => {
-        // Dynamic coach welcome message based on current route
-        
-        const welcomeMessage: WorkoutMessage = {
-          id: 'welcome-' + Date.now(),
-          role: 'assistant',
-          content: isMarkusRoute 
-            ? 'Hallo! Ich bin Coach Markus Rühl - The German Beast. Erzähle mir von deinem Training und lass uns gemeinsam richtig zerstören! 💪'
-            : 'Hallo! Ich bin Coach Sascha, dein persönlicher Trainer. Erzähle mir von deinem Training oder frage mich nach Übungen und Trainingsplänen!',
-          timestamp: new Date(),
-          metadata: { isWelcome: true }
-        };
+      const timer = setTimeout(async () => {
+        // Get personalized greeting
+        const welcomeMessage = await getWelcomeMessage();
         setMessages([welcomeMessage]);
       }, 200);
       return () => clearTimeout(timer);
     }
   }, [user]);
+
+  const getWelcomeMessage = async (): Promise<WorkoutMessage> => {
+    try {
+      const coachPersonality = isMarkusRoute ? 'markus' : 'sascha';
+      
+      // Create greeting context with correct parameters
+      const greetingContext = createGreetingContext(
+        user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Freund',
+        coachPersonality,
+        memory,
+        !messages.length
+      );
+      
+      // Generate dynamic greeting
+      const dynamicGreeting = generateDynamicCoachGreeting(greetingContext);
+      
+      return {
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: dynamicGreeting,
+        timestamp: new Date(),
+        metadata: { isWelcome: true }
+      };
+    } catch (error) {
+      console.error('Error generating dynamic greeting:', error);
+      // Fallback to static greeting
+      return {
+        id: 'welcome-' + Date.now(),
+        role: 'assistant',
+        content: isMarkusRoute 
+          ? 'Hallo! Ich bin Coach Markus Rühl - The German Beast. Erzähle mir von deinem Training und lass uns gemeinsam richtig zerstören! 💪'
+          : 'Hallo! Ich bin Coach Sascha, dein persönlicher Trainer. Erzähle mir von deinem Training oder frage mich nach Übungen und Trainingsplänen!',
+        timestamp: new Date(),
+        metadata: { isWelcome: true }
+      };
+    }
+  };
 
   const loadConversationHistory = async (date?: string) => {
     if (!user) return;
@@ -882,11 +910,11 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                        {/* Profile picture and time row UNTER der Nachricht */}
                        <div className="flex items-center gap-2">
                          <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                           <img 
-                               src={isMarkusRoute ? "/coach-images/markus-ruehl.jpg" : "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"}
-                              alt={isMarkusRoute ? "Markus" : "Sascha"}
-                             className="w-full h-full object-cover"
-                           />
+                            <img 
+                                src={isMarkusRoute ? "/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png" : "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"}
+                               alt={isMarkusRoute ? "Markus" : "Sascha"}
+                              className="w-full h-full object-cover"
+                            />
                          </div>
                          <div className="text-xs text-muted-foreground">
                            {message.timestamp.toLocaleTimeString('de-DE', {
@@ -963,10 +991,10 @@ export const WorkoutCoachChat: React.FC<WorkoutCoachChatProps> = ({
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
                        <img 
-                         src={isMarkusRoute ? "/coach-images/markus-ruehl.jpg" : "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"}
-                         alt={isMarkusRoute ? "Markus" : "Sascha"}
-                        className="w-full h-full object-cover"
-                      />
+                          src={isMarkusRoute ? "/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png" : "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"}
+                          alt={isMarkusRoute ? "Markus" : "Sascha"}
+                         className="w-full h-full object-cover"
+                       />
                     </div>
                     <div className="text-xs text-muted-foreground">
                       schreibt...
