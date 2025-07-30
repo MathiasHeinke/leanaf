@@ -1637,6 +1637,78 @@ export type Database = {
         }
         Relationships: []
       }
+      medical_conditions_library: {
+        Row: {
+          category: string
+          contraindications: string[] | null
+          created_at: string
+          fitness_considerations: string | null
+          id: string
+          name: string
+          risk_level: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          contraindications?: string[] | null
+          created_at?: string
+          fitness_considerations?: string | null
+          id?: string
+          name: string
+          risk_level?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          contraindications?: string[] | null
+          created_at?: string
+          fitness_considerations?: string | null
+          id?: string
+          name?: string
+          risk_level?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      medications_library: {
+        Row: {
+          active_ingredient: string | null
+          category: string
+          created_at: string
+          exercise_interactions: string[] | null
+          fitness_considerations: string | null
+          id: string
+          name: string
+          nutrition_interactions: string[] | null
+          risk_level: string
+          updated_at: string
+        }
+        Insert: {
+          active_ingredient?: string | null
+          category: string
+          created_at?: string
+          exercise_interactions?: string[] | null
+          fitness_considerations?: string | null
+          id?: string
+          name: string
+          nutrition_interactions?: string[] | null
+          risk_level?: string
+          updated_at?: string
+        }
+        Update: {
+          active_ingredient?: string | null
+          category?: string
+          created_at?: string
+          exercise_interactions?: string[] | null
+          fitness_considerations?: string | null
+          id?: string
+          name?: string
+          nutrition_interactions?: string[] | null
+          risk_level?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       men_quotes: {
         Row: {
           author: string | null
@@ -1848,6 +1920,8 @@ export type Database = {
           hide_premium_features: boolean | null
           id: string
           macro_strategy: string | null
+          medical_risk_level: string | null
+          medical_screening_completed: boolean | null
           muscle_maintenance_priority: boolean | null
           preferred_language: string | null
           preferred_theme: string | null
@@ -1877,6 +1951,8 @@ export type Database = {
           hide_premium_features?: boolean | null
           id?: string
           macro_strategy?: string | null
+          medical_risk_level?: string | null
+          medical_screening_completed?: boolean | null
           muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
           preferred_theme?: string | null
@@ -1906,6 +1982,8 @@ export type Database = {
           hide_premium_features?: boolean | null
           id?: string
           macro_strategy?: string | null
+          medical_risk_level?: string | null
+          medical_screening_completed?: boolean | null
           muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
           preferred_theme?: string | null
@@ -2602,6 +2680,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_medical_profile: {
+        Row: {
+          created_at: string
+          custom_conditions: string[] | null
+          custom_medications: string[] | null
+          has_medical_conditions: boolean
+          id: string
+          medical_conditions: string[] | null
+          medical_notes: string | null
+          medications: string[] | null
+          risk_assessment: Json | null
+          screening_completed_at: string | null
+          takes_medications: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_conditions?: string[] | null
+          custom_medications?: string[] | null
+          has_medical_conditions?: boolean
+          id?: string
+          medical_conditions?: string[] | null
+          medical_notes?: string | null
+          medications?: string[] | null
+          risk_assessment?: Json | null
+          screening_completed_at?: string | null
+          takes_medications?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_conditions?: string[] | null
+          custom_medications?: string[] | null
+          has_medical_conditions?: boolean
+          id?: string
+          medical_conditions?: string[] | null
+          medical_notes?: string | null
+          medications?: string[] | null
+          risk_assessment?: Json | null
+          screening_completed_at?: string | null
+          takes_medications?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_points: {
         Row: {
