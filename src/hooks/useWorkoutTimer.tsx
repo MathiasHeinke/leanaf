@@ -4,7 +4,7 @@ interface WorkoutTimerState {
   isRunning: boolean;
   startTime: Date | null;
   pausedDuration: number; // Total paused time in milliseconds
-  currentDuration: number; // Current elapsed time in seconds
+  currentDuration: number; // Current elapsed time in milliseconds
   sessionId: string | null;
   pauseStartTime: number | null; // When was the timer paused
 }
@@ -54,7 +54,7 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
         // If timer was running, resume it
         if (parsed.isRunning && parsed.startTime) {
           const now = new Date();
-          const elapsed = Math.floor((now.getTime() - parsed.startTime.getTime() - parsed.pausedDuration) / 1000);
+          const elapsed = now.getTime() - parsed.startTime.getTime() - parsed.pausedDuration;
           setTimerState(prev => ({ ...prev, currentDuration: Math.max(0, elapsed) }));
         }
       } catch (error) {
@@ -164,7 +164,7 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
       setTimerState(prev => ({
         ...prev,
         isRunning: false,
-        currentDuration: Math.floor(currentElapsed / 1000),
+        currentDuration: currentElapsed, // Keep in milliseconds
         pauseStartTime: now.getTime()
       }));
     }
@@ -215,7 +215,7 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     isRunning: timerState.isRunning,
     currentDuration: timerState.currentDuration,
     formattedTime: formatTime(timerState.currentDuration),
-    pauseDurationFormatted: formatTime(currentPauseDuration),
+    pauseDurationFormatted: formatTime(currentPauseDuration * 1000), // Convert seconds to ms for formatTime
     currentPauseDuration,
     startTimer,
     stopTimer,
