@@ -31,6 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
+import { useUniversalImageAnalysis } from "@/hooks/useUniversalImageAnalysis";
 import { UploadProgress } from "@/components/UploadProgress";
 import { uploadFilesWithProgress, UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
 import { toast } from "sonner";
@@ -103,6 +104,13 @@ export const ChatCoach = ({
     addRecognizedSupplementsToStack,
     isAnalyzing: isAnalyzingSupplements
   } = useSupplementRecognition();
+
+  const {
+    analyzeImage,
+    isAnalyzing: isImageAnalyzing,
+    analysisResult,
+    clearAnalysis
+  } = useUniversalImageAnalysis();
 
   // Enhanced coach personality mapping with professions
   const getCoachInfo = (personality: string) => {
@@ -480,28 +488,25 @@ export const ChatCoach = ({
     setQuickActionsShown(false);
 
     try {
-      // Check if we should analyze supplements in images
-      let supplementAnalysisResult = null;
+      // Universal Image Analysis for any uploaded images
+      let imageAnalysisResult = null;
       if (imagesToSend.length > 0) {
-        // Check if user is asking about supplements or if we should auto-detect
-        const supplementKeywords = ['supplement', 'nahrungsergänzung', 'vitamin', 'protein', 'kreatin', 'pillen', 'kapseln', 'pulver', 'tabletten'];
-        const shouldAnalyzeSupplements = supplementKeywords.some(keyword => 
-          userMessage.toLowerCase().includes(keyword)
-        ) || userMessage.toLowerCase().includes('erkennen') || userMessage.trim() === '';
-
-        if (shouldAnalyzeSupplements) {
-          try {
-            console.log('🔍 Analyzing image for supplements...');
-            supplementAnalysisResult = await recognizeSupplements(imagesToSend[0], userMessage);
+        try {
+          console.log('🔍 Starting universal image analysis...');
+          imageAnalysisResult = await analyzeImage(imagesToSend[0], userMessage);
+          
+          if (imageAnalysisResult.analysisData) {
+            console.log(`✅ Image classified as: ${imageAnalysisResult.classification.category}`);
             
-            // If supplements were found with good confidence, add them to stack
-            if (supplementAnalysisResult.success && supplementAnalysisResult.recognized_supplements.length > 0) {
-              await addRecognizedSupplementsToStack(supplementAnalysisResult.recognized_supplements);
-            }
-          } catch (error) {
-            console.error('Error analyzing supplements:', error);
-            // Continue with normal chat flow even if supplement analysis fails
+            // Show user what was found and suggest action
+            toast.success(
+              `${imageAnalysisResult.classification.description} - ${imageAnalysisResult.classification.suggestedAction}`, 
+              { duration: 4000 }
+            );
           }
+        } catch (error) {
+          console.error('Error in universal image analysis:', error);
+          toast.warning('Bildanalyse fehlgeschlagen, sende trotzdem an Coach...');
         }
       }
 
@@ -519,10 +524,22 @@ export const ChatCoach = ({
         setMessages(prev => [...prev, mappedMessage]);
       }
 
-      // Enhanced message to include supplement analysis if available
+      // Enhanced message to include image analysis if available
       let enhancedMessage = userMessage;
-      if (supplementAnalysisResult && supplementAnalysisResult.success) {
-        enhancedMessage += `\n\n[SUPPLEMENT-ANALYSE: ${supplementAnalysisResult.recognized_supplements.length} Supplement(s) erkannt: ${supplementAnalysisResult.analysis}]`;
+      if (imageAnalysisResult && imageAnalysisResult.analysisData) {
+        const analysis = imageAnalysisResult.analysisData;
+        const category = imageAnalysisResult.classification.category;
+        enhancedMessage += `\n\n[BILD-ANALYSE ${category.toUpperCase()}: ${imageAnalysisResult.classification.description}]`;
+        
+        if (category === 'supplement' && analysis.recognized_supplements) {
+          enhancedMessage += `\n[SUPPLEMENTS: ${analysis.recognized_supplements.length} erkannt]`;
+        } else if (category === 'food' && analysis.calories) {
+          enhancedMessage += `\n[ESSEN: ~${analysis.calories}kcal]`;
+        } else if (category === 'exercise' && analysis.exercises) {
+          enhancedMessage += `\n[ÜBUNGEN: ${analysis.exercises.length} erkannt]`;
+        } else if (category === 'body_progress' && analysis.analysis) {
+          enhancedMessage += `\n[KÖRPER-ANALYSE: ${analysis.analysis.overallPhysique}]`;
+        }
       }
 
       // Call enhanced coach-chat function with full context
