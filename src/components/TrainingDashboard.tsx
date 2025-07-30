@@ -436,16 +436,6 @@ export const TrainingDashboard: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       {/* Header with Timer - Centered Layout */}
       <div className="text-center space-y-4">
-        <div>
-          <h1 className="text-4xl font-bold flex items-center justify-center gap-3 mb-2">
-            <Dumbbell className="h-10 w-10 text-primary" />
-            Workout
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Intelligentes Training mit KI-Coach
-          </p>
-        </div>
-        
         {/* Timer Control - New 3-Column Layout */}
         <div className="max-w-2xl mx-auto">
           <Card className="border-gradient-primary">
