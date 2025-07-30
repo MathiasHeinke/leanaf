@@ -31,7 +31,7 @@ export const FloatingWorkoutTimer: React.FC<FloatingWorkoutTimerProps> = ({
 
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full flex justify-center">
-      <div className="bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 transition-all duration-300 px-7 py-5 mx-4 max-w-md w-full">
+      <div className="bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 transition-all duration-300 px-7 py-5 mx-4 w-full" style={{ maxWidth: '378px' }}>
         {!isActive ? (
           // Not started state
           <div className="flex items-center justify-center gap-5">
