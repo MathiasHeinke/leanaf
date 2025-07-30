@@ -248,6 +248,30 @@ export type Database = {
         }
         Relationships: []
       }
+      body_analysis_log: {
+        Row: {
+          analysis_result: Json
+          created_at: string
+          id: string
+          image_url: string
+          user_id: string
+        }
+        Insert: {
+          analysis_result: Json
+          created_at?: string
+          id?: string
+          image_url: string
+          user_id: string
+        }
+        Update: {
+          analysis_result?: Json
+          created_at?: string
+          id?: string
+          image_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       body_measurements: {
         Row: {
           arms: number | null
