@@ -393,7 +393,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 {todaysSleep.morning_libido && (
                 <div className="flex items-center gap-1">
                   <Heart className="h-3 w-3" />
-                  Hormon-Vitalität: {todaysSleep.morning_libido}/10
+                  Libido und Vitalität: {todaysSleep.morning_libido}/10
                 </div>
               )}
               {todaysSleep.motivation_level && (
@@ -845,7 +845,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       <div className="flex-1">
                         <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Heart className="inline h-3 w-3 mr-1" />
-                          Hormon-Vitalität: {morningLibido[0]}/10
+                          Libido und Vitalität: {morningLibido[0]}/10
                           <InfoButton
                             title="Hormon-Vitalität als Gesundheitsmarker"
                             description="Morgendliche Energie und Libido sind entscheidende Indikatoren für die hormonelle Gesundheit. Sie spiegeln den Testosteronspiegel, die Cortisolbalance und die nächtliche Regeneration wider."
