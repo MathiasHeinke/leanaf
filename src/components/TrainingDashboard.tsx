@@ -488,14 +488,11 @@ export const TrainingDashboard: React.FC = () => {
                     <div className="text-4xl font-mono font-bold text-muted-foreground">
                       {formattedTime}<span className="text-2xl text-muted-foreground/60">.{Math.floor((currentDuration % 1000) / 10).toString().padStart(2, '0')}</span>
                     </div>
-                    <div className="flex items-center justify-center gap-2 mt-1">
-                      {isRunning && (
-                        <div className="flex items-center gap-1 text-sm text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          Läuft
-                        </div>
-                      )}
-                    </div>
+                    {isPaused && (
+                      <div className="text-lg font-mono text-yellow-500 font-semibold mt-1">
+                        Pause: {pauseDurationFormatted}
+                      </div>
+                    )}
                   </div>
 
                   {/* Right: Stop Button */}
