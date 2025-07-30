@@ -9,21 +9,21 @@ interface ChatLayoutProps {
 
 export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
   return (
-    <div className="fixed inset-0 flex flex-col bg-black text-white z-50">
+    <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
       
       {/* Header */}
       <GlobalHeader />
 
       {/* Coach-Banner */}
       {coachBanner && (
-        <div className="flex-shrink-0 px-4 pt-1 pb-2">
+        <div className="flex-shrink-0 px-4 pt-1 pb-2 border-b border-border">
           {coachBanner}
         </div>
       )}
 
-      {/* Scrollbarer Chat */}
-      <div className="flex-1 min-h-0 px-4">
-        <div className="h-full overflow-y-auto space-y-2" style={{ pointerEvents: 'auto' }}>
+      {/* Scrollbarer Chat - Desktop/Mobile unified */}
+      <div className="flex-1 min-h-0">
+        <div className="h-full overflow-y-auto px-4 space-y-2" style={{ pointerEvents: 'auto' }}>
           {children}
         </div>
       </div>
@@ -33,13 +33,13 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
         
         {/* Eingabefeld direkt auf Footer */}
         {chatInput && (
-          <div className="px-3 py-1 bg-neutral-900 border-t border-neutral-800">
+          <div className="px-4 py-3 bg-background border-t border-border">
             {chatInput}
           </div>
         )}
 
         {/* Footer: kein zusätzlicher Abstand */}
-        <div className="h-[32px] flex items-center justify-center text-xs text-neutral-500 bg-neutral-900 m-0 p-0">
+        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-muted/30 border-t border-border">
           © 2025 GetleanAI. Made with ❤️ in Germany
         </div>
 
