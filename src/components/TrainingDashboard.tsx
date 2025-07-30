@@ -19,6 +19,8 @@ import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
 import { TrainingStats } from '@/components/TrainingStats';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
+import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
+import { ActiveWorkoutPlan } from '@/components/ActiveWorkoutPlan';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { useNavigate } from 'react-router-dom';
@@ -304,6 +306,7 @@ export const TrainingDashboard: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [editSessionData, setEditSessionData] = useState<any>(null);
   const [showStopDialog, setShowStopDialog] = useState(false);
+  const [activeWorkoutPlan, setActiveWorkoutPlan] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -388,6 +391,23 @@ export const TrainingDashboard: React.FC = () => {
   const getTodaysSessions = () => {
     const today = new Date().toISOString().split('T')[0];
     return sessions.filter(session => session.date === today);
+  };
+
+  // Workout Plan handlers
+  const handleStartWorkoutPlan = (plan: any) => {
+    setActiveWorkoutPlan(plan);
+    if (!hasActiveTimer) {
+      startTimer();
+    }
+  };
+
+  const handleCompleteWorkoutPlan = () => {
+    setActiveWorkoutPlan(null);
+    loadSessions();
+  };
+
+  const handleCancelWorkoutPlan = () => {
+    setActiveWorkoutPlan(null);
   };
 
   if (isLoading) {
@@ -570,20 +590,39 @@ export const TrainingDashboard: React.FC = () => {
       </div>
       )}
 
-      {/* Training Status and Stats */}
-      <div className="grid gap-6 grid-cols-1">
-        {/* Today's Training Status */}
-        <TodaysTrainingStatus 
-          todaysSessions={getTodaysSessions()}
-          onStartTraining={() => setShowQuickAdd(true)}
-          onEditSession={handleEditSession}
-          onDeleteSession={handleDeleteSession}
-          onDuplicateSession={handleDuplicateSession}
+      {/* Active Workout Plan or Training Dashboard */}
+      {activeWorkoutPlan ? (
+        <ActiveWorkoutPlan
+          workoutPlan={activeWorkoutPlan}
+          onComplete={handleCompleteWorkoutPlan}
+          onCancel={handleCancelWorkoutPlan}
+          isTimerRunning={isRunning}
+          timerDuration={currentDuration}
         />
+      ) : (
+        <>
+          {/* Workout Plans Section */}
+          <WorkoutPlanManager 
+            onStartPlan={handleStartWorkoutPlan}
+            className="mb-6"
+          />
 
-        {/* Training Stats */}
-        <TrainingStats stats={weeklyStats} />
-      </div>
+          {/* Training Status and Stats */}
+          <div className="grid gap-6 grid-cols-1">
+            {/* Today's Training Status */}
+            <TodaysTrainingStatus 
+              todaysSessions={getTodaysSessions()}
+              onStartTraining={() => setShowQuickAdd(true)}
+              onEditSession={handleEditSession}
+              onDeleteSession={handleDeleteSession}
+              onDuplicateSession={handleDuplicateSession}
+            />
+
+            {/* Training Stats */}
+            <TrainingStats stats={weeklyStats} />
+          </div>
+        </>
+      )}
 
       {/* Secondary Actions */}
       <div className="grid gap-6 grid-cols-1">        

@@ -989,6 +989,7 @@ export type Database = {
           updated_at: string
           user_id: string
           workout_id: string | null
+          workout_plan_id: string | null
           workout_type: string | null
         }
         Insert: {
@@ -1004,6 +1005,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           workout_id?: string | null
+          workout_plan_id?: string | null
           workout_type?: string | null
         }
         Update: {
@@ -1019,9 +1021,18 @@ export type Database = {
           updated_at?: string
           user_id?: string
           workout_id?: string | null
+          workout_plan_id?: string | null
           workout_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exercise_sessions_workout_plan_id_fkey"
+            columns: ["workout_plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exercise_sets: {
         Row: {
@@ -3006,6 +3017,45 @@ export type Database = {
           id?: string
           language?: string | null
           quote_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      workout_plans: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          estimated_duration_minutes: number | null
+          exercises: Json
+          id: string
+          is_public: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_duration_minutes?: number | null
+          exercises?: Json
+          id?: string
+          is_public?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_duration_minutes?: number | null
+          exercises?: Json
+          id?: string
+          is_public?: boolean
+          name?: string
           updated_at?: string
         }
         Relationships: []
