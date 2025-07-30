@@ -106,28 +106,6 @@ export const EmbeddedTrainingHistory: React.FC<EmbeddedTrainingHistoryProps> = (
 
   return (
     <div className="space-y-4">
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
-          <CardContent className="p-3 text-center">
-            <div className="text-xl font-bold text-foreground">{totalSessions}</div>
-            <p className="text-xs font-medium text-foreground">Sessions</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-secondary/10 to-secondary/5 border-secondary/20">
-          <CardContent className="p-3 text-center">
-            <div className="text-xl font-bold text-foreground">{totalSets}</div>
-            <p className="text-xs font-medium text-foreground">Sätze</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
-          <CardContent className="p-3 text-center">
-            <div className="text-xl font-bold text-foreground">{Math.round(totalVolume).toLocaleString()}</div>
-            <p className="text-xs font-medium text-foreground">kg Volumen</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* History Content */}
       <Card>
         <CardHeader className="pb-3">

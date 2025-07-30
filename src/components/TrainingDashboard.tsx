@@ -657,6 +657,12 @@ export const TrainingDashboard: React.FC = () => {
               pastSessions={sessions}
             />
 
+            {/* Training History - Embedded */}
+            <EmbeddedTrainingHistory
+              sessions={sessions}
+              onSessionUpdated={loadSessions}
+            />
+
           </TabsContent>
         </Tabs>
       )}
