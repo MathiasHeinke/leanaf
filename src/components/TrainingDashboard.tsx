@@ -455,31 +455,29 @@ export const TrainingDashboard: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-4 items-center">
+                <div className="flex items-center gap-4">
                   {/* Left: Pause/Resume Button */}
-                  <div className="flex justify-center">
-                    {isRunning ? (
-                      <Button 
-                        onClick={handlePauseWorkout}
-                        className="bg-yellow-500 hover:bg-yellow-600 text-white w-16 h-16 rounded-full p-0"
-                        size="lg"
-                      >
-                        <Pause className="h-8 w-8" />
-                      </Button>
-                    ) : (
-                      <Button 
-                        onClick={handleResumeWorkout}
-                        className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
-                        size="lg"
-                      >
-                        <Play className="h-8 w-8" />
-                      </Button>
-                    )}
-                  </div>
+                  {isRunning ? (
+                    <Button 
+                      onClick={handlePauseWorkout}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white w-16 h-16 rounded-full p-0"
+                      size="lg"
+                    >
+                      <Pause className="h-8 w-8" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={handleResumeWorkout}
+                      className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
+                      size="lg"
+                    >
+                      <Play className="h-8 w-8" />
+                    </Button>
+                  )}
 
                   {/* Center: Timer Display */}
-                  <div className="text-center">
-                    <div className="text-4xl font-mono font-bold text-muted-foreground mb-2">
+                  <div className="flex-1">
+                    <div className="text-4xl font-mono font-bold text-muted-foreground">
                       {formattedTime}
                     </div>
                     {isPaused && (
@@ -487,7 +485,7 @@ export const TrainingDashboard: React.FC = () => {
                         Pause: {pauseDurationFormatted}
                       </div>
                     )}
-                    <div className="flex items-center justify-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-1">
                       {isRunning && (
                         <div className="flex items-center gap-1 text-sm text-green-600">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -504,15 +502,13 @@ export const TrainingDashboard: React.FC = () => {
                   </div>
 
                   {/* Right: Stop Button */}
-                  <div className="flex justify-center">
-                    <Button 
-                      onClick={handleStopWorkout}
-                      className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0"
-                      size="lg"
-                    >
-                      <Square className="h-8 w-8" />
-                    </Button>
-                  </div>
+                  <Button 
+                    onClick={handleStopWorkout}
+                    className="bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full p-0"
+                    size="sm"
+                  >
+                    <Square className="h-5 w-5" />
+                  </Button>
                 </div>
               )}
 
