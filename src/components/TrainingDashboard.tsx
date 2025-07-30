@@ -36,7 +36,7 @@ import {
   Square,
   Pause
 } from 'lucide-react';
-import { toast } from 'sonner';
+
 
 interface ExerciseSession {
   id: string;
@@ -94,17 +94,14 @@ export const TrainingDashboard: React.FC = () => {
 
   const handleStartWorkout = () => {
     startTimer();
-    toast.success('Workout Timer gestartet! 🏋️‍♂️');
   };
 
   const handlePauseWorkout = () => {
     pauseTimer();
-    toast.info('Workout pausiert ⏸️');
   };
 
   const handleResumeWorkout = () => {
     resumeTimer();
-    toast.success('Workout fortgesetzt! 🏋️‍♂️');
   };
 
   const handleStopWorkout = () => {
@@ -144,11 +141,9 @@ export const TrainingDashboard: React.FC = () => {
           workout_type: 'strength'
         });
 
-        toast.success(`Workout gespeichert! Dauer: ${durationMinutes} Minuten`);
         loadSessions(); // Refresh the sessions list
       } catch (error) {
         console.error('Error saving workout session:', error);
-        toast.error('Fehler beim Speichern des Workouts');
       }
     }
   };
@@ -156,7 +151,6 @@ export const TrainingDashboard: React.FC = () => {
   const handleDiscardWorkout = () => {
     stopTimer();
     setShowStopDialog(false);
-    toast.info('Workout verworfen');
   };
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
