@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye } from "lucide-react";
+import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -386,19 +387,19 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               {todaysSleep.screen_time_evening > 0 && (
                 <div className="flex items-center gap-1">
                   <Smartphone className="h-3 w-3" />
-                  Handyzeit: {todaysSleep.screen_time_evening} min
+                  Bildschirmzeit: {todaysSleep.screen_time_evening} min
                 </div>
               )}
               {todaysSleep.morning_libido && (
                 <div className="flex items-center gap-1">
                   <Heart className="h-3 w-3" />
-                  Libido: {todaysSleep.morning_libido}/10
+                  Morgendliche Energie: {todaysSleep.morning_libido}/10
                 </div>
               )}
               {todaysSleep.motivation_level && (
                 <div className="flex items-center gap-1">
                   <Zap className="h-3 w-3" />
-                  Motivation: {todaysSleep.motivation_level}/10
+                  Morgendliche Motivation: {todaysSleep.motivation_level}/10
                 </div>
               )}
               {todaysSleep.last_meal_time && (
@@ -477,6 +478,16 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   <span>Schlafzeiten:</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3 text-indigo-500 hover:text-indigo-700 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Wann bist du ins Bett gegangen und aufgewacht?<br/>Ziehe die Symbole oder klicke zum Bearbeiten.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   
                   {/* Inline editable bedtime */}
                   {isEditingBedtime ? (
@@ -651,8 +662,18 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               </div>
 
               <div>
-                <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                   Schlafqualität: {sleepQuality[0]}/10
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Bewerte die Qualität deines Schlafs.<br/>1 = sehr schlecht, 10 = ausgezeichnet</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </label>
                 <Slider
                   value={sleepQuality}
@@ -675,7 +696,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                   >
                     <span className="flex items-center gap-2">
                       <Zap className="h-4 w-4" />
-                      Weitere Details (optional)
+                      Weitere Details zur Schlafanalyse
                     </span>
                     <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showOptionalFields ? 'rotate-180' : ''}`} />
                   </Button>
@@ -684,12 +705,22 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                 <CollapsibleContent className="space-y-4 mt-3">
                   {/* Vertical layout with eye toggles */}
                   <div className="space-y-4">
-                    {/* Schlafunterbrechungen */}
+                    {/* Nächtliches Aufwachen */}
                     <div className={`flex justify-between items-center ${!trackInterruptions ? 'opacity-50' : ''}`}>
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Moon className="inline h-3 w-3 mr-1" />
-                          Unterbrechungen: {sleepInterruptions[0]}x
+                          Nächtliches Aufwachen: {sleepInterruptions[0]}x
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Wie oft bist du in der Nacht aufgewacht?<br/>Auch kurzes Aufwachen zählt (z.B. für Toilette)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </label>
                         <Slider
                           value={sleepInterruptions}
@@ -719,12 +750,22 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       </Button>
                     </div>
 
-                    {/* Abendliche Handyzeit */}
+                    {/* Bildschirmzeit vor dem Schlafen */}
                     <div className={`flex justify-between items-center ${!trackScreenTime ? 'opacity-50' : ''}`}>
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Smartphone className="inline h-3 w-3 mr-1" />
-                          Handyzeit: {screenTimeEvening[0]}min
+                          Bildschirmzeit vor dem Schlafen: {screenTimeEvening[0]}min
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Wie lange warst du am Handy/Tablet vor dem Schlafen?<br/>Bildschirmlicht beeinflusst die Melatonin-Produktion</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </label>
                         <Slider
                           value={screenTimeEvening}
@@ -757,9 +798,19 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                     {/* Letzte Mahlzeit */}
                     <div className={`flex justify-between items-center ${!trackLastMeal ? 'opacity-50' : ''}`}>
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Utensils className="inline h-3 w-3 mr-1" />
                           Letzte Mahlzeit: {formatTime(lastMealTime[0])}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Wann hast du das letzte Mal gegessen?<br/>Große Mahlzeiten vor dem Schlafen können die Qualität beeinträchtigen</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </label>
                         <Slider
                           value={lastMealTime}
@@ -789,12 +840,22 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       </Button>
                     </div>
 
-                    {/* Libido am Morgen */}
+                    {/* Morgendliche Energie/Lust */}
                     <div className={`flex justify-between items-center ${!trackLibido ? 'opacity-50' : ''}`}>
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Heart className="inline h-3 w-3 mr-1" />
-                          Libido: {morningLibido[0]}/10
+                          Morgendliche Energie: {morningLibido[0]}/10
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Indikator für Hormonbalance und Regeneration<br/>1 = keine Energie/Lust, 10 = sehr energiegeladen</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </label>
                         <Slider
                           value={morningLibido}
@@ -824,12 +885,22 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                       </Button>
                     </div>
 
-                    {/* Motivations-Level */}
+                    {/* Morgendliche Motivation */}
                     <div className={`flex justify-between items-center ${!trackMotivation ? 'opacity-50' : ''}`}>
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block">
+                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
                           <Zap className="inline h-3 w-3 mr-1" />
-                          Motivations-Level: {motivationLevel[0]}/10
+                          Morgendliche Motivation: {motivationLevel[0]}/10
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Wie motiviert und energiegeladen warst du beim Aufwachen?<br/>1 = gar nicht motiviert, 10 = extrem motiviert</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </label>
                         <Slider
                           value={motivationLevel}
