@@ -22,6 +22,9 @@ interface FluidOption {
   category: string;
   default_amount: number;
   calories_per_100ml: number;
+  protein_per_100ml?: number;
+  carbs_per_100ml?: number;
+  fats_per_100ml?: number;
   has_caffeine: boolean;
   has_alcohol: boolean;
   alcohol_percentage: number;
@@ -40,6 +43,15 @@ interface UserFluid {
   fluid_category?: string;
   has_alcohol?: boolean;
   calories_per_100ml?: number;
+  fluid_database?: {
+    name: string;
+    category: string;
+    has_alcohol: boolean;
+    calories_per_100ml: number;
+    protein_per_100ml?: number;
+    carbs_per_100ml?: number;
+    fats_per_100ml?: number;
+  };
 }
 
 interface AlcoholAbstinence {
@@ -117,7 +129,10 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
           name,
           category,
           has_alcohol,
-          calories_per_100ml
+          calories_per_100ml,
+          protein_per_100ml,
+          carbs_per_100ml,
+          fats_per_100ml
         )
       `)
       .eq('user_id', user.id)
@@ -280,9 +295,21 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     }, 0);
   };
 
+  const getTotalMacrosFromDrinks = () => {
+    return todaysFluids.reduce((totals, f) => {
+      const factor = f.amount_ml / 100;
+      return {
+        protein: totals.protein + ((f.fluid_database?.protein_per_100ml || 0) * factor),
+        carbs: totals.carbs + ((f.fluid_database?.carbs_per_100ml || 0) * factor),
+        fats: totals.fats + ((f.fluid_database?.fats_per_100ml || 0) * factor)
+      };
+    }, { protein: 0, carbs: 0, fats: 0 });
+  };
+
   const hasAlcoholToday = todaysFluids.some(f => f.has_alcohol);
   const totalWater = getTotalWaterIntake();
   const totalCalories = getTotalCaloriesFromDrinks();
+  const totalMacros = getTotalMacrosFromDrinks();
   
   // Calculate completion status
   const hasFluidEntries = todaysFluids.length > 0;
@@ -300,7 +327,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     >
       <div className="space-y-4">
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <Card className="p-2">
             <div className="text-center">
               <p className="text-lg font-bold text-cyan-600">{totalWater}ml</p>
@@ -314,6 +341,27 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </div>
           </Card>
         </div>
+
+        {/* Macros from Drinks */}
+        {(totalMacros.protein > 0 || totalMacros.carbs > 0 || totalMacros.fats > 0) && (
+          <Card className="p-3 mb-2">
+            <h4 className="text-xs font-medium text-muted-foreground mb-2">Makronährstoffe aus Getränken</h4>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-sm font-semibold text-blue-600">{Math.round(totalMacros.protein * 10) / 10}g</p>
+                <p className="text-xs text-muted-foreground">Protein</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-green-600">{Math.round(totalMacros.carbs * 10) / 10}g</p>
+                <p className="text-xs text-muted-foreground">Kohlenhydrate</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-yellow-600">{Math.round(totalMacros.fats * 10) / 10}g</p>
+                <p className="text-xs text-muted-foreground">Fette</p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Alcohol Abstinence Status */}
         {alcoholAbstinence?.is_abstinent && (
@@ -356,12 +404,39 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-sm">{fluid.fluid_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {fluid.amount_ml}ml • {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}
-                      </p>
-                      {fluid.notes && (
-                        <p className="text-xs text-muted-foreground mt-1">{fluid.notes}</p>
-                      )}
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>{fluid.amount_ml}ml • {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}</p>
+                        {(fluid.fluid_database?.calories_per_100ml || 0) > 0 && (
+                          <p className="text-orange-600">
+                            {Math.round((fluid.fluid_database?.calories_per_100ml || 0) * (fluid.amount_ml / 100))} kcal
+                          </p>
+                        )}
+                        {/* Show macros if available */}
+                        {((fluid.fluid_database?.protein_per_100ml || 0) > 0 || 
+                          (fluid.fluid_database?.carbs_per_100ml || 0) > 0 || 
+                          (fluid.fluid_database?.fats_per_100ml || 0) > 0) && (
+                          <div className="flex gap-2 text-xs">
+                            {(fluid.fluid_database?.protein_per_100ml || 0) > 0 && (
+                              <span className="text-blue-600">
+                                P: {Math.round((fluid.fluid_database?.protein_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                              </span>
+                            )}
+                            {(fluid.fluid_database?.carbs_per_100ml || 0) > 0 && (
+                              <span className="text-green-600">
+                                C: {Math.round((fluid.fluid_database?.carbs_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                              </span>
+                            )}
+                            {(fluid.fluid_database?.fats_per_100ml || 0) > 0 && (
+                              <span className="text-yellow-600">
+                                F: {Math.round((fluid.fluid_database?.fats_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {fluid.notes && (
+                          <p className="text-muted-foreground">{fluid.notes}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {fluid.fluid_category && (
@@ -444,9 +519,17 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                           <SelectItem key={fluid.id} value={fluid.id}>
                             <div className="flex flex-col">
                               <span>{fluid.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {fluid.default_amount}ml • {fluid.calories_per_100ml > 0 ? `${fluid.calories_per_100ml} kcal/100ml` : 'kalorienfrei'}
-                              </span>
+                              <div className="text-xs text-muted-foreground">
+                                <div>{fluid.default_amount}ml • {fluid.calories_per_100ml > 0 ? `${fluid.calories_per_100ml} kcal/100ml` : 'kalorienfrei'}</div>
+                                {/* Show macros in selection if available */}
+                                {((fluid.protein_per_100ml || 0) > 0 || (fluid.carbs_per_100ml || 0) > 0 || (fluid.fats_per_100ml || 0) > 0) && (
+                                  <div className="flex gap-1 mt-1">
+                                    {(fluid.protein_per_100ml || 0) > 0 && <span className="text-blue-600">P:{fluid.protein_per_100ml}g</span>}
+                                    {(fluid.carbs_per_100ml || 0) > 0 && <span className="text-green-600">C:{fluid.carbs_per_100ml}g</span>}
+                                    {(fluid.fats_per_100ml || 0) > 0 && <span className="text-yellow-600">F:{fluid.fats_per_100ml}g</span>}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </SelectItem>
                         ))}
