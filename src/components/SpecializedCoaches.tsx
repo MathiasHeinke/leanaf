@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -225,6 +226,7 @@ const coachProfiles = [
 ];
 
 interface SpecializedCoachesProps {
+  selectedCoachId?: string;
   todaysTotals: {
     calories: number;
     protein: number;
@@ -250,6 +252,7 @@ interface SpecializedCoachesProps {
 }
 
 export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
+  selectedCoachId,
   todaysTotals,
   dailyGoals,
   averages,
@@ -257,14 +260,24 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
   trendData,
   weightHistory
 }) => {
-  const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
+  const [selectedCoach, setSelectedCoach] = useState<string | null>(selectedCoachId || null);
+  const navigate = useNavigate();
+
+  // Update selectedCoach when selectedCoachId prop changes
+  useEffect(() => {
+    setSelectedCoach(selectedCoachId || null);
+  }, [selectedCoachId]);
 
   const handleCoachSelect = (coachId: string) => {
     setSelectedCoach(coachId);
+    // Navigate to the dedicated coach route
+    navigate(`/coach/${coachId}`);
   };
 
   const handleBackToSelection = () => {
     setSelectedCoach(null);
+    // Navigate back to main coach page
+    navigate('/coach');
   };
 
   if (selectedCoach) {

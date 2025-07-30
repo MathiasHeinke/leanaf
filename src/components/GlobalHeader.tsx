@@ -8,7 +8,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ChatHistorySidebar } from "./ChatHistorySidebar";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -44,11 +44,15 @@ export const GlobalHeader = ({
   const getCurrentCoachId = () => {
     if (location.pathname.startsWith('/training/sascha')) return 'sascha';
     if (location.pathname.startsWith('/training/markus')) return 'markus';
-    if (location.pathname.startsWith('/coach')) {
-      // Check URL params for coach selection
+    if (location.pathname.startsWith('/coach/')) {
+      // Extract coach ID from route parameter /coach/:coachId
+      const coachId = location.pathname.split('/coach/')[1];
+      return coachId || null;
+    }
+    if (location.pathname === '/coach') {
+      // Fallback: Check URL params for backwards compatibility
       const params = new URLSearchParams(location.search);
-      const selectedCoach = params.get('coach');
-      return selectedCoach || 'sascha'; // Default to sascha if no coach param
+      return params.get('coach') || null;
     }
     return null;
   };
@@ -184,7 +188,8 @@ export const GlobalHeader = ({
   const isCoachChatRoute = 
     location.pathname.startsWith('/training/sascha') ||
     location.pathname.startsWith('/training/markus') ||
-    (location.pathname.startsWith('/coach') && new URLSearchParams(location.search).get('coach'));
+    location.pathname.startsWith('/coach/') || // New route pattern /coach/:coachId
+    (location.pathname === '/coach' && new URLSearchParams(location.search).get('coach')); // Backwards compatibility
 
   return (
     <div className="relative">
@@ -301,6 +306,7 @@ export const GlobalHeader = ({
       {showChatHistory && (
         <Dialog open={showChatHistory} onOpenChange={setShowChatHistory}>
           <DialogContent className="max-w-md max-h-[70vh] overflow-hidden p-4 mt-20 top-[25%]">
+            <DialogTitle className="sr-only">Chat-Verlauf</DialogTitle>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">

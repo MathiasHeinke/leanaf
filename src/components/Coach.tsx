@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -68,6 +69,9 @@ interface TrendData {
 }
 
 const Coach = ({ onClose }: CoachProps) => {
+  // Get coach ID from route parameters
+  const { coachId } = useParams<{ coachId?: string }>();
+  
   // Greeting State
   const [coachGreeting, setCoachGreeting] = useState<string>('');
   const [greetingLoading, setGreetingLoading] = useState(false);
@@ -340,6 +344,7 @@ const Coach = ({ onClose }: CoachProps) => {
     <div className="space-y-4 animate-fade-in">
       {/* Removed Tabs - Direct coach selection with Training+ integration */}
       <SpecializedCoaches 
+        selectedCoachId={coachId}
         todaysTotals={todaysTotals}
         dailyGoals={dailyGoals}
         averages={averages}
