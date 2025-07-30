@@ -423,7 +423,7 @@ export const TrainingDashboard: React.FC = () => {
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="h-8 bg-muted rounded animate-pulse" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-32 bg-muted rounded animate-pulse" />
           ))}
@@ -609,19 +609,15 @@ export const TrainingDashboard: React.FC = () => {
             />
 
             {/* Quick Body Data & Goal Progress */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1">
               <QuickBodyDataWidget />
               <GoalProgressWidget />
             </div>
 
             {/* Training Stats with RPE Recovery */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="md:col-span-2">
-                <TrainingStats stats={weeklyStats} />
-              </div>
-              <div>
-                <RPERecoveryWidget />
-              </div>
+            <div className="grid gap-4 grid-cols-1">
+              <TrainingStats stats={weeklyStats} />
+              <RPERecoveryWidget />
             </div>
 
             {/* Custom Exercise Manager */}
