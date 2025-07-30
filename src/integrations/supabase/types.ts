@@ -1287,43 +1287,52 @@ export type Database = {
         Row: {
           alcohol_percentage: number | null
           calories_per_100ml: number | null
+          carbs_per_100ml: number | null
           category: string
           created_at: string
           default_amount: number | null
           description: string | null
+          fats_per_100ml: number | null
           has_alcohol: boolean | null
           has_caffeine: boolean | null
           icon_name: string | null
           id: string
           name: string
+          protein_per_100ml: number | null
           updated_at: string
         }
         Insert: {
           alcohol_percentage?: number | null
           calories_per_100ml?: number | null
+          carbs_per_100ml?: number | null
           category: string
           created_at?: string
           default_amount?: number | null
           description?: string | null
+          fats_per_100ml?: number | null
           has_alcohol?: boolean | null
           has_caffeine?: boolean | null
           icon_name?: string | null
           id?: string
           name: string
+          protein_per_100ml?: number | null
           updated_at?: string
         }
         Update: {
           alcohol_percentage?: number | null
           calories_per_100ml?: number | null
+          carbs_per_100ml?: number | null
           category?: string
           created_at?: string
           default_amount?: number | null
           description?: string | null
+          fats_per_100ml?: number | null
           has_alcohol?: boolean | null
           has_caffeine?: boolean | null
           icon_name?: string | null
           id?: string
           name?: string
+          protein_per_100ml?: number | null
           updated_at?: string
         }
         Relationships: []

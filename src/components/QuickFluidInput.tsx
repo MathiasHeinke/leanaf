@@ -61,7 +61,11 @@ const categoryLabels = {
   other: 'Sonstiges'
 };
 
-export const QuickFluidInput = () => {
+interface QuickFluidInputProps {
+  onFluidUpdate?: () => void;
+}
+
+export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
   const [fluids, setFluids] = useState<FluidOption[]>([]);
   const [todaysFluids, setTodaysFluids] = useState<UserFluid[]>([]);
@@ -189,6 +193,9 @@ export const QuickFluidInput = () => {
       // Reload data
       loadTodaysFluids();
       
+      // Trigger parent update to refresh main page
+      onFluidUpdate?.();
+      
     } catch (error) {
       console.error('Error adding fluid:', error);
       toast.error('Fehler beim Hinzufügen des Getränks');
@@ -238,6 +245,9 @@ export const QuickFluidInput = () => {
       
       // Reload data
       loadAlcoholAbstinence();
+      
+      // Trigger parent update to refresh main page
+      onFluidUpdate?.();
       
     } catch (error) {
       console.error('Error setting abstinence:', error);

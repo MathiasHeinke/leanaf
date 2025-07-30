@@ -63,6 +63,7 @@ const Index = () => {
   const [todaysSleep, setTodaysSleep] = useState<any>(null);
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
+  const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
 
   // Card order state
   const [cardOrder, setCardOrder] = useState<string[]>(() => {
@@ -103,6 +104,13 @@ const Index = () => {
       loadTodaysData(currentDate);
     }
   }, [user, currentDate, dailyGoals]);
+
+  // Update calorie summary when fluids change
+  useEffect(() => {
+    if (meals.length > 0 || todaysFluids.length > 0) {
+      updateCalorieSummary(meals);
+    }
+  }, [todaysFluids, meals]);
 
   const loadUserData = async () => {
     if (!user) return;
@@ -222,6 +230,43 @@ const Index = () => {
       } else {
         setTodaysMeasurements(measurementsData);
       }
+
+      // Load today's fluids
+      const { data: fluidsData, error: fluidsError } = await supabase
+        .from('user_fluids')
+        .select(`
+          *,
+          fluid_database:fluid_id (
+            name,
+            calories_per_100ml,
+            protein_per_100ml,
+            carbs_per_100ml,
+            fats_per_100ml,
+            has_alcohol,
+            category
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .order('consumed_at', { ascending: false });
+
+      if (fluidsError) {
+        console.error('Error loading fluids:', fluidsError);
+        setTodaysFluids([]);
+      } else {
+        // Flatten the fluid data structure for easier use
+        const processedFluids = (fluidsData || []).map(fluid => ({
+          ...fluid,
+          fluid_name: fluid.custom_name || fluid.fluid_database?.name || 'Unknown',
+          calories_per_100ml: fluid.fluid_database?.calories_per_100ml || 0,
+          protein_per_100ml: fluid.fluid_database?.protein_per_100ml || 0,
+          carbs_per_100ml: fluid.fluid_database?.carbs_per_100ml || 0,
+          fats_per_100ml: fluid.fluid_database?.fats_per_100ml || 0,
+          has_alcohol: fluid.fluid_database?.has_alcohol || false,
+          fluid_category: fluid.fluid_database?.category || 'other'
+        }));
+        setTodaysFluids(processedFluids);
+      }
     } catch (error) {
       console.error('Error loading today\'s data:', error);
     }
@@ -291,7 +336,12 @@ const Index = () => {
   };
 
   const updateCalorieSummary = (meals: any[]) => {
-    const consumed = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
+    const mealCalories = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
+    const fluidCalories = todaysFluids.reduce((sum, fluid) => {
+      const calories = (fluid.calories_per_100ml || 0) * (fluid.amount_ml / 100);
+      return sum + calories;
+    }, 0);
+    const consumed = mealCalories + fluidCalories;
     setCalorieSummary({ consumed, burned: 0 });
   };
 
@@ -467,7 +517,7 @@ const Index = () => {
       case 'fluids':
         return (
           <SortableCard key="fluids" id="fluids">
-            <QuickFluidInput />
+            <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
           </SortableCard>
         );
       default:
@@ -508,9 +558,12 @@ const Index = () => {
         <DailyProgress
           dailyTotals={{
             calories: calorieSummary.consumed,
-            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0),
-            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0),
-            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0)
+            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) + 
+                    todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) + 
+                  todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0) + 
+                 todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0)
           }}
           userProfile={userProfile}
           dailyGoal={{
