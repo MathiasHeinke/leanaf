@@ -265,7 +265,7 @@ export const TrainingDashboard: React.FC = () => {
                   <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-600">The German Beast</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  The German Beast - Heavy+Volume Training für maximale Muskelmasse!
+                  Hardcore Bodybuilding-Legende. Heavy+Volume Training für maximale Muskelmasse!
                 </p>
                 <div className="flex flex-wrap gap-1 justify-center">
                   <Badge variant="outline" className="text-xs">🔥 Beast Mode</Badge>
