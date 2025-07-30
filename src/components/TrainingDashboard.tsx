@@ -603,6 +603,7 @@ export const TrainingDashboard: React.FC = () => {
             <TodaysTrainingStatus
               todaysSessions={getTodaysSessions()}
               onStartTraining={() => setShowQuickAdd(true)}
+              onStartWorkoutPlan={() => setActiveTab("training-plans")}
               onEditSession={handleEditSession}
               onDeleteSession={handleDeleteSession}
               onDuplicateSession={handleDuplicateSession}

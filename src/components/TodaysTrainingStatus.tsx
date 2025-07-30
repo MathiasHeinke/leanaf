@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { CheckCircle, Plus, Clock, Target, Flame, Edit, Trash2, Copy, MoreHorizontal } from 'lucide-react';
+import { CheckCircle, Plus, Clock, Target, Flame, Edit, Trash2, Copy, MoreHorizontal, Calendar, PlaySquare } from 'lucide-react';
 import { ProgressiveOverloadWidget } from './ProgressiveOverloadWidget';
 
 interface ExerciseSession {
@@ -35,6 +35,7 @@ interface ExerciseSession {
 interface TodaysTrainingStatusProps {
   todaysSessions: ExerciseSession[];
   onStartTraining: () => void;
+  onStartWorkoutPlan?: () => void;
   onEditSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   onDuplicateSession?: (sessionId: string) => void;
@@ -43,6 +44,7 @@ interface TodaysTrainingStatusProps {
 export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
   todaysSessions,
   onStartTraining,
+  onStartWorkoutPlan,
   onEditSession,
   onDeleteSession,
   onDuplicateSession
@@ -103,10 +105,27 @@ export const TodaysTrainingStatus: React.FC<TodaysTrainingStatusProps> = ({
           <p className="text-muted-foreground mb-6">
             Du hast heute noch nicht trainiert. Starte jetzt dein Workout!
           </p>
-          <Button onClick={(e) => { e.stopPropagation(); onStartTraining(); }} size="lg" className="bg-gradient-primary">
-            <Plus className="h-5 w-5 mr-2" />
-            Training starten
-          </Button>
+          <div className="space-y-3 w-full max-w-sm mx-auto">
+            {onStartWorkoutPlan && (
+              <Button 
+                onClick={(e) => { e.stopPropagation(); onStartWorkoutPlan(); }} 
+                size="lg" 
+                className="w-full bg-gradient-primary"
+              >
+                <Calendar className="h-5 w-5 mr-2" />
+                Trainings-Plan starten
+              </Button>
+            )}
+            <Button 
+              onClick={(e) => { e.stopPropagation(); onStartTraining(); }} 
+              size="lg" 
+              variant="outline"
+              className="w-full"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Individuelles Workout
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
