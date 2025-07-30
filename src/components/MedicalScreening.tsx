@@ -221,6 +221,59 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
     }
   };
 
+  const saveSelectionForNoConditions = async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      // Speichere explizit "false" für beide Werte wenn keine Bedingungen vorliegen
+      const { error: saveError } = await supabase
+        .from('user_medical_profile')
+        .upsert({
+          user_id: user.id,
+          has_medical_conditions: false,
+          takes_medications: false,
+          medical_conditions: [],
+          medications: [],
+          custom_conditions: [],
+          custom_medications: [],
+          risk_assessment: {
+            risk_level: 'low',
+            recommendations: [
+              'Regelmäßige körperliche Aktivität wird empfohlen',
+              'Achten Sie auf eine ausgewogene Ernährung',
+              'Bei neuen Symptomen konsultieren Sie einen Arzt'
+            ],
+            considerations: [],
+            contraindications: []
+          },
+          updated_at: new Date().toISOString()
+        });
+
+      if (saveError) throw saveError;
+
+      setRiskAssessment({
+        risk_level: 'low',
+        recommendations: [
+          'Regelmäßige körperliche Aktivität wird empfohlen',
+          'Achten Sie auf eine ausgewogene Ernährung',
+          'Bei neuen Symptomen konsultieren Sie einen Arzt'
+        ],
+        considerations: [],
+        contraindications: []
+      });
+      setScreeningCompleted(true);
+      onScreeningComplete?.(true);
+      toast.success('Medizinisches Screening abgeschlossen');
+
+    } catch (error) {
+      console.error('Error saving medical profile:', error);
+      toast.error('Fehler beim Speichern des medizinischen Profils');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getRiskLevelColor = (level: string) => {
     switch (level) {
       case 'low': return 'text-green-600';
@@ -485,14 +538,11 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
           {/* Completion for users with no conditions/medications */}
           {!hasMedicalConditions && !takesMedications && !screeningCompleted && (
             <Button
-              onClick={() => {
-                setScreeningCompleted(true);
-                onScreeningComplete?.(true);
-                saveSelectionAndAssess(); // This will create a "low risk" profile
-              }}
+              onClick={saveSelectionForNoConditions}
+              disabled={loading}
               className="w-full"
             >
-              Screening abschließen
+              {loading ? 'Speichern...' : 'Screening abschließen'}
             </Button>
           )}
         </CardContent>
