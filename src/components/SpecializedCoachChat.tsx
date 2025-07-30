@@ -212,11 +212,18 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       const loadData = async () => {
         await loadUserData();
         await loadCoachMemory();
-        loadCoachChatHistory();
+        await loadCoachChatHistory();
       };
       loadData();
     }
   }, [user?.id, coach.id, selectedDate]);
+
+  // Generate welcome message when firstName becomes available
+  useEffect(() => {
+    if (firstName && messages.length === 0 && !isLoading) {
+      generateWelcomeMessage();
+    }
+  }, [firstName, messages.length, isLoading]);
 
   // Prevent iOS rubber band scrolling on coach chat pages
   useEffect(() => {
@@ -334,7 +341,10 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
       setMessages(mappedMessages);
       
       if (mappedMessages.length === 0) {
-        generateWelcomeMessage();
+        // Only generate welcome message if firstName is available
+        if (firstName) {
+          generateWelcomeMessage();
+        }
       } else {
         // Check if the first message is from the correct coach
         const firstMessage = mappedMessages[0];
