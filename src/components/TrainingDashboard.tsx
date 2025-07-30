@@ -439,19 +439,27 @@ export const TrainingDashboard: React.FC = () => {
         {/* Timer Control - New 3-Column Layout */}
         <div className="max-w-2xl mx-auto">
           <Card className="border-gradient-primary">
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="pt-6">
               {!hasActiveTimer ? (
-                <div className="text-center space-y-4">
-                  <div className="text-4xl font-mono font-bold text-muted-foreground mb-6">
-                    {formattedTime}
-                  </div>
+                <div className="flex items-center gap-4">
                   <Button 
                     onClick={handleStartWorkout} 
-                    className="bg-green-600 hover:bg-green-700 text-white w-full max-w-xs"
+                    className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
                     size="lg"
                   >
-                    <Play className="h-5 w-5 mr-2" />
-                    Workout starten
+                    <Play className="h-8 w-8" />
+                  </Button>
+                  <div className="flex-1 text-center">
+                    <div className="text-4xl font-mono font-bold text-muted-foreground">
+                      0:00<span className="text-2xl text-muted-foreground/60">.00</span>
+                    </div>
+                  </div>
+                  <Button 
+                    className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0 opacity-50 cursor-not-allowed"
+                    size="lg"
+                    disabled
+                  >
+                    <Square className="h-8 w-8" />
                   </Button>
                 </div>
               ) : (
@@ -476,26 +484,15 @@ export const TrainingDashboard: React.FC = () => {
                   )}
 
                   {/* Center: Timer Display */}
-                  <div className="flex-1">
+                  <div className="flex-1 text-center">
                     <div className="text-4xl font-mono font-bold text-muted-foreground">
-                      {formattedTime}
+                      {formattedTime}<span className="text-2xl text-muted-foreground/60">.{Math.floor((currentDuration % 1000) / 10).toString().padStart(2, '0')}</span>
                     </div>
-                    {isPaused && (
-                      <div className="text-lg font-mono text-yellow-600">
-                        Pause: {pauseDurationFormatted}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center justify-center gap-2 mt-1">
                       {isRunning && (
                         <div className="flex items-center gap-1 text-sm text-green-600">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                           Läuft
-                        </div>
-                      )}
-                      {isPaused && (
-                        <div className="flex items-center gap-1 text-sm text-yellow-600">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                          Pausiert
                         </div>
                       )}
                     </div>
@@ -504,10 +501,10 @@ export const TrainingDashboard: React.FC = () => {
                   {/* Right: Stop Button */}
                   <Button 
                     onClick={handleStopWorkout}
-                    className="bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full p-0"
-                    size="sm"
+                    className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0"
+                    size="lg"
                   >
-                    <Square className="h-5 w-5" />
+                    <Square className="h-8 w-8" />
                   </Button>
                 </div>
               )}
