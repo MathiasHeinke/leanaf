@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
 import { TrainingHistory } from '@/components/TrainingHistory';
+import { EmbeddedTrainingHistory } from '@/components/EmbeddedTrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
@@ -793,59 +794,17 @@ export const TrainingDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="training-plans" className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Left Column - Workout Plans */}
-              <div className="space-y-6">
-                <WorkoutPlanManager 
-                  onStartPlan={handleStartWorkoutPlan}
-                  pastSessions={sessions}
-                />
-              </div>
+            {/* Workout Plans */}
+            <WorkoutPlanManager 
+              onStartPlan={handleStartWorkoutPlan}
+              pastSessions={sessions}
+            />
 
-              {/* Right Column - Training History */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      Trainingshistorie
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Button 
-                      onClick={() => setShowHistory(true)}
-                      variant="outline" 
-                      className="w-full"
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Vollständige Historie anzeigen
-                    </Button>
-                    
-                    {sessions.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <h4 className="font-medium">Letzte Trainings:</h4>
-                        {sessions.slice(0, 5).map((session) => (
-                          <div
-                            key={session.id}
-                            className="flex items-center justify-between p-2 rounded border"
-                          >
-                            <div>
-                              <div className="font-medium text-sm">{session.session_name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(session.date).toLocaleDateString('de-DE')}
-                              </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {session.exercise_sets?.length || 0} Übungen
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            {/* Training History - Embedded */}
+            <EmbeddedTrainingHistory
+              sessions={sessions}
+              onSessionUpdated={loadSessions}
+            />
           </TabsContent>
         </Tabs>
       )}
