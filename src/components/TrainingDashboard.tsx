@@ -274,15 +274,99 @@ export const TrainingDashboard: React.FC = () => {
           </p>
         </div>
         
-        {/* Workout Timer Component */}
+        {/* Timer Control - New 3-Column Layout */}
         <div className="max-w-2xl mx-auto">
-          <WorkoutTimer 
-            onStartWorkout={handleStartWorkout}
-            onStopWorkout={(result) => {
-              setShowStopDialog(true);
-            }}
-            variant="default"
-          />
+          <Card className="border-gradient-primary">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-center gap-2">
+                <Timer className="h-5 w-5 text-primary" />
+                Workout Timer
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!hasActiveTimer ? (
+                <div className="text-center space-y-4">
+                  <div className="text-4xl font-mono font-bold text-muted-foreground mb-6">
+                    {formattedTime}
+                  </div>
+                  <Button 
+                    onClick={handleStartWorkout} 
+                    className="bg-green-600 hover:bg-green-700 text-white w-full max-w-xs"
+                    size="lg"
+                  >
+                    <Play className="h-5 w-5 mr-2" />
+                    Workout starten
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-4 items-center">
+                  {/* Left: Pause/Resume Button */}
+                  <div className="flex justify-center">
+                    {isRunning ? (
+                      <Button 
+                        onClick={handlePauseWorkout}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white w-16 h-16 rounded-full p-0"
+                        size="lg"
+                      >
+                        <Pause className="h-8 w-8" />
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={handleResumeWorkout}
+                        className="bg-green-600 hover:bg-green-700 text-white w-16 h-16 rounded-full p-0"
+                        size="lg"
+                      >
+                        <Play className="h-8 w-8" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Center: Timer Display */}
+                  <div className="text-center">
+                    <div className="text-4xl font-mono font-bold text-muted-foreground mb-2">
+                      {formattedTime}
+                    </div>
+                    {isPaused && (
+                      <div className="text-lg font-mono text-yellow-600">
+                        Pause: {pauseDurationFormatted}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      {isRunning && (
+                        <div className="flex items-center gap-1 text-sm text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                          Läuft
+                        </div>
+                      )}
+                      {isPaused && (
+                        <div className="flex items-center gap-1 text-sm text-yellow-600">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                          Pausiert
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Stop Button */}
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={handleStopWorkout}
+                      className="bg-red-600 hover:bg-red-700 text-white w-16 h-16 rounded-full p-0"
+                      size="lg"
+                    >
+                      <Square className="h-8 w-8" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {currentDuration > 300 && ( // Show after 5 minutes
+                <div className="text-center text-sm text-muted-foreground">
+                  {Math.floor(currentDuration / 60)} Minuten Training
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
