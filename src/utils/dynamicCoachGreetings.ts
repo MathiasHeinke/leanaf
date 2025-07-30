@@ -35,30 +35,30 @@ export const createGreetingContext = (firstName: string, coachId: string, memory
   };
 };
 
-// Ultra-kurze Greetings (25% der Zeit)
+// Ultra-kurze Greetings (25% der Zeit) - Richtig natürlich!
 const ULTRA_SHORT_GREETINGS = {
-  "lucy": ["Hey {firstName}! 💗", "Hi Schatz! 🌟", "Moin {firstName}! 💖"],
+  "lucy": ["Hey {firstName}! 💗", "Hi Süße! 🌟", "Moin {firstName}! 💖"],
   "sascha": ["Moin {firstName}!", "Hey Großer!", "Na {firstName}!"],
-  "kai": ["Hey! ⚡", "Servus! 🌊", "Yo! 💫"],
+  "kai": ["Hey! ⚡", "Servus! 🌊", "Yo! 💫"], 
   "markus": ["Hajo {firstName}!", "Servus! 💪", "Morsche!"],
   "dr_vita_femina": ["Hallo {firstName}! 🌸", "Hi! 💗", "Guten Tag! ✨"],
   "dr_vita": ["Hallo {firstName}! 🌸", "Hi! 💗", "Guten Tag! ✨"],
   "vita": ["Hallo {firstName}! 🌸", "Hi! 💗", "Guten Tag! ✨"],
-  "integral": ["Hallo {firstName}! 🌿", "Hi! ✨", "Guten Tag! 🌱"],
-  "sophia": ["Hallo {firstName}! 🌿", "Hi! ✨", "Guten Tag! 🌱"]
+  "integral": ["Hallo {firstName}! 🌿", "Hi! ✨", "Namaste! 🌱"],
+  "sophia": ["Hallo {firstName}! 🌿", "Hi! ✨", "Namaste! 🌱"]
 };
 
-// Kurze Greetings (50% der Zeit)
+// Kurze Greetings (50% der Zeit) - Persönlichkeit pur!
 const SHORT_GREETINGS = {
-  "lucy": ["Hey {firstName}! Wie geht's? 💗", "Hi Schatz! Was steht an? 🌟"],
-  "sascha": ["Moin {firstName}! Wie liefs bis jetzt?", "Hey Großer! Was geht?", "Na {firstName}, bereit?"],
+  "lucy": ["Hey {firstName}! Wie geht's? 💗", "Hi Süße! Was steht an? 🌟", "Moin {firstName}! Energie da? 💖"],
+  "sascha": ["Moin {firstName}! Wie liefs bis jetzt?", "Hey Großer! Was geht?", "Na {firstName}, bereit für Wahrheit?"],
   "kai": ["Hey {firstName}! Energie gecheckt? ⚡", "Servus {firstName}! Wie ist der Flow? 🌊", "Yo {firstName}! Kopf frei? 💫"],
-  "markus": ["Hajo {firstName}! Bock zu schaffe? 💪", "Servus! Bereit für Arbeit? 🏋️‍♂️"],
-  "dr_vita_femina": ["Hallo {firstName}! Wie fühlen Sie sich? 🌸", "Hi! Alles in Balance? 💗"],
-  "dr_vita": ["Hallo {firstName}! Wie fühlen Sie sich? 🌸", "Hi! Alles in Balance? 💗"],
-  "vita": ["Hallo {firstName}! Wie fühlen Sie sich? 🌸", "Hi! Alles in Balance? 💗"],
-  "integral": ["Hallo {firstName}! Alles in Harmonie? 🌿", "Hi! Bereit für Achtsamkeit? ✨"],
-  "sophia": ["Hallo {firstName}! Alles in Harmonie? 🌿", "Hi! Bereit für Achtsamkeit? ✨"]
+  "markus": ["Hajo {firstName}! Bock zu schaffe? 💪", "Servus! Bereit für harte Arbeit? 🏋️‍♂️", "Morsche {firstName}! Motivation da? 🔥"],
+  "dr_vita_femina": ["Hallo {firstName}! Wie fühlen Sie sich? 🌸", "Hi! Alles in Balance? 💗", "Guten Tag! Energie fließt? ✨"],
+  "dr_vita": ["Hallo {firstName}! Wie fühlen Sie sich? 🌸", "Hi! Alles in Balance? 💗", "Guten Tag! Energie fließt? ✨"],
+  "vita": ["Hallo {firstName}! Wie fühlen Sie sich? 🌸", "Hi! Alles in Balance? 💗", "Guten Tag! Energie fließt? ✨"],
+  "integral": ["Hallo {firstName}! Alles in Harmonie? 🌿", "Hi! Bereit für Achtsamkeit? ✨", "Namaste {firstName}! Wie ist dein Zentrum? 🌱"],
+  "sophia": ["Hallo {firstName}! Alles in Harmonie? 🌿", "Hi! Bereit für Achtsamkeit? ✨", "Namaste {firstName}! Wie ist dein Zentrum? 🌱"]
 };
 
 const getGreetingLength = (): 'ultra_short' | 'short' | 'normal' => {
@@ -85,10 +85,15 @@ export const generateDynamicCoachGreeting = (context: GreetingContext): string =
   
   if (isFirstConversation) {
     const newGreetings = {
-      "sascha": ["Moin {firstName}! Sascha hier - bereit durchzustarten? 💪"],
-      "lucy": ["Hey {firstName}! 💗 Lucy hier - lass uns loslegen!"],
-      "kai": ["Hey {firstName}! ⚡ Lass uns deine mentale Stärke boosten!"],
-      "markus": ["Hajo {firstName}! Markus hier - Zeit zu schaffe! 🔥"]
+      "sascha": ["Moin {firstName}! Bereit durchzustarten? 💪"],
+      "lucy": ["Hey {firstName}! 💗 Lass uns gemeinsam loslegen!"],
+      "kai": ["Hey {firstName}! ⚡ Zeit deine mentale Stärke zu entfesseln!"],
+      "markus": ["Hajo {firstName}! Zeit zu schaffe und Grenzen zu sprengen! 🔥"],
+      "dr_vita_femina": ["Hallo {firstName}! 🌸 Bereit für ganzheitliche Balance?"],
+      "dr_vita": ["Hallo {firstName}! 🌸 Bereit für ganzheitliche Balance?"],
+      "vita": ["Hallo {firstName}! 🌸 Bereit für ganzheitliche Balance?"],
+      "integral": ["Hallo {firstName}! 🌿 Lass uns achtsam wachsen!"],
+      "sophia": ["Hallo {firstName}! 🌿 Lass uns achtsam wachsen!"]
     };
     const greetings = newGreetings[coachId] || newGreetings.sascha;
     return greetings[0].replace('{firstName}', firstName || 'Du');
@@ -102,14 +107,20 @@ export const generateDynamicCoachGreeting = (context: GreetingContext): string =
     return getShortGreeting(coachId, firstName);
   }
 
-  // Normal greetings fallback
+  // Normal greetings fallback - Richtig geil und natürlich!
   const normalGreetings = {
-    "sascha": ["Moin {firstName}! Wie läuft's? Zeit für ehrliche Analyse! 💪"],
-    "lucy": ["Hey {firstName}! 💗 Wie geht's dir heute? Lass uns schauen, was ansteht!"],
-    "kai": ["Hey {firstName}! ⚡ Wie ist deine mentale Energie heute?"],
-    "markus": ["Hajo {firstName}! Bock zu schaffe heute? Der Maggus ist bereit! 🔥"]
+    "sascha": ["Moin {firstName}! Wie läuft's? Zeit für knallharte Analyse! 💪", "Hey {firstName}! Bereit für ehrliche Worte? 🎯", "Na {firstName}! Was steht heute auf dem Plan? 💥"],
+    "lucy": ["Hey {firstName}! 💗 Wie geht's dir heute? Lass uns das rocken!", "Hi Süße! Was beschäftigt dich? Zusammen schaffen wir alles! 🌟", "Moin {firstName}! 💖 Ready für positive Vibes?"],
+    "kai": ["Hey {firstName}! ⚡ Wie ist deine mentale Energie heute?", "Servus {firstName}! 🌊 Kopf frei für neue Herausforderungen?", "Yo {firstName}! 💫 Bereit den Flow zu finden?"],
+    "markus": ["Hajo {firstName}! Bock zu schaffe heute? Lass uns Grenzen sprengen! 🔥", "Servus {firstName}! 💪 Zeit für harte Arbeit!", "Morsche {firstName}! Motivation tanken und durchstarten! 🚀"],
+    "dr_vita_femina": ["Hallo {firstName}! 🌸 Wie ist Ihr Wohlbefinden heute?", "Guten Tag! Fühlen Sie die Balance in sich? 💗", "Hi {firstName}! ✨ Bereit für ganzheitliche Gesundheit?"],
+    "dr_vita": ["Hallo {firstName}! 🌸 Wie ist Ihr Wohlbefinden heute?", "Guten Tag! Fühlen Sie die Balance in sich? 💗", "Hi {firstName}! ✨ Bereit für ganzheitliche Gesundheit?"],
+    "vita": ["Hallo {firstName}! 🌸 Wie ist Ihr Wohlbefinden heute?", "Guten Tag! Fühlen Sie die Balance in sich? 💗", "Hi {firstName}! ✨ Bereit für ganzheitliche Gesundheit?"],
+    "integral": ["Hallo {firstName}! 🌿 Wie ist Ihre innere Mitte heute?", "Namaste {firstName}! ✨ Bereit für achtsames Wachstum?", "Hi {firstName}! 🌱 Spüren Sie die Verbindung zu sich selbst?"],
+    "sophia": ["Hallo {firstName}! 🌿 Wie ist Ihre innere Mitte heute?", "Namaste {firstName}! ✨ Bereit für achtsames Wachstum?", "Hi {firstName}! 🌱 Spüren Sie die Verbindung zu sich selbst?"]
   };
   
   const greetings = normalGreetings[coachId] || normalGreetings.sascha;
-  return greetings[0].replace('{firstName}', firstName || 'Du');
+  const selectedGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+  return selectedGreeting.replace('{firstName}', firstName || 'Du');
 };
