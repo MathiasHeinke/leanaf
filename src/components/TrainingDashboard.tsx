@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
 import { TrainingHistory } from '@/components/TrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
@@ -60,7 +70,17 @@ interface WeeklyStats {
 export const TrainingDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isRunning, hasActiveTimer, formattedTime, startTimer, stopTimer, pauseTimer, resumeTimer } = useWorkoutTimer();
+  const { 
+    isRunning, 
+    hasActiveTimer, 
+    formattedTime, 
+    pauseDurationFormatted,
+    isPaused,
+    startTimer, 
+    stopTimer, 
+    pauseTimer, 
+    resumeTimer 
+  } = useWorkoutTimer();
   const [sessions, setSessions] = useState<ExerciseSession[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
     totalSets: 0,
@@ -87,11 +107,47 @@ export const TrainingDashboard: React.FC = () => {
   };
 
   const handleStopWorkout = () => {
+    setShowStopDialog(true);
+  };
+
+  const handleConfirmStop = async () => {
     const result = stopTimer();
-    toast.success(`Workout beendet! Dauer: ${Math.floor(result.totalDurationMs / 60000)} Minuten`);
+    setShowStopDialog(false);
+    
+    // Save workout session to database
+    if (user && result.actualStartTime) {
+      try {
+        const durationMinutes = Math.floor(result.totalDurationMs / 60000);
+        const endTime = new Date();
+        
+        await supabase.from('exercise_sessions').insert({
+          user_id: user.id,
+          session_name: `Workout ${new Date().toLocaleDateString('de-DE')}`,
+          date: result.actualStartTime.toISOString().split('T')[0],
+          start_time: result.actualStartTime.toISOString(),
+          end_time: endTime.toISOString(),
+          duration_minutes: durationMinutes,
+          notes: `Timer-basiertes Workout`,
+          workout_type: 'strength'
+        });
+
+        toast.success(`Workout gespeichert! Dauer: ${durationMinutes} Minuten`);
+        loadSessions(); // Refresh the sessions list
+      } catch (error) {
+        console.error('Error saving workout session:', error);
+        toast.error('Fehler beim Speichern des Workouts');
+      }
+    }
+  };
+
+  const handleDiscardWorkout = () => {
+    stopTimer();
+    setShowStopDialog(false);
+    toast.info('Workout verworfen');
   };
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showStopDialog, setShowStopDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -206,37 +262,73 @@ export const TrainingDashboard: React.FC = () => {
         </div>
         
         {/* Timer Control Centered */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-3">
           {hasActiveTimer ? (
-            <div className="flex items-center gap-3">
-              <Badge variant={isRunning ? "default" : "secondary"} className="text-xl px-6 py-3 font-mono">
-                <Timer className="h-5 w-5 mr-3" />
-                {formattedTime}
-                {isRunning ? (
-                  <div className="ml-3 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                ) : (
-                  <div className="ml-3 w-3 h-3 bg-yellow-500 rounded-full" />
+            <>
+              {/* Timer Display */}
+              <div className="flex flex-col items-center gap-2">
+                <Badge 
+                  variant={isRunning ? "default" : "secondary"} 
+                  className="text-lg sm:text-xl px-4 sm:px-6 py-2 sm:py-3 font-mono"
+                >
+                  <Timer className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />
+                  {formattedTime}
+                  {isRunning ? (
+                    <div className="ml-2 sm:ml-3 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse" />
+                  ) : (
+                    <div className="ml-2 sm:ml-3 w-2 h-2 sm:w-3 sm:h-3 bg-yellow-500 rounded-full" />
+                  )}
+                </Badge>
+                
+                {/* Pause Duration Display */}
+                {isPaused && (
+                  <div className="text-sm text-muted-foreground font-mono">
+                    Pause: {pauseDurationFormatted}
+                  </div>
                 )}
-              </Badge>
-              {isRunning ? (
-                <Button variant="outline" size="lg" onClick={handlePauseWorkout} className="text-yellow-600 hover:text-yellow-700">
-                  <Pause className="h-5 w-5 mr-2" />
-                  Pause
+              </div>
+
+              {/* Timer Controls */}
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                {isRunning ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500 hover:border-yellow-600 px-3 sm:px-4 py-2"
+                    onClick={handlePauseWorkout}
+                  >
+                    <Pause className="h-4 w-4 mr-1 sm:mr-2" />
+                    Pause
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600 px-3 sm:px-4 py-2"
+                    onClick={handleResumeWorkout}
+                  >
+                    <Play className="h-4 w-4 mr-1 sm:mr-2" />
+                    Resume
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-red-500 hover:bg-red-600 text-white border-red-500 hover:border-red-600 px-3 sm:px-4 py-2"
+                  onClick={handleStopWorkout}
+                >
+                  <Square className="h-4 w-4 mr-1 sm:mr-2" />
+                  Stop
                 </Button>
-              ) : (
-                <Button variant="outline" size="lg" onClick={handleResumeWorkout} className="text-green-600 hover:text-green-700">
-                  <Play className="h-5 w-5 mr-2" />
-                  Resume
-                </Button>
-              )}
-              <Button variant="outline" size="lg" onClick={handleStopWorkout} className="text-red-600 hover:text-red-700">
-                <Square className="h-5 w-5 mr-2" />
-                Stop
-              </Button>
-            </div>
+              </div>
+            </>
           ) : (
-            <Button onClick={handleStartWorkout} size="lg" variant="default" className="font-medium px-8 py-4 text-lg text-green-600 hover:text-green-700">
-              <Play className="h-5 w-5 mr-3" />
+            <Button 
+              onClick={handleStartWorkout} 
+              size="lg" 
+              className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600 font-medium px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg"
+            >
+              <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />
               Workout starten
             </Button>
           )}
@@ -402,6 +494,28 @@ export const TrainingDashboard: React.FC = () => {
         />
       )}
 
+      {/* Stop Workout Confirmation Dialog */}
+      <AlertDialog open={showStopDialog} onOpenChange={setShowStopDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Workout beenden?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchtest du das Workout beenden und speichern? Die Trainingszeit wird in deinem Verlauf gespeichert.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardWorkout}>
+              Verwerfen
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmStop}
+              className="bg-green-500 hover:bg-green-600 text-white"
+            >
+              Speichern
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

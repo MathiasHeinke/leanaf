@@ -13,12 +13,15 @@ interface UseWorkoutTimerReturn {
   isRunning: boolean;
   currentDuration: number;
   formattedTime: string;
+  pauseDurationFormatted: string;
+  currentPauseDuration: number;
   startTimer: (sessionId?: string) => void;
   stopTimer: () => { totalDurationMs: number; actualStartTime: Date | null };
   pauseTimer: () => void;
   resumeTimer: () => void;
   resetTimer: () => void;
   hasActiveTimer: boolean;
+  isPaused: boolean;
 }
 
 const STORAGE_KEY = 'workout_timer_state';
@@ -86,6 +89,28 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
       }
     };
   }, [timerState.isRunning, timerState.startTime, timerState.pausedDuration]);
+
+  // Calculate current pause duration if paused
+  const getCurrentPauseDuration = useCallback(() => {
+    if (!timerState.isRunning && timerState.pauseStartTime) {
+      return Math.floor((Date.now() - timerState.pauseStartTime) / 1000);
+    }
+    return 0;
+  }, [timerState.isRunning, timerState.pauseStartTime]);
+
+  const [currentPauseDuration, setCurrentPauseDuration] = useState(0);
+
+  // Update pause duration every second when paused
+  useEffect(() => {
+    if (!timerState.isRunning && timerState.pauseStartTime) {
+      const pauseInterval = setInterval(() => {
+        setCurrentPauseDuration(getCurrentPauseDuration());
+      }, 1000);
+      return () => clearInterval(pauseInterval);
+    } else {
+      setCurrentPauseDuration(0);
+    }
+  }, [timerState.isRunning, timerState.pauseStartTime, getCurrentPauseDuration]);
 
   const startTimer = useCallback((sessionId?: string) => {
     const now = new Date();
@@ -183,11 +208,14 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     isRunning: timerState.isRunning,
     currentDuration: timerState.currentDuration,
     formattedTime: formatTime(timerState.currentDuration),
+    pauseDurationFormatted: formatTime(currentPauseDuration),
+    currentPauseDuration,
     startTimer,
     stopTimer,
     pauseTimer,
     resumeTimer,
     resetTimer,
-    hasActiveTimer: timerState.startTime !== null
+    hasActiveTimer: timerState.startTime !== null,
+    isPaused: !timerState.isRunning && timerState.startTime !== null
   };
 };
