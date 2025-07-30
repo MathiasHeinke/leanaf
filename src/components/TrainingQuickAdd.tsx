@@ -344,18 +344,6 @@ export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onS
             ))}
           </SelectContent>
         </Select>
-        
-        <Button
-          variant="outline"
-          className="w-full mt-3"
-          onClick={() => {
-            // TODO: Open custom exercise creation dialog
-            toast.info('Eigene Übung erstellen - Feature wird bald verfügbar sein');
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Eigene Übung erstellen
-        </Button>
       </div>
 
       {selectedExerciseData && (
