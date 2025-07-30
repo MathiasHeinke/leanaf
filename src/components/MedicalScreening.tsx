@@ -179,7 +179,7 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('assess_medical_risk', {
+      const { data, error } = await supabase.rpc('perform_medical_risk_assessment', {
         p_user_id: user.id,
         p_conditions: selectedConditions,
         p_custom_conditions: customConditions,
