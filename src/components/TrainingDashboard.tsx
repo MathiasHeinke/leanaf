@@ -277,13 +277,7 @@ export const TrainingDashboard: React.FC = () => {
         {/* Timer Control - New 3-Column Layout */}
         <div className="max-w-2xl mx-auto">
           <Card className="border-gradient-primary">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-center gap-2">
-                <Timer className="h-5 w-5 text-primary" />
-                Workout Timer
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-6 space-y-4">
               {!hasActiveTimer ? (
                 <div className="text-center space-y-4">
                   <div className="text-4xl font-mono font-bold text-muted-foreground mb-6">
