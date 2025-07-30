@@ -6,6 +6,7 @@ interface WorkoutTimerState {
   pausedDuration: number; // Total paused time in milliseconds
   currentDuration: number; // Current elapsed time in seconds
   sessionId: string | null;
+  pauseStartTime: number | null; // When was the timer paused
 }
 
 interface UseWorkoutTimerReturn {
@@ -28,7 +29,8 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     startTime: null,
     pausedDuration: 0,
     currentDuration: 0,
-    sessionId: null
+    sessionId: null,
+    pauseStartTime: null
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,7 +94,8 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
       startTime: now,
       pausedDuration: 0,
       currentDuration: 0,
-      sessionId: sessionId || null
+      sessionId: sessionId || null,
+      pauseStartTime: null
     });
   }, []);
 
@@ -109,7 +112,8 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
       startTime: null,
       pausedDuration: 0,
       currentDuration: 0,
-      sessionId: null
+      sessionId: null,
+      pauseStartTime: null
     });
 
     // Clear localStorage
@@ -119,31 +123,38 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
   }, [timerState.startTime, timerState.pausedDuration]);
 
   const pauseTimer = useCallback(() => {
+    console.log('pauseTimer called - isRunning:', timerState.isRunning, 'startTime:', timerState.startTime);
     if (timerState.isRunning && timerState.startTime) {
       const now = new Date();
       const currentElapsed = now.getTime() - timerState.startTime.getTime() - timerState.pausedDuration;
       
+      console.log('Pausing timer - currentElapsed:', Math.floor(currentElapsed / 1000), 'seconds');
+      
       setTimerState(prev => ({
         ...prev,
         isRunning: false,
-        currentDuration: Math.floor(currentElapsed / 1000)
+        currentDuration: Math.floor(currentElapsed / 1000),
+        pauseStartTime: now.getTime()
       }));
     }
   }, [timerState.isRunning, timerState.startTime, timerState.pausedDuration]);
 
   const resumeTimer = useCallback(() => {
-    if (!timerState.isRunning && timerState.startTime) {
+    console.log('resumeTimer called - isRunning:', timerState.isRunning, 'pauseStartTime:', timerState.pauseStartTime);
+    if (!timerState.isRunning && timerState.startTime && timerState.pauseStartTime) {
       const now = new Date();
-      const pauseStartTime = timerState.startTime.getTime() + timerState.pausedDuration + (timerState.currentDuration * 1000);
-      const additionalPausedTime = now.getTime() - pauseStartTime;
+      const pauseDuration = now.getTime() - timerState.pauseStartTime;
+      
+      console.log('Resuming timer - pauseDuration:', pauseDuration, 'ms');
       
       setTimerState(prev => ({
         ...prev,
         isRunning: true,
-        pausedDuration: prev.pausedDuration + additionalPausedTime
+        pausedDuration: prev.pausedDuration + pauseDuration,
+        pauseStartTime: null
       }));
     }
-  }, [timerState.isRunning, timerState.startTime, timerState.pausedDuration, timerState.currentDuration]);
+  }, [timerState.isRunning, timerState.startTime, timerState.pauseStartTime]);
 
   const resetTimer = useCallback(() => {
     setTimerState({
@@ -151,7 +162,8 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
       startTime: null,
       pausedDuration: 0,
       currentDuration: 0,
-      sessionId: null
+      sessionId: null,
+      pauseStartTime: null
     });
     localStorage.removeItem(STORAGE_KEY);
   }, []);
