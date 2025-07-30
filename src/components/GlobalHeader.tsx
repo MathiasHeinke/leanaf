@@ -263,16 +263,19 @@ export const GlobalHeader = ({
 
             <div className="flex items-center gap-2">
               <img
-                src={`/coach-images/${
-                  getCurrentCoachId() === 'sascha' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
-                  getCurrentCoachId() === 'markus' ? 'markus-ruehl.jpg' :
-                  getCurrentCoachId() === 'lucy' ? '9e4f4475-6b1f-4563-806d-89f78ba853e6.png' :
-                  'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
-                }`}
+                src={
+                  getCurrentCoachId() === 'sascha' ? '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
+                  getCurrentCoachId() === 'markus' ? '/lovable-uploads/e96e839c-c781-4825-bb29-7c45b9febcdf.png' :
+                  getCurrentCoachId() === 'lucy' ? '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png' :
+                  '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
+                }
                 alt={coachData?.name || 'Coach'}
                 className="w-6 h-6 rounded-full object-cover"
               />
-              <span className="font-medium text-sm">{coachData?.name || 'Coach'}</span>
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">{coachData?.name || 'Coach'}</span>
+                <span className="text-xs text-muted-foreground">{coachData?.specialization_description || ''}</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
