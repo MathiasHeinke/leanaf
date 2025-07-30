@@ -9,7 +9,7 @@ interface SwipeGestureOptions {
 
 export const useSidebarSwipeGestures = (options: SwipeGestureOptions = {}) => {
   const { 
-    minSwipeDistance = 50, 
+    minSwipeDistance = 120, 
     vibrationDuration = 50 
   } = options;
   
