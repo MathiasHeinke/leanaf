@@ -195,48 +195,60 @@ export const QuickSupplementInput = () => {
   }, [user]);
 
   const loadSupplements = async () => {
-    const { data, error } = await supabase
-      .from('supplement_database')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('supplement_database')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
 
-    if (error) {
-      console.error('Error loading supplements:', error);
-      return;
+      if (error) {
+        console.error('Error loading supplements:', error);
+        toast.error('Fehler beim Laden der Supplement-Datenbank');
+        return;
+      }
+
+      setSupplements(data || []);
+    } catch (error) {
+      console.error('Critical error loading supplements:', error);
+      toast.error('Kritischer Fehler beim Laden der Supplemente');
     }
-
-    setSupplements(data || []);
   };
 
   const loadUserSupplements = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('user_supplements')
-      .select(`
-        *,
-        supplement_database (
-          name,
-          category
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('user_supplements')
+        .select(`
+          *,
+          supplement_database (
+            name,
+            category
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error loading user supplements:', error);
-      return;
+      if (error) {
+        console.error('Error loading user supplements:', error);
+        toast.error('Fehler beim Laden deiner Supplemente');
+        return;
+      }
+
+      const supplementsWithNames = data?.map(supplement => ({
+        ...supplement,
+        supplement_name: supplement.supplement_database?.name || supplement.custom_name,
+        supplement_category: supplement.supplement_database?.category
+      })) || [];
+
+      setUserSupplements(supplementsWithNames);
+    } catch (error) {
+      console.error('Critical error loading user supplements:', error);
+      toast.error('Kritischer Fehler beim Laden deiner Supplemente');
     }
-
-    const supplementsWithNames = data?.map(supplement => ({
-      ...supplement,
-      supplement_name: supplement.supplement_database?.name || supplement.custom_name,
-      supplement_category: supplement.supplement_database?.category
-    })) || [];
-
-    setUserSupplements(supplementsWithNames);
   };
 
   const loadTodayIntake = async () => {
@@ -244,27 +256,34 @@ export const QuickSupplementInput = () => {
 
     const today = new Date().toISOString().split('T')[0];
     
-    const { data, error } = await supabase
-      .from('supplement_intake_log')
-      .select('user_supplement_id, timing, taken')
-      .eq('user_id', user.id)
-      .eq('date', today);
+    try {
+      const { data, error } = await supabase
+        .from('supplement_intake_log')
+        .select('user_supplement_id, timing, taken')
+        .eq('user_id', user.id)
+        .eq('date', today);
 
-    if (error) {
-      console.error('Error loading today intake:', error);
-      return;
-    }
-
-    const intakeMap: TodayIntake = {};
-    data?.forEach(record => {
-      if (!intakeMap[record.user_supplement_id]) {
-        intakeMap[record.user_supplement_id] = {};
+      if (error) {
+        console.error('Error loading today intake:', error);
+        toast.error('Fehler beim Laden der heutigen Einnahmen');
+        return;
       }
-      // Only set to true if actually taken, otherwise leave undefined/false
-      intakeMap[record.user_supplement_id][record.timing] = record.taken === true;
-    });
 
-    setTodayIntake(intakeMap);
+      const intakeMap: TodayIntake = {};
+      data?.forEach(record => {
+        if (!intakeMap[record.user_supplement_id]) {
+          intakeMap[record.user_supplement_id] = {};
+        }
+        // Only set to true if actually taken, otherwise leave undefined/false
+        intakeMap[record.user_supplement_id][record.timing] = record.taken === true;
+      });
+
+      console.log('Today intake loaded:', intakeMap);
+      setTodayIntake(intakeMap);
+    } catch (error) {
+      console.error('Critical error loading today intake:', error);
+      toast.error('Kritischer Fehler beim Laden der heutigen Einnahmen');
+    }
   };
 
   const handleAddSupplement = async () => {
@@ -317,12 +336,23 @@ export const QuickSupplementInput = () => {
   };
 
   const handleIntakeChange = async (supplementId: string, timing: string, taken: boolean) => {
+    console.log('handleIntakeChange called:', { supplementId, timing, taken });
+    
     if (!user || !supplementId) {
-      console.error('Missing user or supplementId');
+      console.error('Missing user or supplementId:', { user: !!user, supplementId });
       return;
     }
 
     const today = new Date().toISOString().split('T')[0];
+
+    // Optimistic update
+    setTodayIntake(prev => ({
+      ...prev,
+      [supplementId]: {
+        ...prev[supplementId],
+        [timing]: taken
+      }
+    }));
 
     try {
       if (taken) {
@@ -360,11 +390,9 @@ export const QuickSupplementInput = () => {
 
           if (updateError) throw updateError;
         }
-        // If no existing entry, we don't need to do anything (already not taken)
       }
 
-      // Reload intake data to ensure UI is in sync with database
-      await loadTodayIntake();
+      console.log('Database update successful for:', { supplementId, timing, taken });
 
       if (taken) {
         toast.success('Einnahme markiert');
@@ -374,6 +402,16 @@ export const QuickSupplementInput = () => {
 
     } catch (error) {
       console.error('Error updating intake:', error);
+      
+      // Rollback optimistic update
+      setTodayIntake(prev => ({
+        ...prev,
+        [supplementId]: {
+          ...prev[supplementId],
+          [timing]: !taken
+        }
+      }));
+      
       toast.error('Fehler beim Aktualisieren der Einnahme');
     }
   };
@@ -518,6 +556,50 @@ export const QuickSupplementInput = () => {
     );
   };
 
+  // Handle "check all" for a group
+  const handleCheckAllGroup = async (groupId: string) => {
+    const group = timeGroups.find(g => g.id === groupId);
+    const groupSupplements = groupedSupplements[groupId];
+    
+    if (!group || !groupSupplements || groupSupplements.length === 0) return;
+
+    const allTimingsInGroup: Array<{supplementId: string, timing: string}> = [];
+    
+    groupSupplements.forEach(supplement => {
+      supplement.timing
+        .filter(timing => group.timings.includes(timing))
+        .forEach(timing => {
+          allTimingsInGroup.push({ supplementId: supplement.id, timing });
+        });
+    });
+
+    if (allTimingsInGroup.length === 0) return;
+
+    // Check if all are already taken
+    const allTaken = allTimingsInGroup.every(item => 
+      todayIntake[item.supplementId]?.[item.timing] === true
+    );
+
+    const newValue = !allTaken; // If all taken, uncheck all. Otherwise, check all.
+    
+    // Batch update all timings
+    const promises = allTimingsInGroup.map(item => 
+      handleIntakeChange(item.supplementId, item.timing, newValue)
+    );
+
+    try {
+      await Promise.all(promises);
+      if (newValue) {
+        toast.success(`Alle ${group.title} Supplemente markiert!`);
+      } else {
+        toast.success(`Alle ${group.title} Supplemente abgehakt!`);
+      }
+    } catch (error) {
+      console.error('Error in batch update:', error);
+      toast.error('Fehler beim Batch-Update');
+    }
+  };
+
   return (
     <CollapsibleQuickInput
       title="Supplemente"
@@ -564,6 +646,22 @@ export const QuickSupplementInput = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCheckAllGroup(group.id);
+                            }}
+                            className="h-8 w-8 p-0 rounded-full bg-primary/10 hover:bg-primary/20"
+                            title={groupTaken === groupTotal ? "Alle abhaken" : "Alle markieren"}
+                          >
+                            {groupTaken === groupTotal ? (
+                              <X className="h-4 w-4" />
+                            ) : (
+                              <Check className="h-4 w-4" />
+                            )}
+                          </Button>
                           <Badge variant="secondary" className="text-xs">
                             {groupTaken}/{groupTotal}
                           </Badge>
@@ -695,13 +793,15 @@ export const QuickSupplementInput = () => {
                                       
                                       return (
                                         <div key={timing} className="flex items-center space-x-2">
-                                          <Checkbox
-                                            id={`${supplement.id}-${timing}`}
-                                            checked={isTaken}
-                                            onCheckedChange={(checked) => 
-                                              handleIntakeChange(supplement.id, timing, checked as boolean)
-                                            }
-                                          />
+                                           <Checkbox
+                                             id={`${supplement.id}-${timing}`}
+                                             checked={isTaken}
+                                             onCheckedChange={(checked) => {
+                                               console.log('Checkbox changed:', { supplementId: supplement.id, timing, checked });
+                                               const isChecked = checked === true || checked === 'indeterminate';
+                                               handleIntakeChange(supplement.id, timing, isChecked);
+                                             }}
+                                           />
                                           <label 
                                             htmlFor={`${supplement.id}-${timing}`}
                                             className={`text-xs cursor-pointer ${isTaken ? 'text-green-600' : 'text-muted-foreground'}`}
