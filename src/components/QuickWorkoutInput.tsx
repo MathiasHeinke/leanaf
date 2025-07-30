@@ -293,7 +293,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           <div className="mb-3">
             <CoachFeedbackCard 
               coachName="Markus"
-              coachAvatar="/coach-images/markus-ruehl.jpg"
+              coachAvatar="/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png"
               workoutData={todaysWorkouts}
               userId={user?.id}
               type="workout"
