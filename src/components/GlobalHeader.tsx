@@ -106,7 +106,7 @@ export const GlobalHeader = ({
     switch (pathname) {
       case '/': return 'Dashboard';
       case '/profile': return 'Profil';
-      case '/coach': return 'Coach';
+      case '/coach': return 'Coaching';
       case '/training': return 'Workout';
       case '/training/sascha': return 'Workout/Sascha';
       case '/training/markus': return 'Workout/Markus';
