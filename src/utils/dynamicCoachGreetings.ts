@@ -315,13 +315,6 @@ const getRelationshipStage = (memory?: CoachMemory | null): string => {
 export const generateDynamicCoachGreeting = (context: GreetingContext): string => {
   const { firstName, coachId, memory, isFirstConversation, timeOfDay, dayOfWeek, isWeekend } = context;
   
-  console.log('generateDynamicCoachGreeting called with:', {
-    firstName,
-    coachId,
-    isFirstConversation,
-    timeOfDay,
-    context
-  });
   
   if (isFirstConversation) {
     return getFirstTimeGreeting(coachId, firstName);

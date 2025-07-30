@@ -209,9 +209,12 @@ export const SpecializedCoachChat: React.FC<SpecializedCoachChatProps> = ({
 
   useEffect(() => {
     if (user?.id) {
-      loadUserData();
-      loadCoachChatHistory();
-      loadCoachMemory(); // Load coach memory for this user
+      const loadData = async () => {
+        await loadUserData();
+        await loadCoachMemory();
+        loadCoachChatHistory();
+      };
+      loadData();
     }
   }, [user?.id, coach.id, selectedDate]);
 
