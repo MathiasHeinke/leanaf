@@ -69,14 +69,14 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(timerState));
   }, [timerState]);
 
-  // Update timer every second when running
+  // Update timer every 100ms when running for smooth millisecond display
   useEffect(() => {
     if (timerState.isRunning && timerState.startTime) {
       intervalRef.current = setInterval(() => {
         const now = new Date();
-        const elapsed = Math.floor((now.getTime() - timerState.startTime!.getTime() - timerState.pausedDuration) / 1000);
+        const elapsed = now.getTime() - timerState.startTime!.getTime() - timerState.pausedDuration;
         setTimerState(prev => ({ ...prev, currentDuration: Math.max(0, elapsed) }));
-      }, 1000);
+      }, 100);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -199,15 +199,16 @@ export const useWorkoutTimer = (): UseWorkoutTimerReturn => {
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
+  const formatTime = (milliseconds: number): string => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     }
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return {
