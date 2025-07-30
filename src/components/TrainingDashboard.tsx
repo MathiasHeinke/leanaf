@@ -615,52 +615,6 @@ export const TrainingDashboard: React.FC = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Quick Actions Row */}
-            <div className="grid gap-4 grid-cols-1">
-              <Card className="hover:shadow-md transition-shadow border-dashed border-2 border-primary/20 hover:border-primary/40">
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="p-3 bg-primary/10 rounded-full w-fit mx-auto">
-                    <Plus className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Übung hinzufügen</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Schnell eine einzelne Übung tracken
-                    </p>
-                    <Button 
-                      onClick={() => setShowQuickAdd(true)}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Übung hinzufügen
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="hover:shadow-md transition-shadow border-dashed border-2 border-secondary/20 hover:border-secondary/40">
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="p-3 bg-secondary/10 rounded-full w-fit mx-auto">
-                    <Dumbbell className="h-8 w-8 text-secondary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Training Session</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Komplette Session mit mehreren Übungen
-                    </p>
-                    <Button 
-                      onClick={() => setShowQuickAdd(true)}
-                      variant="secondary"
-                      className="w-full"
-                    >
-                      <Dumbbell className="h-4 w-4 mr-2" />
-                      Session erstellen
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {/* Main Content Grid */}
             <div className="grid gap-6 grid-cols-1">
               {/* Left Column */}
