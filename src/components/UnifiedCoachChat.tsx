@@ -296,7 +296,7 @@ Wie kann ich dir helfen?`;
       if (!hasLoadedHistory) {
         try {
           const coachName = coach?.name || 'Coach';
-          const coachExpertise = coach?.expertise || 'Fitness und Ernährung';
+          const coachExpertise = coach?.expertise?.[0] || 'Fitness und Ernährung';
           
           const welcomeMsg: ChatMessage = {
             id: crypto.randomUUID(),
@@ -318,7 +318,7 @@ Wie kann ich dir helfen?`;
     };
 
     initializeChat();
-  }, [user?.id, mode, coach?.personality, coach?.name, coach?.expertise]);
+  }, [user?.id, mode, coach?.personality, coach?.name]);
 
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
