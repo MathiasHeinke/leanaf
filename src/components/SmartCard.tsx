@@ -26,6 +26,7 @@ export const SmartCard = ({
   onDoubleClick 
 }: SmartCardProps) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   const toolBorderColors = {
     supplement: 'border-teal-400',
@@ -35,12 +36,21 @@ export const SmartCard = ({
     mindset: 'border-purple-500'
   };
 
+  const handleDoubleClick = () => {
+    if (onDoubleClick) {
+      onDoubleClick();
+    } else {
+      setShowOverlay(true);
+    }
+  };
+
   return (
-    <div 
-      className={`smartcard w-full rounded-xl border backdrop-blur shadow-md overflow-hidden ${toolBorderColors[tool]} ${collapsed ? 'collapsed' : ''}`}
-      data-tool={tool}
-      onDoubleClick={onDoubleClick}
-    >
+    <>
+      <div 
+        className={`smartcard w-full rounded-xl border backdrop-blur shadow-md overflow-hidden ${toolBorderColors[tool]} ${collapsed ? 'collapsed' : ''}`}
+        data-tool={tool}
+        onDoubleClick={handleDoubleClick}
+      >
       {/* Header Row */}
       <div className="sc-header flex items-center gap-2 px-3 py-2 bg-white/30 dark:bg-black/30 backdrop-blur-sm">
         <span className="sc-icon text-lg">{icon}</span>
@@ -81,6 +91,60 @@ export const SmartCard = ({
           ))}
         </div>
       )}
-    </div>
+      </div>
+
+      {/* Overlay */}
+      {showOverlay && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowOverlay(false)}>
+          <div 
+            className="fixed inset-4 md:inset-8 bg-background rounded-xl border shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-white/30 dark:bg-black/30 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{icon}</span>
+                <h2 className="font-semibold">{title}</h2>
+              </div>
+              <button
+                onClick={() => setShowOverlay(false)}
+                className="p-2 rounded-full hover:bg-white/20 dark:hover:bg-black/20 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-4 h-[calc(100%-64px)] overflow-y-auto">
+              {children}
+              
+              {/* Actions in overlay */}
+              {actions && actions.length > 0 && (
+                <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                  {actions.map((action, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        action.onClick();
+                        setShowOverlay(false);
+                      }}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        action.variant === 'confirm' 
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                      }`}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
