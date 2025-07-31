@@ -243,22 +243,32 @@
     transform: translateY(-2px);
   }
 
-  /* Slow Border Pulse Animation */
+  /* ======================= */
+  /*    Sanfter Rahmen-Pulse */
+  /* ======================= */
+
   .border-pulse {
-    animation: border-pulse 6s ease-in-out infinite;
+    /* Dauer auf 5 s gesetzt (Mittelwert aus 4–6 s) */
+    animation: border-pulse-light 5s ease-in-out infinite;
+    /* Kleine Optimierung, damit die GPU das sauber rendert */
+    will-change: box-shadow;
   }
 
-  @keyframes border-pulse {
+  /* Keyframes nur für Light-Mode */
+  @keyframes border-pulse-light {
+    /* Start / Ende = komplett transparent */
     0%, 100% {
-      box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.05);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0);
     }
+    /* Halbzeit = leichter, halbtransparenter Blau-Schein */
     50% {
-      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
     }
   }
 
+  /* Dark-Mode behält dein bestehendes border-pulse-dark bei */
   .dark .border-pulse {
-    animation: border-pulse-dark 6s ease-in-out infinite;
+    animation: border-pulse-dark 5s ease-in-out infinite;
   }
 
   @keyframes border-pulse-dark {
