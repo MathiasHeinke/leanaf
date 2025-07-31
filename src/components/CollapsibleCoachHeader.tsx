@@ -95,22 +95,26 @@ export const CollapsibleCoachHeader = ({
         </div>
       </div>
 
-      {/* Toggle Arrow */}
+      {/* Toggle Arrow - positioned at bottom edge of coach banner */}
       <button
         id="coachToggle"
         onClick={toggleCollapse}
-        className={`fixed left-1/2 -translate-x-1/2 z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm p-1 rounded-full shadow-sm transition-all duration-300 border border-border/50 ${
+        className={`fixed left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-black/80 backdrop-blur-sm p-1 rounded-full shadow-sm transition-all duration-300 border border-border/50 ${
           collapsed 
-            ? '-translate-y-full rotate-180' 
+            ? 'rotate-180' 
             : ''
         }`}
-        style={{ top: 'calc(var(--header-height, 60px) + 12px)' }}
-        aria-label={collapsed ? 'Leiste ausklappen' : 'Leiste einklappen'}
+        style={{ 
+          top: collapsed 
+            ? 'var(--header-height, 60px)' 
+            : 'calc(var(--header-height, 60px) + 48px)'
+        }}
+        aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
       >
         {collapsed ? (
-          <ArrowDown className="w-5 h-5" />
+          <ArrowDown className="w-4 h-4" />
         ) : (
-          <ArrowUp className="w-5 h-5" />
+          <ArrowUp className="w-4 h-4" />
         )}
       </button>
 

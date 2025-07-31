@@ -38,8 +38,9 @@ import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
 import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
 import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
-import { DynamicCoachGreeting } from '@/components/DynamicCoachGreeting';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
+import { useContextTokens } from '@/hooks/useContextTokens';
+import { generateDynamicCoachGreeting, createGreetingContext } from '@/utils/dynamicCoachGreetings';
 
 import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -141,6 +142,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { isRecording, isProcessing, transcribedText, startRecording, stopRecording } = useVoiceRecording();
   const { analyzeImage, isAnalyzing } = useUniversalImageAnalysis();
   const { uploadFiles, uploading } = useMediaUpload();
+  const { tokens } = useContextTokens(user?.id);
   
   // ============= SIMPLE INITIALIZATION =============
   useEffect(() => {
@@ -150,11 +152,42 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
-        // Simple welcome message without complex logic
+        // Get user's first name for personalization
+        const getUserName = () => {
+          if (profileData?.display_name) {
+            return profileData.display_name.split(' ')[0];
+          }
+          if (user?.email) {
+            const emailName = user.email.split('@')[0];
+            if (/^[a-zA-Z]/.test(emailName)) {
+              return emailName.split('.')[0];
+            }
+          }
+          return 'Du';
+        };
+
+        // Generate personalized greeting
+        const firstName = getUserName();
+        const context = createGreetingContext(firstName, coach?.id || 'lucy', memory, false);
+        const personalizedGreeting = generateDynamicCoachGreeting(context);
+        
+        // Add context-based personalization
+        let enhancedGreeting = personalizedGreeting;
+        
+        if (tokens.calLeft && tokens.calLeft > 0) {
+          enhancedGreeting += ` Du hast noch ${tokens.calLeft} kcal übrig für heute.`;
+        }
+        
+        if (coach?.id === 'sascha' && tokens.timeOfDay === 'Morgen') {
+          enhancedGreeting += " Bereit für ein starkes Training heute? 💪";
+        } else if (coach?.id === 'lucy' && tokens.timeOfDay === 'Morgen') {
+          enhancedGreeting += " Was steht heute auf dem Speiseplan? 🍎";
+        }
+        
         const welcomeMsg: UnifiedMessage = {
           id: `welcome-${Date.now()}`,
           role: 'assistant',
-          content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Wie kann ich dir helfen?`,
+          content: enhancedGreeting,
           created_at: new Date().toISOString(),
           coach_personality: coach?.personality || 'motivierend',
           images: [],
@@ -166,13 +199,24 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         setChatInitialized(true);
       } catch (error) {
         console.error('Init error:', error);
+        // Fallback greeting
+        const fallbackMsg: UnifiedMessage = {
+          id: `welcome-${Date.now()}`,
+          role: 'assistant',
+          content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Wie kann ich dir helfen?`,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          images: [],
+          mode: mode
+        };
+        setMessages([fallbackMsg]);
         setIsLoading(false);
         setChatInitialized(true);
       }
     };
     
     init();
-  }, [user?.id, coach?.name, coach?.personality, mode]);
+  }, [user?.id, coach?.name, coach?.personality, mode, tokens, memory, profileData]);
   
   // ============= SIMPLE SEND MESSAGE =============
   const sendMessage = useCallback(async () => {
@@ -537,14 +581,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         />
         
         <ChatLayout chatInput={chatInput}>
-          <div className="px-4 pt-4">
-            <DynamicCoachGreeting
-              coachId={coach?.id || 'lucy'}
-              coachName={coach?.name || 'Coach'}
-              coachRole={coach?.expertise?.join(', ') || coach?.personality || 'Coach'}
-              userProfile={undefined}
-            />
-          </div>
           
           {/* Render all messages using the unified message renderer */}
           <ScrollArea className="flex-1 px-4">
