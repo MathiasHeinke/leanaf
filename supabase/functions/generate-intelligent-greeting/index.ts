@@ -43,10 +43,18 @@ serve(async (req) => {
       supabase.from('sleep_data').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3)
     ]);
 
-    // Build comprehensive context
-    const timeOfDay = new Date().getHours() < 12 ? 'Morgen' : new Date().getHours() < 18 ? 'Tag' : 'Abend';
-    const dayOfWeek = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'][new Date().getDay()];
-    const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+    // Build comprehensive context with precise timing
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const timeOfDay = hour < 6 ? 'früher Morgen' : 
+                      hour < 12 ? 'Morgen' : 
+                      hour < 14 ? 'Mittag' :
+                      hour < 18 ? 'Nachmittag' : 
+                      hour < 22 ? 'Abend' : 'späte Abend';
+    const exactTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    const dayOfWeek = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'][now.getDay()];
+    const isWeekend = now.getDay() === 0 || now.getDay() === 6;
 
     // Coach personalities with deep character details
     const coachPersonalities = {
@@ -96,8 +104,8 @@ serve(async (req) => {
 
     const coach = coachPersonalities[coachId] || coachPersonalities['lucy'];
 
-    // Build context summary
-    let contextSummary = `Benutzer: ${firstName}\nTageszeit: ${timeOfDay}\nWochentag: ${dayOfWeek}\nWochenende: ${isWeekend ? 'Ja' : 'Nein'}`;
+    // Build context summary with precise timing
+    let contextSummary = `Benutzer: ${firstName}\nUhrzeit: ${exactTime} Uhr (${timeOfDay})\nWochentag: ${dayOfWeek}\nWochenende: ${isWeekend ? 'Ja' : 'Nein'}`;
     
     if (profileData.data) {
       const profile = profileData.data;
@@ -135,13 +143,14 @@ Begrüßungsstil: ${coach.greeting_style}
 Aufgabe: Erstelle eine EINZIGARTIGE, PERSÖNLICHE Begrüßung basierend auf den Kontext-Daten.
 
 Regeln:
-- Maximal 2 Sätze
-- Nutze die Kontext-Daten für Personalisierung
-- Sei authentisch zu deiner Persönlichkeit
+- MAXIMAL 2 SÄTZE - knackig und pointiert!
+- Nutze die exakte Uhrzeit für zeitspezifische Begrüßungen
+- Sei ultra-spezifisch mit den Userdaten (Gewichtstrend, letztes Training, etc.)
+- Authentisch zu deiner Persönlichkeit bleiben
 - Variiere deine Begrüßungen (niemals die gleiche)
-- ${isFirstConversation ? 'Dies ist das erste Gespräch - sei einladend!' : 'Reagiere auf vergangene Aktivitäten'}
+- ${isFirstConversation ? 'Dies ist das erste Gespräch - sei einladend!' : 'Reagiere direkt auf vergangene Aktivitäten'}
 - Nutze passende Emojis für deine Persönlichkeit
-- Sei spezifisch, nicht generisch
+- KONKRET statt generisch - erwähne spezifische Daten!
 
 Kontext-Daten:
 ${contextSummary}
