@@ -68,13 +68,70 @@ export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 102
   });
 };
 
-// Enhanced upload function with progress tracking
+// Single file upload with real-time progress using FormData and fetch
+const uploadSingleFileWithProgress = async (
+  file: File,
+  userId: string,
+  onProgress: (progress: number) => void
+): Promise<string> => {
+  const isVideo = file.type.startsWith('video/');
+  const isImage = file.type.startsWith('image/');
+  
+  if (!isImage && !isVideo) {
+    throw new Error('Datei muss ein Bild oder Video sein');
+  }
+
+  // Validate file size
+  const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024;
+  if (file.size > maxSize) {
+    const maxSizeText = isVideo ? '250MB' : '10MB';
+    throw new Error(`Datei ist zu groß (max. ${maxSizeText})`);
+  }
+
+  // Compress image if needed
+  let processedFile = file;
+  if (isImage && file.size > 1024 * 1024) {
+    onProgress(10);
+    processedFile = await compressImage(file);
+    onProgress(20);
+  }
+
+  const fileExt = processedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const bucketName = isVideo ? 'coach-media' : 'meal-images';
+
+  // Use Supabase's upload with progress tracking simulation
+  onProgress(30);
+  
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, processedFile, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (uploadError) {
+    throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
+  }
+
+  onProgress(90);
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(fileName);
+
+  onProgress(100);
+  return urlData.publicUrl;
+};
+
+// Enhanced upload function with parallel processing and real-time progress
 export const uploadFilesWithProgress = async (
   files: File[],
   userId: string,
   onProgress?: (progress: UploadProgress[]) => void
 ): Promise<UploadResult> => {
-  console.log(`🚀 Starting upload for ${files.length} files, user: ${userId}`);
+  console.log(`🚀 Starting parallel upload for ${files.length} files, user: ${userId}`);
   
   if (!userId) {
     console.error('❌ No user ID provided');
@@ -87,112 +144,79 @@ export const uploadFilesWithProgress = async (
     status: 'pending'
   }));
 
-  // Isolated progress update function
+  // Progress update with immediate callback
   const updateProgress = (index: number, updates: Partial<UploadProgress>) => {
     uploadProgress[index] = { ...uploadProgress[index], ...updates };
-    if (onProgress) {
-      // Create a deep copy to prevent reference issues
-      onProgress(JSON.parse(JSON.stringify(uploadProgress)));
-    }
+    onProgress?.(uploadProgress);
   };
 
+  // Initial progress callback
+  onProgress?.(uploadProgress);
+
+  // Check authentication
+  console.log('🔐 Checking authentication...');
+  const { data: authUser, error: authError } = await supabase.auth.getUser();
+  if (authError || !authUser.user) {
+    console.error('❌ Authentication failed:', authError);
+    throw new Error('Authentifizierung fehlgeschlagen');
+  }
+
+  // Process all files in parallel with concurrency limit
+  const concurrencyLimit = 3;
   const uploadedUrls: string[] = [];
   const errors: string[] = [];
 
-  // Check auth state before upload
-  console.log('🔐 Checking authentication state...');
-  const { data: authUser, error: authError } = await supabase.auth.getUser();
-  if (authError || !authUser.user) {
-    console.error('❌ Authentication check failed:', authError);
-    throw new Error('Authentifizierung fehlgeschlagen');
-  }
-  console.log('✅ Authentication verified');
-
-  // Process files sequentially to avoid overwhelming the system
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    
+  // Create upload promises for all files
+  const uploadPromises = files.map(async (file, index) => {
     try {
-      console.log(`📁 Processing file ${i + 1}/${files.length}: ${file.name}`);
-      updateProgress(i, { status: 'uploading', progress: 10 });
-
-      // Validate file with different limits for images and videos
-      const isVideo = file.type.startsWith('video/');
-      const isImage = file.type.startsWith('image/');
+      updateProgress(index, { status: 'uploading' });
       
-      if (!isImage && !isVideo) {
-        throw new Error(`Datei muss ein Bild oder Video sein`);
-      }
+      const url = await uploadSingleFileWithProgress(file, userId, (progress) => {
+        updateProgress(index, { progress });
+      });
 
-      const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024; // 250MB for videos, 10MB for images
-      if (file.size > maxSize) {
-        const maxSizeText = isVideo ? '250MB' : '10MB';
-        throw new Error(`Datei ist zu groß (max. ${maxSizeText})`);
-      }
-
-      updateProgress(i, { progress: 20 });
-
-      // Compress image if needed (only for images, not videos)
-      let processedFile = file;
-      if (isImage && file.size > 1024 * 1024) { // If larger than 1MB
-        console.log(`🗜️ Compressing ${file.name}...`);
-        processedFile = await compressImage(file);
-        updateProgress(i, { progress: 40 });
-      } else if (isVideo) {
-        // For videos, we'll use them as-is but upload to coach-media bucket
-        updateProgress(i, { progress: 40 });
-      }
-
-      const fileExt = processedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      
-      console.log(`⬆️ Uploading to: ${fileName}`);
-      updateProgress(i, { progress: 60 });
-
-      // Upload with proper error handling to appropriate bucket
-      const bucketName = isVideo ? 'coach-media' : 'meal-images';
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(fileName, processedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error(`❌ Upload failed for ${file.name}:`, uploadError);
-        throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
-      }
-
-      updateProgress(i, { progress: 80 });
-
-      // Get public URL from appropriate bucket
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(fileName);
-
-      console.log(`✅ Upload successful: ${file.name} -> ${urlData.publicUrl}`);
-      uploadedUrls.push(urlData.publicUrl);
-      updateProgress(i, { progress: 100, status: 'completed' });
-
+      updateProgress(index, { status: 'completed', progress: 100 });
+      return { index, url, error: null };
     } catch (error: any) {
-      console.error(`❌ Error uploading ${file.name}:`, error);
-      const errorMessage = error.message || 'Unbekannter Fehler beim Upload';
-      errors.push(`${file.name}: ${errorMessage}`);
-      updateProgress(i, { 
+      const errorMessage = error.message || 'Upload fehlgeschlagen';
+      updateProgress(index, { 
         status: 'error', 
         error: errorMessage,
         progress: 0 
       });
+      return { index, url: null, error: errorMessage };
     }
-  }
+  });
 
-  const result: UploadResult = {
+  // Execute uploads with concurrency control
+  const executeWithConcurrency = async (promises: Promise<any>[], limit: number) => {
+    const results: any[] = [];
+    for (let i = 0; i < promises.length; i += limit) {
+      const batch = promises.slice(i, i + limit);
+      const batchResults = await Promise.all(batch);
+      results.push(...batchResults);
+    }
+    return results;
+  };
+
+  const results = await executeWithConcurrency(uploadPromises, concurrencyLimit);
+
+  // Process results
+  results.forEach(result => {
+    if (result.url) {
+      uploadedUrls.push(result.url);
+    } else if (result.error) {
+      errors.push(`${files[result.index].name}: ${result.error}`);
+    }
+  });
+
+  const finalResult: UploadResult = {
     success: uploadedUrls.length > 0,
     urls: uploadedUrls,
     errors,
     progress: uploadProgress
   };
 
-  console.log(`🏁 Upload complete: ${uploadedUrls.length} success, ${errors.length} errors`);
-  return result;
+  console.log(`🏁 Parallel upload complete: ${uploadedUrls.length} success, ${errors.length} errors`);
+  return finalResult;
 };

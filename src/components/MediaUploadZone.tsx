@@ -24,26 +24,50 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
     uploadFiles, 
     uploading, 
     uploadProgress, 
-    compressionProgress, 
-    isCompressing, 
     getMediaType 
   } = useMediaUpload();
-  const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
+  const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video', isPreview?: boolean}>>([]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
+    // Instant preview of files before upload
+    const instantPreviews = acceptedFiles.map(file => ({
+      url: URL.createObjectURL(file),
+      type: file.type.startsWith('image/') ? 'image' as const : 'video' as const,
+      isPreview: true
+    }));
+    
+    setUploadedMedia(prev => [...prev, ...instantPreviews]);
+
     try {
       const urls = await uploadFiles(acceptedFiles);
-      const mediaItems = urls.map(url => ({
-        url,
-        type: getMediaType(url) as 'image' | 'video'
-      }));
       
-      setUploadedMedia(prev => [...prev, ...mediaItems]);
+      // Replace previews with real URLs
+      setUploadedMedia(prev => {
+        const newMedia = [...prev];
+        // Remove preview items
+        const filtered = newMedia.filter(item => !item.isPreview);
+        // Add real uploaded items
+        const realItems = urls.map(url => ({
+          url,
+          type: getMediaType(url) as 'image' | 'video'
+        }));
+        return [...filtered, ...realItems];
+      });
+      
       onMediaUploaded(urls);
+      
+      // Cleanup preview URLs
+      instantPreviews.forEach(preview => {
+        if (preview.url.startsWith('blob:')) {
+          URL.revokeObjectURL(preview.url);
+        }
+      });
     } catch (error) {
       console.error('Upload failed:', error);
+      // Remove failed previews
+      setUploadedMedia(prev => prev.filter(item => !item.isPreview));
     }
   }, [uploadFiles, onMediaUploaded, getMediaType]);
 
@@ -110,20 +134,47 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
         </div>
       </Card>
 
-      {/* Upload Progress */}
-      {uploadProgress.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Upload-Fortschritt:</h4>
-          {uploadProgress.map((progress, index) => (
-            <div key={index} className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="truncate max-w-[200px]">{progress.fileName}</span>
-                <span>{progress.progress}%</span>
+      {/* Upload Progress with Enhanced UI */}
+      {(uploading || uploadProgress.length > 0) && (
+        <Card className="p-4 bg-muted/30 border-dashed">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-primary">
+                🚀 Upload läuft... ({uploadProgress.filter(p => p.status === 'completed').length}/{uploadProgress.length})
+              </h4>
+              <div className="text-xs text-muted-foreground">
+                Parallel-Upload aktiv
               </div>
-              <Progress value={progress.progress} className="h-1" />
             </div>
-          ))}
-        </div>
+            
+            <div className="grid gap-2 max-h-40 overflow-y-auto">
+              {uploadProgress.map((progress, index) => (
+                <div key={index} className="bg-background rounded-lg p-2 border">
+                  <div className="flex justify-between items-center text-xs mb-1">
+                    <span className="truncate max-w-[150px] font-medium">{progress.fileName}</span>
+                    <div className="flex items-center gap-2">
+                      {progress.status === 'uploading' && (
+                        <span className="text-primary font-mono">{Math.round(progress.progress)}%</span>
+                      )}
+                      {progress.status === 'completed' && (
+                        <span className="text-green-500 font-bold">✓</span>
+                      )}
+                      {progress.status === 'error' && (
+                        <span className="text-red-500 font-bold">✗</span>
+                      )}
+                    </div>
+                  </div>
+                  {progress.status === 'uploading' && (
+                    <Progress value={progress.progress} className="h-1.5" />
+                  )}
+                  {progress.status === 'error' && (
+                    <div className="text-xs text-red-500 mt-1">{progress.error}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Uploaded Media Preview */}
@@ -161,11 +212,12 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
                       </div>
                     )}
                     
-                    {/* Media Type Badge */}
+                     {/* Media Type Badge */}
                     <Badge
-                      variant="secondary"
+                      variant={media.isPreview ? "outline" : "secondary"}
                       className="absolute top-2 left-2 text-xs"
                     >
+                      {media.isPreview && "📤 "}
                       {media.type === 'image' ? (
                         <><Image className="h-3 w-3 mr-1" /> Bild</>
                       ) : (

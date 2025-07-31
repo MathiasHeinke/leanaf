@@ -1,170 +1,52 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { VideoCompressor, CompressionProgress } from '@/utils/videoCompression';
-
-interface UploadProgress {
-  progress: number;
-  fileName: string;
-}
+import { uploadFilesWithProgress, UploadProgress } from '@/utils/uploadHelpers';
 
 export const useMediaUpload = () => {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
-  const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
-  const [isCompressing, setIsCompressing] = useState(false);
 
   const uploadFiles = async (files: File[]): Promise<string[]> => {
     if (!user?.id) {
+      toast.error('Bitte melden Sie sich an, um Dateien hochzuladen');
       throw new Error('User nicht angemeldet');
     }
 
     setUploading(true);
     setUploadProgress([]);
-    const uploadedUrls: string[] = [];
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        // Validate file type
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        
-        if (!isImage && !isVideo) {
-          toast.error(`${file.name} ist kein unterstütztes Medienformat`);
-          continue;
-        }
+      const result = await uploadFilesWithProgress(files, user.id, (progress) => {
+        setUploadProgress(progress);
+      });
 
-        // Handle video compression for large files
-        let processedFile = file;
-        if (isVideo && file.size > 100 * 1024 * 1024) { // Compress videos > 100MB
-          try {
-            setIsCompressing(true);
-            toast.info(`Video ${file.name} wird komprimiert...`);
-            
-            const compressionResult = await VideoCompressor.compressVideo(
-              file,
-              (progress) => setCompressionProgress(progress)
-            );
-            
-            processedFile = compressionResult.file;
-            
-            if (compressionResult.compressionRatio > 1) {
-              const savedMB = (compressionResult.originalSize - compressionResult.compressedSize) / 1024 / 1024;
-              toast.success(`Video komprimiert! ${savedMB.toFixed(1)}MB gespart (${compressionResult.compressionRatio.toFixed(1)}x kleiner)`);
-            }
-          } catch (error) {
-            console.error('Video compression failed:', error);
-            toast.warning('Komprimierung fehlgeschlagen, verwende Original-Video');
-          } finally {
-            setIsCompressing(false);
-            setCompressionProgress(null);
-          }
-        }
-        
-        // Validate compressed file size (check for empty files)
-        if (processedFile.size === 0) {
-          console.error('Compressed file is empty, using original file');
-          processedFile = file;
-          toast.warning('Komprimierung erzeugte leere Datei, verwende Original');
-        }
+      if (result.errors && result.errors.length > 0) {
+        result.errors.forEach(error => {
+          toast.error(error);
+        });
+      }
 
-        // Validate final file size
-        const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024;
-        if (processedFile.size > maxSize) {
-          toast.error(`${processedFile.name} ist zu groß. Max: ${isVideo ? '250MB' : '10MB'}`);
-          continue;
-        }
-
-        // Update progress with processed file name
-        setUploadProgress(prev => [
-          ...prev.filter(p => p.fileName !== processedFile.name),
-          { fileName: processedFile.name, progress: 0 }
-        ]);
-
-        // Generate unique filename based on processed file
-        const fileExt = processedFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-
-        try {
-          // Upload processed file to Supabase Storage with timeout and retry
-          const uploadWithRetry = async (retries = 3): Promise<any> => {
-            for (let attempt = 1; attempt <= retries; attempt++) {
-              try {
-                const uploadPromise = supabase.storage
-                  .from('coach-media')
-                  .upload(fileName, processedFile);
-                
-                const timeoutPromise = new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Upload timeout')), 300000) // 5min timeout
-                );
-                
-                const { data, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
-                
-                if (error) throw error;
-                return { data, error: null };
-              } catch (error: any) {
-                console.error(`Upload attempt ${attempt} failed:`, error);
-                if (attempt === retries) throw error;
-                if (error.message?.includes('timeout')) {
-                  toast.warning(`Upload-Versuch ${attempt} Timeout, versuche erneut...`);
-                  await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Progressive delay
-                } else {
-                  throw error; // Non-timeout errors should not retry
-                }
-              }
-            }
-          };
-
-          const { data, error } = await uploadWithRetry();
-          
-          if (error) {
-            console.error('Upload error:', error);
-            throw error;
-          }
-
-          // Update progress to 50% after upload
-          setUploadProgress(prev => 
-            prev.map(p => 
-              p.fileName === processedFile.name 
-                ? { ...p, progress: 50 }
-                : p
-            )
-          );
-
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('coach-media')
-            .getPublicUrl(fileName);
-
-          if (urlData?.publicUrl) {
-            uploadedUrls.push(urlData.publicUrl);
-            
-            // Update progress to 100%
-            setUploadProgress(prev => 
-              prev.map(p => 
-                p.fileName === processedFile.name 
-                  ? { ...p, progress: 100 }
-                  : p
-              )
-            );
-            
-            // Upload-Fortschritt bereits visuell dargestellt
-          }
-        } catch (uploadError) {
-          console.error(`Error uploading ${processedFile.name}:`, uploadError);
-          toast.error(`Fehler beim Hochladen von ${processedFile.name}`);
+      if (result.success) {
+        const successCount = result.urls.length;
+        const totalCount = files.length;
+        if (successCount === totalCount) {
+          toast.success(`🎉 Alle ${successCount} Dateien erfolgreich hochgeladen!`);
+        } else {
+          toast.success(`${successCount} von ${totalCount} Dateien hochgeladen`);
         }
       }
 
-      return uploadedUrls;
+      return result.urls;
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      toast.error(error.message || 'Upload fehlgeschlagen');
+      throw error;
     } finally {
       setUploading(false);
-      // Clear progress after a delay
-      setTimeout(() => setUploadProgress([]), 2000);
+      // Clear progress after delay to show final state
+      setTimeout(() => setUploadProgress([]), 3000);
     }
   };
 
@@ -186,8 +68,6 @@ export const useMediaUpload = () => {
     uploadFiles,
     uploading,
     uploadProgress,
-    compressionProgress,
-    isCompressing,
     getMediaType
   };
 };
