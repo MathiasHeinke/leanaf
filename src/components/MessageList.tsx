@@ -1,7 +1,7 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { VariableSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import { MessageRow } from './MessageRow';
+import { MessageItem } from './MessageItem';           // auslagern!
 import { Button } from '@/components/ui/button';
 
 interface ChatMessage {
@@ -32,31 +32,46 @@ interface MessageListProps {
   onConversationAction?: (action: any) => void;
 }
 
-export const MessageList = React.memo(({ 
-  messages, 
-  coach, 
-  onConversationAction
-}: MessageListProps) => {
-  const listRef = useRef<List>(null);
-  const rowHeights = useRef<number[]>([]);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const pendingUpdates = useRef<Set<number>>(new Set());
-  const updateFrameRef = useRef<number | null>(null);
+/** separat, 100% stabil */
+const Row = React.memo(({ index, style, data }: {
+  index: number;
+  style: React.CSSProperties;
+  data: any;
+}) => {
+  const { messages, coach, onConversationAction, setRowHeight } = data;
+  return (
+    <MessageItem
+      index={index}
+      style={style}
+      message={messages[index]}
+      coach={coach}
+      onConversationAction={onConversationAction}
+      reportHeight={setRowHeight}
+    />
+  );
+});
+Row.displayName = 'Row';
 
-  // Stabilized onConversationAction handler
-  const stableActionHandler = useRef(onConversationAction);
-  stableActionHandler.current = onConversationAction;
-  
-  const handleConversationAction = useCallback((action: any) => {
-    stableActionHandler.current?.(action);
+export const MessageList = React.memo(({ messages, coach, onConversationAction }: MessageListProps) => {
+  const listRef = useRef<List>(null);
+  const heights = useRef<number[]>([]);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+
+  /** Row-Height Setter (stable) */
+  const setRowHeight = useCallback((index: number, h: number) => {
+    if (heights.current[index] !== h) {
+      heights.current[index] = h;
+      // batchen, sonst mehrere msgs mit Bildern -> zig Resets
+      requestAnimationFrame(() => listRef.current?.resetAfterIndex(index));
+    }
   }, []);
 
-  const getSize = useCallback((index: number) => rowHeights.current[index] ?? 120, []);
+  /** Größe pro Item */
+  const getSize = useCallback((i: number) => heights.current[i] ?? 120, []);
 
-  // Intelligent auto-scroll: only scroll if user is at bottom
+  /** Scroll auf neue Nachricht - nur wenn am Bottom */
   useEffect(() => {
-    if (messages.length > 0 && listRef.current && isAtBottom) {
-      // Small delay to allow for rendering
+    if (messages.length && isAtBottom) {
       requestAnimationFrame(() => {
         listRef.current?.scrollToItem(messages.length - 1, 'end');
       });
@@ -64,7 +79,7 @@ export const MessageList = React.memo(({
   }, [messages.length, isAtBottom]);
 
   // Detect if user manually scrolled away from bottom
-  const handleScroll = useCallback(({ scrollOffset, scrollDirection }: any) => {
+  const handleScroll = useCallback(({ scrollOffset }: any) => {
     if (listRef.current) {
       const list = listRef.current;
       const totalHeight = messages.reduce((sum, _, index) => sum + getSize(index), 0);
@@ -74,54 +89,15 @@ export const MessageList = React.memo(({
     }
   }, [messages, getSize]);
 
-  // Optimized row height setter with batching
-  const setRowHeight = useCallback((index: number, height: number) => {
-    // CRITICAL: Only update if height actually changed AND is valid
-    if (rowHeights.current[index] !== height && height > 0) {
-      rowHeights.current[index] = height;
-      
-      // Batch updates using requestAnimationFrame
-      pendingUpdates.current.add(index);
-      
-      if (updateFrameRef.current === null) {
-        updateFrameRef.current = requestAnimationFrame(() => {
-          if (listRef.current && pendingUpdates.current.size > 0) {
-            const minIndex = Math.min(...pendingUpdates.current);
-            listRef.current.resetAfterIndex(minIndex);
-            pendingUpdates.current.clear();
-          }
-          updateFrameRef.current = null;
-        });
-      }
-    }
-  }, []);
-
   // Memory cleanup - prevent rowHeights array from growing indefinitely
   useEffect(() => {
     const currentLength = messages.length;
-    if (rowHeights.current.length > currentLength) {
-      rowHeights.current = rowHeights.current.slice(0, currentLength);
+    if (heights.current.length > currentLength) {
+      heights.current = heights.current.slice(0, currentLength);
     }
   }, [messages.length]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (updateFrameRef.current) {
-        cancelAnimationFrame(updateFrameRef.current);
-      }
-    };
-  }, []);
-
-  // Memoized item data to prevent Row re-renders
-  const itemData = React.useMemo(() => ({
-    messages,
-    coach,
-    onConversationAction: handleConversationAction,
-    setRowHeight
-  }), [messages, coach, handleConversationAction, setRowHeight]);
-
-  if (messages.length === 0) {
+  if (!messages.length) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         Beginne ein Gespräch mit {coach.name}
@@ -129,14 +105,17 @@ export const MessageList = React.memo(({
     );
   }
 
+  /** itemData vermeidet Inline-Funktion */
+  const itemData = { messages, coach, onConversationAction, setRowHeight };
+
   return (
     <div className="relative h-full" aria-live="polite" aria-label="Chat-Nachrichten">
       <AutoSizer>
         {({ height, width }) => (
           <List
+            ref={listRef}
             height={height}
             width={width}
-            ref={listRef}
             itemCount={messages.length}
             itemSize={getSize}
             itemData={itemData}
@@ -145,11 +124,11 @@ export const MessageList = React.memo(({
             onScroll={handleScroll}
             className="scrollbar-thin"
           >
-            {MessageRow}
+            {Row}
           </List>
         )}
       </AutoSizer>
-      
+
       {/* Jump to latest button when user scrolled up */}
       {!isAtBottom && messages.length > 0 && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">

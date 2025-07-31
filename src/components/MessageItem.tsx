@@ -26,74 +26,44 @@ interface CoachProfile {
   personality: string;
 }
 
-interface MessageRowProps {
+interface Props {
   index: number;
   style: React.CSSProperties;
-  data: {
-    messages: ChatMessage[];
-    coach: CoachProfile;
-    onConversationAction?: (action: any) => void;
-    setRowHeight: (index: number, height: number) => void;
-  };
+  message: ChatMessage;
+  coach: CoachProfile;
+  onConversationAction?: (type: string, data?: any) => void;
+  reportHeight: (index: number, h: number) => void;   // Index mitgeben!
 }
 
-export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) => {
-  const { messages, coach, onConversationAction, setRowHeight } = data;
-  const message = messages[index];
-  const itemRef = useRef<HTMLDivElement>(null);
-  const lastHeightRef = useRef<number>(0);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+export const MessageItem = React.memo(({
+  index,
+  style,
+  message,
+  coach,
+  onConversationAction,
+  reportHeight
+}: Props) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const lastH = useRef(0);
+
+  /** ⇢ nur nach mount + wenn Bilder nachgeladen **/
+  const measure = useCallback(() => {
+    if (ref.current) {
+      const h = ref.current.getBoundingClientRect().height;
+      if (h !== lastH.current && h > 0) {
+        lastH.current = h;
+        reportHeight(index, h);          // hier erst updaten
+      }
+    }
+  }, [index, reportHeight]);
+
+  useLayoutEffect(measure, [measure]);
+
   const isUser = message.role === 'user';
 
-  // Measure height after render - ONLY IF CHANGED
-  useLayoutEffect(() => {
-    if (itemRef.current) {
-      const height = itemRef.current.getBoundingClientRect().height;
-      // CRITICAL: Only call setRowHeight if height actually changed
-      if (height !== lastHeightRef.current && height > 0) {
-        lastHeightRef.current = height;
-        setRowHeight(index, height);
-      }
-
-      // Set up ResizeObserver for responsive height updates - ONLY ONCE
-      if (!resizeObserverRef.current && 'ResizeObserver' in window) {
-        resizeObserverRef.current = new ResizeObserver(() => {
-          if (itemRef.current) {
-            const newHeight = itemRef.current.getBoundingClientRect().height;
-            if (newHeight !== lastHeightRef.current && newHeight > 0) {
-              lastHeightRef.current = newHeight;
-              setRowHeight(index, newHeight);
-            }
-          }
-        });
-        resizeObserverRef.current.observe(itemRef.current);
-      }
-    }
-
-    // Cleanup ResizeObserver on unmount only
-    return () => {
-      if (resizeObserverRef.current) {
-        resizeObserverRef.current.disconnect();
-        resizeObserverRef.current = null;
-      }
-    };
-  }, [index, setRowHeight]); // PROPER DEPENDENCIES
-
-  const handleMediaLoad = useCallback(() => {
-    if (itemRef.current) {
-      const height = itemRef.current.getBoundingClientRect().height;
-      // CRITICAL: Only call setRowHeight if height actually changed
-      if (height !== lastHeightRef.current && height > 0) {
-        lastHeightRef.current = height;
-        setRowHeight(index, height);
-      }
-    }
-  }, [index, setRowHeight]);
-
   return (
-    <div style={style} className="px-4 py-2">
+    <div ref={ref} style={style} className="px-4 py-2">
       <div 
-        ref={itemRef} 
         className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
         role="group"
         aria-label={`Nachricht von ${isUser ? 'dir' : coach.name}`}
@@ -116,7 +86,7 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
             <ReactMarkdown
               skipHtml={true}
               components={{
-                // Whitelist only safe components
+                // Whitelist nur sichere Components
                 p: ({ children }) => <p>{children}</p>,
                 strong: ({ children }) => <strong>{children}</strong>,
                 em: ({ children }) => <em>{children}</em>,
@@ -143,8 +113,8 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
                   src={image}
                   alt={`Hochgeladenes Bild ${idx + 1}`}
                   className="rounded-lg max-w-full h-auto"
-                  onLoad={handleMediaLoad}
-                  onError={handleMediaLoad}
+                  onLoad={measure}  // Höhe nach Bildladen messen
+                  onError={measure}
                 />
               ))}
             </div>
@@ -155,7 +125,7 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
               src={message.video_url} 
               controls 
               className="mt-2 rounded-lg max-w-full h-auto"
-              onLoadedMetadata={handleMediaLoad}
+              onLoadedMetadata={measure}  // Höhe nach Video-Metadaten messen
               controlsList="nodownload"
             />
           )}
@@ -169,7 +139,7 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
                   key={idx}
                   variant="outline"
                   size="sm"
-                  onClick={() => onConversationAction?.(action)}
+                  onClick={() => onConversationAction?.(action.type, action.data)}
                   className="text-xs"
                 >
                   {action.label}
@@ -189,4 +159,4 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
   );
 });
 
-MessageRow.displayName = 'MessageRow';
+MessageItem.displayName = 'MessageItem';
