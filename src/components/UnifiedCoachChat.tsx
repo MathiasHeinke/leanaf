@@ -490,7 +490,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } finally {
       setIsThinking(false);
     }
-  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.length, processMessage, memorySummary, onExerciseLogged]); // Use memorySummary for stability
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.length, memorySummary, onExerciseLogged]); // Removed processMessage dependency
 
   const saveChatMessages = useCallback(async (messagesToSave: ChatMessage[]) => {
     try {
