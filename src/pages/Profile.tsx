@@ -730,49 +730,57 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 {[
                   { 
                     id: 'amdr_basis',
-                    label: 'AMDR-Basis (50/20/30)',
+                    label: 'AMDR-Basis',
+                    percentages: 'P:20/C:52/F:28',
                     desc: 'Gesunde Durchschnittsernährung (DGE/WHO)',
                     protein: 20, carbs: 52, fats: 28
                   },
                   { 
                     id: 'zone_balanced',
-                    label: 'Zone/Balanced (40/30/30)',
+                    label: 'Zone/Balanced',
+                    percentages: 'P:30/C:40/F:30',
                     desc: 'Recomp, Alltag - stabiler Blutzucker',
                     protein: 30, carbs: 40, fats: 30
                   },
                   { 
                     id: 'high_protein',
-                    label: 'High Protein (35/25/30)',
+                    label: 'High Protein',
+                    percentages: 'P:40/C:25/F:25',
                     desc: 'Muskelaufbau, Defizitdiäten - sättigt gut',
                     protein: 40, carbs: 25, fats: 25
                   },
                   { 
                     id: 'high_carb',
-                    label: 'High Carb (15/60/25)',
+                    label: 'High Carb',
+                    percentages: 'P:15/C:60/F:25',
                     desc: 'Ausdauersport, Volumen-Tage',
                     protein: 15, carbs: 60, fats: 25
                   },
                   {
                     id: 'low_carb',
-                    label: 'Low Carb/Moderate (35/25/40)',
+                    label: 'Low Carb/Moderate',
+                    percentages: 'P:35/C:25/F:40',
                     desc: 'Fettverlust, Insulinempfindlichkeit',
                     protein: 35, carbs: 25, fats: 40
                   },
                   {
                     id: 'keto',
-                    label: 'Keto (22/8/70)',
+                    label: 'Keto',
+                    percentages: 'P:22/C:8/F:70',
                     desc: 'Therapeutisch, Keto-Fans - Adaption nötig',
                     protein: 22, carbs: 8, fats: 70
                   },
                   {
                     id: 'carb_cycling',
-                    label: 'Carb-Cycling (variabel)',
+                    label: 'Carb-Cycling',
+                    percentages: 'P:30/C:35/F:35',
                     desc: 'Kraft-/HIIT-Athleten - wechselnde Tage',
                     protein: 30, carbs: 35, fats: 35
                   },
                   {
                     id: 'custom',
                     label: 'Individuell',
+                    percentages: `P:${dailyGoals.protein}/C:${dailyGoals.carbs}/F:${dailyGoals.fats}`,
                     desc: 'Eigene Werte definieren',
                     protein: dailyGoals.protein, carbs: dailyGoals.carbs, fats: dailyGoals.fats
                   }
@@ -802,8 +810,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                         <div className="font-medium text-sm">{strategy.label}</div>
                         <div className="text-xs text-muted-foreground">{strategy.desc}</div>
                       </div>
-                      <div className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                        {macroStrategy === strategy.id ? '✓' : '○'}
+                      <div className="text-right">
+                        <div className="text-xs font-mono bg-muted px-2 py-1 rounded mb-1">
+                          {strategy.percentages}
+                        </div>
+                        <div className="text-xs font-mono">
+                          {macroStrategy === strategy.id ? '✓' : '○'}
+                        </div>
                       </div>
                     </div>
                   </div>
