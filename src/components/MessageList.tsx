@@ -39,6 +39,13 @@ const Row = React.memo(({ index, style, data }: {
   data: any;
 }) => {
   const { messages, coach, onConversationAction, setRowHeight } = data;
+  
+  /* Stable Callback pro Zeile - NICHT jedes Render neu! */
+  const reportHeight = React.useCallback(
+    (h: number) => setRowHeight(index, h),
+    [index, setRowHeight]      // ändert sich nur, wenn **index** wechselt
+  );
+
   return (
     <MessageItem
       index={index}
@@ -46,7 +53,7 @@ const Row = React.memo(({ index, style, data }: {
       message={messages[index]}
       coach={coach}
       onConversationAction={onConversationAction}
-      reportHeight={setRowHeight}
+      reportHeight={reportHeight}  // STABILE Referenz!
     />
   );
 });
@@ -57,9 +64,9 @@ export const MessageList = React.memo(({ messages, coach, onConversationAction }
   const heights = useRef<number[]>([]);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
-  /** Row-Height Setter (stable) */
+  /** Row-Height Setter (stable) mit zusätzlicher Absicherung */
   const setRowHeight = useCallback((index: number, h: number) => {
-    if (heights.current[index] !== h) {
+    if (h > 0 && heights.current[index] !== h) {  // Prüfe h > 0 UND wirklich neu
       heights.current[index] = h;
       // batchen, sonst mehrere msgs mit Bildern -> zig Resets
       requestAnimationFrame(() => listRef.current?.resetAfterIndex(index));
