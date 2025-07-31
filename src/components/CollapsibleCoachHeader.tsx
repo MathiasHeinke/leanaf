@@ -95,7 +95,7 @@ export const CollapsibleCoachHeader = ({
         </div>
       </div>
 
-      {/* Toggle Arrow - positioned at bottom edge of coach banner */}
+      {/* Toggle Arrow - positioned at bottom edge of coach banner, moves with banner */}
       <button
         id="coachToggle"
         onClick={toggleCollapse}
@@ -106,8 +106,8 @@ export const CollapsibleCoachHeader = ({
         }`}
         style={{ 
           top: collapsed 
-            ? 'var(--header-height, 60px)' 
-            : 'calc(var(--header-height, 60px) + 48px)'
+            ? 'calc(var(--header-height, 60px) - 20px)' 
+            : 'calc(var(--header-height, 60px) + 28px)'
         }}
         aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
       >

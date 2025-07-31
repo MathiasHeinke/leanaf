@@ -37,7 +37,7 @@ export const createGreetingContext = (firstName: string, coachId: string, memory
 
 // Ultra-kurze Greetings (25% der Zeit) - Richtig natürlich!
 const ULTRA_SHORT_GREETINGS = {
-  "lucy": ["Hey {firstName}! 💗", "Hi Süße! 🌟", "Moin {firstName}! 💖"],
+  "lucy": ["Hey {firstName}! 💗", "Hi! 🌟", "Moin {firstName}! 💖"],
   "sascha": ["Moin {firstName}!", "Hey Großer!", "Na {firstName}!"],
   "kai": ["Hey! ⚡", "Servus! 🌊", "Yo! 💫"], 
   "markus": ["Hajo {firstName}!", "Servus! 💪", "Morsche!"],
@@ -50,7 +50,7 @@ const ULTRA_SHORT_GREETINGS = {
 
 // Kurze Greetings (50% der Zeit) - Persönlichkeit pur!
 const SHORT_GREETINGS = {
-  "lucy": ["Hey {firstName}! Wie geht's? 💗", "Hi Süße! Was steht an? 🌟", "Moin {firstName}! Energie da? 💖"],
+  "lucy": ["Hey {firstName}! Wie geht's? 💗", "Hi! Was steht an? 🌟", "Moin {firstName}! Energie da? 💖"],
   "sascha": ["Moin {firstName}! Wie liefs bis jetzt?", "Hey Großer! Was geht?", "Na {firstName}, bereit für Wahrheit?"],
   "kai": ["Hey {firstName}! Energie gecheckt? ⚡", "Servus {firstName}! Wie ist der Flow? 🌊", "Yo {firstName}! Kopf frei? 💫"],
   "markus": ["Hajo {firstName}! Bock zu schaffe? 💪", "Servus! Bereit für harte Arbeit? 🏋️‍♂️", "Morsche {firstName}! Motivation da? 🔥"],
@@ -110,7 +110,7 @@ export const generateDynamicCoachGreeting = (context: GreetingContext): string =
   // Normal greetings fallback - Richtig geil und natürlich!
   const normalGreetings = {
     "sascha": ["Moin {firstName}! Wie läuft's? Zeit für knallharte Analyse! 💪", "Hey {firstName}! Bereit für ehrliche Worte? 🎯", "Na {firstName}! Was steht heute auf dem Plan? 💥"],
-    "lucy": ["Hey {firstName}! 💗 Wie geht's dir heute? Lass uns das rocken!", "Hi Süße! Was beschäftigt dich? Zusammen schaffen wir alles! 🌟", "Moin {firstName}! 💖 Ready für positive Vibes?"],
+    "lucy": ["Hey {firstName}! 💗 Wie geht's dir heute? Lass uns das rocken!", "Hi! Was beschäftigt dich? Zusammen schaffen wir alles! 🌟", "Moin {firstName}! 💖 Ready für positive Vibes?"],
     "kai": ["Hey {firstName}! ⚡ Wie ist deine mentale Energie heute?", "Servus {firstName}! 🌊 Kopf frei für neue Herausforderungen?", "Yo {firstName}! 💫 Bereit den Flow zu finden?"],
     "markus": ["Hajo {firstName}! Bock zu schaffe heute? Lass uns Grenzen sprengen! 🔥", "Servus {firstName}! 💪 Zeit für harte Arbeit!", "Morsche {firstName}! Motivation tanken und durchstarten! 🚀"],
     "dr_vita_femina": ["Hallo {firstName}! 🌸 Wie ist Ihr Wohlbefinden heute?", "Guten Tag! Fühlen Sie die Balance in sich? 💗", "Hi {firstName}! ✨ Bereit für ganzheitliche Gesundheit?"],

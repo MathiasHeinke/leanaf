@@ -190,6 +190,10 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           content: enhancedGreeting,
           created_at: new Date().toISOString(),
           coach_personality: coach?.personality || 'motivierend',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor,
           images: [],
           mode: mode
         };

@@ -22,6 +22,10 @@ export interface TextMessage {
   content: string;
   created_at: string;
   coach_personality: string;
+  coach_name?: string;
+  coach_avatar?: string;
+  coach_color?: string;
+  coach_accent_color?: string;
   images?: string[];
   mode?: string;
   metadata?: any;
@@ -125,11 +129,11 @@ export function renderMessage(message: UnifiedMessage): React.ReactElement {
         timestamp: new Date(textMessage.created_at)
       }}
       coach={{
-        name: 'Coach',
-        avatar: '/placeholder.svg',
-        primaryColor: 'blue',
-        secondaryColor: 'blue',
-        personality: textMessage.coach_personality
+        name: textMessage.coach_name || 'Coach',
+        avatar: textMessage.coach_avatar || '/placeholder.svg',
+        primaryColor: textMessage.coach_color || '#3b82f6',
+        secondaryColor: textMessage.coach_accent_color || '#1d4ed8',
+        personality: textMessage.coach_personality || ''
       }}
     />
   );
