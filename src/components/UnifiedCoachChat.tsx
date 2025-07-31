@@ -184,14 +184,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   }, [messages, scrollToBottom]);
 
   // Load chat history from existing conversations table
-  useEffect(() => {
-    if (user?.id) {
-      loadChatHistory();
-      generateWelcomeMessage();
-    }
-  }, [user?.id, mode]);
-
-  const loadChatHistory = async () => {
+  const loadChatHistory = useCallback(async () => {
     if (!user?.id) return;
 
     try {
@@ -226,10 +219,10 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       console.error('Error loading chat history:', error);
       setIsLoading(false);
     }
-  };
+  }, [user?.id, coach?.personality, mode]);
 
-  const generateWelcomeMessage = async () => {
-    if (!user?.id || messages.length > 0) return;
+  const generateWelcomeMessage = useCallback(async () => {
+    if (!user?.id) return;
 
     try {
       const coachName = coach?.name || 'Coach';
@@ -261,7 +254,54 @@ Wie kann ich dir helfen?`;
     } catch (error) {
       console.error('Error generating welcome message:', error);
     }
-  };
+  }, [user?.id, coach?.name, coach?.expertise, coach?.personality, mode]);
+
+  useEffect(() => {
+    let hasLoadedHistory = false;
+    
+    const initializeChat = async () => {
+      if (!user?.id) return;
+      
+      setIsLoading(true);
+      
+      // Load chat history first
+      try {
+        const { data, error } = await supabase
+          .from('coach_conversations')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('coach_personality', coach?.personality || 'motivierend')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: true })
+          .limit(50);
+
+        if (!error && data && data.length > 0) {
+          const formattedMessages: ChatMessage[] = data.map(msg => ({
+            id: msg.id,
+            role: msg.message_role as 'user' | 'assistant',
+            content: msg.message_content,
+            created_at: msg.created_at,
+            coach_personality: msg.coach_personality,
+            images: [],
+            mode: mode
+          }));
+          setMessages(formattedMessages);
+          hasLoadedHistory = true;
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      }
+      
+      // Only generate welcome message if no history was loaded
+      if (!hasLoadedHistory) {
+        await generateWelcomeMessage();
+      }
+      
+      setIsLoading(false);
+    };
+
+    initializeChat();
+  }, [user?.id, mode, coach?.personality, generateWelcomeMessage]);
 
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
