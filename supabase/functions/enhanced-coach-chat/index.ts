@@ -1,8 +1,21 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+// utils
 import { getDisplayName } from './utils/getDisplayName.ts';
-import * as toolHandlers from '../tool-handlers/index.ts';
+
+// -------------------------------------------------------------------------
+// Tool-Handler Map
+import trainingsplan from '../tool-handlers/trainingsplan.ts';
+import uebung from '../tool-handlers/uebung.ts';
+import supplement from '../tool-handlers/supplement.ts';
+import gewicht from '../tool-handlers/gewicht.ts';
+import foto from '../tool-handlers/foto.ts';
+
+const handlers: Record<string, any> = {
+  trainingsplan, uebung, supplement, gewicht, foto
+};
+// -------------------------------------------------------------------------
 
 // Enhanced security helpers
 const securityHelpers = {
@@ -620,11 +633,10 @@ const sanitizeUserData = (userData: any): any => {
   };
 };
 
-// Tool detection function
-const getLastTool = (conv: any[]) => {
+function getLastTool(conv: any[]) {
   return [...conv].reverse()
     .find(m => m.role === 'system' && m.type === 'tool')?.tool ?? null;
-};
+}
 
 serve(async (req) => {
   console.log('Enhanced Human-Like Coach chat request received at:', new Date().toISOString());
@@ -639,18 +651,17 @@ serve(async (req) => {
     
     const body = await req.json();
 
-    // Check for tool routing first
+    // -------------------------------------------------- Tool-Abzweig
     const { conversation, userId } = body;
-    if (conversation && userId) {
-      const activeTool = getLastTool(conversation);
-      if (activeTool && toolHandlers[activeTool]) {
-        console.log(`Using tool handler: ${activeTool}`);
-        const result = await toolHandlers[activeTool](conversation, userId);
-        return new Response(JSON.stringify(result), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+    const activeTool = getLastTool(conversation);
+    if (activeTool && handlers[activeTool]) {
+      console.log(`Using tool handler: ${activeTool}`);
+      const result = await handlers[activeTool](conversation, userId);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
+    // --------------------------------------------------
 
     // ----------- Fallback: Offener Chat ----------
     
