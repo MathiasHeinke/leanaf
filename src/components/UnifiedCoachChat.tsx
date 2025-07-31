@@ -47,6 +47,7 @@ import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
 import { ToolPicker } from '@/components/ToolPicker';
+import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -118,7 +119,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   
   // ============= BASIC STATE =============
   const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -150,7 +151,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     const init = async () => {
       try {
         // Simple welcome message without complex logic
-        const welcomeMsg: ChatMessage = {
+        const welcomeMsg: UnifiedMessage = {
           id: `welcome-${Date.now()}`,
           role: 'assistant',
           content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Wie kann ich dir helfen?`,
@@ -177,7 +178,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const sendMessage = useCallback(async () => {
     if (!inputText.trim() || !user?.id) return;
     
-    const userMessage: ChatMessage = {
+    const userMessage: UnifiedMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: inputText,
@@ -192,22 +193,38 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // Simple response for now
-      const assistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: 'Danke für deine Nachricht! Ich arbeite daran, dir zu helfen.',
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.personality || 'motivierend',
-        images: [],
-        mode: mode
-      };
+      // Demo: Create SmartCard response for supplement tool
+      if (selectedTool === 'supplement') {
+        const supplementCard = createCardMessage('supplement', {
+          supplements: [
+            { name: 'Whey Protein', dosage: '25g', timing: 'Post-Workout' },
+            { name: 'Kreatin', dosage: '5g', timing: 'Täglich' },
+            { name: 'Omega-3', dosage: '1000mg', timing: 'Zu den Mahlzeiten' }
+          ],
+          onConfirm: () => console.log('Supplements confirmed'),
+          onReject: () => console.log('Supplements rejected')
+        }, coach?.personality || 'motivierend');
+        
+        setMessages(prev => [...prev, supplementCard]);
+      } else {
+        // Simple text response
+        const assistantMessage: UnifiedMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: 'Danke für deine Nachricht! Ich arbeite daran, dir zu helfen.',
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          images: [],
+          mode: mode
+        };
 
-      setMessages(prev => [...prev, assistantMessage]);
+        setMessages(prev => [...prev, assistantMessage]);
+      }
     } catch (error) {
       console.error('Send error:', error);
     } finally {
       setIsThinking(false);
+      setSelectedTool(null); // Reset tool after use
     }
   }, [inputText, user?.id, coach?.personality, mode]);
 
@@ -529,22 +546,22 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             />
           </div>
           
-          <SimpleMessageList 
-            messages={messages.map(msg => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: new Date(msg.created_at),
-              images: msg.images || []
-            }))}
-            coach={{
-              name: coach?.name || 'Coach',
-              avatar: coach?.imageUrl || '',
-              primaryColor: coach?.color || 'blue',
-              secondaryColor: coach?.accentColor || 'blue',
-              personality: coach?.personality || 'motivierend'
-            }}
-          />
+          {/* Render all messages using the unified message renderer */}
+          <ScrollArea className="flex-1 px-4">
+            <div className="space-y-3 pb-4">
+              {messages.map(message => renderMessage(message))}
+              {isThinking && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span>Coach denkt nach...</span>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </ChatLayout>
       </>
     );
@@ -565,22 +582,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       
       <CardContent className="flex-1 flex flex-col gap-4 min-h-0">
         <ScrollArea ref={scrollRef} className="flex-1">
-          <SimpleMessageList 
-            messages={messages.map(msg => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: new Date(msg.created_at),
-              images: msg.images || []
-            }))}
-            coach={{
-              name: coach?.name || 'Coach',
-              avatar: coach?.imageUrl || '',
-              primaryColor: coach?.color || 'blue',
-              secondaryColor: coach?.accentColor || 'blue',
-              personality: coach?.personality || 'motivierend'
-            }}
-          />
+          {/* Render all messages using the unified message renderer */}
+          <div className="space-y-3 p-4">
+            {messages.map(message => renderMessage(message))}
+            {isThinking && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+                <span>Coach denkt nach...</span>
+              </div>
+            )}
+          </div>
         </ScrollArea>
         
         <div className="flex-none">

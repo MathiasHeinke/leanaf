@@ -113,8 +113,10 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 221 83% 53%;
 
-    /* SmartCard Components */
-    --header-height: 60px;
+  /* SmartCard Components */
+  --header-height: 60px;
+  --app-header-h: 56px;
+}
   }
 
 @layer components {
@@ -138,6 +140,32 @@
   
   /* Actions */
   .sc-actions{ @apply flex justify-end gap-2 px-3 py-2 bg-white/20 dark:bg-black/20; }
+  
+  /* SmartCard Collapse States */
+  .smartcard.collapsed .sc-body,
+  .smartcard.collapsed .sc-actions { display: none; }
+  
+  /* Confirm / Reject Buttons */
+  .btn-confirm { @apply rounded-md bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1; }
+  .btn-reject  { @apply rounded-md bg-red-500  hover:bg-red-600  text-white text-xs px-3 py-1; }
+  
+  /* Coach Bar & Toggle */
+  #coachBar {
+    @apply fixed left-0 right-0 top-[var(--app-header-h)] h-12 px-3 flex items-center gap-2
+           bg-white/80 dark:bg-black/80 backdrop-blur-sm transition-transform duration-300 z-30;
+  }
+  #coachBar.coach-closed {
+    transform: translateY(calc(-100% - var(--app-header-h)));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #coachToggle {
+    @apply fixed left-1/2 -translate-x-1/2 p-1 rounded-full shadow
+           bg-white/80 dark:bg-black/80 backdrop-blur-sm z-40 transition-transform duration-300;
+    top: calc(var(--app-header-h) + 12px);
+  }
+  #coachToggle.toggle-closed { transform: translate(-50%,-100%) rotate(180deg); }
 }
 
   .dark {
