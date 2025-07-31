@@ -331,6 +331,21 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   
   console.log('🔄 About to create contextData useMemo');
+  
+  // Get stable memory summary
+  const memorySummary = useMemo(() => {
+    if (!memory) return null;
+    return {
+      relationshipStage: memory.relationship_stage,
+      trustLevel: memory.trust_level,
+      recentMoods: memory.conversation_context?.mood_history?.slice(-5) || [],
+      recentSuccesses: memory.conversation_context?.success_moments?.slice(-3) || [],
+      recentStruggles: memory.conversation_context?.struggles_mentioned?.slice(-3) || [],
+      topPreferences: memory.user_preferences?.slice(-5) || [],
+      communicationStyle: memory.communication_style_preference
+    };
+  }, [memory]);
+  
   // Memoized context data - PREVENT PROP DRILLING RE-RENDERS
   const contextData = useMemo(() => ({
     todaysTotals,
@@ -345,7 +360,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     profileData,
     progressPhotos,
     coachInfo: coach,
-    memorySummary: getMemorySummary() // Call the function, don't depend on it
+    memorySummary
   }), [
     todaysTotals?.calories,
     dailyGoals?.calories,
@@ -359,7 +374,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     profileData?.id,
     progressPhotos?.length,
     coach?.id,
-    memory // Depend on memory directly instead of getMemorySummary function
+    memorySummary
   ]);
   
   console.log('🔄 contextData created', { 
@@ -419,7 +434,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           profileData,
           progressPhotos,
           coachInfo: coach,
-          memorySummary: getMemorySummary() // Fresh call inside function
+          memorySummary: memorySummary // Use stable memorySummary
         }
       };
 
@@ -471,7 +486,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } finally {
       setIsThinking(false);
     }
-  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.length, processMessage, memory, onExerciseLogged]); // Use messages.length instead of slice, memory instead of contextData
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.length, processMessage, memorySummary, onExerciseLogged]); // Use memorySummary for stability
 
   const saveChatMessages = useCallback(async (messagesToSave: ChatMessage[]) => {
     try {
