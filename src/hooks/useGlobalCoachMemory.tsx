@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCoachMemory, CoachMemory } from '@/hooks/useCoachMemory';
 import { useSentimentAnalysis } from '@/hooks/useSentimentAnalysis';
@@ -27,6 +27,9 @@ export const useGlobalCoachMemory = () => {
   const [isGlobalMemoryLoaded, setIsGlobalMemoryLoaded] = useState(false);
   const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string | null>(null);
 
+  // ---------- NEU: stabile Funktions-Refs ----------
+  const processMessageRef = useRef<(message: string, coachPersonality: string, isUserMessage?: boolean) => Promise<any>>(() => Promise.resolve(null));
+
   // Load global memory on user authentication
   useEffect(() => {
     if (user?.id && !isGlobalMemoryLoaded) {
@@ -46,47 +49,45 @@ export const useGlobalCoachMemory = () => {
     }
   }, [loadCoachMemory]);
 
-  // Enhanced message processing with unified memory updates
-  const processMessage = useCallback(async (
-    message: string, 
-    coachPersonality: string,
-    isUserMessage: boolean = true
-  ) => {
-    if (!message || !user?.id) return null;
+  // Funktionen _einmal_ erzeugen, dann in Ref cachen
+  useEffect(() => {
+    processMessageRef.current = async (message: string, coachPersonality: string, isUserMessage: boolean = true) => {
+      if (!message || !user?.id) return null;
 
-    try {
-      // Analyze sentiment
-      const sentiment = await analyzeSentiment(message);
-      
-      // Update memory based on message type
-      if (isUserMessage) {
-        // Update mood history
-        if (sentiment.emotion !== 'neutral') {
-          await addMoodEntry(sentiment.emotion, sentiment.intensity);
+      try {
+        // Analyze sentiment
+        const sentiment = await analyzeSentiment(message);
+        
+        // Update memory based on message type
+        if (isUserMessage) {
+          // Update mood history
+          if (sentiment.emotion !== 'neutral') {
+            await addMoodEntry(sentiment.emotion, sentiment.intensity);
+          }
+          
+          // Detect success or struggle patterns
+          if (sentiment.sentiment === 'positive' && sentiment.confidence > 0.7) {
+            await addSuccessMoment(`Positive interaction: ${sentiment.emotion}`);
+          } else if (sentiment.sentiment === 'negative' && sentiment.confidence > 0.7) {
+            await addStruggleMention(`User expressing: ${sentiment.emotion}`);
+          }
+          
+          // Update relationship stage
+          await updateRelationshipStage();
         }
         
-        // Detect success or struggle patterns
-        if (sentiment.sentiment === 'positive' && sentiment.confidence > 0.7) {
-          await addSuccessMoment(`Positive interaction: ${sentiment.emotion}`);
-        } else if (sentiment.sentiment === 'negative' && sentiment.confidence > 0.7) {
-          await addStruggleMention(`User expressing: ${sentiment.emotion}`);
-        }
+        // Trigger proactive coaching check
+        await checkForProactiveOpportunities();
         
-        // Update relationship stage
-        await updateRelationshipStage();
+        setLastSyncTimestamp(new Date().toISOString());
+        
+        return sentiment;
+      } catch (error) {
+        console.error('Error processing message:', error);
+        return null;
       }
-      
-      // Trigger proactive coaching check
-      await checkForProactiveOpportunities();
-      
-      setLastSyncTimestamp(new Date().toISOString());
-      
-      return sentiment;
-    } catch (error) {
-      console.error('Error processing message:', error);
-      return null;
-    }
-  }, [user?.id, analyzeSentiment, addMoodEntry, addSuccessMoment, addStruggleMention, updateRelationshipStage, checkForProactiveOpportunities]);
+    };
+  }, [user?.id]); // nur primitive deps
 
   // Update user preference with global sync
   const updateGlobalPreference = useCallback(async (
@@ -139,8 +140,8 @@ export const useGlobalCoachMemory = () => {
     isGlobalMemoryLoaded,
     lastSyncTimestamp,
     
-    // Core functions
-    processMessage,
+    // Core functions - EXPORTIERT WIRD _immer dieselbe Referenz_
+    processMessage: processMessageRef.current,
     updateGlobalPreference,
     getMemorySummary,
     

@@ -182,14 +182,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
   
   // ============= INSTABILE FUNKTIONEN IN REFS PARKEN =============
-  const processMessageRef = useRef(processMessage);
-  const analyzeImageRef = useRef(analyzeImage);
-  
-  // Refs NUR in useEffect updaten – *nie* im Render-Body!
-  useEffect(() => {
-    processMessageRef.current = processMessage;
-    analyzeImageRef.current = analyzeImage;
-  }, [processMessage, analyzeImage]);
+  // Hooks sind jetzt stabil - keine Refs mehr nötig!
   
   console.log('🔄 Hooks initialized #', renderCount.current, { 
     isGlobalMemoryLoaded, 
@@ -348,22 +341,24 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const memorySummary = useMemo(() => {
     if (!memory) return null;
     
+    const ctx = memory.conversation_context ?? { mood_history: [], success_moments: [], struggles_mentioned: [] };
     return {
       stage: memory.relationship_stage,
       trust: memory.trust_level,
-      moods: memory.conversation_context?.mood_history?.length ?? 0,
-      successes: memory.conversation_context?.success_moments?.length ?? 0,
-      struggles: memory.conversation_context?.struggles_mentioned?.length ?? 0,
+      moods: (ctx.mood_history ?? []).slice(-5),
+      successes: (ctx.success_moments ?? []).length,
+      struggles: (ctx.struggles_mentioned ?? []).length,
       prefHash: JSON.stringify(memory.user_preferences ?? [])
     };
+    /* nur PRIMITIVE deps: */
   }, [
     memory?.relationship_stage,
     memory?.trust_level,
-    memory?.conversation_context?.mood_history?.length,
-    memory?.conversation_context?.success_moments?.length,
-    memory?.conversation_context?.struggles_mentioned?.length,
-    memory?.user_preferences?.length
-  ]); // nur *primitive* Abhängigkeiten
+    (memory?.conversation_context?.mood_history ?? []).length,
+    (memory?.conversation_context?.success_moments ?? []).length,
+    (memory?.conversation_context?.struggles_mentioned ?? []).length,
+    (memory?.user_preferences ?? []).length
+  ]);
 
   // Use ref for context data to avoid re-renders
   const contextRef = useRef<any>({});
@@ -409,9 +404,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // Process message with global memory - using stable ref
+      // Process message with global memory - direkte stabile Funktion
       if (inputText.trim()) {
-        await processMessageRef.current(inputText.trim(), coach?.personality || 'motivierend', true);
+        await processMessage(inputText.trim(), coach?.personality || 'motivierend', true);
       }
 
       // Prepare request data - get fresh data from contextRef
@@ -509,10 +504,10 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setUploadedImages(prev => [...prev, ...urls]);
     toast.success(`${urls.length} Bild(er) hochgeladen`);
 
-    // Auto-analyze if in training mode - using stable ref
+    // Auto-analyze if in training mode - direkte stabile Funktion
     if (mode === 'training' && urls.length > 0) {
       for (const imageUrl of urls) {
-        const analysis = await analyzeImageRef.current(imageUrl, 'Analysiere dieses Trainingsbild');
+        const analysis = await analyzeImage(imageUrl, 'Analysiere dieses Trainingsbild');
         if (analysis?.suggestedModal === 'exercise') {
           toast.info('Übung erkannt! Sende eine Nachricht für Details.');
         }

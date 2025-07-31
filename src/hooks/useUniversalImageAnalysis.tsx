@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -21,7 +21,12 @@ export const useUniversalImageAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
 
-  const analyzeImage = async (imageUrl: string, userMessage?: string): Promise<ImageAnalysisResult> => {
+  const analyzeImageRef = useRef<(imageUrl: string, userMessage?: string) => Promise<ImageAnalysisResult>>(
+    async () => ({} as ImageAnalysisResult)
+  );
+
+  useEffect(() => {
+    analyzeImageRef.current = async (imageUrl: string, userMessage?: string): Promise<ImageAnalysisResult> => {
     if (!user?.id) throw new Error('User not authenticated');
     
     setIsAnalyzing(true);
@@ -147,14 +152,15 @@ export const useUniversalImageAnalysis = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+    };
+  }, []); // hier wirklich KEINE instabilen deps
 
   const clearAnalysis = () => {
     setAnalysisResult(null);
   };
 
   return {
-    analyzeImage,
+    analyzeImage: analyzeImageRef.current,  // stabile Referenz
     isAnalyzing,
     analysisResult,
     clearAnalysis
