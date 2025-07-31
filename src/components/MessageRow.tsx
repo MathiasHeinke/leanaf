@@ -55,7 +55,7 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
         setRowHeight(index, height);
       }
 
-      // Set up ResizeObserver for responsive height updates
+      // Set up ResizeObserver for responsive height updates - ONLY ONCE
       if (!resizeObserverRef.current && 'ResizeObserver' in window) {
         resizeObserverRef.current = new ResizeObserver(() => {
           if (itemRef.current) {
@@ -70,14 +70,14 @@ export const MessageRow = React.memo(({ index, style, data }: MessageRowProps) =
       }
     }
 
-    // Cleanup ResizeObserver
+    // Cleanup ResizeObserver on unmount only
     return () => {
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect();
         resizeObserverRef.current = null;
       }
     };
-  }); // NO dependencies = runs on every render but only updates if changed
+  }, [index, setRowHeight]); // PROPER DEPENDENCIES
 
   const handleMediaLoad = useCallback(() => {
     if (itemRef.current) {
