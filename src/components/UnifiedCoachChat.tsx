@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 // ✅ EMPTY_ARRAY als echte Konstante außerhalb der Komponente
-const EMPTY_ARRAY: any[] = [];
+const EMPTY_ARRAY: any[] = []; // Cache fix
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
