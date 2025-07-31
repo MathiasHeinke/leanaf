@@ -144,9 +144,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   profileData,
   progressPhotos
 }) => {
+  // ============= DEBUGGING: RENDER COUNTER + STATE TABLE =============
   const renderCount = useRef(0);
   renderCount.current++;
-  console.log('🔄 UnifiedCoachChat render #', renderCount.current, { mode, coachId: coach?.id });
   
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -184,8 +184,42 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
   
-  // ============= INSTABILE FUNKTIONEN IN REFS PARKEN =============
-  // Hooks sind jetzt stabil - keine Refs mehr nötig!
+  // DIAGNOSTICS: Console table showing all loading states
+  console.table({
+    render: renderCount.current,
+    isLoading,
+    chatInitialized,
+    isGlobalMemoryLoaded,
+    messages: messages.length,
+    userId: user?.id ? 'exists' : 'null',
+    mode,
+    coachId: coach?.id || 'none'
+  });
+  
+  // ============= FALLBACK TIMEOUT =============
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      console.warn('⏰ Forcing initialization after 5 second timeout');
+      setIsLoading(false);
+      setChatInitialized(true);
+      
+      // Create emergency fallback message if no messages exist
+      if (messages.length === 0) {
+        const emergencyMsg: ChatMessage = {
+          id: `emergency-${Date.now()}`,
+          role: 'assistant',
+          content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Es gab ein Problem beim Laden, aber ich bin jetzt bereit zu helfen!`,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          images: [],
+          mode: mode
+        };
+        setMessages([emergencyMsg]);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeout);
+  }, []);
   
   console.log('🔄 Hooks initialized #', renderCount.current, { 
     isGlobalMemoryLoaded, 
@@ -246,12 +280,20 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     const initializeChat = async () => {
       try {
+        console.log('🔄 Starting initializeChat', { 
+          userId: user.id, 
+          coachPersonality: coach?.personality, 
+          mode, 
+          coachName: coach?.name 
+        });
+        
         const userId = user.id;
         const coachPersonality = coach?.personality || 'motivierend';
         const currentMode = mode;
         const coachName = coach?.name || 'Coach';
 
-        // Load chat history
+        // Load chat history with enhanced logging
+        console.log('📊 Querying Supabase for chat history...');
         const { data, error } = await supabase
           .from('coach_conversations')
           .select('*')
@@ -260,6 +302,11 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
           .order('created_at', { ascending: true })
           .limit(50);
+
+        console.log('📊 Supabase result', { 
+          dataLength: data?.length || 0, 
+          error: error?.message || 'none' 
+        });
 
         if (!isMounted) return;
 
@@ -727,10 +774,21 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     </div>
   );
 
+  // ============= VEREINFACHTER GUARD (nur isLoading) =============
   if (isLoading) {
+    console.log('🔄 Showing loading spinner - waiting for:', { 
+      isLoading, 
+      chatInitialized, 
+      isGlobalMemoryLoaded,
+      messagesCount: messages.length 
+    });
+    
     const LoadingComponent = () => (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Chat wird geladen...</p>
+        </div>
       </div>
     );
 
