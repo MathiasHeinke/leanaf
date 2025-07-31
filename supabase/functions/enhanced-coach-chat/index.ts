@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { getDisplayName } from './utils/getDisplayName.ts';
+import * as toolHandlers from '../tool-handlers/index.ts';
 
 // Enhanced security helpers
 const securityHelpers = {
@@ -618,10 +620,11 @@ const sanitizeUserData = (userData: any): any => {
   };
 };
 
-function getLastTool(conv: any[]) {
+// Tool detection function
+const getLastTool = (conv: any[]) => {
   return [...conv].reverse()
     .find(m => m.role === 'system' && m.type === 'tool')?.tool ?? null;
-}
+};
 
 serve(async (req) => {
   console.log('Enhanced Human-Like Coach chat request received at:', new Date().toISOString());
@@ -640,9 +643,9 @@ serve(async (req) => {
     const { conversation, userId } = body;
     if (conversation && userId) {
       const activeTool = getLastTool(conversation);
-      if (activeTool && handlers[activeTool]) {
+      if (activeTool && toolHandlers[activeTool]) {
         console.log(`Using tool handler: ${activeTool}`);
-        const result = await handlers[activeTool](conversation, userId);
+        const result = await toolHandlers[activeTool](conversation, userId);
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -722,18 +725,6 @@ serve(async (req) => {
     }
     
 // ============= NAME EXTRACTION & FALLBACK =============
-
-// Utility function for display name extraction
-const getDisplayName = (profile: any): string => {
-  return (
-    profile.preferred_name ||     // 🟢 Feld „Wie sollen die Coaches dich nennen?"
-    profile.first_name      ||
-    profile.nickname        ||
-    profile.full_name       ||
-    profile.email?.split('@')[0] ||
-    'Athlet'
-  );
-};
 
 // Enhanced name extraction function with multi-layer fallback
 const extractUserName = async (profile: any, userId: string, supabase: any): Promise<string> => {
