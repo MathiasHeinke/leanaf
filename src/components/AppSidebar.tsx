@@ -70,7 +70,7 @@ const legalItems = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpenMobile, isMobile } = useSidebar();
   const { signOut, user } = useAuth();
   const { t } = useTranslation();
   const { userPoints } = usePointsSystem();
@@ -165,6 +165,15 @@ export function AppSidebar() {
     return !isProfileComplete && path !== "/profile" && path !== "/account";
   };
 
+  const handleNavigation = (url: string, disabled: boolean = false) => {
+    if (!disabled) {
+      navigate(url);
+      if (isMobile) {
+        setTimeout(() => setOpenMobile(false), 100);
+      }
+    }
+  };
+
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
       {/* Header with Level Badge */}
@@ -225,11 +234,7 @@ export function AppSidebar() {
                     size={collapsed ? "sm" : "default"}
                   >
                     <button
-                      onClick={() => {
-                        if (!isNavDisabled(item.url)) {
-                          navigate(item.url);
-                        }
-                      }}
+                      onClick={() => handleNavigation(item.url, isNavDisabled(item.url))}
                       className="flex items-center w-full relative"
                       disabled={isNavDisabled(item.url)}
                     >
@@ -273,7 +278,7 @@ export function AppSidebar() {
                       size={collapsed ? "sm" : "default"}
                     >
                       <button
-                        onClick={() => navigate(item.url)}
+                        onClick={() => handleNavigation(item.url)}
                         className="flex items-center w-full"
                       >
                         <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
@@ -320,7 +325,7 @@ export function AppSidebar() {
                     size={collapsed ? "sm" : "default"}
                   >
                     <button
-                      onClick={() => navigate(item.url)}
+                      onClick={() => handleNavigation(item.url)}
                       className="flex items-center w-full"
                     >
                       <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
