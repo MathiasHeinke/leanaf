@@ -40,7 +40,7 @@ import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
-import { generateDynamicCoachGreeting, createGreetingContext } from '@/utils/dynamicCoachGreetings';
+// AI-Greeting-Revolution: No more static templates!
 
 import { getDisplayName } from "../../supabase/functions/enhanced-coach-chat/utils/getDisplayName";
 
@@ -155,27 +155,42 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
-        // Get user's first name for personalization
-        const getUserName = () => {
-          return getDisplayName(profileData);
-        };
+        // ✨ AI-GREETING-REVOLUTION: Generate intelligent, personalized greeting
+        const firstName = getDisplayName(profileData);
+        
+        // Call AI greeting function
+        const { data: greetingData, error: greetingError } = await supabase.functions.invoke('generate-intelligent-greeting', {
+          body: {
+            userId: user.id,
+            coachId: coach?.id || 'lucy',
+            firstName: firstName,
+            isFirstConversation: false,
+            contextData: {
+              calLeft: tokens.calLeft,
+              timeOfDay: tokens.timeOfDay,
+              lastWorkout: tokens.lastWorkout,
+              sleepHours: tokens.sleepHours
+            }
+          }
+        });
 
-        // Generate personalized greeting
-        const firstName = getUserName();
-        const context = createGreetingContext(firstName, coach?.id || 'lucy', memory, false);
-        const personalizedGreeting = generateDynamicCoachGreeting(context);
+        let enhancedGreeting = 'Hallo! 👋';
         
-        // Add context-based personalization
-        let enhancedGreeting = personalizedGreeting;
-        
-        if (tokens.calLeft && tokens.calLeft > 0) {
-          enhancedGreeting += ` Du hast noch ${tokens.calLeft} kcal übrig für heute.`;
-        }
-        
-        if (coach?.id === 'sascha' && tokens.timeOfDay === 'Morgen') {
-          enhancedGreeting += " Bereit für ein starkes Training heute? 💪";
-        } else if (coach?.id === 'lucy' && tokens.timeOfDay === 'Morgen') {
-          enhancedGreeting += " Was steht heute auf dem Speiseplan? 🍎";
+        if (greetingError) {
+          console.warn('AI greeting failed, using fallback:', greetingError);
+          // Simple fallback based on coach
+          const fallbackGreetings = {
+            'lucy': `Hey ${firstName}! 💗 Bereit für einen tollen Tag?`,
+            'sascha': `Moin ${firstName}! Zeit durchzustarten! 💪`,
+            'kai': `Hey ${firstName}! ⚡ Wie ist deine Energie heute?`,
+            'markus': `Hajo ${firstName}! Bock zu schaffe? 🔥`,
+            'dr_vita': `Hallo ${firstName}! 🌸 Wie ist Ihr Wohlbefinden?`,
+            'sophia': `Namaste ${firstName}! 🌿 Bereit für achtsames Wachstum?`
+          };
+          enhancedGreeting = fallbackGreetings[coach?.id || 'lucy'] || `Hallo ${firstName}! 👋`;
+        } else {
+          enhancedGreeting = greetingData.greeting;
+          console.log('✨ AI greeting generated:', enhancedGreeting);
         }
         
         const welcomeMsg: UnifiedMessage = {
