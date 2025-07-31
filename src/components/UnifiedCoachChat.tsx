@@ -27,7 +27,8 @@ import {
   User,
   Sparkles,
   Heart,
-  Target
+  Target,
+  X
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
 import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
 import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
+import { useMediaUpload } from '@/hooks/useMediaUpload';
 
 import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -117,6 +119,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [chatInitialized, setChatInitialized] = useState(false);
+  const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
   
   // ============= REFS =============
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -124,6 +127,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   
   // ============= HOOKS =============
   const { memory, isGlobalMemoryLoaded } = useGlobalCoachMemory();
+  const { isRecording, isProcessing, transcribedText, startRecording, stopRecording } = useVoiceRecording();
+  const { analyzeImage, isAnalyzing } = useUniversalImageAnalysis();
+  const { uploadFiles, uploading } = useMediaUpload();
   
   // ============= SIMPLE INITIALIZATION =============
   useEffect(() => {
@@ -195,6 +201,46 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   }, [inputText, user?.id, coach?.personality, mode]);
 
+  // Handle voice recording
+  const handleVoiceToggle = useCallback(async () => {
+    if (isRecording) {
+      const transcript = await stopRecording();
+      if (transcript) {
+        setInputText(prev => prev + (prev ? ' ' : '') + transcript);
+      }
+      setShowVoiceOverlay(false);
+    } else {
+      setShowVoiceOverlay(true);
+      await startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  // Handle file upload
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const uploadedUrls = await uploadFiles(Array.from(files));
+      // Add uploaded images to message
+      if (uploadedUrls.length > 0) {
+        setInputText(prev => prev + (prev ? '\n' : '') + `[Uploaded files: ${uploadedUrls.join(', ')}]`);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+    
+    // Reset file input
+    event.target.value = '';
+  }, [uploadFiles]);
+
+  // Effect to handle transcribed text
+  useEffect(() => {
+    if (transcribedText && !isRecording) {
+      setInputText(prev => prev + (prev ? ' ' : '') + transcribedText);
+    }
+  }, [transcribedText, isRecording]);
+
   // ============= RENDER LOGIC =============
   if (isLoading) {
     if (useFullscreenLayout) {
@@ -225,14 +271,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
     const coachBanner = (
-      <div className="flex items-center gap-3 bg-neutral-900/50 backdrop-blur-sm rounded-lg p-3 border border-neutral-800">
+      <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm rounded-lg p-3 border border-border">
         <Avatar className="h-10 w-10">
           <AvatarImage src={coach?.imageUrl} />
           <AvatarFallback>{coach?.name?.[0] || 'C'}</AvatarFallback>
         </Avatar>
         <div>
-          <h3 className="font-semibold text-white">{coach?.name || 'Coach'}</h3>
-          <p className="text-sm text-neutral-400">{coach?.personality || 'Dein persönlicher Coach'}</p>
+          <h3 className="font-semibold">{coach?.name || 'Coach'}</h3>
+          <p className="text-sm text-muted-foreground">{coach?.personality || 'Dein persönlicher Coach'}</p>
         </div>
       </div>
     );
@@ -243,7 +289,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="Schreibe eine Nachricht..."
-          className="min-h-[60px] resize-none bg-neutral-800/50 border-neutral-700 text-white placeholder:text-neutral-400"
+          className="min-h-[60px] resize-none bg-input border-input"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -254,21 +300,31 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
+            <input
+              type="file"
+              accept="image/*,video/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="file-upload"
+              multiple
+            />
             <Button
               variant="outline"
               size="sm"
-              disabled
-              className="bg-neutral-800/50 border-neutral-700 hover:bg-neutral-700"
+              onClick={() => document.getElementById('file-upload')?.click()}
+              disabled={uploading}
+              className="bg-card/50 border-border hover:bg-card"
             >
               <ImageIcon className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled
-              className="bg-neutral-800/50 border-neutral-700 hover:bg-neutral-700"
+              onClick={handleVoiceToggle}
+              disabled={isProcessing}
+              className={`bg-card/50 border-border hover:bg-card ${isRecording ? 'bg-red-500/20 border-red-500' : ''}`}
             >
-              <Mic className="h-4 w-4" />
+              <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
             </Button>
           </div>
           
@@ -286,24 +342,71 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     );
 
     return (
-      <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
-        <SimpleMessageList 
-          messages={messages.map(msg => ({
-            id: msg.id,
-            role: msg.role,
-            content: msg.content,
-            timestamp: new Date(msg.created_at),
-            images: msg.images || []
-          }))}
-          coach={{
-            name: coach?.name || 'Coach',
-            avatar: coach?.imageUrl || '',
-            primaryColor: coach?.color || 'blue',
-            secondaryColor: coach?.accentColor || 'blue',
-            personality: coach?.personality || 'motivierend'
-          }}
-        />
-      </ChatLayout>
+      <>
+        <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
+          <SimpleMessageList 
+            messages={messages.map(msg => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: new Date(msg.created_at),
+              images: msg.images || []
+            }))}
+            coach={{
+              name: coach?.name || 'Coach',
+              avatar: coach?.imageUrl || '',
+              primaryColor: coach?.color || 'blue',
+              secondaryColor: coach?.accentColor || 'blue',
+              personality: coach?.personality || 'motivierend'
+            }}
+          />
+        </ChatLayout>
+
+        {/* Voice Recording Overlay */}
+        {showVoiceOverlay && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center">
+            <div className="bg-card rounded-lg p-8 text-center border border-border shadow-lg">
+              <div className="mb-6">
+                <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center ${isRecording ? 'bg-red-500/20 animate-pulse' : 'bg-muted'}`}>
+                  <Mic className={`w-8 h-8 ${isRecording ? 'text-red-500' : 'text-muted-foreground'}`} />
+                </div>
+              </div>
+              
+              <h3 className="text-lg font-semibold mb-2">
+                {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Aufnahme...'}
+              </h3>
+              
+              <p className="text-muted-foreground mb-6">
+                {isRecording ? 'Sprechen Sie jetzt' : 'Bitte warten...'}
+              </p>
+              
+              <div className="flex gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (isRecording) stopRecording();
+                    setShowVoiceOverlay(false);
+                  }}
+                  disabled={isProcessing}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Abbrechen
+                </Button>
+                
+                {isRecording && (
+                  <Button
+                    onClick={handleVoiceToggle}
+                    disabled={isProcessing}
+                    className="bg-red-500 hover:bg-red-600"
+                  >
+                    Aufnahme beenden
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 

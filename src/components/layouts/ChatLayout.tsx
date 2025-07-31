@@ -9,7 +9,7 @@ interface ChatLayoutProps {
 
 export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
   return (
-    <div className="fixed inset-0 flex flex-col bg-black text-white z-50">
+    <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
       
       {/* Header */}
       <GlobalHeader />
@@ -33,13 +33,13 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
         
         {/* Eingabefeld direkt auf Footer */}
         {chatInput && (
-          <div className="px-3 py-1 bg-neutral-900 border-t border-neutral-800">
+          <div className="px-3 py-1 bg-card border-t border-border">
             {chatInput}
           </div>
         )}
 
         {/* Footer: kein zusätzlicher Abstand */}
-        <div className="h-[32px] flex items-center justify-center text-xs text-neutral-500 bg-neutral-900 m-0 p-0">
+        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-card m-0 p-0">
           © 2025 GetleanAI. Made with ❤️ in Germany
         </div>
 
