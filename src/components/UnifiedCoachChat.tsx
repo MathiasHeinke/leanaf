@@ -119,7 +119,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [chatInitialized, setChatInitialized] = useState(false);
-  const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
+  
   
   // ============= REFS =============
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -208,9 +208,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       if (transcript) {
         setInputText(prev => prev + (prev ? ' ' : '') + transcript);
       }
-      setShowVoiceOverlay(false);
     } else {
-      setShowVoiceOverlay(true);
       await startRecording();
     }
   }, [isRecording, startRecording, stopRecording]);
@@ -379,50 +377,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           />
         </ChatLayout>
 
-        {/* Voice Recording Overlay */}
-        {showVoiceOverlay && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center">
-            <div className="bg-card rounded-lg p-8 text-center border border-border shadow-lg">
-              <div className="mb-6">
-                <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center ${isRecording ? 'bg-red-500/20 animate-pulse' : 'bg-muted'}`}>
-                  <Mic className={`w-8 h-8 ${isRecording ? 'text-red-500' : 'text-muted-foreground'}`} />
-                </div>
-              </div>
-              
-              <h3 className="text-lg font-semibold mb-2">
-                {isRecording ? 'Aufnahme läuft...' : 'Verarbeite Aufnahme...'}
-              </h3>
-              
-              <p className="text-muted-foreground mb-6">
-                {isRecording ? 'Sprechen Sie jetzt' : 'Bitte warten...'}
-              </p>
-              
-              <div className="flex gap-3 justify-center">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (isRecording) stopRecording();
-                    setShowVoiceOverlay(false);
-                  }}
-                  disabled={isProcessing}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Abbrechen
-                </Button>
-                
-                {isRecording && (
-                  <Button
-                    onClick={handleVoiceToggle}
-                    disabled={isProcessing}
-                    className="bg-red-500 hover:bg-red-600"
-                  >
-                    Aufnahme beenden
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </>
     );
   }
@@ -461,34 +415,62 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         </ScrollArea>
         
         <div className="flex-none space-y-2">
-          <Textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Schreibe eine Nachricht..."
-            className="min-h-[60px] resize-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
-          />
+          <div className="relative">
+            <Textarea
+              id="chatInput"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Nachricht eingeben..."
+              rows={4}
+              className="w-full min-h-[96px] resize-none overflow-auto"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+            />
+            
+            {/* Recording-Indicator */}
+            <div 
+              className={`absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none transition-opacity duration-200 ${
+                isRecording ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+            </div>
+          </div>
           
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="file-upload-card"
+                multiple
+              />
               <Button
                 variant="outline"
                 size="sm"
-                disabled
+                onClick={() => document.getElementById('file-upload-card')?.click()}
+                disabled={uploading}
               >
                 <ImageIcon className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                disabled
+                onClick={handleVoiceToggle}
+                disabled={isProcessing}
+                className={isRecording ? 'bg-red-500/20 border-red-500' : ''}
               >
-                <Mic className="h-4 w-4" />
+                <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
               </Button>
             </div>
             
