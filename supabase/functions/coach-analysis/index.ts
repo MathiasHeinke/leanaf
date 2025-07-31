@@ -142,7 +142,7 @@ Antworte nur mit der Begrüßungsnachricht, kein JSON.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
@@ -184,7 +184,7 @@ Antworte kurz und menschlich (max 30 Wörter).`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
@@ -236,7 +236,7 @@ Antworte kurz und menschlich (max 30 Wörter).`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-4o',
           messages,
           max_tokens: 500,
           temperature: 0.7,
@@ -307,7 +307,7 @@ Sei ${personality}, analytisch und gib konkrete, umsetzbare Tipps mit psychologi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }

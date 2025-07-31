@@ -215,7 +215,7 @@ MULTI-BILD ANALYSE:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         messages,
         temperature: 0.3,
         max_tokens: 1000,

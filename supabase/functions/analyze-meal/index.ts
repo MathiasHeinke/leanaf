@@ -407,7 +407,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     const openAIStartTime = Date.now();
     
     // Use GPT-4.1 for all users for better quality
-    const aiModel = 'gpt-4.1-2025-04-14';
+    const aiModel = 'gpt-4o';
     console.log(`🤖 [ANALYZE-MEAL] Using AI model: ${aiModel} for ${userTier} user`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

@@ -1083,7 +1083,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         messages: messages,
         max_tokens: 1000,
         temperature: 0.8,
@@ -1134,7 +1134,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
           coach_personality: coachPersonality,
           context_data: {
             tokens_used: data.usage?.total_tokens || 0,
-            model_used: 'gpt-4.1-2025-04-14',
+            model_used: 'gpt-4o',
             rag_context_used: !!ragContext
           }
         })
@@ -1152,7 +1152,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
       reply,
       metadata: {
         tokens_used: data.usage?.total_tokens || 0,
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         sentiment_detected: sentimentResult,
         rag_used: !!ragContext,
         memory_stage: coachMemory.relationship_stage,

@@ -2012,7 +2012,7 @@ Antworte auf Deutsch als ${coachInfo.name} ${coachInfo.emoji}.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: images && images.length > 0 ? 'gpt-4o-mini' : 'gpt-4.1-2025-04-14',
+        model: images && images.length > 0 ? 'gpt-4o' : 'gpt-4o',
         messages: messages,
         temperature: coachInfo.temp,
         max_tokens: 800,
