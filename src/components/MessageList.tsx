@@ -1,9 +1,7 @@
-import React, { useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { VariableSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import ReactMarkdown from 'react-markdown';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
+import { MessageRow } from './MessageRow';
 import { Button } from '@/components/ui/button';
 
 interface ChatMessage {
@@ -34,124 +32,6 @@ interface MessageListProps {
   onConversationAction?: (action: any) => void;
 }
 
-interface MessageItemProps {
-  message: ChatMessage;
-  coach: CoachProfile;
-  onConversationAction?: (action: any) => void;
-  style: React.CSSProperties;
-  setRowHeight: (height: number) => void;
-}
-
-const MessageItem = React.memo(({ 
-  message, 
-  coach, 
-  onConversationAction,
-  style,
-  setRowHeight
-}: MessageItemProps) => {
-  const itemRef = useRef<HTMLDivElement>(null);
-  const lastHeightRef = useRef<number>(0);
-  const isUser = message.role === 'user';
-
-  // Measure height after render - BUT ONLY IF CHANGED
-  useLayoutEffect(() => {
-    if (itemRef.current) {
-      const height = itemRef.current.getBoundingClientRect().height;
-      // CRITICAL: Only call setRowHeight if height actually changed
-      if (height !== lastHeightRef.current && height > 0) {
-        lastHeightRef.current = height;
-        setRowHeight(height);
-      }
-    }
-  }); // NO dependencies = runs on every render but only updates if changed
-
-  const handleImageLoad = useCallback(() => {
-    if (itemRef.current) {
-      const height = itemRef.current.getBoundingClientRect().height;
-      // CRITICAL: Only call setRowHeight if height actually changed
-      if (height !== lastHeightRef.current && height > 0) {
-        lastHeightRef.current = height;
-        setRowHeight(height);
-      }
-    }
-  }, [setRowHeight]);
-
-  return (
-    <div style={style} className="px-4 py-2">
-      <div ref={itemRef} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
-        {!isUser && (
-          <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarImage src={coach.avatar} alt={coach.name} />
-            <AvatarFallback className="text-xs">
-              {coach.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        )}
-        
-        <Card className={`p-3 max-w-[80%] ${
-          isUser 
-            ? 'bg-primary text-primary-foreground ml-auto' 
-            : 'bg-muted'
-        }`}>
-          <div className="text-sm whitespace-pre-wrap">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          </div>
-          
-          {message.images && message.images.length > 0 && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {message.images.map((image, idx) => (
-                <img
-                  key={idx}
-                  src={image}
-                  alt="Uploaded"
-                  className="rounded-lg max-w-full h-auto"
-                  onLoad={handleImageLoad}
-                  onError={handleImageLoad}
-                />
-              ))}
-            </div>
-          )}
-
-          {message.video_url && (
-            <video 
-              src={message.video_url} 
-              controls 
-              className="mt-2 rounded-lg max-w-full h-auto"
-              onLoadedMetadata={handleImageLoad}
-            />
-          )}
-
-          {message.actions && message.actions.length > 0 && (
-            <div className={`mt-3 flex gap-2 ${
-              message.actions.length > 3 ? 'flex-col' : 'flex-wrap'
-            }`}>
-              {message.actions.map((action, idx) => (
-                <Button
-                  key={idx}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onConversationAction?.(action)}
-                  className="text-xs"
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        {isUser && (
-          <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarFallback className="text-xs">Du</AvatarFallback>
-          </Avatar>
-        )}
-      </div>
-    </div>
-  );
-});
-
-MessageItem.displayName = 'MessageItem';
-
 export const MessageList = React.memo(({ 
   messages, 
   coach, 
@@ -159,36 +39,87 @@ export const MessageList = React.memo(({
 }: MessageListProps) => {
   const listRef = useRef<List>(null);
   const rowHeights = useRef<number[]>([]);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const pendingUpdates = useRef<Set<number>>(new Set());
+  const updateFrameRef = useRef<number | null>(null);
+
+  // Stabilized onConversationAction handler
+  const stableActionHandler = useRef(onConversationAction);
+  stableActionHandler.current = onConversationAction;
+  
+  const handleConversationAction = useCallback((action: any) => {
+    stableActionHandler.current?.(action);
+  }, []);
 
   const getSize = useCallback((index: number) => rowHeights.current[index] ?? 120, []);
 
-  // Scroll to bottom on new message
+  // Intelligent auto-scroll: only scroll if user is at bottom
   useEffect(() => {
-    if (messages.length > 0 && listRef.current) {
-      listRef.current.scrollToItem(messages.length - 1, 'end');
+    if (messages.length > 0 && listRef.current && isAtBottom) {
+      // Small delay to allow for rendering
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToItem(messages.length - 1, 'end');
+      });
     }
-  }, [messages.length]);
+  }, [messages.length, isAtBottom]);
 
+  // Detect if user manually scrolled away from bottom
+  const handleScroll = useCallback(({ scrollOffset, scrollDirection }: any) => {
+    if (listRef.current) {
+      const list = listRef.current;
+      const totalHeight = messages.reduce((sum, _, index) => sum + getSize(index), 0);
+      const visibleHeight = list.props.height;
+      const isNearBottom = scrollOffset + visibleHeight >= totalHeight - 50;
+      setIsAtBottom(isNearBottom);
+    }
+  }, [messages, getSize]);
+
+  // Optimized row height setter with batching
   const setRowHeight = useCallback((index: number, height: number) => {
     // CRITICAL: Only update if height actually changed AND is valid
     if (rowHeights.current[index] !== height && height > 0) {
       rowHeights.current[index] = height;
-      // Batch updates to prevent excessive re-renders
-      setTimeout(() => {
-        listRef.current?.resetAfterIndex(index);
-      }, 0);
+      
+      // Batch updates using requestAnimationFrame
+      pendingUpdates.current.add(index);
+      
+      if (updateFrameRef.current === null) {
+        updateFrameRef.current = requestAnimationFrame(() => {
+          if (listRef.current && pendingUpdates.current.size > 0) {
+            const minIndex = Math.min(...pendingUpdates.current);
+            listRef.current.resetAfterIndex(minIndex);
+            pendingUpdates.current.clear();
+          }
+          updateFrameRef.current = null;
+        });
+      }
     }
   }, []);
 
-  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => (
-    <MessageItem
-      style={style}
-      message={messages[index]}
-      coach={coach}
-      onConversationAction={onConversationAction}
-      setRowHeight={(height: number) => setRowHeight(index, height)}
-    />
-  ), [messages, coach, onConversationAction, setRowHeight]);
+  // Memory cleanup - prevent rowHeights array from growing indefinitely
+  useEffect(() => {
+    const currentLength = messages.length;
+    if (rowHeights.current.length > currentLength) {
+      rowHeights.current = rowHeights.current.slice(0, currentLength);
+    }
+  }, [messages.length]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (updateFrameRef.current) {
+        cancelAnimationFrame(updateFrameRef.current);
+      }
+    };
+  }, []);
+
+  // Memoized item data to prevent Row re-renders
+  const itemData = React.useMemo(() => ({
+    messages,
+    coach,
+    onConversationAction: handleConversationAction,
+    setRowHeight
+  }), [messages, coach, handleConversationAction, setRowHeight]);
 
   if (messages.length === 0) {
     return (
@@ -199,22 +130,42 @@ export const MessageList = React.memo(({
   }
 
   return (
-    <AutoSizer>
-      {({ height, width }) => (
-        <List
-          height={height}
-          width={width}
-          ref={listRef}
-          itemCount={messages.length}
-          itemSize={getSize}
-          itemKey={(index) => messages[index].id}
-          overscanCount={5}
-          className="scrollbar-thin"
-        >
-          {Row}
-        </List>
+    <div className="relative h-full" aria-live="polite" aria-label="Chat-Nachrichten">
+      <AutoSizer>
+        {({ height, width }) => (
+          <List
+            height={height}
+            width={width}
+            ref={listRef}
+            itemCount={messages.length}
+            itemSize={getSize}
+            itemData={itemData}
+            itemKey={(index) => messages[index].id}
+            overscanCount={5}
+            onScroll={handleScroll}
+            className="scrollbar-thin"
+          >
+            {MessageRow}
+          </List>
+        )}
+      </AutoSizer>
+      
+      {/* Jump to latest button when user scrolled up */}
+      {!isAtBottom && messages.length > 0 && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+          <Button
+            size="sm"
+            onClick={() => {
+              setIsAtBottom(true);
+              listRef.current?.scrollToItem(messages.length - 1, 'end');
+            }}
+            className="shadow-lg"
+          >
+            ↓ Zur neuesten Nachricht
+          </Button>
+        </div>
       )}
-    </AutoSizer>
+    </div>
   );
 });
 

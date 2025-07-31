@@ -151,6 +151,8 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [exercisePreview, setExercisePreview] = useState<any | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [chatInitialized, setChatInitialized] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [retryQueue, setRetryQueue] = useState<ChatMessage[]>([]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -174,6 +176,20 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   } = useGlobalCoachMemory();
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
+
+  // Online/Offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Memoized scroll function - STABLE REFERENCE
   const scrollToBottom = useCallback(() => {
@@ -344,7 +360,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
 
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       content: inputText.trim() || 'Siehe Bild',
       created_at: new Date().toISOString(),
@@ -383,7 +399,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       if (error) throw error;
 
       const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: data.response || data.reply || 'Entschuldigung, ich konnte nicht antworten.',
         created_at: new Date().toISOString(),
@@ -411,7 +427,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       toast.error('Fehler beim Senden der Nachricht');
       
       const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: 'Entschuldigung, es gab einen Fehler. Bitte versuche es erneut.',
         created_at: new Date().toISOString(),
@@ -500,7 +516,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         : '✨ Wie kann ich dir heute helfen?';
 
       const welcomeMsg: ChatMessage = {
-        id: `clear-welcome-${Date.now()}`,
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: `${timeGreeting}! Ich bin ${coachName}. ${modeSpecific}`,
         created_at: now.toISOString(),
@@ -795,7 +811,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                 <ReactMarkdown>{message.content}</ReactMarkdown>
                 
                 <div className="text-xs opacity-70 mt-2">
-                  {format(new Date(message.created_at), 'HH:mm', { locale: de })}
+                  {new Date(message.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                 </div>
 
                 {/* Exercise Preview */}
@@ -908,6 +924,17 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             coach={convertedCoach}
           />
           
+          {/* Offline indicator */}
+          {!isOnline && (
+            <div className="px-4 py-2">
+              <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3 text-center">
+                <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                  📡 Keine Internetverbindung - Nachrichten werden gesendet, sobald die Verbindung wiederhergestellt ist
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Loading indicator */}
           {isThinking && (
             <div className="px-4 py-2">
