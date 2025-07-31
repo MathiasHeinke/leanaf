@@ -334,7 +334,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     profileData,
     progressPhotos,
     coachInfo: coach,
-    memorySummary: getMemorySummary()
+    memorySummary: getMemorySummary() // Call the function, don't depend on it
   }), [
     todaysTotals?.calories,
     dailyGoals?.calories,
@@ -348,7 +348,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     profileData?.id,
     progressPhotos?.length,
     coach?.id,
-    getMemorySummary
+    memory // Depend on memory directly instead of getMemorySummary function
   ]);
 
   // Stabilized handlers with useCallback
