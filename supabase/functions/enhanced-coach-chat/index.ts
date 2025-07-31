@@ -833,6 +833,7 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('authorization');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const body = await req.json();
@@ -884,24 +885,30 @@ serve(async (req) => {
         switch (classification.category) {
           case 'food':
             console.log('📍 Routing to meal analysis');
-            const mealResult = await supabase.functions.invoke('analyze-meal', {
-              body: { 
-                imageUrl, 
-                userId,
-                userMessage: lastMsg.content || 'Analysiere diese Mahlzeit'
-              }
+            const mealResult = await fetch(`${supabaseUrl}/functions/v1/analyze-meal`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader || '',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ 
+                images: [imageUrl],
+                text: lastMsg.content || 'Analysiere diese Mahlzeit',
+                userId: userId
+              })
             });
             
-            if (mealResult.error) {
-              console.error('Meal analysis failed, using regular chat');
+            if (!mealResult.ok) {
+              console.error('Meal analysis failed:', await mealResult.text());
               return await handleRegularChat();
             }
             
+            const mealData = await mealResult.json();
             return new Response(JSON.stringify({
               role: 'assistant',
               type: 'card',
               card: 'meal',
-              payload: mealResult.data,
+              payload: mealData,
               meta: { clearTool: true }
             }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
