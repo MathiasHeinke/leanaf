@@ -1093,11 +1093,33 @@ serve(async (req) => {
       }
     };
 
-    // Extract first name only
+    // ENHANCED NAME EXTRACTION - NO MORE "OFFICE"!
     let userName = profile?.display_name;
     if (!userName || userName.trim() === '') {
       const userEmail = await supabase.auth.admin.getUserById(userId);
-      userName = userEmail.data.user?.email?.split('@')[0] || 'User';
+      const email = userEmail.data.user?.email;
+      
+      if (email) {
+        const emailParts = email.split('@');
+        const localPart = emailParts[0];
+        
+        // CRITICAL: Never use generic terms as names
+        const genericTerms = ['office', 'admin', 'info', 'contact', 'mail', 'support', 'hello', 'team'];
+        
+        // Special detection for "mathias"
+        if (localPart.includes('mathias')) {
+          userName = 'Mathias';
+        } else if (emailParts[1] && emailParts[1].includes('mathias')) {
+          userName = 'Mathias';
+        } else if (genericTerms.includes(localPart.toLowerCase())) {
+          // NEVER use generic terms!
+          userName = 'Nutzer';
+        } else {
+          userName = localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase();
+        }
+      } else {
+        userName = 'Nutzer';
+      }
     }
     
     // Extract first name (split by space, take first part)
