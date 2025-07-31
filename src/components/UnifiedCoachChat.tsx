@@ -147,7 +147,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { uploadFiles, uploading } = useMediaUpload();
   const { tokens } = useContextTokens(user?.id);
   
-  // ============= SIMPLE INITIALIZATION =============
+  // ============= CHAT PERSISTIERUNG =============
   useEffect(() => {
     if (!user?.id || initializationRef.current) return;
     
@@ -155,10 +155,44 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
-        // ✨ AI-GREETING-REVOLUTION: Generate intelligent, personalized greeting
-        // Die Edge Function holt die Profile-Daten selbst aus der DB
+        setIsLoading(true);
         
-        // Call AI greeting function
+        // 1. Erst versuchen, heutige Chat-History zu laden
+        const today = new Date().toISOString().split('T')[0];
+        const { data: existingMessages, error: historyError } = await supabase
+          .from('coach_conversations')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('coach_personality', coach?.id || 'lucy')
+          .eq('conversation_date', today)
+          .order('created_at', { ascending: true });
+
+        if (!historyError && existingMessages && existingMessages.length > 0) {
+          // Konvertiere gespeicherte Nachrichten zu UnifiedMessage Format
+          const loadedMessages: UnifiedMessage[] = existingMessages.map(msg => ({
+            id: msg.id,
+            role: msg.message_role as 'user' | 'assistant',
+            content: msg.message_content,
+            created_at: msg.created_at,
+            coach_personality: msg.coach_personality || coach?.personality || 'motivierend',
+            coach_name: coach?.name || 'Coach',
+            coach_avatar: coach?.imageUrl,
+            coach_color: coach?.color,
+            coach_accent_color: coach?.accentColor,
+            images: [],
+            mode: mode
+          }));
+
+          console.log(`📜 Loaded ${loadedMessages.length} existing messages for today`);
+          setMessages(loadedMessages);
+          setIsLoading(false);
+          setChatInitialized(true);
+          return; // Beende hier - keine neue Begrüßung nötig
+        }
+
+        // 2. Nur wenn keine Nachrichten für heute existieren: AI-Begrüßung generieren
+        console.log('🎯 No existing chat found, generating AI greeting...');
+        
         const { data: greetingData, error: greetingError } = await supabase.functions.invoke('generate-intelligent-greeting', {
           body: {
             userId: user.id,
@@ -177,7 +211,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         
         if (greetingError) {
           console.warn('AI greeting failed, using fallback:', greetingError);
-          // Simple fallback based on coach
           const fallbackGreetings = {
             'lucy': `Hey! 💗 Bereit für einen tollen Tag?`,
             'sascha': `Moin! Zeit durchzustarten! 💪`,
@@ -205,13 +238,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           images: [],
           mode: mode
         };
+
+        // 3. Begrüßung sofort speichern in DB
+        await supabase.from('coach_conversations').insert({
+          user_id: user.id,
+          message_role: 'assistant',
+          message_content: enhancedGreeting,
+          coach_personality: coach?.id || 'lucy',
+          conversation_date: today
+        });
         
         setMessages([welcomeMsg]);
         setIsLoading(false);
         setChatInitialized(true);
       } catch (error) {
         console.error('Init error:', error);
-        // Fallback greeting
         const fallbackMsg: UnifiedMessage = {
           id: `welcome-${Date.now()}`,
           role: 'assistant',
@@ -228,7 +269,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     };
     
     init();
-  }, [user?.id, coach?.name, coach?.personality, mode, tokens, memory, profileData]);
+  }, [user?.id, coach?.name, coach?.id, coach?.personality, mode, tokens]);
   
   // ============= REAL COACH CHAT WITH AI =============
   const sendMessage = useCallback(async () => {
@@ -246,6 +287,17 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     };
 
     setMessages(prev => [...prev, userMessage]);
+    
+    // Nutzer-Nachricht sofort in DB speichern
+    const today = new Date().toISOString().split('T')[0];
+    await supabase.from('coach_conversations').insert({
+      user_id: user.id,
+      message_role: 'user',
+      message_content: inputText,
+      coach_personality: coach?.id || 'lucy',
+      conversation_date: today
+    });
+    
     setInputText('');
     setUploadedImages([]);
     setHasFiles(false);
@@ -316,6 +368,17 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // AI-Antwort auch in DB speichern
+      if (data.type !== 'card') { // Nur Text-Nachrichten speichern, keine Cards
+        await supabase.from('coach_conversations').insert({
+          user_id: user.id,
+          message_role: 'assistant',
+          message_content: data.response || 'Entschuldigung, ich konnte nicht antworten.',
+          coach_personality: coach?.id || 'lucy',
+          conversation_date: today
+        });
+      }
       
       // Handle tool reset from card metadata
       if (data.meta?.clearTool) {
