@@ -294,14 +294,31 @@ Wie kann ich dir helfen?`;
       
       // Only generate welcome message if no history was loaded
       if (!hasLoadedHistory) {
-        await generateWelcomeMessage();
+        try {
+          const coachName = coach?.name || 'Coach';
+          const coachExpertise = coach?.expertise || 'Fitness und Ernährung';
+          
+          const welcomeMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: `Hallo! Ich bin ${coachName}, dein persönlicher ${coachExpertise}-Coach. Wie kann ich dir heute helfen?`,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.personality || 'motivierend',
+            images: [],
+            mode: mode
+          };
+
+          setMessages([welcomeMsg]);
+        } catch (error) {
+          console.error('Error generating welcome message:', error);
+        }
       }
       
       setIsLoading(false);
     };
 
     initializeChat();
-  }, [user?.id, mode, coach?.personality, generateWelcomeMessage]);
+  }, [user?.id, mode, coach?.personality, coach?.name, coach?.expertise]);
 
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
