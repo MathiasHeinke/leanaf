@@ -39,12 +39,6 @@ const Row = React.memo(({ index, style, data }: {
   data: any;
 }) => {
   const { messages, coach, onConversationAction, setRowHeight } = data;
-  
-  /* Stable Callback pro Zeile - NICHT jedes Render neu! */
-  const reportHeight = React.useCallback(
-    (h: number) => setRowHeight(index, h),
-    [index, setRowHeight]      // ändert sich nur, wenn **index** wechselt
-  );
 
   return (
     <MessageItem
@@ -53,7 +47,7 @@ const Row = React.memo(({ index, style, data }: {
       message={messages[index]}
       coach={coach}
       onConversationAction={onConversationAction}
-      reportHeight={reportHeight}  // STABILE Referenz!
+      reportHeight={setRowHeight}  // Direkte Referenz - keine neue Funktion!
     />
   );
 });

@@ -55,11 +55,11 @@ export const MessageItem = React.memo(({
         reportHeight(index, h);          // hier erst updaten
       }
     }
-  }, []);                               // KEINE Dependencies - komplett stabil
+  }, [index, reportHeight]);           // Stabile Dependencies
 
-  useLayoutEffect(() => {               // nur 1-mal nach Mount  
+  useLayoutEffect(() => {               // nur wenn measure sich ändert  
     measure();
-  }, []);                               // leere Dep-Liste
+  }, [measure]);                       // measure als Dependency
 
   const isUser = message.role === 'user';
 
