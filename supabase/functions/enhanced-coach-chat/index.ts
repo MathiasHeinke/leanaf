@@ -1006,7 +1006,7 @@ serve(async (req) => {
               
               if (exerciseResult.error) {
                 console.error('Exercise analysis failed:', exerciseResult.error);
-                return await handleRegularChat();
+                return await handleRegularChat(conversation, userId, contextData, userData, coachMemory, coachPersonality);
               }
               
               return new Response(JSON.stringify({
