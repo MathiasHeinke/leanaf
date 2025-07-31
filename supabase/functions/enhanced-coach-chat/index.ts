@@ -1559,6 +1559,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+    console.log('✅ Response sent successfully');
 
   } catch (error: any) {
     console.error('Enhanced coach chat error:', error);
