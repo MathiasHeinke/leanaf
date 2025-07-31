@@ -185,9 +185,11 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const processMessageRef = useRef(processMessage);
   const analyzeImageRef = useRef(analyzeImage);
   
-  // Bei jedem Render überschreiben, nie als Dependency nutzen
-  processMessageRef.current = processMessage;
-  analyzeImageRef.current = analyzeImage;
+  // Refs NUR in useEffect updaten – *nie* im Render-Body!
+  useEffect(() => {
+    processMessageRef.current = processMessage;
+    analyzeImageRef.current = analyzeImage;
+  }, [processMessage, analyzeImage]);
   
   console.log('🔄 Hooks initialized #', renderCount.current, { 
     isGlobalMemoryLoaded, 
@@ -346,18 +348,22 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const memorySummary = useMemo(() => {
     if (!memory) return null;
     
-    // Komplettes, serialisiertes Objekt als String -
-    // JSON ändert sich nur wenn Inhalt sich ändert
-    return JSON.stringify({
-      relationship_stage: memory.relationship_stage,
-      trust_level: memory.trust_level,
-      mood_len: memory.conversation_context?.mood_history?.length || 0,
-      success_len: memory.conversation_context?.success_moments?.length || 0,
-      struggle_len: memory.conversation_context?.struggles_mentioned?.length || 0,
-      pref_len: memory.user_preferences?.length || 0,
-      style: memory.communication_style_preference
-    });
-  }, [memory]); // EINzige Dependency!
+    return {
+      stage: memory.relationship_stage,
+      trust: memory.trust_level,
+      moods: memory.conversation_context?.mood_history?.length ?? 0,
+      successes: memory.conversation_context?.success_moments?.length ?? 0,
+      struggles: memory.conversation_context?.struggles_mentioned?.length ?? 0,
+      prefHash: JSON.stringify(memory.user_preferences ?? [])
+    };
+  }, [
+    memory?.relationship_stage,
+    memory?.trust_level,
+    memory?.conversation_context?.mood_history?.length,
+    memory?.conversation_context?.success_moments?.length,
+    memory?.conversation_context?.struggles_mentioned?.length,
+    memory?.user_preferences?.length
+  ]); // nur *primitive* Abhängigkeiten
 
   // Use ref for context data to avoid re-renders
   const contextRef = useRef<any>({});
