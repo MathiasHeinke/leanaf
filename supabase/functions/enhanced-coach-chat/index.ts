@@ -6,8 +6,10 @@ import { getDisplayName } from './utils/getDisplayName.ts';
 
 // -------------------------------------------------------------------------
 // Tool-Handler Map
-import * as handlers from '../tool-handlers/index.ts';
-import analyzeImage from '../tool-handlers/foto.ts';
+import { trainingsplan, uebung, supplement, gewicht, foto } from '../tool-handlers/index.ts';
+
+// Create handlers map
+const handlers = { trainingsplan, uebung, supplement, gewicht, foto };
 // -------------------------------------------------------------------------
 
 // Enhanced security helpers
@@ -670,7 +672,10 @@ serve(async (req) => {
     // 1️⃣ Bild erkannt & KEIN aktives Tool → Image-Analyse
     if (!getLastTool(conversation) && lastMsg?.images?.length) {
       console.log('🖼️ Image detected without active tool, using image analysis');
-      return analyzeImage(lastMsg.images, userId);
+      const result = await foto(lastMsg.images, userId);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
     
     const activeTool = getLastTool(conversation);
