@@ -146,7 +146,6 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 }) => {
   // ============= DEBUGGING: RENDER COUNTER + STATE TABLE =============
   const renderCount = useRef(0);
-  renderCount.current++;
   
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -184,26 +183,37 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
   
-  // DIAGNOSTICS: Console table showing all loading states
-  console.table({
-    render: renderCount.current,
-    isLoading,
-    chatInitialized,
-    isGlobalMemoryLoaded,
-    messages: messages.length,
-    userId: user?.id ? 'exists' : 'null',
-    mode,
-    coachId: coach?.id || 'none'
-  });
-  
-  // ============= FALLBACK TIMEOUT =============
+  // ============= DEBUGGING: SICHER IN USEEFFECT =============
   useEffect(() => {
+    renderCount.current++;
+    console.log('🔄 UnifiedCoachChat render #', renderCount.current);
+  });
+
+  useEffect(() => {
+    console.table({
+      render: renderCount.current,
+      isLoading,
+      chatInitialized,
+      isGlobalMemoryLoaded,
+      messages: messages.length,
+      userId: user?.id ? 'exists' : 'null',
+      mode,
+      coachId: coach?.id || 'none'
+    });
+  }, [isLoading, chatInitialized, isGlobalMemoryLoaded, messages.length, user?.id, mode, coach?.id]);
+  
+  // ============= FALLBACK TIMEOUT MIT GUARDS =============
+  useEffect(() => {
+    // Starte Timeout **nur**, wenn wir wirklich noch warten
+    if (!isLoading || chatInitialized) return;
+
     const timeout = setTimeout(() => {
-      console.warn('⏰ Forcing initialization after 5 second timeout');
+      console.warn('⏰ Force-init after 5 s');
+      
+      // Guard: nur ändern, wenn sich der Status noch nicht geändert hat
       setIsLoading(false);
       setChatInitialized(true);
       
-      // Create emergency fallback message if no messages exist
       if (messages.length === 0) {
         const emergencyMsg: ChatMessage = {
           id: `emergency-${Date.now()}`,
@@ -219,7 +229,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }, 5000);
     
     return () => clearTimeout(timeout);
-  }, []);
+  }, [isLoading, chatInitialized, messages.length, coach?.name, coach?.personality, mode]);
   
   console.log('🔄 Hooks initialized #', renderCount.current, { 
     isGlobalMemoryLoaded, 
