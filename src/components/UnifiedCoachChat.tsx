@@ -285,18 +285,35 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     const chatInput = (
       <div className="space-y-3">
-        <Textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Schreibe eine Nachricht..."
-          className="min-h-[60px] resize-none bg-input border-input"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
+        <div className="relative">
+          <Textarea
+            id="chatInput"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="Nachricht eingeben..."
+            rows={4}
+            className="w-full min-h-[96px] resize-none overflow-auto bg-input border-input"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+          
+          {/* Recording-Indicator */}
+          <div 
+            className={`absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none transition-opacity duration-200 ${
+              isRecording ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+            <span className="bar"></span>
+          </div>
+        </div>
         
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
