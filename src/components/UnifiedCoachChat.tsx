@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+
+// ✅ EMPTY_ARRAY als echte Konstante außerhalb der Komponente
+const EMPTY_ARRAY: any[] = [];
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -338,9 +341,6 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   
   // ============= MEMORY SUMMARY WIRKLICH STABIL MACHEN =============
-  // Create stable empty array reference outside component
-  const EMPTY_ARRAY = useMemo(() => [], []);
-  
   const memorySummary = useMemo(() => {
     if (!memory) return null;
     
@@ -353,15 +353,14 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       struggles: (ctx.struggles_mentioned ?? EMPTY_ARRAY).length,
       prefHash: JSON.stringify(memory.user_preferences ?? EMPTY_ARRAY)
     };
-    /* nur PRIMITIVE deps: */
+    /* nur PRIMITIVE deps - EMPTY_ARRAY entfernt: */
   }, [
     memory?.relationship_stage,
     memory?.trust_level,
     (memory?.conversation_context?.mood_history ?? EMPTY_ARRAY).length,
     (memory?.conversation_context?.success_moments ?? EMPTY_ARRAY).length,
     (memory?.conversation_context?.struggles_mentioned ?? EMPTY_ARRAY).length,
-    (memory?.user_preferences ?? EMPTY_ARRAY).length,
-    EMPTY_ARRAY
+    (memory?.user_preferences ?? EMPTY_ARRAY).length
   ]);
 
   // Use ref for context data to avoid re-renders
