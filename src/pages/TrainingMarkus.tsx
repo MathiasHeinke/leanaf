@@ -477,7 +477,7 @@ const TrainingMarkus = () => {
         name: 'Markus Rühl',
         description: 'The German Beast - Schwer und falsch trainieren für maximale Muskelmasse!',
         expertise: ['Hardcore Bodybuilding', 'Heavy Training', 'Volume Training', 'Mental Toughness'],
-        personality: 'hart',
+        personality: 'markus',
         color: 'orange',
         imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
         accentColor: 'from-orange-600 to-red-600'

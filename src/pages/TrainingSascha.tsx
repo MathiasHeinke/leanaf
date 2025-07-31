@@ -477,7 +477,7 @@ const TrainingSascha = () => {
         name: 'Sascha',
         description: 'Dein persönlicher Trainer für Krafttraining und Performance',
         expertise: ['Krafttraining', 'Performance', 'Trainingsplanung'],
-        personality: 'hart',
+        personality: 'sascha',
         color: 'blue',
         imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
         accentColor: 'blue'
