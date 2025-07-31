@@ -860,6 +860,89 @@ serve(async (req) => {
       throw new Error('Invalid request format');
     }
     const lastMsg = conversation?.at(-1);
+
+    // Wichtige Variablen früh definieren
+    const coachPersonality = validateCoachPersonality(lastMsg?.coach_personality || body.coach_personality || 'motivierend');
+    const hasImages = lastMsg?.images?.length > 0;
+    
+    // Sammle alle notwendigen Daten
+    const userData = await collectComprehensiveUserData(supabase, userId);
+    const memory = await loadCoachMemory(supabase, userId);
+    const sentiment = await analyzeSentiment(lastMsg?.content || '');
+    
+    // RAG Context
+    let ragContext = '';
+    if (determineRAGUsage(lastMsg?.content || '', coachPersonality)) {
+      ragContext = await performRAGSearch(supabase, lastMsg?.content || '', coachPersonality);
+    }
+    
+    const conversationContext = memory?.conversation_context || '';
+    
+    // Definiere handleRegularChat function mit allen verfügbaren Variablen
+    async function handleRegularChat() {
+      console.log('🎯 Processing regular chat with GPT-4o Vision');
+      
+      const systemMessage = await createEnhancedSystemMessage(
+        coachPersonality, 
+        userData, 
+        conversationContext, 
+        ragContext, 
+        lastMsg?.content || '',
+        hasImages
+      );
+
+      const chatMessages = [systemMessage];
+      
+      if (conversation?.length) {
+        const recentMessages = conversation.slice(-8);
+        for (const msg of recentMessages) {
+          if (msg.role === 'user') {
+            const content = [];
+            if (msg.content) {
+              content.push({ type: 'text', text: msg.content });
+            }
+            if (msg.images?.length) {
+              for (const imageUrl of msg.images) {
+                content.push({
+                  type: 'image_url',
+                  image_url: { url: imageUrl, detail: 'low' }
+                });
+              }
+            }
+            chatMessages.push({ role: 'user', content });
+          } else if (msg.role === 'assistant' && msg.content) {
+            chatMessages.push({ role: 'assistant', content: msg.content });
+          }
+        }
+      }
+
+      const modelToUse = chooseModel(lastMsg?.content || '', hasImages, false, ragContext.length > 0, chatMessages);
+      
+      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: chatMessages,
+          max_tokens: hasImages ? 1500 : 2000,
+          temperature: 0.8,
+        }),
+      });
+
+      const aiData = await openAIResponse.json();
+      const assistantMessage = aiData.choices?.[0]?.message?.content || 'Entschuldigung, ich konnte keine Antwort generieren.';
+
+      return new Response(JSON.stringify({
+        role: 'assistant',
+        content: assistantMessage,
+        meta: { clearTool: true }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
     // 1️⃣ Bild erkannt & KEIN aktives Tool → Intelligente Bildklassifizierung
     if (!getLastTool(conversation) && lastMsg?.images?.length) {
@@ -885,99 +968,114 @@ serve(async (req) => {
         switch (classification.category) {
           case 'food':
             console.log('📍 Routing to meal analysis');
-            const mealResult = await fetch(`${supabaseUrl}/functions/v1/analyze-meal`, {
-              method: 'POST',
-              headers: {
-                'Authorization': authHeader || '',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ 
-                images: [imageUrl],
-                text: lastMsg.content || 'Analysiere diese Mahlzeit',
-                userId: userId
-              })
-            });
-            
-            if (!mealResult.ok) {
-              console.error('Meal analysis failed:', await mealResult.text());
+            try {
+              const mealResult = await supabase.functions.invoke('analyze-meal', {
+                headers: { 'Authorization': authHeader || '' },
+                body: { 
+                  images: [imageUrl],
+                  text: lastMsg.content || 'Analysiere diese Mahlzeit',
+                  userId: userId
+                }
+              });
+              
+              if (mealResult.error) {
+                console.error('Meal analysis failed:', mealResult.error);
+                return await handleRegularChat();
+              }
+              
+              return new Response(JSON.stringify({
+                role: 'assistant',
+                type: 'card',
+                card: 'meal',
+                payload: mealResult.data,
+                meta: { clearTool: true }
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            } catch (error) {
+              console.error('Meal analysis failed with exception:', error);
               return await handleRegularChat();
             }
-            
-            const mealData = await mealResult.json();
-            return new Response(JSON.stringify({
-              role: 'assistant',
-              type: 'card',
-              card: 'meal',
-              payload: mealData,
-              meta: { clearTool: true }
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
 
           case 'exercise':
             console.log('📍 Routing to exercise analysis');
-            const exerciseResult = await supabase.functions.invoke('extract-exercise-data', {
-              body: { imageUrl, userId }
-            });
-            
-            if (exerciseResult.error) {
-              console.error('Exercise analysis failed, using regular chat');
+            try {
+              const exerciseResult = await supabase.functions.invoke('extract-exercise-data', {
+                body: { imageUrl, userId }
+              });
+              
+              if (exerciseResult.error) {
+                console.error('Exercise analysis failed:', exerciseResult.error);
+                return await handleRegularChat();
+              }
+              
+              return new Response(JSON.stringify({
+                role: 'assistant',
+                type: 'card',
+                card: 'exercise',
+                payload: exerciseResult.data,
+                meta: { clearTool: true }
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            } catch (error) {
+              console.error('Exercise analysis failed with exception:', error);
               return await handleRegularChat();
             }
-            
-            return new Response(JSON.stringify({
-              role: 'assistant',
-              type: 'card',
-              card: 'exercise',
-              payload: exerciseResult.data,
-              meta: { clearTool: true }
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
 
           case 'supplement':
             console.log('📍 Routing to supplement analysis');
-            const supplementResult = await supabase.functions.invoke('supplement-recognition', {
-              body: { imageUrl, userId }
-            });
-            
-            if (supplementResult.error) {
-              console.error('Supplement analysis failed, using regular chat');
+            try {
+              const supplementResult = await supabase.functions.invoke('supplement-recognition', {
+                body: { imageUrl, userId }
+              });
+              
+              if (supplementResult.error) {
+                console.error('Supplement analysis failed:', supplementResult.error);
+                return await handleRegularChat();
+              }
+              
+              return new Response(JSON.stringify({
+                role: 'assistant',
+                type: 'card',
+                card: 'supplement',
+                payload: supplementResult.data,
+                meta: { clearTool: true }
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            } catch (error) {
+              console.error('Supplement analysis failed with exception:', error);
               return await handleRegularChat();
             }
-            
-            return new Response(JSON.stringify({
-              role: 'assistant',
-              type: 'card',
-              card: 'supplement',
-              payload: supplementResult.data,
-              meta: { clearTool: true }
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
 
           case 'body_progress':
             console.log('📍 Routing to body analysis');
-            const bodyResult = await supabase.functions.invoke('body-analysis', {
-              body: { 
-                imageUrl, 
-                userId,
-                userMessage: lastMsg.content || 'Analysiere meine Körperkomposition'
+            try {
+              const bodyResult = await supabase.functions.invoke('body-analysis', {
+                body: { 
+                  imageUrl, 
+                  userId,
+                  userMessage: lastMsg.content || 'Analysiere meine Körperkomposition'
+                }
+              });
+              
+              if (bodyResult.error) {
+                console.error('Body analysis failed:', bodyResult.error);
+                return await handleRegularChat();
               }
-            });
-            
-            if (bodyResult.error) {
-              console.error('Body analysis failed, using regular chat');
+              
+              return new Response(JSON.stringify({
+                role: 'assistant',
+                content: `Körperanalyse abgeschlossen: ${bodyResult.data.analysis || 'Analyse verfügbar'}`,
+                meta: { clearTool: true }
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            } catch (error) {
+              console.error('Body analysis failed with exception:', error);
               return await handleRegularChat();
             }
-            
-            return new Response(JSON.stringify({
-              role: 'assistant',
-              content: `Körperanalyse abgeschlossen: ${bodyResult.data.analysis || 'Analyse verfügbar'}`,
-              meta: { clearTool: true }
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
 
           default:
             console.log('📍 Using general image analysis with GPT-4o Vision');
@@ -989,17 +1087,6 @@ serve(async (req) => {
         return await handleRegularChat();
       }
     }
-
-    async function handleRegularChat() {
-      // Normale Chat-Verarbeitung mit GPT-4o Vision für Bilder
-      const systemMessage = await createEnhancedSystemMessage(
-        coachPersonality, 
-        userData, 
-        conversationContext, 
-        ragContext, 
-        lastMsg?.content || '',
-        hasImages
-      );
 
       const chatMessages = [systemMessage];
       
