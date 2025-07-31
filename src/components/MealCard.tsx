@@ -24,6 +24,21 @@ export const MealCard = ({
   onReject,
   onPortionChange 
 }: MealCardProps) => {
+  // Safety check to prevent undefined meal error
+  if (!meal) {
+    return (
+      <SmartCard
+        tool="meal"
+        icon="🍽️"
+        title="Mahlzeit-Analyse"
+        defaultCollapsed={true}
+      >
+        <div className="text-muted-foreground text-sm">
+          Keine Mahlzeitdaten verfügbar
+        </div>
+      </SmartCard>
+    );
+  }
   const actions = [];
   
   if (onConfirm) {
