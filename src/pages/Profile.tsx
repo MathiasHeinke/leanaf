@@ -729,22 +729,46 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               <div className="space-y-3">
                 {[
                   { 
+                    id: 'amdr_basis',
+                    label: 'AMDR-Basis (50/20/30)',
+                    desc: 'Gesunde Durchschnittsernährung (DGE/WHO)',
+                    protein: 20, carbs: 52, fats: 28
+                  },
+                  { 
+                    id: 'zone_balanced',
+                    label: 'Zone/Balanced (40/30/30)',
+                    desc: 'Recomp, Alltag - stabiler Blutzucker',
+                    protein: 30, carbs: 40, fats: 30
+                  },
+                  { 
                     id: 'high_protein',
-                    label: 'High Protein (50/20/30)',
-                    desc: 'Optimal für Muskelaufbau & Sättigung',
-                    protein: 50, carbs: 20, fats: 30
+                    label: 'High Protein (35/25/30)',
+                    desc: 'Muskelaufbau, Defizitdiäten - sättigt gut',
+                    protein: 40, carbs: 25, fats: 25
                   },
                   { 
                     id: 'high_carb',
-                    label: 'High Carb (20/50/30)',
-                    desc: 'Ideal für intensive Workouts',
-                    protein: 20, carbs: 50, fats: 30
+                    label: 'High Carb (15/60/25)',
+                    desc: 'Ausdauersport, Volumen-Tage',
+                    protein: 15, carbs: 60, fats: 25
                   },
                   {
                     id: 'low_carb',
-                    label: 'Low Carb (30/20/50)',
-                    desc: 'Ketogene Ernährung & Fettverbrennung',
-                    protein: 30, carbs: 20, fats: 50
+                    label: 'Low Carb/Moderate (35/25/40)',
+                    desc: 'Fettverlust, Insulinempfindlichkeit',
+                    protein: 35, carbs: 25, fats: 40
+                  },
+                  {
+                    id: 'keto',
+                    label: 'Keto (22/8/70)',
+                    desc: 'Therapeutisch, Keto-Fans - Adaption nötig',
+                    protein: 22, carbs: 8, fats: 70
+                  },
+                  {
+                    id: 'carb_cycling',
+                    label: 'Carb-Cycling (variabel)',
+                    desc: 'Kraft-/HIIT-Athleten - wechselnde Tage',
+                    protein: 30, carbs: 35, fats: 35
                   },
                   {
                     id: 'custom',
