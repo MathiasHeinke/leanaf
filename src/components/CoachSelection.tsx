@@ -259,7 +259,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
               key={coach.id}
               coach={coach}
               isSelected={selectedCoach === coach.id}
-              onSelect={onCoachChange}
+              onSelect={() => navigate(`/coach/${coach.id}`)}
               disabled={isDisabled}
               requiresPremium={coach.isPremium}
             />

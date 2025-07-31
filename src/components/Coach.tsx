@@ -59,7 +59,6 @@ const coachProfiles = [
 
 const Coach = () => {
   const { coachId } = useParams();
-  const [selectedCoach, setSelectedCoach] = useState(coachId || 'soft');
 
   if (coachId) {
     const coach = coachProfiles.find(c => c.id === coachId);
@@ -79,8 +78,8 @@ const Coach = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <CoachSelection
-        selectedCoach={selectedCoach}
-        onCoachChange={setSelectedCoach}
+        selectedCoach=""
+        onCoachChange={() => {}}
       />
     </div>
   );
