@@ -50,20 +50,29 @@ const MessageItem = React.memo(({
   setRowHeight
 }: MessageItemProps) => {
   const itemRef = useRef<HTMLDivElement>(null);
+  const lastHeightRef = useRef<number>(0);
   const isUser = message.role === 'user';
 
-  // Measure height after render
+  // Measure height after render - BUT ONLY IF CHANGED
   useLayoutEffect(() => {
     if (itemRef.current) {
       const height = itemRef.current.getBoundingClientRect().height;
-      setRowHeight(height);
+      // CRITICAL: Only call setRowHeight if height actually changed
+      if (height !== lastHeightRef.current && height > 0) {
+        lastHeightRef.current = height;
+        setRowHeight(height);
+      }
     }
-  });
+  }); // NO dependencies = runs on every render but only updates if changed
 
   const handleImageLoad = useCallback(() => {
     if (itemRef.current) {
       const height = itemRef.current.getBoundingClientRect().height;
-      setRowHeight(height);
+      // CRITICAL: Only call setRowHeight if height actually changed
+      if (height !== lastHeightRef.current && height > 0) {
+        lastHeightRef.current = height;
+        setRowHeight(height);
+      }
     }
   }, [setRowHeight]);
 
@@ -161,9 +170,13 @@ export const MessageList = React.memo(({
   }, [messages.length]);
 
   const setRowHeight = useCallback((index: number, height: number) => {
-    if (rowHeights.current[index] !== height) {
+    // CRITICAL: Only update if height actually changed AND is valid
+    if (rowHeights.current[index] !== height && height > 0) {
       rowHeights.current[index] = height;
-      listRef.current?.resetAfterIndex(index);
+      // Batch updates to prevent excessive re-renders
+      setTimeout(() => {
+        listRef.current?.resetAfterIndex(index);
+      }, 0);
     }
   }, []);
 
