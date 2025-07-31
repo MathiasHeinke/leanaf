@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -38,57 +38,117 @@ export const CoachWorkoutPlanSaver: React.FC<CoachWorkoutPlanSaverProps> = ({
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
 
-  // Extract exercises from coach's text
+  // Enhanced parsing for various workout plan formats
   const parseCoachPlan = (text: string): Exercise[] => {
     const exercises: Exercise[] = [];
     const lines = text.split('\n');
     
-    for (const line of lines) {
-      // Look for exercise patterns like "**1. Kniebeuge**" or "1. Kniebeuge"
-      const exerciseMatch = line.match(/^\*?\*?(\d+\.?\s*)(.+?)\*?\*?$/);
-      if (exerciseMatch) {
-        const exerciseName = exerciseMatch[2].trim();
-        
-        // Skip if it's a header or section title
-        if (exerciseName.includes('Ganzkörper') || exerciseName.includes('Session') || 
-            exerciseName.includes('Hinweise') || exerciseName.includes('Warm-up')) {
-          continue;
+    // Multiple pattern matching for different coach styles
+    const patterns = [
+      // Standard numbered list: "1. Exercise" or "**1. Exercise**"
+      /^\*?\*?(\d+\.?\s*)(.+?)\*?\*?$/,
+      // Bullet points: "- Exercise" or "• Exercise"
+      /^[-•]\s*(.+)$/,
+      // German style: "Übung 1: Name"
+      /^Übung\s*\d+:\s*(.+)$/i,
+      // Bold exercise names without numbers
+      /^\*\*([^*]+)\*\*$/
+    ];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      let exerciseName = '';
+      let matched = false;
+      
+      // Try each pattern
+      for (const pattern of patterns) {
+        const match = line.match(pattern);
+        if (match) {
+          exerciseName = (match[2] || match[1]).trim();
+          matched = true;
+          break;
         }
-        
-        const exercise: Exercise = {
-          name: exerciseName,
-          sets: 3, // Default
-          reps: '8-10', // Default
-          rest_seconds: 90
-        };
-        
-        // Look for additional details in following lines
-        const nextLines = lines.slice(lines.indexOf(line) + 1, lines.indexOf(line) + 6);
-        for (const nextLine of nextLines) {
-          if (nextLine.includes('Sätze') && nextLine.includes('Wiederholungen')) {
-            const setsMatch = nextLine.match(/(\d+)\s*Sätze/);
-            const repsMatch = nextLine.match(/(\d+(?:-\d+)?)\s*Wiederholungen/);
-            if (setsMatch) exercise.sets = parseInt(setsMatch[1]);
-            if (repsMatch) exercise.reps = repsMatch[1];
-          }
-          
-          if (nextLine.includes('RPE')) {
-            const rpeMatch = nextLine.match(/RPE:\s*(\d+)/);
-            if (rpeMatch) exercise.rpe = parseInt(rpeMatch[1]);
-          }
-          
-          if (nextLine.includes('Pause')) {
-            const pauseMatch = nextLine.match(/(\d+)\s*Sekunden/);
-            if (pauseMatch) exercise.rest_seconds = parseInt(pauseMatch[1]);
-          }
-          
-          if (nextLine.includes('Fokus:')) {
-            exercise.notes = nextLine.replace('Fokus:', '').trim();
-          }
-        }
-        
-        exercises.push(exercise);
       }
+      
+      if (!matched) continue;
+      
+      // Skip headers, sections, and non-exercise content
+      const skipTerms = [
+        'ganzkörper', 'session', 'hinweise', 'warm-up', 'cooldown', 'cool-down',
+        'aufwärmen', 'dehnen', 'stretching', 'plan', 'training', 'workout',
+        'übersicht', 'programm', 'woche', 'tag', 'montag', 'dienstag', 'mittwoch',
+        'donnerstag', 'freitag', 'samstag', 'sonntag', 'ruhetag', 'pause'
+      ];
+      
+      const shouldSkip = skipTerms.some(term => 
+        exerciseName.toLowerCase().includes(term) || 
+        exerciseName.length < 3 ||
+        exerciseName.length > 50
+      );
+      
+      if (shouldSkip) continue;
+      
+      // Create exercise with intelligent defaults
+      const exercise: Exercise = {
+        name: exerciseName,
+        sets: 3,
+        reps: '8-12',
+        rest_seconds: 90
+      };
+      
+      // Look ahead for exercise details in next 8 lines
+      const lookAheadLines = lines.slice(i + 1, i + 8);
+      
+      for (const nextLine of lookAheadLines) {
+        const lower = nextLine.toLowerCase();
+        
+        // Parse sets and reps patterns
+        if (lower.includes('sätze') || lower.includes('sets')) {
+          const setsMatch = nextLine.match(/(\d+)\s*(?:sätze|sets)/i);
+          if (setsMatch) exercise.sets = parseInt(setsMatch[1]);
+          
+          // Also look for reps in same line
+          const repsMatch = nextLine.match(/(\d+(?:[-–]\d+)?)\s*(?:wiederholungen|wdh|reps)/i);
+          if (repsMatch) exercise.reps = repsMatch[1];
+        }
+        
+        // Parse standalone reps
+        if ((lower.includes('wiederholungen') || lower.includes('reps')) && !exercise.reps.includes('-')) {
+          const repsMatch = nextLine.match(/(\d+(?:[-–]\d+)?)\s*(?:wiederholungen|wdh|reps)/i);
+          if (repsMatch) exercise.reps = repsMatch[1];
+        }
+        
+        // Parse RPE
+        if (lower.includes('rpe')) {
+          const rpeMatch = nextLine.match(/rpe:\s*(\d+(?:[.,]\d+)?)/i);
+          if (rpeMatch) exercise.rpe = parseFloat(rpeMatch[1].replace(',', '.'));
+        }
+        
+        // Parse rest time
+        if (lower.includes('pause') || lower.includes('rest')) {
+          const restMatch = nextLine.match(/(\d+)\s*(?:sekunden|sek|sec|s|minuten|min|m)/i);
+          if (restMatch) {
+            const time = parseInt(restMatch[1]);
+            const unit = nextLine.match(/(?:minuten|min|m)/i) ? 'min' : 'sec';
+            exercise.rest_seconds = unit === 'min' ? time * 60 : time;
+          }
+        }
+        
+        // Parse focus/notes
+        if (lower.includes('fokus:') || lower.includes('note:') || lower.includes('hinweis:')) {
+          exercise.notes = nextLine.replace(/^.*?(?:fokus|note|hinweis):\s*/i, '').trim();
+        }
+        
+        // Parse weight
+        if (lower.includes('gewicht') || lower.includes('kg')) {
+          const weightMatch = nextLine.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+          if (weightMatch) exercise.weight_kg = parseFloat(weightMatch[1].replace(',', '.'));
+        }
+      }
+      
+      exercises.push(exercise);
     }
     
     return exercises;
@@ -144,16 +204,51 @@ export const CoachWorkoutPlanSaver: React.FC<CoachWorkoutPlanSaverProps> = ({
 
   const exercises = parseCoachPlan(planText);
 
+  // Auto-suggest plan name and category from text content
+  const getSuggestedPlanName = () => {
+    const text = planText.toLowerCase();
+    if (text.includes('oberkörper') || text.includes('upper')) return 'Oberkörper Training';
+    if (text.includes('unterkörper') || text.includes('lower')) return 'Unterkörper Training';
+    if (text.includes('push')) return 'Push Training';
+    if (text.includes('pull')) return 'Pull Training';
+    if (text.includes('legs') || text.includes('beine')) return 'Bein Training';
+    if (text.includes('ganzkörper') || text.includes('full body')) return 'Ganzkörper Training';
+    if (text.includes('kraft')) return 'Krafttraining';
+    return `${coachName} Trainingsplan`;
+  };
+
+  const getSuggestedCategory = () => {
+    const text = planText.toLowerCase();
+    if (text.includes('push')) return 'Push';
+    if (text.includes('pull')) return 'Pull';
+    if (text.includes('legs') || text.includes('beine')) return 'Legs';
+    if (text.includes('ganzkörper') || text.includes('full body')) return 'Full Body';
+    if (text.includes('cardio') || text.includes('ausdauer')) return 'Cardio';
+    return 'Full Body';
+  };
+
+  // Auto-fill suggestions when modal opens
+  useEffect(() => {
+    if (isOpen && !planName && !category) {
+      setPlanName(getSuggestedPlanName());
+      setCategory(getSuggestedCategory());
+    }
+  }, [isOpen]);
+
+  if (exercises.length === 0) {
+    return null; // Don't show button if no exercises detected
+  }
+
   return (
     <>
       <Button
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(true)}
-        className="mt-2"
+        className="mt-2 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200"
       >
         <Save className="h-4 w-4 mr-2" />
-        Als Trainingsplan speichern
+        Als Trainingsplan speichern ({exercises.length} Übungen)
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

@@ -34,6 +34,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
 import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
+import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
@@ -137,6 +138,8 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     processMessage,
     getMemorySummary
   } = useGlobalCoachMemory();
+
+  const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -402,6 +405,7 @@ Wie kann ich dir helfen?`;
     }
   };
 
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -493,18 +497,19 @@ Wie kann ich dir helfen?`;
                     </div>
                   )}
 
-                  {/* Workout Plan Saver */}
-                  {message.role === 'assistant' && (
-                    message.content.includes('Sätze') && 
-                    message.content.includes('Wiederholungen') &&
-                    message.content.includes('RPE') &&
-                    (message.content.includes('**1.') || message.content.includes('1.')) &&
-                    (mode === 'training' || mode === 'specialized')
-                  ) && (
+                  {/* Workout Plan Saver - Enhanced Detection */}
+                  {message.role === 'assistant' && 
+                   shouldShowPlanSaver(message.content, mode) && (
                     <CoachWorkoutPlanSaver
                       planText={message.content}
                       coachName={coach?.name || 'Coach'}
-                      onSaved={() => toast.success('Trainingsplan wurde erfolgreich gespeichert!')}
+                      onSaved={() => {
+                        toast.success('Trainingsplan wurde erfolgreich gespeichert!');
+                        // Update coach memory about the saved plan
+                        if (processMessage) {
+                          processMessage(`Plan "${message.content.slice(0, 50)}..." wurde gespeichert`, coach?.personality || 'motivierend', false);
+                        }
+                      }}
                     />
                   )}
 
