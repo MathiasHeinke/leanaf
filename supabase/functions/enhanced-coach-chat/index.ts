@@ -723,6 +723,18 @@ serve(async (req) => {
     
 // ============= NAME EXTRACTION & FALLBACK =============
 
+// Utility function for display name extraction
+const getDisplayName = (profile: any): string => {
+  return (
+    profile.preferred_name ||     // 🟢 Feld „Wie sollen die Coaches dich nennen?"
+    profile.first_name      ||
+    profile.nickname        ||
+    profile.full_name       ||
+    profile.email?.split('@')[0] ||
+    'Athlet'
+  );
+};
+
 // Enhanced name extraction function with multi-layer fallback
 const extractUserName = async (profile: any, userId: string, supabase: any): Promise<string> => {
   console.log('🔍 Extracting name from profile:', {
@@ -731,10 +743,11 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
     profileKeys: profile ? Object.keys(profile) : []
   });
 
-  // Layer 1: Use display_name from profile if available
-  if (profile?.display_name && profile.display_name.trim() !== '') {
-    const displayName = profile.display_name.trim();
-    console.log('✅ Using display_name:', displayName);
+  // Use the new getDisplayName utility function
+  const displayName = getDisplayName(profile);
+  
+  if (displayName !== 'Athlet') {
+    console.log('✅ Using extracted display name:', displayName);
     // Extract first name only
     return displayName.split(' ')[0];
   }

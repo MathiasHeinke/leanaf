@@ -18,7 +18,7 @@ export const CollapsibleCoachHeader = ({
   onHistoryClick, 
   onDeleteChat 
 }: CollapsibleCoachHeaderProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); // Default open
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -93,30 +93,21 @@ export const CollapsibleCoachHeader = ({
             </Button>
           )}
         </div>
-      </div>
 
-      {/* Toggle Arrow - positioned relative to coach banner and moves with it */}
-      <button
-        id="coachToggle"
-        onClick={toggleCollapse}
-        className={`absolute left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-black/80 backdrop-blur-sm p-1 rounded-full shadow-sm transition-all duration-300 border border-border/50 ${
-          collapsed 
-            ? 'rotate-180' 
-            : ''
-        }`}
-        style={{ 
-          top: collapsed 
-            ? '-20px' 
-            : '40px'
-        }}
-        aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
-      >
-        {collapsed ? (
-          <ArrowDown className="w-4 h-4" />
-        ) : (
-          <ArrowUp className="w-4 h-4" />
-        )}
-      </button>
+        {/* Toggle Arrow - positioned at bottom of coach bar */}
+        <button
+          id="coachToggle"
+          onClick={toggleCollapse}
+          className={`absolute left-1/2 -bottom-[14px] -translate-x-1/2 p-1 rounded-full shadow bg-white/80 dark:bg-black/80 backdrop-blur-sm transition-transform duration-300 ${
+            collapsed 
+              ? 'rotate-180' 
+              : ''
+          }`}
+          aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      </div>
 
       {/* Spacer to prevent content overlap */}
       <div 
