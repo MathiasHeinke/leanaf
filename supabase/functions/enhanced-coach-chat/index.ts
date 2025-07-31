@@ -702,6 +702,66 @@ serve(async (req) => {
       );
     }
     
+// ============= NAME EXTRACTION & FALLBACK =============
+
+// Enhanced name extraction function with multi-layer fallback
+const extractUserName = (profile: any, userId: string): string => {
+  console.log('🔍 Extracting name from profile:', {
+    hasProfile: !!profile,
+    displayName: profile?.display_name,
+    profileKeys: profile ? Object.keys(profile) : []
+  });
+
+  // Layer 1: Use display_name from profile if available
+  if (profile?.display_name && profile.display_name.trim() !== '') {
+    const displayName = profile.display_name.trim();
+    console.log('✅ Using display_name:', displayName);
+    // Extract first name only
+    return displayName.split(' ')[0];
+  }
+
+  // Layer 2: Try to extract from email domain if available
+  if (profile?.email) {
+    const emailParts = profile.email.split('@');
+    if (emailParts.length > 0) {
+      const localPart = emailParts[0];
+      
+      // If email is like "mathias@domain.com" or "mathiasheinke@domain.com"
+      if (localPart.includes('mathias')) {
+        console.log('🔍 Extracted "Mathias" from email');
+        return 'Mathias';
+      }
+      
+      // Try to extract name from domain like "mathiasheinke.de"
+      if (emailParts[1] && emailParts[1].includes('mathias')) {
+        console.log('🔍 Extracted "Mathias" from email domain');
+        return 'Mathias';
+      }
+      
+      // If local part is not "office" or similar generic terms
+      if (!['office', 'admin', 'info', 'contact', 'mail', 'support'].includes(localPart.toLowerCase())) {
+        const extractedName = localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase();
+        console.log('📧 Using cleaned email local part:', extractedName);
+        return extractedName;
+      }
+    }
+  }
+
+  console.log('⚠️ No suitable name found, using fallback based on user context');
+  
+  // Layer 3: Return generic fallback
+  return 'Nutzer';
+};
+
+// ============= NAME EXTRACTION & FALLBACK =============
+    console.log('👤 Extracting user name...');
+    const userName = extractUserName(userData.profile, userId);
+    console.log('📛 User name extracted:', userName, {
+      hasProfile: !!userData.profile,
+      hasDisplayName: !!userData.profile?.display_name,
+      profileDisplayName: userData.profile?.display_name
+    });
+
     // ============= RAG INTEGRATION =============
     const shouldUseRAG = await determineRAGUsage(message, coachPersonality);
     let ragContext = null;
@@ -809,7 +869,7 @@ serve(async (req) => {
     // Create enhanced system message with RAG context and comprehensive data
     const memoryContext = createMemoryContext(coachMemory, sentimentResult);
     const ragPromptAddition = ragContext ? createRAGPromptAddition(ragContext) : '';
-    const systemMessage = createEnhancedSystemMessage(coachPersonality, userData, memoryContext, ragPromptAddition);
+    const systemMessage = createEnhancedSystemMessage(coachPersonality, userData, memoryContext, ragPromptAddition, userName);
     
     const messages = [
       { role: 'system', content: systemMessage },
@@ -989,7 +1049,7 @@ Nutze diese Informationen, um wissenschaftlich fundierte und präzise Antworten 
 ===`;
 };
 
-const createEnhancedSystemMessage = (personality: string, userData: any, memoryContext: string, ragAddition: string = '') => {
+const createEnhancedSystemMessage = (personality: string, userData: any, memoryContext: string, ragAddition: string = '', userName: string = 'Nutzer') => {
   const basePersonalities = {
     motivierend: `Du bist ein motivierender Fitness- und Ernährungscoach, der stets positiv und ermutigend ist. Du hilfst dabei, Ziele zu erreichen und motivierst bei Rückschlägen.`,
     sachlich: `Du bist ein sachlicher, wissenschaftlich orientierter Coach, der auf Fakten und bewährte Methoden setzt. Du erklärst komplexe Zusammenhänge verständlich.`,
@@ -1040,12 +1100,14 @@ const createEnhancedSystemMessage = (personality: string, userData: any, memoryC
 - Supplements: ${userData.supplements?.length || 0} Einträge
 
 👤 PROFIL:
-${userData.profile ? `Alter: ${userData.profile.age || 'unbekannt'}, Größe: ${userData.profile.height || 'unbekannt'}cm, Geschlecht: ${userData.profile.gender || 'unbekannt'}` : 'Kein Profil'}
+${userData.profile ? `Name: ${userData.profile.display_name || 'unbekannt'}, Alter: ${userData.profile.age || 'unbekannt'}, Größe: ${userData.profile.height || 'unbekannt'}cm, Geschlecht: ${userData.profile.gender || 'unbekannt'}` : 'Kein Profil'}
 
 📈 DATENSAMMLUNG: ${userData.dataCollectionTimestamp ? new Date(userData.dataCollectionTimestamp).toLocaleString('de-DE') : 'Unbekannt'}
 ===` : '';
 
   return `${basePersonality}
+
+Du hilfst ${userName} bei Ernährung, Training und Fitness. Du sprichst ${userName} IMMER mit diesem Namen an.
 
 ${memoryContext}
 
@@ -1055,6 +1117,7 @@ ${ragAddition}
 
 === WEITERE ANWEISUNGEN ===
 - Nutze ALLE verfügbaren Benutzerdaten für personalisierte Antworten
+- Sprich ${userName} IMMER mit seinem Namen an - verwende niemals generische Anreden
 - Berücksichtige die Stimmung und den Beziehungskontext aus der Coach Memory
 - Bei wissenschaftlichen Fragen nutze die RAG-Wissensbasis für fundierte Antworten
 - Sei spezifisch und beziehe dich auf konkrete Daten wenn verfügbar
