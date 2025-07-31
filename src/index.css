@@ -112,7 +112,33 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 221 83% 53%;
+
+    /* SmartCard Components */
+    --header-height: 60px;
   }
+
+@layer components {
+  .smartcard {
+    @apply w-full rounded-xl border border-white/40 dark:border-white/20 bg-white/60 dark:bg-black/40 backdrop-blur shadow-md overflow-hidden;
+  }
+  .smartcard[data-tool="supplement"] { @apply border-teal-400; }
+  .smartcard[data-tool="plan"]        { @apply border-blue-500; }
+  .smartcard[data-tool="meal"]        { @apply border-amber-400; }
+  .smartcard[data-tool="exercise"]    { @apply border-green-500; }
+  .smartcard[data-tool="mindset"]     { @apply border-purple-500; }
+  
+  /* Header */
+  .sc-header { @apply flex items-center gap-2 px-3 py-2 bg-white/30 dark:bg-black/30 backdrop-blur-sm; }
+  .sc-icon   { @apply text-lg; }
+  .sc-title  { @apply font-medium flex-1; }
+  .sc-toggle { @apply p-1 rounded-full hover:bg-white/20 dark:hover:bg-black/20; }
+  
+  /* Body */
+  .sc-body   { @apply px-3 py-2 max-h-[220px] overflow-y-auto text-sm; }
+  
+  /* Actions */
+  .sc-actions{ @apply flex justify-end gap-2 px-3 py-2 bg-white/20 dark:bg-black/20; }
+}
 
   .dark {
     /* Dark Mode - Modern & Clean */

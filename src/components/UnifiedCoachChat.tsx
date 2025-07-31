@@ -38,6 +38,8 @@ import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
 import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
 import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
+import { DynamicCoachGreeting } from '@/components/DynamicCoachGreeting';
+import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 
 import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -347,6 +349,23 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   }, [transcribedText, isRecording]);
 
+  // Handle history and chat deletion
+  const handleHistoryClick = () => {
+    // Handle history functionality
+    console.log('History clicked');
+  };
+
+  const handleDeleteChat = async () => {
+    try {
+      // Clear messages for today
+      setMessages([]);
+      toast.success('Chat gelöscht');
+    } catch (error) {
+      console.error('Error clearing chat:', error);
+      toast.error('Fehler beim Löschen');
+    }
+  };
+
   // ============= RENDER LOGIC =============
   if (isLoading) {
     if (useFullscreenLayout) {
@@ -490,7 +509,26 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     return (
       <>
+        <CollapsibleCoachHeader
+          coach={{
+            name: coach?.name || 'Coach',
+            imageUrl: coach?.imageUrl,
+            specialization: coach?.expertise?.join(', ') || coach?.personality
+          }}
+          onHistoryClick={handleHistoryClick}
+          onDeleteChat={handleDeleteChat}
+        />
+        
         <ChatLayout chatInput={chatInput}>
+          <div className="px-4 pt-4">
+            <DynamicCoachGreeting
+              coachId={coach?.id || 'lucy'}
+              coachName={coach?.name || 'Coach'}
+              coachRole={coach?.expertise?.join(', ') || coach?.personality || 'Coach'}
+              userProfile={undefined}
+            />
+          </div>
+          
           <SimpleMessageList 
             messages={messages.map(msg => ({
               id: msg.id,
@@ -508,7 +546,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             }}
           />
         </ChatLayout>
-
       </>
     );
   }
