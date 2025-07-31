@@ -42,7 +42,7 @@ import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 import { generateDynamicCoachGreeting, createGreetingContext } from '@/utils/dynamicCoachGreetings';
 
-import { resolveCoachFirstName } from '@/utils/coachNameResolver';
+import { getDisplayName } from "../../supabase/functions/enhanced-coach-chat/utils/getDisplayName";
 
 import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -155,9 +155,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
-        // Get user's first name for personalization using centralized resolver
+        // Get user's first name for personalization
         const getUserName = () => {
-          return resolveCoachFirstName(profileData);
+          return getDisplayName(profileData);
         };
 
         // Generate personalized greeting

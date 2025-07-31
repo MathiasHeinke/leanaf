@@ -17,7 +17,7 @@ export const DualCoachAccess: React.FC = () => {
       gradientColors: 'from-red-500 to-red-600',
       badges: ['Intelligente Planung', 'Progressive Overload', 'Kraftaufbau'],
       buttonText: 'Training mit Sascha starten',
-      route: '/training/sascha',
+      route: '/coach/sascha',
       icon: Target
     },
     {
@@ -28,7 +28,7 @@ export const DualCoachAccess: React.FC = () => {
       gradientColors: 'from-orange-500 to-orange-600',
       badges: ['Heavy+Volume', 'Extreme Hypertrophie', 'Mentale Härte'],
       buttonText: 'Beast Mode mit Markus',
-      route: '/training/markus',
+      route: '/coach/markus',
       icon: Flame
     }
   ];

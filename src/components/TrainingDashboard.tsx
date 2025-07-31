@@ -453,7 +453,7 @@ export const TrainingDashboard: React.FC = () => {
       {false && (
       <div className="grid gap-6 grid-cols-1">
         <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
-              onClick={() => navigate('/training/sascha')}>
+              onClick={() => navigate('/coach/sascha')}>
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -482,7 +482,7 @@ export const TrainingDashboard: React.FC = () => {
         </Card>
 
         <Card className="border-orange-500/20 hover:border-orange-500/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
-              onClick={() => navigate('/training/markus')}>
+              onClick={() => navigate('/coach/markus')}>
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-orange-600/20 to-red-600/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">

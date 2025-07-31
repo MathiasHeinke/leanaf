@@ -8,7 +8,7 @@ import { generateDynamicCoachGreeting, createGreetingContext } from "@/utils/dyn
 import { useGlobalCoachMemory } from "@/hooks/useGlobalCoachMemory";
 import { useParams } from "react-router-dom";
 
-import { resolveCoachFirstName } from "@/utils/coachNameResolver";
+import { getDisplayName } from "../../supabase/functions/enhanced-coach-chat/utils/getDisplayName";
 
 interface DailyGreetingProps {
   userProfile?: any;
@@ -26,8 +26,7 @@ export const DailyGreeting = ({ userProfile, coachId }: DailyGreetingProps) => {
   const currentCoachId = coachId || (params['*']?.split('/')[0]) || 'lucy';
   
   const getUserName = () => {
-    // Use centralized name resolver
-    return resolveCoachFirstName(userProfile);
+    return getDisplayName(userProfile);
   };
 
   // Generate personalized coach greeting or fallback to time-based

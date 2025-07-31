@@ -42,8 +42,6 @@ export const GlobalHeader = ({
 
   // Get current coach ID from route and URL params
   const getCurrentCoachId = () => {
-    if (location.pathname.startsWith('/training/sascha')) return 'sascha';
-    if (location.pathname.startsWith('/training/markus')) return 'markus';
     if (location.pathname.startsWith('/coach/')) {
       // Extract coach ID from route parameter /coach/:coachId
       const coachId = location.pathname.split('/coach/')[1];
@@ -107,8 +105,6 @@ export const GlobalHeader = ({
       case '/profile': return 'Profil';
       case '/coach': return 'Coaching';
       case '/training': return 'Workout';
-      case '/training/sascha': return 'Workout/Sascha';
-      case '/training/markus': return 'Workout/Markus';
       case '/history': return 'Analyse';
       case '/achievements': return 'Erfolge';
       case '/science': return 'Wissenschaft';
@@ -207,9 +203,7 @@ export const GlobalHeader = ({
 
   // Check if we're on a coach chat route (show dropdown when in actual coach conversation)
   const isCoachChatRoute = 
-    location.pathname.startsWith('/training/sascha') ||
-    location.pathname.startsWith('/training/markus') ||
-    location.pathname.startsWith('/coach/') || // New route pattern /coach/:coachId
+    location.pathname.startsWith('/coach/') || // Route pattern /coach/:coachId
     (location.pathname === '/coach' && new URLSearchParams(location.search).get('coach')); // Backwards compatibility
 
   return (
@@ -266,11 +260,7 @@ export const GlobalHeader = ({
           <div className="flex justify-between items-center px-4 py-2">
             <button 
               onClick={() => {
-                if (location.pathname.startsWith('/training/sascha')) {
-                  navigate('/training');
-                } else if (location.pathname.startsWith('/training/markus')) {
-                  navigate('/training');
-                } else if (location.pathname.startsWith('/coach')) {
+                if (location.pathname.startsWith('/coach')) {
                   navigate('/coach');
                 } else {
                   navigate('/');
