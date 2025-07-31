@@ -5,8 +5,109 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { getDisplayName } from './utils/getDisplayName.ts';
 
 // -------------------------------------------------------------------------
-// Tool-Handler Map
-import { trainingsplan, uebung, supplement, gewicht, foto } from '../tool-handlers/index.ts';
+// Tool handlers - import directly to avoid module resolution issues
+const trainingsplan = async (conv: any[], userId: string) => {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'plan',
+    payload: { 
+      html: `<div>
+        <h3>Trainingsplan für: ${lastUserMsg}</h3>
+        <p>Dein individueller Plan wird erstellt...</p>
+      </div>`,
+      ts: Date.now()
+    }
+  };
+};
+
+const uebung = async (conv: any[], userId: string) => {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'exercise',
+    payload: { 
+      html: `<div>
+        <h3>Übung hinzugefügt</h3>
+        <p>${lastUserMsg}</p>
+      </div>`,
+      ts: Date.now()
+    }
+  };
+};
+
+const supplement = async (conv: any[], userId: string) => {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'supplement',
+    payload: { 
+      html: `<div>
+        <h3>Supplement-Empfehlung</h3>
+        <p>Basierend auf: ${lastUserMsg}</p>
+      </div>`,
+      ts: Date.now()
+    }
+  };
+};
+
+const gewicht = async (conv: any[], userId: string) => {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  const weight = parseFloat(lastUserMsg.replace(',', '.'));
+  
+  if (isNaN(weight)) {
+    return {
+      role: 'assistant',
+      content: 'Bitte gib dein Gewicht als Zahl an, z. B. „80,5".',
+    };
+  }
+  
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    await supabase.from('weight_entries')
+      .insert({ user_id: userId, weight, date: new Date().toISOString() });
+    
+    return {
+      role: 'assistant',
+      type: 'card',
+      card: 'weight',
+      payload: { value: weight, unit: 'kg', ts: Date.now() },
+      meta: { clearTool: true }
+    };
+  } catch (error) {
+    console.error('Error saving weight:', error);
+    return {
+      role: 'assistant',
+      content: 'Fehler beim Speichern des Gewichts. Bitte versuche es erneut.',
+    };
+  }
+};
+
+const foto = async (images: string[], userId: string) => {
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'meal',
+    payload: { 
+      html: `<div>
+        <h3>📸 Bild-Analyse</h3>
+        <p>Dein Bild wird analysiert...</p>
+        <p>Anzahl Bilder: ${images.length}</p>
+      </div>`,
+      ts: Date.now()
+    },
+    meta: { clearTool: true }
+  };
+};
 
 // Create handlers map
 const handlers = { trainingsplan, uebung, supplement, gewicht, foto };
