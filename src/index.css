@@ -307,6 +307,31 @@
 }
 
 /* Modern Typography */
+  /* 3.4 Icon buttons */
+  .icon-btn {
+    @apply p-2 rounded-full transition bg-transparent hover:bg-white/20 dark:hover:bg-black/20 focus:outline-none;
+  }
+
+  /* 3.5 Action buttons */
+  .btn-send {
+    @apply rounded-md bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium;
+  }
+
+  .btn-cancel {
+    @apply rounded-md border border-red-300 dark:border-red-500 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20;
+  }
+
+  /* 3.6 Mic pulse animation */
+  #micBtn.recording svg {
+    animation: mic-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

@@ -28,7 +28,8 @@ import {
   Sparkles,
   Heart,
   Target,
-  X
+  X,
+  Paperclip
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -43,6 +44,7 @@ import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
+import { ToolPicker } from '@/components/ToolPicker';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -119,11 +121,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [chatInitialized, setChatInitialized] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [recordingState, setRecordingState] = useState(false);
   
   
   // ============= REFS =============
   const scrollRef = useRef<HTMLDivElement>(null);
   const initializationRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // ============= HOOKS =============
   const { memory, isGlobalMemoryLoaded } = useGlobalCoachMemory();
@@ -205,13 +210,28 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const handleVoiceToggle = useCallback(async () => {
     if (isRecording) {
       const transcript = await stopRecording();
+      setRecordingState(false);
       if (transcript) {
         setInputText(prev => prev + (prev ? ' ' : '') + transcript);
       }
     } else {
       await startRecording();
+      setRecordingState(true);
     }
   }, [isRecording, startRecording, stopRecording]);
+
+  const handleVoiceSend = useCallback(async () => {
+    const transcript = await stopRecording();
+    setRecordingState(false);
+    if (transcript) {
+      setInputText(prev => prev + (prev ? ' ' : '') + transcript);
+    }
+  }, [stopRecording]);
+
+  const handleVoiceCancel = useCallback(async () => {
+    await stopRecording();
+    setRecordingState(false);
+  }, [stopRecording]);
 
   // Handle file upload
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -270,122 +290,104 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   if (useFullscreenLayout) {
 
     const chatInput = (
-      <div className="relative">
-        <Textarea
-          id="chatInput"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Nachricht eingeben ..."
-          rows={4}
-          disabled={isRecording}
-          className="w-full min-h-[96px] rounded-xl px-4 py-3
-                     bg-white/60 dark:bg-black/40 backdrop-blur
-                     border border-white/40 dark:border-white/20
-                     focus:outline-none resize-none overflow-auto"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
-        
-        {/* Recording-Overlay */}
-        <div 
-          className={`absolute inset-0 z-20 rounded-xl
-                      bg-white/70 dark:bg-black/50 backdrop-blur
-                      flex items-center justify-between px-4 transition-opacity duration-200 ${
-                        isRecording ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                      }`}
-        >
-          {/* Cancel-Button */}
-          <Button
-            onClick={async () => {
-              await stopRecording();
-            }}
-            variant="outline"
-            size="sm"
-            className="flex shrink-0 items-center gap-1 px-3 py-2
-                       text-sm font-medium rounded-md
-                       border border-red-200 dark:border-red-400
-                       text-red-600 dark:text-red-400
-                       hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            <X className="h-3 w-3" />
-            Abbrechen
-          </Button>
-
-          {/* Equalizer + Status */}
-          <div className="flex flex-col items-center">
-            <div className="flex gap-1 h-5">
-              <span className="bar"></span>
-              <span className="bar"></span>
-              <span className="bar"></span>
-              <span className="bar"></span>
-              <span className="bar"></span>
-            </div>
-            <span className="mt-1 text-xs">Ich höre zu ...</span>
-          </div>
-
-          {/* Send-Button */}
-          <Button
-            onClick={async () => {
-              const transcript = await stopRecording();
-              if (transcript) {
-                setInputText(prev => prev + (prev ? ' ' : '') + transcript);
+      <div className="space-y-2 px-3 py-2">
+        {/* Textarea Row */}
+        <div className="relative">
+          <Textarea
+            id="chatInput"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="Nachricht eingeben ..."
+            rows={4}
+            disabled={recordingState}
+            className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+              if (e.key === 'Escape' && recordingState) {
+                handleVoiceCancel();
               }
             }}
-            size="sm"
-            className="flex shrink-0 items-center gap-1 px-3 py-2
-                       text-sm font-medium rounded-md
-                       bg-blue-500 hover:bg-blue-600 text-white"
-          >
-            <Send className="h-3 w-3" />
-            Senden
-          </Button>
-        </div>
-
-        {/* File Upload & Voice Button */}
-        <div className="flex justify-between items-center mt-3">
-          <div className="flex gap-2">
-            <input
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="file-upload"
-              multiple
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => document.getElementById('file-upload')?.click()}
-              disabled={uploading || isRecording}
-              className="bg-card/50 border-border hover:bg-card"
-            >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleVoiceToggle}
-              disabled={isProcessing}
-              className={`bg-card/50 border-border hover:bg-card ${isRecording ? 'bg-red-500/20 border-red-500' : ''}`}
-            >
-              <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
-            </Button>
-          </div>
+          />
           
-          <Button 
-            onClick={sendMessage}
-            disabled={!inputText.trim() || isThinking || isRecording}
-            size="sm"
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            Senden
-          </Button>
+          {/* Recording Overlay */}
+          {recordingState && (
+            <div className="absolute inset-0 z-20 rounded-xl bg-white/70 dark:bg-black/50 backdrop-blur flex items-center justify-between px-4" role="dialog" aria-live="polite">
+              <button 
+                onClick={handleVoiceCancel}
+                className="btn-cancel px-3 py-2"
+              >
+                ✕ Abbrechen
+              </button>
+              
+              <div className="flex flex-col items-center">
+                <div className="flex gap-1 h-5">
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                </div>
+                <span className="mt-1 text-xs">Ich höre zu ...</span>
+              </div>
+              
+              <button 
+                onClick={handleVoiceSend}
+                className="btn-send px-3 py-2"
+              >
+                ➤ Senden
+              </button>
+            </div>
+          )}
         </div>
+        
+        {/* Buttons Row */}
+        <div className="flex items-center gap-2">
+          <ToolPicker onToolSelect={setSelectedTool} selectedTool={selectedTool} />
+          
+          <button
+            type="button"
+            onClick={handleVoiceToggle}
+            disabled={isProcessing}
+            className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
+            aria-label="Aufnahme starten"
+            id="micBtn"
+          >
+            <Mic className="w-6 h-6" />
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="icon-btn"
+            aria-label="Datei hochladen"
+          >
+            <Paperclip className="w-6 h-6" />
+          </button>
+          
+          <div className="flex-1"></div>
+          
+          <button 
+            onClick={sendMessage} 
+            disabled={!inputText.trim() || isThinking || recordingState}
+            className="btn-send px-4 py-2"
+          >
+            ➤ Senden
+          </button>
+        </div>
+        
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFileUpload}
+          className="hidden"
+          multiple
+        />
       </div>
     );
 
@@ -448,122 +450,104 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         </ScrollArea>
         
         <div className="flex-none">
-          <div className="relative">
-            <Textarea
-              id="chatInputCard"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Nachricht eingeben ..."
-              rows={4}
-              disabled={isRecording}
-              className="w-full min-h-[96px] rounded-xl px-4 py-3
-                         bg-white/60 dark:bg-black/40 backdrop-blur
-                         border border-white/40 dark:border-white/20
-                         focus:outline-none resize-none overflow-auto"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-            />
-            
-            {/* Recording-Overlay */}
-            <div 
-              className={`absolute inset-0 z-20 rounded-xl
-                          bg-white/70 dark:bg-black/50 backdrop-blur
-                          flex items-center justify-between px-4 transition-opacity duration-200 ${
-                            isRecording ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                          }`}
-            >
-              {/* Cancel-Button */}
-              <Button
-                onClick={async () => {
-                  await stopRecording();
-                }}
-                variant="outline"
-                size="sm"
-                className="flex shrink-0 items-center gap-1 px-3 py-2
-                           text-sm font-medium rounded-md
-                           border border-red-200 dark:border-red-400
-                           text-red-600 dark:text-red-400
-                           hover:bg-red-50 dark:hover:bg-red-900/20"
-              >
-                <X className="h-3 w-3" />
-                Abbrechen
-              </Button>
-
-              {/* Equalizer + Status */}
-              <div className="flex flex-col items-center">
-                <div className="flex gap-1 h-5">
-                  <span className="bar"></span>
-                  <span className="bar"></span>
-                  <span className="bar"></span>
-                  <span className="bar"></span>
-                  <span className="bar"></span>
-                </div>
-                <span className="mt-1 text-xs">Ich höre zu ...</span>
-              </div>
-
-              {/* Send-Button */}
-              <Button
-                onClick={async () => {
-                  const transcript = await stopRecording();
-                  if (transcript) {
-                    setInputText(prev => prev + (prev ? ' ' : '') + transcript);
+          <div className="space-y-2 px-3 py-2">
+            {/* Textarea Row */}
+            <div className="relative">
+              <Textarea
+                id="chatInputCard"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Nachricht eingeben ..."
+                rows={4}
+                disabled={recordingState}
+                className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                  if (e.key === 'Escape' && recordingState) {
+                    handleVoiceCancel();
                   }
                 }}
-                size="sm"
-                className="flex shrink-0 items-center gap-1 px-3 py-2
-                           text-sm font-medium rounded-md
-                           bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <Send className="h-3 w-3" />
-                Senden
-              </Button>
-            </div>
-
-            {/* File Upload & Voice Button */}
-            <div className="flex justify-between items-center mt-3">
-              <div className="flex gap-2">
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload-card"
-                  multiple
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById('file-upload-card')?.click()}
-                  disabled={uploading || isRecording}
-                  className="bg-card/50 border-border hover:bg-card"
-                >
-                  <ImageIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleVoiceToggle}
-                  disabled={isProcessing}
-                  className={`bg-card/50 border-border hover:bg-card ${isRecording ? 'bg-red-500/20 border-red-500' : ''}`}
-                >
-                  <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
-                </Button>
-              </div>
+              />
               
-              <Button 
-                onClick={sendMessage}
-                disabled={!inputText.trim() || isThinking || isRecording}
-                size="sm"
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Senden
-              </Button>
+              {/* Recording Overlay */}
+              {recordingState && (
+                <div className="absolute inset-0 z-20 rounded-xl bg-white/70 dark:bg-black/50 backdrop-blur flex items-center justify-between px-4" role="dialog" aria-live="polite">
+                  <button 
+                    onClick={handleVoiceCancel}
+                    className="btn-cancel px-3 py-2"
+                  >
+                    ✕ Abbrechen
+                  </button>
+                  
+                  <div className="flex flex-col items-center">
+                    <div className="flex gap-1 h-5">
+                      <span className="bar"></span>
+                      <span className="bar"></span>
+                      <span className="bar"></span>
+                      <span className="bar"></span>
+                      <span className="bar"></span>
+                    </div>
+                    <span className="mt-1 text-xs">Ich höre zu ...</span>
+                  </div>
+                  
+                  <button 
+                    onClick={handleVoiceSend}
+                    className="btn-send px-3 py-2"
+                  >
+                    ➤ Senden
+                  </button>
+                </div>
+              )}
             </div>
+            
+            {/* Buttons Row */}
+            <div className="flex items-center gap-2">
+              <ToolPicker onToolSelect={setSelectedTool} selectedTool={selectedTool} />
+              
+              <button
+                type="button"
+                onClick={handleVoiceToggle}
+                disabled={isProcessing}
+                className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
+                aria-label="Aufnahme starten"
+                id="micBtn"
+              >
+                <Mic className="w-6 h-6" />
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="icon-btn"
+                aria-label="Datei hochladen"
+              >
+                <Paperclip className="w-6 h-6" />
+              </button>
+              
+              <div className="flex-1"></div>
+              
+              <button 
+                onClick={sendMessage} 
+                disabled={!inputText.trim() || isThinking || recordingState}
+                className="btn-send px-4 py-2"
+              >
+                ➤ Senden
+              </button>
+            </div>
+            
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              onChange={handleFileUpload}
+              className="hidden"
+              multiple
+            />
           </div>
         </div>
       </CardContent>
