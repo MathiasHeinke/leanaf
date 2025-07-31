@@ -130,6 +130,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [hasFiles, setHasFiles] = useState(false);
   const [showToolBadge, setShowToolBadge] = useState(false);
   const [toolBadgeText, setToolBadgeText] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   
   
   // ============= REFS =============
@@ -224,7 +225,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   
   // ============= REAL COACH CHAT WITH AI =============
   const sendMessage = useCallback(async () => {
-    if (!inputText.trim() || !user?.id) return;
+    if ((!inputText.trim() && uploadedImages.length === 0) || !user?.id) return;
     
     const userMessage: UnifiedMessage = {
       id: `user-${Date.now()}`,
@@ -232,18 +233,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       content: inputText,
       created_at: new Date().toISOString(),
       coach_personality: coach?.personality || 'motivierend',
-      images: [],
+      images: uploadedImages,
       mode: mode
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
+    setUploadedImages([]);
+    setHasFiles(false);
     setIsThinking(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('enhanced-coach-chat', {
         body: {
           message: inputText,
+          images: uploadedImages,
           coach_personality: coach?.personality || 'motivierend',
           context_data: {
             mode: mode,
@@ -291,7 +295,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setIsThinking(false);
       setSelectedTool(null); // Reset tool after use
     }
-  }, [inputText, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, supabase]);
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, supabase]);
 
   // Handle voice recording
   const handleVoiceToggle = useCallback(async () => {
@@ -327,18 +331,29 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     try {
       const uploadedUrls = await uploadFiles(Array.from(files));
-      // Add uploaded images to message
       if (uploadedUrls.length > 0) {
-        setInputText(prev => prev + (prev ? '\n' : '') + `[Uploaded files: ${uploadedUrls.join(', ')}]`);
+        setUploadedImages(prev => [...prev, ...uploadedUrls]);
         setHasFiles(true);
       }
     } catch (error) {
       console.error('Upload failed:', error);
+      toast.error('Fehler beim Hochladen der Datei');
     }
     
     // Reset file input
     event.target.value = '';
   }, [uploadFiles]);
+
+  // Remove image from uploaded images
+  const removeImage = useCallback((index: number) => {
+    setUploadedImages(prev => {
+      const newImages = prev.filter((_, i) => i !== index);
+      if (newImages.length === 0) {
+        setHasFiles(false);
+      }
+      return newImages;
+    });
+  }, []);
 
   // Tool color mapping
   const colorMap: Record<string, string> = {
@@ -421,8 +436,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   // Determine if send button should be enabled
   const canSend = useMemo(() => {
-    return inputText.trim() || hasFiles || selectedTool;
-  }, [inputText, hasFiles, selectedTool]);
+    return inputText.trim() || uploadedImages.length > 0 || selectedTool;
+  }, [inputText, uploadedImages.length, selectedTool]);
 
   // Effect to handle transcribed text
   useEffect(() => {
@@ -480,6 +495,28 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     const chatInput = (
       <div className="space-y-2 px-3 py-2">
+        {/* Uploaded Images Thumbnails */}
+        {uploadedImages.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-2">
+            {uploadedImages.map((imageUrl, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={imageUrl}
+                  alt={`Hochgeladenes Bild ${index + 1}`}
+                  className="w-full h-20 object-cover rounded-lg border border-border/50"
+                />
+                <button
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:scale-110 transition-transform"
+                  aria-label={`Bild ${index + 1} entfernen`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
         {/* Textarea Row */}
         <div className="relative">
           {/* Tool Badge */}
@@ -657,6 +694,28 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         
         <div className="flex-none">
           <div className="space-y-2 px-3 py-2">
+            {/* Uploaded Images Thumbnails */}
+            {uploadedImages.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-2">
+                {uploadedImages.map((imageUrl, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={imageUrl}
+                      alt={`Hochgeladenes Bild ${index + 1}`}
+                      className="w-full h-20 object-cover rounded-lg border border-border/50"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:scale-110 transition-transform"
+                      aria-label={`Bild ${index + 1} entfernen`}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
             {/* Textarea Row */}
             <div className="relative">
               {/* Tool Badge */}
