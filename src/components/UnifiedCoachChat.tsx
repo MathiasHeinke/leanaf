@@ -517,15 +517,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   }, [user?.id, coach?.personality, coach?.name, mode]);
 
-  // Optimized message list height calculation
-  const messageListHeight = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerHeight - 240; // Account for header, footer, etc.
-    }
-    return 600; // Fallback
-  }, []);
-
-  // Convert to MessageList format
+  // Optimized message list height calculation - REMOVED, AutoSizer handles this
+  
+  // Convert to MessageList format - STABLE REFERENCES
   const convertedMessages = useMemo(() => 
     messages.map(msg => ({
       id: msg.id,
@@ -540,6 +534,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }))
     })), [messages]);
 
+  // STABLE COACH OBJECT - critical for React.memo
   const convertedCoach = useMemo(() => ({
     name: coach?.name || 'Coach',
     avatar: coach?.imageUrl || '',
@@ -906,12 +901,11 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           </CardHeader>
         </Card>
 
-        {/* Messages - VIRTUALIZED */}
+        {/* Messages - VIRTUALIZED with AutoSizer */}
         <div className="flex-1" ref={scrollRef}>
           <MessageList 
             messages={convertedMessages}
             coach={convertedCoach}
-            height={messageListHeight}
           />
           
           {/* Loading indicator */}

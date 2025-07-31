@@ -1,5 +1,6 @@
-import React from 'react';
-import { FixedSizeList as List } from 'react-window';
+import React, { useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { VariableSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import ReactMarkdown from 'react-markdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
@@ -31,29 +32,50 @@ interface MessageListProps {
   messages: ChatMessage[];
   coach: CoachProfile;
   onConversationAction?: (action: any) => void;
-  height: number;
+}
+
+interface MessageItemProps {
+  message: ChatMessage;
+  coach: CoachProfile;
+  onConversationAction?: (action: any) => void;
+  style: React.CSSProperties;
+  setRowHeight: (height: number) => void;
 }
 
 const MessageItem = React.memo(({ 
   message, 
   coach, 
   onConversationAction,
-  style 
-}: { 
-  message: ChatMessage; 
-  coach: CoachProfile; 
-  onConversationAction?: (action: any) => void;
-  style: React.CSSProperties;
-}) => {
+  style,
+  setRowHeight
+}: MessageItemProps) => {
+  const itemRef = useRef<HTMLDivElement>(null);
   const isUser = message.role === 'user';
+
+  // Measure height after render
+  useLayoutEffect(() => {
+    if (itemRef.current) {
+      const height = itemRef.current.getBoundingClientRect().height;
+      setRowHeight(height);
+    }
+  });
+
+  const handleImageLoad = useCallback(() => {
+    if (itemRef.current) {
+      const height = itemRef.current.getBoundingClientRect().height;
+      setRowHeight(height);
+    }
+  }, [setRowHeight]);
 
   return (
     <div style={style} className="px-4 py-2">
-      <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      <div ref={itemRef} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
         {!isUser && (
           <Avatar className="h-8 w-8 flex-shrink-0">
             <AvatarImage src={coach.avatar} alt={coach.name} />
-            <AvatarFallback className="text-xs">{coach.name[0]}</AvatarFallback>
+            <AvatarFallback className="text-xs">
+              {coach.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
         )}
         
@@ -74,6 +96,8 @@ const MessageItem = React.memo(({
                   src={image}
                   alt="Uploaded"
                   className="rounded-lg max-w-full h-auto"
+                  onLoad={handleImageLoad}
+                  onError={handleImageLoad}
                 />
               ))}
             </div>
@@ -84,11 +108,14 @@ const MessageItem = React.memo(({
               src={message.video_url} 
               controls 
               className="mt-2 rounded-lg max-w-full h-auto"
+              onLoadedMetadata={handleImageLoad}
             />
           )}
 
           {message.actions && message.actions.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className={`mt-3 flex gap-2 ${
+              message.actions.length > 3 ? 'flex-col' : 'flex-wrap'
+            }`}>
               {message.actions.map((action, idx) => (
                 <Button
                   key={idx}
@@ -119,9 +146,37 @@ MessageItem.displayName = 'MessageItem';
 export const MessageList = React.memo(({ 
   messages, 
   coach, 
-  onConversationAction,
-  height 
+  onConversationAction
 }: MessageListProps) => {
+  const listRef = useRef<List>(null);
+  const rowHeights = useRef<number[]>([]);
+
+  const getSize = useCallback((index: number) => rowHeights.current[index] ?? 120, []);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    if (messages.length > 0 && listRef.current) {
+      listRef.current.scrollToItem(messages.length - 1, 'end');
+    }
+  }, [messages.length]);
+
+  const setRowHeight = useCallback((index: number, height: number) => {
+    if (rowHeights.current[index] !== height) {
+      rowHeights.current[index] = height;
+      listRef.current?.resetAfterIndex(index);
+    }
+  }, []);
+
+  const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => (
+    <MessageItem
+      style={style}
+      message={messages[index]}
+      coach={coach}
+      onConversationAction={onConversationAction}
+      setRowHeight={(height: number) => setRowHeight(index, height)}
+    />
+  ), [messages, coach, onConversationAction, setRowHeight]);
+
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -131,22 +186,22 @@ export const MessageList = React.memo(({
   }
 
   return (
-    <List
-      height={height}
-      itemCount={messages.length}
-      itemSize={120} // Estimate - will auto-adjust
-      width="100%"
-      className="scrollbar-thin"
-    >
-      {({ index, style }) => (
-        <MessageItem
-          style={style}
-          message={messages[index]}
-          coach={coach}
-          onConversationAction={onConversationAction}
-        />
+    <AutoSizer>
+      {({ height, width }) => (
+        <List
+          height={height}
+          width={width}
+          ref={listRef}
+          itemCount={messages.length}
+          itemSize={getSize}
+          itemKey={(index) => messages[index].id}
+          overscanCount={5}
+          className="scrollbar-thin"
+        >
+          {Row}
+        </List>
       )}
-    </List>
+    </AutoSizer>
   );
 });
 
