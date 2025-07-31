@@ -1,5 +1,5 @@
-export { default as trainingsplan } from './trainingsplan';
-export { default as uebung } from './uebung';
-export { default as supplement } from './supplement';
-export { default as gewicht } from './gewicht';
-export { default as foto } from './foto';
+export { default as trainingsplan } from './trainingsplan.ts';
+export { default as uebung } from './uebung.ts';
+export { default as supplement } from './supplement.ts';
+export { default as gewicht } from './gewicht.ts';
+export { default as foto } from './foto.ts';
