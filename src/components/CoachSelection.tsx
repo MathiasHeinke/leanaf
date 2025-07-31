@@ -12,12 +12,12 @@ const coachProfiles = [
     id: 'soft',
     name: 'Lucy',
     age: 29,
-    role: 'Nutrition & Lifestyle Coach',
+    role: 'Nutrition, Metabolism & Lifestyle Coach',
     avatar: '❤️',
     imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
     personality: 'Ganzheitlich & Empathisch',
-    description: 'Unterstützt dich bei einer ausgewogenen Ernährung ohne Verzicht. Zeigt dir, wie du gesunde Gewohnheiten langfristig in deinen Alltag integrierst.',
-    strengths: ['Flexible Ernährung', 'Meal Timing', 'Gewohnheitsaufbau', 'Alltagsintegration'],
+    description: 'Unterstützt dich bei einer ausgewogenen Ernährung ohne Verzicht. Spezialistin für Stoffwechsel und metabolische Flexibilität. Zeigt dir, wie du gesunde Gewohnheiten langfristig in deinen Alltag integrierst.',
+    strengths: ['Flexible Ernährung', 'Metabolische Flexibilität', 'Keto & Low-Carb', 'Stoffwechseloptimierung', 'Meal Timing', 'Gewohnheitsaufbau'],
     quote: 'Nachhaltiger Erfolg entsteht durch Balance, nicht durch Perfektion.',
     color: 'green',
     accentColor: 'from-green-500 to-green-600',
@@ -25,13 +25,13 @@ const coachProfiles = [
     coachInfo: {
       id: 'soft',
       name: 'Dr. Lucy Martinez',
-      role: 'Nutrition & Lifestyle Coach',
-      scientificFoundation: 'Ernährungswissenschaften (Ph.D.) mit Fokus auf Chrononutrition, Stoffwechselphysiologie und Verhaltenspsychologie. Spezialisierung auf nachhaltige Ernährungsinterventionen.',
-      keyMethods: ['80/20+ Ernährungsprinzip', 'Chrononutritive Strategien', 'Verhaltensmodifikation', 'Lifestyle-Integration'],
-      specializations: ['Flexible Ernährungsstrategien', 'Stoffwechseloptimierung', 'Essverhalten & Psychologie', 'Work-Life-Balance'],
-      evidence: 'Basiert auf Forschung zu flexiblen Diätansätzen, zirkadianen Rhythmen und langfristiger Gewichtskontrolle ohne restriktive Diäten.',
-      interventions: ['Personalisierte Ernährungspläne', 'Habit-Coaching', 'Meal-Timing Optimierung', 'Stress-Management'],
-      philosophy: 'Nachhaltiger Lifestyle-Wandel durch Balance, Flexibilität und die Integration gesunder Gewohnheiten in den Alltag.',
+      role: 'Nutrition, Metabolism & Lifestyle Coach',
+      scientificFoundation: 'Ernährungswissenschaften (Ph.D.) mit Fokus auf Chrononutrition, Stoffwechselphysiologie, Ketose und Verhaltenspsychologie. Spezialisierung auf nachhaltige Ernährungsinterventionen und metabolische Flexibilität.',
+      keyMethods: ['80/20+ Ernährungsprinzip', 'Chrononutritive Strategien', 'Ketogene Ansätze', 'Metabolische Flexibilität', 'Verhaltensmodifikation', 'Lifestyle-Integration'],
+      specializations: ['Flexible Ernährungsstrategien', 'Stoffwechseloptimierung', 'Ketogene Ernährung', 'Metabolische Flexibilität', 'Hormonbalance', 'Essverhalten & Psychologie'],
+      evidence: 'Basiert auf Forschung zu flexiblen Diätansätzen, Ketose, metabolischer Flexibilität, zirkadianen Rhythmen und langfristiger Gewichtskontrolle ohne restriktive Diäten.',
+      interventions: ['Personalisierte Ernährungspläne', 'Keto-Transitioning', 'Metabolic-Flexibility-Training', 'Habit-Coaching', 'Meal-Timing Optimierung', 'Stress-Management'],
+      philosophy: 'Nachhaltiger Lifestyle-Wandel durch Balance, Flexibilität und die Integration gesunder Gewohnheiten in den Alltag. Metabolische Anpassungsfähigkeit als Schlüssel zur optimalen Gesundheit.',
       color: 'green'
     }
   },
@@ -66,12 +66,12 @@ const coachProfiles = [
     id: 'motivierend',
     name: 'Kai',
     age: 35,
-    role: 'Mindset & Recovery Coach',
+    role: 'Mindset, Recovery & Transformation Coach',
     avatar: '💪',
     imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
     personality: 'Achtsam & Strategisch',
-    description: 'Hilft dir dabei, mentale Stärke aufzubauen und deine Regeneration zu optimieren. Fokussiert auf Achtsamkeit und nachhaltiges Wohlbefinden.',
-    strengths: ['Mentales Training', 'Stressmanagement', 'Schlafoptimierung', 'Achtsamkeit'],
+    description: 'Hilft dir dabei, mentale Stärke aufzubauen und deine Regeneration zu optimieren. Spezialist für ganzheitliche Transformation mit Vier-Quadranten-Analyse. Fokussiert auf Achtsamkeit und nachhaltiges Wohlbefinden.',
+    strengths: ['Mentales Training', 'Ganzheitliche Transformation', 'Vier-Quadranten-Analyse', 'Stressmanagement', 'Schlafoptimierung', 'Achtsamkeit'],
     quote: 'Der Geist formt den Körper - mentale Stärke ist der Schlüssel zum Erfolg.',
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
@@ -79,13 +79,13 @@ const coachProfiles = [
     coachInfo: {
       id: 'motivierend',
       name: 'Dr. Kai Nakamura',
-      role: 'Mindset & Recovery Coach',
-      scientificFoundation: 'Psychologie (Ph.D.) mit Spezialisierung auf Sportpsychologie, Neuroplastizität und kognitive Verhaltenstherapie. Fundament in Neurowissenschaften und Schlafforschung.',
-      keyMethods: ['Kognitive Verhaltenstherapie', 'Achtsamkeitstraining', 'Visualisierungstechniken', 'Schlafhygiene-Protokolle'],
-      specializations: ['Mentales Training', 'Stressregulation', 'Schlafoptimierung', 'Burnout-Prävention'],
-      evidence: 'Wissenschaftlich fundiert durch Forschung zu Neuroplastizität, kognitiver Leistungsfähigkeit und der Verbindung zwischen mentaler Gesundheit und physischer Performance.',
-      interventions: ['Personalisierte Mindset-Programme', 'Regenerations-Coaching', 'Stress-Reduktion', 'Performance-Psychologie'],
-      philosophy: 'Ganzheitliche Optimierung durch die Verbindung von Geist und Körper, mit Fokus auf nachhaltige mentale Stärke und Resilienz.',
+      role: 'Mindset, Recovery & Transformation Coach',
+      scientificFoundation: 'Psychologie (Ph.D.) mit Spezialisierung auf Sportpsychologie, Neuroplastizität und kognitive Verhaltenstherapie. Integral Theory und ganzheitliche Transformationsansätze. Fundament in Neurowissenschaften und Schlafforschung.',
+      keyMethods: ['Kognitive Verhaltenstherapie', 'Vier-Quadranten-Analyse', 'Integral Theory', 'Achtsamkeitstraining', 'Visualisierungstechniken', 'Schlafhygiene-Protokolle'],
+      specializations: ['Mentales Training', 'Ganzheitliche Transformation', 'Körper-Geist-Seele Integration', 'Stressregulation', 'Schlafoptimierung', 'Burnout-Prävention'],
+      evidence: 'Wissenschaftlich fundiert durch Forschung zu Neuroplastizität, kognitiver Leistungsfähigkeit, Integral Theory und der Verbindung zwischen mentaler Gesundheit und physischer Performance.',
+      interventions: ['Personalisierte Mindset-Programme', 'Ganzheitliche Transformations-Coaching', 'Vier-Quadranten-Assessment', 'Regenerations-Coaching', 'Stress-Reduktion', 'Performance-Psychologie'],
+      philosophy: 'Ganzheitliche Optimierung durch die Integration von Körper, Geist, Seele und sozialen Systemen. Nachhaltige mentale Stärke und Resilienz durch holistische Transformation.',
       color: 'purple'
     }
   },
@@ -115,34 +115,6 @@ const coachProfiles = [
       philosophy: 'Maximale Ergebnisse durch kompromisslose Disziplin, intelligente Trainingsplanung und mentale Stärke.',
       color: 'red'
     }
-  },
-  {
-    id: 'maria',
-    name: 'Dr. Maria',
-    age: 36,
-    role: 'Metabolismus & Hormon-Expertin',
-    avatar: '🧬',
-    personality: 'Wissenschaftlich & Präzise',
-    description: 'Spezialistin für Stoffwechsel und Hormonoptimierung. Hilft dir dabei, deinen Körper auf biochemischer Ebene zu verstehen und zu optimieren.',
-    strengths: ['Hormonbalance', 'Metabolismus', 'Laborwerte', 'Biohacking'],
-    quote: 'Dein Körper ist ein komplexes System - verstehe es, und du kontrollierst es.',
-    color: 'teal',
-    accentColor: 'from-teal-500 to-teal-600',
-    isPremium: true
-  },
-  {
-    id: 'david',
-    name: 'David',
-    age: 39,
-    role: 'Keto & Low-Carb Experte',
-    avatar: '🥩',
-    personality: 'Fokussiert & Erfahren',
-    description: 'Spezialist für ketogene Ernährung und Low-Carb Lifestyle. Zeigt dir, wie du Fett als Energiequelle optimal nutzt.',
-    strengths: ['Ketogene Ernährung', 'Intermittent Fasting', 'Metabolische Flexibilität', 'Fettverbrennung'],
-    quote: 'Fett ist nicht der Feind - es ist der Schlüssel zu deiner Energie.',
-    color: 'amber',
-    accentColor: 'from-amber-500 to-amber-600',
-    isPremium: true
   },
   {
     id: 'vita',
@@ -195,7 +167,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
         <h3 className="text-lg font-semibold mb-2">Wähle deinen Coach</h3>
         <p className="text-sm text-muted-foreground">
           {isPremium 
-            ? 'Alle Experten-Coaches stehen dir zur Verfügung!' 
+          ? 'Alle Experten-Coaches stehen dir zur Verfügung!' 
             : 'Lucy ist dein kostenloser Coach - oder upgrade für alle Experten!'
           }
         </p>
@@ -209,7 +181,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
               <Crown className="h-8 w-8 text-yellow-600" />
               <div>
                 <h4 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                  🚀 Über 7+ Experten-Coaches verfügbar
+                  🚀 Über 5+ Experten-Coaches verfügbar
                 </h4>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   Upgrade zu Pro für Zugang zu allen Coaches mit einzigartiger Persönlichkeit und tiefem Fachwissen
