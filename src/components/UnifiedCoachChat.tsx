@@ -172,100 +172,32 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom - optimized with stable ref
   const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    }, 10);
   }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages.length, scrollToBottom]); // Only depend on message count, not full array
 
-  // Load chat history from existing conversations table
-  const loadChatHistory = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      // Use existing coach_conversations table
-      const { data, error } = await supabase
-        .from('coach_conversations')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('coach_personality', coach?.personality || 'motivierend')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: true })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const formattedMessages: ChatMessage[] = data.map(msg => ({
-          id: msg.id,
-          role: msg.message_role as 'user' | 'assistant',
-          content: msg.message_content,
-          created_at: msg.created_at,
-          coach_personality: msg.coach_personality,
-          images: [], // coach_conversations doesn't store images, use empty array
-          mode: mode
-        }));
-        setMessages(formattedMessages);
-        setIsLoading(false);
-      } else {
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-      setIsLoading(false);
-    }
-  }, [user?.id, coach?.personality, mode]);
-
-  const generateWelcomeMessage = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      const coachName = coach?.name || 'Coach';
-      const modeContext = {
-        nutrition: 'Ernährungsberatung und Mahlzeiten-Analyse',
-        training: 'Training-Coaching und Workout-Analyse', 
-        specialized: `Spezialisierte Beratung mit ${coachName}`,
-        general: 'Allgemeine Gesundheits- und Fitness-Beratung'
-      };
-
-      const welcomeMessage = `Hallo! Ich bin ${coachName} und helfe dir heute bei ${modeContext[mode]}. 
-
-${mode === 'training' ? '💪 Du kannst mir Trainingsvideos hochladen, Übungen loggen oder Trainingspläne erstellen lassen.' : ''}
-${mode === 'nutrition' ? '🍎 Lade Fotos deiner Mahlzeiten hoch oder frag mich nach Ernährungstipps.' : ''}
-${mode === 'specialized' ? `🎯 Ich bin auf ${coach?.expertise?.join(', ') || 'diverse Bereiche'} spezialisiert.` : ''}
-
-Wie kann ich dir helfen?`;
-
-      const welcomeMsg: ChatMessage = {
-        id: 'welcome-' + Date.now(),
-        role: 'assistant',
-        content: welcomeMessage,
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.personality || 'motivierend',
-        mode: mode
-      };
-
-      setMessages([welcomeMsg]);
-    } catch (error) {
-      console.error('Error generating welcome message:', error);
-    }
-  }, [user?.id, coach?.name, coach?.expertise, coach?.personality, mode]);
-
+  // Stable initialization - single effect, no duplicated logic
   useEffect(() => {
-    let hasLoadedHistory = false;
+    if (!user?.id) return;
+    
+    let isMounted = true;
     
     const initializeChat = async () => {
-      if (!user?.id) return;
+      if (!isMounted) return;
       
       setIsLoading(true);
       
-      // Load chat history first
       try {
+        // Load chat history
         const { data, error } = await supabase
           .from('coach_conversations')
           .select('*')
@@ -275,7 +207,10 @@ Wie kann ich dir helfen?`;
           .order('created_at', { ascending: true })
           .limit(50);
 
+        if (!isMounted) return;
+
         if (!error && data && data.length > 0) {
+          // History exists - load it
           const formattedMessages: ChatMessage[] = data.map(msg => ({
             id: msg.id,
             role: msg.message_role as 'user' | 'assistant',
@@ -286,39 +221,65 @@ Wie kann ich dir helfen?`;
             mode: mode
           }));
           setMessages(formattedMessages);
-          hasLoadedHistory = true;
-        }
-      } catch (error) {
-        console.error('Error loading chat history:', error);
-      }
-      
-      // Only generate welcome message if no history was loaded
-      if (!hasLoadedHistory) {
-        try {
+        } else {
+          // No history - create welcome message
+          const now = new Date();
+          const hour = now.getHours();
           const coachName = coach?.name || 'Coach';
-          const coachExpertise = coach?.expertise?.[0] || 'Fitness und Ernährung';
           
+          // Stable welcome message based on stable values
+          let timeGreeting = 'Hallo';
+          if (hour < 12) timeGreeting = 'Guten Morgen';
+          else if (hour < 18) timeGreeting = 'Guten Tag';
+          else timeGreeting = 'Guten Abend';
+
+          const modeSpecific = mode === 'training' 
+            ? '💪 Lass uns heute dein Training optimieren!'
+            : mode === 'nutrition' 
+            ? '🍎 Ich helfe dir heute bei deiner Ernährung!'
+            : mode === 'specialized'
+            ? `🎯 Ich bin ${coachName} und auf meine Expertise spezialisiert.`
+            : '✨ Wie kann ich dir heute helfen?';
+
           const welcomeMsg: ChatMessage = {
-            id: crypto.randomUUID(),
+            id: `welcome-${user.id}-${mode}-${coach?.personality || 'default'}`,
             role: 'assistant',
-            content: `Hallo! Ich bin ${coachName}, dein persönlicher ${coachExpertise}-Coach. Wie kann ich dir heute helfen?`,
-            created_at: new Date().toISOString(),
+            content: `${timeGreeting}! Ich bin ${coachName}. ${modeSpecific}`,
+            created_at: now.toISOString(),
             coach_personality: coach?.personality || 'motivierend',
             images: [],
             mode: mode
           };
 
           setMessages([welcomeMsg]);
-        } catch (error) {
-          console.error('Error generating welcome message:', error);
+        }
+      } catch (error) {
+        console.error('Error initializing chat:', error);
+        if (isMounted) {
+          // Fallback welcome message on error
+          setMessages([{
+            id: `error-welcome-${Date.now()}`,
+            role: 'assistant',
+            content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Wie kann ich dir helfen?`,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.personality || 'motivierend',
+            images: [],
+            mode: mode
+          }]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
         }
       }
-      
-      setIsLoading(false);
     };
 
     initializeChat();
-  }, [user?.id, mode, coach?.personality, coach?.name]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, mode, coach?.personality, coach?.name]); // Removed coach?.expertise array
 
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
@@ -475,8 +436,35 @@ Wie kann ich dir helfen?`;
         .eq('user_id', user?.id)
         .eq('coach_personality', coach?.personality || 'motivierend');
       
-      setMessages([]);
-      generateWelcomeMessage();
+      // Create a fresh welcome message after clearing
+      const now = new Date();
+      const hour = now.getHours();
+      const coachName = coach?.name || 'Coach';
+      
+      let timeGreeting = 'Hallo';
+      if (hour < 12) timeGreeting = 'Guten Morgen';
+      else if (hour < 18) timeGreeting = 'Guten Tag';
+      else timeGreeting = 'Guten Abend';
+
+      const modeSpecific = mode === 'training' 
+        ? '💪 Lass uns heute dein Training optimieren!'
+        : mode === 'nutrition' 
+        ? '🍎 Ich helfe dir heute bei deiner Ernährung!'
+        : mode === 'specialized'
+        ? `🎯 Ich bin ${coachName} und auf meine Expertise spezialisiert.`
+        : '✨ Wie kann ich dir heute helfen?';
+
+      const welcomeMsg: ChatMessage = {
+        id: `clear-welcome-${Date.now()}`,
+        role: 'assistant',
+        content: `${timeGreeting}! Ich bin ${coachName}. ${modeSpecific}`,
+        created_at: now.toISOString(),
+        coach_personality: coach?.personality || 'motivierend',
+        images: [],
+        mode: mode
+      };
+
+      setMessages([welcomeMsg]);
       toast.success('Chat gelöscht');
     } catch (error) {
       console.error('Error clearing chat:', error);
