@@ -141,7 +141,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   profileData,
   progressPhotos
 }) => {
-  console.log('🔄 UnifiedCoachChat render start', { mode, coachId: coach?.id });
+  const renderCount = useRef(0);
+  renderCount.current++;
+  console.log('🔄 UnifiedCoachChat render #', renderCount.current, { mode, coachId: coach?.id });
   
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -179,11 +181,13 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
   
-  console.log('🔄 Hooks initialized', { 
+  console.log('🔄 Hooks initialized #', renderCount.current, { 
     isGlobalMemoryLoaded, 
     messagesLength: messages.length,
     isLoading,
-    chatInitialized 
+    chatInitialized,
+    processMessageRef: processMessage?.toString().slice(0, 50),
+    memoryExists: !!memory
   });
 
   // Online/Offline detection
