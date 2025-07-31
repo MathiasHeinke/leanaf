@@ -398,15 +398,29 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         await processMessage(inputText.trim(), coach?.personality || 'motivierend', true);
       }
 
-      // Prepare request data
+      // Prepare request data - get fresh data inside the function
       const requestData = {
         message: inputText.trim() || 'Analysiere das Bild',
         userId: user.id,
         coachPersonality: coach?.personality || 'motivierend',
         images: uploadedImages,
         mode: mode,
-        conversationHistory: messages.slice(-10),
-        context: contextData
+        conversationHistory: messages.slice(-10), // Fresh slice inside function
+        context: {
+          todaysTotals,
+          dailyGoals,
+          averages,
+          historyData,
+          trendData,
+          weightHistory,
+          sleepData,
+          bodyMeasurements,
+          workoutData,
+          profileData,
+          progressPhotos,
+          coachInfo: coach,
+          memorySummary: getMemorySummary() // Fresh call inside function
+        }
       };
 
       // Call unified coach chat function
@@ -457,7 +471,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } finally {
       setIsThinking(false);
     }
-  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.slice(-10), processMessage, contextData, onExerciseLogged]);
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.length, processMessage, memory, onExerciseLogged]); // Use messages.length instead of slice, memory instead of contextData
 
   const saveChatMessages = useCallback(async (messagesToSave: ChatMessage[]) => {
     try {
