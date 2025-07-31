@@ -159,6 +159,7 @@ ${contextSummary}
 Erstelle jetzt eine intelligente, personalisierte Begrüßung:`;
 
     console.log('🤖 Calling OpenAI with system prompt');
+    console.log('📊 Context Summary sent to AI:', contextSummary);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -167,7 +168,7 @@ Erstelle jetzt eine intelligente, personalisierte Begrüßung:`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: 'Erstelle meine persönliche Begrüßung basierend auf meinen aktuellen Daten.' }
