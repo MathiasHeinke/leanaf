@@ -1982,16 +1982,19 @@ export type Database = {
           current_period_end: string | null
           display_name: string | null
           email: string | null
+          first_name: string | null
           gender: string | null
           goal: string | null
           height: number | null
           hide_premium_features: boolean | null
           id: string
+          last_name: string | null
           macro_strategy: string | null
           medical_risk_level: string | null
           medical_screening_completed: boolean | null
           muscle_maintenance_priority: boolean | null
           preferred_language: string | null
+          preferred_name: string | null
           preferred_theme: string | null
           start_bmi: number | null
           start_weight: number | null
@@ -2013,16 +2016,19 @@ export type Database = {
           current_period_end?: string | null
           display_name?: string | null
           email?: string | null
+          first_name?: string | null
           gender?: string | null
           goal?: string | null
           height?: number | null
           hide_premium_features?: boolean | null
           id?: string
+          last_name?: string | null
           macro_strategy?: string | null
           medical_risk_level?: string | null
           medical_screening_completed?: boolean | null
           muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
+          preferred_name?: string | null
           preferred_theme?: string | null
           start_bmi?: number | null
           start_weight?: number | null
@@ -2044,16 +2050,19 @@ export type Database = {
           current_period_end?: string | null
           display_name?: string | null
           email?: string | null
+          first_name?: string | null
           gender?: string | null
           goal?: string | null
           height?: number | null
           hide_premium_features?: boolean | null
           id?: string
+          last_name?: string | null
           macro_strategy?: string | null
           medical_risk_level?: string | null
           medical_screening_completed?: boolean | null
           muscle_maintenance_priority?: boolean | null
           preferred_language?: string | null
+          preferred_name?: string | null
           preferred_theme?: string | null
           start_bmi?: number | null
           start_weight?: number | null

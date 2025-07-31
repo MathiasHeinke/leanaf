@@ -31,7 +31,7 @@ interface ProfilePageProps {
 }
 
 const Profile = ({ onClose }: ProfilePageProps) => {
-  const [displayName, setDisplayName] = useState('');
+  const [preferredName, setPreferredName] = useState('');
   const { t } = useTranslation();
   
   const [weight, setWeight] = useState('');
@@ -138,7 +138,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     return () => clearTimeout(timeoutId);
   }, [
-    displayName, weight, startWeight, height, age, gender, 
+    preferredName, weight, startWeight, height, age, gender, 
     activityLevel, goal, targetWeight, targetDate, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
@@ -175,7 +175,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
       if (data) {
         setProfileExists(true);
-        setDisplayName(data.display_name || '');
+        setPreferredName(data.preferred_name || '');
         setWeight(data.weight ? data.weight.toString() : '');
         setStartWeight(data.start_weight ? data.start_weight.toString() : '');
         setHeight(data.height ? data.height.toString() : '');
@@ -394,7 +394,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     const profileData = {
       user_id: user.id,
-      display_name: displayName,
+      preferred_name: preferredName,
       weight: weight ? parseFloat(weight) : null,
       start_weight: startWeight ? parseFloat(startWeight) : null,
       height: height ? parseInt(height) : null,
@@ -507,7 +507,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       <ProfileOnboardingOverlay 
         isOpen={showProfileOnboarding && !isProfileComplete}
         onClose={completeProfileOnboarding}
-        userName={displayName || user?.email?.split('@')[0] || 'Champion'}
+        userName={preferredName || user?.email?.split('@')[0] || 'Champion'}
       />
       
       <CompletionSuccessCard
@@ -531,8 +531,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div>
               <Label className="text-sm">Anzeigename für Coaches</Label>
               <Input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                value={preferredName}
+                onChange={(e) => setPreferredName(e.target.value)}
                 placeholder="z.B. Max, Sarah..."
                 className="mt-1"
               />

@@ -14,7 +14,8 @@ import { toast } from 'sonner';
 import { CheckCircle, Save, Loader2, Shield, Mail, Key, LogOut, User } from 'lucide-react';
 
 const Account = () => {
-  const [displayName, setDisplayName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,7 +49,7 @@ const Account = () => {
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [displayName, email]);
+  }, [firstName, lastName, email]);
 
   useEffect(() => {
     if (user) {
@@ -70,7 +71,8 @@ const Account = () => {
 
       if (data) {
         setProfileExists(true);
-        setDisplayName(data.display_name || '');
+        setFirstName(data.first_name || '');
+        setLastName(data.last_name || '');
         setEmail(data.email || '');
       } else {
         setProfileExists(false);
@@ -88,7 +90,8 @@ const Account = () => {
 
     const profileData = {
       user_id: user.id,
-      display_name: displayName,
+      first_name: firstName,
+      last_name: lastName,
       email: email,
     };
 
@@ -214,14 +217,26 @@ const Account = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">{t('account.name')}</Label>
-                  <Input
-                    id="displayName"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder={t('account.namePlaceholder')}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Vorname</Label>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Dein Vorname"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Nachname</Label>
+                    <Input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Dein Nachname"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
