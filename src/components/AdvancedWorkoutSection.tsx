@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { ExerciseProgressCharts } from '@/components/ExerciseProgressCharts';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
-import { WorkoutCoachChat } from '@/components/WorkoutCoachChat';
+import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
 import { DayCard } from '@/components/DayCard';
 import { MonthCard } from '@/components/MonthCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -237,7 +237,9 @@ export const AdvancedWorkoutSection: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="coach" className="space-y-4">
-          <WorkoutCoachChat onExerciseLogged={(exerciseData) => {
+          <UnifiedCoachChat 
+            mode="training"
+            onExerciseLogged={(exerciseData) => {
             // Refresh sessions when exercise is logged through coach
             loadSessions();
           }} />
