@@ -22,9 +22,13 @@ export function getDisplayName(profile: any): string {
     return profile.first_name.trim();
   }
 
-  // 3. Legacy: display_name (nur Vorname extrahieren)
+  // 3. Legacy: display_name (nur ersten Namen, aber mit Hyphen-Support)
   if (profile.display_name?.trim()) {
-    const firstName = profile.display_name.trim().split(' ')[0];
+    const displayName = profile.display_name.trim();
+    // Bei Doppelnamen/Hyphens: ersten logischen Namen extrahieren
+    const firstName = displayName.includes('-') 
+      ? displayName.match(/^([^\s]+)/)?.[1] || displayName.split(' ')[0]
+      : displayName.split(' ')[0];
     if (firstName && firstName.length > 1) {
       return firstName;
     }

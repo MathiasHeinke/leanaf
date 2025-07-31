@@ -318,11 +318,11 @@ const collectComprehensiveUserData = async (supabase: any, userId: string) => {
         .eq('user_id', userId)
         .single(),
       
-      // Profile data
+      // Profile data - mit maybeSingle() für graceful handling
       supabase.from('profiles')
-        .select('*')
+        .select('id, preferred_name, first_name, display_name, email')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
     ]);
 
     // Calculate insights and analytics
@@ -1308,9 +1308,12 @@ serve(async (req) => {
     
     console.log('📛 User name extracted:', userName, {
       hasProfile: !!userData.profile,
-      preferredName: userData.profile?.preferred_name,
-      firstName: userData.profile?.first_name,
-      displayName: userData.profile?.display_name
+      profileData: userData.profile ? {
+        preferred_name: userData.profile.preferred_name,
+        first_name: userData.profile.first_name,
+        display_name: userData.profile.display_name,
+        email: userData.profile.email
+      } : null
     });
 
     // ============= RAG INTEGRATION =============
