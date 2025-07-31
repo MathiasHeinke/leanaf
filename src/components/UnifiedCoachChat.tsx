@@ -202,34 +202,40 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     });
   }, [isLoading, chatInitialized, isGlobalMemoryLoaded]);
   
-  // ============= FALLBACK TIMEOUT MIT GUARDS =============
+  // ============= FALLBACK TIMEOUT - EINMAL-AUSFÜHRUNG =============
   useEffect(() => {
-    // Starte Timeout **nur**, wenn wir wirklich noch warten
+    // Nur einmalig beim Mount ausführen, wenn wir laden
     if (!isLoading || chatInitialized) return;
 
+    console.log('⏱️ Starting 5s fallback timeout...');
+    
     const timeout = setTimeout(() => {
-      console.warn('⏰ Force-init after 5 s');
-      
-      // Guard: nur ändern, wenn sich der Status noch nicht geändert hat
-      setIsLoading(false);
-      setChatInitialized(true);
-      
-      if (messages.length === 0) {
-        const emergencyMsg: ChatMessage = {
-          id: `emergency-${Date.now()}`,
-          role: 'assistant',
-          content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Es gab ein Problem beim Laden, aber ich bin jetzt bereit zu helfen!`,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          images: [],
-          mode: mode
-        };
-        setMessages([emergencyMsg]);
+      // Prüfe Status erneut vor dem Setzen
+      if (isLoading && !chatInitialized) {
+        console.warn('⏰ Fallback timeout triggered - forcing initialization');
+        setIsLoading(false);
+        setChatInitialized(true);
+        
+        if (messages.length === 0) {
+          const emergencyMsg: ChatMessage = {
+            id: `emergency-${Date.now()}`,
+            role: 'assistant',
+            content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Es gab ein Problem beim Laden, aber ich bin jetzt bereit zu helfen!`,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.personality || 'motivierend',
+            images: [],
+            mode: mode
+          };
+          setMessages([emergencyMsg]);
+        }
       }
     }, 5000);
     
-    return () => clearTimeout(timeout);
-  }, [isLoading, chatInitialized]); // NUR primitive Werte!
+    return () => {
+      console.log('⏱️ Cleaning up fallback timeout');
+      clearTimeout(timeout);
+    };
+  }, []); // KEINE DEPENDENCIES - nur einmal beim Mount!
   
   // Console.log entfernt - war im Render-Body und verursachte Probleme
 
