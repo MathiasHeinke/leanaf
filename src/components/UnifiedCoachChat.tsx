@@ -222,7 +222,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     init();
   }, [user?.id, coach?.name, coach?.personality, mode, tokens, memory, profileData]);
   
-  // ============= SIMPLE SEND MESSAGE =============
+  // ============= REAL COACH CHAT WITH AI =============
   const sendMessage = useCallback(async () => {
     if (!inputText.trim() || !user?.id) return;
     
@@ -241,40 +241,57 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // Demo: Create SmartCard response for supplement tool
-      if (selectedTool === 'supplement') {
-        const supplementCard = createCardMessage('supplement', {
-          supplements: [
-            { name: 'Whey Protein', dosage: '25g', timing: 'Post-Workout' },
-            { name: 'Kreatin', dosage: '5g', timing: 'Täglich' },
-            { name: 'Omega-3', dosage: '1000mg', timing: 'Zu den Mahlzeiten' }
-          ],
-          onConfirm: () => console.log('Supplements confirmed'),
-          onReject: () => console.log('Supplements rejected')
-        }, coach?.personality || 'motivierend');
-        
-        setMessages(prev => [...prev, supplementCard]);
-      } else {
-        // Simple text response
-        const assistantMessage: UnifiedMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: 'Danke für deine Nachricht! Ich arbeite daran, dir zu helfen.',
-          created_at: new Date().toISOString(),
+      const { data, error } = await supabase.functions.invoke('enhanced-coach-chat', {
+        body: {
+          message: inputText,
           coach_personality: coach?.personality || 'motivierend',
-          images: [],
-          mode: mode
-        };
+          context_data: {
+            mode: mode,
+            selectedTool: selectedTool,
+            profileData: profileData,
+            todaysTotals: todaysTotals,
+            workoutData: workoutData,
+            sleepData: sleepData,
+            weightHistory: weightHistory,
+            averages: averages,
+            dailyGoals: dailyGoals
+          }
+        }
+      });
 
-        setMessages(prev => [...prev, assistantMessage]);
+      if (error) {
+        console.error('Coach chat error:', error);
+        throw error;
       }
+
+      const assistantMessage: UnifiedMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.response || 'Entschuldigung, ich konnte nicht antworten.',
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.personality || 'motivierend',
+        images: [],
+        mode: mode
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Send error:', error);
+      const errorMessage: UnifiedMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: 'Entschuldigung, ich konnte deine Nachricht nicht verarbeiten. Versuche es bitte nochmal.',
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.personality || 'motivierend',
+        images: [],
+        mode: mode
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsThinking(false);
       setSelectedTool(null); // Reset tool after use
     }
-  }, [inputText, user?.id, coach?.personality, mode]);
+  }, [inputText, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, supabase]);
 
   // Handle voice recording
   const handleVoiceToggle = useCallback(async () => {
