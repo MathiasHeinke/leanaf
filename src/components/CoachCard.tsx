@@ -101,11 +101,11 @@ export const CoachCard: React.FC<CoachCardProps> = ({
 
   const getCoachIcon = () => {
     switch (coach.id) {
-      case 'hart':
+      case 'sascha':
         return Target;
-      case 'soft':
+      case 'lucy':
         return Heart;
-      case 'motivierend':
+      case 'kai':
         return Brain;
       default:
         return Target;

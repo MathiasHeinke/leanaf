@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 // Erweiterte Coach-Profile mit neuen Experten
 const coachProfiles = [
   {
-    id: 'soft',
+    id: 'lucy',
     name: 'Lucy',
     age: 29,
     role: 'Nutrition, Metabolism & Lifestyle Coach',
@@ -30,7 +30,7 @@ const coachProfiles = [
       { text: 'Stoffwechsel optimieren', prompt: 'Wie kann ich meinen Stoffwechsel für optimale Fettverbrennung verbessern?' }
     ],
     coachInfo: {
-      id: 'soft',
+      id: 'lucy',
       name: 'Dr. Lucy Martinez',
       role: 'Nutrition, Metabolism & Lifestyle Coach',
       imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
@@ -46,7 +46,7 @@ const coachProfiles = [
     }
   },
   {
-    id: 'hart',
+    id: 'sascha',
     name: 'Sascha',
     age: 32,
     role: 'Performance & Training Coach',
@@ -67,7 +67,7 @@ const coachProfiles = [
       { text: 'Plateau durchbrechen', prompt: 'Ich stagniere. Welche Strategien helfen mir beim Plateau-Durchbruch?' }
     ],
     coachInfo: {
-      id: 'hart',
+      id: 'sascha',
       name: 'Sascha Weber',
       role: 'Performance & Training Coach',
       imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
@@ -83,7 +83,7 @@ const coachProfiles = [
     }
   },
   {
-    id: 'motivierend',
+    id: 'kai',
     name: 'Kai',
     age: 35,
     role: 'Mindset, Recovery & Transformation Coach',
@@ -104,7 +104,7 @@ const coachProfiles = [
       { text: 'Ganzheitliche Transformation', prompt: 'Erstelle mir einen integral-basierten Transformationsplan für nachhaltigen Erfolg.' }
     ],
     coachInfo: {
-      id: 'motivierend',
+      id: 'kai',
       name: 'Dr. Kai Nakamura',
       role: 'Mindset, Recovery & Transformation Coach',
       imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
@@ -157,7 +157,7 @@ const coachProfiles = [
     }
   },
   {
-    id: 'vita',
+    id: 'dr-vita',
     name: 'Dr. Vita Femina',
     age: 38,
     role: 'Female Health & Hormone Coach',
@@ -178,7 +178,7 @@ const coachProfiles = [
       { text: 'Frauen-spezifische Ernährung', prompt: 'Welche Nährstoffe brauche ich als Frau besonders und wann in meinem Zyklus?' }
     ],
     coachInfo: {
-      id: 'vita',
+      id: 'dr-vita',
       name: 'Dr. Vita Femina',
       role: 'Hormon-Expertin',
       imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
