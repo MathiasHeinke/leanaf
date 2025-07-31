@@ -38,7 +38,7 @@ export const DailyGreeting = ({ userProfile, coachId }: DailyGreetingProps) => {
 
   // Generate personalized coach greeting or fallback to time-based
   const generateGreeting = () => {
-    if (currentCoachId && ['lucy', 'sascha', 'kai', 'markus', 'dr-vita', 'integral'].includes(currentCoachId)) {
+    if (currentCoachId && ['lucy', 'sascha', 'kai', 'markus', 'dr_vita', 'sophia'].includes(currentCoachId)) {
       const firstName = getUserName();
       const context = createGreetingContext(firstName, currentCoachId, memory, false);
       return generateDynamicCoachGreeting(context);

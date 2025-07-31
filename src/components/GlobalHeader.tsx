@@ -97,7 +97,6 @@ export const GlobalHeader = ({
         case 'dr-vita': 
         case 'dr_vita': 
         case 'vita': return 'Coaching/Dr. Vita';
-        case 'integral':
         case 'sophia': return 'Coaching/Sophia';
         default: return 'Coaching';
       }
@@ -291,7 +290,7 @@ export const GlobalHeader = ({
                   getCurrentCoachId() === 'lucy' ? '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
                   getCurrentCoachId() === 'kai' ? '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
                   getCurrentCoachId() === 'dr_vita' ? '/lovable-uploads/954a7ee8-1579-4a1b-bf4c-87b4ef4588b1.png' :
-                  getCurrentCoachId() === 'integral' ? '/coach-images/dr-sophia-integral.png' :
+                  getCurrentCoachId() === 'sophia' ? '/coach-images/dr-sophia-integral.png' :
                   'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
                 }
                 alt={coachData?.name || 'Coach'}

@@ -77,6 +77,19 @@ serve(async (req) => {
     const lastUserMessage = recentMessages.filter(m => m.role === 'user').pop()?.content || '';
     const lastAssistantMessage = recentMessages.filter(m => m.role === 'assistant').pop()?.content || '';
 
+    // Coach ID Mapping: URL handles → Database IDs
+    const mapCoachId = (urlCoachId: string): string => {
+      const coachMapping = {
+        'soft': 'lucy',
+        'hart': 'sascha',
+        'motivierend': 'kai',
+        'vita': 'dr_vita',
+        'dr-vita': 'dr_vita',
+        'markus': 'markus'
+      };
+      return coachMapping[urlCoachId as keyof typeof coachMapping] || urlCoachId;
+    };
+
     // Create enhanced coach-specific context with learning theories
     const coachContexts = {
       'lucy': {
@@ -160,7 +173,8 @@ serve(async (req) => {
       }
     };
 
-    const coachContext = coachContexts[coachId as keyof typeof coachContexts] || coachContexts['lucy'];
+    const mappedCoachId = mapCoachId(coachId);
+    const coachContext = coachContexts[mappedCoachId as keyof typeof coachContexts] || coachContexts['lucy'];
 
     // Enhanced conversation analysis for Perplexity-style suggestions
     const analyzeConversationContext = () => {

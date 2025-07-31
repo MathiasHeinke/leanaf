@@ -300,9 +300,24 @@ const sanitizeText = (text: string): string => {
   return text.trim().slice(0, 10000); // Limit to 10k characters
 };
 
+// Coach ID Mapping: URL handles → Database IDs
+const mapCoachId = (urlCoachId: string): string => {
+  const coachMapping = {
+    'soft': 'lucy',
+    'hart': 'sascha', 
+    'motivierend': 'kai',
+    'vita': 'dr_vita',
+    'dr-vita': 'dr_vita',
+    'markus': 'markus'
+  };
+  return coachMapping[urlCoachId as keyof typeof coachMapping] || urlCoachId;
+};
+
 const validateCoachPersonality = (personality: string): string => {
-  const validPersonalities = ['motivierend', 'sachlich', 'herausfordernd', 'unterstützend', 'hart', 'soft', 'lucy', 'sascha', 'kai', 'markus', 'integral', 'dr_vita'];
-  return validPersonalities.includes(personality) ? personality : 'motivierend';
+  // First map URL handles to database IDs
+  const mappedPersonality = mapCoachId(personality);
+  const validPersonalities = ['lucy', 'sascha', 'kai', 'markus', 'dr_vita'];
+  return validPersonalities.includes(mappedPersonality) ? mappedPersonality : 'lucy';
 };
 
 // ============= COMPREHENSIVE DATA COLLECTION =============

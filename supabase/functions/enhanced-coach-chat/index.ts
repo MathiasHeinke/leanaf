@@ -339,8 +339,24 @@ const getMostTrainedMuscleGroups = (workouts: any[]) => {
 };
 
 // ============= RAG INTEGRATION =============
+// Coach ID Mapping: URL handles → Database IDs  
+const mapCoachId = (urlCoachId: string): string => {
+  const coachMapping = {
+    'soft': 'lucy',
+    'hart': 'sascha',
+    'motivierend': 'kai', 
+    'vita': 'dr_vita',
+    'dr-vita': 'dr_vita',
+    'markus': 'markus'
+  };
+  return coachMapping[urlCoachId as keyof typeof coachMapping] || urlCoachId;
+};
+
 const determineRAGUsage = async (message: string, coachPersonality: string) => {
   const lowerMessage = message.toLowerCase();
+  
+  // Map coach ID for RAG determination
+  const mappedCoachId = mapCoachId(coachPersonality);
   
   // Check if message contains topics that benefit from RAG
   const ragTopics = [
@@ -352,7 +368,7 @@ const determineRAGUsage = async (message: string, coachPersonality: string) => {
   ];
   
   const hasRAGTopic = ragTopics.some(topic => lowerMessage.includes(topic));
-  const isSpecializedCoach = ['dr_vita', 'sascha', 'markus', 'kai'].includes(coachPersonality);
+  const isSpecializedCoach = ['dr_vita', 'sascha', 'markus', 'kai'].includes(mappedCoachId);
   
   return hasRAGTopic || isSpecializedCoach;
 };
@@ -364,7 +380,7 @@ const performRAGSearch = async (supabase: any, message: string, coachPersonality
     const { data, error } = await supabase.functions.invoke('enhanced-coach-rag', {
       body: {
         query: message,
-        coachId: coachPersonality,
+        coachId: mapCoachId(coachPersonality), // Use mapped coach ID for RAG
         userId: userId,
         searchMethod: 'hybrid',
         maxResults: 5,
