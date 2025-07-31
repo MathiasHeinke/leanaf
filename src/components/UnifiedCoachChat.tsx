@@ -195,8 +195,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   }, [inputText, user?.id, coach?.personality, mode]);
 
-  // ============= SIMPLE RENDER =============
+  // ============= RENDER LOGIC =============
   if (isLoading) {
+    if (useFullscreenLayout) {
+      return (
+        <ChatLayout>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-neutral-400">Chat wird geladen...</p>
+            </div>
+          </div>
+        </ChatLayout>
+      );
+    }
+    
     return (
       <Card className="flex-1 flex flex-col">
         <CardContent className="flex-1 flex items-center justify-center">
@@ -209,7 +222,93 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     );
   }
 
-  const content = (
+  // ============= FULLSCREEN LAYOUT =============
+  if (useFullscreenLayout) {
+    const coachBanner = (
+      <div className="flex items-center gap-3 bg-neutral-900/50 backdrop-blur-sm rounded-lg p-3 border border-neutral-800">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={coach?.imageUrl} />
+          <AvatarFallback>{coach?.name?.[0] || 'C'}</AvatarFallback>
+        </Avatar>
+        <div>
+          <h3 className="font-semibold text-white">{coach?.name || 'Coach'}</h3>
+          <p className="text-sm text-neutral-400">{coach?.personality || 'Dein persönlicher Coach'}</p>
+        </div>
+      </div>
+    );
+
+    const chatInput = (
+      <div className="space-y-3">
+        <Textarea
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Schreibe eine Nachricht..."
+          className="min-h-[60px] resize-none bg-neutral-800/50 border-neutral-700 text-white placeholder:text-neutral-400"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
+        />
+        
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="bg-neutral-800/50 border-neutral-700 hover:bg-neutral-700"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="bg-neutral-800/50 border-neutral-700 hover:bg-neutral-700"
+            >
+              <Mic className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <Button 
+            onClick={sendMessage}
+            disabled={!inputText.trim() || isThinking}
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            Senden
+          </Button>
+        </div>
+      </div>
+    );
+
+    return (
+      <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
+        <SimpleMessageList 
+          messages={messages.map(msg => ({
+            id: msg.id,
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
+            images: msg.images || []
+          }))}
+          coach={{
+            name: coach?.name || 'Coach',
+            avatar: coach?.imageUrl || '',
+            primaryColor: coach?.color || 'blue',
+            secondaryColor: coach?.accentColor || 'blue',
+            personality: coach?.personality || 'motivierend'
+          }}
+        />
+      </ChatLayout>
+    );
+  }
+
+  // ============= CARD LAYOUT (FALLBACK) =============
+  return (
     <Card className="flex-1 flex flex-col">
       <CardHeader className="flex-none">
         <CardTitle className="flex items-center gap-2">
@@ -286,16 +385,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       </CardContent>
     </Card>
   );
-
-  if (useFullscreenLayout) {
-    return (
-      <ChatLayout>
-        {content}
-      </ChatLayout>
-    );
-  }
-
-  return content;
 };
 
 export { UnifiedCoachChat };
