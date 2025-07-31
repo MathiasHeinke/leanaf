@@ -528,11 +528,8 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   }, [inputText, uploadedImages.length, user?.id, mode]); // ONLY PRIMITIVE VALUES
 
-  // Stable reference to sendMessage for handleKeyPress
-  const sendMessageRef = useRef<() => void>(() => {});
-  useEffect(() => {
-    sendMessageRef.current = sendMessage;
-  }, [sendMessage]);
+  // ===== SENDMESSAGE REF ENTFERNT - VERURSACHTE INFINITE LOOP =====
+  // Direkt sendMessage in handleKeyPress verwenden statt über useEffect
 
   const saveChatMessages = useCallback(async (messagesToSave: ChatMessage[]) => {
     try {
@@ -575,9 +572,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessageRef.current();
+      sendMessage(); // Direkt aufrufen statt über ref
     }
-  }, []); // NO DEPENDENCIES - fully stable
+  }, [sendMessage]); // sendMessage als dependency
 
   const clearChat = useCallback(async () => {
 
