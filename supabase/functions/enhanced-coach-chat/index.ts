@@ -679,6 +679,96 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============= INTELLIGENT MODEL ROUTING =============
+
+/**
+ * chooseModel()
+ * ──────────────
+ * 4o  → Vision-Input  ODER kleiner Kontext (<8k Tok) ohne Heavy-Calc-Flag
+ * 4.1 → alles andere (RAG-Long, JSON-Tool, komplexe Berechnungen)
+ */
+function chooseModel(msgs: any[], opts: {
+  hasImage?: boolean,          // wurde ein Bild hochgeladen?
+  heavyCalc?: boolean,         // Trainingsdaten-Crunch, RAG etc.
+  isRAGQuery?: boolean         // wissenschaftliche/komplexe Fragen
+}) {
+  const tokenEstimate = JSON.stringify(msgs).length / 4;   // quick & dirty
+  
+  console.log('🧠 Model Selection:', {
+    tokenEstimate: Math.round(tokenEstimate),
+    hasImage: opts.hasImage,
+    heavyCalc: opts.heavyCalc,
+    isRAGQuery: opts.isRAGQuery
+  });
+  
+  // 1. Bild vorhanden? → immer GPT-4o (Vision-Power)
+  if (opts.hasImage) {
+    console.log('📸 Using GPT-4o for image analysis');
+    return 'gpt-4o';
+  }
+  
+  // 2. Heavy-Calc oder RAG? → GPT-4.1 (bessere Reasoning)
+  if (opts.heavyCalc || opts.isRAGQuery) {
+    console.log('🔬 Using GPT-4.1 for heavy calculations/RAG');
+    return 'gpt-4.1-2025-04-14';
+  }
+  
+  // 3. Kleiner Kontext ohne komplexe Aufgaben? → GPT-4o (schneller, günstiger)
+  if (tokenEstimate < 8_000) {
+    console.log('⚡ Using GPT-4o for simple chat');
+    return 'gpt-4o';
+  }
+  
+  // 4. Großer Kontext → GPT-4.1 (besserer Context-Window)
+  console.log('📚 Using GPT-4.1 for large context');
+  return 'gpt-4.1-2025-04-14';
+}
+
+// RAG-Query Detection
+function isRAGQuery(message: string): boolean {
+  const ragPatterns = [
+    /warum|why/i,
+    /studie|study|studies/i,
+    /evidenz|evidence/i,
+    /metabolismus|metabolism/i,
+    /biochemie|biochemistry/i,
+    /hormone|hormones/i,
+    /wissenschaft|science/i,
+    /forschung|research/i,
+    /wie funktioniert|how does.*work/i,
+    /mechanismus|mechanism/i,
+    /protein synthesis|proteinsynthese/i,
+    /adaptation|anpassung/i
+  ];
+  
+  return ragPatterns.some(pattern => pattern.test(message));
+}
+
+// Heavy-Calc Detection
+function isHeavyCalc(activeTool: string | null, message: string, hasRAG: boolean): boolean {
+  // Tool-basierte Heavy-Calc
+  const heavyTools = ['trainingsplan', 'gewicht', 'foto'];
+  if (activeTool && heavyTools.includes(activeTool)) {
+    return true;
+  }
+  
+  // Content-basierte Heavy-Calc
+  const heavyPatterns = [
+    /berechne|calculate/i,
+    /plan|program/i,
+    /analyse|analysis/i,
+    /auswertung|evaluation/i,
+    /statistik|statistics/i,
+    /fortschritt|progress/i,
+    /makros|macros/i,
+    /kaloriendefizit|calorie.*deficit/i
+  ];
+  
+  const hasHeavyContent = heavyPatterns.some(pattern => pattern.test(message));
+  
+  return hasRAG || hasHeavyContent;
+}
+
 // Input validation and sanitization
 const sanitizeText = (text: string): string => {
   if (!text || typeof text !== 'string') return '';
@@ -1057,10 +1147,37 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
       await saveExerciseData(supabase, userId, exerciseData);
     }
 
+    // ============= INTELLIGENT MODEL SELECTION =============
+    
+    // Detect current tool and content characteristics
+    const activeTool = getLastTool(conversation);
+    const isRAG = shouldUseRAG || !!ragContext;
+    const hasImages = images.length > 0;
+    const isHeavyCalculation = isHeavyCalc(activeTool, message, isRAG);
+    
+    // Choose optimal model based on context
+    const selectedModel = chooseModel(messages, {
+      hasImage: hasImages,
+      heavyCalc: isHeavyCalculation,
+      isRAGQuery: isRAG
+    });
+    
+    console.log('🤖 Model Selection Result:', {
+      selectedModel,
+      reasons: {
+        hasImages,
+        isHeavyCalculation,
+        isRAG,
+        activeTool,
+        messageLength: message.length
+      }
+    });
+
     console.log('🔄 Sending request to OpenAI with enhanced context...', {
       messageCount: messages.length,
       systemMessageLength: systemMessage.length,
       hasRAG: !!ragContext,
+      selectedModel,
       dataSourcesAvailable: Object.keys(userData).filter(key => userData[key]?.length > 0)
     });
 
@@ -1083,10 +1200,10 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: selectedModel,  // 🎯 Dynamic model selection
         messages: messages,
-        max_tokens: 1000,
-        temperature: 0.8,
+        max_tokens: selectedModel === 'gpt-4o' ? 800 : 1200,  // Adjust tokens based on model
+        temperature: selectedModel === 'gpt-4o' ? 0.7 : 0.8,   // Slightly different temps
         presence_penalty: 0.1,
         frequency_penalty: 0.1,
       }),
@@ -1108,6 +1225,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
     console.log('✅ Enhanced coach response generated successfully', {
       responseLength: reply.length,
       tokensUsed: data.usage?.total_tokens || 0,
+      selectedModel,
       ragUsed: !!ragContext,
       sentimentDetected: sentimentResult.emotion
     });
@@ -1124,6 +1242,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
             sentiment: sentimentResult,
             images_count: images.length,
             rag_used: !!ragContext,
+            model_used: selectedModel,
             data_sources: Object.keys(userData).filter(key => userData[key]?.length > 0)
           }
         }),
@@ -1134,7 +1253,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
           coach_personality: coachPersonality,
           context_data: {
             tokens_used: data.usage?.total_tokens || 0,
-            model_used: 'gpt-4o',
+            model_used: selectedModel,
             rag_context_used: !!ragContext
           }
         })
@@ -1152,11 +1271,18 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
       reply,
       metadata: {
         tokens_used: data.usage?.total_tokens || 0,
-        model: 'gpt-4o',
+        model: selectedModel,  // 🎯 Dynamic model in response
         sentiment_detected: sentimentResult,
         rag_used: !!ragContext,
         memory_stage: coachMemory.relationship_stage,
         trust_level: coachMemory.trust_level,
+        model_selection_reason: {
+          hasImages,
+          isHeavyCalculation,
+          isRAG,
+          activeTool,
+          tokenEstimate: Math.round(JSON.stringify(messages).length / 4)
+        },
         data_sources_available: Object.keys(userData).filter(key => userData[key]?.length > 0)
       }
     }), {
