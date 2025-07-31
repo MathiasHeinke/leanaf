@@ -46,7 +46,7 @@ export const MessageItem = React.memo(({
   const ref = useRef<HTMLDivElement>(null);
   const lastH = useRef(0);
 
-  /** ⇢ nur nach mount + wenn Bilder nachgeladen **/
+  /** ⇢ nur nach mount + wenn Bilder nachgeladen - STABIL **/
   const measure = useCallback(() => {
     if (ref.current) {
       const h = ref.current.getBoundingClientRect().height;
@@ -55,9 +55,11 @@ export const MessageItem = React.memo(({
         reportHeight(index, h);          // hier erst updaten
       }
     }
-  }, [index, reportHeight]);
+  }, []);                               // KEINE Dependencies - komplett stabil
 
-  useLayoutEffect(measure, [measure]);
+  useLayoutEffect(() => {               // nur 1-mal nach Mount  
+    measure();
+  }, []);                               // leere Dep-Liste
 
   const isUser = message.role === 'user';
 
