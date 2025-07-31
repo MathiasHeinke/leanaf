@@ -156,14 +156,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     const init = async () => {
       try {
         // ✨ AI-GREETING-REVOLUTION: Generate intelligent, personalized greeting
-        const firstName = getDisplayName(profileData);
+        // Die Edge Function holt die Profile-Daten selbst aus der DB
         
         // Call AI greeting function
         const { data: greetingData, error: greetingError } = await supabase.functions.invoke('generate-intelligent-greeting', {
           body: {
             userId: user.id,
             coachId: coach?.id || 'lucy',
-            firstName: firstName,
             isFirstConversation: false,
             contextData: {
               calLeft: tokens.calLeft,
@@ -180,14 +179,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           console.warn('AI greeting failed, using fallback:', greetingError);
           // Simple fallback based on coach
           const fallbackGreetings = {
-            'lucy': `Hey ${firstName}! 💗 Bereit für einen tollen Tag?`,
-            'sascha': `Moin ${firstName}! Zeit durchzustarten! 💪`,
-            'kai': `Hey ${firstName}! ⚡ Wie ist deine Energie heute?`,
-            'markus': `Hajo ${firstName}! Bock zu schaffe? 🔥`,
-            'dr_vita': `Hallo ${firstName}! 🌸 Wie ist Ihr Wohlbefinden?`,
-            'sophia': `Namaste ${firstName}! 🌿 Bereit für achtsames Wachstum?`
+            'lucy': `Hey! 💗 Bereit für einen tollen Tag?`,
+            'sascha': `Moin! Zeit durchzustarten! 💪`,
+            'kai': `Hey! ⚡ Wie ist deine Energie heute?`,
+            'markus': `Hajo! Bock zu schaffe? 🔥`,
+            'dr_vita': `Hallo! 🌸 Wie ist Ihr Wohlbefinden?`,
+            'sophia': `Namaste! 🌿 Bereit für achtsames Wachstum?`
           };
-          enhancedGreeting = fallbackGreetings[coach?.id || 'lucy'] || `Hallo ${firstName}! 👋`;
+          enhancedGreeting = fallbackGreetings[coach?.id || 'lucy'] || `Hallo! 👋`;
         } else {
           enhancedGreeting = greetingData.greeting;
           console.log('✨ AI greeting generated:', enhancedGreeting);
