@@ -141,6 +141,8 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   profileData,
   progressPhotos
 }) => {
+  console.log('🔄 UnifiedCoachChat render start', { mode, coachId: coach?.id });
+  
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -176,6 +178,13 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   } = useGlobalCoachMemory();
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
+  
+  console.log('🔄 Hooks initialized', { 
+    isGlobalMemoryLoaded, 
+    messagesLength: messages.length,
+    isLoading,
+    chatInitialized 
+  });
 
   // Online/Offline detection
   useEffect(() => {
@@ -320,6 +329,8 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     initializationRef.current = false;
   }, [user?.id]);
 
+  
+  console.log('🔄 About to create contextData useMemo');
   // Memoized context data - PREVENT PROP DRILLING RE-RENDERS
   const contextData = useMemo(() => ({
     todaysTotals,
@@ -350,7 +361,14 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     coach?.id,
     memory // Depend on memory directly instead of getMemorySummary function
   ]);
+  
+  console.log('🔄 contextData created', { 
+    memoryKeys: Object.keys(contextData.memorySummary || {}),
+    contextKeys: Object.keys(contextData)
+  });
 
+  
+  console.log('🔄 About to create sendMessage useCallback');
   // Stabilized handlers with useCallback
   const sendMessage = useCallback(async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
