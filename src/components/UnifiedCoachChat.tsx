@@ -42,17 +42,7 @@ import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 import { generateDynamicCoachGreeting, createGreetingContext } from '@/utils/dynamicCoachGreetings';
 
-// Import getDisplayName utility
-const getDisplayName = (profile: any): string => {
-  return (
-    profile?.preferred_name ||
-    profile?.first_name ||
-    profile?.nickname ||
-    profile?.full_name ||
-    profile?.email?.split('@')[0] ||
-    'Athlet'
-  );
-};
+import { resolveCoachFirstName } from '@/utils/coachNameResolver';
 
 import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -165,13 +155,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
-        // Get user's first name for personalization using getDisplayName utility
+        // Get user's first name for personalization using centralized resolver
         const getUserName = () => {
-          const fullName = getDisplayName(profileData);
-          if (fullName && fullName !== 'Athlet') {
-            return fullName.split(' ')[0]; // Get first name only
-          }
-          return 'Du';
+          return resolveCoachFirstName(profileData);
         };
 
         // Generate personalized greeting

@@ -1218,82 +1218,17 @@ serve(async (req) => {
       );
     }
     
-// ============= NAME EXTRACTION & FALLBACK =============
-
-// Enhanced name extraction function with multi-layer fallback
-const extractUserName = async (profile: any, userId: string, supabase: any): Promise<string> => {
-  console.log('🔍 Extracting name from profile:', {
-    hasProfile: !!profile,
-    displayName: profile?.display_name,
-    profileKeys: profile ? Object.keys(profile) : []
-  });
-
-  // Use the new getDisplayName utility function
-  const displayName = getDisplayName(profile);
-  
-  if (displayName !== 'Athlet') {
-    console.log('✅ Using extracted display name:', displayName);
-    // Extract first name only
-    return displayName.split(' ')[0];
-  }
-
-  // Layer 2: Get email from auth.users and try intelligent extraction
-  try {
-    const { data: authUser, error } = await supabase.auth.admin.getUserById(userId);
-    if (!error && authUser?.user?.email) {
-      const email = authUser.user.email;
-      console.log('📧 Got email from auth:', email);
-      
-      const emailParts = email.split('@');
-      if (emailParts.length > 0) {
-        const localPart = emailParts[0];
-        
-        // CRITICAL: Never use generic terms as names
-        const genericTerms = ['office', 'admin', 'info', 'contact', 'mail', 'support', 'hello', 'team'];
-        
-        // If email is like "mathias@domain.com" or "mathiasheinke@domain.com"
-        if (localPart.includes('mathias')) {
-          console.log('🔍 Extracted "Mathias" from email local part');
-          return 'Mathias';
-        }
-        
-        // Try to extract from domain like "mathiasheinke.de"
-        if (emailParts[1] && emailParts[1].includes('mathias')) {
-          console.log('🔍 Extracted "Mathias" from email domain');
-          return 'Mathias';
-        }
-        
-        // Check if local part is a generic term - if so, DON'T use it
-        if (genericTerms.includes(localPart.toLowerCase())) {
-          console.log('⚠️ Email local part is generic term, using fallback');
-          return 'Nutzer';
-        }
-        
-        // If local part seems like a real name, use it
-        if (localPart.length >= 3) {
-          const extractedName = localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase();
-          console.log('📧 Using cleaned email local part:', extractedName);
-          return extractedName;
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error getting email from auth:', error);
-  }
-
-  console.log('⚠️ No suitable name found, using fallback');
-  
-  // Layer 3: Return generic fallback - NEVER "office" or similar
-  return 'Nutzer';
-};
-
-// ============= NAME EXTRACTION & FALLBACK =============
+// ============= NAME EXTRACTION =============
     console.log('👤 Extracting user name...');
-    const userName = await extractUserName(userData.profile, userId, supabase);
+    
+    // Use centralized getDisplayName utility function
+    const userName = getDisplayName(userData.profile);
+    
     console.log('📛 User name extracted:', userName, {
       hasProfile: !!userData.profile,
-      hasDisplayName: !!userData.profile?.display_name,
-      profileDisplayName: userData.profile?.display_name
+      preferredName: userData.profile?.preferred_name,
+      firstName: userData.profile?.first_name,
+      displayName: userData.profile?.display_name
     });
 
     // ============= RAG INTEGRATION =============

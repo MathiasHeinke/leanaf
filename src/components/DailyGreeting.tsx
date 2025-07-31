@@ -8,17 +8,7 @@ import { generateDynamicCoachGreeting, createGreetingContext } from "@/utils/dyn
 import { useGlobalCoachMemory } from "@/hooks/useGlobalCoachMemory";
 import { useParams } from "react-router-dom";
 
-// Import getDisplayName utility
-const getDisplayName = (profile: any): string => {
-  return (
-    profile?.preferred_name ||
-    profile?.first_name ||
-    profile?.nickname ||
-    profile?.full_name ||
-    profile?.email?.split('@')[0] ||
-    'Athlet'
-  );
-};
+import { resolveCoachFirstName } from "@/utils/coachNameResolver";
 
 interface DailyGreetingProps {
   userProfile?: any;
@@ -36,12 +26,8 @@ export const DailyGreeting = ({ userProfile, coachId }: DailyGreetingProps) => {
   const currentCoachId = coachId || (params['*']?.split('/')[0]) || 'lucy';
   
   const getUserName = () => {
-    // Use getDisplayName utility instead of direct email extraction
-    const fullName = getDisplayName(userProfile);
-    if (fullName && fullName !== 'Athlet') {
-      return fullName.split(' ')[0]; // Get first name only
-    }
-    return 'Du';
+    // Use centralized name resolver
+    return resolveCoachFirstName(userProfile);
   };
 
   // Generate personalized coach greeting or fallback to time-based
