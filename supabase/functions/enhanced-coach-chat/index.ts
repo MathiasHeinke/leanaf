@@ -1536,8 +1536,7 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
     } catch (dbError) {
       console.error('Failed to save enhanced conversation:', dbError);
       // Don't fail the request if database save fails
-    }
-
+    
     console.log('✅ Response sent successfully');
     return new Response(JSON.stringify({ 
       reply,
