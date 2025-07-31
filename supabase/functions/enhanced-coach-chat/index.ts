@@ -6,15 +6,7 @@ import { getDisplayName } from './utils/getDisplayName.ts';
 
 // -------------------------------------------------------------------------
 // Tool-Handler Map
-import trainingsplan from '../tool-handlers/trainingsplan.ts';
-import uebung from '../tool-handlers/uebung.ts';
-import supplement from '../tool-handlers/supplement.ts';
-import gewicht from '../tool-handlers/gewicht.ts';
-import foto from '../tool-handlers/foto.ts';
-
-const handlers: Record<string, any> = {
-  trainingsplan, uebung, supplement, gewicht, foto
-};
+import * as handlers from '../tool-handlers/index.ts';
 // -------------------------------------------------------------------------
 
 // Enhanced security helpers
