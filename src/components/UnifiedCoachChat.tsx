@@ -187,7 +187,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   useEffect(() => {
     renderCount.current++;
     console.log('🔄 UnifiedCoachChat render #', renderCount.current);
-  });
+  }, []); // NUR beim Mount, nicht nach jedem Render!
 
   useEffect(() => {
     console.table({
@@ -200,7 +200,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       mode,
       coachId: coach?.id || 'none'
     });
-  }, [isLoading, chatInitialized, isGlobalMemoryLoaded, messages.length, user?.id, mode, coach?.id]);
+  }, [isLoading, chatInitialized, isGlobalMemoryLoaded]);
   
   // ============= FALLBACK TIMEOUT MIT GUARDS =============
   useEffect(() => {
@@ -229,16 +229,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }, 5000);
     
     return () => clearTimeout(timeout);
-  }, [isLoading, chatInitialized, messages.length, coach?.name, coach?.personality, mode]);
+  }, [isLoading, chatInitialized]); // NUR primitive Werte!
   
-  console.log('🔄 Hooks initialized #', renderCount.current, { 
-    isGlobalMemoryLoaded, 
-    messagesLength: messages.length,
-    isLoading,
-    chatInitialized,
-    processMessageType: processMessage ? 'function' : 'null',
-    memoryExists: !!memory
-  });
+  // Console.log entfernt - war im Render-Body und verursachte Probleme
 
   // Online/Offline detection
   useEffect(() => {
