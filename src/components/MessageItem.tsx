@@ -44,28 +44,25 @@ export const MessageItem = React.memo(({
   reportHeight
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
-  const lastH = useRef(0);
-  const indexRef = useRef(index);
-  const reportHeightRef = useRef(reportHeight);
+  const lastHeight = useRef(0);
 
-  // Keep refs updated without causing re-renders
-  indexRef.current = index;
-  reportHeightRef.current = reportHeight;
-
-  /** Completely stable measure function - no dependencies that change */
-  const measure = useCallback(() => {
-    if (ref.current) {
-      const h = ref.current.getBoundingClientRect().height;
-      if (h !== lastH.current && h > 0) {
-        lastH.current = h;
-        reportHeightRef.current(indexRef.current, h);  // Use refs - no dependencies!
-      }
+  // Measure function for media load events
+  const handleMediaLoad = useCallback(() => {
+    if (!ref.current) return;
+    const h = ref.current.getBoundingClientRect().height;
+    if (h !== lastHeight.current && h > 0) {
+      lastHeight.current = h;
+      reportHeight(index, h);
     }
-  }, []);                               // Empty deps - completely stable
+  }, [index, reportHeight]);
 
-  useLayoutEffect(() => {               // Runs only once after mount
-    measure();
-  }, []);                               // Empty deps - no re-triggers
+  // Initial measurement only on mount
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const h = ref.current.getBoundingClientRect().height;
+    lastHeight.current = h;
+    reportHeight(index, h);
+  }, []); // Only run on mount
 
   const isUser = message.role === 'user';
 
@@ -121,8 +118,8 @@ export const MessageItem = React.memo(({
                   src={image}
                   alt={`Hochgeladenes Bild ${idx + 1}`}
                   className="rounded-lg max-w-full h-auto"
-                  onLoad={measure}  // Höhe nach Bildladen messen
-                  onError={measure}
+                  onLoad={handleMediaLoad}  // Höhe nach Bildladen messen
+                  onError={handleMediaLoad}
                 />
               ))}
             </div>
@@ -133,7 +130,7 @@ export const MessageItem = React.memo(({
               src={message.video_url} 
               controls 
               className="mt-2 rounded-lg max-w-full h-auto"
-              onLoadedMetadata={measure}  // Höhe nach Video-Metadaten messen
+              onLoadedMetadata={handleMediaLoad}  // Höhe nach Video-Metadaten messen
               controlsList="nodownload"
             />
           )}

@@ -106,8 +106,13 @@ export const MessageList = React.memo(({ messages, coach, onConversationAction }
     );
   }
 
-  /** itemData vermeidet Inline-Funktion */
-  const itemData = { messages, coach, onConversationAction, setRowHeight };
+  /** Stable itemData - no new objects created on each render */
+  const itemData = React.useMemo(() => ({ 
+    messages, 
+    coach, 
+    onConversationAction, 
+    setRowHeight 
+  }), [messages, coach, onConversationAction, setRowHeight]);
 
   return (
     <div className="relative h-full" aria-live="polite" aria-label="Chat-Nachrichten">
