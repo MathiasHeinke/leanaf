@@ -390,10 +390,8 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     };
   }, [user?.id]); // ONLY depend on user ID
 
-  // Reset initialization when user changes
-  useEffect(() => {
-    initializationRef.current = false;
-  }, [user?.id]);
+  // ===== RESET USEEFFECT ENTFERNT - VERURSACHTE INFINITE LOOP =====
+  // Die Reset-Logik ist bereits in der Haupt-Initialisierung eingebaut
 
   
   // ============= MEMORY SUMMARY WIRKLICH STABIL MACHEN =============
