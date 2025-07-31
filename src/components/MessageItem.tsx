@@ -45,21 +45,27 @@ export const MessageItem = React.memo(({
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const lastH = useRef(0);
+  const indexRef = useRef(index);
+  const reportHeightRef = useRef(reportHeight);
 
-  /** ⇢ nur nach mount + wenn Bilder nachgeladen - STABIL **/
+  // Keep refs updated without causing re-renders
+  indexRef.current = index;
+  reportHeightRef.current = reportHeight;
+
+  /** Completely stable measure function - no dependencies that change */
   const measure = useCallback(() => {
     if (ref.current) {
       const h = ref.current.getBoundingClientRect().height;
       if (h !== lastH.current && h > 0) {
         lastH.current = h;
-        reportHeight(index, h);          // hier erst updaten
+        reportHeightRef.current(indexRef.current, h);  // Use refs - no dependencies!
       }
     }
-  }, [index, reportHeight]);           // Stabile Dependencies
+  }, []);                               // Empty deps - completely stable
 
-  useLayoutEffect(() => {               // nur wenn measure sich ändert  
+  useLayoutEffect(() => {               // Runs only once after mount
     measure();
-  }, [measure]);                       // measure als Dependency
+  }, []);                               // Empty deps - no re-triggers
 
   const isUser = message.role === 'user';
 
