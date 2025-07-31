@@ -33,6 +33,25 @@ interface SimpleMessageListProps {
   onConversationAction?: (action: any) => void;
 }
 
+// Message clustering logic
+const shouldShowFooter = (messages: ChatMessage[], index: number): boolean => {
+  const currentMessage = messages[index];
+  const nextMessage = messages[index + 1];
+  
+  // Always show footer for last message
+  if (index === messages.length - 1) return true;
+  
+  // Show footer if next message is from different sender
+  if (!nextMessage || nextMessage.role !== currentMessage.role) return true;
+  
+  // Show footer if time gap > 60 seconds
+  const currentTime = new Date(currentMessage.created_at || currentMessage.timestamp || Date.now());
+  const nextTime = new Date(nextMessage.created_at || nextMessage.timestamp || Date.now());
+  const timeDiff = Math.abs(nextTime.getTime() - currentTime.getTime());
+  
+  return timeDiff > 60000; // 60 seconds
+};
+
 // Simple message list without virtualization - no render loops
 export const SimpleMessageList = React.memo(({ 
   messages, 
@@ -48,8 +67,8 @@ export const SimpleMessageList = React.memo(({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto space-y-4 p-4">
-      {messages.map((message) => (
+    <div className="flex-1 overflow-y-auto space-y-0.5 p-4">
+      {messages.map((message, index) => (
         <div key={message.id} className="w-full">
           <SimpleMessageItem
             message={{
@@ -63,6 +82,7 @@ export const SimpleMessageList = React.memo(({
               secondaryColor: coach.accentColor || coach.secondaryColor || '#1d4ed8',
               personality: coach.personality
             }}
+            showFooter={shouldShowFooter(messages, index)}
             onConversationAction={onConversationAction}
           />
         </div>

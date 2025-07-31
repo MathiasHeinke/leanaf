@@ -317,6 +317,98 @@
     @apply rounded-md bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500;
   }
 
+  /* Tool Color System (v3.2) */
+  :root {
+    --tool-trainingsplan: 222 90% 55%; /* blue */
+    --tool-uebung: 40 95% 55%; /* amber */
+    --tool-supplement: 168 70% 45%; /* teal */
+    --tool-gewicht: 280 70% 55%; /* violet */
+    --tool-foto: 340 80% 55%; /* pink */
+    --tool-workout: 222 90% 55%; /* alias for trainingsplan */
+    --tool-exercise: 40 95% 55%; /* alias for uebung */
+    --tool-weight: 280 70% 55%; /* alias for gewicht */
+    --tool-photo: 340 80% 55%; /* alias for foto */
+  }
+
+  /* Tool Active States */
+  #chatInput.tool-active {
+    border-color: hsl(var(--tool-current));
+    box-shadow: 0 0 0 1px hsl(var(--tool-current) / 0.2);
+  }
+
+  #toolBadge.tool-active {
+    background: hsl(var(--tool-current));
+    color: white;
+  }
+
+  /* Message Footer Styles */
+  .footer-row { 
+    @apply flex items-center gap-1 pl-1; 
+  }
+  
+  .footer-row.user { 
+    @apply pr-1 justify-end; 
+  }
+  
+  .footer-row .avatar { 
+    @apply w-4 h-4 rounded-full shrink-0; 
+  }
+  
+  .footer-row .time { 
+    @apply text-[10px] text-muted-foreground; 
+  }
+
+  /* Plus Button Animations */
+  #toolBtn {
+    @apply transition-transform duration-200;
+  }
+  
+  #toolBtn:hover {
+    transform: rotate(45deg) scale(1.15);
+  }
+  
+  #toolBtn:active {
+    transform: rotate(90deg) scale(0.9);
+  }
+
+  /* Mic Pulse Animation */
+  #micBtn.recording svg {
+    animation: mic-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+  }
+
+  /* Tool Badge */
+  #toolBadge {
+    @apply absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-3 py-1.5 rounded-full text-white text-xs font-medium shadow-lg transition-opacity duration-300;
+  }
+
+  #toolBadge.show {
+    opacity: 1;
+  }
+
+  #toolBadge.dim {
+    opacity: 0.6;
+  }
+
+  /* Reduced Motion Support */
+  @media (prefers-reduced-motion: reduce) {
+    #toolBtn:hover, 
+    #toolBtn:active, 
+    #micBtn.recording svg {
+      transition: none;
+      animation: none;
+    }
+    
+    .dot {
+      animation: none;
+      opacity: 0.4;
+    }
+  }
+
   .btn-cancel {
     @apply rounded-md border border-red-300 dark:border-red-500 text-red-600 dark:text-red-400 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20;
   }

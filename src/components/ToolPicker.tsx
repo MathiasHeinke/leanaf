@@ -14,11 +14,11 @@ interface ToolPickerProps {
 }
 
 const tools: Tool[] = [
-  { id: 'workout', label: '🏋️‍♂️ Trainingsplan', icon: <Dumbbell className="w-4 h-4" /> },
-  { id: 'exercise', label: '📒 Übung hinzufügen', icon: <BookOpen className="w-4 h-4" /> },
-  { id: 'supplement', label: '💊 Supplement', icon: <Pill className="w-4 h-4" /> },
-  { id: 'weight', label: '📈 Gewicht', icon: <Scale className="w-4 h-4" /> },
-  { id: 'photo', label: '📷 Fortschritt-Foto', icon: <Camera className="w-4 h-4" /> },
+  { id: 'trainingsplan', label: 'Trainingsplan', icon: <Dumbbell className="w-4 h-4" /> },
+  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-4 h-4" /> },
+  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-4 h-4" /> },
+  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-4 h-4" /> },
+  { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-4 h-4" /> },
 ];
 
 export const ToolPicker = ({ onToolSelect, selectedTool }: ToolPickerProps) => {
@@ -36,6 +36,7 @@ export const ToolPicker = ({ onToolSelect, selectedTool }: ToolPickerProps) => {
           type="button"
           className="icon-btn"
           aria-label="Tools & Anhänge"
+          id="toolBtn"
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -49,7 +50,7 @@ export const ToolPicker = ({ onToolSelect, selectedTool }: ToolPickerProps) => {
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md text-left transition-colors ${
                 selectedTool === tool.id
                   ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent hover:text-accent-foreground'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               {tool.icon}

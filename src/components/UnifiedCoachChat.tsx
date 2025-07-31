@@ -124,6 +124,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState(false);
   const [hasFiles, setHasFiles] = useState(false);
+  const [showToolBadge, setShowToolBadge] = useState(false);
+  const [toolBadgeText, setToolBadgeText] = useState('');
   
   
   // ============= REFS =============
@@ -254,6 +256,85 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     event.target.value = '';
   }, [uploadFiles]);
 
+  // Tool color mapping
+  const colorMap: Record<string, string> = {
+    trainingsplan: 'var(--tool-trainingsplan)',
+    uebung: 'var(--tool-uebung)', 
+    supplement: 'var(--tool-supplement)',
+    gewicht: 'var(--tool-gewicht)',
+    foto: 'var(--tool-foto)',
+    // Aliases for backwards compatibility
+    workout: 'var(--tool-trainingsplan)',
+    exercise: 'var(--tool-uebung)',
+    weight: 'var(--tool-gewicht)',
+    photo: 'var(--tool-foto)'
+  };
+
+  const labelMap: Record<string, string> = {
+    trainingsplan: '🏋️‍♂️ Trainingsplan',
+    uebung: '📒 Übung',
+    supplement: '💊 Supplement', 
+    gewicht: '📈 Gewicht',
+    foto: '📷 Foto',
+    workout: '🏋️‍♂️ Trainingsplan',
+    exercise: '📒 Übung',
+    weight: '📈 Gewicht',
+    photo: '📷 Foto'
+  };
+
+  // Tool activation handler
+  const handleToolSelect = useCallback((tool: string | null) => {
+    setSelectedTool(tool);
+    
+    // Haptic feedback for mobile
+    if ('vibrate' in navigator) {
+      navigator.vibrate(30);
+    }
+    
+    if (tool) {
+      const color = colorMap[tool];
+      const label = labelMap[tool];
+      
+      if (color) {
+        document.documentElement.style.setProperty('--tool-current', color);
+        setToolBadgeText(`${label} aktiv`);
+        setShowToolBadge(true);
+        
+        // Add tool-active class to both textareas
+        const textarea = document.getElementById('chatInput');
+        const textareaCard = document.getElementById('chatInputCard');
+        textarea?.classList.add('tool-active');
+        textareaCard?.classList.add('tool-active');
+        
+        // Fade badge after 3 seconds
+        setTimeout(() => {
+          const badge = document.getElementById('toolBadge');
+          const badgeCard = document.getElementById('toolBadgeCard');
+          badge?.classList.add('dim');
+          badgeCard?.classList.add('dim');
+        }, 3000);
+      }
+    } else {
+      // Clear tool
+      document.documentElement.style.removeProperty('--tool-current');
+      setShowToolBadge(false);
+      
+      const textarea = document.getElementById('chatInput');
+      const textareaCard = document.getElementById('chatInputCard');
+      textarea?.classList.remove('tool-active');
+      textareaCard?.classList.remove('tool-active');
+    }
+  }, [colorMap, labelMap]);
+
+  // Enhanced voice toggle with haptic feedback
+  const handleVoiceToggleWithHaptic = useCallback(() => {
+    // Haptic feedback for mobile
+    if ('vibrate' in navigator) {
+      navigator.vibrate(30);
+    }
+    handleVoiceToggle();
+  }, [handleVoiceToggle]);
+
   // Determine if send button should be enabled
   const canSend = useMemo(() => {
     return inputText.trim() || hasFiles || selectedTool;
@@ -300,6 +381,15 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       <div className="space-y-2 px-3 py-2">
         {/* Textarea Row */}
         <div className="relative">
+          {/* Tool Badge */}
+          {showToolBadge && (
+            <div 
+              id="toolBadge" 
+              className={`tool-active show ${showToolBadge ? '' : 'hidden'}`}
+            >
+              {toolBadgeText}
+            </div>
+          )}
           <Textarea
             id="chatInput"
             value={inputText}
@@ -352,7 +442,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         
         {/* Buttons Row */}
         <div className={`flex items-center gap-2 transition-opacity duration-300 ${recordingState ? 'opacity-20 pointer-events-none' : ''}`}>
-          <ToolPicker onToolSelect={setSelectedTool} selectedTool={selectedTool} />
+          <ToolPicker onToolSelect={handleToolSelect} selectedTool={selectedTool} />
           
           <button
             type="button"
@@ -368,7 +458,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           
           <button
             type="button"
-            onClick={handleVoiceToggle}
+            onClick={handleVoiceToggleWithHaptic}
             disabled={isProcessing}
             className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
             aria-label="Aufnahme starten"
@@ -460,6 +550,15 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           <div className="space-y-2 px-3 py-2">
             {/* Textarea Row */}
             <div className="relative">
+              {/* Tool Badge */}
+              {showToolBadge && (
+                <div 
+                  id="toolBadgeCard" 
+                  className={`tool-active show ${showToolBadge ? '' : 'hidden'}`}
+                >
+                  {toolBadgeText}
+                </div>
+              )}
               <Textarea
                 id="chatInputCard"
                 value={inputText}
@@ -512,7 +611,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             
             {/* Buttons Row */}
             <div className={`flex items-center gap-2 transition-opacity duration-300 ${recordingState ? 'opacity-20 pointer-events-none' : ''}`}>
-              <ToolPicker onToolSelect={setSelectedTool} selectedTool={selectedTool} />
+              <ToolPicker onToolSelect={handleToolSelect} selectedTool={selectedTool} />
               
               <button
                 type="button"
@@ -528,7 +627,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               
               <button
                 type="button"
-                onClick={handleVoiceToggle}
+                onClick={handleVoiceToggleWithHaptic}
                 disabled={isProcessing}
                 className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
                 aria-label="Aufnahme starten"
