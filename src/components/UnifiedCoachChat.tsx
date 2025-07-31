@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -149,9 +149,11 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [showUpload, setShowUpload] = useState(false);
   const [exercisePreview, setExercisePreview] = useState<any | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [chatInitialized, setChatInitialized] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const initializationRef = useRef(false);
 
   // Hooks
   const {
@@ -172,37 +174,51 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
 
-  // Auto-scroll to bottom - optimized with stable ref
+  // Memoized scroll function - STABLE REFERENCE
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-    }, 10);
+    if (scrollRef.current) {
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 50);
+    }
   }, []);
 
+  // Auto-scroll when messages change - STABLE DEPENDENCY
   useEffect(() => {
-    scrollToBottom();
-  }, [messages.length, scrollToBottom]); // Only depend on message count, not full array
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages.length, scrollToBottom]);
 
-  // Stable initialization - single effect, no duplicated logic
+  // Memoized stable values to prevent re-initialization
+  const stableUserId = useMemo(() => user?.id, [user?.id]);
+  const stableMode = useMemo(() => mode, [mode]);
+  const stableCoachPersonality = useMemo(() => coach?.personality || 'motivierend', [coach?.personality]);
+  const stableCoachName = useMemo(() => coach?.name || 'Coach', [coach?.name]);
+
+  // SINGLE INITIALIZATION EFFECT - NO RE-RENDERS
   useEffect(() => {
-    if (!user?.id) return;
-    
+    // Prevent multiple initializations
+    if (!stableUserId || initializationRef.current) {
+      return;
+    }
+
+    initializationRef.current = true;
+    setChatInitialized(false);
+    setIsLoading(true);
+
     let isMounted = true;
-    
+
     const initializeChat = async () => {
-      if (!isMounted) return;
-      
-      setIsLoading(true);
-      
       try {
         // Load chat history
         const { data, error } = await supabase
           .from('coach_conversations')
           .select('*')
-          .eq('user_id', user.id)
-          .eq('coach_personality', coach?.personality || 'motivierend')
+          .eq('user_id', stableUserId)
+          .eq('coach_personality', stableCoachPersonality)
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
           .order('created_at', { ascending: true })
           .limit(50);
@@ -218,37 +234,35 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             created_at: msg.created_at,
             coach_personality: msg.coach_personality,
             images: [],
-            mode: mode
+            mode: stableMode
           }));
           setMessages(formattedMessages);
         } else {
-          // No history - create welcome message
+          // No history - create stable welcome message
           const now = new Date();
           const hour = now.getHours();
-          const coachName = coach?.name || 'Coach';
           
-          // Stable welcome message based on stable values
           let timeGreeting = 'Hallo';
           if (hour < 12) timeGreeting = 'Guten Morgen';
           else if (hour < 18) timeGreeting = 'Guten Tag';
           else timeGreeting = 'Guten Abend';
 
-          const modeSpecific = mode === 'training' 
+          const modeSpecific = stableMode === 'training' 
             ? '💪 Lass uns heute dein Training optimieren!'
-            : mode === 'nutrition' 
+            : stableMode === 'nutrition' 
             ? '🍎 Ich helfe dir heute bei deiner Ernährung!'
-            : mode === 'specialized'
-            ? `🎯 Ich bin ${coachName} und auf meine Expertise spezialisiert.`
+            : stableMode === 'specialized'
+            ? `🎯 Ich bin ${stableCoachName} und auf meine Expertise spezialisiert.`
             : '✨ Wie kann ich dir heute helfen?';
 
           const welcomeMsg: ChatMessage = {
-            id: `welcome-${user.id}-${mode}-${coach?.personality || 'default'}`,
+            id: `welcome-${stableUserId}-${stableMode}-${stableCoachPersonality}`,
             role: 'assistant',
-            content: `${timeGreeting}! Ich bin ${coachName}. ${modeSpecific}`,
+            content: `${timeGreeting}! Ich bin ${stableCoachName}. ${modeSpecific}`,
             created_at: now.toISOString(),
-            coach_personality: coach?.personality || 'motivierend',
+            coach_personality: stableCoachPersonality,
             images: [],
-            mode: mode
+            mode: stableMode
           };
 
           setMessages([welcomeMsg]);
@@ -256,20 +270,21 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       } catch (error) {
         console.error('Error initializing chat:', error);
         if (isMounted) {
-          // Fallback welcome message on error
+          // Fallback welcome message
           setMessages([{
             id: `error-welcome-${Date.now()}`,
             role: 'assistant',
-            content: `Hallo! Ich bin ${coach?.name || 'dein Coach'}. Wie kann ich dir helfen?`,
+            content: `Hallo! Ich bin ${stableCoachName}. Wie kann ich dir helfen?`,
             created_at: new Date().toISOString(),
-            coach_personality: coach?.personality || 'motivierend',
+            coach_personality: stableCoachPersonality,
             images: [],
-            mode: mode
+            mode: stableMode
           }]);
         }
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setChatInitialized(true);
         }
       }
     };
@@ -279,7 +294,12 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [user?.id, mode, coach?.personality, coach?.name]); // Removed coach?.expertise array
+  }, [stableUserId, stableMode, stableCoachPersonality, stableCoachName]);
+
+  // Reset initialization flag when user changes
+  useEffect(() => {
+    initializationRef.current = false;
+  }, [stableUserId]);
 
   const sendMessage = async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
