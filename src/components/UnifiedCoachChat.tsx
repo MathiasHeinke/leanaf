@@ -268,52 +268,85 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
-    const coachBanner = (
-      <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm rounded-lg p-3 border border-border">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={coach?.imageUrl} />
-          <AvatarFallback>{coach?.name?.[0] || 'C'}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="font-semibold">{coach?.name || 'Coach'}</h3>
-          <p className="text-sm text-muted-foreground">{coach?.personality || 'Dein persönlicher Coach'}</p>
-        </div>
-      </div>
-    );
 
     const chatInput = (
-      <div className="space-y-3">
-        <div className="relative">
-          <Textarea
-            id="chatInput"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="Nachricht eingeben..."
-            rows={4}
-            className="w-full min-h-[96px] resize-none overflow-auto bg-input border-input"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+      <div className="relative">
+        <Textarea
+          id="chatInput"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Nachricht eingeben ..."
+          rows={4}
+          disabled={isRecording}
+          className="w-full min-h-[96px] rounded-xl px-4 py-3
+                     bg-white/60 dark:bg-black/40 backdrop-blur
+                     border border-white/40 dark:border-white/20
+                     focus:outline-none resize-none overflow-auto"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
+        />
+        
+        {/* Recording-Overlay */}
+        <div 
+          className={`absolute inset-0 z-20 rounded-xl
+                      bg-white/70 dark:bg-black/50 backdrop-blur
+                      flex items-center justify-between px-4 transition-opacity duration-200 ${
+                        isRecording ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      }`}
+        >
+          {/* Cancel-Button */}
+          <Button
+            onClick={async () => {
+              await stopRecording();
+            }}
+            variant="outline"
+            size="sm"
+            className="flex shrink-0 items-center gap-1 px-3 py-2
+                       text-sm font-medium rounded-md
+                       border border-red-200 dark:border-red-400
+                       text-red-600 dark:text-red-400
+                       hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            <X className="h-3 w-3" />
+            Abbrechen
+          </Button>
+
+          {/* Equalizer + Status */}
+          <div className="flex flex-col items-center">
+            <div className="flex gap-1 h-5">
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+              <span className="bar"></span>
+            </div>
+            <span className="mt-1 text-xs">Ich höre zu ...</span>
+          </div>
+
+          {/* Send-Button */}
+          <Button
+            onClick={async () => {
+              const transcript = await stopRecording();
+              if (transcript) {
+                setInputText(prev => prev + (prev ? ' ' : '') + transcript);
               }
             }}
-          />
-          
-          {/* Recording-Indicator */}
-          <div 
-            className={`absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none transition-opacity duration-200 ${
-              isRecording ? 'opacity-100' : 'opacity-0'
-            }`}
+            size="sm"
+            className="flex shrink-0 items-center gap-1 px-3 py-2
+                       text-sm font-medium rounded-md
+                       bg-blue-500 hover:bg-blue-600 text-white"
           >
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
-            <span className="bar"></span>
-          </div>
+            <Send className="h-3 w-3" />
+            Senden
+          </Button>
         </div>
-        
-        <div className="flex justify-between items-center">
+
+        {/* File Upload & Voice Button */}
+        <div className="flex justify-between items-center mt-3">
           <div className="flex gap-2">
             <input
               type="file"
@@ -327,7 +360,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               variant="outline"
               size="sm"
               onClick={() => document.getElementById('file-upload')?.click()}
-              disabled={uploading}
+              disabled={uploading || isRecording}
               className="bg-card/50 border-border hover:bg-card"
             >
               <ImageIcon className="h-4 w-4" />
@@ -345,7 +378,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           
           <Button 
             onClick={sendMessage}
-            disabled={!inputText.trim() || isThinking}
+            disabled={!inputText.trim() || isThinking || isRecording}
             size="sm"
             className="bg-primary hover:bg-primary/90"
           >
@@ -358,7 +391,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     return (
       <>
-        <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
+        <ChatLayout chatInput={chatInput}>
           <SimpleMessageList 
             messages={messages.map(msg => ({
               id: msg.id,
@@ -414,15 +447,19 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           />
         </ScrollArea>
         
-        <div className="flex-none space-y-2">
+        <div className="flex-none">
           <div className="relative">
             <Textarea
-              id="chatInput"
+              id="chatInputCard"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Nachricht eingeben..."
+              placeholder="Nachricht eingeben ..."
               rows={4}
-              className="w-full min-h-[96px] resize-none overflow-auto"
+              disabled={isRecording}
+              className="w-full min-h-[96px] rounded-xl px-4 py-3
+                         bg-white/60 dark:bg-black/40 backdrop-blur
+                         border border-white/40 dark:border-white/20
+                         focus:outline-none resize-none overflow-auto"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -431,57 +468,102 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               }}
             />
             
-            {/* Recording-Indicator */}
+            {/* Recording-Overlay */}
             <div 
-              className={`absolute -top-3 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none transition-opacity duration-200 ${
-                isRecording ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`absolute inset-0 z-20 rounded-xl
+                          bg-white/70 dark:bg-black/50 backdrop-blur
+                          flex items-center justify-between px-4 transition-opacity duration-200 ${
+                            isRecording ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                          }`}
             >
-              <span className="bar"></span>
-              <span className="bar"></span>
-              <span className="bar"></span>
-              <span className="bar"></span>
-              <span className="bar"></span>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload-card"
-                multiple
-              />
+              {/* Cancel-Button */}
               <Button
+                onClick={async () => {
+                  await stopRecording();
+                }}
                 variant="outline"
                 size="sm"
-                onClick={() => document.getElementById('file-upload-card')?.click()}
-                disabled={uploading}
+                className="flex shrink-0 items-center gap-1 px-3 py-2
+                           text-sm font-medium rounded-md
+                           border border-red-200 dark:border-red-400
+                           text-red-600 dark:text-red-400
+                           hover:bg-red-50 dark:hover:bg-red-900/20"
               >
-                <ImageIcon className="h-4 w-4" />
+                <X className="h-3 w-3" />
+                Abbrechen
               </Button>
+
+              {/* Equalizer + Status */}
+              <div className="flex flex-col items-center">
+                <div className="flex gap-1 h-5">
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                  <span className="bar"></span>
+                </div>
+                <span className="mt-1 text-xs">Ich höre zu ...</span>
+              </div>
+
+              {/* Send-Button */}
               <Button
-                variant="outline"
+                onClick={async () => {
+                  const transcript = await stopRecording();
+                  if (transcript) {
+                    setInputText(prev => prev + (prev ? ' ' : '') + transcript);
+                  }
+                }}
                 size="sm"
-                onClick={handleVoiceToggle}
-                disabled={isProcessing}
-                className={isRecording ? 'bg-red-500/20 border-red-500' : ''}
+                className="flex shrink-0 items-center gap-1 px-3 py-2
+                           text-sm font-medium rounded-md
+                           bg-blue-500 hover:bg-blue-600 text-white"
               >
-                <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
+                <Send className="h-3 w-3" />
+                Senden
               </Button>
             </div>
-            
-            <Button 
-              onClick={sendMessage}
-              disabled={!inputText.trim() || isThinking}
-              size="sm"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Senden
-            </Button>
+
+            {/* File Upload & Voice Button */}
+            <div className="flex justify-between items-center mt-3">
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload-card"
+                  multiple
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('file-upload-card')?.click()}
+                  disabled={uploading || isRecording}
+                  className="bg-card/50 border-border hover:bg-card"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleVoiceToggle}
+                  disabled={isProcessing}
+                  className={`bg-card/50 border-border hover:bg-card ${isRecording ? 'bg-red-500/20 border-red-500' : ''}`}
+                >
+                  <Mic className={`h-4 w-4 ${isRecording ? 'text-red-500' : ''}`} />
+                </Button>
+              </div>
+              
+              <Button 
+                onClick={sendMessage}
+                disabled={!inputText.trim() || isThinking || isRecording}
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Senden
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>
