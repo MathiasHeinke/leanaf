@@ -11,6 +11,8 @@ interface Tool {
 interface ToolPickerProps {
   onToolSelect: (tool: string | null) => void;
   selectedTool: string | null;
+  /** schiebt sofort eine system.tool-Message in den Chat-Store */
+  pushSystemTool?: (tool: string | null) => void;
 }
 
 const tools: Tool[] = [
@@ -21,11 +23,13 @@ const tools: Tool[] = [
   { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-4 h-4" /> },
 ];
 
-export const ToolPicker = ({ onToolSelect, selectedTool }: ToolPickerProps) => {
+export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolPickerProps) => {
   const [open, setOpen] = useState(false);
 
   const handleToolSelect = (toolId: string) => {
-    onToolSelect(toolId === selectedTool ? null : toolId);
+    const next = toolId === selectedTool ? null : toolId;
+    onToolSelect(next);
+    pushSystemTool?.(next);          // <-- neue system.tool-Msg
     setOpen(false);
   };
 

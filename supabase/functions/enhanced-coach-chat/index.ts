@@ -618,6 +618,11 @@ const sanitizeUserData = (userData: any): any => {
   };
 };
 
+function getLastTool(conv: any[]) {
+  return [...conv].reverse()
+    .find(m => m.role === 'system' && m.type === 'tool')?.tool ?? null;
+}
+
 serve(async (req) => {
   console.log('Enhanced Human-Like Coach chat request received at:', new Date().toISOString());
   
@@ -630,10 +635,24 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const body = await req.json();
+
+    // Check for tool routing first
+    const { conversation, userId } = body;
+    if (conversation && userId) {
+      const activeTool = getLastTool(conversation);
+      if (activeTool && handlers[activeTool]) {
+        console.log(`Using tool handler: ${activeTool}`);
+        const result = await handlers[activeTool](conversation, userId);
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // ----------- Fallback: Offener Chat ----------
     
     // Enhanced input validation and sanitization
     const message = securityHelpers.sanitizeInput.text(body.message);
-    const userId = body.userId;
     const coachPersonality = validateCoachPersonality(body.coachPersonality || null);
     
     // Enhanced user ID validation

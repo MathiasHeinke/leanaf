@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { VariableSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import { MessageItem } from './MessageItem';
+import { SmartCardWrapper as SmartCard } from './SmartCardWrapper';
 import { Button } from '@/components/ui/button';
 
 interface ChatMessage {
@@ -35,12 +36,22 @@ interface MessageListProps {
 const Row = React.memo<{ index: number; style: React.CSSProperties; data: any }>(
   ({ index, style, data }) => {
     const { msgs, coach, onAction, setH } = data;
+    const msg = msgs[index];
+
+    if (msg.type === 'card') {
+      return (
+        <div style={style} className="px-3 py-2">
+          <SmartCard card={msg.card} payload={msg.payload} />
+        </div>
+      );
+    }
+
     /* KEIN useCallback hier – wir geben setH 1:1 weiter */
     return (
       <MessageItem
         index={index}
         style={style}
-        message={msgs[index]}
+        message={msg}
         coach={coach}
         onConversationAction={onAction}
         reportHeight={setH}           // stabile Referenz!
