@@ -43,18 +43,19 @@ serve(async (req) => {
       supabase.from('sleep_data').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3)
     ]);
 
-    // Build comprehensive context with precise timing
+    // Build comprehensive context with precise timing (German timezone)
     const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
+    const germanTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Berlin"}));
+    const hour = germanTime.getHours();
+    const minute = germanTime.getMinutes();
     const timeOfDay = hour < 6 ? 'früher Morgen' : 
                       hour < 12 ? 'Morgen' : 
                       hour < 14 ? 'Mittag' :
                       hour < 18 ? 'Nachmittag' : 
                       hour < 22 ? 'Abend' : 'späte Abend';
     const exactTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    const dayOfWeek = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'][now.getDay()];
-    const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+    const dayOfWeek = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'][germanTime.getDay()];
+    const isWeekend = germanTime.getDay() === 0 || germanTime.getDay() === 6;
 
     // Coach personalities with deep character details
     const coachPersonalities = {
