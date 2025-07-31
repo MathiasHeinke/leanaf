@@ -123,6 +123,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [chatInitialized, setChatInitialized] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState(false);
+  const [hasFiles, setHasFiles] = useState(false);
   
   
   // ============= REFS =============
@@ -243,6 +244,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       // Add uploaded images to message
       if (uploadedUrls.length > 0) {
         setInputText(prev => prev + (prev ? '\n' : '') + `[Uploaded files: ${uploadedUrls.join(', ')}]`);
+        setHasFiles(true);
       }
     } catch (error) {
       console.error('Upload failed:', error);
@@ -251,6 +253,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     // Reset file input
     event.target.value = '';
   }, [uploadFiles]);
+
+  // Determine if send button should be enabled
+  const canSend = useMemo(() => {
+    return inputText.trim() || hasFiles || selectedTool;
+  }, [inputText, hasFiles, selectedTool]);
 
   // Effect to handle transcribed text
   useEffect(() => {
@@ -344,19 +351,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         </div>
         
         {/* Buttons Row */}
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 transition-opacity duration-300 ${recordingState ? 'opacity-20 pointer-events-none' : ''}`}>
           <ToolPicker onToolSelect={setSelectedTool} selectedTool={selectedTool} />
-          
-          <button
-            type="button"
-            onClick={handleVoiceToggle}
-            disabled={isProcessing}
-            className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
-            aria-label="Aufnahme starten"
-            id="micBtn"
-          >
-            <Mic className="w-6 h-6" />
-          </button>
           
           <button
             type="button"
@@ -370,9 +366,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           
           <div className="flex-1"></div>
           
+          <button
+            type="button"
+            onClick={handleVoiceToggle}
+            disabled={isProcessing}
+            className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
+            aria-label="Aufnahme starten"
+            id="micBtn"
+          >
+            <Mic className="w-6 h-6" />
+          </button>
+          
           <button 
             onClick={sendMessage} 
-            disabled={!inputText.trim() || isThinking || recordingState}
+            disabled={!canSend || isThinking || recordingState}
             className="btn-send px-4 py-2"
           >
             ➤ Senden
@@ -504,19 +511,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             </div>
             
             {/* Buttons Row */}
-            <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-2 transition-opacity duration-300 ${recordingState ? 'opacity-20 pointer-events-none' : ''}`}>
               <ToolPicker onToolSelect={setSelectedTool} selectedTool={selectedTool} />
-              
-              <button
-                type="button"
-                onClick={handleVoiceToggle}
-                disabled={isProcessing}
-                className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
-                aria-label="Aufnahme starten"
-                id="micBtn"
-              >
-                <Mic className="w-6 h-6" />
-              </button>
               
               <button
                 type="button"
@@ -530,9 +526,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               
               <div className="flex-1"></div>
               
+              <button
+                type="button"
+                onClick={handleVoiceToggle}
+                disabled={isProcessing}
+                className={`icon-btn text-red-500 ${recordingState ? 'recording' : ''}`}
+                aria-label="Aufnahme starten"
+                id="micBtn"
+              >
+                <Mic className="w-6 h-6" />
+              </button>
+              
               <button 
                 onClick={sendMessage} 
-                disabled={!inputText.trim() || isThinking || recordingState}
+                disabled={!canSend || isThinking || recordingState}
                 className="btn-send px-4 py-2"
               >
                 ➤ Senden
