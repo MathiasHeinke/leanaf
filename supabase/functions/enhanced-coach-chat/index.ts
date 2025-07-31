@@ -1088,6 +1088,7 @@ serve(async (req) => {
       }
     }
 
+    async function handleRegularChat() {
       const chatMessages = [systemMessage];
       
       if (conversation?.length) {
@@ -1494,6 +1495,7 @@ serve(async (req) => {
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+    }
 
   } catch (error: any) {
     console.error('Enhanced coach chat error:', error);
