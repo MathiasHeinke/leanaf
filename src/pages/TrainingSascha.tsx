@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SpecializedCoachChatWrapped } from '@/components/SpecializedCoachChatWrapped';
+import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { debounce, clearCache } from '@/utils/supabaseHelpers';
@@ -470,41 +470,41 @@ const TrainingSascha = () => {
   const averages = calculateAverages();
 
   return (
-    <div className="min-h-screen bg-background">
-      <SpecializedCoachChatWrapped
-          coach={{
-            id: 'sascha',
-            name: 'Sascha',
-            role: 'Performance- & Trainingsexperte',
-            description: 'Dein persönlicher Trainer für Krafttraining und Performance',
-            expertise: ['Krafttraining', 'Performance', 'Trainingsplanung'],
-            personality: 'hart',
-            color: 'blue',
-            imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-            avatar: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-            age: 32,
-            icon: 'dumbbell',
-            accentColor: 'blue',
-            quickActions: [
-              { text: 'Trainingsplan erstellen', prompt: 'Erstelle mir einen optimalen Trainingsplan für meine Ziele.' },
-              { text: 'Formcheck', prompt: 'Bewerte meine Übungsausführung und gib mir Feedback zur Technik.' },
-              { text: 'RPE bewerten', prompt: 'Erkläre mir das RPE-System und wie ich es optimal nutze.' }
-            ]
-          }}
-          onBack={() => navigate('/training')}
-          todaysTotals={todaysTotals}
-          dailyGoals={dailyGoals || { calories: 1323, protein: 116, carbs: 99, fats: 51 }}
-          averages={averages}
-          historyData={historyData}
-          trendData={trendData}
-          weightHistory={weightHistory}
-          sleepData={sleepData}
-          bodyMeasurements={bodyMeasurements}
-          workoutData={workoutData}
-          profileData={profileData}
-          progressPhotos={progressPhotos}
-        />
-    </div>
+    <UnifiedCoachChat
+      mode="specialized"
+      coach={{
+        id: 'sascha',
+        name: 'Sascha',
+        role: 'Performance- & Trainingsexperte',
+        description: 'Dein persönlicher Trainer für Krafttraining und Performance',
+        expertise: ['Krafttraining', 'Performance', 'Trainingsplanung'],
+        personality: 'hart',
+        color: 'blue',
+        imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
+        avatar: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
+        age: 32,
+        icon: 'dumbbell',
+        accentColor: 'blue',
+        quickActions: [
+          { text: 'Trainingsplan erstellen', prompt: 'Erstelle mir einen optimalen Trainingsplan für meine Ziele.' },
+          { text: 'Formcheck', prompt: 'Bewerte meine Übungsausführung und gib mir Feedback zur Technik.' },
+          { text: 'RPE bewerten', prompt: 'Erkläre mir das RPE-System und wie ich es optimal nutze.' }
+        ]
+      }}
+      onBack={() => navigate(-1)}
+      todaysTotals={todaysTotals}
+      dailyGoals={dailyGoals}
+      averages={averages}
+      historyData={historyData}
+      trendData={trendData}
+      weightHistory={weightHistory}
+      sleepData={sleepData}
+      bodyMeasurements={bodyMeasurements}
+      workoutData={workoutData}
+      profileData={profileData}
+      progressPhotos={progressPhotos}
+      useFullscreenLayout={true}
+    />
   );
 };
 

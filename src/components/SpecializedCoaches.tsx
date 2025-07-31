@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Check, Heart, Target, Brain, Dumbbell } from 'lucide-react';
-import { SpecializedCoachChat } from './SpecializedCoachChat';
+import { UnifiedCoachChat } from './UnifiedCoachChat';
 import { CoachInfoButton } from './CoachInfoButton';
 import { CoachRating, CoachRatingDisplay } from './CoachRating';
 import { AdvancedWorkoutSection } from './AdvancedWorkoutSection';
@@ -285,7 +285,8 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
     if (!coach) return null;
 
     return (
-      <SpecializedCoachChat
+      <UnifiedCoachChat
+        mode="specialized"
         coach={coach}
         onBack={handleBackToSelection}
         todaysTotals={todaysTotals}
@@ -294,6 +295,7 @@ export const SpecializedCoaches: React.FC<SpecializedCoachesProps> = ({
         historyData={historyData}
         trendData={trendData}
         weightHistory={weightHistory}
+        useFullscreenLayout={true}
       />
     );
   }

@@ -26,8 +26,10 @@ import {
   Activity,
   Pill,
   Dumbbell,
-  Brain
+  Brain,
+  ArrowLeft
 } from 'lucide-react';
+import { ChatLayout } from '@/components/layouts/ChatLayout';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -70,12 +72,16 @@ interface ChatMessage {
 interface CoachProfile {
   id: string;
   name: string;
+  age?: number;
+  role?: string;
+  avatar?: string;
+  icon?: any;
+  imageUrl?: string;
   personality: string;
   description: string;
   expertise: string[];
   color: string;
   accentColor: string;
-  avatar?: string;
   quickActions?: Array<{
     text: string;
     prompt: string;
@@ -99,6 +105,21 @@ interface UnifiedCoachChatProps {
   } | null;
   onExerciseLogged?: (exerciseData: any) => void;
   onBack?: () => void;
+  useFullscreenLayout?: boolean;
+  averages?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+  };
+  historyData?: any[];
+  trendData?: any;
+  weightHistory?: any[];
+  sleepData?: any[];
+  bodyMeasurements?: any[];
+  workoutData?: any[];
+  profileData?: any;
+  progressPhotos?: string[];
 }
 
 export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
@@ -107,7 +128,17 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   todaysTotals,
   dailyGoals,
   onExerciseLogged,
-  onBack
+  onBack,
+  useFullscreenLayout = false,
+  averages,
+  historyData,
+  trendData,
+  weightHistory,
+  sleepData,
+  bodyMeasurements,
+  workoutData,
+  profileData,
+  progressPhotos
 }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -271,6 +302,15 @@ Wie kann ich dir helfen?`;
         context: {
           todaysTotals,
           dailyGoals,
+          averages,
+          historyData,
+          trendData,
+          weightHistory,
+          sleepData,
+          bodyMeasurements,
+          workoutData,
+          profileData,
+          progressPhotos,
           coachInfo: coach,
           memorySummary: getMemorySummary()
         }
@@ -406,14 +446,310 @@ Wie kann ich dir helfen?`;
   };
 
 
+  const getCoachColors = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return 'from-blue-500 to-blue-600';
+      case 'purple':
+        return 'from-purple-500 to-purple-600';
+      case 'green':
+        return 'from-green-500 to-green-600';
+      case 'orange':
+        return 'from-orange-500 to-orange-600';
+      default:
+        return 'from-gray-500 to-gray-600';
+    }
+  };
+
+  // Coach Banner Component for fullscreen layout
+  const CoachBanner = () => (
+    <div className="flex items-center justify-between bg-card/80 backdrop-blur-sm rounded-lg p-3">
+      <div className="flex items-center space-x-3">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        
+        <div className="flex items-center space-x-3">
+          {coach?.imageUrl ? (
+            <div className="w-10 h-10 rounded-full overflow-hidden shadow-lg flex-shrink-0">
+              <img 
+                src={coach.imageUrl} 
+                alt={coach.name}
+                className="w-full h-full object-cover aspect-square"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg hidden flex-shrink-0`}>
+                {coach.avatar}
+              </div>
+            </div>
+          ) : (
+            <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getCoachColors(coach.color)} flex items-center justify-center text-white text-lg font-bold shadow-lg flex-shrink-0`}>
+              {coach.avatar}
+            </div>
+          )}
+          <div>
+            <h2 className="text-lg font-semibold">{coach?.name}</h2>
+            <Badge variant="outline" className="text-xs">
+              {coach?.role}
+            </Badge>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <Button variant="ghost" size="sm">
+          <History className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={clearChat}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Chat Input Component for fullscreen layout
+  const ChatInput = () => (
+    <div className="flex gap-2">
+      <div className="flex-1 relative">
+        <Textarea
+          ref={inputRef}
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Schreibe eine Nachricht..."
+          className="resize-none pr-16 bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-400"
+          rows={1}
+          disabled={isThinking}
+        />
+        <div className="absolute right-2 top-2 flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowUpload(!showUpload)}
+            disabled={isThinking}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isThinking}
+          >
+            {isRecording ? (
+              <StopCircle className="h-4 w-4 text-red-500" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+      <Button 
+        onClick={sendMessage}
+        disabled={(!inputText.trim() && uploadedImages.length === 0) || isThinking}
+      >
+        {isThinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+      </Button>
+    </div>
+  );
+
   if (isLoading) {
-    return (
+    const LoadingComponent = () => (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
+
+    if (useFullscreenLayout) {
+      return (
+        <ChatLayout coachBanner={coach && <CoachBanner />}>
+          <LoadingComponent />
+        </ChatLayout>
+      );
+    }
+    return <LoadingComponent />;
   }
 
+  // Fullscreen Layout Mode
+  if (useFullscreenLayout) {
+    return (
+      <ChatLayout 
+        coachBanner={coach && <CoachBanner />}
+        chatInput={
+          <div className="space-y-3">
+            {/* Uploaded Images Preview */}
+            {uploadedImages.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto">
+                {uploadedImages.map((imageUrl, index) => (
+                  <div key={index} className="relative flex-shrink-0">
+                    <img
+                      src={imageUrl}
+                      alt={`Upload ${index + 1}`}
+                      className="h-16 w-16 rounded-lg object-cover"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                      onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== index))}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <ChatInput />
+            
+            {/* Upload Zone */}
+            {showUpload && (
+              <div className="mt-3">
+                <MediaUploadZone
+                  onMediaUploaded={handleImageUpload}
+                  maxFiles={mode === 'training' ? 5 : 3}
+                  accept={mode === 'training' ? ['image/*', 'video/*'] : ['image/*']}
+                />
+              </div>
+            )}
+
+            {/* Quick Actions */}
+            {coach?.quickActions && (
+              <Collapsible open={showQuickActions} onOpenChange={setShowQuickActions}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between text-white">
+                    <span>Schnellaktionen</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showQuickActions ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <div className="grid grid-cols-1 gap-2">
+                    {coach.quickActions.map((action, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        className="text-left justify-start text-white border-neutral-700"
+                        onClick={() => {
+                          setInputText(action.prompt);
+                          inputRef.current?.focus();
+                          setShowQuickActions(false);
+                        }}
+                      >
+                        {action.text}
+                      </Button>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg p-4 ${
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-neutral-800 text-white'
+                }`}
+              >
+                {message.images && message.images.length > 0 && (
+                  <div className="mb-3 grid grid-cols-2 gap-2">
+                    {message.images.map((imageUrl, index) => (
+                      <img
+                        key={index}
+                        src={imageUrl}
+                        alt={`Upload ${index + 1}`}
+                        className="rounded-lg w-full h-32 object-cover"
+                      />
+                    ))}
+                  </div>
+                )}
+                
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+                
+                <div className="text-xs opacity-70 mt-2">
+                  {format(new Date(message.created_at), 'HH:mm', { locale: de })}
+                </div>
+
+                {/* Exercise Preview */}
+                {message.metadata?.exerciseData && onExerciseLogged && (
+                  <div className="mt-3">
+                    <ExercisePreviewCard
+                      data={message.metadata.exerciseData}
+                      onSave={async (data) => {
+                        await onExerciseLogged(data);
+                        setExercisePreview(null);
+                      }}
+                      onCancel={() => setExercisePreview(null)}
+                    />
+                  </div>
+                )}
+
+                {/* Workout Plan Saver */}
+                {message.role === 'assistant' && 
+                 shouldShowPlanSaver(message.content, mode) && (
+                  <CoachWorkoutPlanSaver
+                    planText={message.content}
+                    coachName={coach?.name || 'Coach'}
+                    onSaved={() => {
+                      toast.success('Trainingsplan wurde erfolgreich gespeichert!');
+                      if (processMessage) {
+                        processMessage(`Plan "${message.content.slice(0, 50)}..." wurde gespeichert`, coach?.personality || 'motivierend', false);
+                      }
+                    }}
+                  />
+                )}
+
+                {/* Action Buttons */}
+                {message.metadata?.actionButtons && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {message.metadata.actionButtons.map((button, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        className="border-neutral-700 text-white"
+                        onClick={() => {
+                          setInputText(button.data?.prompt || button.text);
+                          inputRef.current?.focus();
+                        }}
+                      >
+                        {button.text}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          
+          {isThinking && (
+            <div className="flex justify-start">
+              <div className="bg-neutral-800 text-white rounded-lg p-4 max-w-[80%]">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Coach denkt nach...</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </ChatLayout>
+    );
+  }
+
+  // Standard Card Layout Mode
   return (
     <div className="flex h-full w-full">
       {/* Main Chat Area */}
