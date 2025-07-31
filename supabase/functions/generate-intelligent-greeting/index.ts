@@ -34,13 +34,14 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Fetch comprehensive user context
-    const [profileData, recentMeals, recentWorkouts, weightData, sleepData] = await Promise.all([
-      supabase.from('profiles').select('*').eq('user_id', userId).single(),
+    // Fetch comprehensive user context + profile data
+    const [profileData, recentMeals, recentWorkouts, weightData, sleepData, userProfile] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('meals').select('*').eq('user_id', userId).gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(3),
       supabase.from('workouts').select('*').eq('user_id', userId).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(3),
       supabase.from('weights').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('sleep_data').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3)
+      supabase.from('sleep_data').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3),
+      supabase.from('profiles').select('first_name, preferred_name').eq('user_id', userId).maybeSingle()
     ]);
 
     // Build comprehensive context with precise timing (German timezone)
@@ -105,8 +106,15 @@ serve(async (req) => {
 
     const coach = coachPersonalities[coachId] || coachPersonalities['lucy'];
 
+    // Determine the display name (preferred_name takes priority over first_name)
+    let displayName = 'mein Schützling'; // fallback
+    if (userProfile.data) {
+      displayName = userProfile.data.preferred_name || userProfile.data.first_name || displayName;
+    }
+    console.log('👤 Display name resolved:', { preferred_name: userProfile.data?.preferred_name, first_name: userProfile.data?.first_name, final: displayName });
+
     // Build context summary with precise timing
-    let contextSummary = `Benutzer: ${firstName}\nUhrzeit: ${exactTime} Uhr (${timeOfDay})\nWochentag: ${dayOfWeek}\nWochenende: ${isWeekend ? 'Ja' : 'Nein'}`;
+    let contextSummary = `Benutzer: ${displayName}\nUhrzeit: ${exactTime} Uhr (${timeOfDay})\nWochentag: ${dayOfWeek}\nWochenende: ${isWeekend ? 'Ja' : 'Nein'}`;
     
     if (profileData.data) {
       const profile = profileData.data;
