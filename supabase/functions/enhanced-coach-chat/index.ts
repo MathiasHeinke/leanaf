@@ -1141,15 +1141,7 @@ serve(async (req) => {
       }
     }
     
-    // Data collection moved to Token-Diet section below
-    
-    // RAG Context
-    let ragContext = '';
-    if (determineRAGUsage(lastMsg?.content || '', coachPersonality)) {
-      ragContext = await performRAGSearch(supabase, lastMsg?.content || '', coachPersonality);
-    }
-    
-    const conversationContext = memory?.conversation_context || '';
+    // All data collection now handled by Token-Diet section below
     
     // Definiere handleRegularChat function mit allen verfügbaren Variablen
     async function handleRegularChat() {
