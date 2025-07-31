@@ -40,7 +40,7 @@ import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
-import { MessageList } from '@/components/MessageList';
+import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -919,9 +919,10 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
         {/* Messages - VIRTUALIZED with AutoSizer */}
         <div className="flex-1" ref={scrollRef}>
-          <MessageList 
+          <SimpleMessageList 
             messages={convertedMessages}
             coach={convertedCoach}
+            onConversationAction={undefined}
           />
           
           {/* Offline indicator */}
