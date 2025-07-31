@@ -181,6 +181,14 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
   
+  // ============= INSTABILE FUNKTIONEN IN REFS PARKEN =============
+  const processMessageRef = useRef(processMessage);
+  const analyzeImageRef = useRef(analyzeImage);
+  
+  // Bei jedem Render überschreiben, nie als Dependency nutzen
+  processMessageRef.current = processMessage;
+  analyzeImageRef.current = analyzeImage;
+  
   console.log('🔄 Hooks initialized #', renderCount.current, { 
     isGlobalMemoryLoaded, 
     messagesLength: messages.length,
@@ -334,19 +342,22 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   }, [user?.id]);
 
   
-  // Get stable memory summary - STABILIZED WITH PRIMITIVES
+  // ============= MEMORY SUMMARY WIRKLICH STABIL MACHEN =============
   const memorySummary = useMemo(() => {
     if (!memory) return null;
-    return {
-      relationshipStage: memory.relationship_stage,
-      trustLevel: memory.trust_level,
-      moodCount: memory.conversation_context?.mood_history?.length || 0,
-      successCount: memory.conversation_context?.success_moments?.length || 0,
-      struggleCount: memory.conversation_context?.struggles_mentioned?.length || 0,
-      preferenceCount: memory.user_preferences?.length || 0,
-      communicationStyle: memory.communication_style_preference
-    };
-  }, [memory?.relationship_stage, memory?.trust_level]);
+    
+    // Komplettes, serialisiertes Objekt als String -
+    // JSON ändert sich nur wenn Inhalt sich ändert
+    return JSON.stringify({
+      relationship_stage: memory.relationship_stage,
+      trust_level: memory.trust_level,
+      mood_len: memory.conversation_context?.mood_history?.length || 0,
+      success_len: memory.conversation_context?.success_moments?.length || 0,
+      struggle_len: memory.conversation_context?.struggles_mentioned?.length || 0,
+      pref_len: memory.user_preferences?.length || 0,
+      style: memory.communication_style_preference
+    });
+  }, [memory]); // EINzige Dependency!
 
   // Use ref for context data to avoid re-renders
   const contextRef = useRef<any>({});
@@ -392,9 +403,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // Process message with global memory
+      // Process message with global memory - using stable ref
       if (inputText.trim()) {
-        await processMessage(inputText.trim(), coach?.personality || 'motivierend', true);
+        await processMessageRef.current(inputText.trim(), coach?.personality || 'motivierend', true);
       }
 
       // Prepare request data - get fresh data from contextRef
@@ -492,16 +503,16 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setUploadedImages(prev => [...prev, ...urls]);
     toast.success(`${urls.length} Bild(er) hochgeladen`);
 
-    // Auto-analyze if in training mode
+    // Auto-analyze if in training mode - using stable ref
     if (mode === 'training' && urls.length > 0) {
       for (const imageUrl of urls) {
-        const analysis = await analyzeImage(imageUrl, 'Analysiere dieses Trainingsbild');
+        const analysis = await analyzeImageRef.current(imageUrl, 'Analysiere dieses Trainingsbild');
         if (analysis?.suggestedModal === 'exercise') {
           toast.info('Übung erkannt! Sende eine Nachricht für Details.');
         }
       }
     }
-  }, [mode, analyzeImage]);
+  }, [mode]); // ONLY primitive dependency
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
