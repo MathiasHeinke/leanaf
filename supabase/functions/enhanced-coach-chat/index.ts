@@ -865,8 +865,10 @@ serve(async (req) => {
     const coachPersonality = validateCoachPersonality(lastMsg?.coach_personality || body.coach_personality || 'motivierend');
     const hasImages = lastMsg?.images?.length > 0;
     
-    // 🖼️ BILD-HANDLING: Wenn Bilder ohne Tool → analyzeImage()
+    // 🔧 TOOL-HANDLING: Prüfe ob Tool verwendet wird
     const activeTool = getLastTool(conversation);
+    
+    // 🖼️ BILD-HANDLING: Wenn Bilder ohne Tool → analyzeImage()
     if (!activeTool && hasImages) {
       console.log('🖼️ Images detected without tool - routing to image analysis');
       // Direkt zu Bildanalyse weiterleiten
@@ -1169,12 +1171,7 @@ serve(async (req) => {
       }
     }
 
-    // ENTFERNT: Doppelte handleRegularChat Funktion (Dead Code)
-    
-    // Die ursprüngliche handleRegularChat() ist weiter oben definiert und wird verwendet
-    
-    
-    const activeTool = getLastTool(conversation);
+    // 🔧 TOOL-HANDLING: Nach Bildanalyse prüfen ob Tool-Handler verwendet werden soll
     if (activeTool && handlers[activeTool]) {
       console.log(`Using tool handler: ${activeTool}`);
       const result = await handlers[activeTool](conversation, userId);
