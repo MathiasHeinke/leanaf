@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,6 +40,7 @@ import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
+import { MessageList } from '@/components/MessageList';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -303,7 +304,39 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     initializationRef.current = false;
   }, [user?.id]);
 
-  const sendMessage = async () => {
+  // Memoized context data - PREVENT PROP DRILLING RE-RENDERS
+  const contextData = useMemo(() => ({
+    todaysTotals,
+    dailyGoals,
+    averages,
+    historyData,
+    trendData,
+    weightHistory,
+    sleepData,
+    bodyMeasurements,
+    workoutData,
+    profileData,
+    progressPhotos,
+    coachInfo: coach,
+    memorySummary: getMemorySummary()
+  }), [
+    todaysTotals?.calories,
+    dailyGoals?.calories,
+    averages?.calories,
+    historyData?.length,
+    trendData?.weeklyTrend,
+    weightHistory?.length,
+    sleepData?.length,
+    bodyMeasurements?.length,
+    workoutData?.length,
+    profileData?.id,
+    progressPhotos?.length,
+    coach?.id,
+    getMemorySummary
+  ]);
+
+  // Stabilized handlers with useCallback
+  const sendMessage = useCallback(async () => {
     if (!inputText.trim() && uploadedImages.length === 0) return;
     if (!user?.id) {
       toast.error('Bitte melde dich an, um den Chat zu nutzen');
@@ -339,21 +372,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         images: uploadedImages,
         mode: mode,
         conversationHistory: messages.slice(-10),
-        context: {
-          todaysTotals,
-          dailyGoals,
-          averages,
-          historyData,
-          trendData,
-          weightHistory,
-          sleepData,
-          bodyMeasurements,
-          workoutData,
-          profileData,
-          progressPhotos,
-          coachInfo: coach,
-          memorySummary: getMemorySummary()
-        }
+        context: contextData
       };
 
       // Call unified coach chat function
@@ -404,9 +423,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } finally {
       setIsThinking(false);
     }
-  };
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.slice(-10), processMessage, contextData, onExerciseLogged]);
 
-  const saveChatMessages = async (messagesToSave: ChatMessage[]) => {
+  const saveChatMessages = useCallback(async (messagesToSave: ChatMessage[]) => {
     try {
       // Save to coach_conversations table
       const { error } = await supabase
@@ -426,9 +445,10 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } catch (error) {
       console.error('Error saving chat messages:', error);
     }
-  };
+  }, [user?.id]);
 
-  const handleImageUpload = async (urls: string[]) => {
+  const handleImageUpload = useCallback(async (urls: string[]) => {
+
     setUploadedImages(prev => [...prev, ...urls]);
     toast.success(`${urls.length} Bild(er) hochgeladen`);
 
@@ -441,16 +461,19 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         }
       }
     }
-  };
+  }, [mode, analyzeImage]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
-  };
+  }, [sendMessage]);
 
-  const clearChat = async () => {
+  const clearChat = useCallback(async () => {
+
+  
     try {
       await supabase
         .from('coach_conversations')
@@ -492,7 +515,38 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       console.error('Error clearing chat:', error);
       toast.error('Fehler beim Löschen des Chats');
     }
-  };
+  }, [user?.id, coach?.personality, coach?.name, mode]);
+
+  // Optimized message list height calculation
+  const messageListHeight = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerHeight - 240; // Account for header, footer, etc.
+    }
+    return 600; // Fallback
+  }, []);
+
+  // Convert to MessageList format
+  const convertedMessages = useMemo(() => 
+    messages.map(msg => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      timestamp: new Date(msg.created_at),
+      images: msg.images,
+      actions: msg.metadata?.actionButtons?.map(btn => ({
+        type: 'exercise_confirmation' as const,
+        label: btn.text,
+        data: btn.data
+      }))
+    })), [messages]);
+
+  const convertedCoach = useMemo(() => ({
+    name: coach?.name || 'Coach',
+    avatar: coach?.imageUrl || '',
+    primaryColor: coach?.color || 'blue',
+    secondaryColor: coach?.accentColor || 'blue',
+    personality: coach?.personality || 'motivierend'
+  }), [coach]);
 
   const getModeIcon = () => {
     switch (mode) {
@@ -852,93 +906,17 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           </CardHeader>
         </Card>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          <div className="space-y-4 max-w-4xl mx-auto">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg p-4 ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  {message.images && message.images.length > 0 && (
-                    <div className="mb-3 grid grid-cols-2 gap-2">
-                      {message.images.map((imageUrl, index) => (
-                        <img
-                          key={index}
-                          src={imageUrl}
-                          alt={`Upload ${index + 1}`}
-                          className="rounded-lg w-full h-32 object-cover"
-                        />
-                      ))}
-                    </div>
-                  )}
-                  
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
-                  
-                  <div className="text-xs opacity-70 mt-2">
-                    {format(new Date(message.created_at), 'HH:mm', { locale: de })}
-                  </div>
-
-                  {/* Exercise Preview */}
-                  {message.metadata?.exerciseData && onExerciseLogged && (
-                    <div className="mt-3">
-                      <ExercisePreviewCard
-                        data={message.metadata.exerciseData}
-                        onSave={async (data) => {
-                          await onExerciseLogged(data);
-                          setExercisePreview(null);
-                        }}
-                        onCancel={() => setExercisePreview(null)}
-                      />
-                    </div>
-                  )}
-
-                  {/* Workout Plan Saver - Enhanced Detection */}
-                  {message.role === 'assistant' && 
-                   shouldShowPlanSaver(message.content, mode) && (
-                    <CoachWorkoutPlanSaver
-                      planText={message.content}
-                      coachName={coach?.name || 'Coach'}
-                      onSaved={() => {
-                        toast.success('Trainingsplan wurde erfolgreich gespeichert!');
-                        // Update coach memory about the saved plan
-                        if (processMessage) {
-                          processMessage(`Plan "${message.content.slice(0, 50)}..." wurde gespeichert`, coach?.personality || 'motivierend', false);
-                        }
-                      }}
-                    />
-                  )}
-
-                  {/* Action Buttons */}
-                  {message.metadata?.actionButtons && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {message.metadata.actionButtons.map((button, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setInputText(button.data?.prompt || button.text);
-                            inputRef.current?.focus();
-                          }}
-                        >
-                          {button.text}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            
-            {isThinking && (
+        {/* Messages - VIRTUALIZED */}
+        <div className="flex-1" ref={scrollRef}>
+          <MessageList 
+            messages={convertedMessages}
+            coach={convertedCoach}
+            height={messageListHeight}
+          />
+          
+          {/* Loading indicator */}
+          {isThinking && (
+            <div className="px-4 py-2">
               <div className="flex justify-start">
                 <div className="bg-muted rounded-lg p-4 max-w-[80%]">
                   <div className="flex items-center gap-2">
@@ -947,9 +925,9 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        </ScrollArea>
+            </div>
+          )}
+        </div>
 
         {/* Uploaded Images Preview */}
         {uploadedImages.length > 0 && (
