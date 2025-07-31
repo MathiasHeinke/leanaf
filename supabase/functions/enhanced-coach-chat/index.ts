@@ -645,7 +645,26 @@ serve(async (req) => {
     const body = await req.json();
 
     // -------------------------------------------------- Tool-Abzweig
-    const { conversation, userId } = body;
+    // Support both old and new request formats
+    let conversation, userId;
+    
+    if (body.conversation && body.userId) {
+      // New format
+      conversation = body.conversation;
+      userId = body.userId;
+    } else if (body.message !== undefined) {
+      // Old format - convert to conversation array
+      conversation = [{
+        role: 'user',
+        content: body.message,
+        images: body.images || [],
+        created_at: new Date().toISOString(),
+        coach_personality: body.coach_personality || 'motivierend'
+      }];
+      userId = req.headers.get('Authorization')?.replace('Bearer ', '') || null;
+    } else {
+      throw new Error('Invalid request format');
+    }
     const lastMsg = conversation?.at(-1);
     
     // 1️⃣ Bild erkannt & KEIN aktives Tool → Image-Analyse

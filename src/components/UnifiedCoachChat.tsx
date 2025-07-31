@@ -225,6 +225,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   
   // ============= REAL COACH CHAT WITH AI =============
   const sendMessage = useCallback(async () => {
+    // Allow image-only messages or text messages
     if ((!inputText.trim() && uploadedImages.length === 0) || !user?.id) return;
     
     const userMessage: UnifiedMessage = {
@@ -244,11 +245,25 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
+      // Convert to conversation format expected by backend
+      const conversation = [...messages, userMessage].map(msg => {
+        // Type guard for text messages
+        const isTextMessage = 'content' in msg;
+        return {
+          role: msg.role,
+          content: isTextMessage ? msg.content : '',
+          images: isTextMessage ? (msg.images || []) : [],
+          created_at: msg.created_at,
+          coach_personality: msg.coach_personality || coach?.personality || 'motivierend',
+          mode: isTextMessage ? (msg.mode || mode) : mode
+        };
+      });
+
       const { data, error } = await supabase.functions.invoke('enhanced-coach-chat', {
         body: {
-          message: inputText,
-          images: uploadedImages,
-          coach_personality: coach?.personality || 'motivierend',
+          conversation: conversation,
+          userId: user.id,
+          // Include context data for compatibility
           context_data: {
             mode: mode,
             selectedTool: selectedTool,
@@ -268,17 +283,38 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         throw error;
       }
 
-      const assistantMessage: UnifiedMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: data.response || 'Entschuldigung, ich konnte nicht antworten.',
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.personality || 'motivierend',
-        images: [],
-        mode: mode
-      };
+      // Handle different response types (text or card)
+      let assistantMessage: UnifiedMessage;
+      
+      if (data.type === 'card') {
+        assistantMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          type: 'card',
+          tool: data.card,
+          payload: data.payload,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend'
+        };
+      } else {
+        assistantMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.response || 'Entschuldigung, ich konnte nicht antworten.',
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          images: [],
+          mode: mode
+        };
+      }
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Handle tool reset from card metadata
+      if (data.meta?.clearTool) {
+        console.log('🔄 Clearing tool after card response');
+        setSelectedTool(null);
+      }
     } catch (error) {
       console.error('Send error:', error);
       const errorMessage: UnifiedMessage = {
@@ -295,7 +331,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setIsThinking(false);
       setSelectedTool(null); // Reset tool after use
     }
-  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, supabase]);
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, messages]);
 
   // Handle voice recording
   const handleVoiceToggle = useCallback(async () => {
