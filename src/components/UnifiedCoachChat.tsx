@@ -349,7 +349,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   }, [memory?.relationship_stage, memory?.trust_level]);
 
   // Use ref for context data to avoid re-renders
-  const contextRef = useRef({});
+  const contextRef = useRef<any>({});
   contextRef.current = {
     todaysTotals,
     dailyGoals,
@@ -397,29 +397,16 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         await processMessage(inputText.trim(), coach?.personality || 'motivierend', true);
       }
 
-      // Prepare request data - get fresh data inside the function
+      // Prepare request data - get fresh data from contextRef
+      const context = contextRef.current;
       const requestData = {
         message: inputText.trim() || 'Analysiere das Bild',
         userId: user.id,
-        coachPersonality: coach?.personality || 'motivierend',
+        coachPersonality: context.coachInfo?.personality || 'motivierend',
         images: uploadedImages,
         mode: mode,
         conversationHistory: messages.slice(-10), // Fresh slice inside function
-        context: {
-          todaysTotals,
-          dailyGoals,
-          averages,
-          historyData,
-          trendData,
-          weightHistory,
-          sleepData,
-          bodyMeasurements,
-          workoutData,
-          profileData,
-          progressPhotos,
-          coachInfo: coach,
-          memorySummary: memorySummary // Use stable memorySummary
-        }
+        context: context // Use stable context from ref
       };
 
       // Call unified coach chat function
@@ -470,7 +457,13 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } finally {
       setIsThinking(false);
     }
-  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, messages.length, memorySummary, onExerciseLogged]); // Removed processMessage dependency
+  }, [inputText, uploadedImages.length, user?.id, mode]); // ONLY PRIMITIVE VALUES
+
+  // Stable reference to sendMessage for handleKeyPress
+  const sendMessageRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   const saveChatMessages = useCallback(async (messagesToSave: ChatMessage[]) => {
     try {
@@ -511,12 +504,11 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   }, [mode, analyzeImage]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
-
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      sendMessageRef.current();
     }
-  }, [sendMessage]);
+  }, []); // NO DEPENDENCIES - fully stable
 
   const clearChat = useCallback(async () => {
 
