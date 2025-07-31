@@ -6,7 +6,7 @@ import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
 // Import coach profiles from CoachSelection to find the coach by ID
 const coachProfiles = [
   {
-    id: 'soft',
+    id: 'lucy',
     name: 'Lucy',
     personality: 'Ganzheitlich & Empathisch',
     expertise: ['Optimales Timing', 'Intervallfasten', 'Gesunde Gewohnheiten', 'Stoffwechsel', 'Supplements', 'Metabolische Flexibilität', 'Keto & Low-Carb'],
@@ -16,7 +16,7 @@ const coachProfiles = [
     description: 'Unterstützt dich bei einer ausgewogenen Ernährung ohne Verzicht. Spezialistin für Stoffwechsel und metabolische Flexibilität.'
   },
   {
-    id: 'hart',
+    id: 'sascha',
     name: 'Sascha',
     personality: 'Performance-fokussiert',
     expertise: ['Intelligente Planung', 'Progression', 'Kraftaufbau', 'Performance'],
@@ -26,7 +26,7 @@ const coachProfiles = [
     description: 'Dein Experte für effektives Krafttraining und Leistungssteigerung.'
   },
   {
-    id: 'motivierend',
+    id: 'kai',
     name: 'Kai',
     personality: 'Achtsam & Strategisch',
     expertise: ['Mentale Stärke', 'Regeneration', 'Schlafqualität', 'Motivation', 'Ganzheitliche Transformation', 'Vier-Quadranten-Analyse'],
@@ -46,7 +46,7 @@ const coachProfiles = [
     description: 'Legendärer Bodybuilder und Transformations-Experte.'
   },
   {
-    id: 'vita',
+    id: 'dr-vita',
     name: 'Dr. Vita Femina',
     personality: 'Wissenschaftlich & Empathisch',
     expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
