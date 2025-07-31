@@ -1,11 +1,12 @@
 import React from 'react';
-import { MessageItem } from './MessageItem';
+import { SimpleMessageItem } from './SimpleMessageItem';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
+  timestamp?: Date;
+  created_at?: string;
   images?: string[];
   video_url?: string;
   actions?: Array<{
@@ -17,9 +18,12 @@ interface ChatMessage {
 
 interface CoachProfile {
   name: string;
-  avatar: string;
-  primaryColor: string;
-  secondaryColor: string;
+  avatar?: string;
+  imageUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  color?: string;
+  accentColor?: string;
   personality: string;
 }
 
@@ -45,15 +49,21 @@ export const SimpleMessageList = React.memo(({
 
   return (
     <div className="flex-1 overflow-y-auto space-y-4 p-4">
-      {messages.map((message, index) => (
+      {messages.map((message) => (
         <div key={message.id} className="w-full">
-          <MessageItem
-            index={index}
-            style={{}} // No virtualization style needed
-            message={message}
-            coach={coach}
+          <SimpleMessageItem
+            message={{
+              ...message,
+              timestamp: message.timestamp || new Date(message.created_at || Date.now())
+            }}
+            coach={{
+              name: coach.name,
+              avatar: coach.imageUrl || coach.avatar || '',
+              primaryColor: coach.color || coach.primaryColor || '#3b82f6',
+              secondaryColor: coach.accentColor || coach.secondaryColor || '#1d4ed8',
+              personality: coach.personality
+            }}
             onConversationAction={onConversationAction}
-            reportHeight={() => {}} // No-op - no virtualization
           />
         </div>
       ))}
