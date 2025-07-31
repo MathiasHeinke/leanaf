@@ -1185,7 +1185,7 @@ serve(async (req) => {
     
     // Enhanced input validation and sanitization
     const message = securityHelpers.sanitizeInput.text(body.message);
-    const coachPersonality = validateCoachPersonality(body.coachPersonality || null);
+    // coachPersonality bereits oben definiert (Zeile 865)
     
     // Enhanced user ID validation
     if (!userId || typeof userId !== 'string' || !securityHelpers.validateInput.uuid(userId)) {
