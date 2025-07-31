@@ -8,6 +8,18 @@ import { generateDynamicCoachGreeting, createGreetingContext } from "@/utils/dyn
 import { useGlobalCoachMemory } from "@/hooks/useGlobalCoachMemory";
 import { useParams } from "react-router-dom";
 
+// Import getDisplayName utility
+const getDisplayName = (profile: any): string => {
+  return (
+    profile?.preferred_name ||
+    profile?.first_name ||
+    profile?.nickname ||
+    profile?.full_name ||
+    profile?.email?.split('@')[0] ||
+    'Athlet'
+  );
+};
+
 interface DailyGreetingProps {
   userProfile?: any;
   coachId?: string;
@@ -24,14 +36,10 @@ export const DailyGreeting = ({ userProfile, coachId }: DailyGreetingProps) => {
   const currentCoachId = coachId || (params['*']?.split('/')[0]) || 'lucy';
   
   const getUserName = () => {
-    if (userProfile?.display_name) {
-      return userProfile.display_name.split(' ')[0];
-    }
-    if (user?.email) {
-      const emailName = user.email.split('@')[0];
-      if (/^[a-zA-Z]/.test(emailName)) {
-        return emailName.split('.')[0];
-      }
+    // Use getDisplayName utility instead of direct email extraction
+    const fullName = getDisplayName(userProfile);
+    if (fullName && fullName !== 'Athlet') {
+      return fullName.split(' ')[0]; // Get first name only
     }
     return 'Du';
   };

@@ -42,6 +42,18 @@ import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 import { generateDynamicCoachGreeting, createGreetingContext } from '@/utils/dynamicCoachGreetings';
 
+// Import getDisplayName utility
+const getDisplayName = (profile: any): string => {
+  return (
+    profile?.preferred_name ||
+    profile?.first_name ||
+    profile?.nickname ||
+    profile?.full_name ||
+    profile?.email?.split('@')[0] ||
+    'Athlet'
+  );
+};
+
 import { SimpleMessageList } from '@/components/SimpleMessageList';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
@@ -153,16 +165,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
-        // Get user's first name for personalization
+        // Get user's first name for personalization using getDisplayName utility
         const getUserName = () => {
-          if (profileData?.display_name) {
-            return profileData.display_name.split(' ')[0];
-          }
-          if (user?.email) {
-            const emailName = user.email.split('@')[0];
-            if (/^[a-zA-Z]/.test(emailName)) {
-              return emailName.split('.')[0];
-            }
+          const fullName = getDisplayName(profileData);
+          if (fullName && fullName !== 'Athlet') {
+            return fullName.split(' ')[0]; // Get first name only
           }
           return 'Du';
         };

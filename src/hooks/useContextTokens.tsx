@@ -106,6 +106,12 @@ function getTimeOfDay(): string {
 function extractFirstName(email?: string): string | undefined {
   if (!email) return undefined;
   const localPart = email.split('@')[0];
+  
+  // Filter out "office" and other non-name patterns
+  if (localPart === 'office' || localPart === 'admin' || localPart === 'info' || localPart === 'support') {
+    return undefined;
+  }
+  
   // Try to extract a name-like part (before dots, numbers, etc.)
   const nameMatch = localPart.match(/^([a-zA-Z]+)/);
   return nameMatch?.[1] || undefined;
