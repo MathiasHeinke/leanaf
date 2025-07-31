@@ -23,7 +23,8 @@ export default async function handleWeight(conv: any[], userId: string) {
       role: 'assistant',
       type: 'card',
       card: 'weight',
-      payload: { value: weight, unit: 'kg', ts: Date.now() }
+      payload: { value: weight, unit: 'kg', ts: Date.now() },
+      meta: { clearTool: true }
     };
   } catch (error) {
     console.error('Error saving weight:', error);

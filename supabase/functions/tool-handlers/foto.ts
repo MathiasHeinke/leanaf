@@ -1,16 +1,16 @@
-export default async function handleFoto(conv: any[], userId: string) {
-  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
-  
+export default async function handleFoto(images: string[], userId: string) {
   return {
     role: 'assistant',
     type: 'card',
-    card: 'mindset',
+    card: 'meal',
     payload: { 
       html: `<div>
-        <h3>Fortschritt-Foto</h3>
-        <p>Foto verarbeitet: ${lastUserMsg}</p>
+        <h3>📸 Bild-Analyse</h3>
+        <p>Dein Bild wird analysiert...</p>
+        <p>Anzahl Bilder: ${images.length}</p>
       </div>`,
       ts: Date.now()
-    }
+    },
+    meta: { clearTool: true }
   };
 }

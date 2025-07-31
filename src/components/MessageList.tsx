@@ -12,6 +12,7 @@ interface ChatMessage {
   timestamp: Date;
   images?: string[];
   video_url?: string;
+  meta?: { clearTool?: boolean };
   actions?: Array<{
     type: 'exercise_recognition' | 'exercise_confirmation';
     label: string;
@@ -31,6 +32,8 @@ interface MessageListProps {
   messages: ChatMessage[];
   coach: CoachProfile;
   onConversationAction?: (action: any) => void;
+  setActiveTool?: (tool: string | null) => void;
+  addMessage?: (message: any) => void;
 }
 
 const Row = React.memo<{ index: number; style: React.CSSProperties; data: any }>(
@@ -64,8 +67,25 @@ Row.displayName = 'Row';
 export const MessageList = React.memo(({
   messages,
   coach,
-  onConversationAction
+  onConversationAction,
+  setActiveTool,
+  addMessage
 }: MessageListProps) => {
+  
+  // Tool reset logic
+  React.useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.meta?.clearTool && setActiveTool && addMessage) {
+      console.log('🔄 Clearing tool after card response');
+      addMessage({ 
+        role: 'system', 
+        type: 'tool', 
+        tool: null, 
+        ts: Date.now() 
+      });
+      setActiveTool(null);
+    }
+  }, [messages, setActiveTool, addMessage]);
   /* ---------- refs ---------- */
   const listRef = useRef<List>(null);
   const rowHeights = useRef<number[]>([]);

@@ -7,6 +7,7 @@ import { getDisplayName } from './utils/getDisplayName.ts';
 // -------------------------------------------------------------------------
 // Tool-Handler Map
 import * as handlers from '../tool-handlers/index.ts';
+import analyzeImage from '../tool-handlers/foto.ts';
 // -------------------------------------------------------------------------
 
 // Enhanced security helpers
@@ -645,6 +646,14 @@ serve(async (req) => {
 
     // -------------------------------------------------- Tool-Abzweig
     const { conversation, userId } = body;
+    const lastMsg = conversation?.at(-1);
+    
+    // 1️⃣ Bild erkannt & KEIN aktives Tool → Image-Analyse
+    if (!getLastTool(conversation) && lastMsg?.images?.length) {
+      console.log('🖼️ Image detected without active tool, using image analysis');
+      return analyzeImage(lastMsg.images, userId);
+    }
+    
     const activeTool = getLastTool(conversation);
     if (activeTool && handlers[activeTool]) {
       console.log(`Using tool handler: ${activeTool}`);
@@ -672,14 +681,10 @@ serve(async (req) => {
       );
     }
     
-    if (!message) {
-      return new Response(
-        JSON.stringify({ error: 'Message is required and cannot be empty' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    // Allow empty messages for image-only requests
+    const prompt = message?.trim() || '(kein Text)';
+    if (!prompt || prompt === '(kein Text)') {
+      console.log('⚠️ Empty message detected, continuing with fallback text');
     }
 
     // ============= HUMAN-LIKE FEATURES INTEGRATION =============
