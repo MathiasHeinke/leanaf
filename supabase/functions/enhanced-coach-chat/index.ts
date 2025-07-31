@@ -1141,10 +1141,7 @@ serve(async (req) => {
       }
     }
     
-    // Sammle alle notwendigen Daten
-    const userData = await collectComprehensiveUserData(supabase, userId);
-    const memory = await loadCoachMemory(supabase, userId);
-    const sentiment = await analyzeSentiment(lastMsg?.content || '');
+    // Data collection moved to Token-Diet section below
     
     // RAG Context
     let ragContext = '';
