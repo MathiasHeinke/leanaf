@@ -334,24 +334,23 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   }, [user?.id]);
 
   
-  console.log('🔄 About to create contextData useMemo');
-  
-  // Get stable memory summary
+  // Get stable memory summary - STABILIZED WITH PRIMITIVES
   const memorySummary = useMemo(() => {
     if (!memory) return null;
     return {
       relationshipStage: memory.relationship_stage,
       trustLevel: memory.trust_level,
-      recentMoods: memory.conversation_context?.mood_history?.slice(-5) || [],
-      recentSuccesses: memory.conversation_context?.success_moments?.slice(-3) || [],
-      recentStruggles: memory.conversation_context?.struggles_mentioned?.slice(-3) || [],
-      topPreferences: memory.user_preferences?.slice(-5) || [],
+      moodCount: memory.conversation_context?.mood_history?.length || 0,
+      successCount: memory.conversation_context?.success_moments?.length || 0,
+      struggleCount: memory.conversation_context?.struggles_mentioned?.length || 0,
+      preferenceCount: memory.user_preferences?.length || 0,
       communicationStyle: memory.communication_style_preference
     };
-  }, [memory]);
-  
-  // Memoized context data - PREVENT PROP DRILLING RE-RENDERS
-  const contextData = useMemo(() => ({
+  }, [memory?.relationship_stage, memory?.trust_level]);
+
+  // Use ref for context data to avoid re-renders
+  const contextRef = useRef({});
+  contextRef.current = {
     todaysTotals,
     dailyGoals,
     averages,
@@ -365,26 +364,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     progressPhotos,
     coachInfo: coach,
     memorySummary
-  }), [
-    todaysTotals?.calories,
-    dailyGoals?.calories,
-    averages?.calories,
-    historyData?.length,
-    trendData?.weeklyTrend,
-    weightHistory?.length,
-    sleepData?.length,
-    bodyMeasurements?.length,
-    workoutData?.length,
-    profileData?.id,
-    progressPhotos?.length,
-    coach?.id,
-    memorySummary
-  ]);
-  
-  console.log('🔄 contextData created', { 
-    memoryKeys: Object.keys(contextData.memorySummary || {}),
-    contextKeys: Object.keys(contextData)
-  });
+  };
 
   
   console.log('🔄 About to create sendMessage useCallback');
