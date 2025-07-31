@@ -183,22 +183,30 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   const { shouldShowPlanSaver, analyzeWorkoutPlan } = useWorkoutPlanDetection();
   
-  // ============= DEBUGGING: SICHER IN USEEFFECT =============
+  // ============= DEBUGGING: RENDER TRACKING =============
   useEffect(() => {
     renderCount.current++;
-    console.log('🔄 UnifiedCoachChat render #', renderCount.current);
-  }, []); // NUR beim Mount, nicht nach jedem Render!
+    console.log('🔄 RENDER #', renderCount.current, {
+      isLoading,
+      chatInitialized, 
+      isGlobalMemoryLoaded,
+      messagesLength: messages.length,
+      userId: user?.id ? 'exists' : 'null'
+    });
+    
+    // SOFORTIGER STOP bei zu vielen Renders
+    if (renderCount.current > 10) {
+      console.error('🚨 STOPPING INFINITE LOOP at render', renderCount.current);
+      throw new Error('Manual stop: Too many renders detected');
+    }
+  }, []); // Nur einmal beim Mount
 
+  // ============= DEBUGGING: STATE CHANGES =============
   useEffect(() => {
-    console.table({
-      render: renderCount.current,
+    console.log('📊 STATE CHANGE:', {
       isLoading,
       chatInitialized,
-      isGlobalMemoryLoaded,
-      messages: messages.length,
-      userId: user?.id ? 'exists' : 'null',
-      mode,
-      coachId: coach?.id || 'none'
+      isGlobalMemoryLoaded
     });
   }, [isLoading, chatInitialized, isGlobalMemoryLoaded]);
   
