@@ -257,7 +257,7 @@
   .meal-input::after {
     content: "";
     position: absolute;
-    inset: 0;               /* füllt das ganze Element */
+    inset: -2px;            /* 2px außerhalb des Elements */
     border-radius: inherit; /* gleiche Rundungen */
     pointer-events: none;   /* klickt nicht im Weg rum */
     border: 2px solid transparent;
