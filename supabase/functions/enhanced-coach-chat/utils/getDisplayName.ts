@@ -17,9 +17,18 @@ export function getDisplayName(profile: any): string {
     return profile.preferred_name.trim();
   }
 
-  // 2. Priorität: Vorname
+  // 2. Priorität: Vorname (first_name)
   if (profile.first_name?.trim()) {
     return profile.first_name.trim();
+  }
+
+  // 2b. Fallback: last_name als Vorname (selten, aber möglich)
+  if (profile.last_name?.trim()) {
+    const lastName = profile.last_name.trim();
+    // Nur wenn es ein einzelnes Wort ist und nicht offensichtlich ein Nachname
+    if (!lastName.includes(' ') && lastName.length > 1) {
+      return lastName;
+    }
   }
 
   // 3. Legacy: display_name (nur ersten Namen, aber mit Hyphen-Support)

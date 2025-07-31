@@ -318,9 +318,9 @@ const collectComprehensiveUserData = async (supabase: any, userId: string) => {
         .eq('user_id', userId)
         .single(),
       
-      // Profile data - mit maybeSingle() für graceful handling
+      // Profile data - mit allen verfügbaren Namensfeldern
       supabase.from('profiles')
-        .select('id, preferred_name, first_name, display_name, email')
+        .select('id, preferred_name, first_name, last_name, display_name, email')
         .eq('id', userId)
         .maybeSingle()
     ]);
@@ -1169,58 +1169,10 @@ serve(async (req) => {
       }
     }
 
-    async function handleRegularChat() {
-      const chatMessages = [systemMessage];
-      
-      if (conversation?.length) {
-        const recentMessages = conversation.slice(-8);
-        for (const msg of recentMessages) {
-          if (msg.role === 'user') {
-            const content = [];
-            if (msg.content) {
-              content.push({ type: 'text', text: msg.content });
-            }
-            if (msg.images?.length) {
-              for (const imageUrl of msg.images) {
-                content.push({
-                  type: 'image_url',
-                  image_url: { url: imageUrl, detail: 'low' }
-                });
-              }
-            }
-            chatMessages.push({ role: 'user', content });
-          } else if (msg.role === 'assistant' && msg.content) {
-            chatMessages.push({ role: 'assistant', content: msg.content });
-          }
-        }
-      }
-
-      const modelToUse = chooseModel(lastMsg?.content || '', hasImages, false, ragContext.length > 0, chatMessages);
-      
-      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: modelToUse,
-          messages: chatMessages,
-          max_tokens: hasImages ? 1500 : 2000,
-          temperature: 0.8,
-        }),
-      });
-
-      const aiData = await openAIResponse.json();
-      const assistantMessage = aiData.choices?.[0]?.message?.content || 'Entschuldigung, ich konnte keine Antwort generieren.';
-
-      return new Response(JSON.stringify({
-        role: 'assistant',
-        content: assistantMessage
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    // ENTFERNT: Doppelte handleRegularChat Funktion (Dead Code)
+    
+    // Die ursprüngliche handleRegularChat() ist weiter oben definiert und wird verwendet
+    
     
     const activeTool = getLastTool(conversation);
     if (activeTool && handlers[activeTool]) {
@@ -1311,6 +1263,7 @@ serve(async (req) => {
       profileData: userData.profile ? {
         preferred_name: userData.profile.preferred_name,
         first_name: userData.profile.first_name,
+        last_name: userData.profile.last_name,
         display_name: userData.profile.display_name,
         email: userData.profile.email
       } : null
