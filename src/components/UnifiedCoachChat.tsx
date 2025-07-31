@@ -189,7 +189,7 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     messagesLength: messages.length,
     isLoading,
     chatInitialized,
-    processMessageRef: processMessage?.toString().slice(0, 50),
+    processMessageType: processMessage ? 'function' : 'null',
     memoryExists: !!memory
   });
 
@@ -338,26 +338,30 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
   
   // ============= MEMORY SUMMARY WIRKLICH STABIL MACHEN =============
+  // Create stable empty array reference outside component
+  const EMPTY_ARRAY = useMemo(() => [], []);
+  
   const memorySummary = useMemo(() => {
     if (!memory) return null;
     
-    const ctx = memory.conversation_context ?? { mood_history: [], success_moments: [], struggles_mentioned: [] };
+    const ctx = memory.conversation_context ?? { mood_history: EMPTY_ARRAY, success_moments: EMPTY_ARRAY, struggles_mentioned: EMPTY_ARRAY };
     return {
       stage: memory.relationship_stage,
       trust: memory.trust_level,
-      moods: (ctx.mood_history ?? []).slice(-5),
-      successes: (ctx.success_moments ?? []).length,
-      struggles: (ctx.struggles_mentioned ?? []).length,
-      prefHash: JSON.stringify(memory.user_preferences ?? [])
+      moods: (ctx.mood_history ?? EMPTY_ARRAY).slice(-5),
+      successes: (ctx.success_moments ?? EMPTY_ARRAY).length,
+      struggles: (ctx.struggles_mentioned ?? EMPTY_ARRAY).length,
+      prefHash: JSON.stringify(memory.user_preferences ?? EMPTY_ARRAY)
     };
     /* nur PRIMITIVE deps: */
   }, [
     memory?.relationship_stage,
     memory?.trust_level,
-    (memory?.conversation_context?.mood_history ?? []).length,
-    (memory?.conversation_context?.success_moments ?? []).length,
-    (memory?.conversation_context?.struggles_mentioned ?? []).length,
-    (memory?.user_preferences ?? []).length
+    (memory?.conversation_context?.mood_history ?? EMPTY_ARRAY).length,
+    (memory?.conversation_context?.success_moments ?? EMPTY_ARRAY).length,
+    (memory?.conversation_context?.struggles_mentioned ?? EMPTY_ARRAY).length,
+    (memory?.user_preferences ?? EMPTY_ARRAY).length,
+    EMPTY_ARRAY
   ]);
 
   // Use ref for context data to avoid re-renders

@@ -40,8 +40,11 @@ export const useCoachMemory = () => {
   const [memory, setMemory] = useState<CoachMemory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Extract primitive user ID to stabilize dependencies
+  const userId = user?.id;
+
   const loadCoachMemory = useCallback(async (): Promise<CoachMemory | null> => {
-    if (!user?.id) return null;
+    if (!userId) return null;
 
     setIsLoading(true);
     try {
@@ -49,7 +52,7 @@ export const useCoachMemory = () => {
       const { data, error } = await supabase
         .from('coach_memory')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -68,17 +71,17 @@ export const useCoachMemory = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   const saveCoachMemory = useCallback(async (memoryData: CoachMemory): Promise<boolean> => {
-    if (!user?.id) return false;
+    if (!userId) return false;
 
     try {
       // @ts-ignore - Types will be updated after migration
       const { error } = await supabase
         .from('coach_memory')
         .upsert({
-          user_id: user.id,
+          user_id: userId,
           memory_data: memoryData as any,
           updated_at: new Date().toISOString()
         });
@@ -95,7 +98,7 @@ export const useCoachMemory = () => {
       console.error('Error in saveCoachMemory:', error);
       return false;
     }
-  }, [user?.id]);
+  }, [userId]);
 
   const updateUserPreference = useCallback(async (
     key: string, 
