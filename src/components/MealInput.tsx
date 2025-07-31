@@ -152,7 +152,8 @@ export const MealInput = ({
         )}
         
         {/* Main Input Container */}
-        <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group ring-2 ring-blue-400/30 animate-[pulse_3s_ease-in-out_infinite] focus-within:animate-none focus-within:ring-primary/50">
+        <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group border-pulse focus-within:!shadow-none"
+             style={{ animationPlayState: inputText.trim() ? 'paused' : 'running' }}>
           {/* Text Input */}
           <div className="relative">
             <Textarea
