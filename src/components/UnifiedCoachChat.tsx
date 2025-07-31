@@ -185,12 +185,16 @@ export const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   }, []);
 
-  // Auto-scroll when messages change - STABLE DEPENDENCY
+  // Auto-scroll when messages change - NO DEPENDENCIES CAUSING RE-RENDERS
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
+    if (messages.length > 0 && scrollRef.current) {
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }, 100);
     }
-  }, [messages.length, scrollToBottom]);
+  }, [messages.length]); // ONLY depend on length, NO scrollToBottom dependency
 
   // STABLE INITIALIZATION - NO RE-RENDERS
   useEffect(() => {
