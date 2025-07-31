@@ -8,7 +8,7 @@ const coachProfiles = [
   {
     id: 'lucy',
     name: 'Lucy',
-    personality: 'Ganzheitlich & Empathisch',
+    personality: 'lucy',
     expertise: ['Optimales Timing', 'Intervallfasten', 'Gesunde Gewohnheiten', 'Stoffwechsel', 'Supplements', 'Metabolische Flexibilität', 'Keto & Low-Carb'],
     imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
     color: 'green',
@@ -18,7 +18,7 @@ const coachProfiles = [
   {
     id: 'sascha',
     name: 'Sascha',
-    personality: 'Performance-fokussiert',
+    personality: 'sascha',
     expertise: ['Intelligente Planung', 'Progression', 'Kraftaufbau', 'Performance'],
     imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
     color: 'blue',
@@ -28,7 +28,7 @@ const coachProfiles = [
   {
     id: 'kai',
     name: 'Kai',
-    personality: 'Achtsam & Strategisch',
+    personality: 'kai',
     expertise: ['Mentale Stärke', 'Regeneration', 'Schlafqualität', 'Motivation', 'Ganzheitliche Transformation', 'Vier-Quadranten-Analyse'],
     imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
     color: 'purple',
@@ -38,7 +38,7 @@ const coachProfiles = [
   {
     id: 'markus',
     name: 'Markus',
-    personality: 'Direkt & Motivierend',
+    personality: 'markus',
     expertise: ['Heavy+Volume Training', 'Extreme Hypertrophie', 'Mentale Härte', 'Masseaufbau'],
     imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
     color: 'red',
@@ -48,7 +48,7 @@ const coachProfiles = [
   {
     id: 'dr-vita',
     name: 'Dr. Vita Femina',
-    personality: 'Wissenschaftlich & Empathisch',
+    personality: 'dr_vita',
     expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
     imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
     color: 'purple',
