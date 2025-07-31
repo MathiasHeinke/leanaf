@@ -11,6 +11,7 @@ export default async function handleSupplement(conv: any[], userId: string) {
         <p>Basierend auf: ${lastUserMsg}</p>
       </div>`,
       ts: Date.now()
-    }
+    },
+    meta: { clearTool: true }
   };
 }

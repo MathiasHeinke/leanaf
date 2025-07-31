@@ -865,6 +865,87 @@ serve(async (req) => {
     const coachPersonality = validateCoachPersonality(lastMsg?.coach_personality || body.coach_personality || 'motivierend');
     const hasImages = lastMsg?.images?.length > 0;
     
+    // 🖼️ BILD-HANDLING: Wenn Bilder ohne Tool → analyzeImage()
+    const activeTool = getLastTool(conversation);
+    if (!activeTool && hasImages) {
+      console.log('🖼️ Images detected without tool - routing to image analysis');
+      // Direkt zu Bildanalyse weiterleiten
+      const imageUrls = lastMsg?.images || [];
+      const userMessage = lastMsg?.content || '';
+      
+      try {
+        // Route to appropriate image analysis based on classification
+        const { data: classificationData, error: classifyError } = await supabase.functions.invoke('image-classifier', {
+          body: { imageUrl: imageUrls[0], userId }
+        });
+
+        if (classifyError) throw classifyError;
+        
+        const classification = classificationData.classification;
+        
+        // Route to specialized analysis based on classification
+        let analysisFunction = '';
+        let analysisBody = {};
+        
+        switch (classification.category) {
+          case 'exercise':
+            analysisFunction = 'extract-exercise-data';
+            analysisBody = { 
+              userId, 
+              mediaUrls: imageUrls, 
+              userMessage,
+              shouldSave: false 
+            };
+            break;
+          case 'food':
+            analysisFunction = 'analyze-meal';
+            analysisBody = { 
+              text: userMessage,
+              images: imageUrls,
+              userId
+            };
+            break;
+          case 'supplement':
+            analysisFunction = 'supplement-recognition';
+            analysisBody = { 
+              imageUrl: imageUrls[0],
+              userId,
+              userQuestion: userMessage
+            };
+            break;
+          case 'body_progress':
+            analysisFunction = 'body-analysis';
+            analysisBody = { 
+              imageUrl: imageUrls[0],
+              userId,
+              userMessage
+            };
+            break;
+          default:
+            // Fallback to general coach response with image
+            return await handleRegularChat();
+        }
+        
+        const { data: analysisData, error: analysisError } = await supabase.functions.invoke(analysisFunction, {
+          body: analysisBody
+        });
+        
+        if (analysisError) throw analysisError;
+        
+        return new Response(JSON.stringify({
+          role: 'assistant',
+          content: analysisData.response || `${classification.description} - ${classification.suggestedAction}`,
+          meta: { clearTool: true }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+        
+      } catch (error) {
+        console.error('Image analysis failed:', error);
+        // Fallback to regular chat
+      }
+    }
+    
     // Sammle alle notwendigen Daten
     const userData = await collectComprehensiveUserData(supabase, userId);
     const memory = await loadCoachMemory(supabase, userId);

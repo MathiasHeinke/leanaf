@@ -11,6 +11,7 @@ export default async function handleUebung(conv: any[], userId: string) {
         <p>${lastUserMsg}</p>
       </div>`,
       ts: Date.now()
-    }
+    },
+    meta: { clearTool: true }
   };
 }

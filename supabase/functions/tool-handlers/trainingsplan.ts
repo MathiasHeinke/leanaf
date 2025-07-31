@@ -12,6 +12,7 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
         <p>Dein individueller Plan wird erstellt...</p>
       </div>`,
       ts: Date.now()
-    }
+    },
+    meta: { clearTool: true }
   };
 }
