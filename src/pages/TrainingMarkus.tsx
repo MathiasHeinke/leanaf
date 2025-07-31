@@ -475,21 +475,12 @@ const TrainingMarkus = () => {
       coach={{
         id: 'markus',
         name: 'Markus Rühl',
-        role: 'The German Beast',
         description: 'The German Beast - Schwer und falsch trainieren für maximale Muskelmasse!',
         expertise: ['Hardcore Bodybuilding', 'Heavy Training', 'Volume Training', 'Mental Toughness'],
         personality: 'hart',
         color: 'orange',
         imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
-        avatar: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
-        age: 51,
-        icon: 'dumbbell',
-        accentColor: 'from-orange-600 to-red-600',
-        quickActions: [
-          { text: 'Schwer und falsch!', prompt: 'Erkläre mir das Heavy+Volume Prinzip und wie ich es umsetze.' },
-          { text: 'Beast Mode aktivieren', prompt: 'Gib mir mentale Härte und Motivation für ein krasses Training!' },
-          { text: 'Muss net schmegge!', prompt: 'Welche Supplements brauche ich für maximale Muskelmasse?' }
-        ]
+        accentColor: 'from-orange-600 to-red-600'
       }}
       onBack={() => navigate(-1)}
       todaysTotals={todaysTotals}

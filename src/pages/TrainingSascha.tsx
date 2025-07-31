@@ -475,21 +475,12 @@ const TrainingSascha = () => {
       coach={{
         id: 'sascha',
         name: 'Sascha',
-        role: 'Performance- & Trainingsexperte',
         description: 'Dein persönlicher Trainer für Krafttraining und Performance',
         expertise: ['Krafttraining', 'Performance', 'Trainingsplanung'],
         personality: 'hart',
         color: 'blue',
         imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-        avatar: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-        age: 32,
-        icon: 'dumbbell',
-        accentColor: 'blue',
-        quickActions: [
-          { text: 'Trainingsplan erstellen', prompt: 'Erstelle mir einen optimalen Trainingsplan für meine Ziele.' },
-          { text: 'Formcheck', prompt: 'Bewerte meine Übungsausführung und gib mir Feedback zur Technik.' },
-          { text: 'RPE bewerten', prompt: 'Erkläre mir das RPE-System und wie ich es optimal nutze.' }
-        ]
+        accentColor: 'blue'
       }}
       onBack={() => navigate(-1)}
       todaysTotals={todaysTotals}
