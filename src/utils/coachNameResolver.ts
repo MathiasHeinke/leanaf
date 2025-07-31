@@ -53,7 +53,7 @@ export function getDisplayName(profile: UserProfile | null | undefined): string 
     const displayName = profile.display_name.trim();
     // Bei Doppelnamen/Hyphens: ersten logischen Namen extrahieren
     const firstName = displayName.includes('-') 
-      ? displayName.match(/^([^\s]+)/)?.[1] || displayName.split(' ')[0]
+      ? displayName.match(/^([^\s]+)/)?.[0] || displayName.split(' ')[0]
       : displayName.split(' ')[0];
     if (firstName && firstName.length > 1) {
       return firstName;
@@ -63,7 +63,8 @@ export function getDisplayName(profile: UserProfile | null | undefined): string 
   // 4. Email-basiert (nur als letzter Ausweg)
   if (profile.email?.includes('@')) {
     const emailName = profile.email.split('@')[0];
-    if (emailName && emailName.length > 2 && !emailName.includes('_') && !emailName.includes('.')) {
+    const blacklist = ['info','office','mail','admin','contact','support','hello'];
+    if (emailName.length > 2 && !emailName.includes('_') && !emailName.includes('.') && !blacklist.includes(emailName.toLowerCase())) {
       return emailName;
     }
   }
@@ -72,9 +73,8 @@ export function getDisplayName(profile: UserProfile | null | undefined): string 
   return 'mein Schützling';
 }
 
-// Legacy Compatibility - alle zeigen auf die MASTER-Funktion
-export const resolveCoachName = getDisplayName;
-export const resolveCoachFirstName = getDisplayName;
+// Exports - kein Drift mehr möglich
+export { getDisplayName as resolveCoachName, getDisplayName as resolveCoachFirstName };
 
 /**
  * Überprüft ob ein Name gesetzt ist (nicht Fallback)
