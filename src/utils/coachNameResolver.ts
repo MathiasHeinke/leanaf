@@ -1,26 +1,29 @@
 /**
- * Zentrale Funktion für die Namensauflösung für Coaches
+ * KONSOLIDIERTE Name-Resolution - IDENTISCH zu Backend getDisplayName()
  * 
  * Priorität:
  * 1. preferred_name (Spitzname) - wenn gesetzt
  * 2. first_name (Vorname) - wenn gesetzt
- * 3. Fallback: Höfliche/offene Anrede ohne "Du"
+ * 3. last_name (als Fallback) - nur einzelne Wörter
+ * 4. display_name (Legacy) - mit Hyphen-Support
+ * 5. email-basiert (letzter Ausweg)
+ * 6. Fallback: 'mein Schützling'
  */
 
 interface UserProfile {
   preferred_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
-  display_name?: string | null; // Legacy support
+  display_name?: string | null;
   email?: string | null;
 }
 
 /**
- * Löst den Namen für Coach-Anreden auf
+ * MASTER Name-Resolution Funktion (identisch zu Backend)
  * @param profile - Benutzer-Profil Daten
  * @returns Name für Coach-Anrede
  */
-export function resolveCoachName(profile: UserProfile | null | undefined): string {
+export function getDisplayName(profile: UserProfile | null | undefined): string {
   // Handle null oder undefined profile
   if (!profile) {
     return 'mein Schützling';
@@ -31,14 +34,27 @@ export function resolveCoachName(profile: UserProfile | null | undefined): strin
     return profile.preferred_name.trim();
   }
 
-  // 2. Priorität: Vorname
+  // 2. Priorität: Vorname (first_name)
   if (profile.first_name?.trim()) {
     return profile.first_name.trim();
   }
 
-  // 3. Legacy: display_name (nur Vorname extrahieren)
+  // 2b. Fallback: last_name als Vorname (selten, aber möglich)
+  if (profile.last_name?.trim()) {
+    const lastName = profile.last_name.trim();
+    // Nur wenn es ein einzelnes Wort ist und nicht offensichtlich ein Nachname
+    if (!lastName.includes(' ') && lastName.length > 1) {
+      return lastName;
+    }
+  }
+
+  // 3. Legacy: display_name (nur ersten Namen, aber mit Hyphen-Support)
   if (profile.display_name?.trim()) {
-    const firstName = profile.display_name.trim().split(' ')[0];
+    const displayName = profile.display_name.trim();
+    // Bei Doppelnamen/Hyphens: ersten logischen Namen extrahieren
+    const firstName = displayName.includes('-') 
+      ? displayName.match(/^([^\s]+)/)?.[1] || displayName.split(' ')[0]
+      : displayName.split(' ')[0];
     if (firstName && firstName.length > 1) {
       return firstName;
     }
@@ -56,21 +72,9 @@ export function resolveCoachName(profile: UserProfile | null | undefined): strin
   return 'mein Schützling';
 }
 
-/**
- * Löst den Namen für Coach-Anreden auf (nur Vorname wenn es ein zusammengesetzter Name ist)
- * @param profile - Benutzer-Profil Daten
- * @returns Erster Name für Coach-Anrede
- */
-export function resolveCoachFirstName(profile: UserProfile | null | undefined): string {
-  const fullName = resolveCoachName(profile);
-  
-  // Extrahiere nur den ersten Namen falls es ein zusammengesetzter Name ist
-  if (fullName && fullName !== 'mein Schützling') {
-    return fullName.split(' ')[0];
-  }
-  
-  return fullName;
-}
+// Legacy Compatibility - alle zeigen auf die MASTER-Funktion
+export const resolveCoachName = getDisplayName;
+export const resolveCoachFirstName = getDisplayName;
 
 /**
  * Überprüft ob ein Name gesetzt ist (nicht Fallback)
@@ -83,6 +87,7 @@ export function hasRealName(profile: UserProfile | null | undefined): boolean {
   return !!(
     profile.preferred_name?.trim() || 
     profile.first_name?.trim() || 
+    profile.last_name?.trim() ||
     (profile.display_name?.trim() && profile.display_name.trim().length > 1)
   );
 }
