@@ -745,9 +745,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   { 
                     id: 'high_protein',
                     label: 'High Protein',
-                    percentages: 'P:40/C:25/F:25',
+                    percentages: 'P:45/C:30/F:25',
                     desc: 'Muskelaufbau, Defizitdiäten - sättigt gut',
-                    protein: 40, carbs: 25, fats: 25
+                    protein: 45, carbs: 30, fats: 25
                   },
                   { 
                     id: 'high_carb',
