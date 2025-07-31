@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 // utils
 import { getDisplayName } from './utils/getDisplayName.ts';
+import { estimateTokenCount, intelligentTokenShortening, summarizeHistory } from './utils/tokenManagement.ts';
 
 // -------------------------------------------------------------------------
 // Tool handlers - import directly to avoid module resolution issues
@@ -240,129 +241,276 @@ const analyzeSentiment = async (text: string) => {
   }
 };
 
-// ============= COMPREHENSIVE DATA COLLECTION =============
-const collectComprehensiveUserData = async (supabase: any, userId: string) => {
+// ============= TOKEN-DIET: SMART INTENT DETECTION =============
+const detectIntent = (message: string, images: string[]): string => {
+  if (images.length > 0) return 'photo_analysis';
+  
+  const lowerMsg = message.toLowerCase();
+  
+  if (/hallo|hi|guten|wie geht|hey|servus/i.test(message)) return 'smalltalk';
+  if (/essen|mahlzeit|kalorien|ernährung|lucy|nahrung|diät|abnehmen/i.test(message)) return 'nutrition';
+  if (/training|übung|workout|sascha|kai|markus|krafttraining|cardio|fitness/i.test(message)) return 'workout';
+  if (/schlaf|müde|regeneration|dr.*vita|gesundheit|erholung/i.test(message)) return 'health';
+  if (/supplement|vitamin|mineral|protein|creatin|omega/i.test(message)) return 'supplements';
+  
+  return 'general_advice';
+};
+
+// ============= TOKEN BUDGET MANAGER =============
+const TOKEN_BUDGETS = {
+  smalltalk: 6_000,
+  photo_analysis: 8_000,
+  nutrition: 10_000,
+  workout: 10_000,
+  health: 9_000,
+  supplements: 8_000,
+  general_advice: 12_000
+};
+
+const getTokenBudget = (intent: string): number => {
+  return TOKEN_BUDGETS[intent as keyof typeof TOKEN_BUDGETS] || 12_000;
+};
+
+// ============= SMART DATA COLLECTION BY INTENT =============
+const collectIntentBasedData = async (supabase: any, userId: string, intent: string) => {
   try {
-    console.log('📊 Collecting comprehensive data for user:', userId);
+    console.log(`📊 Collecting ${intent} data for user:`, userId);
     
-    // Parallel data collection for efficiency
-    const [
-      mealsData,
-      fluidData,
-      weightData,
-      sleepData,
-      bodyMeasurementsData,
-      workoutData,
-      supplementData,
-      dailyGoalsData,
-      profileData
-    ] = await Promise.all([
-      // Meals (last 30 days)
-      supabase.from('meal_entries')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Fluid intake (last 30 days)
-      supabase.from('fluid_intake')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Weight history (last 90 days)
-      supabase.from('weight_entries')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Sleep data (last 30 days)
-      supabase.from('sleep_entries')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Body measurements (last 90 days)
-      supabase.from('body_measurements')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Workout data (last 30 days)
-      supabase.from('exercise_sessions')
-        .select(`
-          *,
-          exercise_sets (
-            *,
-            exercises (name, category, muscle_groups)
-          )
-        `)
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Supplement intake (last 30 days)
-      supabase.from('supplement_intake')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false }),
-      
-      // Daily goals
-      supabase.from('daily_goals')
-        .select('*')
-        .eq('user_id', userId)
-        .single(),
-      
-      // Profile data - mit allen verfügbaren Namensfeldern
-      supabase.from('profiles')
-        .select('id, preferred_name, first_name, last_name, display_name, email')
-        .eq('id', userId)
-        .maybeSingle()
-    ]);
+    const basePromise = supabase.from('profiles')
+      .select('id, preferred_name, first_name, last_name, display_name, email')
+      .eq('id', userId)
+      .maybeSingle();
 
-    // Calculate insights and analytics
-    const insights = await calculateUserInsights(
-      mealsData.data || [],
-      weightData.data || [],
-      workoutData.data || [],
-      sleepData.data || []
-    );
+    switch (intent) {
+      case 'smalltalk':
+        return {
+          profile: (await basePromise).data,
+          dataCollectionTimestamp: new Date().toISOString()
+        };
 
-    return {
-      meals: mealsData.data || [],
-      fluids: fluidData.data || [],
-      weight: weightData.data || [],
-      sleep: sleepData.data || [],
-      bodyMeasurements: bodyMeasurementsData.data || [],
-      workouts: workoutData.data || [],
-      supplements: supplementData.data || [],
-      dailyGoals: dailyGoalsData.data || null,
-      profile: profileData.data || null,
-      insights,
-      dataCollectionTimestamp: new Date().toISOString()
-    };
+      case 'nutrition':
+        const [mealsData, weightData, dailyGoalsData, profileData] = await Promise.all([
+          supabase.from('meal_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order('date', { ascending: false }),
+          
+          supabase.from('weight_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(5),
+          
+          supabase.from('daily_goals').select('*').eq('user_id', userId).single(),
+          basePromise
+        ]);
 
+        return {
+          meals: mealsData.data || [],
+          weight: weightData.data || [],
+          dailyGoals: dailyGoalsData.data || null,
+          profile: profileData.data,
+          insights: calculateNutritionInsights(mealsData.data || []),
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+
+      case 'photo_analysis':
+        return {
+          profile: (await basePromise).data,
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+
+      case 'workout':
+        const [workoutData, weightDataWorkout, profileDataWorkout] = await Promise.all([
+          supabase.from('exercise_sessions')
+            .select(`*, exercise_sets (*, exercises (name, category, muscle_groups))`)
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(10),
+          
+          supabase.from('weight_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(3),
+          
+          basePromise
+        ]);
+
+        return {
+          workouts: workoutData.data || [],
+          weight: weightDataWorkout.data || [],
+          profile: profileDataWorkout.data,
+          insights: calculateWorkoutInsights(workoutData.data || []),
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+
+      case 'health':
+        const [sleepData, bodyData, profileDataHealth] = await Promise.all([
+          supabase.from('sleep_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order('date', { ascending: false }),
+          
+          supabase.from('body_measurements')
+            .select('*')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(3),
+          
+          basePromise
+        ]);
+
+        return {
+          sleep: sleepData.data || [],
+          bodyMeasurements: bodyData.data || [],
+          profile: profileDataHealth.data,
+          insights: calculateHealthInsights(sleepData.data || []),
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+
+      case 'supplements':
+        const [supplementData, mealsDataSup, profileDataSup] = await Promise.all([
+          supabase.from('supplement_intake')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order('date', { ascending: false }),
+          
+          supabase.from('meal_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('date', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order('date', { ascending: false }),
+          
+          basePromise
+        ]);
+
+        return {
+          supplements: supplementData.data || [],
+          meals: mealsDataSup.data || [],
+          profile: profileDataSup.data,
+          insights: calculateSupplementInsights(supplementData.data || []),
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+
+      case 'general_advice':
+        const [mealsGen, weightGen, workoutsGen, sleepGen, profileGen] = await Promise.all([
+          supabase.from('meal_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('date', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order('date', { ascending: false }),
+          
+          supabase.from('weight_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(3),
+          
+          supabase.from('exercise_sessions')
+            .select('*')
+            .eq('user_id', userId)
+            .order('date', { ascending: false })
+            .limit(5),
+          
+          supabase.from('sleep_entries')
+            .select('*')
+            .eq('user_id', userId)
+            .gte('date', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order('date', { ascending: false }),
+          
+          basePromise
+        ]);
+
+        return {
+          meals: mealsGen.data || [],
+          weight: weightGen.data || [],
+          workouts: workoutsGen.data || [],
+          sleep: sleepGen.data || [],
+          profile: profileGen.data,
+          insights: calculateGeneralInsights(mealsGen.data || [], weightGen.data || []),
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+
+      default:
+        return {
+          profile: (await basePromise).data,
+          dataCollectionTimestamp: new Date().toISOString()
+        };
+    }
   } catch (error) {
-    console.error('Error collecting comprehensive user data:', error);
+    console.error(`Error collecting ${intent} data:`, error);
     return {
-      meals: [],
-      fluids: [],
-      weight: [],
-      sleep: [],
-      bodyMeasurements: [],
-      workouts: [],
-      supplements: [],
-      dailyGoals: null,
       profile: null,
-      insights: {},
       dataCollectionTimestamp: new Date().toISOString()
     };
   }
+};
+
+// ============= LIGHTWEIGHT INSIGHT CALCULATORS =============
+const calculateNutritionInsights = (meals: any[]) => {
+  if (meals.length === 0) return {};
+  
+  return {
+    nutrition: {
+      avgCalories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0) / meals.length,
+      avgProtein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) / meals.length,
+      mealFrequency: meals.length / 7
+    }
+  };
+};
+
+const calculateWorkoutInsights = (workouts: any[]) => {
+  if (workouts.length === 0) return {};
+  
+  return {
+    fitness: {
+      workoutsPerWeek: workouts.length / 2,
+      avgDuration: workouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0) / workouts.length
+    }
+  };
+};
+
+const calculateHealthInsights = (sleep: any[]) => {
+  if (sleep.length === 0) return {};
+  
+  return {
+    recovery: {
+      avgSleepHours: sleep.reduce((sum, s) => sum + (s.hours_slept || 0), 0) / sleep.length,
+      avgQuality: sleep.reduce((sum, s) => sum + (s.quality_rating || 0), 0) / sleep.length
+    }
+  };
+};
+
+const calculateSupplementInsights = (supplements: any[]) => {
+  return {
+    supplements: {
+      dailyCount: supplements.length / 7,
+      types: [...new Set(supplements.map(s => s.supplement_name))].length
+    }
+  };
+};
+
+const calculateGeneralInsights = (meals: any[], weight: any[]) => {
+  const insights: any = {};
+  
+  if (meals.length > 0) {
+    insights.nutrition = {
+      avgCalories: meals.reduce((sum, meal) => sum + (meal.calories || 0), 0) / meals.length
+    };
+  }
+  
+  if (weight.length > 1) {
+    const sorted = weight.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    insights.weight = {
+      trend: sorted[sorted.length - 1].weight - sorted[0].weight > 0 ? 'increasing' : 'decreasing'
+    };
+  }
+  
+  return insights;
 };
 
 // Calculate user insights and analytics
@@ -484,18 +632,63 @@ const determineRAGUsage = async (message: string, coachPersonality: string) => {
   return hasRAGTopic || isSpecializedCoach;
 };
 
-const performRAGSearch = async (supabase: any, message: string, coachPersonality: string, userId?: string) => {
+// ============= RAG CACHING SYSTEM =============
+const getCachedRAGResult = async (message: string, coachId: string) => {
   try {
-    console.log('🔍 Performing RAG search for message:', message.substring(0, 100));
+    const cacheKey = `rag_cache:${coachId}:${hashQuery(message)}`;
+    // TODO: Implement Redis or Supabase cache lookup
+    // For now, return null to always perform fresh RAG
+    return null;
+  } catch (error) {
+    console.error('Cache lookup error:', error);
+    return null;
+  }
+};
+
+const setCachedRAGResult = async (message: string, coachId: string, result: any) => {
+  try {
+    const cacheKey = `rag_cache:${coachId}:${hashQuery(message)}`;
+    // TODO: Implement Redis or Supabase cache storage with 24h TTL
+    console.log('Would cache RAG result for key:', cacheKey);
+  } catch (error) {
+    console.error('Cache storage error:', error);
+  }
+};
+
+const hashQuery = (query: string): string => {
+  // Simple hash function for cache keys
+  let hash = 0;
+  for (let i = 0; i < query.length; i++) {
+    const char = query.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+};
+
+const performRAGSearch = async (supabase: any, message: string, coachPersonality: string, intent: string, budget: number) => {
+  try {
+    const mappedCoachId = mapCoachId(coachPersonality);
+    console.log(`🔍 RAG search for ${intent} (budget: ${budget}):`, message.substring(0, 100));
+    
+    // Check cache first
+    const cachedResult = await getCachedRAGResult(message, mappedCoachId);
+    if (cachedResult) {
+      console.log('📦 Using cached RAG result');
+      return cachedResult;
+    }
+    
+    // Adjust RAG parameters based on budget and intent
+    const maxResults = intent === 'smalltalk' ? 2 : intent === 'photo_analysis' ? 1 : 3;
+    const contextWindow = Math.min(budget * 0.3, 1500); // 30% of budget for RAG context
     
     const { data, error } = await supabase.functions.invoke('enhanced-coach-rag', {
       body: {
         query: message,
-        coachId: mapCoachId(coachPersonality), // Use mapped coach ID for RAG
-        userId: userId,
+        coachId: mappedCoachId,
         searchMethod: 'hybrid',
-        maxResults: 5,
-        contextWindow: 2000
+        maxResults,
+        contextWindow
       }
     });
 
@@ -1204,41 +1397,61 @@ serve(async (req) => {
       console.log('⚠️ Empty message detected, continuing with fallback text');
     }
 
-    // ============= HUMAN-LIKE FEATURES INTEGRATION =============
-    console.log('🧠 Integrating Human-Like Coach Features...');
-
-    // 1. SENTIMENT ANALYSIS
-    const sentimentResult = await analyzeSentiment(message);
-    console.log('😊 Sentiment Analysis:', sentimentResult);
-
-    // 2. LOAD COACH MEMORY
-    const coachMemory = await loadCoachMemory(supabase, userId);
-    console.log('🧠 Coach Memory loaded:', {
-      preferences: coachMemory.user_preferences.length,
-      relationship_stage: coachMemory.relationship_stage,
-      trust_level: coachMemory.trust_level
-    });
-
-    // 3. UPDATE CONVERSATION CONTEXT
-    await updateConversationContext(supabase, userId, message, sentimentResult, coachMemory);
-    console.log('💭 Conversation context updated');
-
-    // ============= COMPREHENSIVE DATA COLLECTION =============
-    console.log('📊 Collecting comprehensive user data...');
+    // ============= TOKEN-DIET: SMART CONTEXT MANAGEMENT =============
+    console.log('🍽️ Token-Diet: Smart context management starting...');
     
-    // Collect all user data from database
-    const comprehensiveUserData = await collectComprehensiveUserData(supabase, userId);
+    const intent = detectIntent(lastMsg?.content || '', lastMsg?.images || []);
+    const tokenBudget = getTokenBudget(intent);
     
-    // Sanitize user data (keeping detailed data)
-    const userData = sanitizeUserData(body.userData || comprehensiveUserData);
+    console.log(`📊 Intent: ${intent}, Budget: ${tokenBudget} tokens`);
+
+    // 1. INTENT-BASED DATA COLLECTION (Token-Diet)
+    console.log(`📊 Loading ${intent}-specific data...`);
+    const userData = await collectIntentBasedData(supabase, userId, intent);
     
-    // Validate and sanitize chat history
+    // 2. SENTIMENT ANALYSIS (only for non-smalltalk)
+    let sentimentResult = { sentiment: 'neutral', emotion: 'neutral', confidence: 0, intensity: 0 };
+    if (intent !== 'smalltalk' && intent !== 'photo_analysis') {
+      sentimentResult = await analyzeSentiment(lastMsg?.content || '');
+      console.log('😊 Sentiment Analysis:', sentimentResult);
+    }
+
+    // 3. LOAD COACH MEMORY (compressed)
+    let coachMemory = createDefaultMemory();
+    if (intent !== 'smalltalk' && intent !== 'photo_analysis') {
+      coachMemory = await loadCoachMemory(supabase, userId);
+      console.log('🧠 Coach Memory loaded:', {
+        preferences: coachMemory.user_preferences.length,
+        relationship_stage: coachMemory.relationship_stage,
+        trust_level: coachMemory.trust_level
+      });
+      
+      // Update conversation context
+      await updateConversationContext(supabase, userId, lastMsg?.content || '', sentimentResult, coachMemory);
+    }
+    
+    // 4. SMART HISTORY SUMMARIZATION (Token-Diet)
+    console.log('📚 Processing chat history...');
     let chatHistory = [];
     if (Array.isArray(body.chatHistory)) {
-      chatHistory = body.chatHistory.slice(-50).map((msg: any) => ({
+      const rawHistory = body.chatHistory.slice(-20).map((msg: any) => ({
         role: msg.role === 'user' || msg.role === 'assistant' ? msg.role : 'user',
         content: sanitizeText(msg.content || '')
       })).filter(msg => msg.content);
+      
+      // Limit history based on intent
+      const historyLimits = {
+        smalltalk: 5,
+        photo_analysis: 3,
+        nutrition: 8,
+        workout: 6,
+        health: 8,
+        supplements: 5,
+        general_advice: 10
+      };
+      
+      chatHistory = rawHistory.slice(-(historyLimits[intent as keyof typeof historyLimits] || 8));
+      console.log(`📝 Chat history limited to ${chatHistory.length} messages for ${intent}`);
     }
     
     // Enhanced image validation using security helpers
@@ -1266,13 +1479,18 @@ serve(async (req) => {
       } : null
     });
 
-    // ============= RAG INTEGRATION =============
-    const shouldUseRAG = await determineRAGUsage(message, coachPersonality);
+    // 5. SMART RAG INTEGRATION (Token-Diet with caching)
+    const shouldUseRAG = await determineRAGUsage(lastMsg?.content || '', coachPersonality);
     let ragContext = null;
     
-    if (shouldUseRAG) {
-      console.log('🔍 Using RAG for specialized knowledge...');
-      ragContext = await performRAGSearch(supabase, message, coachPersonality, userId);
+    if (shouldUseRAG && intent !== 'smalltalk' && intent !== 'photo_analysis') {
+      console.log('🔍 Using cached RAG for specialized knowledge...');
+      ragContext = await performRAGSearch(supabase, lastMsg?.content || '', coachPersonality, intent, tokenBudget);
+      
+      // Cache the result
+      if (ragContext) {
+        await setCachedRAGResult(lastMsg?.content || '', mapCoachId(coachPersonality), ragContext);
+      }
     }
     
     // Log security event
@@ -1370,31 +1588,46 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Create enhanced system message with RAG context and comprehensive data
+    // 6. TOKEN BUDGET VALIDATION & INTELLIGENT SHORTENING
+    console.log('🧮 Checking token budget...');
+    
     const memoryContext = createMemoryContext(coachMemory, sentimentResult);
     const ragPromptAddition = ragContext ? createRAGPromptAddition(ragContext) : '';
+    const userName = getDisplayName(userData.profile);
     const systemMessage = createEnhancedSystemMessage(coachPersonality, userData, memoryContext, ragPromptAddition, userName);
     
-    const messages = [
+    let messages = [
       { role: 'system', content: systemMessage },
       ...chatHistory,
-      { role: 'user', content: message }
+      { role: 'user', content: lastMsg?.content || 'Hello' }
     ];
+    
+    // Estimate tokens and apply budget
+    const estimatedTokens = estimateTokenCount(messages);
+    console.log(`📏 Estimated tokens: ${estimatedTokens}, Budget: ${tokenBudget}`);
+    
+    if (estimatedTokens > tokenBudget) {
+      console.log('⚠️ Token budget exceeded, applying intelligent shortening...');
+      messages = await intelligentTokenShortening(messages, tokenBudget, intent, supabase);
+      console.log(`✂️ Shortened to ~${estimateTokenCount(messages)} tokens`);
+    }
 
-    // Check if message contains exercise data and extract it
-    const exerciseData = await extractExerciseFromText(message);
-    if (exerciseData && exerciseData.exerciseName) {
-      console.log('💪 Exercise data detected:', exerciseData);
-      await saveExerciseData(supabase, userId, exerciseData);
+    // Check if message contains exercise data and extract it (only for workout intent)
+    if (intent === 'workout') {
+      const exerciseData = await extractExerciseFromText(lastMsg?.content || '');
+      if (exerciseData && exerciseData.exerciseName) {
+        console.log('💪 Exercise data detected:', exerciseData);
+        await saveExerciseData(supabase, userId, exerciseData);
+      }
     }
 
     // ============= INTELLIGENT MODEL SELECTION =============
     
-    // Detect current tool and content characteristics
+    // 7. INTELLIGENT MODEL SELECTION (Token-Diet optimized)
     const currentTool = getLastTool(conversation);
     const isRAG = shouldUseRAG || !!ragContext;
-    const hasImages = images.length > 0;
-    const isHeavyCalculation = isHeavyCalc(currentTool, message, isRAG);
+    const hasImages = (lastMsg?.images?.length || 0) > 0;
+    const isHeavyCalculation = isHeavyCalc(currentTool, lastMsg?.content || '', isRAG);
     
     // Choose optimal model based on context
     const selectedModel = chooseModel(messages, {
@@ -1414,20 +1647,22 @@ serve(async (req) => {
       }
     });
 
-    console.log('🔄 Sending request to OpenAI with enhanced context...', {
+    console.log('🔄 Token-Diet optimized request to OpenAI...', {
       messageCount: messages.length,
-      systemMessageLength: systemMessage.length,
-      hasRAG: !!ragContext,
+      estimatedTokens: estimateTokenCount(messages),
+      tokenBudget,
+      intent,
       selectedModel,
-      dataSourcesAvailable: Object.keys(userData).filter(key => userData[key]?.length > 0)
+      hasRAG: !!ragContext,
+      dataSourcesLoaded: Object.keys(userData).filter(key => userData[key]?.length > 0)
     });
 
     // Add image analysis if images are provided
-    if (images.length > 0) {
+    if (hasImages && lastMsg?.images) {
       const lastMessage = messages[messages.length - 1];
       lastMessage.content = [
-        { type: 'text', text: message },
-        ...images.map(url => ({
+        { type: 'text', text: lastMsg.content || 'Analyze this image' },
+        ...lastMsg.images.map(url => ({
           type: 'image_url',
           image_url: { url }
         }))
@@ -1463,12 +1698,14 @@ serve(async (req) => {
       throw new Error('No response from OpenAI');
     }
 
-    console.log('✅ Enhanced coach response generated successfully', {
+    console.log('✅ Token-Diet optimized response generated', {
       responseLength: reply.length,
       tokensUsed: data.usage?.total_tokens || 0,
+      tokenBudget,
+      intent,
       selectedModel,
       ragUsed: !!ragContext,
-      sentimentDetected: sentimentResult.emotion
+      tokenSavings: `~${Math.round((1 - (data.usage?.total_tokens || 0) / 15000) * 100)}%`
     });
 
     // Save conversation to database
