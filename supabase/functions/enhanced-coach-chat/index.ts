@@ -1150,10 +1150,10 @@ const extractUserName = async (profile: any, userId: string, supabase: any): Pro
     // ============= INTELLIGENT MODEL SELECTION =============
     
     // Detect current tool and content characteristics
-    const activeTool = getLastTool(conversation);
+    const currentTool = getLastTool(conversation);
     const isRAG = shouldUseRAG || !!ragContext;
     const hasImages = images.length > 0;
-    const isHeavyCalculation = isHeavyCalc(activeTool, message, isRAG);
+    const isHeavyCalculation = isHeavyCalc(currentTool, message, isRAG);
     
     // Choose optimal model based on context
     const selectedModel = chooseModel(messages, {
