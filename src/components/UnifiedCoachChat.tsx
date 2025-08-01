@@ -370,6 +370,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         error = response.error;
       }
 
+      // Map response format for consistency between functions
+      if (hasImages && data?.analysis) {
+        data.response = data.analysis;
+      }
+
       if (error) {
         console.error('Coach chat error:', error);
         throw error;
