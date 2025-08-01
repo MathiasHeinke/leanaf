@@ -174,7 +174,9 @@ serve(async (req) => {
         standard: std.substring(0, 200) + "...",
         xl: xl.substring(0, 300) + "...",
         xxl: xxl.substring(0, 400) + "..."
-      }
+      },
+      // 📄 FULL XXL TEXT for frontend display
+      summary_xxl_full: xxl
     });
   } catch (e) {
     console.error(`❌ Fehler bei Day-Summary:`, e);
@@ -270,7 +272,7 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     supabase
       .from('weight_history')
       .select(`
-        weight, body_fat_percentage, muscle_mass_percentage,
+        weight, body_fat_percentage, muscle_percentage,
         visceral_fat, body_water_percentage, created_at
       `)
       .eq('user_id', userId)
@@ -297,12 +299,12 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 6. 💊 SUPPLEMENTE - DOSAGE + TIMING
+    // 6. 💊 SUPPLEMENTE - TIMING + TAKEN STATUS
     supabase
       .from('supplement_intake_log')
       .select(`
-        id, dosage, timing, taken, created_at,
-        food_supplements!inner(name, category, dosage_unit)
+        id, timing, taken, created_at,
+        user_supplements!inner(name, category)
       `)
       .eq('user_id', userId)
       .eq('date', date)
@@ -329,12 +331,12 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 8. 💧 HYDRATION-TRACKING - CONSUMED_AT + BESSERES JOIN
+    // 8. 💧 HYDRATION-TRACKING - CONSUMED_AT + CORRECTED JOIN
     supabase
       .from('user_fluids')
       .select(`
         id, custom_name, amount_ml, consumed_at, notes,
-        fluid_database!inner(name, category, calories_per_100ml, caffeine_mg_per_100ml, alcohol_percentage)
+        fluid_database_1!inner(name, category, calories_per_100ml, alcohol_percentage)
       `)
       .eq('user_id', userId)
       .or(`and(consumed_at.gte.${dayStart},consumed_at.lte.${dayEnd}), date.eq.${date}`)
@@ -639,11 +641,10 @@ function calculateKPIs(dayData: any) {
     dayData.fluids.forEach((fluid: any) => {
       kpis.totalFluidMl += fluid.amount_ml || 0;
       
-      if (fluid.fluid_database) {
-        const caffeine = (fluid.fluid_database.caffeine_mg_per_100ml || 0) * (fluid.amount_ml / 100);
-        const alcohol = (fluid.fluid_database.alcohol_percentage || 0) * (fluid.amount_ml / 100) * 0.8;
+      if (fluid.fluid_database_1) {
+        // Note: caffeine_mg_per_100ml column doesn't exist in fluid_database_1
+        const alcohol = (fluid.fluid_database_1.alcohol_percentage || 0) * (fluid.amount_ml / 100) * 0.8;
         
-        kpis.caffeineMg += caffeine;
         kpis.alcoholG += alcohol;
       }
     });
@@ -773,7 +774,7 @@ Keine Einleitung, keine Abschiedsfloskeln.
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_tokens: 1100,   // reicht für 700 Wörter + Overhead
+        max_tokens: 1500,   // Extended for full XXL text generation
         temperature: 0.7
       }),
     });

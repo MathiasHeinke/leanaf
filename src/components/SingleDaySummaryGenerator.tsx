@@ -305,15 +305,17 @@ export const SingleDaySummaryGenerator = () => {
                       </CollapsibleContent>
                     </Collapsible>
 
-                    <Collapsible>
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                        <span className="font-medium">XXL Summary Preview</span>
-                        <span className="text-xs text-muted-foreground">Klicken zum erweitern</span>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 p-3 bg-muted rounded-lg">
-                        <p className="text-sm">{response.summary_preview.xxl}</p>
-                      </CollapsibleContent>
-                    </Collapsible>
+                     <Collapsible>
+                       <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                         <span className="font-medium">XXL Summary Full Text</span>
+                         <span className="text-xs text-muted-foreground">Klicken zum erweitern</span>
+                       </CollapsibleTrigger>
+                       <CollapsibleContent className="mt-2 p-4 bg-muted rounded-lg max-h-96 overflow-y-auto">
+                         <div className="text-sm whitespace-pre-line font-mono text-xs leading-relaxed">
+                           {response.summary_xxl_full || response.summary_preview?.xxl || 'Kein XXL Text verfügbar'}
+                         </div>
+                       </CollapsibleContent>
+                     </Collapsible>
                   </div>
                 </CardContent>
               </Card>
