@@ -392,11 +392,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       // Route to correct endpoint based on debug mode (Shift+Enter = debug)
       const targetFunction = 'unified-coach-engine'; // Always use unified-coach-engine for normal chat
       
-      console.log(`🚀 Sending message to ${targetFunction}:`, {
-        userId: user.id,
-        message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
-        coachId: coach?.id
-      });
+      console.log(`🚀 Sending message to ${targetFunction} with XXL-Memory`);
       
       const response = await supabase.functions.invoke(targetFunction, {
         body: {

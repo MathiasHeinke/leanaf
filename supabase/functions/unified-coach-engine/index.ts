@@ -393,38 +393,7 @@ serve(async (req) => {
       }
     }
 
-    const userTier =
-      subscriber?.subscribed && subscriber.subscription_tier?.toLowerCase() !== 'free'
-        ? 'premium'
-        : 'free';
-
-    // ──────────────────────────────────────────────────────────────
-    // 2. Governor nur für Free-Tier
-    // ──────────────────────────────────────────────────────────────
-    let limitCheck = { can_use: true };
-    if (userTier === 'free') {
-      const { data, error } = await supabase.rpc('check_ai_usage_limit', {
-        p_user_id: userId,
-        p_feature_type: 'coach_chat',
-      });
-      limitCheck = data || { can_use: true };
-      if (error) console.warn('Governor-RPC-Error', error);
-    }
-
-    console.log(`[${requestId}] [Governor] Tier:`, userTier, 'can_use:', limitCheck.can_use);
-
-    if (!limitCheck.can_use) {
-      return new Response(
-        JSON.stringify({
-          role: 'assistant',
-          content:
-            'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium 🚀',
-          usage_limit_reached: true,
-          limits: limitCheck,
-        }),
-        { status: 429, headers: corsHeaders }
-      );
-    }
+    // ✅ Redundanter Rate-Limit-Check entfernt - Premium-Bypass ist bereits weiter oben implementiert
 
     // ============================================================================
     // PROMPT-VERSIONIERUNG: Handover bei Prompt-Updates
