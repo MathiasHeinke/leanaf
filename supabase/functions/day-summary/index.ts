@@ -181,8 +181,12 @@ const resp = (status: number, body: unknown) =>
 /* ================================================================== */
 
 async function collectDayData(supabase: any, userId: string, date: string) {
-  const dayStart = `${date}T00:00:00.000Z`;
-  const dayEnd = `${date}T23:59:59.999Z`;
+  // 🕐 TIMEZONE FIX: Berlin-Zeit berücksichtigen (UTC+2 im Sommer)
+  const berlinOffset = new Date().getTimezoneOffset() === -120 ? 2 : 1; // Sommer/Winter
+  const dayStart = `${date}T00:00:00+0${berlinOffset}:00`;
+  const dayEnd = `${date}T23:59:59+0${berlinOffset}:00`;
+
+  console.log(`📅 Collecting data for ${date} (${dayStart} - ${dayEnd})`);
 
   const [
     mealsResult,
@@ -196,21 +200,29 @@ async function collectDayData(supabase: any, userId: string, date: string) {
     coachConversationsResult,
     profileResult
   ] = await Promise.all([
-    // 1. 🍽️ ERNÄHRUNG
+    // 1. 🍽️ ERNÄHRUNG - KORRIGIERTE SPALTEN
     supabase
       .from('meals')
-      .select('id, name, description, calories, protein, carbs, fats, fiber, sugar, meal_type, created_at')
+      .select('id, text, calories, protein, carbs, fats, meal_type, created_at')
       .eq('user_id', userId)
       .gte('created_at', dayStart)
       .lte('created_at', dayEnd)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .then((result: any) => {
+        console.log(`🍽️ Meals query result:`, result.error || `${result.data?.length} meals found`);
+        return result;
+      }),
     
     // 2. 💪 TRAINING SESSIONS
     supabase
       .from('exercise_sessions')
       .select('id, session_name, workout_type, duration_minutes, overall_rpe, notes, start_time, end_time, date')
       .eq('user_id', userId)
-      .eq('date', date),
+      .eq('date', date)
+      .then((result: any) => {
+        console.log(`💪 Exercise sessions query result:`, result.error || `${result.data?.length} sessions found`);
+        return result;
+      }),
     
     // 3. 🏋️ EXERCISE SETS
     supabase
@@ -222,7 +234,11 @@ async function collectDayData(supabase: any, userId: string, date: string) {
       .eq('user_id', userId)
       .gte('created_at', dayStart)
       .lte('created_at', dayEnd)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .then((result: any) => {
+        console.log(`🏋️ Exercise sets query result:`, result.error || `${result.data?.length} sets found`);
+        return result;
+      }),
     
     // 4. ⚖️ GEWICHT & KÖRPERFETT
     supabase
@@ -231,7 +247,11 @@ async function collectDayData(supabase: any, userId: string, date: string) {
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at', { ascending: false })
-      .limit(1),
+      .limit(1)
+      .then((result: any) => {
+        console.log(`⚖️ Weight query result:`, result.error || `${result.data?.length} entries found`);
+        return result;
+      }),
     
     // 5. 📏 KÖRPERMASSE
     supabase
@@ -240,7 +260,11 @@ async function collectDayData(supabase: any, userId: string, date: string) {
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at', { ascending: false })
-      .limit(1),
+      .limit(1)
+      .then((result: any) => {
+        console.log(`📏 Body measurements query result:`, result.error || `${result.data?.length} entries found`);
+        return result;
+      }),
     
     // 6. 💊 SUPPLEMENTE
     supabase
@@ -250,28 +274,39 @@ async function collectDayData(supabase: any, userId: string, date: string) {
         food_supplements!inner(name, category, dosage_unit)
       `)
       .eq('user_id', userId)
-      .eq('date', date),
+      .eq('date', date)
+      .then((result: any) => {
+        console.log(`💊 Supplements query result:`, result.error || `${result.data?.length} entries found`);
+        return result;
+      }),
     
-    // 7. 😴 SCHLAF-TRACKING
+    // 7. 😴 SCHLAF-TRACKING - KORRIGIERTE SPALTEN
     supabase
       .from('sleep_tracking')
-      .select('hours_slept, sleep_quality, sleep_score, interruptions, mood_after_sleep, libido_level, recovery_feeling')
+      .select('sleep_hours, sleep_quality, sleep_interruptions, morning_libido, motivation_level, created_at')
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at', { ascending: false })
-      .limit(1),
+      .limit(1)
+      .then((result: any) => {
+        console.log(`😴 Sleep query result:`, result.error || `${result.data?.length} entries found`);
+        return result;
+      }),
     
-    // 8. 💧 HYDRATION-TRACKING
+    // 8. 💧 HYDRATION-TRACKING - KORRIGIERTE SPALTEN
     supabase
       .from('user_fluids')
       .select(`
-        amount_ml, created_at,
+        amount_ml, consumed_at,
         fluid_database!inner(name, category, calories_per_100ml, caffeine_mg_per_100ml, alcohol_percentage)
       `)
       .eq('user_id', userId)
-      .gte('created_at', dayStart)
-      .lte('created_at', dayEnd)
-      .order('created_at', { ascending: true }),
+      .eq('date', date)
+      .order('consumed_at', { ascending: true })
+      .then((result: any) => {
+        console.log(`💧 Fluids query result:`, result.error || `${result.data?.length} entries found`);
+        return result;
+      }),
     
     // 9. 🧠 COACH-GESPRÄCHE
     supabase
@@ -279,7 +314,11 @@ async function collectDayData(supabase: any, userId: string, date: string) {
       .select('message_content, message_role, coach_personality, created_at')
       .eq('user_id', userId)
       .eq('conversation_date', date)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: true })
+      .then((result: any) => {
+        console.log(`🧠 Coach conversations query result:`, result.error || `${result.data?.length} messages found`);
+        return result;
+      }),
     
     // 10. 👤 USER-PROFIL
     supabase
@@ -287,6 +326,10 @@ async function collectDayData(supabase: any, userId: string, date: string) {
       .select('preferred_name, age, gender, height_cm, activity_level, goal_type')
       .eq('id', userId)
       .maybeSingle()
+      .then((result: any) => {
+        console.log(`👤 Profile query result:`, result.error || 'Profile found');
+        return result;
+      })
   ]);
 
   return {
@@ -460,10 +503,10 @@ function calculateKPIs(dayData: any) {
       };
     }
 
-    // Top Lebensmittel
+    // Top Lebensmittel - KORRIGIERTE SPALTE
     const foodCounts: any = {};
     dayData.meals.forEach((meal: any) => {
-      const food = meal.name || meal.description || 'Unbekannt';
+      const food = meal.text || 'Unbekannt';
       foodCounts[food] = (foodCounts[food] || 0) + 1;
     });
     
@@ -530,18 +573,18 @@ function calculateKPIs(dayData: any) {
     kpis.bodyMeasurements = dayData.bodyMeasurements;
   }
 
-  // 4. 😴 RECOVERY & SCHLAF
+  // 4. 😴 RECOVERY & SCHLAF - KORRIGIERTE SPALTEN
   if (dayData.sleep) {
-    kpis.sleepScore = dayData.sleep.sleep_score;
-    kpis.sleepHours = dayData.sleep.hours_slept;
+    kpis.sleepScore = null; // Nicht verfügbar in DB
+    kpis.sleepHours = dayData.sleep.sleep_hours;
     kpis.sleepQuality = dayData.sleep.sleep_quality;
-    kpis.libidoLevel = dayData.sleep.libido_level;
-    kpis.recoveryFeeling = dayData.sleep.recovery_feeling;
+    kpis.libidoLevel = dayData.sleep.morning_libido;
+    kpis.recoveryFeeling = null; // Nicht verfügbar in DB
     
     kpis.recoveryMetrics = {
-      sleep_interruptions: dayData.sleep.interruptions,
-      mood_after_sleep: dayData.sleep.mood_after_sleep,
-      sleep_efficiency: dayData.sleep.hours_slept && dayData.sleep.hours_slept >= 7 ? 'good' : 'needs_improvement'
+      sleep_interruptions: dayData.sleep.sleep_interruptions,
+      motivation_level: dayData.sleep.motivation_level,
+      sleep_efficiency: dayData.sleep.sleep_hours && dayData.sleep.sleep_hours >= 7 ? 'good' : 'needs_improvement'
     };
   }
 
