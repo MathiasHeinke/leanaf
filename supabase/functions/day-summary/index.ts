@@ -648,11 +648,18 @@ function calculateKPIs(dayData: any) {
       }
     });
     
-    // Hydration-Score: Use weight from weight data or fallback
-    const userWeight = kpis.weight || dayData.profile?.weight || 70; // 70kg fallback
-    if (userWeight > 0) {
+    // Hydration-Score: Robust fallback on profile weight
+    const userWeight =
+      kpis.weight ??
+      dayData.profile?.weight_kg ??
+      dayData.weight?.weight ??
+      null;
+
+    if (userWeight && userWeight > 0 && kpis.totalFluidMl > 0) {
       const mlPerKg = kpis.totalFluidMl / userWeight;
       kpis.hydrationScore = Math.min(100, Math.round((mlPerKg / 35) * 100));
+    } else {
+      kpis.hydrationScore = null;
     }
   }
 
@@ -726,14 +733,32 @@ function hasRelevantData(dayData: any): boolean {
 async function generateSummary(kpis: any, dayData: any, summaryType: 'standard' | 'xl' | 'xxl') {
   const userName = dayData.profile?.preferred_name || 'Athlet';
 
+  /**  ➜  80 − 90 Token system prompt
+   *  - stichpunktartige Struktur
+   *  - maximal 700 Wörter in DE
+   *  - Emojis optional (≤ 2/Abschnitt)
+   */
   const systemPrompt = `
-Du bist ein datengetriebener Coach. Fasse die KPIs in **max. 700 Wörtern**.
-Nutze ⚡ kurze Sätze, Stichpunkte & Emojis sparsam (≤ 2 pro Abschnitt).
-Struktur:
-1 Ernährung, 2 Training, 3 Körper, 4 Regeneration, 5 Hydration/Supps, 6 Insights, 7 Handlung (4 Bullet-Points)`;
+Du bist ein datengetriebener Fitness-Coach. 
+Erstelle eine **Tages-XXL-Summary (< 700 Wörter, DE)** im Format:
 
-  const userPrompt = `Analysiere diese Tagesdaten für ${userName}:
-${JSON.stringify(kpis, null, 2)}`;
+1. 🍽 Ernährung – kcal, Makros %, Top-Foods (⩽ 3)  
+2. 💪 Training – Volumen kg, Sätze, Top-Übungen (⩽ 3)  
+3. ⚖ Körper – Gewicht, KFA, Messungen (falls)  
+4. 😴 Regeneration – Schlaf h, Qualität, HRV (falls)  
+5. 💧 Hydration/Supps – Flüssigkeit ml, Score %, Compliance %  
+6. 🔗 Insights – Korrelationen (z. B. Schlaf ↔ RPE)  
+7. ▶ Empfehlungen – 3-4 präzise Aufgaben
+
+Direkte Ansprache: **${userName}**, wissenschaftlich & motivierend.
+Keine Einleitung, keine Abschiedsfloskeln.
+`;
+
+  const userPrompt = JSON.stringify({
+    ...kpis,
+    date: dayData.date,
+    flags: kpis.dailyFlags,
+  });
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -748,7 +773,7 @@ ${JSON.stringify(kpis, null, 2)}`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_tokens: 1200, // Platz für echte 700 Wörter (~1000 tokens)
+        max_tokens: 1100,   // reicht für 700 Wörter + Overhead
         temperature: 0.7
       }),
     });
