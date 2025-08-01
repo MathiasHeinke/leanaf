@@ -93,25 +93,28 @@ serve(async (req) => {
     });
 
     /* ------------------------------------------------------------------ */
-    /* 5. Upsert Summary                                                  */
+    /* 5. Upsert Summary + Structured JSON                               */
     /* ------------------------------------------------------------------ */
+    const structuredSummary = buildStructuredSummary(date, kpis, dayData);
+    
     await supa.from("daily_summaries").upsert({
       user_id: userId,
       date,
-      total_calories: kpis.totalCalories,
-      total_protein: kpis.totalProtein,
-      total_carbs: kpis.totalCarbs,
-      total_fats: kpis.totalFats,
-      macro_distribution: kpis.macroDistribution,
-      top_foods: kpis.topFoods,
-      workout_volume: kpis.workoutVolume,
-      workout_muscle_groups: kpis.workoutMuscleGroups,
-      sleep_score: kpis.sleepScore,
-      recovery_metrics: kpis.recoveryMetrics,
+      total_calories: safe(kpis.totalCalories, 0),
+      total_protein: safe(kpis.totalProtein, 0),
+      total_carbs: safe(kpis.totalCarbs, 0),
+      total_fats: safe(kpis.totalFats, 0),
+      macro_distribution: safe(kpis.macroDistribution, {}),
+      top_foods: safe(kpis.topFoods, []),
+      workout_volume: safe(kpis.workoutVolume, 0),
+      workout_muscle_groups: safe(kpis.workoutMuscleGroups, []),
+      sleep_score: safe(kpis.sleepScore, null),
+      recovery_metrics: safe(kpis.recoveryMetrics, {}),
       summary_md: std,
       summary_xl_md: xl,
       summary_xxl_md: summary,
       kpi_xxl_json: kpis,
+      summary_struct_json: structuredSummary,
       tokens_spent: tokensUsed,
     }, { onConflict: 'user_id,date' });
 
@@ -269,6 +272,75 @@ async function collectDayData(supabase: any, userId: string, date: string) {
 /* ================================================================== */
 /* KPI CALCULATION - 1:1 aus der alten Function übernommen           */
 /* ================================================================== */
+
+// Helper function for safe value extraction
+const safe = <T>(val: T | undefined | null, def: T): T => val ?? def;
+
+function buildStructuredSummary(date: string, kpis: any, rawData: any) {
+  return {
+    day: date,
+    meta: { collected_at: new Date().toISOString() },
+    nutrition: {
+      totals: {
+        kcal: safe(kpis.totalCalories, 0),
+        protein_g: safe(kpis.totalProtein, 0),
+        carbs_g: safe(kpis.totalCarbs, 0),
+        fat_g: safe(kpis.totalFats, 0),
+        fiber_g: safe(kpis.totalFiber, 0),
+        sugar_g: safe(kpis.totalSugar, 0)
+      },
+      macro_pct: safe(kpis.macroDistribution, {}),
+      top_foods: safe(kpis.topFoods, []),
+      meal_timing: safe(kpis.mealTiming, []),
+      meals: safe(rawData.meals, [])
+    },
+    training: {
+      volume_kg: safe(kpis.workoutVolume, 0),
+      sets: safe(kpis.totalSets, 0),
+      avg_rpe: safe(kpis.avgRPE, 0),
+      duration_min: safe(kpis.workoutDuration, 0),
+      muscle_groups: safe(kpis.workoutMuscleGroups, []),
+      exercise_types: safe(kpis.exerciseTypes, []),
+      sessions: safe(rawData.workouts, []),
+      exercise_sets: safe(rawData.exerciseSets, [])
+    },
+    body: {
+      weight_kg: safe(kpis.weight, null),
+      body_fat_pct: safe(kpis.bodyFatPercentage, null),
+      muscle_mass_pct: safe(kpis.muscleMassPercentage, null),
+      measurements: safe(rawData.bodyMeasurements, null),
+      weight_entries: safe(rawData.weight, [])
+    },
+    recovery: {
+      sleep_hours: safe(kpis.sleepHours, null),
+      sleep_score: safe(kpis.sleepScore, null),
+      sleep_quality: safe(kpis.sleepQuality, null),
+      libido_level: safe(kpis.libidoLevel, null),
+      recovery_feeling: safe(kpis.recoveryFeeling, null),
+      recovery_metrics: safe(kpis.recoveryMetrics, {}),
+      sleep_data: safe(rawData.sleep, [])
+    },
+    hydration: {
+      total_ml: safe(kpis.totalFluidMl, 0),
+      caffeine_mg: safe(kpis.caffeineMg, 0),
+      alcohol_g: safe(kpis.alcoholG, 0),
+      hydration_score: safe(kpis.hydrationScore, 0),
+      fluids: safe(rawData.fluids, [])
+    },
+    supplements: {
+      compliance_pct: safe(kpis.supplementCompliance, 0),
+      missed_count: safe(kpis.supplementsMissed, 0),
+      supplement_log: safe(rawData.supplementLog, [])
+    },
+    coaching: {
+      sentiment: safe(kpis.coachSentiment, 'neutral'),
+      motivation_level: safe(kpis.motivationLevel, 'unknown'),
+      conversations: safe(rawData.coachConversations, [])
+    },
+    flags: safe(kpis.dailyFlags, []),
+    profile: safe(rawData.profile, null)
+  };
+}
 
 function calculateKPIs(dayData: any) {
   const kpis: any = {
