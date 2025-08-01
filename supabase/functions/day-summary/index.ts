@@ -309,12 +309,12 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 6. 💊 SUPPLEMENTE - TIMING + TAKEN STATUS (Fix taken_at logic + column names)
+    // 6. 💊 SUPPLEMENTE - PR #2: Fixed compliance with proper joins
     supabase
       .from('supplement_intake_log')
       .select(`
-        id, timing, taken, taken_at, created_at,
-        user_supplements!inner(custom_name, dosage, unit)
+        id, dosage, timing, taken, taken_at, created_at,
+        food_supplements(name, category, dosage_unit)
       `)
       .eq('user_id', userId)
       .eq('date', date)
@@ -368,11 +368,14 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 10. 👤 USER-PROFIL
+    // 10. 👤 USER-PROFIL - PR #1: Extended profile data
     supabase
       .from('profiles')
-      .select('preferred_name, age, gender, height_cm, weight_kg, activity_level, goal_type')
-      .eq('id', userId)
+      .select(`
+        preferred_name, age, gender, height, weight, activity_level, goal,
+        target_weight, target_date
+      `)
+      .eq('user_id', userId)
       .maybeSingle()
       .then((result: any) => {
         console.log(`👤 Profile query result:`, result.error || 'Profile found');
@@ -535,20 +538,39 @@ function buildStructuredSummary(date: string, kpis: any, rawData: any) {
     user_profile: {
       name: safe(rawData.profile?.preferred_name, 'Unbekannt'),
       age: safe(rawData.profile?.age, null),
-      height: safe(rawData.profile?.height_cm, null),
-      weight_goal: safe(rawData.profile?.weight_kg, null),
+      height: safe(rawData.profile?.height, null),
+      current_weight: safe(kpis.weight, null),
       activity_level: safe(rawData.profile?.activity_level, null),
-      goal_type: safe(rawData.profile?.goal_type, null),
-      current_weight: safe(kpis.weight, null)
+      goal: safe(rawData.profile?.goal, null),
+      target_weight: safe(rawData.profile?.target_weight, null),
+      target_date: safe(rawData.profile?.target_date, null)
     },
     coaching: {
       sentiment: safe(kpis.coachSentiment, 'neutral'),
       motivation_level: safe(kpis.motivationLevel, 'unknown'),
+      topics: safe(kpis.coachTopics, []),
       conversations: safe(rawData.coachConversations, [])
     },
     flags: safe(kpis.dailyFlags, []),
     profile: safe(rawData.profile, null)
   };
+}
+
+// PR #3: Helper function to extract conversation topics
+function extractConversationTopics(msgs: any[]) {
+  const topics = new Set<string>();
+  msgs.forEach(m => {
+    const c = m.message_content.toLowerCase();
+    if (c.includes('schlaf')) topics.add('Schlaf');
+    if (c.includes('kalorien') || c.includes('essen')) topics.add('Ernährung');
+    if (c.includes('training') || c.includes('workout')) topics.add('Training');
+    if (c.includes('stress')) topics.add('Stress');
+    if (c.includes('motiv')) topics.add('Motivation');
+    if (c.includes('gewicht') || c.includes('abnehmen')) topics.add('Gewicht');
+    if (c.includes('müde') || c.includes('erschöpft')) topics.add('Erschöpfung');
+    if (c.includes('ziel') || c.includes('fortschritt')) topics.add('Ziele');
+  });
+  return Array.from(topics).slice(0, 4); // max 4 topics
 }
 
 function calculateKPIs(dayData: any) {
@@ -611,6 +633,7 @@ function calculateKPIs(dayData: any) {
     // MENTAL STATE & COACHING
     coachSentiment: 'neutral',
     motivationLevel: 'unknown',
+    coachTopics: [], // PR #3: Coach topics
     stressIndicators: [],
     successMoments: [],
     struggles: [],
@@ -815,7 +838,7 @@ function calculateKPIs(dayData: any) {
     console.log(`💊 Supplement compliance: ${takenCount}/${dayData.supplementLog.length} = ${kpis.supplementCompliance}%`);
   }
 
-  // 6. 🧠 COACH-GESPRÄCHE & SENTIMENT
+  // 6. 🧠 COACH-GESPRÄCHE & SENTIMENT + PR #3: Topics
   if (dayData.coachConversations && dayData.coachConversations.length > 0) {
     const userMessages = dayData.coachConversations.filter((msg: any) => msg.message_role === 'user');
     
@@ -845,6 +868,9 @@ function calculateKPIs(dayData: any) {
       kpis.coachSentiment = 'neutral';
       kpis.motivationLevel = 'moderate';
     }
+    
+    // PR #3: Extract conversation topics
+    kpis.coachTopics = extractConversationTopics(dayData.coachConversations);
   }
   
   // 7. 📊 7-TAGE TRAINING ANALYSE (NEW)
@@ -934,6 +960,8 @@ Erstelle eine **Tages-XXL-Summary (< 700 Wörter, DE)** im Format:
 5. 💧 Hydration/Supps – Flüssigkeit ml, Score %, Compliance %  
 6. 🔗 Insights – Korrelationen (z. B. Schlaf ↔ RPE)  
 7. ▶ Empfehlungen – 3-4 präzise Aufgaben
+
+${kpis.coachTopics && kpis.coachTopics.length > 0 ? `Besprochene Themen heute: ${kpis.coachTopics.join(', ')}. Greife max. 1 Thema kurz auf.` : ''}
 
 Direkte Ansprache: **${userName}**, wissenschaftlich & motivierend.
 Keine Einleitung, keine Abschiedsfloskeln.
