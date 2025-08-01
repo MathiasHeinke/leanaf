@@ -30,7 +30,7 @@ export const GlobalHeader = ({
 }: GlobalHeaderProps) => {
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
-  const [showCoachBanner, setShowCoachBanner] = useState(false);
+  
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [coachData, setCoachData] = useState<CoachData | null>(null);
   
@@ -236,92 +236,13 @@ export const GlobalHeader = ({
           </Button>
         </div>
 
-        {/* Chevron-Button als Knubbel unten am Header */}
-        {isCoachChatRoute && (
-          <button
-            onClick={() => setShowCoachBanner(prev => !prev)}
-            className="absolute left-1/2 -bottom-2 transform -translate-x-1/2 bg-background/70 backdrop-blur-md border border-border/20 rounded-full p-1 shadow-sm hover:bg-accent/60 z-50 transition-colors"
-          >
-            {showCoachBanner ? (
-              <ChevronUp className="h-4 w-4 text-blue-500" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-blue-500" />
-            )}
-          </button>
-        )}
       </div>
-
-      {/* Coach-Banner direkt unter Header (ohne Abstand) */}
-      {isCoachChatRoute && (
-        <div
-          className={`transition-all duration-500 ease-in-out overflow-hidden bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60 border-b border-border/20 shadow-md w-full fixed top-[61px] z-40 ${
-            showCoachBanner ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className="flex justify-between items-center px-4 py-2">
-            <button 
-              onClick={() => {
-                if (location.pathname.startsWith('/coach')) {
-                  navigate('/coach');
-                } else {
-                  navigate('/');
-                }
-              }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Zurück
-            </button>
-
-            <div className="flex items-center gap-2">
-              <img
-                src={
-                  getCurrentCoachId() === 'sascha' ? '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png' : 
-                  getCurrentCoachId() === 'markus' ? '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png' :
-                  getCurrentCoachId() === 'lucy' ? '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png' :
-                  getCurrentCoachId() === 'kai' ? '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png' :
-                  getCurrentCoachId() === 'dr_vita' ? '/lovable-uploads/954a7ee8-1579-4a1b-bf4c-87b4ef4588b1.png' :
-                  getCurrentCoachId() === 'sophia' ? '/coach-images/dr-sophia-integral.png' :
-                  'fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png'
-                }
-                alt={coachData?.name || 'Coach'}
-                className="w-6 h-6 rounded-full object-cover"
-              />
-              <span className="font-medium text-sm">
-                {/* Für alle Coaches: zeige nur den Namen, nicht die lange Beschreibung */}
-                {coachData?.name || 'Coach'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowChatHistory(true)}
-                className="text-sm hover:text-primary transition-colors"
-                title="Chat-Verlauf"
-              >
-                <History className="h-4 w-4" />
-              </button>
-              <button 
-                onClick={() => {
-                  if (confirm('Heutigen Chat-Verlauf wirklich löschen?')) {
-                    handleClearChat();
-                  }
-                }}
-                className="text-sm hover:text-destructive transition-colors"
-                title="Heutigen Chat löschen"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Global Coach Banner for non-coach pages */}
       <CoachBanner />
 
       {/* Spacer to prevent content overlap */}
-      <div className={`${isCoachChatRoute && showCoachBanner ? 'h-[125px]' : 'h-[61px]'} transition-all duration-500`} />
+      <div className="h-[61px]" />
 
       {/* Chat History Dialog */}
       {showChatHistory && (

@@ -25,8 +25,9 @@ export const CoachBanner = () => {
       id="coachBar"
       className={clsx(
         'fixed left-0 right-0 z-40 transition-transform duration-300',
-        open ? 'translate-y-0' : '-translate-y-full',
-        'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg'
+        'bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60',
+        'border-b border-border/20',
+        open ? 'translate-y-0' : '-translate-y-full'
       )}
       style={{ top: '61px' }} // Fixed header height
     >
@@ -37,7 +38,7 @@ export const CoachBanner = () => {
         </div>
         
         <span 
-          className="flex-1 text-sm cursor-pointer hover:underline"
+          className="flex-1 text-sm cursor-pointer hover:underline text-foreground"
           onClick={handleCoachClick}
         >
           Dein AI-Coach ist bereit! Stelle eine Frage oder wähle einen Spezialisten…
