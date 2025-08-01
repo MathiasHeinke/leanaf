@@ -344,8 +344,9 @@ serve(async (req) => {
 
     console.log(`📊 [${requestId}] Raw subscription data:`, subscriber);
 
+    // Check for both Stripe subscriptions (Premium, Pro) and manual subscriptions (Premium, Enterprise, Super Admin)
     const isPremium = subscriber?.subscribed && 
-      ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
+      ['Premium', 'Pro', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
     
     // ✅ CRITICAL: Define userTier at function scope level for global access
     const userTier = isPremium ? 'premium' : 'free';
