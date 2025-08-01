@@ -73,11 +73,6 @@ export const CollapsibleCoachHeader = ({
           <h2 className="font-semibold text-base truncate">
             {coach.name}
           </h2>
-          {coach.specialization && (
-            <p className="text-sm text-muted-foreground truncate">
-              {coach.specialization}
-            </p>
-          )}
         </div>
         
         <div className="flex items-center gap-2">
