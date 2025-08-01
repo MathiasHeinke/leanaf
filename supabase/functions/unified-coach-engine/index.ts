@@ -551,12 +551,12 @@ serve(async (req) => {
     
     const chooseModel = (hasImages: boolean, userTier: string = 'free') => {
       if (hasImages) {
-        // ✅ Bilder: GPT-4.1-2025-04-14 (neuestes Flaggschiff-Modell mit Vision)
-        return 'gpt-4.1-2025-04-14';
+        // ✅ Bilder: GPT-4o für alle (bewährtes Vision-Modell)
+        return 'gpt-4o';
       }
       
-      // ✅ Text: GPT-4.1-2025-04-14 für Premium, gpt-4.1-mini-2025-04-14 für Free
-      return userTier === 'premium' ? 'gpt-4.1-2025-04-14' : 'gpt-4.1-mini-2025-04-14';
+      // ✅ Text: GPT-4.1-2025-04-14 für Premium, gpt-4o für Free
+      return userTier === 'premium' ? 'gpt-4.1-2025-04-14' : 'gpt-4o';
     };
 
     const selectedModel = chooseModel(images.length > 0, userTier);
