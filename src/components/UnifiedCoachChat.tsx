@@ -401,10 +401,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         toolSelected: selectedTool
       });
 
-      // Use unified-coach-engine for all conversations (text + images)
-      const activeTool = selectedTool ?? 'chat';
+      // Feature Flag: Route to debug-direct-chat if needed
+      const targetFunction = import.meta.env.VITE_FORCE_DEBUG_CHAT === 'true'
+        ? 'debug-direct-chat'
+        : 'unified-coach-engine';
       
-      const response = await supabase.functions.invoke('unified-coach-engine', {
+      console.log(`🚀 Sending message to ${targetFunction} with XXL-Memory`);
+      
+      const response = await supabase.functions.invoke(targetFunction, {
         body: {
           userId: user.id,
           message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
@@ -414,10 +418,10 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           coachPersonality: coach?.id || 'lucy',
           conversationHistory: conversationHistory,
           toolContext: {
-            tool: activeTool,
-            description: activeTool === 'chat'
+            tool: selectedTool || 'chat',
+            description: (selectedTool || 'chat') === 'chat'
               ? 'Freies Gespräch / Intent-Analyse'
-              : `Benutzer hat Tool "${activeTool}" ausgewählt`,
+              : `Benutzer hat Tool "${selectedTool || 'chat'}" ausgewählt`,
             data: {
               mode: mode,
               profileData: profileData,
