@@ -793,13 +793,15 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
       try {
         switch (dataType) {
           case 'weight_history':
-            const { data: weights } = await supabase
-              .from('weight_history')
+            const { data: weights, error: weightsError } = await supabase
+              .from('weight_entries')
               .select('date, weight, body_fat_percentage')
               .eq('user_id', userId)
               .order('date', { ascending: false })
               .limit(10);
+            if (weightsError) console.warn(`⚠️ Weight history load error:`, weightsError.message);
             context.relevantData.weight_history = weights;
+            console.log('⚖️ Weight history loaded:', weights?.length || 0, 'entries');
             break;
 
           case 'meals':
@@ -816,23 +818,27 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
             break;
 
           case 'exercise_sessions':
-            const { data: workouts } = await supabase
+            const { data: workouts, error: workoutsError } = await supabase
               .from('exercise_sessions')
               .select('date, session_name, duration_minutes, overall_rpe, workout_type')
               .eq('user_id', userId)
               .order('date', { ascending: false })
               .limit(10);
+            if (workoutsError) console.warn(`⚠️ Exercise sessions load error:`, workoutsError.message);
             context.relevantData.exercise_sessions = workouts;
+            console.log('💪 Exercise sessions loaded:', workouts?.length || 0, 'entries');
             break;
 
           case 'body_measurements':
-            const { data: measurements } = await supabase
+            const { data: measurements, error: measurementsError } = await supabase
               .from('body_measurements')
               .select('date, waist, chest, arms, hips')
               .eq('user_id', userId)
               .order('date', { ascending: false })
               .limit(5);
+            if (measurementsError) console.warn(`⚠️ Body measurements load error:`, measurementsError.message);
             context.relevantData.body_measurements = measurements;
+            console.log('📏 Body measurements loaded:', measurements?.length || 0, 'entries');
             break;
         }
       } catch (error) {
