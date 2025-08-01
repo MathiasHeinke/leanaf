@@ -368,7 +368,24 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
       if (error) {
         console.error('Coach chat error:', error);
-        // Fallback response if function fails
+        
+        // 1️⃣ Usage-Limit sauber abfangen
+        if (error.status === 429 && error.details?.usage_limit_reached) {
+          const limitMessage: UnifiedMessage = {
+            id: `usage-limit-${Date.now()}`,
+            role: 'assistant',
+            content: `⚠️ Du hast dein tägliches Chat-Limit erreicht (${error.details.daily_remaining || 0} Nachrichten übrig). Upgrade auf 👑 **Premium** für unbegrenztes Coaching.`,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.personality || 'motivierend',
+            images: [],
+            mode: mode
+          };
+          setMessages(prev => [...prev, limitMessage]);
+          setIsThinking(false);
+          return; // ⬅️ kein generischer Fallback!
+        }
+
+        // 2️⃣ andere Fehler → alter Fallback
         const fallbackResponse = hasImages 
           ? "Entschuldigung, ich kann dein Bild gerade nicht analysieren. Versuche es bitte später nochmal."
           : "Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später nochmal.";
