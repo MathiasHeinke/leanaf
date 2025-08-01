@@ -317,6 +317,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       const hasImages = uploadedImages.length > 0;
       let data, error;
 
+      console.log('🚀 Sending message to:', hasImages ? 'coach-media-analysis' : 'enhanced-coach-chat');
+
       if (hasImages) {
         // Use coach-media-analysis for image/video analysis
         const response = await supabase.functions.invoke('coach-media-analysis', {
@@ -359,8 +361,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
         const response = await supabase.functions.invoke('enhanced-coach-chat', {
           body: {
-            conversation: conversation,
+            message: inputText,
             userId: user.id,
+            coach_personality: coach?.id || 'lucy',
             // Include context data for compatibility
             context_data: {
               mode: mode,

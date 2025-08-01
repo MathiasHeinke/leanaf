@@ -53,11 +53,21 @@ export const useCoachMemory = () => {
         .from('coach_memory')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle(); // ← FIX: .maybeSingle() toleriert 0 oder 1 Results
 
-      if (error && error.code !== 'PGRST116') {
+      // Handle case where no memory exists yet
+      if (!data && !error) {
+        console.log('No coach memory found, creating default');
+        const defaultMemory = createDefaultMemory();
+        setMemory(defaultMemory);
+        return defaultMemory;
+      }
+
+      if (error) {
         console.error('Error loading coach memory:', error);
-        return null;
+        const defaultMemory = createDefaultMemory();
+        setMemory(defaultMemory);
+        return defaultMemory;
       }
 
       // @ts-ignore - Types will be updated after migration
