@@ -31,6 +31,11 @@
   /* Konsistente Glas-Transparenz für alle Header */
 }
 
+/* Hover Scale Animation */
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105;
+}
+
 /* Modern Clean Design System - Minimalist & Professional */
 
 @layer base {
