@@ -12,6 +12,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
+// ----------------------------------------------------------------------------
+// TEMP: Governor ausschalten, wenn ENV = 'true'   (z.B. in Dashboard setzen)
+// ----------------------------------------------------------------------------
+const DISABLE_LIMITS = Deno.env.get('DISABLE_COACH_LIMITS') === 'true';
+
 const PROMPT_VERSION = '2025-08-01-XL';
 
 // ============================================================================
@@ -363,11 +368,13 @@ serve(async (req) => {
       ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
     
     console.log(`👑 [${requestId}] User tier: ${subscriber?.subscription_tier || 'Free'}, Premium: ${isPremium}`);
+    console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
     
     // ──────────────────────────────────────────────────────────────
-    // 2. Rate-Limiting nur für Free-User
+    // 2. Rate-Limiting nur für Free-User (außer wenn global deaktiviert)
     // ──────────────────────────────────────────────────────────────
-    if (!isPremium) {
+    if (!DISABLE_LIMITS && !isPremium) {
+      console.log(`🔍 [${requestId}] Running rate limit check for free user`);
       const { data: limitResult, error: limitError } = await supabase.rpc('check_ai_usage_limit', {
         p_user_id: userId,
         p_feature_type: 'coach_chat'
@@ -391,6 +398,10 @@ serve(async (req) => {
           headers: corsHeaders 
         });
       }
+    } else if (DISABLE_LIMITS) {
+      console.log(`⚠️ [${requestId}] Rate limiting DISABLED by environment flag`);
+    } else {
+      console.log(`✅ [${requestId}] Premium user - skipping rate limit check`);
     }
 
     // ✅ Redundanter Rate-Limit-Check entfernt - Premium-Bypass ist bereits weiter oben implementiert
