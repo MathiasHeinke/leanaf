@@ -50,6 +50,7 @@ import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
 import { ToolPicker } from '@/components/ToolPicker';
+import { UploadProgress } from '@/components/UploadProgress';
 import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
 
 // ============= TYPES =============
@@ -143,7 +144,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { memory, isGlobalMemoryLoaded } = useGlobalCoachMemory();
   const { isRecording, isProcessing, transcribedText, startRecording, stopRecording } = useVoiceRecording();
   const { analyzeImage, isAnalyzing } = useUniversalImageAnalysis();
-  const { uploadFiles, uploading } = useMediaUpload();
+  const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
   const { tokens } = useContextTokens(user?.id);
   
   // ============= CHAT PERSISTIERUNG =============
@@ -614,6 +615,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     const chatInput = (
       <div className="space-y-2 px-3 py-2">
+        {/* Upload Progress */}
+        <UploadProgress progress={uploadProgress} isVisible={uploading} />
+        
         {/* Uploaded Images Thumbnails */}
         {uploadedImages.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-2">
@@ -817,6 +821,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         
         <div className="flex-none">
           <div className="space-y-2 px-3 py-2">
+            {/* Upload Progress */}
+            <UploadProgress progress={uploadProgress} isVisible={uploading} />
+            
             {/* Uploaded Images Thumbnails */}
             {uploadedImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-2">
