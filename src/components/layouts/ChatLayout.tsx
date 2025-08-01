@@ -3,27 +3,26 @@ import { ReactNode } from "react";
 
 interface ChatLayoutProps {
   children: ReactNode;
-  coachBanner?: ReactNode;
   chatInput?: ReactNode;
+  bannerCollapsed?: boolean;
 }
 
-export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
+export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: ChatLayoutProps) => {
   return (
     <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
       
       {/* Header */}
       <GlobalHeader />
 
-      {/* Coach-Banner */}
-      {coachBanner && (
-        <div className="flex-shrink-0 px-4 pt-1 pb-2">
-          {coachBanner}
-        </div>
-      )}
-
-      {/* Scrollbarer Chat */}
-      <div className="flex-1 min-h-0 px-4">
-        <div className="h-full overflow-y-auto space-y-2" style={{ pointerEvents: 'auto' }}>
+      {/* Scrollbarer Chat - dynamisches Padding basierend auf Banner-Status */}
+      <div 
+        className="flex-1 min-h-0 px-4 transition-all duration-300 ease-out"
+        style={{ 
+          paddingTop: bannerCollapsed ? '8px' : 'var(--coach-banner-height)',
+          pointerEvents: 'auto' 
+        }}
+      >
+        <div className="h-full overflow-y-auto space-y-2">
           {children}
         </div>
       </div>

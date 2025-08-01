@@ -40,6 +40,7 @@ import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
 import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
+import { GlobalHeader } from '@/components/GlobalHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
 
@@ -136,6 +137,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [showToolBadge, setShowToolBadge] = useState(false);
   const [toolBadgeText, setToolBadgeText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [bannerCollapsed, setBannerCollapsed] = useState(false);
   
   
   // ============= REFS =============
@@ -908,23 +910,33 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       </div>
     );
 
-    const coachBanner = (
-      <CollapsibleCoachHeader
-        coach={{
-          name: coach?.name || 'Coach',
-          imageUrl: coach?.imageUrl,
-          specialization: coach?.expertise?.join(', ') || coach?.personality
-        }}
-        onHistoryClick={handleHistoryClick}
-        onDeleteChat={handleDeleteChat}
-      />
-    );
-
     return (
-      <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
-          
-          {/* Render all messages using the unified message renderer */}
-          <ScrollArea className="flex-1 px-4">
+      <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
+        {/* Global Header */}
+        <GlobalHeader />
+        
+        {/* Coach Banner */}
+        <CollapsibleCoachHeader
+          coach={{
+            name: coach?.name || 'Coach',
+            imageUrl: coach?.imageUrl,
+            specialization: coach?.expertise?.join(', ') || coach?.personality
+          }}
+          onHistoryClick={handleHistoryClick}
+          onDeleteChat={handleDeleteChat}
+          onCollapseChange={setBannerCollapsed}
+        />
+
+        {/* Chat Content mit dynamischem Padding */}
+        <div 
+          className="flex-1 min-h-0 px-4 transition-all duration-300 ease-out"
+          style={{ 
+            paddingTop: bannerCollapsed ? '8px' : '0px',
+            pointerEvents: 'auto' 
+          }}
+        >
+          <div className="h-full overflow-y-auto space-y-2">
+            {/* Render all messages using the unified message renderer */}
             <div className="space-y-3 pb-4">
               {messages.map(message => renderMessage(message))}
               {isThinking && (
@@ -933,8 +945,24 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               {/* Invisible div to scroll to */}
               <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
-        </ChatLayout>
+          </div>
+        </div>
+
+        {/* Chat Input + Footer (gemeinsamer Block!) */}
+        <div className="flex-shrink-0">
+          
+          {/* Eingabefeld direkt auf Footer */}
+          <div className="px-3 py-1 bg-card border-t border-border">
+            {chatInput}
+          </div>
+
+          {/* Footer: kein zusätzlicher Abstand */}
+          <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-card m-0 p-0">
+            © 2025 GetleanAI. Made with ❤️ in Germany
+          </div>
+
+        </div>
+      </div>
     );
   }
 

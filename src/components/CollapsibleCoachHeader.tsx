@@ -11,12 +11,14 @@ interface CollapsibleCoachHeaderProps {
   };
   onHistoryClick?: () => void;
   onDeleteChat?: () => void;
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
 export const CollapsibleCoachHeader = ({ 
   coach, 
   onHistoryClick, 
-  onDeleteChat 
+  onDeleteChat,
+  onCollapseChange 
 }: CollapsibleCoachHeaderProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
@@ -26,7 +28,9 @@ export const CollapsibleCoachHeader = ({
   };
 
   const toggleCollapse = () => {
-    setCollapsed(!collapsed);
+    const newCollapsed = !collapsed;
+    setCollapsed(newCollapsed);
+    onCollapseChange?.(newCollapsed);
   };
 
   return (
@@ -43,7 +47,7 @@ export const CollapsibleCoachHeader = ({
           ${collapsed ? '-translate-y-full' : 'translate-y-0'}
         `}
         style={{ 
-          top: '61px',
+          top: 'var(--global-header-height)',
           willChange: 'transform'
         } as React.CSSProperties}
       >
@@ -120,11 +124,13 @@ export const CollapsibleCoachHeader = ({
         </button>
       </header>
 
-      {/* Spacer für Content-Offset - Always show full height */}
-      <div 
-        className="h-16"
-        style={{ marginTop: '61px' }}
-      />
+      {/* Spacer nur wenn Banner sichtbar ist */}
+      {!collapsed && (
+        <div 
+          className="h-16"
+          style={{ marginTop: 'var(--global-header-height)' }}
+        />
+      )}
       
       {/* Pointer-Events sperren wenn collapsed */}
       {collapsed && (
