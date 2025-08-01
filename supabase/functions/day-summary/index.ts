@@ -5,7 +5,7 @@ import { DateTime } from "https://esm.sh/luxon@3.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-user-tz, x-no-text",
 };
 
 const url = Deno.env.get("SUPABASE_URL")!;
@@ -51,25 +51,36 @@ serve(async (req) => {
     }
 
     /* ------------------------------------------------------------------ */
-    /* 3. KPIs + 1× XXL-Summary mit Fallback                             */
+    /* 3. KPIs + Structured JSON zuerst, Text optional                   */
     /* ------------------------------------------------------------------ */
     const kpis = calculateKPIs(dayData);
-    let summary, tokensUsed, status = "success";
+    const structuredSummary = buildStructuredSummary(date, kpis, dayData);
     
-    try {
-      const result = await generateSummary(kpis, dayData, "xxl");
-      summary = result.summary;
-      tokensUsed = result.tokensUsed;
-    } catch (openaiError) {
-      console.warn(`⚠️ OpenAI-Fehler für ${date}:`, openaiError);
-      // Fallback-Summary
-      summary = generateFallbackSummary(kpis, dayData);
-      tokensUsed = 0;
-      status = "partial_error";
+    /* 4. OPTIONAL: knappe Text-Snippets nur wenn Credits > 0 ----------- */
+    let std = '', xl = '', xxl = '';
+    let tokensUsed = 0;
+    let status = "success";
+    
+    const skipTextGeneration = req.headers.get('x-no-text') === 'true';
+    
+    if (!skipTextGeneration) {
+      try {
+        const result = await generateSummary(kpis, dayData, 'xxl'); // 519 Wörter ≈ 750 T
+        xxl = result.summary;
+        xl = xxl.split(/\s+/).slice(0, 240).join(' ');
+        std = xxl.split(/\s+/).slice(0, 120).join(' ');
+        tokensUsed = result.tokensUsed;
+        status = "success";
+      } catch (openaiError) {
+        console.warn(`⚠️ OpenAI-Fehler für ${date}:`, openaiError);
+        // Fallback-Summary
+        xxl = generateFallbackSummary(kpis, dayData);
+        xl = xxl.split(/\s+/).slice(0, 240).join(' ');
+        std = xxl.split(/\s+/).slice(0, 120).join(' ');
+        tokensUsed = 0;
+        status = "partial_error";
+      }
     }
-
-    const std = summary.split(/\s+/).slice(0, 120).join(" ");
-    const xl = summary.split(/\s+/).slice(0, 240).join(" ");
 
     /* ------------------------------------------------------------------ */
     /* 4. Credits & Token-Tracking                                        */
@@ -97,8 +108,6 @@ serve(async (req) => {
     /* ------------------------------------------------------------------ */
     /* 5. Upsert Summary + Structured JSON                               */
     /* ------------------------------------------------------------------ */
-    const structuredSummary = buildStructuredSummary(date, kpis, dayData);
-    
     await supa.from("daily_summaries").upsert({
       user_id: userId,
       date,
@@ -112,12 +121,13 @@ serve(async (req) => {
       workout_muscle_groups: safe(kpis.workoutMuscleGroups, []),
       sleep_score: safe(kpis.sleepScore, null),
       recovery_metrics: safe(kpis.recoveryMetrics, {}),
-      summary_md: std,
-      summary_xl_md: xl,
-      summary_xxl_md: summary,
+      summary_md: std || null,
+      summary_xl_md: xl || null,
+      summary_xxl_md: xxl || null,
       kpi_xxl_json: kpis,
       summary_struct_json: structuredSummary,
       tokens_spent: tokensUsed,
+      text_generated: !!xxl  // Flag indicating if text was generated
     }, { onConflict: 'user_id,date' });
     
     console.log(`✅ Summary für ${date} erfolgreich erstellt (${status})`);
@@ -146,7 +156,7 @@ serve(async (req) => {
       summaryLengths: {
         standard: std.split(' ').length,
         xl: xl.split(' ').length,
-        xxl: summary.split(' ').length
+        xxl: xxl.split(' ').length
       },
       flags: kpis.dailyFlags || []
     };
@@ -162,7 +172,7 @@ serve(async (req) => {
       summary_preview: {
         standard: std.substring(0, 200) + "...",
         xl: xl.substring(0, 300) + "...",
-        xxl: summary.substring(0, 400) + "..."
+        xxl: xxl.substring(0, 400) + "..."
       }
     });
   } catch (e) {
@@ -192,6 +202,13 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
   const dayEnd = DateTime.fromISO(date, { zone: tz }).endOf("day").toISO();
 
   console.log(`📅 Collecting data for ${date} in ${tz} (${dayStart} - ${dayEnd})`);
+
+  // 👉 Fast aggregation queries for performance
+  const [fastMealData, fastVolumeData, fastFluidData] = await Promise.all([
+    supabase.rpc('fast_meal_totals', { p_user: userId, p_d: date }),
+    supabase.rpc('fast_sets_volume', { p_user: userId, p_d: date }),
+    supabase.rpc('fast_fluid_totals', { p_user: userId, p_d: date })
+  ]);
 
   const [
     mealsResult,
@@ -362,7 +379,11 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     fluids: fluidResult?.data || [],
     coachConversations: coachConversationsResult?.data || [],
     profile: profileResult?.data || null,
-    dataCollectionTimestamp: new Date().toISOString()
+    dataCollectionTimestamp: new Date().toISOString(),
+    // Fast aggregation results for performance
+    fastMealTotals: fastMealData?.data || null,
+    fastWorkoutVolume: fastVolumeData?.data || 0,
+    fastFluidTotal: fastFluidData?.data || 0
   };
 }
 
@@ -442,19 +463,19 @@ function buildStructuredSummary(date: string, kpis: any, rawData: any) {
 
 function calculateKPIs(dayData: any) {
   const kpis: any = {
-    // BASIS-ERNÄHRUNG
-    totalCalories: 0,
-    totalProtein: 0,
-    totalCarbs: 0,
-    totalFats: 0,
-    totalFiber: 0,
-    totalSugar: 0,
+    // BASIS-ERNÄHRUNG - Use fast aggregation if available
+    totalCalories: dayData.fastMealTotals?.calories || 0,
+    totalProtein: dayData.fastMealTotals?.protein || 0,
+    totalCarbs: dayData.fastMealTotals?.carbs || 0,
+    totalFats: dayData.fastMealTotals?.fats || 0,
+    totalFiber: 0, // Not in fast aggregation
+    totalSugar: 0, // Not in fast aggregation  
     macroDistribution: {},
     topFoods: [],
     mealTiming: [],
     
-    // BASIS-TRAINING
-    workoutVolume: 0,
+    // BASIS-TRAINING - Use fast aggregation
+    workoutVolume: dayData.fastWorkoutVolume || 0,
     workoutMuscleGroups: [],
     workoutDuration: 0,
     avgRPE: 0,
@@ -477,8 +498,8 @@ function calculateKPIs(dayData: any) {
     recoveryFeeling: null,
     recoveryMetrics: {},
     
-    // HYDRATION & SUPPLEMENTE
-    totalFluidMl: 0,
+    // HYDRATION & SUPPLEMENTE - Use fast aggregation if available
+    totalFluidMl: dayData.fastFluidTotal || 0,
     caffeineMg: 0,
     alcoholG: 0,
     hydrationScore: 0,

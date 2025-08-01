@@ -3518,6 +3518,18 @@ export type Database = {
         Args: { p_identifier: string; p_time_window_minutes?: number }
         Returns: Json
       }
+      fast_fluid_totals: {
+        Args: { p_user: string; p_d: string }
+        Returns: number
+      }
+      fast_meal_totals: {
+        Args: { p_user: string; p_d: string }
+        Returns: Json
+      }
+      fast_sets_volume: {
+        Args: { p_user: string; p_d: string }
+        Returns: number
+      }
       get_or_cache_query_embedding: {
         Args: { query_text: string; query_embedding: string }
         Returns: string
