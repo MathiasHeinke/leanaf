@@ -136,6 +136,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [showToolBadge, setShowToolBadge] = useState(false);
   const [toolBadgeText, setToolBadgeText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [bannerOpen, setBannerOpen] = useState(true);
   
   
   // ============= REFS =============
@@ -917,11 +918,12 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         }}
         onHistoryClick={handleHistoryClick}
         onDeleteChat={handleDeleteChat}
+        onOpenChange={setBannerOpen}
       />
     );
 
     return (
-      <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
+      <ChatLayout coachBanner={coachBanner} chatInput={chatInput} bannerOpen={bannerOpen}>
           
           {/* Render all messages using the unified message renderer */}
           <ScrollArea className="flex-1 px-4">

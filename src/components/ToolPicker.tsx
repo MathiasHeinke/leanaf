@@ -38,11 +38,11 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`icon-btn group transition-all duration-300 ${selectedTool ? 'bg-primary text-primary-foreground scale-105' : ''}`}
+          className={`icon-btn group transition-all duration-300 ${selectedTool && selectedTool !== 'open_chat' ? 'bg-primary text-primary-foreground scale-105' : ''}`}
           aria-label="Tools & Anhänge"
           id="toolBtn"
         >
-          <Wrench className={`w-6 h-6 transition-all duration-300 ${selectedTool ? 'rotate-12' : 'group-hover:rotate-12'} group-hover:scale-110`} />
+          <Wrench className={`w-6 h-6 transition-all duration-300 ${selectedTool && selectedTool !== 'open_chat' ? 'rotate-12' : 'group-hover:rotate-12'} group-hover:scale-110`} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-1" align="start" side="top">
@@ -63,7 +63,7 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
               {tool.label}
             </button>
           ))}
-          {selectedTool && (
+          {selectedTool && selectedTool !== 'open_chat' && (
             <>
               <div className="h-px bg-border my-1" />
               <button

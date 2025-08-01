@@ -11,12 +11,14 @@ interface CollapsibleCoachHeaderProps {
   };
   onHistoryClick?: () => void;
   onDeleteChat?: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const CollapsibleCoachHeader = ({ 
   coach, 
   onHistoryClick, 
-  onDeleteChat 
+  onDeleteChat,
+  onOpenChange 
 }: CollapsibleCoachHeaderProps) => {
   const [open, setOpen] = useState(true);
   const navigate = useNavigate();
@@ -25,12 +27,16 @@ export const CollapsibleCoachHeader = ({
     navigate('/coach');
   };
 
+  const handleToggle = () => {
+    const newOpen = !open;
+    setOpen(newOpen);
+    onOpenChange?.(newOpen);
+  };
+
   return (
-    <>
-      {/* Coach Banner mit Glass-Effekt */}
-      <header 
-        className={`coach-banner ${open ? '' : 'closed'} flex items-center gap-3 px-4`}
-      >
+    <header 
+      className={`fixed top-14 left-0 right-0 z-40 coach-banner ${open ? '' : 'closed'} flex items-center gap-3 px-4`}
+    >
         <Button 
           variant="ghost" 
           size="sm"
@@ -88,7 +94,7 @@ export const CollapsibleCoachHeader = ({
 
         {/* Chevron-Kerbe */}
         <button
-          onClick={() => setOpen(!open)}
+          onClick={handleToggle}
           aria-label={open ? 'Ausblenden' : 'Einblenden'}
           className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-[9px] 
                      w-8 h-8 flex items-center justify-center
@@ -97,10 +103,6 @@ export const CollapsibleCoachHeader = ({
         >
           <ChevronUp className={`w-5 h-5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
-      </header>
-
-      {/* Spacer für Content-Offset */}
-      <div className="h-[56px]" />
-    </>
+    </header>
   );
 };
