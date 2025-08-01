@@ -117,8 +117,37 @@ serve(async (req) => {
       summary_struct_json: structuredSummary,
       tokens_spent: tokensUsed,
     }, { onConflict: 'user_id,date' });
-
+    
     console.log(`✅ Summary für ${date} erfolgreich erstellt (${status})`);
+
+    // 🔍 DEBUG: Zeige was in die Summary gepackt wurde
+    const debugInfo = {
+      dataCollected: {
+        meals: dayData.meals?.length || 0,
+        workouts: dayData.workouts?.length || 0,
+        exerciseSets: dayData.exerciseSets?.length || 0,
+        weightEntries: dayData.weight ? 1 : 0,
+        bodyMeasurements: dayData.bodyMeasurements ? 1 : 0,
+        supplementEntries: dayData.supplementLog?.length || 0,
+        sleepEntries: dayData.sleep ? 1 : 0,
+        fluidEntries: dayData.fluids?.length || 0,
+        coachConversations: dayData.coachConversations?.length || 0
+      },
+      calculatedKPIs: {
+        totalCalories: kpis.totalCalories,
+        totalProtein: kpis.totalProtein,
+        workoutVolume: kpis.workoutVolume,
+        sleepScore: kpis.sleepScore,
+        hydrationScore: kpis.hydrationScore,
+        muscleGroups: kpis.workoutMuscleGroups
+      },
+      summaryLengths: {
+        standard: std.split(' ').length,
+        xl: xl.split(' ').length,
+        xxl: summary.split(' ').length
+      },
+      flags: kpis.dailyFlags || []
+    };
 
     return resp(200, {
       date,
@@ -126,6 +155,13 @@ serve(async (req) => {
       tokens_used: tokensUsed,
       credits_used: credits,
       flags: kpis.dailyFlags,
+      // 🔍 DEBUG-OUTPUT für besseres Verständnis
+      debug: debugInfo,
+      summary_preview: {
+        standard: std.substring(0, 200) + "...",
+        xl: xl.substring(0, 300) + "...",
+        xxl: summary.substring(0, 400) + "..."
+      }
     });
   } catch (e) {
     console.error(`❌ Fehler bei Day-Summary:`, e);
