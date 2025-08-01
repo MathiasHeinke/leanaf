@@ -904,19 +904,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       </div>
     );
 
+    const coachBanner = (
+      <CollapsibleCoachHeader
+        coach={{
+          name: coach?.name || 'Coach',
+          imageUrl: coach?.imageUrl,
+          specialization: coach?.expertise?.join(', ') || coach?.personality
+        }}
+        onHistoryClick={handleHistoryClick}
+        onDeleteChat={handleDeleteChat}
+      />
+    );
+
     return (
-      <>
-        <CollapsibleCoachHeader
-          coach={{
-            name: coach?.name || 'Coach',
-            imageUrl: coach?.imageUrl,
-            specialization: coach?.expertise?.join(', ') || coach?.personality
-          }}
-          onHistoryClick={handleHistoryClick}
-          onDeleteChat={handleDeleteChat}
-        />
-        
-        <ChatLayout chatInput={chatInput}>
+      <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
           
           {/* Render all messages using the unified message renderer */}
           <ScrollArea className="flex-1 px-4">
@@ -930,7 +931,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             </div>
           </ScrollArea>
         </ChatLayout>
-      </>
     );
   }
 
