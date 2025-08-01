@@ -529,17 +529,17 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       if (error?.status === 429) {
         if (error?.usage_limit_reached) {
           errorContent = 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium 🚀';
-          toast.error('Tageslimit erreicht – hol dir Pro 🚀');
+          // Remove toast for better UX
         } else {
           errorContent = 'Zu viele Anfragen. Warte kurz und versuche es nochmal.';
-          toast.error('Zu viele Anfragen – kurz warten');
+          // Remove toast for better UX
         }
       } else if (error?.status === 404) {
         errorContent = 'Service vorübergehend nicht verfügbar. Versuche es gleich nochmal.';
-        toast.error('Funktion nicht gefunden – neu deployen?');
+        // Remove toast for better UX
       } else if (error?.status >= 500) {
         errorContent = 'Technisches Problem auf unserer Seite. Wir arbeiten daran!';
-        toast.error('Technisches Problem. Versuch es gleich nochmal.');
+        // Remove toast for better UX
       }
       
       const errorMessage: UnifiedMessage = {
@@ -598,7 +598,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      toast.error('Fehler beim Hochladen der Datei');
+      // Remove toast for better UX
     }
     
     // Reset file input
@@ -717,10 +717,10 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     try {
       // Clear messages for today
       setMessages([]);
-      toast.success('Chat gelöscht');
+      // Remove toast for better UX
     } catch (error) {
       console.error('Error clearing chat:', error);
-      toast.error('Fehler beim Löschen');
+      // Remove toast for better UX
     }
   };
 
