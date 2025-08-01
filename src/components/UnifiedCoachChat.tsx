@@ -288,14 +288,22 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     setMessages(prev => [...prev, userMessage]);
     
-    // Nutzer-Nachricht sofort in DB speichern
+    // Nutzer-Nachricht sofort in DB speichern (mit Bildern)
     const today = new Date().toISOString().split('T')[0];
+    const messageContent = uploadedImages.length > 0 
+      ? `${inputText}\n\nImages: ${uploadedImages.join(', ')}`
+      : inputText;
+    
     await supabase.from('coach_conversations').insert({
       user_id: user.id,
       message_role: 'user',
-      message_content: inputText,
+      message_content: messageContent,
       coach_personality: coach?.id || 'lucy',
-      conversation_date: today
+      conversation_date: today,
+      context_data: {
+        hasImages: uploadedImages.length > 0,
+        images: uploadedImages
+      }
     });
     
     setInputText('');
@@ -377,7 +385,23 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
       if (error) {
         console.error('Coach chat error:', error);
-        throw error;
+        // Fallback response if function fails
+        const fallbackResponse = hasImages 
+          ? "Entschuldigung, ich kann dein Bild gerade nicht analysieren. Versuche es bitte später nochmal."
+          : "Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später nochmal.";
+        
+        const fallbackMessage: UnifiedMessage = {
+          id: `fallback-${Date.now()}`,
+          role: 'assistant',
+          content: fallbackResponse,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          images: [],
+          mode: mode
+        };
+        setMessages(prev => [...prev, fallbackMessage]);
+        setIsThinking(false);
+        return;
       }
 
       // Handle different response types (text or card)

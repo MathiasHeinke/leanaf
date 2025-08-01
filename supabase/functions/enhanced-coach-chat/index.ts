@@ -126,7 +126,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const body = await req.json();
-    console.log('Request body received:', { hasMessage: !!body.message, hasImages: !!body.images });
+    const hasImages = !!body.images?.length;
+    console.log('Request body received:', { hasMessage: !!body.message, hasImages });
 
     // Extract user ID from auth header or body
     const authHeader = req.headers.get('authorization');
