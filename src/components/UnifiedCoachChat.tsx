@@ -142,7 +142,12 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // ============= HOOKS =============
-  const { memory, isGlobalMemoryLoaded } = useGlobalCoachMemory();
+  const { 
+    memory, 
+    isGlobalMemoryLoaded, 
+    processMessage,
+    getMemorySummary 
+  } = useGlobalCoachMemory();
   const { isRecording, isProcessing, transcribedText, startRecording, stopRecording } = useVoiceRecording();
   const { analyzeImage, isAnalyzing } = useUniversalImageAnalysis();
   const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
@@ -317,29 +322,31 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       const hasImages = uploadedImages.length > 0;
       let data, error;
 
-      console.log('🚀 Sending message to:', hasImages ? 'coach-media-analysis' : 'enhanced-coach-chat');
+      console.log('🚀 Sending message to unified-coach-engine with XXL-Memory');
 
-      if (hasImages) {
-        // Build conversation history for personalized image analysis
-        const conversationHistory = messages.slice(-5).map(msg => ({
-          role: msg.role,
-          content: ('content' in msg) ? msg.content : '',
-          created_at: msg.created_at
-        }));
+      // Build conversation history for the unified engine
+      const conversationHistory = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: ('content' in msg) ? msg.content : '',
+        images: ('images' in msg) ? (msg.images || []) : [],
+        created_at: msg.created_at
+      }));
 
-        // Use coach-media-analysis for image/video analysis with conversation context
-        const response = await supabase.functions.invoke('coach-media-analysis', {
-          body: {
-            userId: user.id,
-            mediaUrls: uploadedImages,
-            mediaType: 'image',
-            analysisType: 'general',
-            coachPersonality: coach?.id || 'lucy',
-            userQuestion: inputText || 'Was siehst du in diesem Bild?',
-            conversationHistory: conversationHistory,
-            userProfile: {
+      // Use unified-coach-engine for all conversations (text + images)
+      const response = await supabase.functions.invoke('unified-coach-engine', {
+        body: {
+          userId: user.id,
+          message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
+          images: uploadedImages,
+          mediaType: hasImages ? 'image' : undefined,
+          analysisType: 'general',
+          coachPersonality: coach?.id || 'lucy',
+          conversationHistory: conversationHistory,
+          toolContext: selectedTool ? {
+            tool: selectedTool,
+            description: `Benutzer hat Tool "${selectedTool}" ausgewählt`,
+            data: {
               mode: mode,
-              selectedTool: selectedTool,
               profileData: profileData,
               todaysTotals: todaysTotals,
               workoutData: workoutData,
@@ -348,48 +355,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               averages: averages,
               dailyGoals: dailyGoals
             }
-          }
-        });
-        data = response.data;
-        error = response.error;
-      } else {
-        // Use enhanced-coach-chat for text-only conversations
-        const conversation = [...messages, userMessage].map(msg => {
-          // Type guard for text messages
-          const isTextMessage = 'content' in msg;
-          return {
-            role: msg.role,
-            content: isTextMessage ? msg.content : '',
-            images: isTextMessage ? (msg.images || []) : [],
-            created_at: msg.created_at,
-            coach_personality: msg.coach_personality || coach?.personality || 'motivierend',
-            mode: isTextMessage ? (msg.mode || mode) : mode
-          };
-        });
-
-        const response = await supabase.functions.invoke('enhanced-coach-chat', {
-          body: {
-            message: inputText,
-            userId: user.id,
-            coach_personality: coach?.id || 'lucy',
-            conversation: conversation,
-            // Include context data for compatibility
-            context_data: {
-              mode: mode,
-              selectedTool: selectedTool,
-              profileData: profileData,
-              todaysTotals: todaysTotals,
-              workoutData: workoutData,
-              sleepData: sleepData,
-              weightHistory: weightHistory,
-              averages: averages,
-              dailyGoals: dailyGoals
-            }
-          }
-        });
-        data = response.data;
-        error = response.error;
-      }
+          } : null
+        }
+      });
+      data = response.data;
+      error = response.error;
 
       // Ensure consistent response format
       if (hasImages && data?.analysis && !data?.response) {
@@ -443,6 +413,16 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Process message through Global Coach Memory for sentiment analysis
+      if (data.response && processMessage) {
+        try {
+          await processMessage(data.response, coach?.id || 'lucy', false);
+          console.log('✅ Coach memory updated after response');
+        } catch (error) {
+          console.warn('⚠️ Failed to update coach memory:', error);
+        }
+      }
       
       // AI-Antwort auch in DB speichern
       if (data.type !== 'card') { // Nur Text-Nachrichten speichern, keine Cards

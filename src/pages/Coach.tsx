@@ -1,20 +1,114 @@
 
-import Coach from "@/components/Coach";
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { UnifiedCoachChat } from "@/components/UnifiedCoachChat";
+import { CoachSelection } from "@/components/CoachSelection";
 import Last3DaysSummary from "@/components/Last3DaysSummary";
 import { SingleDaySummaryGenerator } from "@/components/SingleDaySummaryGenerator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// Coach profiles data (same as in CoachSelection)
+const coachProfiles = [
+  {
+    id: 'lucy',
+    name: 'Lucy',
+    personality: 'Ganzheitlich & Empathisch',
+    imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
+    color: 'green',
+    accentColor: 'from-green-500 to-green-600',
+    expertise: ['Optimales Timing', 'Intervallfasten', 'Gesunde Gewohnheiten', 'Stoffwechsel'],
+    isFree: true
+  },
+  {
+    id: 'sascha',
+    name: 'Sascha',
+    personality: 'Performance-fokussiert',
+    imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
+    color: 'blue',
+    accentColor: 'from-blue-500 to-blue-600',
+    expertise: ['Intelligente Planung', 'Progression', 'Kraftaufbau', 'Performance'],
+    isPremium: true
+  },
+  {
+    id: 'kai',
+    name: 'Kai',
+    personality: 'Achtsam & Strategisch',
+    imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
+    color: 'purple',
+    accentColor: 'from-purple-500 to-purple-600',
+    expertise: ['Mentale Stärke', 'Regeneration', 'Schlafqualität', 'Motivation'],
+    isPremium: true
+  },
+  {
+    id: 'markus',
+    name: 'Markus',
+    personality: 'Direkt & Motivierend',
+    imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
+    color: 'red',
+    accentColor: 'from-red-500 to-red-600',
+    expertise: ['Heavy+Volume Training', 'Extreme Hypertrophie', 'Mentale Härte', 'Masseaufbau'],
+    isPremium: true
+  },
+  {
+    id: 'dr-vita',
+    name: 'Dr. Vita Femina',
+    personality: 'Wissenschaftlich & Empathisch',
+    imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
+    color: 'purple',
+    accentColor: 'from-purple-500 to-purple-600',
+    expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
+    isPremium: true
+  }
+];
+
 const CoachPage = () => {
+  const { coachId } = useParams<{ coachId: string }>();
+  
+  // If coachId is provided, find the specific coach and render chat
+  if (coachId) {
+    const selectedCoach = coachProfiles.find(coach => coach.id === coachId);
+    
+    if (!selectedCoach) {
+      return (
+        <div className="container mx-auto p-4">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Coach nicht gefunden</h2>
+            <p className="text-muted-foreground">Der angeforderte Coach existiert nicht.</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="h-screen">
+        <UnifiedCoachChat
+          mode="specialized"
+          coach={selectedCoach}
+          useFullscreenLayout={true}
+        />
+      </div>
+    );
+  }
+  
+  // Default view: Coach selection with tabs
   return (
     <div className="container mx-auto p-4">
-      <Tabs defaultValue="chat" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="selection" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="selection">👥 Coach auswählen</TabsTrigger>
           <TabsTrigger value="chat">💬 Chat mit Lucy</TabsTrigger>
           <TabsTrigger value="summaries">📊 Letzte 3 Tage</TabsTrigger>
           <TabsTrigger value="generate">📅 Tag-Summary</TabsTrigger>
         </TabsList>
+        <TabsContent value="selection" className="mt-6">
+          <CoachSelection selectedCoach="lucy" onCoachChange={() => {}} />
+        </TabsContent>
         <TabsContent value="chat" className="mt-6">
-          <Coach />
+          <UnifiedCoachChat
+            mode="general"
+            coach={coachProfiles[0]} // Default to Lucy
+            useFullscreenLayout={false}
+          />
         </TabsContent>
         <TabsContent value="summaries" className="mt-6">
           <Last3DaysSummary />
