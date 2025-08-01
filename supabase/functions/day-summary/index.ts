@@ -181,10 +181,9 @@ const resp = (status: number, body: unknown) =>
 /* ================================================================== */
 
 async function collectDayData(supabase: any, userId: string, date: string) {
-  // 🕐 TIMEZONE FIX: Berlin-Zeit berücksichtigen (UTC+2 im Sommer)
-  const berlinOffset = new Date().getTimezoneOffset() === -120 ? 2 : 1; // Sommer/Winter
-  const dayStart = `${date}T00:00:00+0${berlinOffset}:00`;
-  const dayEnd = `${date}T23:59:59+0${berlinOffset}:00`;
+  // 🕐 TIMEZONE FIX: Verwende UTC für korrekte Datenabfrage
+  const dayStart = `${date}T00:00:00.000Z`;
+  const dayEnd = `${date}T23:59:59.999Z`;
 
   console.log(`📅 Collecting data for ${date} (${dayStart} - ${dayEnd})`);
 
