@@ -1,5 +1,7 @@
 import { GlobalHeader } from "@/components/GlobalHeader";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import { cn } from "@/lib/utils";
+import React from "react";
 
 interface ChatLayoutProps {
   children: ReactNode;
@@ -8,14 +10,20 @@ interface ChatLayoutProps {
 }
 
 export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
+  const [bannerOpen, setBannerOpen] = useState(true);
+
   return (
-    <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
+    <div className={cn(
+      "fixed inset-0 flex flex-col bg-background text-foreground z-50",
+      bannerOpen && "pt-[calc(var(--global-header-h)+56px)]",
+      !bannerOpen && "pt-[var(--global-header-h)]"
+    )}>
       
       {/* Header */}
       <GlobalHeader />
 
       {/* Coach-Banner - rendered outside layout since it's position:fixed */}
-      {coachBanner}
+      {coachBanner && React.cloneElement(coachBanner as React.ReactElement, { onToggle: setBannerOpen })}
 
       {/* Scrollbarer Chat - no padding needed since banner is fixed */}
       <div className="flex-1 min-h-0 px-4">
