@@ -130,27 +130,46 @@ serve(async (req) => {
 
     console.log(`🔒 [${requestId}] Security event logged`);
 
-    // Check subscription and usage limits
-    const { data: limitCheck, error: limitError } = await supabase.rpc('check_ai_usage_limit', {
-      p_user_id: userId,
-      p_feature_type: 'coach_chat'
-    });
+    // ──────────────────────────────────────────────────────────────
+    // 1. Subscription-Lookup
+    // ──────────────────────────────────────────────────────────────
+    const { data: subscriber, error: subErr } = await supabase
+      .from('subscribers')
+      .select('subscribed, subscription_tier, subscription_end')
+      .eq('user_id', userId)
+      .single();
 
-    if (limitError) {
-      console.error('❌ Usage limit check failed:', limitError);
-      throw new Error('Failed to check usage limits');
+    const userTier =
+      subscriber?.subscribed && subscriber.subscription_tier?.toLowerCase() !== 'free'
+        ? 'premium'
+        : 'free';
+
+    // ──────────────────────────────────────────────────────────────
+    // 2. Governor nur für Free-Tier
+    // ──────────────────────────────────────────────────────────────
+    let limitCheck = { can_use: true };
+    if (userTier === 'free') {
+      const { data, error } = await supabase.rpc('check_ai_usage_limit', {
+        p_user_id: userId,
+        p_feature_type: 'coach_chat',
+      });
+      limitCheck = data || { can_use: true };
+      if (error) console.warn('Governor-RPC-Error', error);
     }
 
+    console.log(`[${requestId}] [Governor] Tier:`, userTier, 'can_use:', limitCheck.can_use);
+
     if (!limitCheck.can_use) {
-      return new Response(JSON.stringify({
-        role: 'assistant',
-        content: 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium für unbegrenzte Gespräche! 💫',
-        usage_limit_reached: true,
-        limits: limitCheck
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 429
-      });
+      return new Response(
+        JSON.stringify({
+          role: 'assistant',
+          content:
+            'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium 🚀',
+          usage_limit_reached: true,
+          limits: limitCheck,
+        }),
+        { status: 429, headers: corsHeaders }
+      );
     }
 
     // ============================================================================
@@ -251,7 +270,7 @@ serve(async (req) => {
       return 'gpt-4o-mini'; // Garantiert verfügbar, schnell und günstig
     };
 
-    const selectedModel = chooseModel(images.length > 0, 'free'); // TODO: echte Tier-Erkennung
+    const selectedModel = chooseModel(images.length > 0, userTier);
     console.log(`🎯 [${requestId}] Selected model:`, selectedModel);
 
     // OpenAI API Call mit verbessertem Error Handling
