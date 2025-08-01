@@ -18,7 +18,7 @@ export const CollapsibleCoachHeader = ({
   onHistoryClick, 
   onDeleteChat 
 }: CollapsibleCoachHeaderProps) => {
-  const [collapsed, setCollapsed] = useState(false); // Default open
+  const [collapsed, setCollapsed] = useState(false); // Always expanded by default
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -40,7 +40,7 @@ export const CollapsibleCoachHeader = ({
           glass-bg
           shadow-md border-b border-border/20
           transition-transform duration-300 ease-out z-45
-          ${collapsed ? '-translate-y-16' : 'translate-y-0'}
+          translate-y-0
         `}
         style={{ 
           top: '61px'
@@ -119,12 +119,9 @@ export const CollapsibleCoachHeader = ({
         </button>
       </header>
 
-      {/* Spacer für Content-Offset */}
+      {/* Spacer für Content-Offset - Always show full height */}
       <div 
-        className={`
-          transition-all duration-300 ease-out
-          ${collapsed ? 'h-0' : 'h-16'}
-        `}
+        className="h-16"
         style={{ marginTop: '61px' }}
       />
       
