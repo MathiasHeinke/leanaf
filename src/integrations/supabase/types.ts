@@ -883,6 +883,135 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_summaries: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          kpi_xxl_json: Json | null
+          macro_distribution: Json | null
+          recovery_metrics: Json | null
+          sleep_score: number | null
+          summary_md: string | null
+          summary_xl_md: string | null
+          summary_xxl_md: string | null
+          tokens_spent: number | null
+          top_foods: Json | null
+          total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
+          total_protein: number | null
+          updated_at: string
+          user_id: string
+          workout_muscle_groups: string[] | null
+          workout_volume: number | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          kpi_xxl_json?: Json | null
+          macro_distribution?: Json | null
+          recovery_metrics?: Json | null
+          sleep_score?: number | null
+          summary_md?: string | null
+          summary_xl_md?: string | null
+          summary_xxl_md?: string | null
+          tokens_spent?: number | null
+          top_foods?: Json | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id: string
+          workout_muscle_groups?: string[] | null
+          workout_volume?: number | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          kpi_xxl_json?: Json | null
+          macro_distribution?: Json | null
+          recovery_metrics?: Json | null
+          sleep_score?: number | null
+          summary_md?: string | null
+          summary_xl_md?: string | null
+          summary_xxl_md?: string | null
+          tokens_spent?: number | null
+          top_foods?: Json | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id?: string
+          workout_muscle_groups?: string[] | null
+          workout_volume?: number | null
+        }
+        Relationships: []
+      }
+      daily_token_spend: {
+        Row: {
+          created_at: string | null
+          credits_used: number | null
+          date: string
+          id: string
+          operation_type: string
+          tokens_spent: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          credits_used?: number | null
+          date?: string
+          id?: string
+          operation_type?: string
+          tokens_spent?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          credits_used?: number | null
+          date?: string
+          id?: string
+          operation_type?: string
+          tokens_spent?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      debug_logs: {
+        Row: {
+          assistant_msg: string
+          coach_id: string
+          created_at: string
+          id: string
+          tokens: number | null
+          user_id: string
+          user_msg: string
+        }
+        Insert: {
+          assistant_msg: string
+          coach_id: string
+          created_at?: string
+          id?: string
+          tokens?: number | null
+          user_id: string
+          user_msg: string
+        }
+        Update: {
+          assistant_msg?: string
+          coach_id?: string
+          created_at?: string
+          id?: string
+          tokens?: number | null
+          user_id?: string
+          user_msg?: string
+        }
+        Relationships: []
+      }
       department_progress: {
         Row: {
           created_at: string
@@ -1656,6 +1785,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      kpi_catalog: {
+        Row: {
+          created_at: string | null
+          data: Json
+          date: string
+          generated_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json
+          date: string
+          generated_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          date?: string
+          generated_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       meal_images: {
         Row: {
@@ -2690,6 +2849,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credits: {
+        Row: {
+          created_at: string | null
+          credits_remaining: number | null
+          credits_total: number | null
+          id: string
+          last_reset_date: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          credits_remaining?: number | null
+          credits_total?: number | null
+          id?: string
+          last_reset_date?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          credits_remaining?: number | null
+          credits_total?: number | null
+          id?: string
+          last_reset_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_email_preferences: {
         Row: {
           activity_reminders: boolean | null
@@ -3314,6 +3503,10 @@ export type Database = {
       current_user_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      deduct_credits: {
+        Args: { p_user_id: string; p_credits: number }
+        Returns: Json
       }
       detect_suspicious_activity: {
         Args: { p_identifier: string; p_time_window_minutes?: number }
