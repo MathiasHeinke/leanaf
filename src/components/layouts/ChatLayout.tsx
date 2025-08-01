@@ -14,15 +14,11 @@ export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps
       {/* Header */}
       <GlobalHeader />
 
-      {/* Coach-Banner */}
-      {coachBanner && (
-        <div className="flex-shrink-0 px-4 pt-1 pb-2">
-          {coachBanner}
-        </div>
-      )}
+      {/* Coach-Banner - rendered outside layout, no space here */}
+      {coachBanner}
 
       {/* Scrollbarer Chat */}
-      <div className="flex-1 min-h-0 px-4">
+      <div className="flex-1 min-h-0 px-4" style={{ paddingTop: coachBanner ? '64px' : '0px' }}>
         <div className="h-full overflow-y-auto space-y-2" style={{ pointerEvents: 'auto' }}>
           {children}
         </div>
