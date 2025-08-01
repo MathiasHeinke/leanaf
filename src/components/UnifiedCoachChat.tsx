@@ -304,38 +304,71 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // Convert to conversation format expected by backend
-      const conversation = [...messages, userMessage].map(msg => {
-        // Type guard for text messages
-        const isTextMessage = 'content' in msg;
-        return {
-          role: msg.role,
-          content: isTextMessage ? msg.content : '',
-          images: isTextMessage ? (msg.images || []) : [],
-          created_at: msg.created_at,
-          coach_personality: msg.coach_personality || coach?.personality || 'motivierend',
-          mode: isTextMessage ? (msg.mode || mode) : mode
-        };
-      });
+      // Check if we have images to analyze
+      const hasImages = uploadedImages.length > 0;
+      let data, error;
 
-      const { data, error } = await supabase.functions.invoke('enhanced-coach-chat', {
-        body: {
-          conversation: conversation,
-          userId: user.id,
-          // Include context data for compatibility
-          context_data: {
-            mode: mode,
-            selectedTool: selectedTool,
-            profileData: profileData,
-            todaysTotals: todaysTotals,
-            workoutData: workoutData,
-            sleepData: sleepData,
-            weightHistory: weightHistory,
-            averages: averages,
-            dailyGoals: dailyGoals
+      if (hasImages) {
+        // Use coach-media-analysis for image/video analysis
+        const response = await supabase.functions.invoke('coach-media-analysis', {
+          body: {
+            userId: user.id,
+            mediaUrls: uploadedImages,
+            mediaType: 'image', // Default to image, could be enhanced to detect video
+            analysisType: 'general',
+            coachPersonality: coach?.id || 'lucy',
+            userQuestion: inputText || 'Was siehst du in diesem Bild?',
+            userProfile: {
+              mode: mode,
+              selectedTool: selectedTool,
+              profileData: profileData,
+              todaysTotals: todaysTotals,
+              workoutData: workoutData,
+              sleepData: sleepData,
+              weightHistory: weightHistory,
+              averages: averages,
+              dailyGoals: dailyGoals
+            }
           }
-        }
-      });
+        });
+        data = response.data;
+        error = response.error;
+      } else {
+        // Use enhanced-coach-chat for text-only conversations
+        const conversation = [...messages, userMessage].map(msg => {
+          // Type guard for text messages
+          const isTextMessage = 'content' in msg;
+          return {
+            role: msg.role,
+            content: isTextMessage ? msg.content : '',
+            images: isTextMessage ? (msg.images || []) : [],
+            created_at: msg.created_at,
+            coach_personality: msg.coach_personality || coach?.personality || 'motivierend',
+            mode: isTextMessage ? (msg.mode || mode) : mode
+          };
+        });
+
+        const response = await supabase.functions.invoke('enhanced-coach-chat', {
+          body: {
+            conversation: conversation,
+            userId: user.id,
+            // Include context data for compatibility
+            context_data: {
+              mode: mode,
+              selectedTool: selectedTool,
+              profileData: profileData,
+              todaysTotals: todaysTotals,
+              workoutData: workoutData,
+              sleepData: sleepData,
+              weightHistory: weightHistory,
+              averages: averages,
+              dailyGoals: dailyGoals
+            }
+          }
+        });
+        data = response.data;
+        error = response.error;
+      }
 
       if (error) {
         console.error('Coach chat error:', error);
