@@ -72,7 +72,7 @@ export const InsightsAnalysis = ({
     
     setIsAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('coach-analysis', {
+      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
         body: {
           dailyTotals: todaysTotals,
           dailyGoal: dailyGoals.calories,
