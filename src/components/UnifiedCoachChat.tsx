@@ -34,6 +34,7 @@ import {
 import { Plus } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useDebugChat } from '@/hooks/useDebugChat';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
 import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
@@ -155,6 +156,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { analyzeImage, isAnalyzing } = useUniversalImageAnalysis();
   const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
   const { tokens } = useContextTokens(user?.id);
+  const { sendDebug, loading: debugLoading } = useDebugChat();
   
   // ============= CHAT PERSISTIERUNG =============
   useEffect(() => {
@@ -820,7 +822,58 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             rows={3}
             disabled={recordingState}
             className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
-            onKeyDown={(e) => {
+            onKeyDown={async (e) => {
+              // 🔧 Debug Mode: Shift + Enter = Direct GPT-4.1
+              if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                if (!inputText.trim()) return;
+                
+                try {
+                  // Add user message to chat
+                   const userMessage: UnifiedMessage = {
+                     id: `user-${Date.now()}`,
+                     role: 'user',
+                     content: inputText,
+                     created_at: new Date().toISOString(),
+                     coach_personality: coach?.personality || 'default',
+                     timestamp: new Date()
+                   };
+                  setMessages(prev => [...prev, userMessage]);
+                  
+                  // Clear input and show thinking
+                  const message = inputText;
+                  setInputText('');
+                  setIsThinking(true);
+                  
+                  // Send to debug endpoint
+                  const debugResponse = await sendDebug({ 
+                    message, 
+                    coachId: coach?.id || 'lucy' 
+                  });
+                  
+                  // Add debug response to chat
+                   const debugMessage: UnifiedMessage = {
+                     id: `debug-${Date.now()}`,
+                     role: 'assistant',
+                     content: `🔧 **Debug Mode (Direct GPT-4.1)**\n\n${debugResponse.content}`,
+                     created_at: new Date().toISOString(),
+                     coach_personality: coach?.personality || 'default',
+                     timestamp: new Date()
+                   };
+                  
+                  setMessages(prev => [...prev, debugMessage]);
+                  toast.success("🔧 Debug: Direkte GPT-4.1 Antwort erhalten!");
+                  
+                } catch (error) {
+                  console.error('Debug chat error:', error);
+                  toast.error("🔧 Debug-Fehler: " + (error as Error).message);
+                } finally {
+                  setIsThinking(false);
+                }
+                return;
+              }
+              
+              // Normal chat flow
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
@@ -1042,7 +1095,58 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                 rows={3}
                 disabled={recordingState}
                 className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
-                onKeyDown={(e) => {
+                onKeyDown={async (e) => {
+                  // 🔧 Debug Mode: Shift + Enter = Direct GPT-4.1
+                  if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault();
+                    if (!inputText.trim()) return;
+                    
+                    try {
+                      // Add user message to chat
+                       const userMessage: UnifiedMessage = {
+                         id: `user-${Date.now()}`,
+                         role: 'user',
+                         content: inputText,
+                         created_at: new Date().toISOString(),
+                         coach_personality: coach?.personality || 'default',
+                         timestamp: new Date()
+                       };
+                      setMessages(prev => [...prev, userMessage]);
+                      
+                      // Clear input and show thinking
+                      const message = inputText;
+                      setInputText('');
+                      setIsThinking(true);
+                      
+                      // Send to debug endpoint
+                      const debugResponse = await sendDebug({ 
+                        message, 
+                        coachId: coach?.id || 'lucy' 
+                      });
+                      
+                      // Add debug response to chat
+                       const debugMessage: UnifiedMessage = {
+                         id: `debug-${Date.now()}`,
+                         role: 'assistant',
+                         content: `🔧 **Debug Mode (Direct GPT-4.1)**\n\n${debugResponse.content}`,
+                         created_at: new Date().toISOString(),
+                         coach_personality: coach?.personality || 'default',
+                         timestamp: new Date()
+                       };
+                      
+                      setMessages(prev => [...prev, debugMessage]);
+                      toast.success("🔧 Debug: Direkte GPT-4.1 Antwort erhalten!");
+                      
+                    } catch (error) {
+                      console.error('Debug chat error:', error);
+                      toast.error("🔧 Debug-Fehler: " + (error as Error).message);
+                    } finally {
+                      setIsThinking(false);
+                    }
+                    return;
+                  }
+                  
+                  // Normal chat flow
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
