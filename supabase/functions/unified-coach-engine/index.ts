@@ -329,11 +329,20 @@ serve(async (req) => {
     // ============================================================================
     // SUBSCRIPTION LOOKUP - Define userTier at function scope level
     // ============================================================================
+    console.log(`🔍 [${requestId}] Looking up subscription for user: ${userId}`);
+    
     const { data: subscriber, error: subErr } = await supabase
       .from('subscribers')
       .select('subscribed, subscription_tier, subscription_end')
       .eq('user_id', userId)
       .single();
+
+    if (subErr) {
+      console.log(`⚠️ [${requestId}] Subscription lookup error:`, subErr);
+      console.log(`⚠️ [${requestId}] Treating user as free tier due to lookup error`);
+    }
+
+    console.log(`📊 [${requestId}] Raw subscription data:`, subscriber);
 
     const isPremium = subscriber?.subscribed && 
       ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
