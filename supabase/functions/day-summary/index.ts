@@ -61,7 +61,8 @@ serve(async (req) => {
     let tokensUsed = 0;
     let status = "success";
     
-    const skipTextGeneration = req.headers.get('x-no-text') === 'true';
+  const skipTextGeneration =
+    (req.headers.get('x-no-text') ?? '').toLowerCase() === 'true';
     
     if (!skipTextGeneration) {
       try {
@@ -127,7 +128,7 @@ serve(async (req) => {
       kpi_xxl_json: kpis,
       summary_struct_json: structuredSummary,
       tokens_spent: tokensUsed,
-      text_generated: !!xxl  // Flag indicating if text was generated
+      text_generated: status === 'success'  // Flag indicating if text was actually generated
     }, { onConflict: 'user_id,date' });
     
     console.log(`✅ Summary für ${date} erfolgreich erstellt (${status})`);
@@ -226,7 +227,7 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     supabase
       .from('meals')
       .select(`
-        id, text, calories, protein, carbs, fats,
+        id, text, calories, protein, carbs, fats, fiber, sugar,
         meal_type, quality_score, images, consumption_percentage,
         created_at
       `)
@@ -343,12 +344,12 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 9. 🧠 COACH-GESPRÄCHE
+    // 9. 🧠 COACH-GESPRÄCHE - Fixed timezone query
     supabase
       .from('coach_conversations')
       .select('message_content, message_role, coach_personality, created_at')
       .eq('user_id', userId)
-      .eq('conversation_date', date)
+      .or(`and(created_at.gte.${dayStart},created_at.lte.${dayEnd}), conversation_date.eq.${date}`)
       .order('created_at', { ascending: true })
       .then((result: any) => {
         console.log(`🧠 Coach conversations query result:`, result.error || `${result.data?.length} messages found`);
@@ -358,7 +359,7 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     // 10. 👤 USER-PROFIL
     supabase
       .from('profiles')
-      .select('preferred_name, age, gender, height_cm, activity_level, goal_type')
+      .select('preferred_name, age, gender, height_cm, weight_kg, activity_level, goal_type')
       .eq('id', userId)
       .maybeSingle()
       .then((result: any) => {
@@ -474,8 +475,8 @@ function calculateKPIs(dayData: any) {
     topFoods: [],
     mealTiming: [],
     
-    // BASIS-TRAINING - Use fast aggregation
-    workoutVolume: dayData.fastWorkoutVolume || 0,
+    // BASIS-TRAINING - Use fast aggregation with numeric cast
+    workoutVolume: Number(dayData.fastWorkoutVolume) || 0,
     workoutMuscleGroups: [],
     workoutDuration: 0,
     avgRPE: 0,
@@ -518,8 +519,8 @@ function calculateKPIs(dayData: any) {
     dailyFlags: []
   };
 
-  // 1. 🍽️ ERNÄHRUNGS-ANALYSE
-  if (dayData.meals && dayData.meals.length > 0) {
+  // 1. 🍽️ ERNÄHRUNGS-ANALYSE - Prevent double-count when fast totals present
+  if (dayData.meals && dayData.meals.length > 0 && !dayData.fastMealTotals) {
     let mealTimeDistribution: any = {};
     
     dayData.meals.forEach((meal: any) => {
