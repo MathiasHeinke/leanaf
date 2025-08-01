@@ -29,7 +29,8 @@ import {
   Heart,
   Target,
   X,
-  Paperclip
+  Paperclip,
+  Plus
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -863,10 +864,10 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="icon-btn"
+            className="icon-btn group"
             aria-label="Datei hochladen"
           >
-            <Paperclip className="w-6 h-6" />
+            <Plus className="w-6 h-6 transition-all duration-300 group-hover:rotate-90 group-hover:scale-110" />
           </button>
           
           <div className="flex-1"></div>
