@@ -249,5 +249,31 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		require("tailwindcss-animate"),
+		function({ addComponents }) {
+			addComponents({
+				'.coach-banner': {
+					'@apply relative w-full h-[56px] bg-background/70 backdrop-blur border-b border-border/20 transition-transform duration-300 z-40': {},
+				},
+				'.coach-banner.closed': {
+					'@apply -translate-y-full': {},
+				},
+				'.coach-banner::after': {
+					content: '""',
+					position: 'absolute',
+					left: '50%',
+					translate: '-50% 0',
+					bottom: '-10px',
+					width: '40px',
+					height: '20px',
+					background: 'inherit',
+					borderBottomLeftRadius: '9999px',
+					borderBottomRightRadius: '9999px',
+					clipPath: 'polygon(0 0,100% 0,50% 100%)',
+					boxShadow: '0 2px 6px rgba(0,0,0,.06)',
+				},
+			});
+		}
+	],
 } satisfies Config;

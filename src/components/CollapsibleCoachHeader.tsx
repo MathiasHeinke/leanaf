@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft, History, Trash2 } from 'lucide-react';
+import { ChevronUp, ArrowLeft, History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,34 +18,18 @@ export const CollapsibleCoachHeader = ({
   onHistoryClick, 
   onDeleteChat 
 }: CollapsibleCoachHeaderProps) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [open, setOpen] = useState(true);
   const navigate = useNavigate();
 
   const handleBack = () => {
     navigate('/coach');
   };
 
-  const toggleCollapse = () => {
-    setCollapsed(!collapsed);
-  };
-
   return (
     <>
       {/* Coach Banner mit Glass-Effekt */}
       <header 
-        id="coachBanner"
-        className={`
-          fixed left-0 right-0 h-16 px-4 
-          flex items-center gap-3 
-          backdrop-blur-md bg-background/70 border-b border-border/20
-          shadow-md
-          transition-transform duration-300 ease-out z-45
-          ${collapsed ? '-translate-y-full' : 'translate-y-0'}
-        `}
-        style={{ 
-          top: '61px',
-          willChange: 'transform'
-        } as React.CSSProperties}
+        className={`coach-banner ${open ? '' : 'closed'} flex items-center gap-3 px-4`}
       >
         <Button 
           variant="ghost" 
@@ -102,36 +86,21 @@ export const CollapsibleCoachHeader = ({
           )}
         </div>
 
-        {/* Pfeil-Button klebt unten am Banner und wandert mit */}
+        {/* Chevron-Kerbe */}
         <button
-          onClick={toggleCollapse}
-          className={`
-            absolute left-1/2 -translate-x-1/2 -bottom-4
-            w-8 h-8 rounded-full
-            backdrop-blur-md bg-background/70 border border-border/20
-            shadow-lg
-            flex items-center justify-center
-            transition-all duration-300 ease-out
-            hover-scale z-50
-          `}
-          aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
+          onClick={() => setOpen(!open)}
+          aria-label={open ? 'Ausblenden' : 'Einblenden'}
+          className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-[9px] 
+                     w-8 h-8 flex items-center justify-center
+                     rounded-full bg-background/80 backdrop-blur
+                     border border-border/20 shadow transition-transform hover:scale-105"
         >
-          <ChevronDown size={18} className={`text-foreground transition-transform duration-300 ${collapsed ? 'rotate-180' : 'rotate-0'}`} />
+          <ChevronUp className={`w-5 h-5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </header>
 
-      {/* Spacer für Content-Offset - Always show full height */}
-      <div 
-        className="h-16"
-        style={{ marginTop: '61px' }}
-      />
-      
-      {/* Pointer-Events sperren wenn collapsed */}
-      {collapsed && (
-        <style>{`
-          .coach-body { pointer-events: none; }
-        `}</style>
-      )}
+      {/* Spacer für Content-Offset */}
+      <div className="h-[56px]" />
     </>
   );
 };
