@@ -54,10 +54,23 @@ serve(async (req) => {
         }
 
         // Sammle alle Daten für diesen Tag
+        console.log(`🔍 Starting data collection for ${dateStr}...`);
         const dayData = await collectDayData(supabase, userId, dateStr);
         
+        // Debug: Zeige gesammelte Daten
+        console.log(`🔍 Collected data for ${dateStr}:`, {
+          meals: dayData.meals?.length || 0,
+          workouts: dayData.workouts?.length || 0,
+          weight: !!dayData.weight,
+          measurements: !!dayData.bodyMeasurements,
+          supplements: dayData.supplementLog?.length || 0
+        });
+        
         // Überspringe Tage ohne Daten
-        if (!hasRelevantData(dayData)) {
+        const hasData = hasRelevantData(dayData);
+        console.log(`🔍 Has relevant data for ${dateStr}: ${hasData}`);
+        
+        if (!hasData) {
           console.log(`⏭️ No relevant data for ${dateStr}, skipping`);
           results.push({ date: dateStr, status: 'skipped', reason: 'no_data' });
           continue;
