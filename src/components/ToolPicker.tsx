@@ -17,11 +17,11 @@ interface ToolPickerProps {
 }
 
 const tools: Tool[] = [
-  { id: 'trainingsplan', label: 'Trainingsplan', icon: <Dumbbell className="w-4 h-4" />, color: 'text-blue-500' },
-  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-4 h-4" />, color: 'text-green-500' },
-  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-4 h-4" />, color: 'text-purple-500' },
-  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-4 h-4" />, color: 'text-orange-500' },
-  { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-4 h-4" />, color: 'text-pink-500' },
+  { id: 'trainingsplan', label: 'Trainingsplan', icon: <Dumbbell className="w-4 h-4" />, color: 'text-primary' },
+  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-4 h-4" />, color: 'text-green-600' },
+  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-4 h-4" />, color: 'text-purple-600' },
+  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-4 h-4" />, color: 'text-orange-600' },
+  { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-4 h-4" />, color: 'text-pink-600' },
 ];
 
 export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolPickerProps) => {
