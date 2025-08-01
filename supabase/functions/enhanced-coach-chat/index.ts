@@ -1144,7 +1144,7 @@ serve(async (req) => {
     // All data collection now handled by Token-Diet section below
     
     // Allow empty messages for image-only requests
-    const prompt = message?.trim() || '(kein Text)';
+    const prompt = lastMsg?.content?.trim() || '(kein Text)';
     if (!prompt || prompt === '(kein Text)') {
       console.log('⚠️ Empty message detected, continuing with fallback text');
     }
@@ -1252,7 +1252,7 @@ serve(async (req) => {
         p_action: 'coach_chat_request',
         p_resource_type: 'ai_service',
         p_metadata: {
-          message_length: message.length,
+          message_length: (lastMsg?.content || '').length,
           chat_history_length: chatHistory.length,
           has_images: images.length > 0,
           personality: coachPersonality,
