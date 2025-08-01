@@ -3,7 +3,6 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { UnifiedCoachChat } from "@/components/UnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
-import Last3DaysSummary from "@/components/Last3DaysSummary";
 import { SingleDaySummaryGenerator } from "@/components/SingleDaySummaryGenerator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -93,25 +92,13 @@ const CoachPage = () => {
   // Default view: Coach selection with tabs
   return (
     <div className="container mx-auto p-4">
-      <Tabs defaultValue="selection" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="generate" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="selection">👥 Coach auswählen</TabsTrigger>
-          <TabsTrigger value="chat">💬 Chat mit Lucy</TabsTrigger>
-          <TabsTrigger value="summaries">📊 Letzte 3 Tage</TabsTrigger>
-          <TabsTrigger value="generate">📅 Tag-Summary</TabsTrigger>
+          <TabsTrigger value="generate">🔍 Tag-Summary Debug</TabsTrigger>
         </TabsList>
         <TabsContent value="selection" className="mt-6">
           <CoachSelection selectedCoach="lucy" onCoachChange={() => {}} />
-        </TabsContent>
-        <TabsContent value="chat" className="mt-6">
-          <UnifiedCoachChat
-            mode="general"
-            coach={coachProfiles[0]} // Default to Lucy
-            useFullscreenLayout={false}
-          />
-        </TabsContent>
-        <TabsContent value="summaries" className="mt-6">
-          <Last3DaysSummary />
         </TabsContent>
         <TabsContent value="generate" className="mt-6">
           <SingleDaySummaryGenerator />
