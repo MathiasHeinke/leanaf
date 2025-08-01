@@ -43,6 +43,7 @@ import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
 
 import { getDisplayName } from "../../supabase/functions/enhanced-coach-chat/utils/getDisplayName";
+import { TypingIndicator } from '@/components/TypingIndicator';
 
 // SimpleMessageList import removed - not used in this component
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -830,14 +831,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             <div className="space-y-3 pb-4">
               {messages.map(message => renderMessage(message))}
               {isThinking && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
-                  <span>Coach denkt nach...</span>
-                </div>
+                <TypingIndicator name={coach?.name || 'Coach'} />
               )}
               {/* Invisible div to scroll to */}
               <div ref={messagesEndRef} />
@@ -867,14 +861,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           <div className="space-y-3 p-4">
             {messages.map(message => renderMessage(message))}
             {isThinking && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                </div>
-                <span>Coach denkt nach...</span>
-              </div>
+              <TypingIndicator name={coach?.name || 'Coach'} />
             )}
             {/* Invisible div to scroll to */}
             <div ref={messagesEndRef} />

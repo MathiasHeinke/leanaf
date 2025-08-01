@@ -110,15 +110,22 @@ export const MessageItem = React.memo(({
             </ReactMarkdown>
           </div>
           
+          {/* NEU – Bild ist Teil der Bubble-Card */}
           {message.images && message.images.length > 0 && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {message.images.map((image, idx) => (
+            <div className="mt-2">
+              {message.images.map((url, idx) => (
                 <img
-                  key={idx}
-                  src={image}
+                  key={url}
+                  src={url}
                   alt={`Hochgeladenes Bild ${idx + 1}`}
-                  className="rounded-lg max-w-full h-auto"
-                  onLoad={handleMediaLoad}  // Höhe nach Bildladen messen
+                  className="
+                    rounded-lg
+                    max-w-[220px]
+                    max-h-[280px]
+                    object-cover
+                    shadow
+                  "
+                  onLoad={handleMediaLoad}
                   onError={handleMediaLoad}
                 />
               ))}

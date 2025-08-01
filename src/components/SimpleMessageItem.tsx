@@ -67,17 +67,29 @@ export const SimpleMessageItem = React.memo(({
         </div>
       </div>
 
-      {/* Images */}
+      {/* NEU – Bild ist Teil der Bubble-Card */}
       {message.images && message.images.length > 0 && (
-        <div className={`flex flex-wrap gap-2 max-w-[75%] ${isUser ? 'justify-end' : ''}`}>
-          {message.images.map((imageUrl, index) => (
-            <img
-              key={index}
-              src={imageUrl}
-              alt={`Upload ${index + 1}`}
-              className="max-w-xs max-h-48 rounded-lg object-cover border"
-            />
-          ))}
+        <div className={`rounded-xl px-4 py-3 max-w-[75%] ${
+          isUser 
+            ? 'bg-blue-600 text-white' 
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+        }`}>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {message.images.map((url, index) => (
+              <img
+                key={url}
+                src={url}
+                alt={`Upload ${index + 1}`}
+                className="
+                  rounded-lg
+                  max-w-[220px]
+                  max-h-[280px]
+                  object-cover
+                  shadow
+                "
+              />
+            ))}
+          </div>
         </div>
       )}
 
