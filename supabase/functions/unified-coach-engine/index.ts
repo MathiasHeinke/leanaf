@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { trainingsplan, uebung, supplement, gewicht, foto } from './tool-handlers/index.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,16 +11,182 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
-// Prompt Version für Handover-Nachrichten
 const PROMPT_VERSION = '2025-08-01-XL';
+
+// ============================================================================
+// TOOL HANDLERS - Inline implementations
+// ============================================================================
+
+async function handleTrainingsplan(conv: any[], userId: string, supabase: any) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  try {
+    // Extrahiere Trainingsplan-Informationen aus der Nachricht
+    const planName = extractPlanName(lastUserMsg);
+    const goals = extractGoals(lastUserMsg);
+    
+    // Erstelle Trainingsplan-Entry in der DB
+    const { data: planData, error } = await supabase.from('workout_plans').insert({
+      user_id: userId,
+      name: planName,
+      description: `Automatisch erstellt: ${lastUserMsg}`,
+      goals: goals,
+      created_at: new Date().toISOString(),
+      is_active: true
+    }).select().single();
+    
+    if (error) {
+      console.error('Error saving workout plan:', error);
+      return {
+        role: 'assistant',
+        content: 'Fehler beim Speichern des Trainingsplans. Bitte versuche es erneut.',
+      };
+    }
+    
+    return {
+      role: 'assistant',
+      type: 'card',
+      card: 'workout_plan',
+      payload: { 
+        id: planData.id,
+        name: planData.name,
+        description: planData.description,
+        goals: planData.goals,
+        html: `<div class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">✅ Trainingsplan erstellt</h3>
+          <p class="text-blue-700 dark:text-blue-300 mb-2"><strong>${planData.name}</strong></p>
+          <p class="text-sm text-blue-600 dark:text-blue-400">${planData.description}</p>
+          <div class="mt-3 text-xs text-blue-500 dark:text-blue-500">
+            Ziele: ${Array.isArray(planData.goals) ? planData.goals.join(', ') : 'Allgemeine Fitness'}
+          </div>
+        </div>`,
+        ts: Date.now()
+      },
+      meta: { clearTool: true }
+    };
+  } catch (error) {
+    console.error('Error in trainingsplan handler:', error);
+    return {
+      role: 'assistant',
+      content: 'Ein Fehler ist aufgetreten beim Erstellen des Trainingsplans.',
+    };
+  }
+}
+
+function extractPlanName(message: string): string {
+  // Einfache Extraktion des Plan-Namens
+  const matches = message.match(/plan.{0,10}(?:für|mit|zum|zur)?\s*([a-zA-ZäöüÄÖÜ\s]+)/i);
+  if (matches && matches[1]) {
+    return matches[1].trim().slice(0, 50);
+  }
+  return `Trainingsplan ${new Date().toLocaleDateString('de-DE')}`;
+}
+
+function extractGoals(message: string): string[] {
+  const goals: string[] = [];
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('abnehm') || lowerMessage.includes('gewicht')) {
+    goals.push('Gewichtsverlust');
+  }
+  if (lowerMessage.includes('muskel') || lowerMessage.includes('masse')) {
+    goals.push('Muskelaufbau');
+  }
+  if (lowerMessage.includes('kraft')) {
+    goals.push('Kraftsteigerung');
+  }
+  if (lowerMessage.includes('ausdauer') || lowerMessage.includes('cardio')) {
+    goals.push('Ausdauer');
+  }
+  if (lowerMessage.includes('definition') || lowerMessage.includes('straff')) {
+    goals.push('Definition');
+  }
+  
+  return goals.length > 0 ? goals : ['Allgemeine Fitness'];
+}
+
+async function handleUebung(conv: any[], userId: string) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'exercise',
+    payload: { 
+      html: `<div>
+        <h3>Übung hinzugefügt</h3>
+        <p>${lastUserMsg}</p>
+      </div>`,
+      ts: Date.now()
+    },
+    meta: { clearTool: true }
+  };
+}
+
+async function handleSupplement(conv: any[], userId: string) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'supplement',
+    payload: { 
+      html: `<div>
+        <h3>Supplement-Empfehlung</h3>
+        <p>Basierend auf: ${lastUserMsg}</p>
+      </div>`,
+      ts: Date.now()
+    },
+    meta: { clearTool: true }
+  };
+}
+
+async function handleGewicht(conv: any[], userId: string, supabase: any) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  const weight = parseFloat(lastUserMsg.replace(',', '.'));
+  
+  if (isNaN(weight)) {
+    return {
+      role: 'assistant',
+      content: 'Bitte gib dein Gewicht als Zahl an, z. B. „80,5".',
+    };
+  }
+  
+  try {
+    await supabase.from('weight_entries')
+      .insert({ user_id: userId, weight, date: new Date().toISOString() });
+    
+    return {
+      role: 'assistant',
+      type: 'card',
+      card: 'weight',
+      payload: { value: weight, unit: 'kg', ts: Date.now() },
+      meta: { clearTool: true }
+    };
+  } catch (error) {
+    console.error('Error saving weight:', error);
+    return {
+      role: 'assistant',
+      content: 'Fehler beim Speichern des Gewichts. Bitte versuche es erneut.',
+    };
+  }
+}
+
+async function handleFoto(images: string[], userId: string) {
+  return {
+    role: 'assistant',
+    content: 'Bildanalyse wird nun automatisch durchgeführt...',
+    meta: { clearTool: true }
+  };
+}
 
 // Tool-Handler-Map
 const handlers = {
-  trainingsplan,
-  uebung,
-  supplement,
-  gewicht,
-  foto,
+  trainingsplan: handleTrainingsplan,
+  uebung: handleUebung,
+  supplement: handleSupplement,
+  gewicht: handleGewicht,
+  foto: handleFoto,
   chat: async (conv: any, userId: string) => {
     // Kein Spezial-Output – einfach weiter zum OpenAI-Flow
     return null;
@@ -240,7 +405,7 @@ serve(async (req) => {
     
     if (handlers[activeTool]) {
       console.log(`⚡ [${requestId}] Executing tool handler for:`, activeTool);
-      const toolResult = await handlers[activeTool](conversationHistory, userId);
+      const toolResult = await handlers[activeTool](conversationHistory, userId, supabase);
       if (toolResult) {
         console.log(`✅ [${requestId}] Tool handler returned result, bypassing OpenAI`);
         return new Response(JSON.stringify(toolResult), {
