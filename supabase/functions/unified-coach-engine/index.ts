@@ -727,29 +727,35 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
   };
 
   try {
-    // Load user profile
-    const { data: profile } = await supabase
+    // Load user profile (FIX: use maybeSingle and add error handling)
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+    if (profileError) console.warn('⚠️ Profile load error:', profileError.message);
     context.profile = profile;
+    console.log('📊 Profile loaded:', !!profile);
 
     // Load coach memory
-    const { data: memory } = await supabase
+    const { data: memory, error: memoryError } = await supabase
       .from('coach_memory')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+    if (memoryError) console.warn('⚠️ Memory load error:', memoryError.message);
     context.memory = memory;
+    console.log('🧠 Memory loaded:', !!memory);
 
     // Load goals
-    const { data: goals } = await supabase
+    const { data: goals, error: goalsError } = await supabase
       .from('daily_goals')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+    if (goalsError) console.warn('⚠️ Goals load error:', goalsError.message);
     context.goals = goals;
+    console.log('🎯 Goals loaded:', !!goals);
 
     // Load XL-Summaries (letzte 7 Tage)
     const { data: xlSummaries } = await supabase
@@ -797,14 +803,16 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
             break;
 
           case 'meals':
-            const { data: meals } = await supabase
+            const { data: meals, error: mealsError } = await supabase
               .from('meals')
-              .select('created_at, food_name, calories, protein, carbs, fats')
+              .select('created_at, text, calories, protein, carbs, fats, meal_type')
               .eq('user_id', userId)
               .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
               .order('created_at', { ascending: false })
               .limit(20);
+            if (mealsError) console.warn(`⚠️ Meals load error:`, mealsError.message);
             context.relevantData.meals = meals;
+            console.log('🍽️ Meals loaded:', meals?.length || 0, 'entries');
             break;
 
           case 'exercise_sessions':
@@ -832,6 +840,13 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
       }
     }
 
+    console.log('📊 Smart Context XL built:', {
+      profileLoaded: !!context.profile,
+      memoryLoaded: !!context.memory,
+      xlSummaryDays: context.xlSummaries?.length || 0,
+      regularSummaryDays: context.summaries?.length || 0,
+      relevantDataLoaded: Object.keys(context.relevantData).length
+    });
     console.log('✅ Smart Context XL built successfully');
     return context;
 
@@ -925,7 +940,9 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
       const todayMeals = context.relevantData.meals.filter((m: any) => m.created_at.startsWith(today));
       if (todayMeals.length > 0) {
         const totalCals = todayMeals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0);
-        prompt += `Heute gegessen: ${todayMeals.length} Mahlzeiten, ${Math.round(totalCals)} kcal\n`;
+        const totalProtein = todayMeals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0);
+        prompt += `Heute gegessen: ${todayMeals.length} Mahlzeiten, ${Math.round(totalCals)} kcal, ${Math.round(totalProtein)}g Protein\n`;
+        prompt += `Letzte Mahlzeiten: ${todayMeals.slice(0, 3).map((m: any) => `"${m.text}" (${m.calories}kcal)`).join(', ')}\n`;
       }
     }
     
