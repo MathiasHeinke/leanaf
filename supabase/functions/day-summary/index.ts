@@ -309,12 +309,12 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 6. 💊 SUPPLEMENTE - TIMING + TAKEN STATUS (Fix taken_at logic)
+    // 6. 💊 SUPPLEMENTE - TIMING + TAKEN STATUS (Fix taken_at logic + column names)
     supabase
       .from('supplement_intake_log')
       .select(`
         id, timing, taken, taken_at, created_at,
-        user_supplements!inner(name, category)
+        user_supplements!inner(custom_name, dosage, unit)
       `)
       .eq('user_id', userId)
       .eq('date', date)
