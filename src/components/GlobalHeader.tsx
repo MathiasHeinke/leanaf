@@ -281,5 +281,5 @@ export const GlobalHeader = ({
   );
 };
 
-// Entferne die FloatingBottomNav
+// Cleanup: FloatingBottomNav removed
 export const FloatingBottomNav = () => null;
