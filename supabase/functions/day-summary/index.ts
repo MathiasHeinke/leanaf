@@ -139,6 +139,7 @@ serve(async (req) => {
         meals: dayData.meals?.length || 0,
         workouts: dayData.workouts?.length || 0,
         exerciseSets: dayData.exerciseSets?.length || 0,
+        quickWorkouts: dayData.quickWorkouts?.length || 0,
         weightEntries: dayData.weight ? 1 : 0,
         bodyMeasurements: dayData.bodyMeasurements ? 1 : 0,
         supplementEntries: dayData.supplementLog?.length || 0,
@@ -152,7 +153,13 @@ serve(async (req) => {
         workoutVolume: kpis.workoutVolume,
         sleepScore: kpis.sleepScore,
         hydrationScore: kpis.hydrationScore,
-        muscleGroups: kpis.workoutMuscleGroups
+        muscleGroups: kpis.workoutMuscleGroups,
+        // NEW: Quick workout activity
+        stepsCount: kpis.stepsCount,
+        distanceKm: kpis.distanceKm,
+        activeMinutes: kpis.activeMinutes,
+        quickWorkoutActive: kpis.quickWorkoutActive,
+        supplementCompliance: kpis.supplementCompliance
       },
       summaryLengths: {
         standard: std.split(' ').length,
@@ -223,7 +230,8 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     sleepResult,
     fluidResult,
     coachConversationsResult,
-    profileResult
+    profileResult,
+    quickWorkoutsResult
   ] = await Promise.all([
     // 1. 🍽️ ERNÄHRUNG - ERWEITERTE SPALTEN
     supabase
@@ -299,11 +307,11 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
         return result;
       }),
     
-    // 6. 💊 SUPPLEMENTE - TIMING + TAKEN STATUS
+    // 6. 💊 SUPPLEMENTE - TIMING + TAKEN STATUS (Fix taken_at logic)
     supabase
       .from('supplement_intake_log')
       .select(`
-        id, timing, taken, created_at,
+        id, timing, taken, taken_at, created_at,
         user_supplements!inner(name, category)
       `)
       .eq('user_id', userId)
@@ -367,6 +375,20 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
       .then((result: any) => {
         console.log(`👤 Profile query result:`, result.error || 'Profile found');
         return result;
+      }),
+    
+    // 11. 🏃 QUICK-WORKOUT-INPUT (Steps, Distance, Cardio)
+    supabase
+      .from('workouts')
+      .select(`
+        workout_type, duration_minutes, intensity, distance_km, steps, notes, 
+        date, created_at
+      `)
+      .eq('user_id', userId)
+      .eq('date', date)
+      .then((result: any) => {
+        console.log(`🏃 Quick workouts query result:`, result.error || `${result.data?.length} quick workouts found`);
+        return result;
       })
   ]);
 
@@ -382,6 +404,7 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     fluids: fluidResult?.data || [],
     coachConversations: coachConversationsResult?.data || [],
     profile: profileResult?.data || null,
+    quickWorkouts: quickWorkoutsResult?.data || [],
     dataCollectionTimestamp: new Date().toISOString(),
     // Fast aggregation results for performance
     fastMealTotals: fastMealData?.data || null,
@@ -454,6 +477,13 @@ function buildStructuredSummary(date: string, kpis: any, rawData: any) {
       missed_count: safe(kpis.supplementsMissed, 0),
       supplement_log: safe(rawData.supplementLog, [])
     },
+    activity: {
+      steps_count: safe(kpis.stepsCount, 0),
+      distance_km: safe(kpis.distanceKm, 0),
+      active_minutes: safe(kpis.activeMinutes, 0),
+      quick_workout_active: safe(kpis.quickWorkoutActive, false),
+      quick_workouts: safe(rawData.quickWorkouts, [])
+    },
     coaching: {
       sentiment: safe(kpis.coachSentiment, 'neutral'),
       motivation_level: safe(kpis.motivationLevel, 'unknown'),
@@ -484,6 +514,12 @@ function calculateKPIs(dayData: any) {
     avgRPE: 0,
     totalSets: 0,
     exerciseTypes: [],
+    
+    // QUICK-WORKOUT-INPUT ACTIVITY
+    stepsCount: 0,
+    distanceKm: 0,
+    activeMinutes: 0,
+    quickWorkoutActive: false,
     
     // KÖRPERKOMPOSITION
     weight: null,
@@ -521,17 +557,23 @@ function calculateKPIs(dayData: any) {
     dailyFlags: []
   };
 
-  // 1. 🍽️ ERNÄHRUNGS-ANALYSE - Prevent double-count when fast totals present
-  if (dayData.meals && dayData.meals.length > 0 && !dayData.fastMealTotals) {
+  // 1. 🍽️ ERNÄHRUNGS-ANALYSE - Macro distribution & top foods regardless of fast totals
+  if (dayData.meals && dayData.meals.length > 0) {
     let mealTimeDistribution: any = {};
     
+    // If no fast totals, calculate manually
+    if (!dayData.fastMealTotals) {
+      dayData.meals.forEach((meal: any) => {
+        kpis.totalCalories += meal.calories || 0;
+        kpis.totalProtein += meal.protein || 0;
+        kpis.totalCarbs += meal.carbs || 0;
+        kpis.totalFats += meal.fats || 0;
+        // Note: fiber and sugar not available in meals table
+      });
+    }
+
+    // ALWAYS process meal timing and top foods from individual meals
     dayData.meals.forEach((meal: any) => {
-      kpis.totalCalories += meal.calories || 0;
-      kpis.totalProtein += meal.protein || 0;
-      kpis.totalCarbs += meal.carbs || 0;
-      kpis.totalFats += meal.fats || 0;
-      // Note: fiber and sugar not available in meals table
-      
       const mealHour = new Date(meal.created_at).getHours();
       mealTimeDistribution[mealHour] = (mealTimeDistribution[mealHour] || 0) + 1;
     });
@@ -545,7 +587,7 @@ function calculateKPIs(dayData: any) {
       };
     }
 
-    // Top Lebensmittel - MIT QUALITY SCORE
+    // Top Lebensmittel - MIT QUALITY SCORE (ALWAYS process from individual meals)
     const foodCounts: any = {};
     dayData.meals.forEach((meal: any) => {
       const foodKey = `${meal.text || 'Unbekannt'}|${meal.quality_score ?? 0}`;
@@ -636,8 +678,28 @@ function calculateKPIs(dayData: any) {
     };
   }
 
-  // 5. 💧 HYDRATION & SUPPLEMENTE
-  if (dayData.fluids && dayData.fluids.length > 0) {
+  // 2.5. 🏃 QUICK-WORKOUT-INPUT PROCESSING (NEW)
+  if (dayData.quickWorkouts && dayData.quickWorkouts.length > 0) {
+    console.log(`🏃 Processing ${dayData.quickWorkouts.length} quick workouts`);
+    
+    dayData.quickWorkouts.forEach((qw: any) => {
+      kpis.stepsCount += qw.steps || 0;
+      kpis.distanceKm += qw.distance_km || 0;
+      kpis.activeMinutes += qw.duration_minutes || 0;
+      
+      // Mark as active if any workout data present
+      if (qw.workout_type || qw.steps || qw.distance_km || qw.duration_minutes) {
+        kpis.quickWorkoutActive = true;
+      }
+    });
+    
+    console.log(`🏃 Quick workout totals: ${kpis.stepsCount} steps, ${kpis.distanceKm}km, ${kpis.activeMinutes}min active`);
+  }
+
+  // 5. 💧 HYDRATION & SUPPLEMENTE - Fix double counting
+  // Use fast aggregation if available, otherwise loop (prevent double count)
+  if (!dayData.fastFluidTotal && dayData.fluids && dayData.fluids.length > 0) {
+    console.log(`💧 Processing fluids manually (no fast total available)`);
     dayData.fluids.forEach((fluid: any) => {
       kpis.totalFluidMl += fluid.amount_ml || 0;
       
@@ -648,26 +710,46 @@ function calculateKPIs(dayData: any) {
         kpis.alcoholG += alcohol;
       }
     });
-    
-    // Hydration-Score: Robust fallback on profile weight
-    const userWeight =
-      kpis.weight ??
-      dayData.profile?.weight_kg ??
-      dayData.weight?.weight ??
-      null;
-
-    if (userWeight && userWeight > 0 && kpis.totalFluidMl > 0) {
-      const mlPerKg = kpis.totalFluidMl / userWeight;
-      kpis.hydrationScore = Math.min(100, Math.round((mlPerKg / 35) * 100));
-    } else {
-      kpis.hydrationScore = null;
+  } else if (dayData.fastFluidTotal) {
+    console.log(`💧 Using fast fluid total: ${dayData.fastFluidTotal}ml`);
+    // Fast total already applied at top, just process additional metadata
+    if (dayData.fluids && dayData.fluids.length > 0) {
+      dayData.fluids.forEach((fluid: any) => {
+        if (fluid.fluid_database) {
+          const alcohol = (fluid.fluid_database.alcohol_percentage || 0) * (fluid.amount_ml / 100) * 0.8;
+          kpis.alcoholG += alcohol;
+        }
+      });
     }
   }
+    
+  // Hydration-Score: Robust fallback on profile weight
+  const userWeight =
+    kpis.weight ??
+    dayData.profile?.weight_kg ??
+    dayData.weight?.weight ??
+    null;
 
+  if (userWeight && userWeight > 0 && kpis.totalFluidMl > 0) {
+    const mlPerKg = kpis.totalFluidMl / userWeight;
+    kpis.hydrationScore = Math.min(100, Math.round((mlPerKg / 35) * 100));
+  } else {
+    kpis.hydrationScore = null;
+  }
+
+  // 5.5. 💊 SUPPLEMENT COMPLIANCE - Fix taken logic
   if (dayData.supplementLog && dayData.supplementLog.length > 0) {
-    const takenCount = dayData.supplementLog.filter((sup: any) => sup.taken).length;
+    console.log(`💊 Processing ${dayData.supplementLog.length} supplement entries`);
+    
+    // Count taken supplements: either taken=true OR taken_at is not null
+    const takenCount = dayData.supplementLog.filter((sup: any) => 
+      sup.taken === true || sup.taken_at != null
+    ).length;
+    
     kpis.supplementCompliance = Math.round((takenCount / dayData.supplementLog.length) * 100);
     kpis.supplementsMissed = dayData.supplementLog.length - takenCount;
+    
+    console.log(`💊 Supplement compliance: ${takenCount}/${dayData.supplementLog.length} = ${kpis.supplementCompliance}%`);
   }
 
   // 6. 🧠 COACH-GESPRÄCHE & SENTIMENT
