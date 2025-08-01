@@ -27,8 +27,14 @@
 
 /* Glass Background Utility - für Coach-Banner & Global-Header */
 .glass-bg {
-  @apply backdrop-blur-md bg-white/70 dark:bg-[#0a0a0a]/60;
-  /* Konsistente Glas-Transparenz für alle Header */
+  @apply backdrop-blur-md bg-background/70 dark:bg-background/60;
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border) / 0.2);
+}
+
+/* Hover Scale Animation */
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105;
 }
 
 /* Modern Clean Design System - Minimalist & Professional */

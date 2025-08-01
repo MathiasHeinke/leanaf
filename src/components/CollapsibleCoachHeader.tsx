@@ -38,13 +38,12 @@ export const CollapsibleCoachHeader = ({
           fixed left-0 right-0 h-16 px-4 
           flex items-center gap-3 
           glass-bg
-          shadow-md rounded-b-xl border-b border-border/30
-          transition-transform duration-300 ease-out z-30
-          ${collapsed ? '-translate-y-[calc(64px+4px)]' : 'translate-y-0'}
+          shadow-md border-b border-border/20
+          transition-transform duration-300 ease-out z-40
+          ${collapsed ? '-translate-y-16' : 'translate-y-0'}
         `}
         style={{ 
-          top: 'var(--header-height, 60px)',
-          '--coach-h': '64px'
+          top: 'var(--header-height, 60px)'
         } as React.CSSProperties}
       >
         <Button 
@@ -106,12 +105,12 @@ export const CollapsibleCoachHeader = ({
         <button
           onClick={toggleCollapse}
           className={`
-            absolute left-1/2 -translate-x-1/2 bottom-[-14px]
+            absolute left-1/2 -translate-x-1/2 -bottom-4
             w-8 h-8 rounded-full
-            glass-bg shadow-lg
+            glass-bg shadow-lg border border-border/20
             flex items-center justify-center
-            transition-transform duration-300 ease-out
-            hover-scale
+            transition-all duration-300 ease-out
+            hover-scale z-50
             ${collapsed ? 'rotate-180' : 'rotate-0'}
           `}
           aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
