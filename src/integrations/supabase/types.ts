@@ -1265,6 +1265,7 @@ export type Database = {
       exercise_sets: {
         Row: {
           created_at: string
+          date: string | null
           distance_m: number | null
           duration_seconds: number | null
           exercise_id: string
@@ -1281,6 +1282,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          date?: string | null
           distance_m?: number | null
           duration_seconds?: number | null
           exercise_id: string
@@ -1297,6 +1299,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          date?: string | null
           distance_m?: number | null
           duration_seconds?: number | null
           exercise_id?: string
@@ -1851,6 +1854,7 @@ export type Database = {
           carbs: number | null
           consumption_percentage: number | null
           created_at: string
+          date: string | null
           evaluation_criteria: Json | null
           fats: number | null
           id: string
@@ -1871,6 +1875,7 @@ export type Database = {
           carbs?: number | null
           consumption_percentage?: number | null
           created_at?: string
+          date?: string | null
           evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
@@ -1891,6 +1896,7 @@ export type Database = {
           carbs?: number | null
           consumption_percentage?: number | null
           created_at?: string
+          date?: string | null
           evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
