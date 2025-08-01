@@ -436,8 +436,12 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         // 👉 Debug info für Dev/Power-User 
         console.warn('Chat-Error Details:', { status, fullMsg, error });
 
-        // 🔄 Robustes Error-Handling mit Auto-Fallback 
+        // 🔄 Test-Flag für Fallback-Testing
+        const force429 = false; // ← testflag
+
+        // Auto-Fallback bei 429 oder Rate-Limit
         const isUsageLimit = (status: number, error: any) => 
+          force429 ||
           status === 429 || 
           error?.includes('USAGE_LIMIT_REACHED') ||
           (status === 0 && error?.includes('non-2xx status code')); // Supabase SDK Error für 429
