@@ -381,8 +381,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       const hasImages = uploadedImages.length > 0;
       let data, error;
 
-      console.log('🚀 Sending message to unified-coach-engine with XXL-Memory');
-
       // Build conversation history for the unified engine
       const conversationHistory = messages.slice(-10).map(msg => ({
         role: msg.role,
@@ -391,20 +389,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         created_at: msg.created_at
       }));
 
-      // Debug logging for request verification
-      console.log('[DEBUG] will call:', hasImages ? 'unified-coach-engine (with images)' : 'unified-coach-engine');
-      console.log('[DEBUG] payload', {
-        userId: user.id,
-        message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
-        images: uploadedImages,
-        coach: coach?.id,
-        toolSelected: selectedTool
-      });
-
       // Feature Flag: Route to debug-direct-chat temporarily
       const targetFunction = 'debug-direct-chat'; // Force debug mode
       
-      console.log(`🚀 Sending message to ${targetFunction} with XXL-Memory`);
+      console.log(`🚀 Sending message to ${targetFunction}:`, {
+        userId: user.id,
+        message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
+        coachId: coach?.id
+      });
       
       const response = await supabase.functions.invoke(targetFunction, {
         body: {
