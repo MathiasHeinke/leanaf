@@ -363,20 +363,16 @@ serve(async (req) => {
         ? 'premium'
         : 'free';
 
-    /* ==== BUGFIX: Usage-Governor nur für Free ==== */
-    if(userTier==='free'){
-      const {data:limitCheck,error}=await supabase.rpc('check_ai_usage_limit',{
+    // ──────────────────────────────────────────────────────────────
+    // 2. Governor nur für Free-Tier
+    // ──────────────────────────────────────────────────────────────
+    let limitCheck = { can_use: true };
+    if (userTier === 'free') {
+      const { data, error } = await supabase.rpc('check_ai_usage_limit', {
         p_user_id: userId,
         p_feature_type: 'coach_chat',
       });
-      if(!limitCheck?.can_use){
-        return new Response(JSON.stringify({
-          role: 'assistant',
-          content: 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium 🚀',
-          usage_limit_reached: true,
-          limits: limitCheck,
-        }),{status:429,headers: corsHeaders});
-      }
+      limitCheck = data || { can_use: true };
       if (error) console.warn('Governor-RPC-Error', error);
     }
 

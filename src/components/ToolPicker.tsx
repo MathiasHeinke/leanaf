@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Wrench, Dumbbell, Camera, Pill, Scale, BookOpen, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 
 interface Tool {
   id: string;
@@ -31,7 +30,7 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
     const next = toolId === selectedTool ? null : toolId;
     onToolSelect(next);
     pushSystemTool?.(next);          // <-- neue system.tool-Msg
-    setOpen(false);                  // <-- Popover darf weiter geschlossen werden
+    setOpen(false);
   };
 
   return (
@@ -39,12 +38,8 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn(
-            "icon-btn group transition-all duration-300",
-            selectedTool ? 'bg-primary text-primary-foreground scale-105 ring-2 ring-primary/70' : ''
-          )}
+          className={`icon-btn group transition-all duration-300 ${selectedTool ? 'bg-primary text-primary-foreground scale-105' : ''}`}
           aria-label="Tools & Anhänge"
-          aria-pressed={!!selectedTool}
           id="toolBtn"
         >
           <Wrench className={`w-6 h-6 transition-all duration-300 ${selectedTool ? 'rotate-12' : 'group-hover:rotate-12'} group-hover:scale-110`} />
@@ -56,15 +51,16 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id)}
-              className={cn(
-                "tool-item w-full rounded-md transition-colors hover:bg-gray-100 dark:hover:bg-gray-800",
-                selectedTool === tool.id && "tool-item-active"
-              )}
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left transition-all duration-200 hover:scale-[1.02] group ${
+                selectedTool === tool.id
+                  ? 'bg-primary text-primary-foreground scale-[1.02]'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
-              <div className="flex items-center gap-3">
+              <span className="text-sm">{tool.label}</span>
+              <span className="transition-transform duration-300 group-hover:scale-110">
                 {tool.icon}
-                <span>{tool.label}</span>
-              </div>
+              </span>
             </button>
           ))}
           {selectedTool && (

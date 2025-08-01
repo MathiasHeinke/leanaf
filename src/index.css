@@ -128,7 +128,6 @@
   /* SmartCard Components */
   --header-height: 61px;
   --app-header-h: 56px;
-  --global-header-h: 61px;
 }
 
 @layer components {
@@ -497,21 +496,4 @@
   .text-pretty {
     text-wrap: pretty;
   }
-
-/* ② Chevron-"Gnubbel" – Design & Rotation */
-.chevron-dock{
-  @apply absolute left-1/2 -translate-x-1/2 -bottom-[18px] h-[36px] w-[36px] 
-         bg-background/70 backdrop-blur-sm border border-border/20
-         rounded-full flex items-center justify-center
-         transition-transform duration-300;
-}
-.chevron-dock svg{ @apply h-4 w-4 transition-transform duration-300; }
-.chevron-dock[data-open='false']{ transform:translate(-50%,50%) rotate(180deg); }
-.chevron-dock[data-open='true'] { transform:translate(-50%,-50%) rotate(0deg)   ; }
-
-/* ③ ToolPicker – iOS-Konforme Optik */
-.tool-item{ @apply flex items-center justify-between text-[15px] leading-5
-                     text-foreground/90 font-medium py-[10px] px-4; }
-.tool-item svg{ @apply h-5 w-5 stroke-[1.8]; }
-.tool-item-active{ @apply text-primary; }
 }
