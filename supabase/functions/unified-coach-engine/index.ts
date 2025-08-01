@@ -448,8 +448,25 @@ serve(async (req) => {
   console.log(`📊 [${requestId}] Environment check:`, {
     supabaseUrl: !!supabaseUrl,
     openAIApiKey: !!openAIApiKey,
+    openAIKeyLength: openAIApiKey?.length || 0,
     disableLimits: DISABLE_LIMITS
   });
+
+  // Early check for missing OpenAI key
+  if (!openAIApiKey || openAIApiKey.length < 10) {
+    console.error(`❌ [${requestId}] Missing or invalid OpenAI API key!`);
+    return new Response(JSON.stringify({
+      role: 'assistant',
+      content: 'Entschuldigung, die KI-Konfiguration ist fehlerhaft. Bitte kontaktiere den Support.',
+      debug: {
+        error: 'Missing OpenAI API key',
+        request_id: requestId
+      }
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -858,6 +875,9 @@ serve(async (req) => {
       }
     ];
 
+    console.log(`🔄 [${requestId}] Making OpenAI API call with model: ${selectedModel}`);
+    console.log(`📝 [${requestId}] Message count: ${messages.length}, System prompt length: ${systemPrompt.length}`);
+    
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -882,21 +902,29 @@ serve(async (req) => {
       console.error(`❌ [${requestId}] OpenAI API error:`, {
         status: openAIResponse.status,
         statusText: openAIResponse.statusText,
-        error: errorText
+        error: errorText,
+        model: selectedModel,
+        hasApiKey: !!openAIApiKey,
+        apiKeyLength: openAIApiKey?.length || 0
       });
       
       // Log detailed error for debugging
-      await supabase.rpc('log_security_event', {
-        p_user_id: userId,
-        p_action: 'openai_api_error',
-        p_resource_type: 'api_call',
-        p_metadata: {
-          request_id: requestId,
-          status: openAIResponse.status,
-          error: errorText,
-          model: selectedModel
-        }
-      });
+      try {
+        await supabase.rpc('log_security_event', {
+          p_user_id: userId,
+          p_action: 'openai_api_error',
+          p_resource_type: 'api_call',
+          p_metadata: {
+            request_id: requestId,
+            status: openAIResponse.status,
+            error: errorText,
+            model: selectedModel,
+            hasApiKey: !!openAIApiKey
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log security event:', logError);
+      }
       
       // Enhanced error messages based on status codes
       let userMessage = 'Entschuldigung, ich kann gerade nicht antworten. Bitte versuche es gleich nochmal! 🤖';
