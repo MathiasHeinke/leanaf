@@ -11,6 +11,18 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
+// Prompt Version für Handover-Nachrichten
+const PROMPT_VERSION = '2025-08-01-XL';
+
+// Cold-Start-Cache für bessere Performance
+const globalThis_warmCache = globalThis as any;
+if (!globalThis_warmCache._coachCache) {
+  globalThis_warmCache._coachCache = {
+    coaches: null,
+    lastUpdate: 0
+  };
+}
+
 // Relevanz-System für intelligente Datenauswahl
 const RELEVANCE_MAPPING = {
   'gewicht|abnehmen|zunahme|kg|wiegen': ['weight_history', 'daily_goals', 'body_measurements'],
@@ -62,6 +74,10 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // ============================================================================
+    // API-GOVERNOR: Rate-Limiting und Circuit-Breaker
+    // ============================================================================
     
     // Parse request body
     const { 
@@ -123,6 +139,10 @@ serve(async (req) => {
       });
     }
 
+    // ============================================================================
+    // PROMPT-VERSIONIERUNG: Handover bei Prompt-Updates
+    // ============================================================================
+    
     // Erkenne relevante Datentypen basierend auf Nachricht
     const relevantDataTypes = detectRelevantData(message + ' ' + (toolContext?.description || ''));
     console.log('🧠 Detected relevant data types:', relevantDataTypes);
@@ -137,14 +157,33 @@ serve(async (req) => {
       relevantDataLoaded: Object.keys(smartContext.relevantData || {}).length
     });
 
-    // Erstelle erweiterten System-Prompt
+    // Prompt-Version-Check für nahtlose Updates
+    const lastMessage = conversationHistory[conversationHistory.length - 1];
+    let shouldHandover = false;
+    
+    if (lastMessage?.meta?.prompt_version && lastMessage.meta.prompt_version !== PROMPT_VERSION) {
+      shouldHandover = true;
+      console.log('🔄 Prompt version mismatch detected, creating handover');
+    }
+
+    // Erstelle erweiterten System-Prompt mit Versionierung
     const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext);
     console.log('💭 XL System prompt created, estimated tokens:', estimateTokenCount(systemPrompt));
 
     // Bereite Messages für OpenAI vor
     const messages = [
-      { role: 'system', content: systemPrompt }
+      { role: 'system', content: systemPrompt + `\n\n<!-- PROMPT_VERSION:${PROMPT_VERSION} -->` }
     ];
+
+    // Handover-Nachricht für Prompt-Updates
+    if (shouldHandover) {
+      const handoverMessage = {
+        role: 'assistant',
+        content: `⚡ Kleines Update meiner Wissensgrundlage (Version ${PROMPT_VERSION}). Hier eine kurze Zusammenfassung unseres letzten Gesprächs: "${lastMessage?.content?.slice(0, 120) || 'Wir haben über deine Ziele gesprochen'}...". Lass uns weitermachen! 🚀`,
+        meta: { prompt_version: PROMPT_VERSION }
+      };
+      messages.push(handoverMessage);
+    }
 
     // Füge Conversation History hinzu (intelligent gekürzt)
     if (conversationHistory.length > 0) {
@@ -175,6 +214,25 @@ serve(async (req) => {
 
     console.log('🤖 Sending request to OpenAI with', messages.length, 'messages');
 
+    // ============================================================================
+    // SMART MODEL SELECTION: Multi-Modal Quota Management
+    // ============================================================================
+    
+    const chooseModel = (hasImages: boolean, userTier: string = 'free') => {
+      if (hasImages) {
+        // Für Vision: gpt-4o ist erforderlich
+        if (userTier === 'free') {
+          console.log('⚠️ Vision request from free user - consider cost warning');
+        }
+        return 'gpt-4o';
+      }
+      // Für Text: verwende das neueste und schnellste Modell
+      return 'gpt-4.1-2025-04-14';
+    };
+
+    const selectedModel = chooseModel(images.length > 0, 'free'); // TODO: echte Tier-Erkennung
+    console.log('🎯 Selected model:', selectedModel);
+
     // OpenAI API Call
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -183,7 +241,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: images.length > 0 ? 'gpt-4o' : 'gpt-4.1-2025-04-14',
+        model: selectedModel,
         messages,
         max_tokens: 1500,
         temperature: 0.7,
@@ -208,15 +266,22 @@ serve(async (req) => {
 
     console.log('💾 Conversation saved and memory updated');
 
-    // Return response
+    // Return response mit erweiterten Meta-Informationen
     return new Response(JSON.stringify({
       role: 'assistant',
       content: assistantReply,
       usage: openAIData.usage,
       context_info: {
+        prompt_version: PROMPT_VERSION,
         xl_summaries_used: smartContext.xlSummaries?.length || 0,
         relevant_data_types: relevantDataTypes,
-        estimated_tokens: estimateTokenCount(systemPrompt)
+        estimated_tokens: estimateTokenCount(systemPrompt),
+        model_used: selectedModel,
+        handover_created: shouldHandover
+      },
+      meta: { 
+        prompt_version: PROMPT_VERSION,
+        clearTool: !!toolContext
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

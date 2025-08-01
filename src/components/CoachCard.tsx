@@ -62,6 +62,9 @@ export const CoachCard: React.FC<CoachCardProps> = ({
   const handleCardClick = () => {
     if (!disabled) {
       onSelect(coach.id);
+    } else if (requiresPremium) {
+      // Show premium upgrade toast for locked coaches
+      console.log('Premium required for coach:', coach.name);
     }
   };
 
@@ -89,6 +92,13 @@ export const CoachCard: React.FC<CoachCardProps> = ({
           card: 'border-purple-200/50 dark:border-purple-800/30',
           icon: 'text-purple-600 dark:text-purple-400'
         };
+      case 'red':
+        return {
+          badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-800/30',
+          quote: 'bg-red-50 border-red-500 dark:bg-red-950/20 dark:border-red-700',
+          card: 'border-red-200/50 dark:border-red-800/30',
+          icon: 'text-red-600 dark:text-red-400'
+        };
       default:
         return {
           badge: 'bg-muted text-muted-foreground border-muted',
@@ -107,6 +117,10 @@ export const CoachCard: React.FC<CoachCardProps> = ({
         return Heart;
       case 'kai':
         return Brain;
+      case 'markus':
+        return Target;
+      case 'dr-vita':
+        return Heart;
       default:
         return Target;
     }
