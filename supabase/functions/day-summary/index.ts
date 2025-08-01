@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.205.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { DateTime } from "https://esm.sh/luxon@3.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -43,7 +44,7 @@ serve(async (req) => {
     /* ------------------------------------------------------------------ */
     /* 2. Daten einsammeln                                                */
     /* ------------------------------------------------------------------ */
-    const dayData = await collectDayData(supa, userId, date);
+    const dayData = await collectDayData(supa, userId, date, req);
     if (!hasRelevantData(dayData)) {
       console.log(`⏭️ Keine relevanten Daten für ${date}, überspringe`);
       return resp(200, { date, status: "skipped", reason: "no_data" });
@@ -75,7 +76,8 @@ serve(async (req) => {
     /* ------------------------------------------------------------------ */
     const credits = Math.ceil(tokensUsed / 750); // ~$0.01/token-block bei GPT-4.1
     
-    if (credits > 0) {
+    // Credit-Abzug nur bei erfolgreichem Summary
+    if (status === "success" && credits > 0) {
       try {
         await supa.rpc("deduct_credits", { p_user_id: userId, p_credits: credits });
         console.log(`💳 ${credits} Credits abgezogen für ${date}`);
@@ -180,12 +182,16 @@ const resp = (status: number, body: unknown) =>
 /* DATA COLLECTION - 1:1 aus der alten Function übernommen          */
 /* ================================================================== */
 
-async function collectDayData(supabase: any, userId: string, date: string) {
-  // 🕐 TIMEZONE FIX: Verwende UTC für korrekte Datenabfrage
-  const dayStart = `${date}T00:00:00.000Z`;
-  const dayEnd = `${date}T23:59:59.999Z`;
+async function collectDayData(supabase: any, userId: string, date: string, req?: Request) {
+  // 🕐 TIMEZONE HANDLING mit Luxon
+  const tz = req?.headers.get("x-user-tz") 
+    ?? (await supabase.from("profiles").select("timezone").eq("id", userId).maybeSingle()).data?.timezone
+    ?? "Europe/Berlin"; // Fallback
+  
+  const dayStart = DateTime.fromISO(date, { zone: tz }).startOf("day").toISO();
+  const dayEnd = DateTime.fromISO(date, { zone: tz }).endOf("day").toISO();
 
-  console.log(`📅 Collecting data for ${date} (${dayStart} - ${dayEnd})`);
+  console.log(`📅 Collecting data for ${date} in ${tz} (${dayStart} - ${dayEnd})`);
 
   const [
     mealsResult,
