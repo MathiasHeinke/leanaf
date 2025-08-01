@@ -110,17 +110,17 @@ export const CollapsibleCoachHeader = ({
         <button
           onClick={toggleCollapse}
           className={`
-            absolute left-1/2 -translate-x-1/2 -bottom-4
-            w-8 h-8 rounded-full
+            absolute left-1/2 -translate-x-1/2 -bottom-3
+            w-6 h-6 rounded-full
             backdrop-blur-md bg-background/70 border border-border/20
             shadow-lg
             flex items-center justify-center
             transition-all duration-300 ease-out
-            hover-scale z-50
+            hover-scale z-[60]
           `}
           aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
         >
-          <ChevronDown size={18} className={`text-foreground transition-transform duration-300 ${collapsed ? 'rotate-180' : 'rotate-0'}`} />
+          <ChevronDown size={14} className={`text-foreground transition-transform duration-300 ${collapsed ? 'rotate-0' : 'rotate-180'}`} />
         </button>
       </header>
     </>
