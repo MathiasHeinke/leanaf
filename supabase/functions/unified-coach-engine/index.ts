@@ -390,6 +390,14 @@ serve(async (req) => {
     const DISABLE_LIMITS = false; // ✅ Rate limits wieder aktiviert
     console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
     
+    // 🔍 DETAILED RATE LIMIT DEBUG LOGGING
+    console.log(`🔍 [${requestId}] RATE LIMIT CHECK DETAILS:`);
+    console.log(`   - DISABLE_LIMITS: ${DISABLE_LIMITS}`);
+    console.log(`   - isPremium: ${isPremium}`);
+    console.log(`   - subscriber?.subscribed: ${subscriber?.subscribed}`);
+    console.log(`   - subscriber?.subscription_tier: ${subscriber?.subscription_tier}`);
+    console.log(`   - Will run rate limit check: ${!DISABLE_LIMITS && !isPremium}`);
+    
     if (!DISABLE_LIMITS && !isPremium) {
       console.log(`🔍 [${requestId}] Running rate limit check for free user`);
       const { data: limitResult, error: limitError } = await supabase.rpc('check_ai_usage_limit', {
@@ -397,10 +405,18 @@ serve(async (req) => {
         p_feature_type: 'coach_chat'
       });
 
+      console.log(`📊 [${requestId}] Rate limit result:`, { limitResult, limitError });
+
       if (limitError) {
         console.error(`❌ [${requestId}] Error checking usage limit:`, limitError);
       } else if (!limitResult?.can_use) {
         console.log(`🚫 [${requestId}] Rate limit reached for free user`);
+        console.log(`📊 [${requestId}] Usage details:`, {
+          daily_count: limitResult.daily_count,
+          monthly_count: limitResult.monthly_count,
+          daily_limit: limitResult.daily_limit,
+          monthly_limit: limitResult.monthly_limit
+        });
         return new Response(JSON.stringify({
           error: 'USAGE_LIMIT_REACHED',
           message: 'Tageslimit erreicht. Upgrade auf Premium für unbegrenzte Nutzung.',
@@ -414,11 +430,18 @@ serve(async (req) => {
           status: 429, 
           headers: corsHeaders 
         });
+      } else {
+        console.log(`✅ [${requestId}] Rate limit check passed for free user`);
+        console.log(`📊 [${requestId}] Remaining usage:`, {
+          daily_remaining: limitResult.daily_remaining,
+          monthly_remaining: limitResult.monthly_remaining
+        });
       }
     } else if (DISABLE_LIMITS) {
       console.log(`⚠️ [${requestId}] Rate limiting DISABLED by environment flag`);
     } else {
       console.log(`✅ [${requestId}] Premium user - skipping rate limit check`);
+      console.log(`👑 [${requestId}] Premium benefits: Unlimited coach conversations`);
     }
 
     // ✅ Redundanter Rate-Limit-Check entfernt - Premium-Bypass ist bereits weiter oben implementiert
