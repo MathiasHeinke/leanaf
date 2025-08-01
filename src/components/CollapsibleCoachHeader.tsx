@@ -106,12 +106,12 @@ export const CollapsibleCoachHeader = ({
         <button
           onClick={toggleCollapse}
           className={`
-            absolute left-1/2 -translate-x-1/2 -bottom-4
+            absolute left-1/2 -translate-x-1/2 bottom-[-14px]
             w-8 h-8 rounded-full
-            glass-bg shadow-lg border border-border/20
+            glass-bg shadow-lg
             flex items-center justify-center
             transition-transform duration-300 ease-out
-            hover-scale z-50
+            hover-scale
             ${collapsed ? 'rotate-180' : 'rotate-0'}
           `}
           aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
