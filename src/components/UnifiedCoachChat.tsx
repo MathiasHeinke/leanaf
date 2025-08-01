@@ -911,7 +911,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     );
 
     return (
-      <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
+      <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50 overflow-hidden">
         {/* Global Header */}
         <GlobalHeader />
         
@@ -929,13 +929,17 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
         {/* Chat Content mit dynamischem Padding */}
         <div 
-          className="flex-1 min-h-0 px-4 transition-all duration-300 ease-out"
+          className="flex-1 min-h-0 overflow-hidden"
           style={{ 
-            paddingTop: bannerCollapsed ? '8px' : '0px',
-            pointerEvents: 'auto' 
+            paddingTop: bannerCollapsed ? '8px' : '0px'
           }}
         >
-          <div className="h-full overflow-y-auto space-y-2">
+          <div className="h-full overflow-y-auto px-4 py-2"
+               style={{ 
+                 overscrollBehavior: 'contain',
+                 touchAction: 'pan-y',
+                 userSelect: 'text'
+               }}>
             {/* Render all messages using the unified message renderer */}
             <div className="space-y-3 pb-4">
               {messages.map(message => renderMessage(message))}
