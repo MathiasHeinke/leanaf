@@ -367,40 +367,37 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }
 
       if (error) {
-        console.error('Coach chat error:', error);
+        const fullMsg = error.message ?? '';
+        const status = error.status ?? 0;
+
+        // 👉 Debug info für Dev/Power-User 
+        console.warn('Chat-Error Details:', { status, fullMsg, error });
+
+        let userMsg = 'Entschuldigung, es gab ein technisches Problem.';
         
-        // 1️⃣ Rate-Limit separat behandeln  
-        if (error.status === 429) {
-          const limitMsg = error.message || 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium!';
-          const limitMessage: UnifiedMessage = {
-            id: `usage-limit-${Date.now()}`,
-            role: 'assistant',
-            content: limitMsg,
-            created_at: new Date().toISOString(),
-            coach_personality: coach?.personality || 'motivierend',
-            images: [],
-            mode: mode
-          };
-          setMessages(prev => [...prev, limitMessage]);
-          setIsThinking(false);
-          return; // ⬅️ kein generischer Fallback!
+        if (status === 429) {
+          userMsg = 'Tageslimit erreicht – Upgrade nötig 🚀';
+        } else if (fullMsg.includes('context_length')) {
+          userMsg = 'Nachricht zu lang – bitte kürzer formulieren 🙏';
+        } else if (fullMsg.includes('OpenAI API error')) {
+          userMsg = 'KI-Service temporär nicht verfügbar – versuche es gleich nochmal.';
+        } else if (status >= 500) {
+          userMsg = 'Serverfehler – versuche es später erneut.';
+        } else if (status === 400) {
+          userMsg = 'Anfrage konnte nicht verarbeitet werden – bitte anders formulieren.';
         }
 
-        // 2️⃣ andere Fehler → alter Fallback
-        const fallbackResponse = hasImages 
-          ? "Entschuldigung, ich kann dein Bild gerade nicht analysieren. Versuche es bitte später nochmal."
-          : "Entschuldigung, ich kann gerade nicht antworten. Versuche es bitte später nochmal.";
-        
-        const fallbackMessage: UnifiedMessage = {
-          id: `fallback-${Date.now()}`,
+        const fallbackResponse: UnifiedMessage = {
+          id: `error-${Date.now()}`,
           role: 'assistant',
-          content: fallbackResponse,
+          content: userMsg,
           created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
+          coach_personality: coach?.personality || 'empathisch',
           images: [],
           mode: mode
         };
-        setMessages(prev => [...prev, fallbackMessage]);
+
+        setMessages(prev => [...prev, fallbackResponse]);
         setIsThinking(false);
         return;
       }
