@@ -386,6 +386,16 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         created_at: msg.created_at
       }));
 
+      // Debug logging for request verification
+      console.log('[DEBUG] will call:', hasImages ? 'unified-coach-engine (with images)' : 'unified-coach-engine');
+      console.log('[DEBUG] payload', {
+        userId: user.id,
+        message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
+        images: uploadedImages,
+        coach: coach?.id,
+        toolSelected: selectedTool
+      });
+
       // Use unified-coach-engine for all conversations (text + images)
       const response = await supabase.functions.invoke('unified-coach-engine', {
         body: {
@@ -509,12 +519,32 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         console.log('🔄 Clearing tool after card response');
         setSelectedTool(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Send error:', error);
+      
+      // Enhanced error handling based on diagnostic guide
+      let errorContent = 'Entschuldigung, ich konnte deine Nachricht nicht verarbeiten. Versuche es bitte nochmal.';
+      
+      if (error?.status === 429) {
+        if (error?.usage_limit_reached) {
+          errorContent = 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium 🚀';
+          toast.error('Tageslimit erreicht – hol dir Pro 🚀');
+        } else {
+          errorContent = 'Zu viele Anfragen. Warte kurz und versuche es nochmal.';
+          toast.error('Zu viele Anfragen – kurz warten');
+        }
+      } else if (error?.status === 404) {
+        errorContent = 'Service vorübergehend nicht verfügbar. Versuche es gleich nochmal.';
+        toast.error('Funktion nicht gefunden – neu deployen?');
+      } else if (error?.status >= 500) {
+        errorContent = 'Technisches Problem auf unserer Seite. Wir arbeiten daran!';
+        toast.error('Technisches Problem. Versuch es gleich nochmal.');
+      }
+      
       const errorMessage: UnifiedMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Entschuldigung, ich konnte deine Nachricht nicht verarbeiten. Versuche es bitte nochmal.',
+        content: errorContent,
         created_at: new Date().toISOString(),
         coach_personality: coach?.personality || 'motivierend',
         images: [],

@@ -140,6 +140,18 @@ serve(async (req) => {
     if (!userId) {
       throw new Error('User ID is required');
     }
+    
+    // Check for empty message (common issue causing errors)
+    if (!message?.trim() && images.length === 0) {
+      return new Response(
+        JSON.stringify({
+          role: 'assistant',
+          content: 'Bitte schreibe eine Nachricht oder lade ein Bild hoch.',
+          error: 'empty_message'
+        }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     // Log security event with request tracing
     await supabase.rpc('log_security_event', {
@@ -301,12 +313,19 @@ serve(async (req) => {
     const selectedModel = chooseModel(images.length > 0, userTier);
     console.log(`🎯 [${requestId}] Selected model:`, selectedModel);
 
-    // OpenAI API Call mit verbessertem Error Handling
+    // OpenAI API Call mit verbessertem Error Handling und Token-Check
+    const payloadSize = JSON.stringify(messages).length;
     console.log(`📤 [${requestId}] Making OpenAI request:`, {
       model: selectedModel,
       messageCount: messages.length,
-      payloadSize: JSON.stringify(messages).length + ' chars'
+      payloadSizeChars: payloadSize,
+      estimatedTokens: Math.ceil(payloadSize / 4)
     });
+    
+    // Check for potential token overflow before sending
+    if (payloadSize > 32000) { // ~8k tokens
+      console.warn(`⚠️ [${requestId}] Large payload detected: ${payloadSize} chars`);
+    }
 
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -330,21 +349,47 @@ serve(async (req) => {
       console.error(`❌ [${requestId}] OpenAI API error:`, {
         status: openAIResponse.status,
         statusText: openAIResponse.statusText,
-        body: errorText,
-        model: selectedModel
+        error: errorText
       });
       
-      // Spezifische Fehlermeldungen je nach Status Code
+      // Log detailed error for debugging
+      await supabase.rpc('log_security_event', {
+        p_user_id: userId,
+        p_action: 'openai_api_error',
+        p_resource_type: 'api_call',
+        p_metadata: {
+          request_id: requestId,
+          status: openAIResponse.status,
+          error: errorText,
+          model: selectedModel
+        }
+      });
+      
+      // Enhanced error messages based on status codes
       let userMessage = 'Entschuldigung, ich kann gerade nicht antworten. Bitte versuche es gleich nochmal! 🤖';
-      if (openAIResponse.status === 404) {
-        userMessage = 'Technisches Problem mit dem AI-Modell. Unser Team wird benachrichtigt! 🔧';
+      if (openAIResponse.status === 400) {
+        if (errorText.includes('context_length_exceeded')) {
+          userMessage = 'Deine Anfrage ist zu komplex. Versuche es mit einer kürzeren Nachricht! 📝';
+        } else {
+          userMessage = 'Problem beim Verarbeiten deiner Anfrage. Versuche es nochmal! 🔄';
+        }
+      } else if (openAIResponse.status === 404) {
+        userMessage = 'AI-Modell vorübergehend nicht verfügbar. Unser Team wird benachrichtigt! 🔧';
       } else if (openAIResponse.status === 429) {
         userMessage = 'Zu viele Anfragen - bitte warte einen Moment und versuche es dann nochmal! ⏰';
       } else if (openAIResponse.status === 401 || openAIResponse.status === 403) {
         userMessage = 'Authentifizierungsproblem - unser Team prüft das! 🔐';
       }
       
-      throw new Error(`OpenAI API ${openAIResponse.status}: ${userMessage}`);
+      return new Response(
+        JSON.stringify({
+          role: 'assistant',
+          content: userMessage,
+          error: 'openai_api_error',
+          status: openAIResponse.status
+        }),
+        { status: openAIResponse.status, headers: corsHeaders }
+      );
     }
 
     const openAIData = await openAIResponse.json();
