@@ -66,7 +66,7 @@ serve(async (req) => {
     
     if (!skipTextGeneration) {
       try {
-        const result = await generateSummary(kpis, dayData, 'xxl'); // 519 Wörter ≈ 750 T
+        const result = await generateSummary(kpis, dayData, structuredSummary, 'xxl'); // 519 Wörter ≈ 750 T
         xxl = result.summary;
         xl = xxl.split(/\s+/).slice(0, 240).join(' ');
         std = xxl.split(/\s+/).slice(0, 120).join(' ');
@@ -945,7 +945,7 @@ function hasRelevantData(dayData: any): boolean {
 /* OPENAI SUMMARY GENERATION + FALLBACK                              */
 /* ================================================================== */
 
-async function generateSummary(kpis: any, dayData: any, summaryType: 'standard' | 'xl' | 'xxl') {
+async function generateSummary(kpis: any, dayData: any, structuredSummary: any, summaryType: 'standard' | 'xl' | 'xxl') {
   const userName = dayData.profile?.preferred_name || 'Athlet';
 
   /**  ➜  80 − 90 Token system prompt
@@ -971,10 +971,38 @@ Direkte Ansprache: **${userName}**, wissenschaftlich & motivierend.
 Keine Einleitung, keine Abschiedsfloskeln.
 `;
 
+  // ENHANCED USER PROMPT: Include structured data details
   const userPrompt = JSON.stringify({
+    // Original KPIs
     ...kpis,
     date: dayData.date,
     flags: kpis.dailyFlags,
+    
+    // NEW: Detailed structured data
+    profile_data: {
+      name: structuredSummary.user_profile?.name,
+      age: structuredSummary.user_profile?.age,
+      goal: structuredSummary.user_profile?.goal,
+      target_weight: structuredSummary.user_profile?.target_weight
+    },
+    
+    activity_details: {
+      steps: structuredSummary.activity?.steps_count,
+      distance_km: structuredSummary.activity?.distance_km,
+      active_minutes: structuredSummary.activity?.active_minutes,
+      quick_workout_active: structuredSummary.activity?.quick_workout_active
+    },
+    
+    coaching_context: {
+      topics: structuredSummary.coaching?.topics,
+      sentiment: structuredSummary.coaching?.sentiment,
+      motivation_level: structuredSummary.coaching?.motivation_level
+    },
+    
+    supplement_details: {
+      compliance_percent: structuredSummary.supplements?.compliance_pct,
+      missed_count: structuredSummary.supplements?.missed_count
+    }
   });
 
   try {
