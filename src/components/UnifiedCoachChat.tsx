@@ -161,6 +161,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     
     const init = async () => {
       try {
+        // Show thinking indicator immediately
+        setIsThinking(true);
         setIsLoading(true);
         
         // 1. Erst versuchen, heutige Chat-History zu laden
@@ -191,45 +193,95 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
           console.log(`📜 Loaded ${loadedMessages.length} existing messages for today`);
           setMessages(loadedMessages);
+          setIsThinking(false);
           setIsLoading(false);
           setChatInitialized(true);
           return; // Beende hier - keine neue Begrüßung nötig
         }
 
-        // 2. Nur wenn keine Nachrichten für heute existieren: AI-Begrüßung generieren
-        console.log('🎯 No existing chat found, generating AI greeting...');
+        // 2. Nur wenn keine Nachrichten für heute existieren: Begrüßung generieren
+        console.log('🎯 No existing chat found, generating greeting...');
         
-        const { data: greetingData, error: greetingError } = await supabase.functions.invoke('generate-intelligent-greeting', {
-          body: {
-            userId: user.id,
-            coachId: coach?.id || 'lucy',
-            isFirstConversation: false,
-            contextData: {
-              calLeft: tokens.calLeft,
-              timeOfDay: tokens.timeOfDay,
-              lastWorkout: tokens.lastWorkout,
-              sleepHours: tokens.sleepHours
+        // Start with fast fallback, then optionally enhance
+        const getRandomFallback = (coachId: string) => {
+          const fallbackGreetings = {
+            'lucy': [
+              `Hey! 💗 Bereit?`,
+              `Hallo! ✨ Loslegen?`,
+              `Hi! 🌟 Auf geht's!`
+            ],
+            'sascha': [
+              `Moin! 💪 Los!`,
+              `Hey! ⚡ Durchstarten?`,
+              `Servus! 🔥 Bereit?`
+            ],
+            'kai': [
+              `Hey! ⚡ Energie da?`,
+              `Moin! 🚀 Los geht's!`,
+              `Hi! 💫 Ready?`
+            ],
+            'markus': [
+              `Hajo! 🔥 Ballern?`,
+              `Servus! 💪 Schaffe?`,
+              `Hey Jung! ⚡ Los!`
+            ],
+            'dr_vita': [
+              `Hallo! 🌸 Wie geht's?`,
+              `Guten Tag! 💚 Bereit?`,
+              `Hallo! 🌿 Alles gut?`
+            ],
+            'sophia': [
+              `Namaste! 🌿 Ready?`,
+              `Hallo! 🧘‍♀️ Los?`,
+              `Hi! ✨ Achtsam starten?`
+            ]
+          };
+          const options = fallbackGreetings[coachId] || [`Hallo! 👋`];
+          return options[Math.floor(Math.random() * options.length)];
+        };
+
+        let enhancedGreeting = getRandomFallback(coach?.id || 'lucy');
+        
+        // Try to get AI greeting with short timeout (parallel, non-blocking)
+        const tryAIGreeting = async () => {
+          try {
+            const response = await Promise.race([
+              supabase.functions.invoke('generate-intelligent-greeting', {
+                body: {
+                  userId: user.id,
+                  coachId: coach?.id || 'lucy',
+                  isFirstConversation: false,
+                  contextData: {
+                    calLeft: tokens.calLeft,
+                    timeOfDay: tokens.timeOfDay,
+                    lastWorkout: tokens.lastWorkout,
+                    sleepHours: tokens.sleepHours
+                  }
+                }
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+            ]) as any;
+            
+            if (!response.error && response.data?.greeting) {
+              return response.data.greeting;
             }
+          } catch (error) {
+            console.warn('AI greeting failed/timeout, using fallback');
+          }
+          return null;
+        };
+
+        // Use fallback immediately, try AI enhancement in background
+        tryAIGreeting().then(aiGreeting => {
+          if (aiGreeting && aiGreeting !== enhancedGreeting) {
+            // Update greeting if AI version is different and better
+            setMessages(prev => prev.map(msg => 
+              msg.id.startsWith('welcome-') 
+                ? { ...msg, content: aiGreeting }
+                : msg
+            ));
           }
         });
-
-        let enhancedGreeting = 'Hallo! 👋';
-        
-        if (greetingError) {
-          console.warn('AI greeting failed, using fallback:', greetingError);
-          const fallbackGreetings = {
-            'lucy': `Hey! 💗 Bereit für einen tollen Tag?`,
-            'sascha': `Moin! Zeit durchzustarten! 💪`,
-            'kai': `Hey! ⚡ Wie ist deine Energie heute?`,
-            'markus': `Hajo! Bock zu schaffe? 🔥`,
-            'dr_vita': `Hallo! 🌸 Wie ist Ihr Wohlbefinden?`,
-            'sophia': `Namaste! 🌿 Bereit für achtsames Wachstum?`
-          };
-          enhancedGreeting = fallbackGreetings[coach?.id || 'lucy'] || `Hallo! 👋`;
-        } else {
-          enhancedGreeting = greetingData.greeting;
-          console.log('✨ AI greeting generated:', enhancedGreeting);
-        }
         
         const welcomeMsg: UnifiedMessage = {
           id: `welcome-${Date.now()}`,
@@ -255,6 +307,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         });
         
         setMessages([welcomeMsg]);
+        setIsThinking(false);
         setIsLoading(false);
         setChatInitialized(true);
       } catch (error) {
@@ -269,6 +322,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           mode: mode
         };
         setMessages([fallbackMsg]);
+        setIsThinking(false);
         setIsLoading(false);
         setChatInitialized(true);
       }
