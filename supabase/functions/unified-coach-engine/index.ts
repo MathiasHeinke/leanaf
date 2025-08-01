@@ -367,6 +367,9 @@ serve(async (req) => {
     const isPremium = subscriber?.subscribed && 
       ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
     
+    // ✅ Central userTier definition - always available regardless of DISABLE_LIMITS
+    const userTier = isPremium ? 'premium' : 'free';
+    
     console.log(`👑 [${requestId}] User tier: ${subscriber?.subscription_tier || 'Free'}, Premium: ${isPremium}`);
     console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
     
