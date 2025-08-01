@@ -51,16 +51,16 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md text-left transition-all duration-200 hover:scale-[1.02] group ${
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left transition-all duration-200 hover:scale-[1.02] group ${
                 selectedTool === tool.id
                   ? 'bg-primary text-primary-foreground scale-[1.02]'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
+              <span className="text-sm">{tool.label}</span>
               <span className="transition-transform duration-300 group-hover:scale-110">
                 {tool.icon}
               </span>
-              {tool.label}
             </button>
           ))}
           {selectedTool && (

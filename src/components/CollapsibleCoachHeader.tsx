@@ -18,7 +18,7 @@ export const CollapsibleCoachHeader = ({
   onHistoryClick, 
   onDeleteChat 
 }: CollapsibleCoachHeaderProps) => {
-  const [collapsed, setCollapsed] = useState(false); // Always expanded by default
+  const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
 
   const handleBack = () => {
@@ -37,13 +37,14 @@ export const CollapsibleCoachHeader = ({
         className={`
           fixed left-0 right-0 h-16 px-4 
           flex items-center gap-3 
-          glass-bg
-          shadow-md border-b border-border/20
+          backdrop-blur-md bg-background/70 border-b border-border/20
+          shadow-md
           transition-transform duration-300 ease-out z-45
-          translate-y-0
+          ${collapsed ? '-translate-y-full' : 'translate-y-0'}
         `}
         style={{ 
-          top: '61px'
+          top: '61px',
+          willChange: 'transform'
         } as React.CSSProperties}
       >
         <Button 
@@ -107,15 +108,15 @@ export const CollapsibleCoachHeader = ({
           className={`
             absolute left-1/2 -translate-x-1/2 -bottom-4
             w-8 h-8 rounded-full
-            glass-bg shadow-lg border border-border/20
+            backdrop-blur-md bg-background/70 border border-border/20
+            shadow-lg
             flex items-center justify-center
             transition-all duration-300 ease-out
             hover-scale z-50
-            ${collapsed ? 'rotate-180' : 'rotate-0'}
           `}
           aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
         >
-          <ChevronDown size={18} className="text-foreground" />
+          <ChevronDown size={18} className={`text-foreground transition-transform duration-300 ${collapsed ? 'rotate-180' : 'rotate-0'}`} />
         </button>
       </header>
 
