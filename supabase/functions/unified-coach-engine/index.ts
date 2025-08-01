@@ -326,6 +326,23 @@ serve(async (req) => {
       throw new Error('User ID is required');
     }
     
+    // ============================================================================
+    // SUBSCRIPTION LOOKUP - Define userTier at function scope level
+    // ============================================================================
+    const { data: subscriber, error: subErr } = await supabase
+      .from('subscribers')
+      .select('subscribed, subscription_tier, subscription_end')
+      .eq('user_id', userId)
+      .single();
+
+    const isPremium = subscriber?.subscribed && 
+      ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
+    
+    // ✅ CRITICAL: Define userTier at function scope level for global access
+    const userTier = isPremium ? 'premium' : 'free';
+    
+    console.log(`👑 [${requestId}] User tier: ${subscriber?.subscription_tier || 'Free'}, Premium: ${isPremium}, userTier: ${userTier}`);
+    
     // Check for empty message (common issue causing errors)
     if (!message?.trim() && images.length === 0) {
       return new Response(
@@ -355,22 +372,6 @@ serve(async (req) => {
 
     console.log(`🔒 [${requestId}] Security event logged`);
 
-    // ──────────────────────────────────────────────────────────────
-    // 1. Subscription-Lookup & Premium-Bypass für Rate-Limits
-    // ──────────────────────────────────────────────────────────────
-    const { data: subscriber, error: subErr } = await supabase
-      .from('subscribers')
-      .select('subscribed, subscription_tier, subscription_end')
-      .eq('user_id', userId)
-      .single();
-
-    const isPremium = subscriber?.subscribed && 
-      ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
-    
-    // ✅ Central userTier definition - always available regardless of DISABLE_LIMITS
-    const userTier = isPremium ? 'premium' : 'free';
-    
-    console.log(`👑 [${requestId}] User tier: ${subscriber?.subscription_tier || 'Free'}, Premium: ${isPremium}`);
     console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
     
     // ──────────────────────────────────────────────────────────────
