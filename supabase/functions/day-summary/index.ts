@@ -199,13 +199,16 @@ async function collectDayData(supabase: any, userId: string, date: string) {
     coachConversationsResult,
     profileResult
   ] = await Promise.all([
-    // 1. 🍽️ ERNÄHRUNG - KORRIGIERTE SPALTEN
+    // 1. 🍽️ ERNÄHRUNG - ERWEITERTE SPALTEN
     supabase
       .from('meals')
-      .select('id, text, calories, protein, carbs, fats, meal_type, created_at')
+      .select(`
+        id, text, calories, protein, carbs, fats,
+        meal_type, quality_score, images, consumption_percentage,
+        created_at
+      `)
       .eq('user_id', userId)
-      .gte('created_at', dayStart)
-      .lte('created_at', dayEnd)
+      .or(`and(created_at.gte.${dayStart},created_at.lte.${dayEnd}), date.eq.${date}`)
       .order('created_at', { ascending: true })
       .then((result: any) => {
         console.log(`🍽️ Meals query result:`, result.error || `${result.data?.length} meals found`);
@@ -239,10 +242,13 @@ async function collectDayData(supabase: any, userId: string, date: string) {
         return result;
       }),
     
-    // 4. ⚖️ GEWICHT & KÖRPERFETT
+    // 4. ⚖️ GEWICHT & KÖRPERFETT - ALLE FELDER
     supabase
       .from('weight_history')
-      .select('weight, body_fat_percentage, muscle_mass_percentage, visceral_fat, body_water_percentage, created_at')
+      .select(`
+        weight, body_fat_percentage, muscle_mass_percentage,
+        visceral_fat, body_water_percentage, created_at
+      `)
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at', { ascending: false })
@@ -252,10 +258,12 @@ async function collectDayData(supabase: any, userId: string, date: string) {
         return result;
       }),
     
-    // 5. 📏 KÖRPERMASSE
+    // 5. 📏 KÖRPERMASSE - MIT NOTIZEN
     supabase
       .from('body_measurements')
-      .select('chest, waist, belly, hips, thigh, arms, neck, created_at')
+      .select(`
+        chest, waist, belly, hips, thigh, arms, neck, notes, created_at
+      `)
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at', { ascending: false })
@@ -265,11 +273,11 @@ async function collectDayData(supabase: any, userId: string, date: string) {
         return result;
       }),
     
-    // 6. 💊 SUPPLEMENTE
+    // 6. 💊 SUPPLEMENTE - DOSAGE + TIMING
     supabase
       .from('supplement_intake_log')
       .select(`
-        supplement_id, dosage, taken, timing, created_at,
+        id, dosage, timing, taken, created_at,
         food_supplements!inner(name, category, dosage_unit)
       `)
       .eq('user_id', userId)
@@ -279,10 +287,15 @@ async function collectDayData(supabase: any, userId: string, date: string) {
         return result;
       }),
     
-    // 7. 😴 SCHLAF-TRACKING - KORRIGIERTE SPALTEN
+    // 7. 😴 SCHLAF-TRACKING - ERWEITERTE FELDER
     supabase
       .from('sleep_tracking')
-      .select('sleep_hours, sleep_quality, sleep_interruptions, morning_libido, motivation_level, created_at')
+      .select(`
+        sleep_hours, sleep_quality, sleep_interruptions,
+        bedtime, wake_time,
+        morning_libido, motivation_level,
+        created_at
+      `)
       .eq('user_id', userId)
       .eq('date', date)
       .order('created_at', { ascending: false })
@@ -292,15 +305,15 @@ async function collectDayData(supabase: any, userId: string, date: string) {
         return result;
       }),
     
-    // 8. 💧 HYDRATION-TRACKING - KORRIGIERTE SPALTEN
+    // 8. 💧 HYDRATION-TRACKING - CONSUMED_AT + BESSERES JOIN
     supabase
       .from('user_fluids')
       .select(`
-        amount_ml, consumed_at,
+        id, custom_name, amount_ml, consumed_at, notes,
         fluid_database!inner(name, category, calories_per_100ml, caffeine_mg_per_100ml, alcohol_percentage)
       `)
       .eq('user_id', userId)
-      .eq('date', date)
+      .or(`and(consumed_at.gte.${dayStart},consumed_at.lte.${dayEnd}), date.eq.${date}`)
       .order('consumed_at', { ascending: true })
       .then((result: any) => {
         console.log(`💧 Fluids query result:`, result.error || `${result.data?.length} entries found`);
@@ -365,7 +378,8 @@ function buildStructuredSummary(date: string, kpis: any, rawData: any) {
         carbs_g: safe(kpis.totalCarbs, 0),
         fat_g: safe(kpis.totalFats, 0),
         fiber_g: safe(kpis.totalFiber, 0),
-        sugar_g: safe(kpis.totalSugar, 0)
+        sugar_g: safe(kpis.totalSugar, 0),
+        drink_kcal: safe(kpis.totalDrinkCalories, 0)
       },
       macro_pct: safe(kpis.macroDistribution, {}),
       top_foods: safe(kpis.topFoods, []),
@@ -502,17 +516,20 @@ function calculateKPIs(dayData: any) {
       };
     }
 
-    // Top Lebensmittel - KORRIGIERTE SPALTE
+    // Top Lebensmittel - MIT QUALITY SCORE
     const foodCounts: any = {};
     dayData.meals.forEach((meal: any) => {
-      const food = meal.text || 'Unbekannt';
-      foodCounts[food] = (foodCounts[food] || 0) + 1;
+      const foodKey = `${meal.text || 'Unbekannt'}|${meal.quality_score ?? 0}`;
+      foodCounts[foodKey] = (foodCounts[foodKey] || 0) + 1;
     });
     
     kpis.topFoods = Object.entries(foodCounts)
       .sort(([,a]: any, [,b]: any) => b - a)
       .slice(0, 5)
-      .map(([food, count]) => ({ food, count }));
+      .map(([key, count]) => {
+        const [food, score] = key.split('|');
+        return { food, score: Number(score), count };
+      });
       
     kpis.mealTiming = Object.entries(mealTimeDistribution)
       .map(([hour, count]) => ({ hour: parseInt(hour), meals: count }))
@@ -572,12 +589,15 @@ function calculateKPIs(dayData: any) {
     kpis.bodyMeasurements = dayData.bodyMeasurements;
   }
 
-  // 4. 😴 RECOVERY & SCHLAF - KORRIGIERTE SPALTEN
+  // 4. 😴 RECOVERY & SCHLAF - ERWEITERTE FELDER
   if (dayData.sleep) {
     kpis.sleepScore = null; // Nicht verfügbar in DB
     kpis.sleepHours = dayData.sleep.sleep_hours;
     kpis.sleepQuality = dayData.sleep.sleep_quality;
     kpis.libidoLevel = dayData.sleep.morning_libido;
+    kpis.motivationLevel = dayData.sleep.motivation_level ?? 'unknown';
+    kpis.bedTime = dayData.sleep.bedtime;
+    kpis.wakeTime = dayData.sleep.wake_time;
     kpis.recoveryFeeling = null; // Nicht verfügbar in DB
     
     kpis.recoveryMetrics = {
