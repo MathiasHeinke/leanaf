@@ -369,12 +369,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       if (error) {
         console.error('Coach chat error:', error);
         
-        // 1️⃣ Usage-Limit sauber abfangen
-        if (error.status === 429 && error.details?.usage_limit_reached) {
+        // 1️⃣ Rate-Limit separat behandeln  
+        if (error.status === 429) {
+          const limitMsg = error.message || 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium!';
           const limitMessage: UnifiedMessage = {
             id: `usage-limit-${Date.now()}`,
             role: 'assistant',
-            content: `⚠️ Du hast dein tägliches Chat-Limit erreicht (${error.details.daily_remaining || 0} Nachrichten übrig). Upgrade auf 👑 **Premium** für unbegrenztes Coaching.`,
+            content: limitMsg,
             created_at: new Date().toISOString(),
             coach_personality: coach?.personality || 'motivierend',
             images: [],
