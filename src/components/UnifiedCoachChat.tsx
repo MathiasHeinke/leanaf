@@ -130,13 +130,12 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [chatInitialized, setChatInitialized] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<string | null>('open_chat');
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState(false);
   const [hasFiles, setHasFiles] = useState(false);
   const [showToolBadge, setShowToolBadge] = useState(false);
   const [toolBadgeText, setToolBadgeText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [bannerOpen, setBannerOpen] = useState(true);
   
   
   // ============= REFS =============
@@ -918,12 +917,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         }}
         onHistoryClick={handleHistoryClick}
         onDeleteChat={handleDeleteChat}
-        onOpenChange={setBannerOpen}
       />
     );
 
     return (
-      <ChatLayout coachBanner={coachBanner} chatInput={chatInput} bannerOpen={bannerOpen}>
+      <ChatLayout coachBanner={coachBanner} chatInput={chatInput}>
           
           {/* Render all messages using the unified message renderer */}
           <ScrollArea className="flex-1 px-4">

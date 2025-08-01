@@ -5,23 +5,24 @@ interface ChatLayoutProps {
   children: ReactNode;
   coachBanner?: ReactNode;
   chatInput?: ReactNode;
-  bannerOpen?: boolean;
 }
 
-export const ChatLayout = ({ children, coachBanner, chatInput, bannerOpen = true }: ChatLayoutProps) => {
-  const topPadding = bannerOpen ? 'pt-[56px]' : 'pt-0';
-  
+export const ChatLayout = ({ children, coachBanner, chatInput }: ChatLayoutProps) => {
   return (
     <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
       
       {/* Header */}
       <GlobalHeader />
 
-      {/* Coach-Banner - Rendered outside of flex layout */}
-      {coachBanner}
+      {/* Coach-Banner */}
+      {coachBanner && (
+        <div className="flex-shrink-0 px-4 pt-1 pb-2">
+          {coachBanner}
+        </div>
+      )}
 
       {/* Scrollbarer Chat */}
-      <div className={`flex-1 min-h-0 px-4 transition-all duration-300 ${topPadding}`}>
+      <div className="flex-1 min-h-0 px-4">
         <div className="h-full overflow-y-auto space-y-2" style={{ pointerEvents: 'auto' }}>
           {children}
         </div>

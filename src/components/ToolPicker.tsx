@@ -16,11 +16,11 @@ interface ToolPickerProps {
 }
 
 const tools: Tool[] = [
-  { id: 'trainingsplan', label: 'Trainingsplan', icon: <Dumbbell className="w-5 h-5 stroke-[1.5]" /> },
-  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-5 h-5 stroke-[1.5]" /> },
-  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-5 h-5 stroke-[1.5]" /> },
-  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-5 h-5 stroke-[1.5]" /> },
-  { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-5 h-5 stroke-[1.5]" /> },
+  { id: 'trainingsplan', label: 'Trainingsplan', icon: <Dumbbell className="w-4 h-4" /> },
+  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-4 h-4" /> },
+  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-4 h-4" /> },
+  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-4 h-4" /> },
+  { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-4 h-4" /> },
 ];
 
 export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolPickerProps) => {
@@ -38,11 +38,11 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={`icon-btn group transition-all duration-300 ${selectedTool && selectedTool !== 'open_chat' ? 'bg-primary text-primary-foreground scale-105' : ''}`}
+          className={`icon-btn group transition-all duration-300 ${selectedTool ? 'bg-primary text-primary-foreground scale-105' : ''}`}
           aria-label="Tools & Anhänge"
           id="toolBtn"
         >
-          <Wrench className={`w-6 h-6 transition-all duration-300 ${selectedTool && selectedTool !== 'open_chat' ? 'rotate-12' : 'group-hover:rotate-12'} group-hover:scale-110`} />
+          <Wrench className={`w-6 h-6 transition-all duration-300 ${selectedTool ? 'rotate-12' : 'group-hover:rotate-12'} group-hover:scale-110`} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-1" align="start" side="top">
@@ -51,19 +51,19 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id)}
-              className={`w-full flex flex-row-reverse items-center gap-3 py-3 px-4 text-[17px] font-medium text-left transition-all duration-200 hover:scale-[1.02] group ${
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left transition-all duration-200 hover:scale-[1.02] group ${
                 selectedTool === tool.id
                   ? 'bg-primary text-primary-foreground scale-[1.02]'
-                  : 'text-neutral-900 dark:text-neutral-100 hover:bg-neutral-100/70 dark:hover:bg-neutral-800'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
+              <span className="text-sm">{tool.label}</span>
               <span className="transition-transform duration-300 group-hover:scale-110">
                 {tool.icon}
               </span>
-              {tool.label}
             </button>
           ))}
-          {selectedTool && selectedTool !== 'open_chat' && (
+          {selectedTool && (
             <>
               <div className="h-px bg-border my-1" />
               <button
