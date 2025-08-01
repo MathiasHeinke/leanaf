@@ -72,6 +72,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ============================================================================
+  // PHASE A: TRACING & OBSERVABILITY
+  // ============================================================================
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+  
+  console.log(`🚀 [${requestId}] Unified Coach Engine started`);
+
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
@@ -88,33 +96,39 @@ serve(async (req) => {
       analysisType, 
       coachPersonality = 'lucy',
       conversationHistory = [],
-      toolContext = null
+      toolContext = null,
+      preferredLocale = 'de'
     } = await req.json();
 
-    console.log('🚀 Unified Coach Engine started:', { 
+    console.log(`🎯 [${requestId}] Request context:`, { 
       userId, 
       messageLength: message?.length, 
       imagesCount: images.length,
       toolContext: !!toolContext,
-      coachPersonality
+      coachPersonality,
+      preferredLocale
     });
 
     if (!userId) {
       throw new Error('User ID is required');
     }
 
-    // Log security event
+    // Log security event with request tracing
     await supabase.rpc('log_security_event', {
       p_user_id: userId,
       p_action: 'unified_coach_chat',
       p_resource_type: 'chat',
       p_metadata: { 
+        request_id: requestId,
         message_length: message?.length || 0,
         images_count: images.length,
         has_tool_context: !!toolContext,
-        coach_personality: coachPersonality
+        coach_personality: coachPersonality,
+        preferred_locale: preferredLocale
       }
     });
+
+    console.log(`🔒 [${requestId}] Security event logged`);
 
     // Check subscription and usage limits
     const { data: limitCheck, error: limitError } = await supabase.rpc('check_ai_usage_limit', {
@@ -166,9 +180,14 @@ serve(async (req) => {
       console.log('🔄 Prompt version mismatch detected, creating handover');
     }
 
-    // Erstelle erweiterten System-Prompt mit Versionierung
-    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext);
-    console.log('💭 XL System prompt created, estimated tokens:', estimateTokenCount(systemPrompt));
+    // ============================================================================
+    // PHASE C: I18N-FOUNDATION
+    // ============================================================================
+    const isNonGerman = preferredLocale && preferredLocale !== 'de';
+    
+    // Erstelle erweiterten System-Prompt mit Versionierung und i18n
+    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext, isNonGerman);
+    console.log(`💭 [${requestId}] XL System prompt created, tokens:`, estimateTokenCount(systemPrompt), 'i18n:', isNonGerman);
 
     // Bereite Messages für OpenAI vor
     const messages = [
@@ -212,7 +231,7 @@ serve(async (req) => {
       });
     }
 
-    console.log('🤖 Sending request to OpenAI with', messages.length, 'messages');
+    console.log(`🤖 [${requestId}] Sending request to OpenAI with`, messages.length, 'messages');
 
     // ============================================================================
     // SMART MODEL SELECTION: Multi-Modal Quota Management
@@ -231,7 +250,7 @@ serve(async (req) => {
     };
 
     const selectedModel = chooseModel(images.length > 0, 'free'); // TODO: echte Tier-Erkennung
-    console.log('🎯 Selected model:', selectedModel);
+    console.log(`🎯 [${requestId}] Selected model:`, selectedModel);
 
     // OpenAI API Call
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -255,8 +274,9 @@ serve(async (req) => {
     const openAIData = await openAIResponse.json();
     const assistantReply = openAIData.choices[0].message.content;
 
-    console.log('✅ OpenAI response received, length:', assistantReply.length);
-    console.log('🔢 Token usage:', openAIData.usage);
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ [${requestId}] OpenAI response received, length:`, assistantReply.length, 'time:', processingTime + 'ms');
+    console.log(`🔢 [${requestId}] Token usage:`, openAIData.usage);
 
     // Speichere Conversation in Datenbank
     await saveConversation(supabase, userId, message, assistantReply, coachPersonality, images, toolContext);
@@ -264,20 +284,23 @@ serve(async (req) => {
     // Update Memory nach dem Chat
     await updateMemoryAfterChat(supabase, userId, message, assistantReply);
 
-    console.log('💾 Conversation saved and memory updated');
+    console.log(`💾 [${requestId}] Conversation saved and memory updated`);
 
     // Return response mit erweiterten Meta-Informationen
     return new Response(JSON.stringify({
       role: 'assistant',
       content: assistantReply,
       usage: openAIData.usage,
-      context_info: {
+        context_info: {
+        request_id: requestId,
         prompt_version: PROMPT_VERSION,
         xl_summaries_used: smartContext.xlSummaries?.length || 0,
         relevant_data_types: relevantDataTypes,
         estimated_tokens: estimateTokenCount(systemPrompt),
         model_used: selectedModel,
-        handover_created: shouldHandover
+        handover_created: shouldHandover,
+        processing_time_ms: Date.now() - startTime,
+        i18n_applied: isNonGerman
       },
       meta: { 
         prompt_version: PROMPT_VERSION,
@@ -288,10 +311,13 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Unified Coach Engine error:', error);
+    const errorTime = Date.now() - startTime;
+    console.error(`❌ [${requestId}] Unified Coach Engine error after ${errorTime}ms:`, error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error', 
-      details: error.message 
+      details: error.message,
+      request_id: requestId,
+      processing_time_ms: errorTime
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -445,10 +471,17 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
   }
 }
 
-async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any) {
+async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false) {
   const coach = COACH_PERSONALITIES[coachPersonality] || COACH_PERSONALITIES.lucy;
   
   let prompt = coach.basePrompt + '\n\n';
+  
+  // ============================================================================
+  // PHASE C: I18N-GUARD - Internationalisierung
+  // ============================================================================
+  if (isNonGerman) {
+    prompt = `LANG:EN - Please respond in English unless specifically asked otherwise.\n\n` + prompt;
+  }
   
   // User Profile Section
   if (context.profile) {
