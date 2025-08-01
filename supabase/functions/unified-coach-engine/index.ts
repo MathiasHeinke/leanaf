@@ -187,9 +187,9 @@ async function handleFoto(images: string[], userId: string) {
 }
 
 // FALLBACK TOOLS für Lucy - wenn XL-Context fehlschlägt
-async function get_user_profile(userId: string) {
+async function get_user_profile(userId: string, supabaseClient: any) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -203,9 +203,9 @@ async function get_user_profile(userId: string) {
   }
 }
 
-async function get_daily_goals(userId: string) {
+async function get_daily_goals(userId: string, supabaseClient: any) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('daily_goals')
       .select('*')
       .eq('user_id', userId)
@@ -219,13 +219,13 @@ async function get_daily_goals(userId: string) {
   }
 }
 
-async function get_recent_meals(userId: string, days: number = 3) {
+async function get_recent_meals(userId: string, days: number = 3, supabaseClient: any) {
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split('T')[0];
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('meals')
       .select('*')
       .eq('user_id', userId)
@@ -241,13 +241,13 @@ async function get_recent_meals(userId: string, days: number = 3) {
   }
 }
 
-async function get_workout_sessions(userId: string, days: number = 7) {
+async function get_workout_sessions(userId: string, days: number = 7, supabaseClient: any) {
   try {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split('T')[0];
     
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('exercise_sessions')
       .select(`
         *,
@@ -268,9 +268,9 @@ async function get_workout_sessions(userId: string, days: number = 7) {
   }
 }
 
-async function get_weight_history(userId: string, entries: number = 10) {
+async function get_weight_history(userId: string, entries: number = 10, supabaseClient: any) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('weight_history')
       .select('*')
       .eq('user_id', userId)
@@ -297,27 +297,27 @@ const handlers = {
     return null;
   },
   // Neue Fallback-Tools
-  get_user_profile: async (args: any, userId: string) => {
-    const result = await get_user_profile(userId);
+  get_user_profile: async (args: any, userId: string, supabaseClient: any) => {
+    const result = await get_user_profile(userId, supabaseClient);
     return { success: true, data: result };
   },
-  get_daily_goals: async (args: any, userId: string) => {
-    const result = await get_daily_goals(userId);
+  get_daily_goals: async (args: any, userId: string, supabaseClient: any) => {
+    const result = await get_daily_goals(userId, supabaseClient);
     return { success: true, data: result };
   },
-  get_recent_meals: async (args: any, userId: string) => {
+  get_recent_meals: async (args: any, userId: string, supabaseClient: any) => {
     const days = args.days || 3;
-    const result = await get_recent_meals(userId, days);
+    const result = await get_recent_meals(userId, days, supabaseClient);
     return { success: true, data: result, count: result.length };
   },
-  get_workout_sessions: async (args: any, userId: string) => {
+  get_workout_sessions: async (args: any, userId: string, supabaseClient: any) => {
     const days = args.days || 7;
-    const result = await get_workout_sessions(userId, days);
+    const result = await get_workout_sessions(userId, days, supabaseClient);
     return { success: true, data: result, count: result.length };
   },
-  get_weight_history: async (args: any, userId: string) => {
+  get_weight_history: async (args: any, userId: string, supabaseClient: any) => {
     const entries = args.entries || 10;
-    const result = await get_weight_history(userId, entries);
+    const result = await get_weight_history(userId, entries, supabaseClient);
     return { success: true, data: result, count: result.length };
   }
 };
@@ -867,7 +867,7 @@ serve(async (req) => {
         try {
           console.log(`⚡ [${requestId}] Executing tool:`, toolCall.function.name);
           const args = JSON.parse(toolCall.function.arguments || '{}');
-          const result = await handlers[toolCall.function.name](args, userId);
+          const result = await handlers[toolCall.function.name](args, userId, supabase);
           toolResults.push({
             tool_call_id: toolCall.id,
             role: "tool",
