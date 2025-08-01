@@ -401,10 +401,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         toolSelected: selectedTool
       });
 
-      // Feature Flag: Route to debug-direct-chat if needed
-      const targetFunction = import.meta.env.VITE_FORCE_DEBUG_CHAT === 'true'
-        ? 'debug-direct-chat'
-        : 'unified-coach-engine';
+      // Feature Flag: Route to debug-direct-chat temporarily
+      const targetFunction = 'debug-direct-chat'; // Force debug mode
       
       console.log(`🚀 Sending message to ${targetFunction} with XXL-Memory`);
       
