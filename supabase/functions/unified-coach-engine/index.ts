@@ -1093,15 +1093,25 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
     context.goals = goals;
     console.log('🎯 Goals loaded:', !!goals);
 
-    // Load XL-Summaries (letzte 7 Tage)
+    // Load XL-Summaries (letzte 7 Tage) + STRUCTURED JSON DATA
     const { data: xlSummaries } = await supabase
       .from('daily_summaries')
-      .select('date, summary_xl_md, total_calories, total_protein, workout_volume')
+      .select('date, summary_xl_md, summary_struct_json, total_calories, total_protein, workout_volume')
       .eq('user_id', userId)
       .not('summary_xl_md', 'is', null)
       .order('date', { ascending: false })
       .limit(7);
     context.xlSummaries = xlSummaries || [];
+    
+    // Load STRUCTURED SUMMARIES if available (NEW: for detailed data access)
+    const { data: structuredSummaries } = await supabase
+      .from('daily_summaries')
+      .select('date, summary_struct_json')
+      .eq('user_id', userId)
+      .not('summary_struct_json', 'is', null)
+      .order('date', { ascending: false })
+      .limit(7);
+    context.structuredSummaries = structuredSummaries || [];
 
     // Load regular summaries if XL not available (fallback)
     if (context.xlSummaries.length < 3) {
@@ -1201,6 +1211,7 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
       profileLoaded: !!context.profile,
       memoryLoaded: !!context.memory,
       xlSummaryDays: context.xlSummaries?.length || 0,
+      structuredSummaryDays: context.structuredSummaries?.length || 0,
       regularSummaryDays: context.summaries?.length || 0,
       relevantDataLoaded: Object.keys(context.relevantData).length
     });
@@ -1245,7 +1256,47 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     prompt += '\n';
   }
 
-  // XL Memory Section - Detailed Daily Summaries
+  // STRUCTURED DATA SECTION - NEW: Detailed JSON data access
+  if (context.structuredSummaries && context.structuredSummaries.length > 0) {
+    prompt += `📊 STRUKTURIERTE TAGESDATEN (Profil, Supplements, Coach-Topics, Activity):\n`;
+    context.structuredSummaries.forEach((summary: any) => {
+      if (summary.summary_struct_json) {
+        const structData = summary.summary_struct_json;
+        prompt += `\n=== ${summary.date} ===\n`;
+        
+        // Profile data
+        if (structData.user_profile) {
+          const profile = structData.user_profile;
+          prompt += `👤 Profil: ${profile.name || 'N/A'}, ${profile.age || 'N/A'}J, Ziel: ${profile.goal || 'N/A'}\n`;
+          if (profile.target_weight) prompt += `   Zielgewicht: ${profile.target_weight}kg\n`;
+        }
+        
+        // Coaching topics
+        if (structData.coaching && structData.coaching.topics && structData.coaching.topics.length > 0) {
+          prompt += `💭 Gesprächsthemen: ${structData.coaching.topics.join(', ')}\n`;
+          prompt += `   Stimmung: ${structData.coaching.sentiment}, Motivation: ${structData.coaching.motivation_level}\n`;
+        }
+        
+        // Activity data
+        if (structData.activity || structData.nutrition) {
+          if (structData.activity) {
+            prompt += `🏃 Aktivität: ${structData.activity.steps || 0} Schritte, ${structData.activity.distance_km || 0}km\n`;
+          }
+          if (structData.nutrition) {
+            prompt += `🍽️ Ernährung: ${structData.nutrition.calories || 0} kcal, ${structData.nutrition.protein || 0}g Protein\n`;
+          }
+        }
+        
+        // Supplements
+        if (structData.supplements && structData.supplements.compliance !== undefined) {
+          prompt += `💊 Supplement-Compliance: ${structData.supplements.compliance}%\n`;
+        }
+      }
+    });
+    prompt += '\n';
+  }
+
+  // XL Memory Section - Detailed Daily Summaries (FALLBACK for text summaries)
   if (context.xlSummaries && context.xlSummaries.length > 0) {
     prompt += `📈 DETAILLIERTE VERLAUFSDATEN (XL-Memory):\n`;
     context.xlSummaries.forEach((summary: any) => {
