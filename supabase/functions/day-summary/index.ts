@@ -133,15 +133,19 @@ serve(async (req) => {
     
     console.log(`✅ Summary für ${date} erfolgreich erstellt (${status})`);
 
-    // 🔍 DEBUG: Zeige was in die Summary gepackt wurde
+    // 🔍 DEBUG: Zeige was in die Summary gepackt wurde - KORRIGIERTE ZÄHLUNGEN
     const debugInfo = {
       dataCollected: {
         meals: dayData.meals?.length || 0,
-        workouts: dayData.workouts?.length || 0,
+        // FIX: Kombiniere beide Workout-Systeme
+        workouts: (dayData.workouts?.length || 0) + (dayData.quickWorkouts?.length || 0),
         exerciseSets: dayData.exerciseSets?.length || 0,
+        // Separate Anzeige der beiden Workout-Typen für besseres Debugging
+        advancedSessions: dayData.workouts?.length || 0,
         quickWorkouts: dayData.quickWorkouts?.length || 0,
         weightEntries: dayData.weight ? 1 : 0,
-        bodyMeasurements: dayData.bodyMeasurements ? 1 : 0,
+        // FIX: BodyMeasurements ist ein Array, nicht ein Objekt
+        bodyMeasurements: Array.isArray(dayData.bodyMeasurements) ? dayData.bodyMeasurements.length : (dayData.bodyMeasurements ? 1 : 0),
         supplementEntries: dayData.supplementLog?.length || 0,
         sleepEntries: dayData.sleep ? 1 : 0,
         fluidEntries: dayData.fluids?.length || 0,
