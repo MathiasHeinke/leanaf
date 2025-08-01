@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Wrench, Dumbbell, Camera, Pill, Scale, BookOpen, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -51,16 +51,16 @@ export const ToolPicker = ({ onToolSelect, selectedTool, pushSystemTool }: ToolP
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md text-left transition-all duration-200 hover:scale-[1.02] group ${
+              className={`w-full flex flex-row-reverse items-center gap-3 px-4 py-3 text-[17px] font-medium rounded-md text-left transition-all duration-200 hover:scale-[1.02] group ${
                 selectedTool === tool.id
                   ? 'bg-primary text-primary-foreground scale-[1.02]'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  : 'hover:bg-neutral-100/70 dark:hover:bg-neutral-800 text-neutral-900 dark:text-neutral-100'
               }`}
             >
-              <span className="text-sm">{tool.label}</span>
               <span className="transition-transform duration-300 group-hover:scale-110">
-                {tool.icon}
+                {React.cloneElement(tool.icon as React.ReactElement, { className: 'w-5 h-5 stroke-[1.5]' })}
               </span>
+              <span>{tool.label}</span>
             </button>
           ))}
           {selectedTool && (
