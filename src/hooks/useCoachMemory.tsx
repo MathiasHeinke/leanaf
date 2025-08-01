@@ -35,25 +35,27 @@ export interface CoachMemory {
   communication_style_preference: string;
 }
 
-export const useCoachMemory = () => {
+export const useCoachMemory = (passedUserId?: string) => {
   const { user } = useAuth();
   const [memory, setMemory] = useState<CoachMemory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Extract primitive user ID to stabilize dependencies
-  const userId = user?.id;
+  // Use passed userId or fallback to authenticated user
+  const userId = passedUserId || user?.id;
 
   const loadCoachMemory = useCallback(async (): Promise<CoachMemory | null> => {
     if (!userId) return null;
 
     setIsLoading(true);
     try {
-      // @ts-ignore - Types will be updated after migration
+      // ✅ FIX: Use .maybeSingle() to handle multiple rows gracefully
       const { data, error } = await supabase
         .from('coach_memory')
         .select('*')
         .eq('user_id', userId)
-        .maybeSingle(); // ← FIX: .maybeSingle() toleriert 0 oder 1 Results
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       // Handle case where no memory exists yet
       if (!data && !error) {
@@ -70,8 +72,7 @@ export const useCoachMemory = () => {
         return defaultMemory;
       }
 
-      // @ts-ignore - Types will be updated after migration
-      const coachMemory = (data?.memory_data as CoachMemory) || createDefaultMemory();
+      const coachMemory = (data?.memory_data as unknown as CoachMemory) || createDefaultMemory();
       setMemory(coachMemory);
       return coachMemory;
 
@@ -87,7 +88,6 @@ export const useCoachMemory = () => {
     if (!userId) return false;
 
     try {
-      // @ts-ignore - Types will be updated after migration
       const { error } = await supabase
         .from('coach_memory')
         .upsert({

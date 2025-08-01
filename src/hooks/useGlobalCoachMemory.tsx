@@ -19,7 +19,7 @@ export const useGlobalCoachMemory = () => {
     addSuccessMoment,
     addStruggleMention,
     updateRelationshipStage 
-  } = useCoachMemory();
+  } = useCoachMemory(user?.id); // ✅ FIX: User ID mitgeben
   
   const { analyzeSentiment } = useSentimentAnalysis();
   const { checkForProactiveOpportunities } = useProactiveCoaching();
