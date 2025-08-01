@@ -11,6 +11,7 @@ import { ChatHistorySidebar } from "./ChatHistorySidebar";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { CoachBanner } from "@/components/CoachBanner";
 
 interface CoachData {
   coach_id: string;
@@ -315,6 +316,9 @@ export const GlobalHeader = ({
           </div>
         </div>
       )}
+
+      {/* Global Coach Banner for non-coach pages */}
+      <CoachBanner />
 
       {/* Spacer to prevent content overlap */}
       <div className={`${isCoachChatRoute && showCoachBanner ? 'h-[125px]' : 'h-[61px]'} transition-all duration-500`} />
