@@ -745,6 +745,48 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_summaries: {
+        Row: {
+          created_at: string
+          emotional_tone: string | null
+          id: string
+          key_topics: string[] | null
+          message_count: number
+          progress_notes: string | null
+          summary_content: string
+          summary_period_end: string
+          summary_period_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emotional_tone?: string | null
+          id?: string
+          key_topics?: string[] | null
+          message_count?: number
+          progress_notes?: string | null
+          summary_content: string
+          summary_period_end: string
+          summary_period_start: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emotional_tone?: string | null
+          id?: string
+          key_topics?: string[] | null
+          message_count?: number
+          progress_notes?: string | null
+          summary_content?: string
+          summary_period_end?: string
+          summary_period_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cron_job_stats: {
         Row: {
           batch_size: number

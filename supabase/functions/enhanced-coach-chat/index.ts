@@ -205,112 +205,229 @@ function createMemoryContext(coachMemory: any, sentimentResult: any): string {
   return context;
 }
 
-// Comprehensive user data loading function
-async function loadUserContextData(supabase: any, userId: string) {
-  const today = new Date().toISOString().split('T')[0];
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+// ===== SMART CONTEXT ENGINE =====
+// Builds compact, relevant context for Lucy with extended memory depth
+async function buildSmartContext(supabase: any, userId: string) {
+  console.log(`🧠 Building smart context for user: ${userId}`);
   
   try {
-    // Load all user data in parallel
+    // 1. STATIC PROFILE (cached, basic info only) - ~120 tokens
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, first_name, gender, date_of_birth, height_cm, activity_level')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // 2. DAILY GOALS (current targets) - ~80 tokens
+    const { data: goals } = await supabase
+      .from('daily_goals')
+      .select('calories, protein, carbs, fats, calorie_deficit')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // 3. LONG-TERM MEMORY (compressed preferences & patterns) - ~300-600 tokens
+    const { data: longMemory } = await supabase
+      .from('coach_memory')
+      .select('memory_data')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 4. EPISODIC SUMMARY (last 48h condensed) - ~400 tokens
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    
+    const { data: episodicSummary } = await supabase
+      .from('conversation_summaries')
+      .select('summary_content, key_topics, emotional_tone, progress_notes')
+      .eq('user_id', userId)
+      .gte('summary_period_end', twoDaysAgo.toISOString())
+      .order('summary_period_end', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // 5. CURRENT STATUS (today's key metrics) - ~200 tokens
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
     const [
-      dailyGoalsResult,
-      todaysMealsResult,
-      recentMealsResult,
-      currentWeightResult,
-      recentWorkoutsResult,
-      currentSupplementsResult,
-      userStreaksResult
+      { data: todayWeight },
+      { data: todayMeals },
+      { data: recentWorkout },
+      { data: weeklyMeals }
     ] = await Promise.all([
-      // Daily goals
-      supabase.from('daily_goals').select('*').eq('user_id', userId).single(),
-      
-      // Today's meals
-      supabase.from('meals')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('created_at', `${today}T00:00:00`)
-        .lt('created_at', `${today}T23:59:59`)
-        .order('created_at', { ascending: false }),
-      
-      // Recent meals for weekly average
-      supabase.from('meals')
-        .select('calories, created_at')
-        .eq('user_id', userId)
-        .gte('created_at', `${weekAgo}T00:00:00`)
-        .order('created_at', { ascending: false }),
-      
-      // Current weight
-      supabase.from('weight_history')
-        .select('weight, date')
+      supabase
+        .from('weight_history')
+        .select('weight_kg, date')
         .eq('user_id', userId)
         .order('date', { ascending: false })
-        .limit(7),
+        .limit(1)
+        .maybeSingle(),
       
-      // Recent workouts
-      supabase.from('exercise_sessions')
-        .select('session_name, date, duration_minutes, workout_type')
+      supabase
+        .from('meals')
+        .select('calories, protein, carbs, fats')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .limit(5),
+      
+      supabase
+        .from('exercise_sessions')
+        .select('date, session_name, duration_minutes')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+        
+      supabase
+        .from('meals')
+        .select('calories')
         .eq('user_id', userId)
         .gte('date', weekAgo)
-        .order('date', { ascending: false }),
-      
-      // Current supplements
-      supabase.from('supplement_intake_log')
-        .select('supplement_name, dosage, created_at')
-        .eq('user_id', userId)
-        .gte('created_at', `${today}T00:00:00`)
-        .order('created_at', { ascending: false }),
-      
-      // User streaks
-      supabase.from('user_streaks')
-        .select('streak_type, current_streak')
-        .eq('user_id', userId)
     ]);
-    
-    // Process the data
-    const userData: any = {
-      dailyGoals: dailyGoalsResult.data,
-      todaysMeals: todaysMealsResult.data || [],
-      recentWorkouts: recentWorkoutsResult.data || [],
-      currentSupplements: currentSupplementsResult.data || [],
-    };
-    
-    // Process weight data
-    if (currentWeightResult.data?.length > 0) {
-      userData.currentWeight = currentWeightResult.data[0].weight;
-      userData.weightDate = currentWeightResult.data[0].date;
-      
-      // Calculate weight trend
-      if (currentWeightResult.data.length >= 2) {
-        const recent = currentWeightResult.data[0].weight;
-        const older = currentWeightResult.data[currentWeightResult.data.length - 1].weight;
-        const diff = recent - older;
-        userData.weightTrend = diff > 0 ? `+${diff.toFixed(1)}kg` : `${diff.toFixed(1)}kg`;
+
+    // Calculate today's nutrition totals
+    const todayNutrition = todayMeals?.reduce((acc, meal) => ({
+      calories: acc.calories + (meal.calories || 0),
+      protein: acc.protein + (meal.protein || 0),
+      carbs: acc.carbs + (meal.carbs || 0),
+      fats: acc.fats + (meal.fats || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fats: 0 }) || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+
+    // Calculate weekly averages
+    const weeklyCalorieAvg = weeklyMeals?.length > 0 ? 
+      Math.round(weeklyMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0) / 7) : 0;
+
+    return {
+      staticProfile: profile || {},
+      currentGoals: goals || {},
+      longTermMemory: longMemory?.memory_data || null,
+      episodicSummary: episodicSummary || null,
+      currentStatus: {
+        weight: todayWeight || null,
+        todayNutrition,
+        recentWorkout: recentWorkout || null,
+        mealsToday: todayMeals?.length || 0,
+        weeklyCalorieAvg
       }
-    }
-    
-    // Calculate weekly stats
-    if (recentMealsResult.data?.length > 0) {
-      const totalCals = recentMealsResult.data.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
-      userData.avgDailyCalories = Math.round(totalCals / 7);
-    }
-    
-    userData.weeklyWorkouts = recentWorkoutsResult.data?.length || 0;
-    
-    // Process streaks
-    if (userStreaksResult.data?.length > 0) {
-      userData.streaks = {};
-      userStreaksResult.data.forEach((streak: any) => {
-        if (streak.streak_type === 'meal_tracking') userData.streaks.meals = streak.current_streak;
-        if (streak.streak_type === 'workout') userData.streaks.workouts = streak.current_streak;
-      });
-    }
-    
-    return userData;
-    
+    };
   } catch (error) {
-    console.error('Error loading user context:', error);
-    return {}; // Return empty object on error
+    console.error('❌ Error building smart context:', error);
+    return {
+      staticProfile: {},
+      currentGoals: {},
+      longTermMemory: null,
+      episodicSummary: null,
+      currentStatus: {
+        weight: null,
+        todayNutrition: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+        recentWorkout: null,
+        mealsToday: 0,
+        weeklyCalorieAvg: 0
+      }
+    };
   }
+}
+
+// Create compact, personalized system prompt from smart context
+function createSmartSystemMessage(coachPersonality: string, smartContext: any, userName: string): string {
+  const { staticProfile, currentGoals, longTermMemory, episodicSummary, currentStatus } = smartContext;
+  
+  // Build compact status overview (~200 tokens)
+  let statusContext = '';
+  if (currentStatus.weight) {
+    statusContext += `🏋️ Aktuell: ${currentStatus.weight.weight_kg}kg`;
+  }
+  if (currentStatus.mealsToday > 0) {
+    statusContext += ` | 🍽️ Heute: ${currentStatus.mealsToday} Mahlzeiten (${currentStatus.todayNutrition.calories}kcal)`;
+  } else {
+    statusContext += ` | 🍽️ Heute noch keine Mahlzeiten`;
+  }
+  if (currentStatus.recentWorkout) {
+    statusContext += ` | 💪 Letztes Training: ${currentStatus.recentWorkout.session_name || 'Training'}`;
+  }
+  if (currentStatus.weeklyCalorieAvg > 0) {
+    statusContext += ` | 📊 Wochenschnitt: ${currentStatus.weeklyCalorieAvg}kcal/Tag`;
+  }
+
+  // Build goals context (~80 tokens)
+  let goalsContext = '';
+  if (currentGoals.calories) {
+    goalsContext = `🎯 Ziele: ${currentGoals.calories}kcal, ${currentGoals.protein}g Protein`;
+    if (currentGoals.calorie_deficit) {
+      goalsContext += `, ${currentGoals.calorie_deficit}kcal Defizit`;
+    }
+  } else {
+    goalsContext = '🎯 Ziele noch nicht definiert';
+  }
+
+  // Build memory context (~300-600 tokens)
+  let memoryContext = '';
+  if (longTermMemory) {
+    const stage = longTermMemory.relationship_stage || 'new';
+    const trust = longTermMemory.trust_level || 0;
+    memoryContext = `💭 Beziehung: ${stage} (Vertrauen ${trust}/100)`;
+    
+    const preferences = longTermMemory.user_preferences || [];
+    if (preferences.length > 0) {
+      const recentPrefs = preferences.slice(-3);
+      memoryContext += `\n📋 Bekannte Vorlieben: ${recentPrefs.map((p: any) => `${p.key}: ${p.value}`).join(', ')}`;
+    }
+    
+    const struggles = longTermMemory.conversation_context?.struggles_mentioned || [];
+    if (struggles.length > 0) {
+      memoryContext += `\n⚠️ Herausforderungen: ${struggles.slice(-2).map((s: any) => s.struggle).join('; ')}`;
+    }
+    
+    const successes = longTermMemory.conversation_context?.success_moments || [];
+    if (successes.length > 0) {
+      memoryContext += `\n🎉 Erfolge: ${successes.slice(-2).map((s: any) => s.achievement).join('; ')}`;
+    }
+  } else {
+    memoryContext = '💭 Neue Beziehung - lernen uns gerade kennen!';
+  }
+
+  // Build episodic context (~400 tokens)
+  let episodicContext = '';
+  if (episodicSummary?.summary_content) {
+    episodicContext = `📝 Letzte 48h: ${episodicSummary.summary_content}`;
+    if (episodicSummary.emotional_tone) {
+      episodicContext += `\n😊 Stimmung: ${episodicSummary.emotional_tone}`;
+    }
+    if (episodicSummary.progress_notes) {
+      episodicContext += `\n📈 Fortschritt: ${episodicSummary.progress_notes}`;
+    }
+  } else {
+    episodicContext = '📝 Keine aktuellen Gesprächszusammenfassungen verfügbar';
+  }
+
+  return `Du bist Lucy, ${userName}s persönliche Fitness- und Ernährungs-Coachin. Du kennst ${userName} bereits gut und verfolgst ihre/seine Reise aufmerksam.
+
+${statusContext}
+
+${goalsContext}
+
+${memoryContext}
+
+${episodicContext}
+
+DEINE PERSÖNLICHKEIT ALS LUCY:
+- Du bist wie eine gute Freundin - warmherzig, motivierend und ehrlich
+- Du kennst ${userName}s Geschichte, Vorlieben und Herausforderungen
+- Du feierst jeden kleinen Erfolg und hilfst bei Rückschlägen
+- Du gibst konkrete, auf ${userName} zugeschnittene Tipps
+- Du erinnerst an vergangene Gespräche und baust darauf auf
+- Du sprichst ${userName} immer direkt und persönlich an
+
+🗣️ KOMMUNIKATIONSSTIL:
+- Verwende ${userName}s Namen für Nähe
+- Beziehe dich auf konkrete Daten und Fortschritte  
+- Sei spezifisch statt allgemein
+- Zeige echte Anteilnahme und Interesse
+- Nutze Emojis sparsam aber gezielt für Wärme
+
+Antworte IMMER auf Deutsch und als wüsstest du alles über ${userName}s aktuelle Situation.`;
 }
 
 function createRAGPromptAddition(ragContext: any): string {
@@ -379,27 +496,21 @@ serve(async (req) => {
 
     const userName = getDisplayName(profile);
     
-    // Load comprehensive user data for personalized coaching
-    const userData = await loadUserContextData(supabase, userId);
-    console.log('User context loaded:', { 
-      hasGoals: !!userData.dailyGoals, 
-      mealsToday: userData.todaysMeals?.length || 0,
-      recentWorkouts: userData.recentWorkouts?.length || 0
+    // 🧠 BUILD SMART CONTEXT - Compact but comprehensive (~1200-1500 tokens total)
+    const smartContext = await buildSmartContext(supabase, userId);
+    console.log('🧠 Smart context built:', { 
+      hasGoals: !!smartContext.currentGoals.calories, 
+      mealsToday: smartContext.currentStatus.mealsToday,
+      hasMemory: !!smartContext.longTermMemory,
+      hasEpisodic: !!smartContext.episodicSummary
     });
     
-    // Load coach memory for relationship context
-    const { data: coachMemory } = await supabase
-      .from('coach_memory')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+    // Create compact, personalized system message using smart context
+    const systemMessage = createSmartSystemMessage(coachPersonality, smartContext, userName);
     
-    const memoryContext = createMemoryContext(coachMemory?.memory_data, null);
-    
-    // Create personalized system message with all context
-    const systemMessage = createEnhancedSystemMessage(coachPersonality, userData, memoryContext, '', userName);
+    // Estimate token usage for monitoring
+    const estimatedTokens = estimateTokenCount(systemMessage);
+    console.log(`📊 Smart prompt token estimate: ${estimatedTokens} tokens (target: ~1200-1500)`);
     
     // Prepare messages for OpenAI
     const messages = [
