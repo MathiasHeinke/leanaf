@@ -372,11 +372,14 @@ serve(async (req) => {
 
     console.log(`🔒 [${requestId}] Security event logged`);
 
-    console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
+    
     
     // ──────────────────────────────────────────────────────────────
-    // 2. Rate-Limiting nur für Free-User (außer wenn global deaktiviert)
+    // 2. Rate-Limiting für Free-User (Premium wird übersprungen)
     // ──────────────────────────────────────────────────────────────
+    const DISABLE_LIMITS = false; // ✅ Rate limits wieder aktiviert
+    console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
+    
     if (!DISABLE_LIMITS && !isPremium) {
       console.log(`🔍 [${requestId}] Running rate limit check for free user`);
       const { data: limitResult, error: limitError } = await supabase.rpc('check_ai_usage_limit', {
@@ -516,16 +519,12 @@ serve(async (req) => {
     
     const chooseModel = (hasImages: boolean, userTier: string = 'free') => {
       if (hasImages) {
-        // Für Vision: gpt-4o ist erforderlich und garantiert verfügbar
-        if (userTier === 'free') {
-          console.log('⚠️ Vision request from free user - consider cost warning');
-        }
+        // ✅ Bilder: GPT-4o für alle (Premium und Free)
         return 'gpt-4o';
       }
-      // ============================================================================
-      // FIX: Verwende garantiert verfügbare Modelle
-      // ============================================================================
-      return 'gpt-4o-mini'; // Garantiert verfügbar, schnell und günstig
+      
+      // ✅ Text: GPT-4.1-2025-04-14 für Premium, gpt-4o-mini für Free
+      return userTier === 'premium' ? 'gpt-4.1-2025-04-14' : 'gpt-4o-mini';
     };
 
     const selectedModel = chooseModel(images.length > 0, userTier);
