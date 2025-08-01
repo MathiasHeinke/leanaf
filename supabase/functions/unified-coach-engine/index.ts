@@ -204,9 +204,9 @@ serve(async (req) => {
       messages.push(handoverMessage);
     }
 
-    // Füge Conversation History hinzu (intelligent gekürzt)
+    // Füge Conversation History hinzu (intelligent gekürzt für Payload-Optimierung)
     if (conversationHistory.length > 0) {
-      const trimmedHistory = intelligentTokenShortening(conversationHistory, 1000);
+      const trimmedHistory = intelligentTokenShortening(conversationHistory, 600); // Reduziert von 1000 auf 600
       messages.push(...trimmedHistory);
     }
 
@@ -239,20 +239,28 @@ serve(async (req) => {
     
     const chooseModel = (hasImages: boolean, userTier: string = 'free') => {
       if (hasImages) {
-        // Für Vision: gpt-4o ist erforderlich
+        // Für Vision: gpt-4o ist erforderlich und garantiert verfügbar
         if (userTier === 'free') {
           console.log('⚠️ Vision request from free user - consider cost warning');
         }
         return 'gpt-4o';
       }
-      // Für Text: verwende das neueste und schnellste Modell
-      return 'gpt-4.1-2025-04-14';
+      // ============================================================================
+      // FIX: Verwende garantiert verfügbare Modelle
+      // ============================================================================
+      return 'gpt-4o-mini'; // Garantiert verfügbar, schnell und günstig
     };
 
     const selectedModel = chooseModel(images.length > 0, 'free'); // TODO: echte Tier-Erkennung
     console.log(`🎯 [${requestId}] Selected model:`, selectedModel);
 
-    // OpenAI API Call
+    // OpenAI API Call mit verbessertem Error Handling
+    console.log(`📤 [${requestId}] Making OpenAI request:`, {
+      model: selectedModel,
+      messageCount: messages.length,
+      payloadSize: JSON.stringify(messages).length + ' chars'
+    });
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -267,8 +275,29 @@ serve(async (req) => {
       }),
     });
 
+    // ============================================================================
+    // VERBESSERTES ERROR HANDLING mit detailliertem Logging
+    // ============================================================================
     if (!openAIResponse.ok) {
-      throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+      const errorText = await openAIResponse.text();
+      console.error(`❌ [${requestId}] OpenAI API error:`, {
+        status: openAIResponse.status,
+        statusText: openAIResponse.statusText,
+        body: errorText,
+        model: selectedModel
+      });
+      
+      // Spezifische Fehlermeldungen je nach Status Code
+      let userMessage = 'Entschuldigung, ich kann gerade nicht antworten. Bitte versuche es gleich nochmal! 🤖';
+      if (openAIResponse.status === 404) {
+        userMessage = 'Technisches Problem mit dem AI-Modell. Unser Team wird benachrichtigt! 🔧';
+      } else if (openAIResponse.status === 429) {
+        userMessage = 'Zu viele Anfragen - bitte warte einen Moment und versuche es dann nochmal! ⏰';
+      } else if (openAIResponse.status === 401 || openAIResponse.status === 403) {
+        userMessage = 'Authentifizierungsproblem - unser Team prüft das! 🔐';
+      }
+      
+      throw new Error(`OpenAI API ${openAIResponse.status}: ${userMessage}`);
     }
 
     const openAIData = await openAIResponse.json();
