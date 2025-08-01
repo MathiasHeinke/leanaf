@@ -336,7 +336,7 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
       .from('user_fluids')
       .select(`
         id, custom_name, amount_ml, consumed_at, notes,
-        fluid_database_1!inner(name, category, calories_per_100ml, alcohol_percentage)
+        fluid_database!inner(name, category, calories_per_100ml, alcohol_percentage)
       `)
       .eq('user_id', userId)
       .or(`and(consumed_at.gte.${dayStart},consumed_at.lte.${dayEnd}), date.eq.${date}`)
@@ -641,9 +641,9 @@ function calculateKPIs(dayData: any) {
     dayData.fluids.forEach((fluid: any) => {
       kpis.totalFluidMl += fluid.amount_ml || 0;
       
-      if (fluid.fluid_database_1) {
-        // Note: caffeine_mg_per_100ml column doesn't exist in fluid_database_1
-        const alcohol = (fluid.fluid_database_1.alcohol_percentage || 0) * (fluid.amount_ml / 100) * 0.8;
+      if (fluid.fluid_database) {
+        // Note: Using available columns from fluid_database
+        const alcohol = (fluid.fluid_database.alcohol_percentage || 0) * (fluid.amount_ml / 100) * 0.8;
         
         kpis.alcoholG += alcohol;
       }
