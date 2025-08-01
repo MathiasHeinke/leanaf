@@ -31,7 +31,7 @@ export const SingleDaySummaryGenerator = () => {
     setResponse(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-daily-summary-xl', {
+      const { data, error } = await supabase.functions.invoke('day-summary', {
         body: {
           userId: user.id,
           date: selectedDate,
