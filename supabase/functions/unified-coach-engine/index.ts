@@ -186,6 +186,105 @@ async function handleFoto(images: string[], userId: string) {
   };
 }
 
+// FALLBACK TOOLS für Lucy - wenn XL-Context fehlschlägt
+async function get_user_profile(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data || { id: userId, name: 'Unbekannt' };
+  } catch (error) {
+    console.error('❌ get_user_profile error:', error);
+    return { id: userId, name: 'Unbekannt' };
+  }
+}
+
+async function get_daily_goals(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('daily_goals')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) throw error;
+    return data || null;
+  } catch (error) {
+    console.error('❌ get_daily_goals error:', error);
+    return null;
+  }
+}
+
+async function get_recent_meals(userId: string, days: number = 3) {
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('meals')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', startDateStr)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('❌ get_recent_meals error:', error);
+    return [];
+  }
+}
+
+async function get_workout_sessions(userId: string, days: number = 7) {
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('exercise_sessions')
+      .select(`
+        *,
+        exercise_sets (
+          *,
+          exercises (name, category)
+        )
+      `)
+      .eq('user_id', userId)
+      .gte('date', startDateStr)
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('❌ get_workout_sessions error:', error);
+    return [];
+  }
+}
+
+async function get_weight_history(userId: string, entries: number = 10) {
+  try {
+    const { data, error } = await supabase
+      .from('weight_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(entries);
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('❌ get_weight_history error:', error);
+    return [];
+  }
+}
+
 // Tool-Handler-Map
 const handlers = {
   trainingsplan: handleTrainingsplan,
@@ -196,6 +295,30 @@ const handlers = {
   chat: async (conv: any, userId: string) => {
     // Kein Spezial-Output – einfach weiter zum OpenAI-Flow
     return null;
+  },
+  // Neue Fallback-Tools
+  get_user_profile: async (args: any, userId: string) => {
+    const result = await get_user_profile(userId);
+    return { success: true, data: result };
+  },
+  get_daily_goals: async (args: any, userId: string) => {
+    const result = await get_daily_goals(userId);
+    return { success: true, data: result };
+  },
+  get_recent_meals: async (args: any, userId: string) => {
+    const days = args.days || 3;
+    const result = await get_recent_meals(userId, days);
+    return { success: true, data: result, count: result.length };
+  },
+  get_workout_sessions: async (args: any, userId: string) => {
+    const days = args.days || 7;
+    const result = await get_workout_sessions(userId, days);
+    return { success: true, data: result, count: result.length };
+  },
+  get_weight_history: async (args: any, userId: string) => {
+    const entries = args.entries || 10;
+    const result = await get_weight_history(userId, entries);
+    return { success: true, data: result, count: result.length };
   }
 };
 
@@ -582,6 +705,88 @@ serve(async (req) => {
       console.warn(`⚠️ [${requestId}] Large payload detected: ${payloadSize} chars`);
     }
 
+    // Define fallback tools for OpenAI
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "get_user_profile",
+          description: "Holt das Benutzerprofil",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      {
+        type: "function", 
+        function: {
+          name: "get_daily_goals",
+          description: "Holt die Tagesziele des Benutzers",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_recent_meals",
+          description: "Holt aktuelle Mahlzeiten",
+          parameters: {
+            type: "object",
+            properties: {
+              days: {
+                type: "number",
+                description: "Anzahl Tage zurück (Standard: 3)",
+                default: 3
+              }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_workout_sessions", 
+          description: "Holt Trainingseinheiten",
+          parameters: {
+            type: "object",
+            properties: {
+              days: {
+                type: "number",
+                description: "Anzahl Tage zurück (Standard: 7)",
+                default: 7
+              }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_weight_history",
+          description: "Holt Gewichtsverlauf",
+          parameters: {
+            type: "object",
+            properties: {
+              entries: {
+                type: "number", 
+                description: "Anzahl Einträge (Standard: 10)",
+                default: 10
+              }
+            },
+            required: []
+          }
+        }
+      }
+    ];
+
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -593,6 +798,8 @@ serve(async (req) => {
         messages,
         max_tokens: 1500,
         temperature: 0.7,
+        tools: tools,
+        tool_choice: "auto"
       }),
     });
 
@@ -648,6 +855,99 @@ serve(async (req) => {
     }
 
     const openAIData = await openAIResponse.json();
+    
+    // Handle tool calls if present
+    const firstChoice = openAIData.choices[0];
+    if (firstChoice.message.tool_calls && firstChoice.message.tool_calls.length > 0) {
+      console.log(`🔧 [${requestId}] Processing tool calls:`, firstChoice.message.tool_calls.length);
+      
+      // Execute tool calls
+      const toolResults = [];
+      for (const toolCall of firstChoice.message.tool_calls) {
+        try {
+          console.log(`⚡ [${requestId}] Executing tool:`, toolCall.function.name);
+          const args = JSON.parse(toolCall.function.arguments || '{}');
+          const result = await handlers[toolCall.function.name](args, userId);
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: toolCall.function.name,
+            content: JSON.stringify(result)
+          });
+        } catch (error) {
+          console.error(`❌ [${requestId}] Tool execution error:`, error);
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: "tool", 
+            name: toolCall.function.name,
+            content: JSON.stringify({ error: error.message })
+          });
+        }
+      }
+      
+      // Add tool results to messages and make another request
+      messages.push(firstChoice.message);
+      messages.push(...toolResults);
+      
+      console.log(`🔄 [${requestId}] Making second OpenAI request with tool results`);
+      const secondResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: selectedModel,
+          messages,
+          max_tokens: 1500,
+          temperature: 0.7,
+        }),
+      });
+      
+      if (secondResponse.ok) {
+        const secondData = await secondResponse.json();
+        const assistantReply = secondData.choices[0].message.content;
+        console.log(`✅ [${requestId}] Tool-enhanced response generated`);
+        
+        const processingTime = Date.now() - startTime;
+        console.log(`✅ [${requestId}] OpenAI response received, length:`, assistantReply.length, 'time:', processingTime + 'ms');
+        console.log(`🔢 [${requestId}] Token usage:`, secondData.usage);
+
+        // Speichere Conversation in Datenbank
+        await saveConversation(supabase, userId, message, assistantReply, coachPersonality, images, toolContext);
+
+        // Update Memory nach dem Chat
+        await updateMemoryAfterChat(supabase, userId, message, assistantReply);
+
+        console.log(`💾 [${requestId}] Conversation saved and memory updated`);
+
+        // Return response mit erweiterten Meta-Informationen
+        return new Response(JSON.stringify({
+          role: 'assistant',
+          content: assistantReply,
+          usage: secondData.usage,
+          context_info: {
+            request_id: requestId,
+            prompt_version: PROMPT_VERSION,
+            xl_summaries_used: smartContext.xlSummaries?.length || 0,
+            relevant_data_types: relevantDataTypes,
+            estimated_tokens: estimateTokenCount(systemPrompt),
+            model_used: selectedModel,
+            handover_created: shouldHandover,
+            processing_time_ms: Date.now() - startTime,
+            i18n_applied: isNonGerman,
+            tools_used: firstChoice.message.tool_calls.map((t: any) => t.function.name)
+          },
+          meta: { 
+            prompt_version: PROMPT_VERSION,
+            clearTool: !!toolContext
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
     const assistantReply = openAIData.choices[0].message.content;
 
     const processingTime = Date.now() - startTime;
@@ -1018,7 +1318,13 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   prompt += `- Stelle bei Bedarf gezielte Nachfragen\n`;
   prompt += `- Gib konkrete, umsetzbare Ratschläge\n`;
   prompt += `- Erinnere dich an vergangene Gespräche und baue darauf auf\n`;
-  prompt += `- Feiere Erfolge und motiviere bei Rückschlägen\n\n`;
+  prompt += `- Feiere Erfolge und motiviere bei Rückschlägen\n`;
+  prompt += `- FALLBACK-TOOLS: Falls dir spezifische Daten fehlen, nutze diese Tools:\n`;
+  prompt += `  * get_user_profile() - Holt Benutzerprofil\n`;
+  prompt += `  * get_daily_goals() - Holt Tagesziele\n`;
+  prompt += `  * get_recent_meals(days=3) - Holt aktuelle Mahlzeiten\n`;
+  prompt += `  * get_workout_sessions(days=7) - Holt Trainingseinheiten\n`;
+  prompt += `  * get_weight_history(entries=10) - Holt Gewichtsverlauf\n\n`;
 
   return prompt;
 }
