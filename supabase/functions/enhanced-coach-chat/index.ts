@@ -1,9 +1,79 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
-// utils
-import { getDisplayName } from './utils/getDisplayName.ts';
-import { estimateTokenCount, intelligentTokenShortening, summarizeHistory } from './utils/tokenManagement.ts';
+// Enhanced Coach Chat Edge Function
+
+// ===== UTILITY FUNCTIONS =====
+/**
+ * Zentrale Funktion für die Namensauflösung für Coaches (Edge Function Version)
+ */
+function getDisplayName(profile: any): string {
+  if (!profile) return 'mein Schützling';
+  
+  if (profile.preferred_name?.trim()) return profile.preferred_name.trim();
+  if (profile.first_name?.trim()) return profile.first_name.trim();
+  
+  if (profile.last_name?.trim()) {
+    const lastName = profile.last_name.trim();
+    if (!lastName.includes(' ') && lastName.length > 1) return lastName;
+  }
+  
+  if (profile.display_name?.trim()) {
+    const displayName = profile.display_name.trim();
+    const firstName = displayName.includes('-') 
+      ? displayName.match(/^([^\s]+)/)?.[1] || displayName.split(' ')[0]
+      : displayName.split(' ')[0];
+    if (firstName && firstName.length > 1) return firstName;
+  }
+  
+  if (profile.email?.includes('@')) {
+    const emailName = profile.email.split('@')[0];
+    if (emailName && emailName.length > 2 && !emailName.includes('_') && !emailName.includes('.')) {
+      return emailName;
+    }
+  }
+  
+  return 'mein Schützling';
+}
+
+/**
+ * Token Management Functions
+ */
+function estimateTokenCount(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+function intelligentTokenShortening(messages: any[], targetTokens: number): any[] {
+  if (!messages || messages.length === 0) return [];
+  
+  const result = [...messages];
+  let currentTokens = result.reduce((sum, msg) => sum + estimateTokenCount(msg.content || ''), 0);
+  
+  while (currentTokens > targetTokens && result.length > 1) {
+    result.shift();
+    currentTokens = result.reduce((sum, msg) => sum + estimateTokenCount(msg.content || ''), 0);
+  }
+  
+  return result;
+}
+
+function summarizeHistory(messages: any[]): string {
+  if (!messages || messages.length === 0) return '';
+  
+  const recentMessages = messages.slice(-10);
+  const topics = new Set<string>();
+  
+  recentMessages.forEach(msg => {
+    if (msg.content) {
+      const words = msg.content.toLowerCase().split(/\s+/);
+      words.forEach(word => {
+        if (word.length > 4) topics.add(word);
+      });
+    }
+  });
+  
+  return Array.from(topics).slice(0, 5).join(', ');
+}
 
 // -------------------------------------------------------------------------
 // Tool handlers - import directly to avoid module resolution issues
