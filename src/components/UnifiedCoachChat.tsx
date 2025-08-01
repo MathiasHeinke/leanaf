@@ -44,8 +44,6 @@ import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
-
-import { getDisplayName } from "../../supabase/functions/enhanced-coach-chat/utils/getDisplayName";
 import { TypingIndicator } from '@/components/TypingIndicator';
 
 // SimpleMessageList import removed - not used in this component
@@ -443,8 +441,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         const isUsageLimit = (status: number, error: any) => 
           force429 ||
           status === 429 || 
-          error?.includes('USAGE_LIMIT_REACHED') ||
-          (status === 0 && error?.includes('non-2xx status code')); // Supabase SDK Error für 429
+          error?.message?.includes('USAGE_LIMIT_REACHED') ||
+          (status === 0 && error?.message?.includes('non-2xx status code')); // Supabase SDK Error für 429
         
         let userMsg = 'Entschuldigung, es gab ein technisches Problem.';
         
