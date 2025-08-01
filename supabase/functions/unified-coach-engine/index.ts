@@ -291,7 +291,13 @@ serve(async (req) => {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
   
-  console.log(`🚀 [${requestId}] Unified Coach Engine started`);
+  console.log(`🚀 [${requestId}] Unified Coach Engine started - DEBUG MODE ACTIVE`);
+  console.log(`🕐 [${requestId}] Timestamp: ${new Date().toISOString()}`);
+  console.log(`📊 [${requestId}] Environment check:`, {
+    supabaseUrl: !!supabaseUrl,
+    openAIApiKey: !!openAIApiKey,
+    disableLimits: DISABLE_LIMITS
+  });
 
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -931,6 +937,22 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     }
     prompt += '\n';
   }
+
+  // ============================================================================
+  // DEBUG: DATEN-VERFÜGBARKEIT (immer anzeigen!)
+  // ============================================================================
+  prompt += `🔍 DEBUG - DATENVERFÜGBARKEIT:\n`;
+  prompt += `Profile: ${context.profile ? '✅ verfügbar' : '❌ nicht verfügbar'}\n`;
+  prompt += `Ziele: ${context.goals ? '✅ verfügbar' : '❌ nicht verfügbar'}\n`;
+  prompt += `Memory: ${context.memory ? '✅ verfügbar' : '❌ nicht verfügbar'}\n`;
+  prompt += `Relevante Daten: ${context.relevantData && Object.keys(context.relevantData).length > 0 ? `✅ ${Object.keys(context.relevantData).length} Kategorien` : '❌ keine Daten'}\n`;
+  if (context.relevantData) {
+    Object.keys(context.relevantData).forEach(key => {
+      const data = context.relevantData[key];
+      prompt += `  - ${key}: ${data && data.length ? `${data.length} Einträge` : 'leer'}\n`;
+    });
+  }
+  prompt += '\n';
 
   // Relevant Data Section
   if (context.relevantData && Object.keys(context.relevantData).length > 0) {
