@@ -454,6 +454,14 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // LITE MODE: Feature flag detection
+    const liteCtx = req.headers.get('x-lite-context') === 'true';
+    console.log(`🚀 [${requestId}] LITE MODE: ${liteCtx}`);
+    
+    if (liteCtx) {
+      console.log(`⚡ [${requestId}] Running in LITE MODE - simplified data collection`);
+    }
+    
     // ============================================================================
     // API-GOVERNOR: Rate-Limiting und Circuit-Breaker
     // ============================================================================
@@ -631,15 +639,16 @@ serve(async (req) => {
     const relevantDataTypes = detectRelevantData(message + ' ' + (toolContext?.description || ''));
     console.log('🧠 Detected relevant data types:', relevantDataTypes);
 
-    // Lade Smart Context mit XL-Memory
-    const smartContext = await buildSmartContextXL(supabase, userId, relevantDataTypes);
+    // Lade Smart Context mit XL-Memory (mit Lite-Mode Support)
+    const smartContext = await buildSmartContextXL(supabase, userId, relevantDataTypes, liteCtx);
     console.log('📊 Smart Context XL built:', {
       profileLoaded: !!smartContext.profile,
       memoryLoaded: !!smartContext.memory,
       xlSummaryDays: smartContext.xlSummaries?.length || 0,
       regularSummaryDays: smartContext.summaries?.length || 0,
       relevantDataLoaded: Object.keys(smartContext.relevantData || {}).length,
-      loadedDataTypes: Object.keys(smartContext.relevantData || {})
+      loadedDataTypes: Object.keys(smartContext.relevantData || {}),
+      liteMode: liteCtx
     });
 
     // Prompt-Version-Check für nahtlose Updates
@@ -656,9 +665,9 @@ serve(async (req) => {
     // ============================================================================
     const isNonGerman = preferredLocale && preferredLocale !== 'de';
     
-    // Erstelle erweiterten System-Prompt mit Versionierung und i18n
-    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext, isNonGerman);
-    console.log(`💭 [${requestId}] XL System prompt created, tokens:`, estimateTokenCount(systemPrompt), 'i18n:', isNonGerman);
+    // Erstelle erweiterten System-Prompt mit Versionierung und i18n (mit Lite-Mode Support)
+    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext, isNonGerman, liteCtx);
+    console.log(`💭 [${requestId}] XL System prompt created, tokens:`, estimateTokenCount(systemPrompt), 'i18n:', isNonGerman, 'lite:', liteCtx);
 
     // Bereite Messages für OpenAI vor
     const messages = [
@@ -734,6 +743,38 @@ serve(async (req) => {
     if (payloadSize > 32000) { // ~8k tokens
       console.warn(`⚠️ [${requestId}] Large payload detected: ${payloadSize} chars`);
     }
+
+    // LITE MODE: Skip OpenAI call entirely
+    if (liteCtx) {
+      console.log(`⚡ [${requestId}] LITE MODE: Bypassing OpenAI, returning direct response`);
+      
+      const liteResponse = {
+        role: 'assistant',
+        content: `✨ Hallo! Ich bin gerade im Lite-Modus und kann dir mit den Grunddaten helfen. ${
+          smartContext.profile?.preferred_name ? `${smartContext.profile.preferred_name}, ` : ''
+        }hier sind deine heutigen Basics: ${
+          smartContext.fastMealTotals ? `🍽️ ${smartContext.fastMealTotals.calories || 0} kcal` : ''
+        }${
+          smartContext.fastWorkoutVolume > 0 ? ` | 💪 ${smartContext.fastWorkoutVolume}kg Trainingsvolumen` : ''
+        }${
+          smartContext.fastFluidTotal > 0 ? ` | 💧 ${smartContext.fastFluidTotal}ml Flüssigkeit` : ''
+        }. Stelle gerne konkrete Fragen! 🚀`,
+        meta: { 
+          lite_mode: true,
+          processing_time: Date.now() - startTime,
+          prompt_version: PROMPT_VERSION
+        }
+      };
+      
+      console.log(`✅ [${requestId}] LITE MODE response completed in ${Date.now() - startTime}ms`);
+      
+      return new Response(JSON.stringify(liteResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // FULL MODE: Continue with OpenAI call
+    console.log(`🤖 [${requestId}] FULL MODE: Proceeding with OpenAI call`);
 
     // Define fallback tools for OpenAI
     const tools = [
@@ -1050,9 +1091,52 @@ function detectRelevantData(text: string): string[] {
   return [...new Set(relevantTypes)];
 }
 
-async function buildSmartContextXL(supabase: any, userId: string, relevantDataTypes: string[]) {
-  console.log('🔍 Building Smart Context XL for user:', userId);
+async function buildSmartContextXL(supabase: any, userId: string, relevantDataTypes: string[], liteCtx: boolean = false) {
+  console.log('🔍 Building Smart Context XL for user:', userId, 'Lite mode:', liteCtx);
   
+  // LITE MODE: Only essential data
+  if (liteCtx) {
+    try {
+      const [fastMealData, fastVolumeData, fastFluidData, profileResult] = await Promise.all([
+        supabase.rpc('fast_meal_totals', { p_user: userId, p_d: new Date().toISOString().split('T')[0] }),
+        supabase.rpc('fast_sets_volume', { p_user: userId, p_d: new Date().toISOString().split('T')[0] }),
+        supabase.rpc('fast_fluid_totals', { p_user: userId, p_d: new Date().toISOString().split('T')[0] }),
+        supabase.from('profiles')
+          .select('preferred_name, age, gender, height_cm')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
+
+      console.log('⚡ LITE MODE: Fast data collected');
+      
+      return {
+        profile: profileResult.data ?? null,
+        fastMealTotals: fastMealData.data ?? null,
+        fastWorkoutVolume: fastVolumeData.data ?? 0,
+        fastFluidTotal: fastFluidData.data ?? 0,
+        memory: null,
+        xlSummaries: [],
+        summaries: [],
+        relevantData: {},
+        goals: null
+      };
+    } catch (error) {
+      console.error('❌ LITE MODE data collection failed:', error);
+      return {
+        profile: null,
+        fastMealTotals: null,
+        fastWorkoutVolume: 0,
+        fastFluidTotal: 0,
+        memory: null,
+        xlSummaries: [],
+        summaries: [],
+        relevantData: {},
+        goals: null
+      };
+    }
+  }
+  
+  // FULL MODE: Original logic
   const context: any = {
     profile: null,
     memory: null,
@@ -1224,9 +1308,38 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
   }
 }
 
-async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false) {
+async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false, liteCtx: boolean = false) {
   const coach = COACH_PERSONALITIES[coachPersonality] || COACH_PERSONALITIES.lucy;
   
+  // LITE MODE: Minimal prompt
+  if (liteCtx) {
+    let litePrompt = coach.basePrompt + '\n\n';
+    
+    if (context.profile) {
+      litePrompt += `USER: ${context.profile.preferred_name || 'Athlet'}\n`;
+      if (context.profile.age) litePrompt += `Alter: ${context.profile.age}\n`;
+    }
+    
+    if (context.fastMealTotals) {
+      litePrompt += `\nHEUTE BISHER:\n`;
+      litePrompt += `🍽️ Kalorien: ${context.fastMealTotals.calories || 0}\n`;
+      litePrompt += `💪 Protein: ${context.fastMealTotals.protein || 0}g\n`;
+    }
+    
+    if (context.fastWorkoutVolume > 0) {
+      litePrompt += `🏋️ Training: ${context.fastWorkoutVolume}kg Volumen\n`;
+    }
+    
+    if (context.fastFluidTotal > 0) {
+      litePrompt += `💧 Flüssigkeit: ${context.fastFluidTotal}ml\n`;
+    }
+    
+    litePrompt += `\nBitte antworte kurz und motivierend basierend auf diesen Grunddaten.`;
+    console.log('⚡ LITE MODE: Minimal prompt created (~200 tokens)');
+    return litePrompt;
+  }
+  
+  // FULL MODE: Original logic
   let prompt = coach.basePrompt + '\n\n';
   
   // ============================================================================
