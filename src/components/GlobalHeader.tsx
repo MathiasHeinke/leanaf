@@ -28,8 +28,18 @@ export const GlobalHeader = ({
   const navigate = useNavigate();
 
 
-  // Route to title mapping
+  // Route to title mapping with breadcrumb support
   const getPageTitle = (pathname: string) => {
+    // Handle coach-specific routes with breadcrumb
+    if (pathname.startsWith('/coach/')) {
+      const coachId = pathname.split('/')[2];
+      if (coachId) {
+        // Capitalize first letter for display
+        const coachName = coachId.charAt(0).toUpperCase() + coachId.slice(1);
+        return `Coaching / ${coachName}`;
+      }
+    }
+    
     switch (pathname) {
       case '/': return 'Dashboard';
       case '/profile': return 'Profil';

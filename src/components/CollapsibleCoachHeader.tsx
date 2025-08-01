@@ -39,11 +39,11 @@ export const CollapsibleCoachHeader = ({
           flex items-center gap-3 
           glass-bg
           shadow-md border-b border-border/20
-          transition-transform duration-300 ease-out z-40
+          transition-transform duration-300 ease-out z-45
           ${collapsed ? '-translate-y-16' : 'translate-y-0'}
         `}
         style={{ 
-          top: 'var(--header-height, 60px)'
+          top: '61px'
         } as React.CSSProperties}
       >
         <Button 
@@ -125,7 +125,7 @@ export const CollapsibleCoachHeader = ({
           transition-all duration-300 ease-out
           ${collapsed ? 'h-0' : 'h-16'}
         `}
-        style={{ marginTop: 'var(--header-height, 60px)' }}
+        style={{ marginTop: '61px' }}
       />
       
       {/* Pointer-Events sperren wenn collapsed */}
