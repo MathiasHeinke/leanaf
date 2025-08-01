@@ -1052,11 +1052,11 @@ serve(async (req) => {
     } else {
       throw new Error('Invalid request format');
     }
-    const lastMsg = conversation?.at(-1);
+    const lastMsg = conversation?.at(-1) || { content: '', images: [], coach_personality: 'motivierend' };
 
     // Wichtige Variablen früh definieren
-    const coachPersonality = validateCoachPersonality(lastMsg?.coach_personality || body.coach_personality || 'motivierend');
-    const hasImages = lastMsg?.images?.length > 0;
+    const coachPersonality = validateCoachPersonality(lastMsg.coach_personality || body.coach_personality || 'motivierend');
+    const hasImages = lastMsg.images?.length > 0;
     
     // 🔧 TOOL-HANDLING: Prüfe ob Tool verwendet wird
     const activeTool = getLastTool(conversation);
@@ -1065,8 +1065,8 @@ serve(async (req) => {
     if (!activeTool && hasImages) {
       console.log('🖼️ Images detected without tool - routing to image analysis');
       // Direkt zu Bildanalyse weiterleiten
-      const imageUrls = lastMsg?.images || [];
-      const userMessage = lastMsg?.content || '';
+      const imageUrls = lastMsg.images || [];
+      const userMessage = lastMsg.content || '';
       
       try {
         // Route to appropriate image analysis based on classification
@@ -1144,7 +1144,7 @@ serve(async (req) => {
     // All data collection now handled by Token-Diet section below
     
     // Allow empty messages for image-only requests
-    const prompt = lastMsg?.content?.trim() || '(kein Text)';
+    const prompt = lastMsg.content?.trim() || '(kein Text)';
     if (!prompt || prompt === '(kein Text)') {
       console.log('⚠️ Empty message detected, continuing with fallback text');
     }
@@ -1152,7 +1152,7 @@ serve(async (req) => {
     // ============= TOKEN-DIET: SMART CONTEXT MANAGEMENT =============
     console.log('🍽️ Token-Diet: Smart context management starting...');
     
-    const intent = detectIntent(lastMsg?.content || '', lastMsg?.images || []);
+    const intent = detectIntent(lastMsg.content || '', lastMsg.images || []);
     const tokenBudget = getTokenBudget(intent);
     
     console.log(`📊 Intent: ${intent}, Budget: ${tokenBudget} tokens`);
@@ -1164,7 +1164,7 @@ serve(async (req) => {
     // 2. SENTIMENT ANALYSIS (only for non-smalltalk)
     let sentimentResult = { sentiment: 'neutral', emotion: 'neutral', confidence: 0, intensity: 0 };
     if (intent !== 'smalltalk' && intent !== 'photo_analysis') {
-      sentimentResult = await analyzeSentiment(lastMsg?.content || '');
+      sentimentResult = await analyzeSentiment(lastMsg.content || '');
       console.log('😊 Sentiment Analysis:', sentimentResult);
     }
 
@@ -1179,7 +1179,7 @@ serve(async (req) => {
       });
       
       // Update conversation context
-      await updateConversationContext(supabase, userId, lastMsg?.content || '', sentimentResult, coachMemory);
+      await updateConversationContext(supabase, userId, lastMsg.content || '', sentimentResult, coachMemory);
     }
     
     // 4. SMART HISTORY SUMMARIZATION (Token-Diet)
@@ -1232,16 +1232,16 @@ serve(async (req) => {
     });
 
     // 5. SMART RAG INTEGRATION (Token-Diet with caching)
-    const shouldUseRAG = await determineRAGUsage(lastMsg?.content || '', coachPersonality);
+    const shouldUseRAG = await determineRAGUsage(lastMsg.content || '', coachPersonality);
     let ragContext = null;
     
     if (shouldUseRAG && intent !== 'smalltalk' && intent !== 'photo_analysis') {
       console.log('🔍 Using cached RAG for specialized knowledge...');
-      ragContext = await performRAGSearch(supabase, lastMsg?.content || '', coachPersonality, intent, tokenBudget);
+      ragContext = await performRAGSearch(supabase, lastMsg.content || '', coachPersonality, intent, tokenBudget);
       
       // Cache the result
       if (ragContext) {
-        await setCachedRAGResult(lastMsg?.content || '', mapCoachId(coachPersonality), ragContext);
+        await setCachedRAGResult(lastMsg.content || '', mapCoachId(coachPersonality), ragContext);
       }
     }
     
@@ -1252,7 +1252,7 @@ serve(async (req) => {
         p_action: 'coach_chat_request',
         p_resource_type: 'ai_service',
         p_metadata: {
-          message_length: (lastMsg?.content || '').length,
+          message_length: (lastMsg.content || '').length,
           chat_history_length: chatHistory.length,
           has_images: images.length > 0,
           personality: coachPersonality,
@@ -1351,7 +1351,7 @@ serve(async (req) => {
     let messages = [
       { role: 'system', content: systemMessage },
       ...chatHistory,
-      { role: 'user', content: lastMsg?.content || 'Hello' }
+      { role: 'user', content: lastMsg.content || 'Hello' }
     ];
     
     // Estimate tokens and apply budget
@@ -1366,7 +1366,7 @@ serve(async (req) => {
 
     // Check if message contains exercise data and extract it (only for workout intent)
     if (intent === 'workout') {
-      const exerciseData = await extractExerciseFromText(lastMsg?.content || '');
+      const exerciseData = await extractExerciseFromText(lastMsg.content || '');
       if (exerciseData && exerciseData.exerciseName) {
         console.log('💪 Exercise data detected:', exerciseData);
         await saveExerciseData(supabase, userId, exerciseData);
@@ -1378,8 +1378,8 @@ serve(async (req) => {
     // 7. INTELLIGENT MODEL SELECTION (Token-Diet optimized)
     const currentTool = getLastTool(conversation);
     const isRAG = shouldUseRAG || !!ragContext;
-    const hasImages = (lastMsg?.images?.length || 0) > 0;
-    const isHeavyCalculation = isHeavyCalc(currentTool, lastMsg?.content || '', isRAG);
+    const hasImages = (lastMsg.images?.length || 0) > 0;
+    const isHeavyCalculation = isHeavyCalc(currentTool, lastMsg.content || '', isRAG);
     
     // Choose optimal model based on context
     const selectedModel = chooseModel(messages, {
@@ -1410,7 +1410,7 @@ serve(async (req) => {
     });
 
     // Add image analysis if images are provided
-    if (hasImages && lastMsg?.images) {
+    if (hasImages && lastMsg.images) {
       const lastMessage = messages[messages.length - 1];
       lastMessage.content = [
         { type: 'text', text: lastMsg.content || 'Analyze this image' },
