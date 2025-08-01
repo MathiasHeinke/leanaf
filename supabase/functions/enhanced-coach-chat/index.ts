@@ -1345,7 +1345,7 @@ serve(async (req) => {
     
     const memoryContext = createMemoryContext(coachMemory, sentimentResult);
     const ragPromptAddition = ragContext ? createRAGPromptAddition(ragContext) : '';
-    const userName = getDisplayName(userData.profile);
+    // userName already declared above at line 1221
     const systemMessage = createEnhancedSystemMessage(coachPersonality, userData, memoryContext, ragPromptAddition, userName);
     
     let messages = [
