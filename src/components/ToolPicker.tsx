@@ -18,9 +18,9 @@ interface ToolPickerProps {
 
 const tools: Tool[] = [
   { id: 'trainingsplan', label: 'Trainingsplan', icon: <Dumbbell className="w-4 h-4" />, color: 'text-primary' },
-  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-4 h-4" />, color: 'text-green-600' },
-  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-4 h-4" />, color: 'text-purple-600' },
-  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-4 h-4" />, color: 'text-orange-600' },
+  { id: 'uebung', label: 'Übung hinzufügen', icon: <BookOpen className="w-4 h-4" />, color: 'text-yellow-600' },
+  { id: 'supplement', label: 'Supplement', icon: <Pill className="w-4 h-4" />, color: 'text-teal-600' },
+  { id: 'gewicht', label: 'Gewicht', icon: <Scale className="w-4 h-4" />, color: 'text-purple-600' },
   { id: 'foto', label: 'Fortschritt-Foto', icon: <Camera className="w-4 h-4" />, color: 'text-pink-600' },
 ];
 
