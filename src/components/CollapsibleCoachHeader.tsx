@@ -43,7 +43,7 @@ export const CollapsibleCoachHeader = ({
           flex items-center gap-3 
           backdrop-blur-md bg-background/70 border-b border-border/20
           shadow-md
-          transition-transform duration-300 ease-out z-45
+          transition-transform duration-300 ease-out z-40
           ${collapsed ? '-translate-y-full' : 'translate-y-0'}
         `}
         style={{ 
@@ -123,21 +123,6 @@ export const CollapsibleCoachHeader = ({
           <ChevronDown size={18} className={`text-foreground transition-transform duration-300 ${collapsed ? 'rotate-180' : 'rotate-0'}`} />
         </button>
       </header>
-
-      {/* Spacer nur wenn Banner sichtbar ist */}
-      {!collapsed && (
-        <div 
-          className="h-16"
-          style={{ marginTop: 'var(--global-header-height)' }}
-        />
-      )}
-      
-      {/* Pointer-Events sperren wenn collapsed */}
-      {collapsed && (
-        <style>{`
-          .coach-body { pointer-events: none; }
-        `}</style>
-      )}
     </>
   );
 };

@@ -931,14 +931,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         <div 
           className="flex-1 min-h-0 overflow-hidden"
           style={{ 
-            paddingTop: bannerCollapsed ? '8px' : '0px'
+            paddingTop: bannerCollapsed ? '8px' : 'var(--coach-banner-height)'
           }}
         >
-          <div className="h-full overflow-y-auto px-4 py-2"
+          <div className="h-full overflow-y-auto px-4 py-2 space-y-2"
                style={{ 
                  overscrollBehavior: 'contain',
-                 touchAction: 'pan-y',
-                 userSelect: 'text'
+                 touchAction: 'pan-y'
                }}>
             {/* Render all messages using the unified message renderer */}
             <div className="space-y-3 pb-4">
