@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { UnifiedCoachChat } from "@/components/UnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
 import { SingleDaySummaryGenerator } from "@/components/SingleDaySummaryGenerator";
+import LiteDebugChat from "@/components/LiteDebugChat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Coach profiles data (same as in CoachSelection)
@@ -92,13 +93,17 @@ const CoachPage = () => {
   // Default view: Coach selection with tabs
   return (
     <div className="container mx-auto p-4">
-      <Tabs defaultValue="generate" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="lite-debug" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="selection">👥 Coach auswählen</TabsTrigger>
+          <TabsTrigger value="lite-debug">⚡ Lite Debug</TabsTrigger>
           <TabsTrigger value="generate">🔍 Tag-Summary Debug</TabsTrigger>
         </TabsList>
         <TabsContent value="selection" className="mt-6">
           <CoachSelection selectedCoach="lucy" onCoachChange={() => {}} />
+        </TabsContent>
+        <TabsContent value="lite-debug" className="mt-6">
+          <LiteDebugChat />
         </TabsContent>
         <TabsContent value="generate" className="mt-6">
           <SingleDaySummaryGenerator />
