@@ -231,7 +231,9 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     fluidResult,
     coachConversationsResult,
     profileResult,
-    quickWorkoutsResult
+    quickWorkoutsResult,
+    weeklyWorkoutsResult,
+    weeklyExerciseSessionsResult
   ] = await Promise.all([
     // 1. 🍽️ ERNÄHRUNG - ERWEITERTE SPALTEN
     supabase
@@ -382,12 +384,48 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
       .from('workouts')
       .select(`
         workout_type, duration_minutes, intensity, distance_km, steps, notes, 
-        date, created_at
+        date, created_at, did_workout
       `)
       .eq('user_id', userId)
       .eq('date', date)
       .then((result: any) => {
         console.log(`🏃 Quick workouts query result:`, result.error || `${result.data?.length} quick workouts found`);
+        return result;
+      }),
+    
+    // 12. 📊 7-TAGE WORKOUT ÜBERSICHT für Training/Rest-Verhältnis
+    supabase
+      .from('workouts')
+      .select('date, did_workout, workout_type, duration_minutes, intensity, steps, distance_km')
+      .eq('user_id', userId)
+      .gte('date', (() => {
+        const sevenDaysAgo = new Date(date);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        return sevenDaysAgo.toISOString().split('T')[0];
+      })())
+      .lte('date', date)
+      .order('date', { ascending: false })
+      .then((result: any) => {
+        console.log(`📊 Weekly workouts query result:`, result.error || `${result.data?.length} days found`);
+        return result;
+      }),
+    
+    // 13. 💪 7-TAGE TRAINING SESSIONS für Volumen-Analyse  
+    supabase
+      .from('exercise_sessions')
+      .select(`
+        date, duration_minutes, overall_rpe,
+        exercise_sets!inner(weight_kg, reps, rpe)
+      `)
+      .eq('user_id', userId)
+      .gte('date', (() => {
+        const sevenDaysAgo = new Date(date);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        return sevenDaysAgo.toISOString().split('T')[0];
+      })())
+      .lte('date', date)
+      .then((result: any) => {
+        console.log(`💪 Weekly exercise sessions query result:`, result.error || `${result.data?.length} sessions found`);
         return result;
       })
   ]);
@@ -405,6 +443,8 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     coachConversations: coachConversationsResult?.data || [],
     profile: profileResult?.data || null,
     quickWorkouts: quickWorkoutsResult?.data || [],
+    weeklyWorkouts: weeklyWorkoutsResult?.data || [],
+    weeklyExerciseSessions: weeklyExerciseSessionsResult?.data || [],
     dataCollectionTimestamp: new Date().toISOString(),
     // Fast aggregation results for performance
     fastMealTotals: fastMealData?.data || null,
@@ -484,6 +524,23 @@ function buildStructuredSummary(date: string, kpis: any, rawData: any) {
       quick_workout_active: safe(kpis.quickWorkoutActive, false),
       quick_workouts: safe(rawData.quickWorkouts, [])
     },
+    weekly_training: {
+      training_days: safe(kpis.weeklyTrainingDays, 0),
+      rest_days: safe(kpis.weeklyRestDays, 0),
+      avg_intensity: safe(kpis.avgWeeklyIntensity, 0),
+      total_volume: safe(kpis.weeklyExerciseVolume, 0),
+      workouts: safe(rawData.weeklyWorkouts, []),
+      sessions: safe(rawData.weeklyExerciseSessions, [])
+    },
+    user_profile: {
+      name: safe(rawData.profile?.preferred_name, 'Unbekannt'),
+      age: safe(rawData.profile?.age, null),
+      height: safe(rawData.profile?.height_cm, null),
+      weight_goal: safe(rawData.profile?.weight_kg, null),
+      activity_level: safe(rawData.profile?.activity_level, null),
+      goal_type: safe(rawData.profile?.goal_type, null),
+      current_weight: safe(kpis.weight, null)
+    },
     coaching: {
       sentiment: safe(kpis.coachSentiment, 'neutral'),
       motivation_level: safe(kpis.motivationLevel, 'unknown'),
@@ -520,6 +577,12 @@ function calculateKPIs(dayData: any) {
     distanceKm: 0,
     activeMinutes: 0,
     quickWorkoutActive: false,
+    
+    // 7-TAGE TRAINING ÜBERSICHT
+    weeklyTrainingDays: 0,
+    weeklyRestDays: 0,
+    avgWeeklyIntensity: 0,
+    weeklyExerciseVolume: 0,
     
     // KÖRPERKOMPOSITION
     weight: null,
@@ -782,6 +845,45 @@ function calculateKPIs(dayData: any) {
       kpis.coachSentiment = 'neutral';
       kpis.motivationLevel = 'moderate';
     }
+  }
+  
+  // 7. 📊 7-TAGE TRAINING ANALYSE (NEW)
+  if (dayData.weeklyWorkouts && dayData.weeklyWorkouts.length > 0) {
+    console.log(`📊 Processing ${dayData.weeklyWorkouts.length} weekly workout days`);
+    
+    const trainingDays = dayData.weeklyWorkouts.filter((w: any) => w.did_workout).length;
+    const restDays = dayData.weeklyWorkouts.filter((w: any) => !w.did_workout).length;
+    
+    kpis.weeklyTrainingDays = trainingDays;
+    kpis.weeklyRestDays = restDays;
+    
+    // Calculate average intensity from quick workouts
+    const intensities = dayData.weeklyWorkouts
+      .filter((w: any) => w.intensity && w.intensity > 0)
+      .map((w: any) => w.intensity);
+    
+    kpis.avgWeeklyIntensity = intensities.length > 0 
+      ? Math.round((intensities.reduce((a: number, b: number) => a + b, 0) / intensities.length) * 10) / 10 
+      : 0;
+    
+    console.log(`📊 Weekly summary: ${trainingDays} training days, ${restDays} rest days, avg intensity: ${kpis.avgWeeklyIntensity}`);
+  }
+  
+  // 8. 💪 7-TAGE EXERCISE VOLUMEN (NEW)
+  if (dayData.weeklyExerciseSessions && dayData.weeklyExerciseSessions.length > 0) {
+    console.log(`💪 Processing ${dayData.weeklyExerciseSessions.length} weekly exercise sessions`);
+    
+    let weeklyVolume = 0;
+    dayData.weeklyExerciseSessions.forEach((session: any) => {
+      if (session.exercise_sets && session.exercise_sets.length > 0) {
+        session.exercise_sets.forEach((set: any) => {
+          weeklyVolume += (set.weight_kg || 0) * (set.reps || 0);
+        });
+      }
+    });
+    
+    kpis.weeklyExerciseVolume = Math.round(weeklyVolume);
+    console.log(`💪 Weekly exercise volume: ${kpis.weeklyExerciseVolume}kg`);
   }
 
   // 7. 🚩 DAILY FLAGS
