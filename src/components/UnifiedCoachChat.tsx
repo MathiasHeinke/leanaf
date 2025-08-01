@@ -817,7 +817,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Nachricht eingeben ..."
-            rows={4}
+            rows={3}
             disabled={recordingState}
             className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
             onKeyDown={(e) => {
@@ -1039,7 +1039,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Nachricht eingeben ..."
-                rows={4}
+                rows={3}
                 disabled={recordingState}
                 className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
                 onKeyDown={(e) => {
