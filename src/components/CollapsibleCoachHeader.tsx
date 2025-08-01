@@ -116,7 +116,7 @@ export const CollapsibleCoachHeader = ({
             shadow-lg
             flex items-center justify-center
             transition-all duration-300 ease-out
-            hover-scale z-[60]
+            hover-scale z-[9999]
           `}
           aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
         >
