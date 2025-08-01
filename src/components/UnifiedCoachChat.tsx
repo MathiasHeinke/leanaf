@@ -486,7 +486,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         assistantMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: data.response || 'Entschuldigung, ich konnte nicht antworten.',
+          content: data.content || data.response || 'Entschuldigung, ich konnte nicht antworten.',
           created_at: new Date().toISOString(),
           coach_personality: coach?.personality || 'motivierend',
           images: [],
