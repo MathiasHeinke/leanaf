@@ -443,7 +443,33 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         let userMsg = 'Entschuldigung, es gab ein technisches Problem.';
         
         if (status === 429) {
-          userMsg = 'Tageslimit erreicht – Upgrade nötig 🚀';
+          // 🔄 Auto-Fallback für 429 Errors - versuche debug-direct-chat
+          console.log('🔄 429 Error detected, trying fallback to debug-direct-chat...');
+          try {
+            const fallbackResponse = await supabase.functions.invoke('debug-direct-chat', {
+              body: {
+                userId: user.id,
+                message: inputText || (uploadedImages.length > 0 ? 'Bitte analysiere dieses Bild.' : ''),
+                coachId: coach?.id || 'lucy'
+              }
+            });
+            
+            if (fallbackResponse.data?.content) {
+              const fallbackMessage: UnifiedMessage = {
+                id: `fallback-${Date.now()}`,
+                role: 'assistant',
+                content: fallbackResponse.data.content + '\n\n_⚡ Ausweich-Antwort (Engine überlastet)_',
+                timestamp: new Date(),
+                coach_personality: coach?.personality || 'motivierend',
+                created_at: new Date().toISOString()
+              };
+              setMessages(prev => [...prev, fallbackMessage]);
+              return;
+            }
+          } catch (fallbackError) {
+            console.error('❌ Fallback failed:', fallbackError);
+          }
+          userMsg = 'Engine überlastet – versuche es in 1-2 Minuten erneut 🚀';
         } else if (fullMsg.includes('context_length')) {
           userMsg = 'Nachricht zu lang – bitte kürzer formulieren 🙏';
         } else if (fullMsg.includes('OpenAI API error')) {

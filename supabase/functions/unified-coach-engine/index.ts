@@ -351,13 +351,47 @@ serve(async (req) => {
     console.log(`🔒 [${requestId}] Security event logged`);
 
     // ──────────────────────────────────────────────────────────────
-    // 1. Subscription-Lookup
+    // 1. Subscription-Lookup & Premium-Bypass für Rate-Limits
     // ──────────────────────────────────────────────────────────────
     const { data: subscriber, error: subErr } = await supabase
       .from('subscribers')
       .select('subscribed, subscription_tier, subscription_end')
       .eq('user_id', userId)
       .single();
+
+    const isPremium = subscriber?.subscribed && 
+      ['Premium', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
+    
+    console.log(`👑 [${requestId}] User tier: ${subscriber?.subscription_tier || 'Free'}, Premium: ${isPremium}`);
+    
+    // ──────────────────────────────────────────────────────────────
+    // 2. Rate-Limiting nur für Free-User
+    // ──────────────────────────────────────────────────────────────
+    if (!isPremium) {
+      const { data: limitResult, error: limitError } = await supabase.rpc('check_ai_usage_limit', {
+        p_user_id: userId,
+        p_feature_type: 'coach_chat'
+      });
+
+      if (limitError) {
+        console.error(`❌ [${requestId}] Error checking usage limit:`, limitError);
+      } else if (!limitResult?.can_use) {
+        console.log(`🚫 [${requestId}] Rate limit reached for free user`);
+        return new Response(JSON.stringify({
+          error: 'USAGE_LIMIT_REACHED',
+          message: 'Tageslimit erreicht. Upgrade auf Premium für unbegrenzte Nutzung.',
+          daily_remaining: limitResult.daily_remaining || 0,
+          monthly_remaining: limitResult.monthly_remaining || 0,
+          upgrade_info: {
+            message: 'Mit Premium hast du unbegrenzte Coach-Gespräche',
+            action: 'upgrade_to_premium'
+          }
+        }), { 
+          status: 429, 
+          headers: corsHeaders 
+        });
+      }
+    }
 
     const userTier =
       subscriber?.subscribed && subscriber.subscription_tier?.toLowerCase() !== 'free'
