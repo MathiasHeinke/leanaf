@@ -58,6 +58,13 @@ export const SimpleMessageList = React.memo(({
   coach, 
   onConversationAction 
 }: SimpleMessageListProps) => {
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
   if (!messages.length) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -87,6 +94,8 @@ export const SimpleMessageList = React.memo(({
           />
         </div>
       ))}
+      {/* Invisible div to scroll to */}
+      <div ref={messagesEndRef} />
     </div>
   );
 });

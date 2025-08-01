@@ -74,6 +74,11 @@ const uploadSingleFileWithProgress = async (
   userId: string,
   onProgress: (progress: number) => void
 ): Promise<string> => {
+  // Check authentication first
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Bitte logge dich ein, um Dateien hochzuladen');
+  }
   const isVideo = file.type.startsWith('video/');
   const isImage = file.type.startsWith('image/');
   
