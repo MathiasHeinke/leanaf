@@ -80,3 +80,6 @@ verify_jwt = true
 
 [functions.check-subscription]
 verify_jwt = true
+
+[functions.day-summary]
+verify_jwt = false

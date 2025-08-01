@@ -1,0 +1,599 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.205.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const url = Deno.env.get("SUPABASE_URL")!;
+const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const oKey = Deno.env.get("OPENAI_API_KEY")!;
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+
+  const supa = createClient(url, key, { auth: { persistSession: false } });
+
+  try {
+    const { userId, date, forceUpdate = false } = await req.json();
+
+    if (!userId || !date) {
+      return resp(400, { error: "`userId` und `date` sind Pflicht." });
+    }
+
+    console.log(`🗓️ Processing single day: ${date} for user ${userId}`);
+
+    /* ------------------------------------------------------------------ */
+    /* 1. Skip wenn schon vorhanden                                       */
+    /* ------------------------------------------------------------------ */
+    const { data: existing } = await supa
+      .from("daily_summaries")
+      .select("summary_xxl_md")
+      .eq("user_id", userId)
+      .eq("date", date)
+      .maybeSingle();
+
+    if (existing?.summary_xxl_md && !forceUpdate) {
+      console.log(`⏭️ Summary für ${date} bereits vorhanden, überspringe`);
+      return resp(200, { date, status: "skipped", reason: "already_exists" });
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* 2. Daten einsammeln                                                */
+    /* ------------------------------------------------------------------ */
+    const dayData = await collectDayData(supa, userId, date);
+    if (!hasRelevantData(dayData)) {
+      console.log(`⏭️ Keine relevanten Daten für ${date}, überspringe`);
+      return resp(200, { date, status: "skipped", reason: "no_data" });
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* 3. KPIs + 1× XXL-Summary mit Fallback                             */
+    /* ------------------------------------------------------------------ */
+    const kpis = calculateKPIs(dayData);
+    let summary, tokensUsed, status = "success";
+    
+    try {
+      const result = await generateSummary(kpis, dayData, "xxl");
+      summary = result.summary;
+      tokensUsed = result.tokensUsed;
+    } catch (openaiError) {
+      console.warn(`⚠️ OpenAI-Fehler für ${date}:`, openaiError);
+      // Fallback-Summary
+      summary = generateFallbackSummary(kpis, dayData);
+      tokensUsed = 0;
+      status = "partial_error";
+    }
+
+    const std = summary.split(" ").slice(0, 120).join(" ");
+    const xl = summary.split(" ").slice(0, 240).join(" ");
+
+    /* ------------------------------------------------------------------ */
+    /* 4. Credits & Token-Tracking                                        */
+    /* ------------------------------------------------------------------ */
+    const credits = Math.ceil(tokensUsed / 1000);
+    
+    if (credits > 0) {
+      try {
+        await supa.rpc("deduct_credits", { p_user_id: userId, p_credits: credits });
+        console.log(`💳 ${credits} Credits abgezogen für ${date}`);
+      } catch (creditError) {
+        console.warn(`⚠️ Credit-Abzug fehlgeschlagen:`, creditError);
+      }
+    }
+
+    await supa.from("daily_token_spend").upsert({
+      user_id: userId,
+      date,
+      tokens_spent: tokensUsed,
+      credits_used: credits,
+      operation_type: "summary_generation",
+    });
+
+    /* ------------------------------------------------------------------ */
+    /* 5. Upsert Summary                                                  */
+    /* ------------------------------------------------------------------ */
+    await supa.from("daily_summaries").upsert({
+      user_id: userId,
+      date,
+      total_calories: kpis.totalCalories,
+      total_protein: kpis.totalProtein,
+      total_carbs: kpis.totalCarbs,
+      total_fats: kpis.totalFats,
+      macro_distribution: kpis.macroDistribution,
+      top_foods: kpis.topFoods,
+      workout_volume: kpis.workoutVolume,
+      workout_muscle_groups: kpis.workoutMuscleGroups,
+      sleep_score: kpis.sleepScore,
+      recovery_metrics: kpis.recoveryMetrics,
+      summary_md: std,
+      summary_xl_md: xl,
+      summary_xxl_md: summary,
+      kpi_xxl_json: kpis,
+      tokens_spent: tokensUsed,
+    });
+
+    console.log(`✅ Summary für ${date} erfolgreich erstellt (${status})`);
+
+    return resp(200, {
+      date,
+      status,
+      tokens_used: tokensUsed,
+      credits_used: credits,
+      flags: kpis.dailyFlags,
+    });
+  } catch (e) {
+    console.error(`❌ Fehler bei Day-Summary:`, e);
+    return resp(500, { status: "error", message: e.message });
+  }
+});
+
+/* --------------------------- HELPERS --------------------------- */
+const resp = (status: number, body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
+
+/* ================================================================== */
+/* DATA COLLECTION - 1:1 aus der alten Function übernommen          */
+/* ================================================================== */
+
+async function collectDayData(supabase: any, userId: string, date: string) {
+  const dayStart = `${date}T00:00:00.000Z`;
+  const dayEnd = `${date}T23:59:59.999Z`;
+
+  const [
+    mealsResult,
+    exerciseSessionsResult,
+    exerciseSetsResult,
+    weightResult,
+    bodyMeasurementsResult,
+    supplementLogResult,
+    sleepResult,
+    fluidResult,
+    coachConversationsResult,
+    profileResult
+  ] = await Promise.all([
+    // 1. 🍽️ ERNÄHRUNG
+    supabase
+      .from('meals')
+      .select('id, name, description, calories, protein, carbs, fats, fiber, sugar, meal_type, created_at')
+      .eq('user_id', userId)
+      .gte('created_at', dayStart)
+      .lte('created_at', dayEnd)
+      .order('created_at', { ascending: true }),
+    
+    // 2. 💪 TRAINING SESSIONS
+    supabase
+      .from('exercise_sessions')
+      .select('id, session_name, workout_type, duration_minutes, overall_rpe, notes, start_time, end_time, date')
+      .eq('user_id', userId)
+      .eq('date', date),
+    
+    // 3. 🏋️ EXERCISE SETS
+    supabase
+      .from('exercise_sets')
+      .select(`
+        exercise_id, weight_kg, reps, rpe, duration_seconds, rest_seconds, set_number, created_at,
+        exercises!inner(name, muscle_groups, category, equipment, is_compound)
+      `)
+      .eq('user_id', userId)
+      .gte('created_at', dayStart)
+      .lte('created_at', dayEnd)
+      .order('created_at', { ascending: true }),
+    
+    // 4. ⚖️ GEWICHT & KÖRPERFETT
+    supabase
+      .from('weight_history')
+      .select('weight, body_fat_percentage, muscle_mass_percentage, visceral_fat, body_water_percentage, created_at')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    
+    // 5. 📏 KÖRPERMASSE
+    supabase
+      .from('body_measurements')
+      .select('chest, waist, belly, hips, thigh, arms, neck, created_at')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    
+    // 6. 💊 SUPPLEMENTE
+    supabase
+      .from('supplement_intake_log')
+      .select(`
+        supplement_id, dosage, taken, timing, created_at,
+        food_supplements!inner(name, category, dosage_unit)
+      `)
+      .eq('user_id', userId)
+      .eq('date', date),
+    
+    // 7. 😴 SCHLAF-TRACKING
+    supabase
+      .from('sleep_tracking')
+      .select('hours_slept, sleep_quality, sleep_score, interruptions, mood_after_sleep, libido_level, recovery_feeling')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    
+    // 8. 💧 HYDRATION-TRACKING
+    supabase
+      .from('user_fluids')
+      .select(`
+        amount_ml, created_at,
+        fluid_database!inner(name, category, calories_per_100ml, caffeine_mg_per_100ml, alcohol_percentage)
+      `)
+      .eq('user_id', userId)
+      .gte('created_at', dayStart)
+      .lte('created_at', dayEnd)
+      .order('created_at', { ascending: true }),
+    
+    // 9. 🧠 COACH-GESPRÄCHE
+    supabase
+      .from('coach_conversations')
+      .select('message_content, message_role, coach_personality, created_at')
+      .eq('user_id', userId)
+      .eq('conversation_date', date)
+      .order('created_at', { ascending: true }),
+    
+    // 10. 👤 USER-PROFIL
+    supabase
+      .from('profiles')
+      .select('preferred_name, age, gender, height_cm, activity_level, goal_type')
+      .eq('id', userId)
+      .maybeSingle()
+  ]);
+
+  return {
+    date,
+    meals: mealsResult?.data || [],
+    workouts: exerciseSessionsResult?.data || [],
+    exerciseSets: exerciseSetsResult?.data || [],
+    weight: weightResult?.data?.[0] || null,
+    bodyMeasurements: bodyMeasurementsResult?.data?.[0] || null,
+    supplementLog: supplementLogResult?.data || [],
+    sleep: sleepResult?.data?.[0] || null,
+    fluids: fluidResult?.data || [],
+    coachConversations: coachConversationsResult?.data || [],
+    profile: profileResult?.data || null,
+    dataCollectionTimestamp: new Date().toISOString()
+  };
+}
+
+/* ================================================================== */
+/* KPI CALCULATION - 1:1 aus der alten Function übernommen           */
+/* ================================================================== */
+
+function calculateKPIs(dayData: any) {
+  const kpis: any = {
+    // BASIS-ERNÄHRUNG
+    totalCalories: 0,
+    totalProtein: 0,
+    totalCarbs: 0,
+    totalFats: 0,
+    totalFiber: 0,
+    totalSugar: 0,
+    macroDistribution: {},
+    topFoods: [],
+    mealTiming: [],
+    
+    // BASIS-TRAINING
+    workoutVolume: 0,
+    workoutMuscleGroups: [],
+    workoutDuration: 0,
+    avgRPE: 0,
+    totalSets: 0,
+    exerciseTypes: [],
+    
+    // KÖRPERKOMPOSITION
+    weight: null,
+    bodyFatPercentage: null,
+    muscleMassPercentage: null,
+    bodyWaterPercentage: null,
+    visceralFat: null,
+    bodyMeasurements: {},
+    
+    // RECOVERY & SCHLAF
+    sleepScore: null,
+    sleepHours: null,
+    sleepQuality: null,
+    libidoLevel: null,
+    recoveryFeeling: null,
+    recoveryMetrics: {},
+    
+    // HYDRATION & SUPPLEMENTE
+    totalFluidMl: 0,
+    caffeineMg: 0,
+    alcoholG: 0,
+    hydrationScore: 0,
+    supplementCompliance: 0,
+    supplementsMissed: 0,
+    
+    // MENTAL STATE & COACHING
+    coachSentiment: 'neutral',
+    motivationLevel: 'unknown',
+    stressIndicators: [],
+    successMoments: [],
+    struggles: [],
+    
+    // KORRELATIONEN & TRENDS
+    performanceCorrelations: {},
+    dailyFlags: []
+  };
+
+  // 1. 🍽️ ERNÄHRUNGS-ANALYSE
+  if (dayData.meals && dayData.meals.length > 0) {
+    let mealTimeDistribution: any = {};
+    
+    dayData.meals.forEach((meal: any) => {
+      kpis.totalCalories += meal.calories || 0;
+      kpis.totalProtein += meal.protein || 0;
+      kpis.totalCarbs += meal.carbs || 0;
+      kpis.totalFats += meal.fats || 0;
+      kpis.totalFiber += meal.fiber || 0;
+      kpis.totalSugar += meal.sugar || 0;
+      
+      const mealHour = new Date(meal.created_at).getHours();
+      mealTimeDistribution[mealHour] = (mealTimeDistribution[mealHour] || 0) + 1;
+    });
+
+    // Makro-Verteilung (mit Guard)
+    if (kpis.totalCalories > 0) {
+      kpis.macroDistribution = {
+        protein_percent: Math.round((kpis.totalProtein * 4 / kpis.totalCalories) * 100),
+        carbs_percent: Math.round((kpis.totalCarbs * 4 / kpis.totalCalories) * 100),
+        fats_percent: Math.round((kpis.totalFats * 9 / kpis.totalCalories) * 100)
+      };
+    }
+
+    // Top Lebensmittel
+    const foodCounts: any = {};
+    dayData.meals.forEach((meal: any) => {
+      const food = meal.name || meal.description || 'Unbekannt';
+      foodCounts[food] = (foodCounts[food] || 0) + 1;
+    });
+    
+    kpis.topFoods = Object.entries(foodCounts)
+      .sort(([,a]: any, [,b]: any) => b - a)
+      .slice(0, 5)
+      .map(([food, count]) => ({ food, count }));
+      
+    kpis.mealTiming = Object.entries(mealTimeDistribution)
+      .map(([hour, count]) => ({ hour: parseInt(hour), meals: count }))
+      .sort((a, b) => a.hour - b.hour);
+  }
+
+  // 2. 💪 TRAINING-ANALYSE
+  if (dayData.workouts && dayData.workouts.length > 0) {
+    let totalRPE = 0;
+    let rpeCount = 0;
+    
+    kpis.workoutDuration = dayData.workouts.reduce((total: number, workout: any) => {
+      if (workout.overall_rpe) {
+        totalRPE += workout.overall_rpe;
+        rpeCount++;
+      }
+      return total + (workout.duration_minutes || 0);
+    }, 0);
+    
+    kpis.avgRPE = rpeCount > 0 ? Math.round((totalRPE / rpeCount) * 10) / 10 : 0;
+
+    if (dayData.exerciseSets && dayData.exerciseSets.length > 0) {
+      kpis.totalSets = dayData.exerciseSets.length;
+      
+      kpis.workoutVolume = dayData.exerciseSets.reduce((total: number, set: any) => {
+        const volume = (set.reps || 0) * (set.weight_kg || 0);
+        return total + volume;
+      }, 0);
+
+      const muscleGroups = new Set();
+      const exerciseTypes = new Set();
+      
+      dayData.exerciseSets.forEach((set: any) => {
+        if (set.exercises?.muscle_groups) {
+          set.exercises.muscle_groups.forEach((mg: string) => muscleGroups.add(mg));
+        }
+        if (set.exercises?.category) {
+          exerciseTypes.add(set.exercises.category);
+        }
+      });
+      
+      kpis.workoutMuscleGroups = Array.from(muscleGroups);
+      kpis.exerciseTypes = Array.from(exerciseTypes);
+    }
+  }
+
+  // 3. ⚖️ KÖRPERKOMPOSITION
+  if (dayData.weight) {
+    kpis.weight = dayData.weight.weight;
+    kpis.bodyFatPercentage = dayData.weight.body_fat_percentage;
+    kpis.muscleMassPercentage = dayData.weight.muscle_mass_percentage;
+    kpis.bodyWaterPercentage = dayData.weight.body_water_percentage;
+    kpis.visceralFat = dayData.weight.visceral_fat;
+  }
+
+  if (dayData.bodyMeasurements) {
+    kpis.bodyMeasurements = dayData.bodyMeasurements;
+  }
+
+  // 4. 😴 RECOVERY & SCHLAF
+  if (dayData.sleep) {
+    kpis.sleepScore = dayData.sleep.sleep_score;
+    kpis.sleepHours = dayData.sleep.hours_slept;
+    kpis.sleepQuality = dayData.sleep.sleep_quality;
+    kpis.libidoLevel = dayData.sleep.libido_level;
+    kpis.recoveryFeeling = dayData.sleep.recovery_feeling;
+    
+    kpis.recoveryMetrics = {
+      sleep_interruptions: dayData.sleep.interruptions,
+      mood_after_sleep: dayData.sleep.mood_after_sleep,
+      sleep_efficiency: dayData.sleep.hours_slept && dayData.sleep.hours_slept >= 7 ? 'good' : 'needs_improvement'
+    };
+  }
+
+  // 5. 💧 HYDRATION & SUPPLEMENTE
+  if (dayData.fluids && dayData.fluids.length > 0) {
+    dayData.fluids.forEach((fluid: any) => {
+      kpis.totalFluidMl += fluid.amount_ml || 0;
+      
+      if (fluid.fluid_database) {
+        const caffeine = (fluid.fluid_database.caffeine_mg_per_100ml || 0) * (fluid.amount_ml / 100);
+        const alcohol = (fluid.fluid_database.alcohol_percentage || 0) * (fluid.amount_ml / 100) * 0.8;
+        
+        kpis.caffeineMg += caffeine;
+        kpis.alcoholG += alcohol;
+      }
+    });
+    
+    // Hydration-Score
+    if (kpis.weight && kpis.weight > 0) {
+      const mlPerKg = kpis.totalFluidMl / kpis.weight;
+      kpis.hydrationScore = Math.min(100, Math.round((mlPerKg / 35) * 100));
+    }
+  }
+
+  if (dayData.supplementLog && dayData.supplementLog.length > 0) {
+    const takenCount = dayData.supplementLog.filter((sup: any) => sup.taken).length;
+    kpis.supplementCompliance = Math.round((takenCount / dayData.supplementLog.length) * 100);
+    kpis.supplementsMissed = dayData.supplementLog.length - takenCount;
+  }
+
+  // 6. 🧠 COACH-GESPRÄCHE & SENTIMENT
+  if (dayData.coachConversations && dayData.coachConversations.length > 0) {
+    const userMessages = dayData.coachConversations.filter((msg: any) => msg.message_role === 'user');
+    
+    let positiveWords = 0;
+    let negativeWords = 0;
+    
+    const positiveKeywords = ['gut', 'super', 'toll', 'perfekt', 'motiviert', 'stark', 'erfolg', 'schaffe'];
+    const negativeKeywords = ['schlecht', 'müde', 'stress', 'schwer', 'problem', 'schwierig', 'unmotiviert'];
+    
+    userMessages.forEach((msg: any) => {
+      const content = msg.message_content.toLowerCase();
+      positiveKeywords.forEach(word => {
+        if (content.includes(word)) positiveWords++;
+      });
+      negativeKeywords.forEach(word => {
+        if (content.includes(word)) negativeWords++;
+      });
+    });
+    
+    if (positiveWords > negativeWords) {
+      kpis.coachSentiment = 'positive';
+      kpis.motivationLevel = 'high';
+    } else if (negativeWords > positiveWords) {
+      kpis.coachSentiment = 'negative';
+      kpis.motivationLevel = 'low';
+    } else {
+      kpis.coachSentiment = 'neutral';
+      kpis.motivationLevel = 'moderate';
+    }
+  }
+
+  // 7. 🚩 DAILY FLAGS
+  if (kpis.totalCalories > 0 && kpis.totalCalories < 1200) kpis.dailyFlags.push('very_low_calories');
+  if (kpis.totalProtein > 0 && kpis.weight && (kpis.totalProtein / kpis.weight) < 1.2) kpis.dailyFlags.push('low_protein');
+  if (kpis.workoutVolume > 5000) kpis.dailyFlags.push('high_volume_training');
+  if (kpis.sleepHours && kpis.sleepHours < 6) kpis.dailyFlags.push('insufficient_sleep');
+  if (kpis.hydrationScore && kpis.hydrationScore < 60) kpis.dailyFlags.push('dehydrated');
+  if (kpis.avgRPE > 8) kpis.dailyFlags.push('high_intensity_training');
+
+  return kpis;
+}
+
+function hasRelevantData(dayData: any): boolean {
+  return (
+    (dayData.meals && dayData.meals.length > 0) ||
+    (dayData.workouts && dayData.workouts.length > 0) ||
+    (dayData.exerciseSets && dayData.exerciseSets.length > 0) ||
+    dayData.weight ||
+    dayData.bodyMeasurements ||
+    (dayData.supplementLog && dayData.supplementLog.length > 0) ||
+    dayData.sleep ||
+    (dayData.fluids && dayData.fluids.length > 0)
+  );
+}
+
+/* ================================================================== */
+/* OPENAI SUMMARY GENERATION + FALLBACK                              */
+/* ================================================================== */
+
+async function generateSummary(kpis: any, dayData: any, summaryType: 'standard' | 'xl' | 'xxl') {
+  const userName = dayData.profile?.preferred_name || 'Athlet';
+
+  const systemPrompt = `
+Erstelle eine FACHLICHE Tageszusammenfassung in exakt 700 deutschen Wörtern.
+
+Struktur für XXL-Summary:
+1. 🍽️ Ernährung (Makros, Top-Foods, Timing, Kalorienbilanz)
+2. 💪 Training (Volumen, Highlights, RPE, Muskel-Fokus) 
+3. ⚖️ Körper & Maße (Gewicht, KFA, Messungen, Trend)
+4. 😴 Regeneration (Schlaf, HRV, Libido, Mood)
+5. 💧 Hydration & Supplemente (Flüssigkeit, Koffein/Alkohol, Compliance)
+6. 🔗 Korrelationen & Insights (Schlaf ↔ Leistung, etc.)
+7. 📌 Handlungsempfehlungen (max 4 konkrete Punkte)
+
+Sprich ${userName} direkt an. Maximal 2 Emojis pro Abschnitt. Wissenschaftlich fundiert aber verständlich.
+`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${oKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: JSON.stringify(kpis) }
+        ],
+        max_tokens: 900,
+        temperature: 0.7
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const summary = data.choices[0].message.content;
+    const tokensUsed = data.usage?.total_tokens || 0;
+
+    return { summary, tokensUsed };
+
+  } catch (error) {
+    console.error(`Error generating summary:`, error);
+    throw error;
+  }
+}
+
+function generateFallbackSummary(kpis: any, dayData: any): string {
+  const userName = dayData.profile?.preferred_name || 'Athlet';
+  
+  return `
+Hallo ${userName}! 
+
+📊 **Tageszusammenfassung für ${dayData.date}**
+
+🍽️ **Ernährung**: ${kpis.totalCalories} kcal mit ${kpis.totalProtein}g Protein, ${kpis.totalCarbs}g Kohlenhydrate und ${kpis.totalFats}g Fett verbraucht.
+
+💪 **Training**: ${kpis.workoutVolume}kg Gesamtvolumen über ${kpis.totalSets} Sätze. Durchschnittliche Anstrengung: ${kpis.avgRPE}/10.
+
+⚖️ **Körperdaten**: ${kpis.weight ? `Gewicht: ${kpis.weight}kg` : 'Keine Gewichtsmessung'}.
+
+😴 **Regeneration**: ${kpis.sleepHours ? `${kpis.sleepHours}h Schlaf` : 'Keine Schlafdaten'}.
+
+💧 **Hydration**: ${kpis.totalFluidMl}ml Flüssigkeit getrunken.
+
+🔧 **System-Info**: Diese Zusammenfassung wurde automatisch generiert, da der AI-Service temporär nicht verfügbar war.
+`;
+}
