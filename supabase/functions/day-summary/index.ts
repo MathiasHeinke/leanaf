@@ -227,7 +227,7 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     supabase
       .from('meals')
       .select(`
-        id, text, calories, protein, carbs, fats, fiber, sugar,
+        id, text, calories, protein, carbs, fats,
         meal_type, quality_score, images, consumption_percentage,
         created_at
       `)
@@ -528,8 +528,7 @@ function calculateKPIs(dayData: any) {
       kpis.totalProtein += meal.protein || 0;
       kpis.totalCarbs += meal.carbs || 0;
       kpis.totalFats += meal.fats || 0;
-      kpis.totalFiber += meal.fiber || 0;
-      kpis.totalSugar += meal.sugar || 0;
+      // Note: fiber and sugar not available in meals table
       
       const mealHour = new Date(meal.created_at).getHours();
       mealTimeDistribution[mealHour] = (mealTimeDistribution[mealHour] || 0) + 1;
