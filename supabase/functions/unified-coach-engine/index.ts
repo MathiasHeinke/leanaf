@@ -638,7 +638,8 @@ serve(async (req) => {
       memoryLoaded: !!smartContext.memory,
       xlSummaryDays: smartContext.xlSummaries?.length || 0,
       regularSummaryDays: smartContext.summaries?.length || 0,
-      relevantDataLoaded: Object.keys(smartContext.relevantData || {}).length
+      relevantDataLoaded: Object.keys(smartContext.relevantData || {}).length,
+      loadedDataTypes: Object.keys(smartContext.relevantData || {})
     });
 
     // Prompt-Version-Check für nahtlose Updates
@@ -1129,8 +1130,8 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
         switch (dataType) {
           case 'weight_history':
             const { data: weights, error: weightsError } = await supabase
-              .from('weight_entries')
-              .select('date, weight, body_fat_percentage')
+              .from('weight_history')
+              .select('date, weight, body_fat_percentage, muscle_percentage, visceral_fat, body_water_percentage')
               .eq('user_id', userId)
               .order('date', { ascending: false })
               .limit(10);

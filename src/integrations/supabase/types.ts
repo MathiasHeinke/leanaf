@@ -3303,6 +3303,7 @@ export type Database = {
       weight_history: {
         Row: {
           body_fat_percentage: number | null
+          body_water_percentage: number | null
           created_at: string
           date: string
           id: string
@@ -3311,10 +3312,12 @@ export type Database = {
           photo_urls: Json | null
           updated_at: string
           user_id: string
+          visceral_fat: number | null
           weight: number
         }
         Insert: {
           body_fat_percentage?: number | null
+          body_water_percentage?: number | null
           created_at?: string
           date?: string
           id?: string
@@ -3323,10 +3326,12 @@ export type Database = {
           photo_urls?: Json | null
           updated_at?: string
           user_id: string
+          visceral_fat?: number | null
           weight: number
         }
         Update: {
           body_fat_percentage?: number | null
+          body_water_percentage?: number | null
           created_at?: string
           date?: string
           id?: string
@@ -3335,6 +3340,7 @@ export type Database = {
           photo_urls?: Json | null
           updated_at?: string
           user_id?: string
+          visceral_fat?: number | null
           weight?: number
         }
         Relationships: []
