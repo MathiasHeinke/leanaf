@@ -147,7 +147,7 @@ async function collectDayData(supabase: any, userId: string, date: string) {
   const dayStart = `${date}T00:00:00.000Z`;
   const dayEnd = `${date}T23:59:59.999Z`;
 
-  console.log(`📊 Collecting data for ${date}`);
+  console.log(`📊 Collecting data for ${date} (${dayStart} to ${dayEnd})`);
 
   const data: any = {
     date,
@@ -160,65 +160,124 @@ async function collectDayData(supabase: any, userId: string, date: string) {
     supplementLog: []
   };
 
+  // Mahlzeiten sammeln
   try {
-    // Mahlzeiten
-    const { data: meals } = await supabase
+    const { data: meals, error: mealsError } = await supabase
       .from('meals')
       .select('*')
       .eq('user_id', userId)
       .gte('created_at', dayStart)
       .lte('created_at', dayEnd);
-    data.meals = meals || [];
+    
+    if (mealsError) {
+      console.error(`❌ Error fetching meals for ${date}:`, mealsError);
+    } else {
+      data.meals = meals || [];
+      console.log(`🍽️ Found ${data.meals.length} meals for ${date}`);
+    }
+  } catch (error) {
+    console.error(`❌ Exception fetching meals for ${date}:`, error);
+  }
 
-    // Workouts
-    const { data: workouts } = await supabase
-      .from('exercise_sessions')
+  // Workouts sammeln (korrigierte Tabelle: workouts statt exercise_sessions)
+  try {
+    const { data: workouts, error: workoutsError } = await supabase
+      .from('workouts')
       .select('*')
       .eq('user_id', userId)
       .eq('date', date);
-    data.workouts = workouts || [];
+    
+    if (workoutsError) {
+      console.error(`❌ Error fetching workouts for ${date}:`, workoutsError);
+    } else {
+      data.workouts = workouts || [];
+      console.log(`💪 Found ${data.workouts.length} workouts for ${date}`);
+    }
+  } catch (error) {
+    console.error(`❌ Exception fetching workouts for ${date}:`, error);
+  }
 
-    // Exercise Sets (für detaillierte Workout-Analyse)
-    if (data.workouts.length > 0) {
-      const sessionIds = data.workouts.map((w: any) => w.id);
-      const { data: sets } = await supabase
+  // Exercise Sets sammeln (falls Workouts vorhanden)
+  if (data.workouts && data.workouts.length > 0) {
+    try {
+      const workoutIds = data.workouts.map((w: any) => w.id);
+      const { data: sets, error: setsError } = await supabase
         .from('exercise_sets')
         .select('*, exercises(name, muscle_groups)')
         .eq('user_id', userId)
-        .in('session_id', sessionIds);
-      data.exerciseSets = sets || [];
+        .in('session_id', workoutIds);
+      
+      if (setsError) {
+        console.error(`❌ Error fetching exercise sets for ${date}:`, setsError);
+      } else {
+        data.exerciseSets = sets || [];
+        console.log(`🏋️ Found ${data.exerciseSets.length} exercise sets for ${date}`);
+      }
+    } catch (error) {
+      console.error(`❌ Exception fetching exercise sets for ${date}:`, error);
     }
+  }
 
-    // Gewicht
-    const { data: weight } = await supabase
+  // Gewicht sammeln
+  try {
+    const { data: weight, error: weightError } = await supabase
       .from('weight_history')
       .select('*')
       .eq('user_id', userId)
       .eq('date', date)
-      .single();
-    data.weight = weight;
+      .maybeSingle();
+    
+    if (weightError) {
+      console.error(`❌ Error fetching weight for ${date}:`, weightError);
+    } else {
+      data.weight = weight;
+      if (weight) console.log(`⚖️ Found weight data for ${date}: ${weight.weight}kg`);
+    }
+  } catch (error) {
+    console.error(`❌ Exception fetching weight for ${date}:`, error);
+  }
 
-    // Körpermaße
-    const { data: measurements } = await supabase
+  // Körpermaße sammeln
+  try {
+    const { data: measurements, error: measurementsError } = await supabase
       .from('body_measurements')
       .select('*')
       .eq('user_id', userId)
       .eq('date', date)
-      .single();
-    data.bodyMeasurements = measurements;
+      .maybeSingle();
+    
+    if (measurementsError) {
+      console.error(`❌ Error fetching body measurements for ${date}:`, measurementsError);
+    } else {
+      data.bodyMeasurements = measurements;
+      if (measurements) console.log(`📏 Found body measurements for ${date}`);
+    }
+  } catch (error) {
+    console.error(`❌ Exception fetching body measurements for ${date}:`, error);
+  }
 
-    // Supplements
-    const { data: supplements } = await supabase
-      .from('supplement_log')
+  // Supplements sammeln (korrigierte Tabelle: supplement_intake_log statt supplement_log)
+  try {
+    const { data: supplements, error: supplementsError } = await supabase
+      .from('supplement_intake_log')
       .select('*')
       .eq('user_id', userId)
       .gte('taken_at', dayStart)
       .lte('taken_at', dayEnd);
-    data.supplementLog = supplements || [];
-
+    
+    if (supplementsError) {
+      console.error(`❌ Error fetching supplements for ${date}:`, supplementsError);
+    } else {
+      data.supplementLog = supplements || [];
+      console.log(`💊 Found ${data.supplementLog.length} supplement entries for ${date}`);
+    }
   } catch (error) {
-    console.warn(`⚠️ Error collecting data for ${date}:`, error.message);
+    console.error(`❌ Exception fetching supplements for ${date}:`, error);
   }
+
+  // Debug-Ausgabe der gesammelten Daten
+  const hasData = hasRelevantData(data);
+  console.log(`📈 Data summary for ${date}: meals=${data.meals.length}, workouts=${data.workouts.length}, exerciseSets=${data.exerciseSets.length}, weight=${!!data.weight}, measurements=${!!data.bodyMeasurements}, supplements=${data.supplementLog.length}, hasRelevantData=${hasData}`);
 
   return data;
 }
