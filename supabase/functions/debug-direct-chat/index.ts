@@ -8,7 +8,8 @@ const openKey = Deno.env.get("OPENAI_API_KEY")!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "apikey, content-type, authorization",
+  "Access-Control-Allow-Headers": "apikey, content-type, authorization, x-client-info, accept, accept-profile, content-profile",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
 serve(async req => {

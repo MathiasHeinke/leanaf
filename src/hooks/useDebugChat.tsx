@@ -21,6 +21,7 @@ export const useDebugChat = () => {
     try {
       console.log("🔧 Debug-Chat: Sending direct to GPT-4.1...");
       console.log("🔧 Payload:", { userId: user.id, message: message.substring(0, 50) + "...", coachId });
+      console.log("🔧 About to call supabase.functions.invoke...");
       
       const { data, error } = await supabase.functions.invoke("debug-direct-chat", {
         body: { 
@@ -30,9 +31,15 @@ export const useDebugChat = () => {
         },
       });
       
+      console.log("🔧 Raw response from supabase.functions.invoke:", { data, error });
+      
       if (error) {
         console.error("🔧 Debug-Chat Error:", error);
-        throw error;
+        throw new Error(`Debug function error: ${error.message || error}`);
+      }
+      
+      if (!data) {
+        throw new Error("No data received from debug function");
       }
       
       console.log("🔧 Debug-Chat Success:", data);
