@@ -344,14 +344,13 @@ serve(async (req) => {
 
     console.log(`📊 [${requestId}] Raw subscription data:`, subscriber);
 
-    // Check for both Stripe subscriptions (Premium, Pro) and manual subscriptions (Premium, Enterprise, Super Admin)
-    const isPremium = subscriber?.subscribed && 
-      ['Premium', 'Pro', 'Enterprise', 'Super Admin'].includes(subscriber?.subscription_tier);
+    // ✅ VEREINFACHTE Premium-Erkennung: NUR subscribed = true zählt (egal welcher Tier)
+    const isPremium = subscriber?.subscribed === true;
     
     // ✅ CRITICAL: Define userTier at function scope level for global access
     const userTier = isPremium ? 'premium' : 'free';
     
-    console.log(`👑 [${requestId}] User tier: ${subscriber?.subscription_tier || 'Free'}, Premium: ${isPremium}, userTier: ${userTier}`);
+    console.log(`👑 [${requestId}] PREMIUM STATUS: ${isPremium} | subscribed: ${subscriber?.subscribed} | tier: ${subscriber?.subscription_tier} | userTier: ${userTier}`);
     
     // Check for empty message (common issue causing errors)
     if (!message?.trim() && images.length === 0) {
