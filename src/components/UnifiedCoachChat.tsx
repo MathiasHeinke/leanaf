@@ -436,11 +436,16 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         // 👉 Debug info für Dev/Power-User 
         console.warn('Chat-Error Details:', { status, fullMsg, error });
 
+        // 🔄 Robustes Error-Handling mit Auto-Fallback 
+        const isUsageLimit = (status: number, error: any) => 
+          status === 429 || 
+          error?.includes('USAGE_LIMIT_REACHED') ||
+          (status === 0 && error?.includes('non-2xx status code')); // Supabase SDK Error für 429
+        
         let userMsg = 'Entschuldigung, es gab ein technisches Problem.';
         
-        if (status === 429) {
-          // 🔄 Auto-Fallback für 429 Errors - versuche debug-direct-chat
-          console.log('🔄 429 Error detected, trying fallback to debug-direct-chat...');
+        if (isUsageLimit(status, error)) {
+          console.warn('🔄 [Fallback►debug-direct-chat] reason:', { status, error });
           try {
             const fallbackResponse = await supabase.functions.invoke('debug-direct-chat', {
               body: {
@@ -457,14 +462,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                 content: fallbackResponse.data.content + '\n\n_⚡ Ausweich-Antwort (Engine überlastet)_',
                 timestamp: new Date(),
                 coach_personality: coach?.personality || 'motivierend',
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                images: [],
+                mode: mode
               };
               setMessages(prev => [...prev, fallbackMessage]);
+              console.log('✅ Fallback auf debug-direct-chat erfolgreich');
+              setIsThinking(false);
               return;
             }
           } catch (fallbackError) {
-            console.error('❌ Fallback failed:', fallbackError);
+            console.error('❌ Fallback zu debug-direct-chat failed:', fallbackError);
           }
+        }
+        
+        if (status === 429) {
           userMsg = 'Engine überlastet – versuche es in 1-2 Minuten erneut 🚀';
         } else if (fullMsg.includes('context_length')) {
           userMsg = 'Nachricht zu lang – bitte kürzer formulieren 🙏';
