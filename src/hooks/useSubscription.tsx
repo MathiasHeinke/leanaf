@@ -55,7 +55,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
     trialDaysLeft: 0,
   });
   
-  // Debug state
+  // Debug state - DISABLED
   const [debugMode, setDebugMode] = useState(false);
   const [debugTier, setDebugTierState] = useState<string | null>(null);
   
