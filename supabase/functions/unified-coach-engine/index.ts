@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { trainingsplan, uebung, supplement, gewicht, foto } from './tool-handlers/index.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,19 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 // Prompt Version für Handover-Nachrichten
 const PROMPT_VERSION = '2025-08-01-XL';
+
+// Tool-Handler-Map
+const handlers = {
+  trainingsplan,
+  uebung,
+  supplement,
+  gewicht,
+  foto,
+  chat: async (conv: any, userId: string) => {
+    // Kein Spezial-Output – einfach weiter zum OpenAI-Flow
+    return null;
+  }
+};
 
 // Cold-Start-Cache für bessere Performance
 const globalThis_warmCache = globalThis as any;
@@ -216,6 +230,26 @@ serve(async (req) => {
     // PROMPT-VERSIONIERUNG: Handover bei Prompt-Updates
     // ============================================================================
     
+    // ============================================================================
+    // PHASE B: TOOL-HANDLER-ROUTING
+    // ============================================================================
+    
+    // Tool-Handler-Routing: aktiviertes Tool verarbeiten
+    const activeTool = toolContext?.tool || 'chat';
+    console.log(`🔧 [${requestId}] Active tool:`, activeTool);
+    
+    if (handlers[activeTool]) {
+      console.log(`⚡ [${requestId}] Executing tool handler for:`, activeTool);
+      const toolResult = await handlers[activeTool](conversationHistory, userId);
+      if (toolResult) {
+        console.log(`✅ [${requestId}] Tool handler returned result, bypassing OpenAI`);
+        return new Response(JSON.stringify(toolResult), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      console.log(`⏭️ [${requestId}] Tool handler returned null, continuing to OpenAI`);
+    }
+
     // Erkenne relevante Datentypen basierend auf Nachricht
     const relevantDataTypes = detectRelevantData(message + ' ' + (toolContext?.description || ''));
     console.log('🧠 Detected relevant data types:', relevantDataTypes);

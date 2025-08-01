@@ -398,6 +398,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       });
 
       // Use unified-coach-engine for all conversations (text + images)
+      const activeTool = selectedTool ?? 'chat';
+      
       const response = await supabase.functions.invoke('unified-coach-engine', {
         body: {
           userId: user.id,
@@ -407,9 +409,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           analysisType: 'general',
           coachPersonality: coach?.id || 'lucy',
           conversationHistory: conversationHistory,
-          toolContext: selectedTool ? {
-            tool: selectedTool,
-            description: `Benutzer hat Tool "${selectedTool}" ausgewählt`,
+          toolContext: {
+            tool: activeTool,
+            description: activeTool === 'chat'
+              ? 'Freies Gespräch / Intent-Analyse'
+              : `Benutzer hat Tool "${activeTool}" ausgewählt`,
             data: {
               mode: mode,
               profileData: profileData,
@@ -420,7 +424,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               averages: averages,
               dailyGoals: dailyGoals
             }
-          } : null
+          }
         }
       });
       data = response.data;
