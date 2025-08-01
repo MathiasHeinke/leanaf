@@ -389,8 +389,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         created_at: msg.created_at
       }));
 
-      // Feature Flag: Route to debug-direct-chat temporarily
-      const targetFunction = 'debug-direct-chat'; // Force debug mode
+      // Route to correct endpoint based on debug mode (Shift+Enter = debug)
+      const targetFunction = 'unified-coach-engine'; // Always use unified-coach-engine for normal chat
       
       console.log(`🚀 Sending message to ${targetFunction}:`, {
         userId: user.id,
