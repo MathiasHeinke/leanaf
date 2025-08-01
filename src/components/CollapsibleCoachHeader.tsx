@@ -19,15 +19,18 @@ export const CollapsibleCoachHeader = ({
   onHistoryClick, 
   onDeleteChat 
 }: CollapsibleCoachHeaderProps) => {
-  const [open, setOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
   const navigate = useNavigate();
+
+  console.log('CollapsibleCoachHeader rendered, isOpen state:', isOpen);
 
   const handleBack = () => {
     navigate('/coach');
   };
 
   const toggleCollapse = () => {
-    setOpen(!open);
+    console.log('Toggle collapse clicked, current isOpen state:', isOpen);
+    setIsOpen(!isOpen);
   };
 
   const Chevron = ({ open }: { open: boolean }) => (
@@ -47,7 +50,7 @@ export const CollapsibleCoachHeader = ({
       {/* Coach banner with notch */}
       <header 
         className={`coach-banner fixed top-0 left-0 right-0 z-50 h-[56px] transition-transform duration-300 ${
-          open ? 'translate-y-0' : '-translate-y-full'
+          isOpen ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
         <div className="flex items-center justify-between p-4 h-full">
@@ -108,12 +111,12 @@ export const CollapsibleCoachHeader = ({
                      flex items-center justify-center w-8 h-8 rounded-full
                      bg-background/70 backdrop-blur border border-border/20 shadow"
         >
-          <Chevron open={open} />
+          <Chevron open={isOpen} />
         </button>
       </header>
 
       {/* Spacer for fixed header when open */}
-      {open && <div className="h-[56px]" />}
+      {isOpen && <div className="h-[56px]" />}
     </>
   );
 };
