@@ -320,15 +320,23 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       console.log('🚀 Sending message to:', hasImages ? 'coach-media-analysis' : 'enhanced-coach-chat');
 
       if (hasImages) {
-        // Use coach-media-analysis for image/video analysis
+        // Build conversation history for personalized image analysis
+        const conversationHistory = messages.slice(-5).map(msg => ({
+          role: msg.role,
+          content: ('content' in msg) ? msg.content : '',
+          created_at: msg.created_at
+        }));
+
+        // Use coach-media-analysis for image/video analysis with conversation context
         const response = await supabase.functions.invoke('coach-media-analysis', {
           body: {
             userId: user.id,
             mediaUrls: uploadedImages,
-            mediaType: 'image', // Default to image, could be enhanced to detect video
+            mediaType: 'image',
             analysisType: 'general',
             coachPersonality: coach?.id || 'lucy',
             userQuestion: inputText || 'Was siehst du in diesem Bild?',
+            conversationHistory: conversationHistory,
             userProfile: {
               mode: mode,
               selectedTool: selectedTool,
@@ -364,6 +372,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             message: inputText,
             userId: user.id,
             coach_personality: coach?.id || 'lucy',
+            conversation: conversation,
             // Include context data for compatibility
             context_data: {
               mode: mode,
@@ -382,8 +391,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         error = response.error;
       }
 
-      // Map response format for consistency between functions
-      if (hasImages && data?.analysis) {
+      // Ensure consistent response format
+      if (hasImages && data?.analysis && !data?.response) {
         data.response = data.analysis;
       }
 

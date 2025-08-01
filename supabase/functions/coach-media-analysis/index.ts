@@ -31,7 +31,8 @@ serve(async (req) => {
       analysisType, // 'exercise_form', 'meal_analysis', 'progress_photo', etc.
       coachPersonality = 'sascha',
       userQuestion = '',
-      userProfile = {}
+      userProfile = {},
+      conversationHistory = []
     } = body;
 
     // Validate inputs
@@ -172,11 +173,21 @@ serve(async (req) => {
         ${userQuestion ? `\n\nFrage des Users: ${userQuestion}` : ''}`;
     }
 
+    // Build conversation context for personalized responses
+    let contextPrompt = analysisPrompt;
+    if (conversationHistory && conversationHistory.length > 0) {
+      const recentConversation = conversationHistory.slice(-3).map((msg: any) => 
+        `${msg.role === 'user' ? 'User' : 'Du'}: ${msg.content}`
+      ).join('\n');
+      
+      contextPrompt += `\n\nVORHERIGE UNTERHALTUNG (für persönliche Ansprache):\n${recentConversation}\n\nBEACHTE: Nutze diese Informationen, um persönlich und im Kontext zu antworten.`;
+    }
+
     // Prepare messages for OpenAI Vision API
     const messages = [
       {
         role: 'system',
-        content: analysisPrompt
+        content: contextPrompt
       },
       {
         role: 'user',
@@ -229,6 +240,7 @@ serve(async (req) => {
     console.log(`Generated media analysis successfully from ${coachInfo.name}`);
 
     return new Response(JSON.stringify({ 
+      response: analysis, // Use 'response' key for consistency with enhanced-coach-chat
       analysis,
       coachName: coachInfo.name,
       coachStyle: coachInfo.style,
