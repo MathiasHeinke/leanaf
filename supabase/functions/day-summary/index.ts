@@ -67,13 +67,13 @@ serve(async (req) => {
       status = "partial_error";
     }
 
-    const std = summary.split(" ").slice(0, 120).join(" ");
-    const xl = summary.split(" ").slice(0, 240).join(" ");
+    const std = summary.split(/\s+/).slice(0, 120).join(" ");
+    const xl = summary.split(/\s+/).slice(0, 240).join(" ");
 
     /* ------------------------------------------------------------------ */
     /* 4. Credits & Token-Tracking                                        */
     /* ------------------------------------------------------------------ */
-    const credits = Math.ceil(tokensUsed / 1000);
+    const credits = Math.ceil(tokensUsed / 750); // ~$0.01/token-block bei GPT-4.1
     
     if (credits > 0) {
       try {
@@ -113,7 +113,7 @@ serve(async (req) => {
       summary_xxl_md: summary,
       kpi_xxl_json: kpis,
       tokens_spent: tokensUsed,
-    });
+    }, { onConflict: 'user_id,date' });
 
     console.log(`✅ Summary für ${date} erfolgreich erstellt (${status})`);
 
@@ -516,7 +516,8 @@ function hasRelevantData(dayData: any): boolean {
     dayData.bodyMeasurements ||
     (dayData.supplementLog && dayData.supplementLog.length > 0) ||
     dayData.sleep ||
-    (dayData.fluids && dayData.fluids.length > 0)
+    (dayData.fluids && dayData.fluids.length > 0) ||
+    (dayData.coachConversations && dayData.coachConversations.length > 0) // Added coach conversations
   );
 }
 
@@ -550,12 +551,12 @@ Sprich ${userName} direkt an. Maximal 2 Emojis pro Abschnitt. Wissenschaftlich f
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14', // Latest flagship model
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: JSON.stringify(kpis) }
         ],
-        max_tokens: 900,
+        max_tokens: 1200, // Platz für echte 700 Wörter (~1000 tokens)
         temperature: 0.7
       }),
     });
@@ -565,7 +566,7 @@ Sprich ${userName} direkt an. Maximal 2 Emojis pro Abschnitt. Wissenschaftlich f
     }
 
     const data = await response.json();
-    const summary = data.choices[0].message.content;
+    const summary = data.choices?.[0]?.message?.content || "Keine Summary generiert";
     const tokensUsed = data.usage?.total_tokens || 0;
 
     return { summary, tokensUsed };
