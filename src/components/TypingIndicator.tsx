@@ -9,24 +9,24 @@ export const TypingIndicator = ({ name }: TypingIndicatorProps) => (
     <span className="text-xs text-muted-foreground">{name} schreibt</span>
     <div className="flex gap-1">
       <span 
-        className="inline-block w-2 h-2 rounded-full bg-muted-foreground/60 animate-pulse"
+        className="inline-block w-2 h-2 rounded-full bg-muted-foreground/60"
         style={{
           animation: 'pulse 1.2s ease-in-out infinite',
-          animationDelay: '0s'
+          animationDelay: '0.4s'
         }}
       />
       <span 
-        className="inline-block w-2 h-2 rounded-full bg-muted-foreground/60 animate-pulse"
+        className="inline-block w-2 h-2 rounded-full bg-muted-foreground/60"
         style={{
           animation: 'pulse 1.2s ease-in-out infinite',
           animationDelay: '0.2s'
         }}
       />
       <span 
-        className="inline-block w-2 h-2 rounded-full bg-muted-foreground/60 animate-pulse"
+        className="inline-block w-2 h-2 rounded-full bg-muted-foreground/60"
         style={{
           animation: 'pulse 1.2s ease-in-out infinite',
-          animationDelay: '0.4s'
+          animationDelay: '0s'
         }}
       />
     </div>
