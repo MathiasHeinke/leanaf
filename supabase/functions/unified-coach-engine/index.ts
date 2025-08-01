@@ -255,8 +255,10 @@ async function get_recent_meals(userId: string, days: number = 3, supabaseClient
 
 async function get_workout_sessions(userId: string, days: number = 7, supabaseClient: any) {
   try {
+    // Erweitere das Zeitfenster um 2 Tage für Timezone-Sicherheit
+    const extendedDays = days + 2;
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    startDate.setDate(startDate.getDate() - extendedDays);
     const startDateStr = startDate.toISOString().split('T')[0];
     
     const { data, error } = await supabaseClient
@@ -273,7 +275,17 @@ async function get_workout_sessions(userId: string, days: number = 7, supabaseCl
       .order('date', { ascending: false });
     
     if (error) throw error;
-    return data || [];
+    
+    // Filtere clientseitig die letzten X Tage (basierend auf lokaler Zeit)
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+    const filtered = (data || []).filter(session => {
+      const sessionDate = new Date(session.date);
+      return sessionDate >= cutoffDate;
+    });
+    
+    console.log(`🏋️ get_workout_sessions: Found ${filtered.length} sessions in last ${days} days`);
+    return filtered;
   } catch (error) {
     console.error('❌ get_workout_sessions error:', error);
     return [];
@@ -282,15 +294,20 @@ async function get_workout_sessions(userId: string, days: number = 7, supabaseCl
 
 async function get_weight_history(userId: string, entries: number = 10, supabaseClient: any) {
   try {
+    // Weight history ist weniger timezone-kritisch, aber erweitere trotzdem das Fenster
     const { data, error } = await supabaseClient
       .from('weight_history')
       .select('*')
       .eq('user_id', userId)
       .order('date', { ascending: false })
-      .limit(entries);
+      .limit(entries + 5); // Hole etwas mehr für Timezone-Sicherheit
     
     if (error) throw error;
-    return data || [];
+    
+    // Limitiere auf gewünschte Anzahl
+    const result = (data || []).slice(0, entries);
+    console.log(`⚖️ get_weight_history: Found ${result.length} weight entries`);
+    return result;
   } catch (error) {
     console.error('❌ get_weight_history error:', error);
     return [];
@@ -1123,15 +1140,30 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
             break;
 
           case 'meals':
+            // Timezone-robuste Mahlzeit-Abfrage (erweitere Zeitfenster)
+            const mealCutoff = new Date();
+            mealCutoff.setDate(mealCutoff.getDate() - 5); // 5 Tage statt 3 für Timezone-Puffer
+            
             const { data: meals, error: mealsError } = await supabase
               .from('meals')
               .select('created_at, text, calories, protein, carbs, fats, meal_type')
               .eq('user_id', userId)
-              .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+              .gte('created_at', mealCutoff.toISOString())
               .order('created_at', { ascending: false })
-              .limit(20);
+              .limit(30); // Erweiterte Anzahl für bessere Filterung
             if (mealsError) console.warn(`⚠️ Meals load error:`, mealsError.message);
-            context.relevantData.meals = meals;
+            
+            // Clientseitige Filterung auf die letzten 3 Tage basierend auf echter Zeit
+            const now = new Date();
+            const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+            const recentMeals = (meals || []).filter(meal => {
+              const mealDate = new Date(meal.created_at);
+              return mealDate >= threeDaysAgo;
+            });
+            
+            context.relevantData.meals = recentMeals;
+            console.log('🍽️ Meals loaded (timezone-safe):', recentMeals?.length || 0, 'recent entries from', threeDaysAgo.toISOString());
+            break;
             console.log('🍽️ Meals loaded:', meals?.length || 0, 'entries');
             break;
 
