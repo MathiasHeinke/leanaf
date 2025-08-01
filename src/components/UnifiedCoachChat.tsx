@@ -130,7 +130,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [isThinking, setIsThinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [chatInitialized, setChatInitialized] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<string | null>('chat');
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [recordingState, setRecordingState] = useState(false);
   const [hasFiles, setHasFiles] = useState(false);
   const [showToolBadge, setShowToolBadge] = useState(false);
@@ -910,9 +910,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     const coachBanner = (
       <CollapsibleCoachHeader
-        name={coach?.name || 'Coach'}
-        imageUrl={coach?.imageUrl}
-        specialization={coach?.expertise?.join(', ') || coach?.personality}
+        coach={{
+          name: coach?.name || 'Coach',
+          imageUrl: coach?.imageUrl,
+          specialization: coach?.expertise?.join(', ') || coach?.personality
+        }}
         onHistoryClick={handleHistoryClick}
         onDeleteChat={handleDeleteChat}
       />

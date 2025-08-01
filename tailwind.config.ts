@@ -249,28 +249,5 @@ export default {
 			}
 		}
 	},
-	plugins: [
-		require("tailwindcss-animate"),
-		require("tailwindcss/plugin")(({ addComponents }) => {
-			addComponents({
-				".coach-banner": {
-					"@apply relative bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50 border-b border-border/20": {},
-				},
-				".coach-banner::after": {
-					content: '""',
-					position: "absolute",
-					left: "50%",
-					transform: "translateX(-50%)",
-					bottom: "-10px",
-					width: "40px",
-					height: "20px",
-					background: "inherit",
-					borderBottomLeftRadius: "9999px",
-					borderBottomRightRadius: "9999px",
-					clipPath: "polygon(0 0, 100% 0, 50% 100%)",
-					boxShadow: "0 2px 6px rgba(0,0,0,.06)",
-				},
-			});
-		}),
-	],
+	plugins: [require("tailwindcss-animate")],
 } satisfies Config;
