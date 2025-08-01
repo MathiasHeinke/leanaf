@@ -25,6 +25,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Glass Background Utility - für Coach-Banner & Global-Header */
+.glass-bg {
+  @apply backdrop-blur-md bg-white/70 dark:bg-[#0a0a0a]/60;
+  /* Konsistente Glas-Transparenz für alle Header */
+}
+
 /* Modern Clean Design System - Minimalist & Professional */
 
 @layer base {

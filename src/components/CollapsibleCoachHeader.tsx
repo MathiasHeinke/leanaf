@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowUp, ArrowDown, ArrowLeft, History, Trash2 } from 'lucide-react';
+import { ChevronDown, ArrowLeft, History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,53 +31,61 @@ export const CollapsibleCoachHeader = ({
 
   return (
     <>
-      {/* Coach Bar */}
-      <div 
-        id="coachBar"
-        className={`fixed left-0 right-0 h-12 px-3 flex items-center gap-2 transition-all duration-300 z-30 bg-white/80 dark:bg-black/80 backdrop-blur-sm border-b border-border/50 ${
-          collapsed 
-            ? 'opacity-0 pointer-events-none -translate-y-full' 
-            : 'opacity-100 translate-y-0'
-        }`}
-        style={{ top: 'var(--header-height, 60px)' }}
+      {/* Coach Banner mit Glass-Effekt */}
+      <header 
+        id="coachBanner"
+        className={`
+          fixed left-0 right-0 h-16 px-4 
+          flex items-center gap-3 
+          glass-bg
+          shadow-md rounded-b-xl border-b border-border/30
+          transition-transform duration-300 ease-out z-30
+          ${collapsed ? '-translate-y-[calc(64px+4px)]' : 'translate-y-0'}
+        `}
+        style={{ 
+          top: 'var(--header-height, 60px)',
+          '--coach-h': '64px'
+        } as React.CSSProperties}
       >
         <Button 
           variant="ghost" 
           size="sm"
           onClick={handleBack}
-          className="p-1 h-8 w-8"
+          className="p-2 h-10 w-10 hover-scale"
           aria-label="Zurück"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-5 h-5" />
         </Button>
         
         {coach.imageUrl && (
           <img 
             src={coach.imageUrl} 
             alt={coach.name}
-            className="w-6 h-6 rounded-full object-cover"
+            className="w-8 h-8 rounded-full object-cover shadow-sm"
           />
         )}
         
-        <span className="coach-name font-medium text-sm flex-1 truncate">
-          {coach.name}
+        <div className="coach-info flex-1 min-w-0">
+          <h2 className="font-semibold text-base truncate">
+            {coach.name}
+          </h2>
           {coach.specialization && (
-            <span className="text-xs text-muted-foreground block">
+            <p className="text-sm text-muted-foreground truncate">
               {coach.specialization}
-            </span>
+            </p>
           )}
-        </span>
+        </div>
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {onHistoryClick && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onHistoryClick}
-              className="p-1 h-8 w-8"
-              aria-label="Verlauf"
+              className="p-2 h-10 w-10 hover-scale"
+              aria-label="Chat-Verlauf"
             >
-              <History className="w-4 h-4" />
+              <History className="w-5 h-5" />
             </Button>
           )}
           
@@ -86,36 +94,47 @@ export const CollapsibleCoachHeader = ({
               variant="ghost"
               size="sm"
               onClick={onDeleteChat}
-              className="p-1 h-8 w-8 text-destructive hover:text-destructive"
+              className="p-2 h-10 w-10 text-destructive hover:text-destructive hover-scale"
               aria-label="Chat löschen"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-5 h-5" />
             </Button>
           )}
         </div>
 
-        {/* Toggle Arrow - positioned at bottom of coach bar */}
+        {/* Pfeil-Button klebt unten am Banner und wandert mit */}
         <button
-          id="coachToggle"
           onClick={toggleCollapse}
-          className={`absolute left-1/2 -bottom-[14px] -translate-x-1/2 p-1 rounded-full shadow bg-white/80 dark:bg-black/80 backdrop-blur-sm transition-transform duration-300 ${
-            collapsed 
-              ? 'rotate-180' 
-              : ''
-          }`}
+          className={`
+            absolute left-1/2 -translate-x-1/2 bottom-[-14px]
+            w-8 h-8 rounded-full
+            glass-bg shadow-lg
+            flex items-center justify-center
+            transition-transform duration-300 ease-out
+            hover-scale
+            ${collapsed ? 'rotate-180' : 'rotate-0'}
+          `}
           aria-label={collapsed ? 'Coach-Banner ausklappen' : 'Coach-Banner einklappen'}
         >
-          <ArrowUp className="w-5 h-5" />
+          <ChevronDown size={18} className="text-foreground" />
         </button>
-      </div>
+      </header>
 
-      {/* Spacer to prevent content overlap */}
+      {/* Spacer für Content-Offset */}
       <div 
-        className={`relative transition-all duration-300 ${
-          collapsed ? 'h-0' : 'h-12'
-        }`}
+        className={`
+          transition-all duration-300 ease-out
+          ${collapsed ? 'h-0' : 'h-16'}
+        `}
         style={{ marginTop: 'var(--header-height, 60px)' }}
       />
+      
+      {/* Pointer-Events sperren wenn collapsed */}
+      {collapsed && (
+        <style>{`
+          .coach-body { pointer-events: none; }
+        `}</style>
+      )}
     </>
   );
 };
