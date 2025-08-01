@@ -44,7 +44,7 @@ import { useContextTokens } from '@/hooks/useContextTokens';
 
 import { getDisplayName } from "../../supabase/functions/enhanced-coach-chat/utils/getDisplayName";
 
-import { SimpleMessageList } from '@/components/SimpleMessageList';
+// SimpleMessageList import removed - not used in this component
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
@@ -136,7 +136,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   
   
   // ============= REFS =============
-  const scrollRef = useRef<HTMLDivElement>(null);
   const initializationRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -569,6 +568,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   };
 
+  // Auto-scroll refs for both layouts
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else if (scrollRef.current) {
+      // Fallback for card layout
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
+
   // ============= RENDER LOGIC =============
   if (isLoading) {
     if (useFullscreenLayout) {
@@ -760,6 +773,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                   <span>Coach denkt nach...</span>
                 </div>
               )}
+              {/* Invisible div to scroll to */}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
         </ChatLayout>
@@ -795,6 +810,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                 <span>Coach denkt nach...</span>
               </div>
             )}
+            {/* Invisible div to scroll to */}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
         
