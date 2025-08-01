@@ -895,6 +895,7 @@ export type Database = {
           summary_md: string | null
           summary_xl_md: string | null
           summary_xxl_md: string | null
+          text_generated: boolean | null
           tokens_spent: number | null
           top_foods: Json | null
           total_calories: number | null
@@ -917,6 +918,7 @@ export type Database = {
           summary_md?: string | null
           summary_xl_md?: string | null
           summary_xxl_md?: string | null
+          text_generated?: boolean | null
           tokens_spent?: number | null
           top_foods?: Json | null
           total_calories?: number | null
@@ -939,6 +941,7 @@ export type Database = {
           summary_md?: string | null
           summary_xl_md?: string | null
           summary_xxl_md?: string | null
+          text_generated?: boolean | null
           tokens_spent?: number | null
           top_foods?: Json | null
           total_calories?: number | null

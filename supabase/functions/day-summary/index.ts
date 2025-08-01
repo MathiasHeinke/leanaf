@@ -648,9 +648,10 @@ function calculateKPIs(dayData: any) {
       }
     });
     
-    // Hydration-Score
-    if (kpis.weight && kpis.weight > 0) {
-      const mlPerKg = kpis.totalFluidMl / kpis.weight;
+    // Hydration-Score: Use weight from weight data or fallback
+    const userWeight = kpis.weight || dayData.profile?.weight || 70; // 70kg fallback
+    if (userWeight > 0) {
+      const mlPerKg = kpis.totalFluidMl / userWeight;
       kpis.hydrationScore = Math.min(100, Math.round((mlPerKg / 35) * 100));
     }
   }
@@ -726,19 +727,13 @@ async function generateSummary(kpis: any, dayData: any, summaryType: 'standard' 
   const userName = dayData.profile?.preferred_name || 'Athlet';
 
   const systemPrompt = `
-Erstelle eine FACHLICHE Tageszusammenfassung in exakt 700 deutschen Wörtern.
+Du bist ein datengetriebener Coach. Fasse die KPIs in **max. 700 Wörtern**.
+Nutze ⚡ kurze Sätze, Stichpunkte & Emojis sparsam (≤ 2 pro Abschnitt).
+Struktur:
+1 Ernährung, 2 Training, 3 Körper, 4 Regeneration, 5 Hydration/Supps, 6 Insights, 7 Handlung (4 Bullet-Points)`;
 
-Struktur für XXL-Summary:
-1. 🍽️ Ernährung (Makros, Top-Foods, Timing, Kalorienbilanz)
-2. 💪 Training (Volumen, Highlights, RPE, Muskel-Fokus) 
-3. ⚖️ Körper & Maße (Gewicht, KFA, Messungen, Trend)
-4. 😴 Regeneration (Schlaf, HRV, Libido, Mood)
-5. 💧 Hydration & Supplemente (Flüssigkeit, Koffein/Alkohol, Compliance)
-6. 🔗 Korrelationen & Insights (Schlaf ↔ Leistung, etc.)
-7. 📌 Handlungsempfehlungen (max 4 konkrete Punkte)
-
-Sprich ${userName} direkt an. Maximal 2 Emojis pro Abschnitt. Wissenschaftlich fundiert aber verständlich.
-`;
+  const userPrompt = `Analysiere diese Tagesdaten für ${userName}:
+${JSON.stringify(kpis, null, 2)}`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -751,7 +746,7 @@ Sprich ${userName} direkt an. Maximal 2 Emojis pro Abschnitt. Wissenschaftlich f
         model: 'gpt-4.1-2025-04-14', // Latest flagship model
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: JSON.stringify(kpis) }
+          { role: 'user', content: userPrompt }
         ],
         max_tokens: 1200, // Platz für echte 700 Wörter (~1000 tokens)
         temperature: 0.7
