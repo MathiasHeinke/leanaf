@@ -221,8 +221,10 @@ async function get_daily_goals(userId: string, supabaseClient: any) {
 
 async function get_recent_meals(userId: string, days: number = 3, supabaseClient: any) {
   try {
+    // Erweitere das Zeitfenster um 2 Tage für Timezone-Sicherheit
+    const extendedDays = days + 2;
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    startDate.setDate(startDate.getDate() - extendedDays);
     const startDateStr = startDate.toISOString().split('T')[0];
     
     const { data, error } = await supabaseClient
@@ -231,10 +233,20 @@ async function get_recent_meals(userId: string, days: number = 3, supabaseClient
       .eq('user_id', userId)
       .gte('created_at', startDateStr)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50); // Erhöhe Limit wegen erweiterten Zeitfenster
     
     if (error) throw error;
-    return data || [];
+    
+    // Filtere clientseitig die letzten X Tage (basierend auf lokaler Zeit)
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+    const filtered = (data || []).filter(meal => {
+      const mealDate = new Date(meal.created_at);
+      return mealDate >= cutoffDate;
+    });
+    
+    console.log(`📊 get_recent_meals: Found ${filtered.length} meals in last ${days} days`);
+    return filtered;
   } catch (error) {
     console.error('❌ get_recent_meals error:', error);
     return [];
