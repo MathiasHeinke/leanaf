@@ -280,7 +280,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     const userMessage: UnifiedMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: inputText || (uploadedImages.length > 0 ? "📷" : ""),
+      content: inputText,
       created_at: new Date().toISOString(),
       coach_personality: coach?.personality || 'motivierend',
       images: uploadedImages,
