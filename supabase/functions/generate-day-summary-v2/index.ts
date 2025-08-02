@@ -238,6 +238,13 @@ async function collectRawData(userId: string, date: string) {
     .order('created_at', { ascending: true })
     .limit(20);
 
+  // Quick workouts for the day
+  const { data: quickWorkouts } = await supabase
+    .from('quick_workouts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date);
+
   const hasData = !!(
     fastMeals.data?.calories || 
     fastVolume.data || 
@@ -262,7 +269,8 @@ async function collectRawData(userId: string, date: string) {
     weight,
     fluids: fluids || [],
     supplements: supplements || [],
-    conversations: conversations || []
+    conversations: conversations || [],
+    quickWorkouts: quickWorkouts || []
   };
 }
 
@@ -285,23 +293,27 @@ function deriveKPIs(raw: any) {
   };
 
   // Training KPIs  
+  const quickVolume = raw.quickWorkouts.reduce((sum: number, w: any) => 
+    sum + (w.sets || 0) * (w.reps || 0) * (w.weight_kg || 0), 0);
+  
   const training = {
-    volume_kg: raw.fastVolume,
-    sets: raw.exerciseSets.length,
+    volume_kg: raw.fastVolume + quickVolume,
+    sets: raw.exerciseSets.length + raw.quickWorkouts.reduce((sum: number, w: any) => sum + (w.sets || 0), 0),
     avg_rpe: calculateAverageRPE(raw.exerciseSets),
     duration_min: raw.sessions.reduce((sum: number, s: any) => sum + (s.duration_minutes || 0), 0),
     muscle_groups: getUniqueValues(raw.exerciseSets, 'exercises.muscle_groups'),
     exercise_types: getUniqueValues(raw.exerciseSets, 'exercises.exercise_type'),
-    sessions_count: raw.sessions.length
+    sessions_count: raw.sessions.length,
+    quick_workouts_count: raw.quickWorkouts.length
   };
 
   // Recovery KPIs
   const recovery = {
-    sleep_hours: raw.sleep?.hours_slept || 0,
-    sleep_score: raw.sleep?.quality_score || 0,
-    sleep_quality: raw.sleep?.quality_rating || null,
+    sleep_hours: raw.sleep?.sleep_hours || 0,
+    sleep_score: raw.sleep?.sleep_score || 0,
+    sleep_quality: raw.sleep?.sleep_quality || null,
     motivation_level: raw.sleep?.motivation_level || null,
-    recovery_feeling: raw.sleep?.recovery_feeling || null
+    recovery_feeling: null // TODO: add to schema if needed
   };
 
   // Hydration KPIs
@@ -604,7 +616,7 @@ function calculateHydrationScore(totalMl: number, calorieGoal: number) {
 }
 
 function calculateSupplementCompliance(supplements: any[]) {
-  if (supplements.length === 0) return 100;
+  if (supplements.length === 0) return null; // No data instead of 100%
   const takenCount = supplements.filter(s => s.taken).length;
   return Math.round((takenCount / supplements.length) * 100);
 }

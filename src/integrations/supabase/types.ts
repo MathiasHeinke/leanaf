@@ -2665,6 +2665,7 @@ export type Database = {
           sleep_hours: number | null
           sleep_interruptions: number | null
           sleep_quality: number | null
+          sleep_score: number | null
           updated_at: string
           user_id: string
           wake_time: string | null
@@ -2684,6 +2685,7 @@ export type Database = {
           sleep_hours?: number | null
           sleep_interruptions?: number | null
           sleep_quality?: number | null
+          sleep_score?: number | null
           updated_at?: string
           user_id: string
           wake_time?: string | null
@@ -2703,6 +2705,7 @@ export type Database = {
           sleep_hours?: number | null
           sleep_interruptions?: number | null
           sleep_quality?: number | null
+          sleep_score?: number | null
           updated_at?: string
           user_id?: string
           wake_time?: string | null
@@ -3606,6 +3609,10 @@ export type Database = {
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      calculate_sleep_score: {
+        Args: { sleep_hours: number; sleep_quality: number }
+        Returns: number
       }
       check_ai_usage_limit: {
         Args: {
