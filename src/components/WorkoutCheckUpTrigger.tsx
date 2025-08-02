@@ -27,6 +27,20 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
     }
   }, [missingRequired, isLoading]);
 
+  // Listen for slash command events
+  useEffect(() => {
+    const handleSlashCommand = (event: CustomEvent) => {
+      console.log('🔧 Received slash command event:', event.detail);
+      setIsModalOpen(true);
+    };
+
+    window.addEventListener('openCheckUpModal', handleSlashCommand as EventListener);
+    
+    return () => {
+      window.removeEventListener('openCheckUpModal', handleSlashCommand as EventListener);
+    };
+  }, []);
+
   const handleOpenModal = () => {
     console.log('👆 Manual CheckUp modal open');
     setIsModalOpen(true);
