@@ -1460,6 +1460,42 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_flags: {
+        Row: {
+          created_at: string
+          flag_description: string | null
+          flag_name: string
+          id: string
+          is_enabled: boolean
+          metadata: Json | null
+          rollout_percentage: number
+          target_audience: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          flag_description?: string | null
+          flag_name: string
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          rollout_percentage?: number
+          target_audience?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          flag_description?: string | null
+          flag_name?: string
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          rollout_percentage?: number
+          target_audience?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_requests: {
         Row: {
           category: string
@@ -2918,6 +2954,42 @@ export type Database = {
         }
         Relationships: []
       }
+      training_plan_analytics: {
+        Row: {
+          coach_id: string | null
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          response_time_ms: number | null
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          coach_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          response_time_ms?: number | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          coach_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          response_time_ms?: number | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_alcohol_abstinence: {
         Row: {
           abstinence_reason: string | null
@@ -3025,6 +3097,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_feature_flags: {
+        Row: {
+          assigned_at: string
+          feature_flag_id: string | null
+          id: string
+          is_enabled: boolean
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          feature_flag_id?: string | null
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          feature_flag_id?: string | null
+          id?: string
+          is_enabled?: boolean
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feature_flags_feature_flag_id_fkey"
+            columns: ["feature_flag_id"]
+            isOneToOne: false
+            referencedRelation: "feature_flags"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_fluids: {
         Row: {
