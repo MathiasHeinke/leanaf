@@ -1,9 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://esm.sh/zod@latest';
+import { jsonrepair } from 'https://esm.sh/jsonrepair@3.13.0';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Simple in-memory cache with TTL
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 // Training Plan Validation Schema
 const TrainingPlanResponseSchema = z.object({
@@ -33,8 +38,44 @@ const ToolResponseSchema = z.object({
 type TrainingPlanResponse = z.infer<typeof TrainingPlanResponseSchema>;
 type ToolResponse = z.infer<typeof ToolResponseSchema>;
 
+function getCachedData(key: string) {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  cache.delete(key);
+  return null;
+}
+
+function setCachedData(key: string, data: any) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+function safeJsonParse(jsonString: string) {
+  try {
+    return { success: true, data: JSON.parse(jsonString) };
+  } catch (error) {
+    try {
+      // Try to repair the JSON
+      const repairedJson = jsonrepair(jsonString);
+      return { success: true, data: JSON.parse(repairedJson) };
+    } catch (repairError) {
+      console.error('JSON repair failed:', repairError);
+      return { success: false, error: repairError };
+    }
+  }
+}
+
 export default async function handleTrainingsplan(conv: any[], userId: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  // Check cache first
+  const cacheKey = `plan:${userId}:${btoa(lastUserMsg).slice(0, 16)}`;
+  const cachedResult = getCachedData(cacheKey);
+  if (cachedResult) {
+    console.log('Returning cached training plan');
+    return cachedResult;
+  }
   
   try {
     // Extrahiere Trainingsplan-Informationen aus der Nachricht
@@ -93,12 +134,16 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
     };
     
     const validatedResponse = ToolResponseSchema.parse(response);
+    
+    // Cache the successful response
+    setCachedData(cacheKey, validatedResponse);
+    
     return validatedResponse;
   } catch (error) {
     console.error('Error in trainingsplan handler:', error);
     
-    // Return a fallback response that doesn't break the UI
-    return {
+    // Enhanced error handling with retry logic
+    const fallbackResponse = {
       role: 'assistant',
       type: 'card' as const,
       card: 'workout_plan' as const,
@@ -109,10 +154,20 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
         goals: ['Allgemein'],
         html: generateErrorHtml(error),
         ts: Date.now(),
-        actions: []
+        actions: [{
+          label: '🔄 Erneut versuchen',
+          variant: 'confirm' as const
+        }]
       },
       meta: { clearTool: true }
     };
+    
+    // Cache error response for a shorter time (5 minutes)
+    const errorCacheKey = `error:${cacheKey}`;
+    cache.set(errorCacheKey, { data: fallbackResponse, timestamp: Date.now() });
+    setTimeout(() => cache.delete(errorCacheKey), 5 * 60 * 1000);
+    
+    return fallbackResponse;
   }
 }
 

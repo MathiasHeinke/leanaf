@@ -1,5 +1,6 @@
 import React from 'react';
 import { SmartCard } from './SmartCard';
+import DOMPurify from 'isomorphic-dompurify';
 
 interface TrainingDay {
   day: string;
@@ -52,7 +53,16 @@ export const TrainingPlanCard = ({
       defaultCollapsed={true}
     >
       {htmlContent ? (
-        <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+        <div 
+          className="prose prose-sm dark:prose-invert max-w-none"
+          dangerouslySetInnerHTML={{ 
+            __html: DOMPurify.sanitize(htmlContent, {
+              ALLOWED_TAGS: ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'ul', 'ol', 'li', 'br'],
+              ALLOWED_ATTR: ['class', 'style'],
+              ALLOW_DATA_ATTR: false
+            })
+          }} 
+        />
       ) : (
         <div className="space-y-3">
           {plan.slice(0, 3).map((day, index) => (
