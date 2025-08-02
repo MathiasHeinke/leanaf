@@ -1,0 +1,18 @@
+[
+  {
+    "id": "persona_ruhl",
+    "coachName": "Markus Rühl",
+    "primaryProgram": "cp_ruhl",
+    "fallbackPrograms": ["cp_yates", "cp_mentzer"],
+    "selectionRules": "Nutze 'cp_ruhl', wenn User ≥ 3 J Training, Ziel=Hypertrophie, Zeit/Session ≥ 90 min, keine akuten Verletzungen. Falls Zeit < 60 min ODER User fortgeschritten & liebt Kurzeinheiten → 'cp_yates'. Falls extrem wenig Zeit (≤ 30 min) & sehr routiniert → 'cp_mentzer'.",
+    "tags": ["coach-routing"]
+  },
+  {
+    "id": "persona_sascha",
+    "coachName": "Sascha",
+    "primaryProgram": "cp_nippard",
+    "fallbackPrograms": ["cp_israetel", "cp_meadows"],
+    "selectionRules": "Default 'cp_nippard' (moderates Volumen, evidenzbasiert). Bei > 20 Sätze/Woche Toleranz & Wunsch nach Periodisierung → 'cp_israetel'. Bei Wunsch nach Pump-Fokus & fortgeschrittenem Level → 'cp_meadows'.",
+    "tags": ["coach-routing"]
+  }
+]

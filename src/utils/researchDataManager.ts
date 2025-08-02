@@ -1,5 +1,6 @@
-import { ResearchNode, CoachProgram, Principle, GoalGuideline, SexSpecific, isPrinciple, isCoachProgram, isGoalGuideline, isSexSpecific } from '@/types/research-types';
+import { ResearchNode, CoachProgram, Principle, GoalGuideline, SexSpecific, CoachPersona, isPrinciple, isCoachProgram, isGoalGuideline, isSexSpecific, isCoachPersona } from '@/types/research-types';
 import researchData from '@/data/research-data.json';
+import coachPersonasData from '@/data/coach-personas.json';
 
 /**
  * Central manager for research-based workout methodology data
@@ -8,7 +9,11 @@ export class ResearchDataManager {
   private data: ResearchNode[];
 
   constructor() {
-    this.data = researchData as ResearchNode[];
+    // Merge research data with coach personas
+    this.data = [
+      ...(researchData as ResearchNode[]),
+      ...(coachPersonasData as CoachPersona[])
+    ];
   }
 
   /**
@@ -40,6 +45,68 @@ export class ResearchDataManager {
    */
   getSexSpecificAdjustments(sex: 'male' | 'female'): SexSpecific | undefined {
     return this.data.filter(isSexSpecific).find(s => s.sex === sex);
+  }
+
+  /**
+   * Get all coach personas
+   */
+  getCoachPersonas(): CoachPersona[] {
+    return this.data.filter(isCoachPersona);
+  }
+
+  /**
+   * Find persona by coach name
+   */
+  findPersonaByCoach(coachName: string): CoachPersona | undefined {
+    return this.data.filter(isCoachPersona).find(p => p.coachName === coachName);
+  }
+
+  /**
+   * Smart program selection based on user profile and coach persona
+   */
+  selectProgramForUser(userProfile: {
+    goal?: string;
+    sex?: 'male' | 'female';
+    experience?: 'beginner' | 'intermediate' | 'advanced';
+    experienceYears?: number;
+    timePerSessionMin?: number;
+    injury?: boolean;
+    likesPump?: boolean;
+    likesPeriodization?: boolean;
+  }, persona: CoachPersona): string {
+    const { experienceYears = 0, timePerSessionMin = 60, injury = false, goal, likesPump, likesPeriodization } = userProfile;
+
+    // Hard gates for primary program (Markus Rühl specific)
+    if (persona.id === "persona_ruhl") {
+      const meetsRuhlRequirements = 
+        experienceYears >= 3 &&
+        goal === "hypertrophy" &&
+        timePerSessionMin >= 90 &&
+        !injury;
+
+      if (meetsRuhlRequirements) {
+        return persona.primaryProgram;
+      }
+    }
+
+    // Fallback logic based on constraints
+    for (const fallbackId of persona.fallbackPrograms) {
+      if (fallbackId === "cp_yates" && timePerSessionMin >= 45 && timePerSessionMin < 90) {
+        return fallbackId;
+      }
+      if (fallbackId === "cp_mentzer" && timePerSessionMin <= 30 && experienceYears >= 1) {
+        return fallbackId;
+      }
+      if (fallbackId === "cp_israetel" && likesPeriodization && timePerSessionMin >= 60) {
+        return fallbackId;
+      }
+      if (fallbackId === "cp_meadows" && likesPump && experienceYears >= 2) {
+        return fallbackId;
+      }
+    }
+
+    // Default fallback to primary program
+    return persona.primaryProgram;
   }
 
   /**

@@ -247,6 +247,77 @@ const RESEARCH_DATA: (Principle | CoachProgram | GoalGuideline | SexSpecific)[] 
   }
 ];
 
+// Coach Personas for program selection
+const COACH_PERSONAS = [
+  {
+    "id": "persona_ruhl",
+    "coachName": "Markus Rühl",
+    "primaryProgram": "cp_ruhl",
+    "fallbackPrograms": ["cp_yates", "cp_mentzer"],
+    "selectionRules": "Nutze 'cp_ruhl', wenn User ≥ 3 J Training, Ziel=Hypertrophie, Zeit/Session ≥ 90 min, keine akuten Verletzungen. Falls Zeit < 60 min ODER User fortgeschritten & liebt Kurzeinheiten → 'cp_yates'. Falls extrem wenig Zeit (≤ 30 min) & sehr routiniert → 'cp_mentzer'.",
+    "tags": ["coach-routing"]
+  },
+  {
+    "id": "persona_sascha",
+    "coachName": "Sascha",
+    "primaryProgram": "cp_nippard",
+    "fallbackPrograms": ["cp_israetel", "cp_meadows"],
+    "selectionRules": "Default 'cp_nippard' (moderates Volumen, evidenzbasiert). Bei > 20 Sätze/Woche Toleranz & Wunsch nach Periodisierung → 'cp_israetel'. Bei Wunsch nach Pump-Fokus & fortgeschrittenem Level → 'cp_meadows'.",
+    "tags": ["coach-routing"]
+  }
+];
+
+// Coach persona selection logic
+function selectProgramForUser(userProfile: {
+  goal?: string;
+  experience?: string;
+  experienceYears?: number;
+  timePerSessionMin?: number;
+  injury?: boolean;
+  likesPump?: boolean;
+  likesPeriodization?: boolean;
+}, coachName?: string): string {
+  // Find coach persona
+  const persona = COACH_PERSONAS.find(p => p.coachName === coachName);
+  if (!persona) {
+    return "cp_nippard"; // default fallback
+  }
+
+  const { experienceYears = 0, timePerSessionMin = 60, injury = false, goal, likesPump, likesPeriodization } = userProfile;
+
+  // Hard gates for primary program (Markus Rühl specific)
+  if (persona.id === "persona_ruhl") {
+    const meetsRuhlRequirements = 
+      experienceYears >= 3 &&
+      goal === "hypertrophy" &&
+      timePerSessionMin >= 90 &&
+      !injury;
+
+    if (meetsRuhlRequirements) {
+      return persona.primaryProgram;
+    }
+  }
+
+  // Fallback logic based on constraints
+  for (const fallbackId of persona.fallbackPrograms) {
+    if (fallbackId === "cp_yates" && timePerSessionMin >= 45 && timePerSessionMin < 90) {
+      return fallbackId;
+    }
+    if (fallbackId === "cp_mentzer" && timePerSessionMin <= 30 && experienceYears >= 1) {
+      return fallbackId;
+    }
+    if (fallbackId === "cp_israetel" && likesPeriodization && timePerSessionMin >= 60) {
+      return fallbackId;
+    }
+    if (fallbackId === "cp_meadows" && likesPump && experienceYears >= 2) {
+      return fallbackId;
+    }
+  }
+
+  // Default fallback to primary program
+  return persona.primaryProgram;
+}
+
 // Research data utility functions
 function getCoachPrograms(): CoachProgram[] {
   return RESEARCH_DATA.filter((item): item is CoachProgram => 'coach' in item);
@@ -404,8 +475,17 @@ function safeJsonParse(jsonString: string) {
   }
 }
 
-function extractUserProfile(message: string, conv: any[]): { goal?: string; sex?: 'male' | 'female'; experience?: string } {
-  const profile: { goal?: string; sex?: 'male' | 'female'; experience?: string } = {};
+function extractUserProfile(message: string, conv: any[]): { 
+  goal?: string; 
+  sex?: 'male' | 'female'; 
+  experience?: string;
+  experienceYears?: number;
+  timePerSessionMin?: number;
+  injury?: boolean;
+  likesPump?: boolean;
+  likesPeriodization?: boolean;
+} {
+  const profile: any = {};
   
   // Extract goal from current message
   const goals = extractGoals(message);
@@ -425,14 +505,31 @@ function extractUserProfile(message: string, conv: any[]): { goal?: string; sex?
     profile.sex = 'male';
   }
   
-  // Extract experience level
+  // Extract experience level and years
   if (fullConversation.includes('anfänger') || fullConversation.includes('beginner') || fullConversation.includes('neu')) {
     profile.experience = 'beginner';
+    profile.experienceYears = 0.5;
   } else if (fullConversation.includes('fortgeschritten') || fullConversation.includes('advanced') || fullConversation.includes('profi')) {
     profile.experience = 'advanced';
+    profile.experienceYears = 5;
   } else {
     profile.experience = 'intermediate';
+    profile.experienceYears = 2;
   }
+
+  // Extract time preferences
+  const timeMatches = fullConversation.match(/(\d+)\s*(min|minuten|stunden|h)/gi);
+  if (timeMatches) {
+    const timeValue = parseInt(timeMatches[0]);
+    profile.timePerSessionMin = timeValue > 10 ? timeValue : timeValue * 60; // Convert hours to minutes
+  } else {
+    profile.timePerSessionMin = 60; // default
+  }
+
+  // Extract preferences
+  profile.likesPump = fullConversation.includes('pump') || fullConversation.includes('brennen');
+  profile.likesPeriodization = fullConversation.includes('periodisierung') || fullConversation.includes('variabel');
+  profile.injury = fullConversation.includes('verletz') || fullConversation.includes('schmerz');
   
   return profile;
 }
@@ -548,9 +645,10 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
       }
     }
     
-    // Fallback to original simple plan generation
-    const suitablePrograms = getSuitablePrograms(userProfile);
-    const recommendedProgram = suitablePrograms[0] || getCoachPrograms()[0];
+    // Use coach persona system for intelligent program selection
+    const coachName = "Markus Rühl"; // This would come from the route/context in real implementation
+    const selectedProgramId = selectProgramForUser(userProfile, coachName);
+    const recommendedProgram = getCoachPrograms().find(p => p.id === selectedProgramId) || getCoachPrograms()[0];
     
     const { data: planData, error } = await supabase.from('workout_plans').insert({
       created_by: userId,

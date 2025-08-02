@@ -52,8 +52,18 @@ export interface GoalGuideline {
   tags: string[];                // ["goal"]
 }
 
+// 5. Coach-Persona Mapping (Coach zu Programmen)
+export interface CoachPersona {
+  id: UID;
+  coachName: string;             // "Markus Rühl"
+  primaryProgram: UID;           // "cp_ruhl"
+  fallbackPrograms: UID[];       // ["cp_yates","cp_mentzer"]
+  selectionRules: string;        // Plain-Text/Markdown oder Funktions-Ref
+  tags: string[];                // ["coach-routing"]
+}
+
 // *** Union für Type-Narrowing in RAG ***
-export type ResearchNode = Principle | SexSpecific | CoachProgram | GoalGuideline;
+export type ResearchNode = Principle | SexSpecific | CoachProgram | GoalGuideline | CoachPersona;
 
 // Utility functions for working with research data
 export function isPrinciple(node: ResearchNode): node is Principle {
@@ -72,6 +82,10 @@ export function isGoalGuideline(node: ResearchNode): node is GoalGuideline {
   return 'goal' in node;
 }
 
+export function isCoachPersona(node: ResearchNode): node is CoachPersona {
+  return 'coachName' in node;
+}
+
 // Query helpers
 export function filterByTags(data: ResearchNode[], tags: string[]): ResearchNode[] {
   return data.filter(node => 
@@ -87,4 +101,12 @@ export function findPrinciplesForGoal(data: ResearchNode[], goal: string): Princ
   return data.filter(isPrinciple).filter(p => 
     p.tags.includes(goal) || p.tags.includes('universal')
   );
+}
+
+export function findCoachPersonas(data: ResearchNode[]): CoachPersona[] {
+  return data.filter(isCoachPersona);
+}
+
+export function findPersonaByCoach(data: ResearchNode[], coachName: string): CoachPersona | undefined {
+  return data.filter(isCoachPersona).find(p => p.coachName === coachName);
 }
