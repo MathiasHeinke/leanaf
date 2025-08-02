@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 // ----------------------------------------------------------------------------
@@ -482,17 +482,37 @@ serve(async (req) => {
     // ============================================================================
     
     // Parse request body
-    const { 
-      userId, 
-      message, 
-      images = [], 
-      mediaType, 
-      analysisType, 
+    const body = await req.json();
+    const {
+      userId,
+      message,
+      images = [],
       coachPersonality = 'lucy',
       conversationHistory = [],
-      toolContext = null,
       preferredLocale = 'de'
-    } = await req.json();
+    } = body;
+
+    // ------------------------------------------------------------------ 
+    // 0. Fallback-ToolContext laden, falls Frontend nichts mitsendet     
+    // ------------------------------------------------------------------ 
+    let toolContext = body.toolContext;
+    if (!toolContext) {
+      console.log(`🔄 [${requestId}] Loading fallback toolContext...`);
+      const [profile, goals, today] = await Promise.all([
+        get_user_profile(userId, supabase),
+        get_daily_goals(userId, supabase),
+        get_recent_meals(userId, 1, supabase)
+      ]);
+      toolContext = {
+        description: 'Auto-injected fallback context',
+        data: { profileData: profile, dailyGoals: goals, todaysMeals: today }
+      };
+      console.log(`✅ [${requestId}] Fallback context loaded:`, {
+        hasProfile: !!profile,
+        hasGoals: !!goals,
+        mealsCount: today?.length || 0
+      });
+    }
 
     console.log(`🎯 [${requestId}] Request context:`, { 
       userId, 
@@ -567,7 +587,6 @@ serve(async (req) => {
     // ──────────────────────────────────────────────────────────────
     // 2. Rate-Limiting für Free-User (Premium wird übersprungen)
     // ──────────────────────────────────────────────────────────────
-    const DISABLE_LIMITS = false; // ✅ Rate limits wieder aktiviert
     console.log(`🎛️ [${requestId}] DISABLE_LIMITS flag: ${DISABLE_LIMITS}`);
     
     // 🔍 DETAILED RATE LIMIT DEBUG LOGGING
