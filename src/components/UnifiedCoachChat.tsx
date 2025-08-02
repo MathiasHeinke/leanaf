@@ -141,7 +141,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [toolBadgeText, setToolBadgeText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
-  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContext, setModalContext] = useState<any>(null);
   
   // ============= REFS =============
   const initializationRef = useRef(false);
@@ -626,7 +627,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         };
       }
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => {
+        // Clear pending tools from previous messages when adding new assistant message
+        const clearedMessages = prev.map(msg => ({
+          ...msg,
+          pendingTools: undefined
+        }));
+        return [...clearedMessages, assistantMessage];
+      });
       
       // Process message through Global Coach Memory for sentiment analysis
       if (data.response && processMessage) {
@@ -695,9 +703,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   // Handle tool action buttons
   const handleToolAction = useCallback((tool: string, contextData?: any) => {
     console.log('🔧 Tool action triggered:', tool, contextData);
-    setSelectedTool(tool as any);
-    // Optionally trigger the tool modal/interface here
-    // For now, this will just set the selected tool which will be used on next message
+    
+    // Tool-specific modal handling
+    if (tool === 'trainingsplan') {
+      setIsModalOpen(true);
+      setModalContext(contextData);
+    } else if (tool === 'gewicht') {
+      // Handle weight input modal
+      setSelectedTool('gewicht');
+    } else if (tool === 'diary') {
+      // Handle diary modal
+      setSelectedTool('diary');
+    } else {
+      // Default: set selected tool for next message
+      setSelectedTool(tool as any);
+    }
   }, []);
 
   // Handle voice recording

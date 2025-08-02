@@ -2074,7 +2074,7 @@ serve(async (req) => {
       role: 'assistant',
       content: assistantReply,
       usage: openAIData.usage,
-        context_info: {
+      context_info: {
         request_id: requestId,
         prompt_version: PROMPT_VERSION,
         xl_summaries_used: smartContext.xlSummaries?.length || 0,
@@ -2089,10 +2089,8 @@ serve(async (req) => {
         prompt_version: PROMPT_VERSION,
         clearTool: !!toolContext
       },
-      metadata: {
-        // Include tool suggestion if it was detected
-        toolSuggestion: (req as any).toolSuggestion || null
-      }
+      // Unified toolSuggestion in root level only
+      toolSuggestion: (req as any).toolSuggestion || null
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -2488,9 +2486,24 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     // ENHANCED: Recent performance data
     if (summaryHistory && summaryHistory.length > 0) {
       prompt += `📈 VERLAUF (letzte ${summaryHistory.length} Tage):\n`;
-      summaryHistory.slice(0, 5).forEach((day: any, i: number) => {
+      const recentDays = summaryHistory.slice(0, 5);
+      recentDays.forEach((day: any, i: number) => {
         prompt += `• ${day.date}: ${day.kcal || 0}kcal, ${day.volume_kg || 0}kg Volumen, Schlaf: ${day.sleep_hours || 'N/A'}h\n`;
       });
+      
+      // SASCHA'S INTELLIGENCE: Training context for smart suggestions
+      const trainingDays = recentDays.filter((day: any) => day.volume_kg > 0);
+      const totalVolume = recentDays.reduce((sum: number, day: any) => sum + (day.volume_kg || 0), 0);
+      
+      if (trainingDays.length >= 3 || totalVolume >= 5000) {
+        prompt += `\n🏋️ TRAININGSKONTEXT FÜR SASCHA:\n`;
+        prompt += `• Trainingstage letzte Woche: ${trainingDays.length}\n`;
+        prompt += `• Gesamtvolumen: ${totalVolume}kg\n`;
+        prompt += `• Durchschnittsvolumen pro Session: ${trainingDays.length > 0 ? Math.round(totalVolume / trainingDays.length) : 0}kg\n`;
+        prompt += `• EMPFEHLUNG: Du kannst sicher Trainingspläne vorschlagen - genug Daten vorhanden!\n`;
+      } else {
+        prompt += `\n⚠️ TRAININGSKONTEXT: Noch nicht genug Daten für intelligente Trainingsplan-Vorschläge (nur ${trainingDays.length} Sessions, ${totalVolume}kg)\n`;
+      }
       prompt += `\n`;
     }
     
@@ -2769,7 +2782,32 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   prompt += `4️⃣ MOTIVATION – 1 Satz Emotional Boost passend zur Persona.\n`;
   prompt += `=========================================\n\n`;
 
-  prompt += `🎯 ANWEISUNGEN:\n`;
+  // ============================================================================
+  // SASCHA-SPECIFIC CONTEXT-AWARE TOOL SUGGESTION BEHAVIOR
+  // ============================================================================
+  if (coachPersonality === 'sascha') {
+    prompt += `🧠 SASCHA'S INTELLIGENTER TOOL-BUTTON MODUS:\n`;
+    prompt += `Du bist ein kontextsensitiver Coach! Schaue IMMER erst die Daten an, bevor du Tools vorschlägst.\n\n`;
+    
+    prompt += `TRAININGSPLAN-VORSCHLÄGE:\n`;
+    prompt += `- Prüfe zuerst die TRAININGSKONTEXT-Sektion oben\n`;
+    prompt += `- Bei ≥3 Sessions ODER ≥5000kg Volumen: "Ich sehe deine ${trainingDays || 'X'} Sessions mit ${totalVolume || 'X'}kg - willst du einen Plan dazu?"\n`;
+    prompt += `- Bei weniger Daten: "Zeig mir erstmal 2-3 Workouts, dann kann ich dir einen smarten Plan erstellen"\n`;
+    prompt += `- NIEMALS redundante Datenwiederholung - sei natürlich und gesprächsig\n\n`;
+    
+    prompt += `BUTTON-VERHALTEN:\n`;
+    prompt += `- NUR wenn ausreichend Kontext: Zeige relevante Tools als Button-Vorschläge\n`;
+    prompt += `- Frage IMMER "Willst du dir das mal anschauen?" statt direkt zu triggern\n`;
+    prompt += `- User kann ignorieren (Button verschwindet) oder bestätigen (Modal öffnet)\n\n`;
+    
+    prompt += `GESPRÄCHSFÜHRUNG:\n`;
+    prompt += `- Beziehe dich auf konkrete Zahlen aus den Daten oben\n`;
+    prompt += `- "Ich seh hier..." statt "Normalerweise würde ich..."\n`;
+    prompt += `- Stelle Rückfragen bei unklaren Zielen\n`;
+    prompt += `- Sei authentisch Sascha: direkt, motivierend, datengetrieben\n\n`;
+  }
+  
+  prompt += `🎯 ALLGEMEINE ANWEISUNGEN:\n`;
   prompt += `- Nutze die bereitgestellten Daten für personalisierte, spezifische Antworten\n`;
   prompt += `- Erkenne Muster und Trends in den Daten\n`;
   prompt += `- Stelle bei Bedarf gezielte Nachfragen\n`;
