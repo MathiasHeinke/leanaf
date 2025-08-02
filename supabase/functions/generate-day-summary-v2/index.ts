@@ -21,12 +21,12 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, date, force = false, text = true } = await req.json();
+    const { userId, date, force = false, text = true, timezone = 'Europe/Berlin' } = await req.json();
     if (!userId || !date) {
       return errorResponse(400, "userId + date required");
     }
 
-    console.log(`🚀 Processing summary for ${userId} on ${date} (force: ${force})`);
+    console.log(`🚀 Processing summary for ${userId} on ${date} (force: ${force}) in timezone ${timezone}`);
 
     // Check if summary already exists and has complete data (unless force mode)
     if (!force) {
@@ -43,9 +43,9 @@ serve(async (req) => {
       }
     }
 
-    // Collect raw data
-    console.log('🔍 Step 1: Collecting raw data...');
-    const raw = await collectRawData(userId, date);
+    // Collect raw data with timezone awareness
+    console.log('🔍 Step 1: Collecting raw data with timezone...');
+    const raw = await collectRawData(userId, date, timezone);
     console.log('✅ Raw data collected:', { hasData: raw.hasData, userProfile: !!raw.userProfile });
     
     if (!raw.hasData) {
