@@ -64,6 +64,15 @@ serve(async (req) => {
       summaryMd = summaryXl.split(/\s+/).slice(0, 120).join(" ");
     }
 
+    // 📝 Debug: Log vor Upsert
+    console.log('📝 Going to upsert summary', {
+      date,
+      user_id: userId,
+      kcal: kpi.nutrition.totals.kcal,
+      struct_len: JSON.stringify(blueprintJson).length,
+      schema_version: '2025-08-v1'
+    });
+
     // Save to database
     const { error: upsertError } = await supabase
       .from("daily_summaries")
@@ -87,6 +96,14 @@ serve(async (req) => {
       }, { 
         onConflict: "user_id,date" 
       });
+
+    // 📦 Debug: Log nach Upsert
+    console.log('📦 Upsert done', { 
+      upErr: upsertError,
+      errorCode: upsertError?.code,
+      errorMessage: upsertError?.message,
+      errorDetails: upsertError?.details
+    });
 
     if (upsertError) {
       console.error("❌ Upsert error:", upsertError);
