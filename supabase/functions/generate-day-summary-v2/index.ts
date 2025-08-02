@@ -167,13 +167,12 @@ async function collectRawData(userId: string, date: string) {
     .eq('user_id', userId)
     .maybeSingle();
 
-  // Detailed meals (last 10)
+  // Detailed meals (last 10) - fix date filter
   const { data: meals } = await supabase
     .from('meals')
     .select('*')
     .eq('user_id', userId)
-    .gte('created_at', `${date}T00:00:00Z`)
-    .lt('created_at', `${date}T23:59:59Z`)
+    .or(`date.eq.${date},created_at::date.eq.${date}`)
     .order('created_at', { ascending: false })
     .limit(10);
 
@@ -256,16 +255,22 @@ async function collectRawData(userId: string, date: string) {
   );
 
   console.log('🔍 Debug fastMeals:', { 
-    fastMealsData: fastMeals.data, 
-    error: fastMeals.error,
-    calories: fastMeals.data?.calories 
+    fastMealsRaw: fastMeals,
+    fastMealsData: fastMeals.data,
+    fastVolumeRaw: fastVolume,
+    fastFluidsRaw: fastFluids
   });
+  
+  // Extract RPC response data correctly
+  const mealTotals = fastMeals.data || {};
+  const volumeTotal = fastVolume.data || 0;
+  const fluidTotal = fastFluids.data || 0;
   
   return {
     hasData,
-    fastMeals: fastMeals.data,
-    fastVolume: fastVolume.data || 0,
-    fastFluids: fastFluids.data || 0,
+    fastMeals: mealTotals,  
+    fastVolume: volumeTotal,
+    fastFluids: fluidTotal,
     profile,
     goals,
     meals: meals || [],
@@ -281,13 +286,26 @@ async function collectRawData(userId: string, date: string) {
 }
 
 function deriveKPIs(raw: any) {
-  // Nutrition KPIs
+  // Nutrition KPIs - Fallback wenn RPC fehlschlägt
+  let totalCalories = raw.fastMeals?.calories || 0;
+  let totalProtein = raw.fastMeals?.protein || 0;
+  let totalCarbs = raw.fastMeals?.carbs || 0;
+  let totalFats = raw.fastMeals?.fats || 0;
+  
+  // Fallback: Direkt aus meals berechnen wenn RPC leer ist
+  if (totalCalories === 0 && raw.meals.length > 0) {
+    totalCalories = raw.meals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0);
+    totalProtein = raw.meals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0);
+    totalCarbs = raw.meals.reduce((sum: number, m: any) => sum + (m.carbs || 0), 0);
+    totalFats = raw.meals.reduce((sum: number, m: any) => sum + (m.fats || 0), 0);
+  }
+  
   const nutrition = {
     totals: {
-      kcal: raw.fastMeals?.calories || 0,
-      protein_g: raw.fastMeals?.protein || 0,
-      carbs_g: raw.fastMeals?.carbs || 0,
-      fat_g: raw.fastMeals?.fats || 0,
+      kcal: totalCalories,
+      protein_g: totalProtein,
+      carbs_g: totalCarbs,
+      fat_g: totalFats,
       fiber_g: raw.meals.reduce((sum: number, m: any) => sum + (m.fiber || 0), 0),
       sugar_g: raw.meals.reduce((sum: number, m: any) => sum + (m.sugar || 0), 0),
       drink_kcal: raw.fluids.reduce((sum: number, f: any) => sum + (f.calories || 0), 0)

@@ -190,7 +190,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         // Phase 3-a: Auto-Loader für History-Snapshots
         if (!summaryHistory) {
           const { data } = await supabase
-            .rpc('get_summary_range', { p_user: user.id, p_days: 14 });
+            .rpc('get_summary_range_v2', { p_user_id: user.id, p_days: 14 });
           setSummaryHistory(data);
         }
       } catch (error) {
