@@ -3,11 +3,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Import new handlers
-import { diary } from '../tool-handlers/diary.ts';
-import { mealCapture } from '../tool-handlers/mealCapture.ts';
-import { goalCheckin } from '../tool-handlers/goalCheckin.ts';
-import { createPlanDraft } from '../tool-handlers/createPlanDraft.ts';
-import { savePlanDraft } from '../tool-handlers/savePlanDraft.ts';
+import diary from '../tool-handlers/diary.ts';
+import mealCapture from '../tool-handlers/mealCapture.ts';
+import goalCheckin from '../tool-handlers/goalCheckin.ts';
+import createPlanDraft from '../tool-handlers/createPlanDraft.ts';
+import savePlanDraft from '../tool-handlers/savePlanDraft.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
