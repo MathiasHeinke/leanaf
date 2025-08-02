@@ -620,7 +620,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           created_at: new Date().toISOString(),
           coach_personality: coach?.personality || 'motivierend',
           images: [],
-          mode: mode
+          mode: mode,
+          // Add pending tools from toolSuggestion if present
+          pendingTools: data.toolSuggestion ? [data.toolSuggestion] : undefined
         };
       }
 
@@ -689,6 +691,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setSelectedTool(null); // Reset tool after use
     }
   }, [inputText, uploadedImages, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, messages]);
+
+  // Handle tool action buttons
+  const handleToolAction = useCallback((tool: string, contextData?: any) => {
+    console.log('🔧 Tool action triggered:', tool, contextData);
+    setSelectedTool(tool as any);
+    // Optionally trigger the tool modal/interface here
+    // For now, this will just set the selected tool which will be used on next message
+  }, []);
 
   // Handle voice recording
   const handleVoiceToggle = useCallback(async () => {
@@ -1119,7 +1129,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                }}>
             {/* Render all messages using the unified message renderer */}
             <div className="space-y-3 pb-4">
-              {messages.map(message => renderMessage(message))}
+              {messages.map(message => renderMessage(message, handleToolAction))}
               {isThinking && (
                 <TypingIndicator name={coach?.name || 'Coach'} />
               )}

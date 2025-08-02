@@ -1165,6 +1165,41 @@ DU SAGST WIE ES IST:
 
 WICHTIG: Bleib authentisch deutsch, verwende deine typischen Sprüche sparsam aber wirkungsvoll.`,
     voice: "direkt und motivierend"
+  },
+  sascha: {
+    name: "Sascha",
+    description: "Wissenschaftlich fundierter Coach mit intelligenter Datenanalyse",
+    basePrompt: `Du bist Sascha - ein evidenzbasierter Fitness-Coach mit starkem Fokus auf Datenanalyse und kontextuellem Verständnis.
+
+DEINE HERANGEHENSWEISE:
+- Du prüfst IMMER zuerst vorhandene Daten, bevor du Ratschläge gibst
+- Du erwähnst konkrete Zahlen aus dem Training: "Du hast am 31.7. 7.465 kg bewegt"
+- Du erkennst Muster in Trainingsverhalten und sprichst diese direkt an
+- Du sammelst Kontext bevor du Tools vorschlägst
+
+CONTEXT-AWARE TRAINING ANALYSIS:
+- Wenn jemand nach einem Trainingsplan fragt, checkst du ZUERST:
+  * Wie viele Sessions in den letzten 2 Wochen?
+  * Welches Gesamtvolumen wurde bewegt?
+  * Welche Übungen wurden zuletzt gemacht?
+  * Gibt es bereits einen Plan oder Struktur?
+- Du sagst konkret was du siehst: "Ich sehe 3 Sessions diese Woche mit 21.500 kg Gesamtvolumen"
+- Erst nach dieser Analyse fragst du nach Zielen und Präferenzen
+
+TOOL-SUGGESTION LOGIK:
+- Du schlägst Tools NUR vor, wenn du genug Kontext hast
+- Mindestens 3 Trainingstage oder 5.000 kg Volumen pro Woche
+- Du sagst: "Basierend auf deinen Daten kann ich dir einen Plan vorschlagen"
+- Der Tool-Button erscheint erst nach deiner Kontextanalyse
+
+MENSCHLICHER STIL:
+- Wissenschaftlich fundiert, aber verständlich erklärt
+- Keine KI-haften Listen oder Nummerierungen
+- Natürlicher Gesprächsfluss mit konkreten Datenreferenzen
+- Du bist wie ein erfahrener Trainer, der deine Fortschritte kennt
+
+WICHTIG: Du bist NICHT hastig mit Vorschlägen. Du analysierst erst, dann sprichst du über das was du siehst, dann sammelst du weitere Infos, und erst dann machst du Vorschläge.`,
+    voice: "analytisch und kontextuell"
   }
 };
 
@@ -1425,23 +1460,81 @@ serve(async (req) => {
       activeTool = toolContext.tool;
       console.log(`🎯 [${requestId}] USING FRONTEND TOOL DECISION: ${activeTool} (frontend analyzed context)`);
     }
-    // 3. NEW: Backend suggestion mode (detect but don't execute)
+    // 3. NEW: Backend suggestion mode with context-aware analysis
     else if (detectedIntent.confidence > 0.6 && detectedIntent.tool !== 'chat') {
       console.log(`🔧 [${requestId}] BACKEND TOOL SUGGESTION: ${detectedIntent.tool} (confidence: ${detectedIntent.confidence})`);
       
-      // For suggestion mode, we continue with chat but include tool suggestion metadata
-      activeTool = 'chat';
+      // SASCHA'S CONTEXT-AWARE ANALYSIS: Check training data before suggesting trainingsplan
+      let shouldSuggestTool = true;
       
-      // Add tool suggestion to the response metadata for frontend
-      const toolSuggestion = {
-        tool: detectedIntent.tool,
-        confidence: detectedIntent.confidence,
-        label: getToolLabel(detectedIntent.tool),
-        description: getToolDescription(detectedIntent.tool)
-      };
+      if (detectedIntent.tool === 'trainingsplan' || detectedIntent.tool === 'createPlanDraft') {
+        console.log(`🧠 [${requestId}] Analyzing training context before suggesting plan tool...`);
+        
+        // Check if user has sufficient training data for intelligent suggestions
+        const hasTrainingData = await checkTrainingDataSufficiency(supabase, userId);
+        console.log(`📊 [${requestId}] Training data analysis:`, hasTrainingData);
+        
+        if (!hasTrainingData.sufficient) {
+          console.log(`⏸️ [${requestId}] Insufficient training data - no tool suggestion yet`);
+          shouldSuggestTool = false;
+        }
+      }
       
-      // This will be included in the chat response for button rendering
-      (req as any).toolSuggestion = toolSuggestion;
+      if (shouldSuggestTool) {
+        console.log(`✅ [${requestId}] Sufficient context - creating tool suggestion`);
+        
+        // For suggestion mode, we continue with chat but include tool suggestion metadata
+        activeTool = 'chat';
+      
+        // ============= HELPER FUNCTIONS FOR TOOL SUGGESTIONS =============
+        function getToolLabel(tool: string): string {
+          const labels: Record<string, string> = {
+            'trainingsplan': '🏋️ Trainingsplan erstellen',
+            'createPlanDraft': '📝 Plan-Entwurf erstellen',
+            'savePlanDraft': '💾 Plan speichern',
+            'gewicht': '⚖️ Gewicht erfassen',
+            'supplement': '💊 Supplements planen',
+            'foto': '📸 Foto analysieren',
+            'quickworkout': '⚡ Quick-Workout erfassen',
+            'uebung': '🎯 Übung hinzufügen',
+            'diary': '📔 Tagebuch-Eintrag',
+            'mealCapture': '🍽️ Mahlzeit erfassen',
+            'goalCheckin': '🎯 Ziel-Check'
+          };
+          return labels[tool] || '🔧 Aktion starten';
+        }
+
+        function getToolDescription(tool: string): string {
+          const descriptions: Record<string, string> = {
+            'trainingsplan': 'Erstelle einen strukturierten Trainingsplan basierend auf deinen Zielen',
+            'createPlanDraft': 'Plane dein Training basierend auf deinen letzten Workouts',
+            'savePlanDraft': 'Speichere den aktuellen Plan für später',
+            'gewicht': 'Gib dein aktuelles Gewicht ein für besseres Tracking',
+            'supplement': 'Plane deine Supplements für optimale Ergebnisse',
+            'foto': 'Lass mich dein Bild analysieren',
+            'quickworkout': 'Erfasse dein Training schnell und einfach',
+            'uebung': 'Füge eine neue Übung zu deinem Workout hinzu',
+            'diary': 'Reflektiere über deinen Tag und deine Erfolge',
+            'mealCapture': 'Erfasse deine Mahlzeit für bessere Ernährung',
+            'goalCheckin': 'Überprüfe deinen Fortschritt zu deinen Zielen'
+          };
+          return descriptions[tool] || 'Führe diese Aktion aus';
+        }
+
+        // Add tool suggestion to the response metadata for frontend
+        const toolSuggestion = {
+          tool: detectedIntent.tool,
+          confidence: detectedIntent.confidence,
+          label: getToolLabel(detectedIntent.tool),
+          description: getToolDescription(detectedIntent.tool)
+        };
+        
+        // This will be included in the chat response for button rendering
+        (req as any).toolSuggestion = toolSuggestion;
+      } else {
+        console.log(`📊 [${requestId}] Context insufficient - no tool suggestion`);
+        activeTool = 'chat';
+      }
     }
     
     console.log(`🔧 [${requestId}] Final active tool: ${activeTool}`);
@@ -1954,7 +2047,8 @@ serve(async (req) => {
           meta: { 
             prompt_version: PROMPT_VERSION,
             clearTool: !!toolContext
-          }
+          },
+          toolSuggestion: (req as any).toolSuggestion || null
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -2833,4 +2927,52 @@ function intelligentTokenShortening(messages: any[], targetTokens: number): any[
   }
   
   return result;
+}
+
+// ============= CONTEXT-AWARE TRAINING ANALYSIS =============
+async function checkTrainingDataSufficiency(supabase: any, userId: string): Promise<{sufficient: boolean, analysis: any}> {
+  try {
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    
+    // Check for recent exercise sessions
+    const { data: sessions } = await supabase
+      .from('exercise_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', twoWeeksAgo.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+      .limit(10);
+    
+    // Check for recent exercise sets
+    const { data: sets } = await supabase
+      .from('exercise_sets')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', twoWeeksAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    const sessionCount = sessions?.length || 0;
+    const setCount = sets?.length || 0;
+    const totalVolume = sets?.reduce((sum: number, set: any) => sum + (set.reps * set.weight_kg || 0), 0) || 0;
+    
+    const analysis = {
+      sessionCount,
+      setCount,
+      totalVolume,
+      averageVolumePerSession: sessionCount > 0 ? totalVolume / sessionCount : 0,
+      lastSessionDate: sessions?.[0]?.date || null
+    };
+    
+    // Sascha's intelligence: Need at least 3 sessions OR 5000kg total volume
+    const sufficient = sessionCount >= 3 || totalVolume >= 5000;
+    
+    console.log(`📊 Training data analysis for ${userId}:`, analysis, `Sufficient: ${sufficient}`);
+    
+    return { sufficient, analysis };
+  } catch (error) {
+    console.error('Error checking training data:', error);
+    return { sufficient: false, analysis: {} };
+  }
 }
