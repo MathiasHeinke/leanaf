@@ -5,13 +5,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   Calendar,
   MessageSquare,
   ArrowRight,
   Clock,
   User,
-  X
+  X,
+  Archive
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,6 +27,14 @@ interface ChatDay {
   message_count: number;
   last_message: string;
   last_message_time: string;
+}
+
+interface MemoryPacket {
+  id: string;
+  created_at: string;
+  packet_summary: string;
+  start_message_id: string;
+  end_message_id: string;
 }
 
 interface ChatHistorySidebarProps {
@@ -89,6 +99,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
       setIsLoading(false);
     }
   };
+
 
   const formatDate = (dateString: string) => {
     const date = parseISO(dateString);

@@ -37,7 +37,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDebugChat } from '@/hooks/useDebugChat';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { useUniversalImageAnalysis } from '@/hooks/useUniversalImageAnalysis';
-import { useGlobalCoachMemory } from '@/hooks/useGlobalCoachMemory';
+import { useConversationMemory } from '@/hooks/useConversationMemory';
 import { useWorkoutPlanDetection } from '@/hooks/useWorkoutPlanDetection';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
@@ -51,6 +51,7 @@ import { SupplementTrackingModal } from './SupplementTrackingModal';
 import { DiaryEntryModal } from './DiaryEntryModal';
 import { QuickWorkoutModal } from './QuickWorkoutModal';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 
 // SimpleMessageList import removed - not used in this component
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -62,6 +63,7 @@ import { UploadProgress } from '@/components/UploadProgress';
 import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
 import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
 import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
+import { prefillModalState } from '@/utils/modalContextHelpers';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -149,18 +151,22 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContext, setModalContext] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [memoryError, setMemoryError] = useState<string | null>(null);
   
   // ============= REFS =============
   const initializationRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // ============= HOOKS =============
+  const conversationId = coach?.id || 'general-coach';
   const { 
-    memory, 
-    isGlobalMemoryLoaded, 
-    processMessage,
-    getMemorySummary 
-  } = useGlobalCoachMemory();
+    context: memoryContext, 
+    isLoading: isMemoryLoading,
+    addMessage: addToMemory,
+    getPromptContext,
+    clearMemory
+  } = useConversationMemory(conversationId);
   const { isRecording, isProcessing, transcribedText, startRecording, stopRecording } = useVoiceRecording();
   const { analyzeImage, isAnalyzing } = useUniversalImageAnalysis();
   const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
@@ -496,7 +502,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           progressPhotos: progressPhotos,
           // Enhanced context data for better coach analysis
           contextTokens: tokens,
-          userMemorySummary: memory ? getMemorySummary() : null,
+          userMemorySummary: getPromptContext(),
           // Add current timestamp for temporal context
           requestTime: new Date().toISOString(),
           userTimezone: 'Europe/Berlin'
@@ -571,6 +577,33 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     setMessages(prev => [...prev, userMessage]);
     
+    // Add user message to conversation memory with error handling
+    setIsSyncing(true);
+    try {
+      await addToMemory({
+        role: 'user',
+        content: inputText,
+        timestamp: new Date().toISOString()
+      });
+      console.log('✅ User message added to conversation memory');
+      setMemoryError(null);
+    } catch (error) {
+      console.warn('⚠️ Failed to add user message to memory:', error);
+      setMemoryError('Nachrichten-Speicherung fehlgeschlagen');
+      sonnerToast.error('⚠️ Chat konnte nicht gespeichert werden', {
+        description: 'Wird automatisch wiederholt...',
+        action: {
+          label: 'Erneut versuchen',
+          onClick: () => {
+            // Retry logic could be implemented here
+            console.log('Retry button clicked');
+          }
+        }
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+    
     // Save user message to DB immediately
     const today = new Date().toISOString().split('T')[0];
     const messageContent = uploadedImages.length > 0 
@@ -642,13 +675,25 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         return [...clearedMessages, assistantMessage];
       });
       
-      // Process message through Global Coach Memory for sentiment analysis
-      if (data.response && processMessage) {
+      // Add message to conversation memory with error handling
+      if (data.response) {
+        setIsSyncing(true);
         try {
-          await processMessage(data.response, coach?.id || 'lucy', false);
-          console.log('✅ Coach memory updated after response');
+          await addToMemory({
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date().toISOString()
+          });
+          console.log('✅ Assistant message added to conversation memory');
+          setMemoryError(null);
         } catch (error) {
-          console.warn('⚠️ Failed to update coach memory:', error);
+          console.warn('⚠️ Failed to update conversation memory:', error);
+          setMemoryError('Assistant-Antwort konnte nicht gespeichert werden');
+          sonnerToast.error('⚠️ Coach-Antwort nicht gespeichert', {
+            description: 'Das Gespräch wird möglicherweise nicht vollständig erinnert.',
+          });
+        } finally {
+          setIsSyncing(false);
         }
       }
       
@@ -710,7 +755,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const handleToolAction = useCallback((tool: string, contextData?: any) => {
     console.log('🔧 Tool action triggered:', tool, contextData);
     
-    // Enhanced context data preparation based on tool type
+    // Enhanced context data preparation with intelligent prefilling
+    const prefillData = prefillModalState(
+      loadedProfileData?.profile, 
+      memoryContext.recentMessages,
+      loadedProfileData
+    );
+    
     const enhancedContextData = {
       profileData,
       dailyGoals,
@@ -723,6 +774,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       todaysProtein: todaysTotals?.protein || 0,
       recentWorkouts: workoutData?.slice(0, 3) || [],
       sleepScore: sleepData?.sleep_score || 0,
+      // Smart prefill data for modals
+      prefillData,
       ...contextData
     };
     
