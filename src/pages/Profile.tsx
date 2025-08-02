@@ -456,6 +456,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     setSaveSuccess(false);
     try {
       await performSave();
+      
+      // Refresh current weight after saving
+      await loadCurrentWeight();
+      
       toast.success('Profil erfolgreich gespeichert');
       setLastSaved(new Date());
       setSaveSuccess(true);

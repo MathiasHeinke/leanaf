@@ -102,15 +102,15 @@ export const useGlobalCoachMemory = () => {
 
   // Get memory summary for coach context
   const getMemorySummary = useCallback(() => {
-    if (!memory) return null;
+    if (!memory || !memory.conversation_context) return null;
 
     return {
       relationshipStage: memory.relationship_stage,
       trustLevel: memory.trust_level,
-      recentMoods: memory.conversation_context.mood_history.slice(-5),
-      recentSuccesses: memory.conversation_context.success_moments.slice(-3),
-      recentStruggles: memory.conversation_context.struggles_mentioned.slice(-3),
-      topPreferences: memory.user_preferences.slice(-5),
+      recentMoods: memory.conversation_context?.mood_history?.slice(-5) || [],
+      recentSuccesses: memory.conversation_context?.success_moments?.slice(-3) || [],
+      recentStruggles: memory.conversation_context?.struggles_mentioned?.slice(-3) || [],
+      topPreferences: memory.user_preferences?.slice(-5) || [],
       communicationStyle: memory.communication_style_preference
     };
   }, [memory]);

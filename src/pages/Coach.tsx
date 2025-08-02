@@ -3,12 +3,6 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { UnifiedCoachChat } from "@/components/UnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
-import { SingleDaySummaryGenerator } from "@/components/SingleDaySummaryGenerator";
-import LiteDebugChat from "@/components/LiteDebugChat";
-import { DailySummaryCharts } from "@/components/DailySummaryCharts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
 
 // Coach profiles data (same as in CoachSelection)
 const coachProfiles = [
@@ -66,7 +60,6 @@ const coachProfiles = [
 
 const CoachPage = () => {
   const { coachId } = useParams<{ coachId: string }>();
-  const [timeRange, setTimeRange] = useState<7 | 14 | 30>(14);
   
   // If coachId is provided, find the specific coach and render chat
   if (coachId) {
@@ -94,50 +87,10 @@ const CoachPage = () => {
     );
   }
   
-  // Default view: Coach selection with tabs
+  // Default view: Coach selection only
   return (
     <div className="container mx-auto p-4">
-      <Tabs defaultValue="summary-charts" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="summary-charts">📊 Summary Trends</TabsTrigger>
-          <TabsTrigger value="selection">👥 Coach auswählen</TabsTrigger>
-          <TabsTrigger value="lite-debug">⚡ Lite Debug</TabsTrigger>
-          <TabsTrigger value="generate">🔍 Tag-Summary Debug</TabsTrigger>
-        </TabsList>
-        <TabsContent value="summary-charts" className="mt-6">
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold">Daily Summary Trends</h2>
-                <p className="text-muted-foreground">Visualisierung deiner täglichen Fortschritte</p>
-              </div>
-              <Select 
-                value={timeRange.toString()} 
-                onValueChange={(value) => setTimeRange(Number(value) as 7 | 14 | 30)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 Tage</SelectItem>
-                  <SelectItem value="14">14 Tage</SelectItem>
-                  <SelectItem value="30">30 Tage</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DailySummaryCharts timeRange={timeRange} />
-          </div>
-        </TabsContent>
-        <TabsContent value="selection" className="mt-6">
-          <CoachSelection selectedCoach="lucy" onCoachChange={() => {}} />
-        </TabsContent>
-        <TabsContent value="lite-debug" className="mt-6">
-          <LiteDebugChat />
-        </TabsContent>
-        <TabsContent value="generate" className="mt-6">
-          <SingleDaySummaryGenerator />
-        </TabsContent>
-      </Tabs>
+      <CoachSelection selectedCoach="lucy" onCoachChange={() => {}} />
     </div>
   );
 };

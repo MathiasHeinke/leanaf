@@ -322,21 +322,21 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
 
   const getRiskLevelColor = (level: string) => {
     switch (level) {
-      case 'low': return 'text-green-600';
-      case 'medium': return 'text-yellow-600';
-      case 'high': return 'text-orange-600';
-      case 'critical': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'low': return 'text-green-600 dark:text-green-400';
+      case 'medium': return 'text-yellow-600 dark:text-yellow-400';
+      case 'high': return 'text-orange-600 dark:text-orange-400';
+      case 'critical': return 'text-red-600 dark:text-red-400';
+      default: return 'text-gray-600 dark:text-gray-400';
     }
   };
 
   const getRiskLevelBg = (level: string) => {
     switch (level) {
-      case 'low': return 'bg-green-50 border-green-200';
-      case 'medium': return 'bg-yellow-50 border-yellow-200';
-      case 'high': return 'bg-orange-50 border-orange-200';
-      case 'critical': return 'bg-red-50 border-red-200';
-      default: return 'bg-gray-50 border-gray-200';
+      case 'low': return 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800';
+      case 'medium': return 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800';
+      case 'high': return 'bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-800';
+      case 'critical': return 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800';
+      default: return 'bg-gray-50 border-gray-200 dark:bg-gray-950 dark:border-gray-800';
     }
   };
 
