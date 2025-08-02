@@ -1339,25 +1339,54 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
 async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false, liteCtx: boolean = false) {
   const coach = COACH_PERSONALITIES[coachPersonality] || COACH_PERSONALITIES.lucy;
   
-  // LITE MODE: Minimal prompt
-  if (liteCtx) {
-    let litePrompt = coach.basePrompt + '\n\n';
-    
-    if (context.profile) {
-      const displayName = getDisplayName(context.profile);
-      litePrompt += `👤 USER: ${displayName}\n`;
-      if (context.profile.age) litePrompt += `Alter: ${context.profile.age}\n`;
-    }
-    
-    if (context.fastMealTotals) {
-      litePrompt += `\nHEUTE BISHER:\n`;
-      litePrompt += `🍽️ Kalorien: ${context.fastMealTotals.calories || 0}\n`;
-      litePrompt += `💪 Protein: ${context.fastMealTotals.protein || 0}g\n`;
-    }
-    
-    if (context.fastWorkoutVolume > 0) {
-      litePrompt += `🏋️ Training: ${context.fastWorkoutVolume}kg Volumen\n`;
-    }
+    // LITE MODE: Minimal prompt + toolContext injection
+    if (liteCtx) {
+      let litePrompt = coach.basePrompt + '\n\n';
+      
+      // Inject toolContext data if available
+      if (toolContext?.data) {
+        const { profileData, todaysTotals, dailyGoals, summary } = toolContext.data;
+        
+        if (profileData) {
+          const displayName = getDisplayName(profileData);
+          litePrompt += `👤 USER: ${displayName}\n`;
+          if (profileData.age) litePrompt += `Alter: ${profileData.age}\n`;
+        }
+        
+        if (todaysTotals) {
+          litePrompt += `\nHEUTE BISHER:\n`;
+          litePrompt += `🍽️ Kalorien: ${todaysTotals.calories || 0}\n`;
+          litePrompt += `💪 Protein: ${todaysTotals.protein || 0}g\n`;
+          if (todaysTotals.fluids) litePrompt += `💧 Flüssigkeit: ${todaysTotals.fluids}ml\n`;
+        }
+        
+        if (summary?.structured?.training?.total_volume > 0) {
+          litePrompt += `🏋️ Training: ${summary.structured.training.total_volume}kg Volumen\n`;
+        }
+        
+        if (dailyGoals) {
+          litePrompt += `\nZIELE:\n`;
+          if (dailyGoals.calories) litePrompt += `🎯 Kalorien-Ziel: ${dailyGoals.calories}\n`;
+          if (dailyGoals.protein) litePrompt += `🎯 Protein-Ziel: ${dailyGoals.protein}g\n`;
+        }
+      } else {
+        // Fallback to existing context
+        if (context.profile) {
+          const displayName = getDisplayName(context.profile);
+          litePrompt += `👤 USER: ${displayName}\n`;
+          if (context.profile.age) litePrompt += `Alter: ${context.profile.age}\n`;
+        }
+        
+        if (context.fastMealTotals) {
+          litePrompt += `\nHEUTE BISHER:\n`;
+          litePrompt += `🍽️ Kalorien: ${context.fastMealTotals.calories || 0}\n`;
+          litePrompt += `💪 Protein: ${context.fastMealTotals.protein || 0}g\n`;
+        }
+        
+        if (context.fastWorkoutVolume > 0) {
+          litePrompt += `🏋️ Training: ${context.fastWorkoutVolume}kg Volumen\n`;
+        }
+      }
     
     if (context.fastFluidTotal > 0) {
       litePrompt += `💧 Flüssigkeit: ${context.fastFluidTotal}ml\n`;
@@ -1368,7 +1397,7 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     return litePrompt;
   }
   
-  // FULL MODE: Original logic
+  // FULL MODE: Enhanced with toolContext injection
   let prompt = coach.basePrompt + '\n\n';
   
   // ============================================================================
@@ -1378,14 +1407,22 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     prompt = `LANG:EN - Please respond in English unless specifically asked otherwise.\n\n` + prompt;
   }
   
-  // User Profile Section
-  if (context.profile) {
-    const displayName = getDisplayName(context.profile);
+  // TOOLCONTEXT INJECTION: Add structured data at the top
+  if (toolContext?.data) {
+    const ctxData = JSON.stringify(toolContext.data).slice(0, 8000); // Limit to 8000 chars
+    prompt += `🧠 TAGESKONTEXT-DATEN: ${ctxData}\n\n`;
+    console.log(`📊 [${requestId}] Injected toolContext data: ${ctxData.length} chars`);
+  }
+  
+  // User Profile Section - prefer toolContext data
+  const profileData = toolContext?.data?.profileData || context.profile;
+  if (profileData) {
+    const displayName = getDisplayName(profileData);
     prompt += `👤 NUTZER-PROFIL:\n`;
     prompt += `Name: ${displayName}\n`;
-    if (context.profile.age) prompt += `Alter: ${context.profile.age} Jahre\n`;
-    if (context.profile.height) prompt += `Größe: ${context.profile.height} cm\n`;
-    if (context.profile.fitness_level) prompt += `Fitness-Level: ${context.profile.fitness_level}\n`;
+    if (profileData.age) prompt += `Alter: ${profileData.age} Jahre\n`;
+    if (profileData.height) prompt += `Größe: ${profileData.height} cm\n`;
+    if (profileData.fitness_level) prompt += `Fitness-Level: ${profileData.fitness_level}\n`;
     prompt += '\n';
   }
 
