@@ -280,7 +280,7 @@ const PROMPT_VERSION = '2025-08-01-XL';
 // ============================================================================
 
 // Tool Detection Logic
-type ToolName = 'trainingsplan' | 'createPlanDraft' | 'savePlanDraft' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin';
+type ToolName = 'trainingsplan' | 'createPlanDraft' | 'savePlanDraft' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin' | 'ragKnowledge';
 
 interface ToolContext {
   tool: ToolName | 'chat';
@@ -333,6 +333,10 @@ function detectToolIntent(text: string): ToolContext {
     goalCheckin: {
       regex: /(fortschritt|auf\s+kurs|ziel|progress|check|stand|bin\s+ich|wie\s+stehe)/i,
       description: 'Fortschritt überprüfen'
+    },
+    ragKnowledge: {
+      regex: /(warum|wie\s+funktioniert|studien|forschung|wissenschaft|belege|erklär|grund|hintergrund|theorie|prinzip)/i,
+      description: 'Wissenschaftlichen Hintergrund aus Knowledge Base suchen'
     }
   };
 
@@ -1192,6 +1196,61 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
   }
 }
 
+// RAG Knowledge Handler
+async function handleRAGKnowledge(conv: any[], userId: string, supabase: any, coachPersonality?: string) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  console.log(`🧠 RAG Knowledge search triggered for: "${lastUserMsg.substring(0, 100)}"`);
+  
+  try {
+    // Use enhanced-coach-rag function
+    const { data: ragResponse, error } = await supabase.functions.invoke('enhanced-coach-rag', {
+      body: {
+        query: lastUserMsg,
+        coach_id: coachPersonality || 'sascha',
+        user_id: userId,
+        search_method: 'hybrid',
+        max_results: 5,
+        context_window: 2000
+      }
+    });
+
+    if (error) {
+      console.error('RAG search error:', error);
+      return null; // Continue to chat
+    }
+
+    if (!ragResponse || !ragResponse.success || ragResponse.context.length === 0) {
+      console.log('No relevant knowledge found, continuing to chat');
+      return null; // Continue to chat
+    }
+
+    console.log(`✅ RAG found ${ragResponse.context.length} relevant knowledge entries`);
+    
+    // Format the knowledge for display
+    const knowledgeContext = ragResponse.context
+      .map((chunk: any, index: number) => 
+        `**Quelle ${index + 1}: ${chunk.title}** (${chunk.expertise_area})\n${chunk.content}`
+      )
+      .join('\n\n---\n\n');
+
+    const responseContent = `🧠 **Wissenschaftlicher Hintergrund:**
+
+${knowledgeContext}
+
+*Relevanz-Score: ${ragResponse.metadata.relevance_score.toFixed(2)} | Suchmethode: ${ragResponse.metadata.search_method} | ${ragResponse.metadata.results_count} Ergebnisse*`;
+
+    return {
+      role: 'assistant',
+      content: responseContent
+    };
+    
+  } catch (error) {
+    console.error('RAG handler error:', error);
+    return null; // Continue to chat
+  }
+}
+
 // Tool-Handler-Map (Enhanced v2 with QuickWorkout)
 const handlers = {
   // EXISTING - use inlined functions
@@ -1207,6 +1266,7 @@ const handlers = {
   goalCheckin: handleGoalCheckin,
   createPlanDraft: handleCreatePlanDraft,
   savePlanDraft: handleSavePlanDraft,
+  ragKnowledge: handleRAGKnowledge,
   quickworkout: async (conv: any[], userId: string, supabase: any) => {
     const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
     
@@ -1763,7 +1823,8 @@ serve(async (req) => {
             'uebung': '🎯 Übung hinzufügen',
             'diary': '📔 Tagebuch-Eintrag',
             'mealCapture': '🍽️ Mahlzeit erfassen',
-            'goalCheckin': '🎯 Ziel-Check'
+            'goalCheckin': '🎯 Ziel-Check',
+            'ragKnowledge': '🧠 Wissen suchen'
           };
           return labels[tool] || '🔧 Aktion starten';
         }
@@ -1780,7 +1841,8 @@ serve(async (req) => {
             'uebung': 'Übung hinzufügen',
             'diary': 'Tagebuch schreiben',
             'mealCapture': 'Mahlzeit erfassen',
-            'goalCheckin': 'Fortschritt checken'
+            'goalCheckin': 'Fortschritt checken',
+            'ragKnowledge': 'Wissen suchen'
           };
           return labels[tool] || 'Tool ausführen';
         }
@@ -1797,7 +1859,8 @@ serve(async (req) => {
             'uebung': 'Füge eine neue Übung zu deinem Workout hinzu',
             'diary': 'Reflektiere über deinen Tag und deine Erfolge',
             'mealCapture': 'Erfasse deine Mahlzeit für bessere Ernährung',
-            'goalCheckin': 'Überprüfe deinen Fortschritt zu deinen Zielen'
+            'goalCheckin': 'Überprüfe deinen Fortschritt zu deinen Zielen',
+            'ragKnowledge': 'Durchsuche die wissenschaftliche Wissensdatenbank für fundierte Antworten'
           };
           return descriptions[tool] || 'Führe diese Aktion aus';
         }
