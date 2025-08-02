@@ -1012,6 +1012,7 @@ serve(async (req) => {
           parameters: { type: "object", properties: {}, required: [] }
         }
       }
+    ];
 
     console.log(`🔄 [${requestId}] Making OpenAI API call with model: ${selectedModel}`);
     console.log(`📝 [${requestId}] Message count: ${messages.length}, System prompt length: ${systemPrompt.length}`);
