@@ -127,6 +127,7 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Login attempt started', { email, isSignUp, isPasswordReset });
     
     // Check rate limiting
     const clientId = `${navigator.userAgent}_${window.location.href}`;
@@ -138,16 +139,22 @@ const Auth = () => {
         client_info: navigator.userAgent,
         remaining_attempts: remaining
       });
+      console.log('Rate limit exceeded');
       return;
     }
     
     if (isPasswordReset) {
+      console.log('Handling password reset');
       handlePasswordReset();
       return;
     }
     
-    if (!validateForm()) return;
+    console.log('Validating form...');
+    const isValid = validateForm();
+    console.log('Form validation result:', isValid, validationErrors);
+    if (!isValid) return;
     
+    console.log('Starting authentication...');
     setLoading(true);
     setError('');
     
