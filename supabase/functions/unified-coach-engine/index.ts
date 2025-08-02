@@ -469,12 +469,37 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any, c
   console.log(`🧠 RAG-enhanced plan: ${ragEnhancedDescription ? 'YES' : 'NO'}`);
   
   try {
+    // PHASE 3: Smart prefilling from RAG tool suggestions
+    let smartPrefillData = {};
+    if (global.lastRAGResults && global.lastRAGResults.toolPrefillSuggestions) {
+      const trainingPrefill = global.lastRAGResults.toolPrefillSuggestions.find(
+        (suggestion: any) => suggestion.tool === 'trainingsplan'
+      );
+      
+      if (trainingPrefill) {
+        smartPrefillData = trainingPrefill.prefillData;
+        console.log(`🔗 Using RAG prefill data for training plan:`, smartPrefillData);
+      }
+    }
+    
     // Extrahiere Trainingsplan-Informationen aus der Nachricht
     const planName = extractPlanName(lastUserMsg);
     const goals = extractGoals(lastUserMsg);
     
     // Add coach information to plan description
     const coachInfo = coachName !== 'Sascha' ? `Coach: ${coachName}` : '';
+    
+    // PHASE 3: Enhanced description with smart prefilling
+    let enhancedDescription = '';
+    if (smartPrefillData.scientificBasis) {
+      enhancedDescription += `\n🧬 Wissenschaftliche Basis: ${smartPrefillData.scientificBasis}`;
+    }
+    if (smartPrefillData.methodology) {
+      enhancedDescription += `\n📋 Methodik: ${smartPrefillData.methodology}`;
+    }
+    if (smartPrefillData.evidenceLevel) {
+      enhancedDescription += `\n✅ Evidenz-Level: ${smartPrefillData.evidenceLevel}`;
+    }
     
     // Erstelle Trainingsplan-Entry in der DB with RAG enhancement
     const { data: planData, error } = await supabase.from('workout_plans').insert({
@@ -485,7 +510,8 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any, c
         `Automatisch erstellt am ${new Date().toLocaleDateString('de-DE')}`,
         coachInfo,
         goals.length ? `Ziel(e): ${goals.join(', ')}` : '',
-        ragEnhancedDescription  // PHASE 2: Include RAG-enhanced scientific foundation
+        ragEnhancedDescription,  // PHASE 2: Include RAG-enhanced scientific foundation
+        enhancedDescription      // PHASE 3: Smart prefilling from RAG suggestions
       ].filter(Boolean).join('\n').trim(),
       exercises: [],                   // leeres JSON = Draft
       estimated_duration_minutes: null,
@@ -1271,13 +1297,27 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
   }
 }
 
-// RAG Knowledge Handler with Cross-Tool Data Sharing
+// RAG Knowledge Handler with Smart Integration (Phase 3)
 async function handleRAGKnowledge(conv: any[], userId: string, supabase: any, coachPersonality?: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
   
   console.log(`🧠 RAG Knowledge search triggered for: "${lastUserMsg.substring(0, 100)}"`);
   
+  // PHASE 3: Check cache first for performance optimization
+  const cacheKey = `rag_${userId}_${Buffer.from(lastUserMsg).toString('base64').slice(0, 20)}`;
+  
   try {
+    // Check if we have cached results (simple in-memory cache for this session)
+    if (global.ragCache && global.ragCache[cacheKey]) {
+      const cached = global.ragCache[cacheKey];
+      const cacheAge = Date.now() - cached.timestamp;
+      
+      if (cacheAge < 10 * 60 * 1000) { // 10 minute cache
+        console.log(`⚡ Using cached RAG results (${Math.round(cacheAge/1000)}s old)`);
+        return cached.response;
+      }
+    }
+
     // Use enhanced-coach-rag function
     const { data: ragResponse, error } = await supabase.functions.invoke('enhanced-coach-rag', {
       body: {
@@ -1302,34 +1342,36 @@ async function handleRAGKnowledge(conv: any[], userId: string, supabase: any, co
 
     console.log(`✅ RAG found ${ragResponse.context.length} relevant knowledge entries`);
     
-    // PHASE 2: Store RAG results for cross-tool sharing
+    // PHASE 3: Enhanced RAG context with smart prefilling capabilities
     const ragContext = {
       timestamp: new Date().toISOString(),
       query: lastUserMsg,
       results: ragResponse.context,
-      metadata: ragResponse.metadata
+      metadata: ragResponse.metadata,
+      // PHASE 3: Add prefill suggestions for other tools
+      toolPrefillSuggestions: generateToolPrefillSuggestions(ragResponse.context),
+      // PHASE 3: Add semantic categories for better integration
+      semanticCategories: categorizeRAGResults(ragResponse.context)
     };
     
-    // Store in temporary global context (could be enhanced with caching)
+    // Store in enhanced global context and cache
     global.lastRAGResults = ragContext;
-    console.log(`💾 Stored RAG results for cross-tool sharing:`, ragContext.results.length, 'entries');
     
-    // Format the knowledge for display
-    const knowledgeContext = ragResponse.context
+    // PHASE 3: Initialize cache if not exists
+    if (!global.ragCache) global.ragCache = {};
+    
+    // PHASE 3: Smart context compression for better performance
+    const compressedContext = compressRAGContext(ragResponse.context);
+    
+    // Format the knowledge for display with enhanced actionable suggestions
+    let knowledgeContext = ragResponse.context
       .map((chunk: any, index: number) => 
-        `**Quelle ${index + 1}: ${chunk.title}** (${chunk.expertise_area})\n${chunk.content}`
+        `**Quelle ${index + 1}: ${chunk.title}** (${chunk.expertise_area})\n${compressedContext[index] || chunk.content}`
       )
       .join('\n\n---\n\n');
 
-    // ENHANCED: Add actionable suggestions based on knowledge
-    let actionableSuggestions = '';
-    const expertise_areas = [...new Set(ragResponse.context.map((c: any) => c.expertise_area))];
-    if (expertise_areas.includes('training') || expertise_areas.includes('exercise')) {
-      actionableSuggestions += '\n\n💡 **Möchtest du einen wissenschaftlich fundierten Trainingsplan erstellen?**';
-    }
-    if (expertise_areas.includes('nutrition') || expertise_areas.includes('supplements')) {
-      actionableSuggestions += '\n\n💊 **Soll ich dir personalisierte Supplement-Empfehlungen geben?**';
-    }
+    // PHASE 3: Dynamic actionable suggestions based on semantic analysis
+    let actionableSuggestions = generateDynamicSuggestions(ragContext);
 
     const responseContent = `🧠 **Wissenschaftlicher Hintergrund:**
 
@@ -1337,16 +1379,144 @@ ${knowledgeContext}
 
 *Relevanz-Score: ${ragResponse.metadata.relevance_score.toFixed(2)} | Suchmethode: ${ragResponse.metadata.search_method} | ${ragResponse.metadata.results_count} Ergebnisse*${actionableSuggestions}`;
 
-    return {
+    const finalResponse = {
       role: 'assistant',
       content: responseContent,
-      ragContext: ragContext // Include for potential frontend use
+      ragContext: ragContext, // Include for potential frontend use
+      toolSuggestions: ragContext.toolPrefillSuggestions // PHASE 3: Smart tool suggestions
     };
+
+    // PHASE 3: Cache the response for performance
+    global.ragCache[cacheKey] = {
+      timestamp: Date.now(),
+      response: finalResponse
+    };
+    
+    console.log(`💾 Cached RAG results with tool prefill suggestions: ${ragContext.toolPrefillSuggestions.length} suggestions`);
+    
+    return finalResponse;
     
   } catch (error) {
     console.error('RAG handler error:', error);
     return null; // Continue to chat
   }
+}
+
+// PHASE 3: Helper functions for smart integration
+function generateToolPrefillSuggestions(ragResults: any[]): any[] {
+  const suggestions = [];
+  
+  for (const result of ragResults) {
+    if (result.expertise_area === 'training' || result.expertise_area === 'exercise') {
+      suggestions.push({
+        tool: 'trainingsplan',
+        prefillData: {
+          scientificBasis: result.title,
+          methodology: extractMethodology(result.content),
+          evidenceLevel: 'research-backed'
+        }
+      });
+    }
+    
+    if (result.expertise_area === 'nutrition') {
+      suggestions.push({
+        tool: 'supplement',
+        prefillData: {
+          scientificRationale: result.title,
+          dosageGuidance: extractDosageInfo(result.content),
+          evidenceStrength: result.relevance_score || 0.8
+        }
+      });
+    }
+  }
+  
+  return suggestions;
+}
+
+function categorizeRAGResults(ragResults: any[]): string[] {
+  const categories = new Set<string>();
+  
+  for (const result of ragResults) {
+    categories.add(result.expertise_area);
+    
+    // Add semantic categories based on content
+    if (result.content.toLowerCase().includes('hypertrophie') || result.content.toLowerCase().includes('muskelaufbau')) {
+      categories.add('muscle_building');
+    }
+    if (result.content.toLowerCase().includes('kraft') || result.content.toLowerCase().includes('strength')) {
+      categories.add('strength_training');
+    }
+    if (result.content.toLowerCase().includes('abnehmen') || result.content.toLowerCase().includes('fettverbrennung')) {
+      categories.add('fat_loss');
+    }
+  }
+  
+  return Array.from(categories);
+}
+
+function compressRAGContext(ragResults: any[]): string[] {
+  return ragResults.map(result => {
+    const content = result.content;
+    if (content.length <= 200) return content;
+    
+    // Smart compression: Keep first and last sentences, summarize middle
+    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    if (sentences.length <= 2) return content;
+    
+    const firstSentence = sentences[0] + '.';
+    const lastSentence = sentences[sentences.length - 1] + '.';
+    const middleCount = sentences.length - 2;
+    
+    return `${firstSentence} [...${middleCount} weitere Punkte...] ${lastSentence}`;
+  });
+}
+
+function generateDynamicSuggestions(ragContext: any): string {
+  let suggestions = '';
+  const categories = ragContext.semanticCategories;
+  
+  if (categories.includes('training') || categories.includes('muscle_building')) {
+    suggestions += '\n\n💪 **Nächste Schritte:** Wissenschaftlich fundierten Trainingsplan erstellen?';
+  }
+  
+  if (categories.includes('nutrition') || categories.includes('supplements')) {
+    suggestions += '\n\n💊 **Personalisiert:** Supplement-Empfehlungen basierend auf dieser Forschung?';
+  }
+  
+  if (categories.includes('fat_loss')) {
+    suggestions += '\n\n🔥 **Zielorientiert:** Abnehm-Strategie mit diesen Erkenntnissen entwickeln?';
+  }
+  
+  return suggestions;
+}
+
+function extractMethodology(content: string): string {
+  // Simple extraction of methodology mentions
+  const methodKeywords = ['methode', 'ansatz', 'protokoll', 'system', 'verfahren'];
+  const sentences = content.split(/[.!?]+/);
+  
+  for (const sentence of sentences) {
+    for (const keyword of methodKeywords) {
+      if (sentence.toLowerCase().includes(keyword)) {
+        return sentence.trim() + '.';
+      }
+    }
+  }
+  
+  return 'Evidenzbasierte Methodik';
+}
+
+function extractDosageInfo(content: string): string {
+  // Simple extraction of dosage information
+  const dosageRegex = /\d+\s*(mg|g|μg|mcg|iu|ie)/i;
+  const match = content.match(dosageRegex);
+  
+  if (match) {
+    const sentence = content.split(/[.!?]+/).find(s => s.includes(match[0]));
+    return sentence ? sentence.trim() + '.' : match[0];
+  }
+  
+  return 'Standarddosierung empfohlen';
 }
 
 // Tool-Handler-Map (Enhanced v2 with QuickWorkout)
@@ -2858,6 +3028,14 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
 async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false, liteCtx: boolean = false, timezone: string = 'Europe/Berlin', currentTime: string = new Date().toISOString()) {
   const coach = COACH_PERSONALITIES[coachPersonality] || COACH_PERSONALITIES.lucy;
   
+  // PHASE 3: Dynamic Prompt Building - Assess available context quality
+  const contextQuality = assessContextQuality(context, toolContext);
+  console.log(`🔍 Context quality assessment:`, contextQuality);
+  
+  // PHASE 3: Adaptive prompt sections based on available data
+  const promptSections = buildAdaptivePromptSections(context, toolContext, contextQuality);
+  console.log(`📝 Built ${promptSections.length} adaptive prompt sections`);
+  
   // ✨ Zeit-Kontext aufbauen
   const now = new Date(currentTime);
   const timeOptions: Intl.DateTimeFormatOptions = { 
@@ -2878,6 +3056,26 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   
   let timeAwarenessPrompt = `\n🕒 ZEIT-KONTEXT: ${localTime}\n- Standard-Grußformel: "${greeting}"\n- Kontext-Hinweis: ${timeContext}\n\nBerücksichtige die Tageszeit bei deinen Antworten und Vorschlägen.\n\n`;
   
+  // PHASE 3: Dynamic prompt building based on context quality
+  let dynamicPrompt = coach.basePrompt;
+  
+  // Enhance base prompt with context-specific instructions
+  if (contextQuality.hasRichNutritionData) {
+    dynamicPrompt += '\n\n🍽️ ERNÄHRUNGS-EXPERTISE: Du hast Zugriff auf detaillierte Ernährungsdaten. Nutze diese für präzise, personalisierte Beratung.';
+  }
+  
+  if (contextQuality.hasTrainingHistory) {
+    dynamicPrompt += '\n\n💪 TRAININGS-INTELLIGENZ: Umfangreiche Trainingsdaten verfügbar. Erstelle evidenzbasierte, progressive Trainingspläne.';
+  }
+  
+  if (contextQuality.hasRAGKnowledge) {
+    dynamicPrompt += '\n\n🧠 WISSENSCHAFTLICHER ZUGANG: Aktuelle Forschungsergebnisse verfügbar. Integriere wissenschaftliche Erkenntnisse in deine Beratung.';
+  }
+  
+  if (contextQuality.isDataSparse) {
+    dynamicPrompt += '\n\n📊 DATENSAMMLUNG: Wenig Nutzerdaten vorhanden. Fokussiere auf Datenerfassung und grundlegende Beratung.';
+  }
+  
   // ⏱️ Kontext aus letzten Aktivitäten hinzufügen
   let activityContext = '';
   if (toolContext?.data?.workoutData?.length > 0) {
@@ -2896,9 +3094,10 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   
     // LITE MODE: Minimal prompt + toolContext injection
     if (liteCtx) {
-      let litePrompt = coach.basePrompt + '\n\n';
+      // PHASE 3: Even in lite mode, use dynamic sections for better performance
+      let litePrompt = dynamicPrompt + '\n\n';
       
-      // Inject toolContext data if available
+      // PHASE 3: Compressed context injection for lite mode
       if (toolContext?.data) {
         const { profileData, todaysTotals, dailyGoals, summary } = toolContext.data;
         
@@ -2908,11 +3107,12 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
           if (profileData.age) litePrompt += `Alter: ${profileData.age}\n`;
         }
         
+        // PHASE 3: Smart data prioritization in lite mode
         if (todaysTotals) {
-          litePrompt += `\nHEUTE BISHER:\n`;
-          litePrompt += `🍽️ Kalorien: ${todaysTotals.calories || 0}\n`;
-          litePrompt += `💪 Protein: ${todaysTotals.protein || 0}g\n`;
-          if (todaysTotals.fluids) litePrompt += `💧 Flüssigkeit: ${todaysTotals.fluids}ml\n`;
+          litePrompt += `\nHEUTE (optimiert):\n`;
+          litePrompt += `🍽️ ${todaysTotals.calories || 0}kcal (${todaysTotals.count || 0} Mahlzeiten)\n`;
+          litePrompt += `💪 ${todaysTotals.protein || 0}g Protein\n`;
+          if (todaysTotals.fluids) litePrompt += `💧 ${todaysTotals.fluids}ml\n`;
         }
         
         if (summary?.structured?.training?.total_volume > 0) {
@@ -3582,7 +3782,102 @@ function intelligentTokenShortening(messages: any[], targetTokens: number): any[
   return result;
 }
 
-// ============= CONTEXT-AWARE TRAINING ANALYSIS =============
+// PHASE 3: Dynamic Prompt Building Helper Functions
+
+function assessContextQuality(context: any, toolContext: any): any {
+  const quality = {
+    hasRichNutritionData: false,
+    hasTrainingHistory: false,
+    hasRAGKnowledge: false,
+    hasUserProfile: false,
+    isDataSparse: false,
+    overallScore: 0
+  };
+  
+  // Assess nutrition data quality
+  const todaysTotals = toolContext?.data?.todaysTotals;
+  const recentMeals = context?.relevantData?.meals;
+  if ((todaysTotals && todaysTotals.count > 2) || (recentMeals && recentMeals.length > 5)) {
+    quality.hasRichNutritionData = true;
+    quality.overallScore += 25;
+  }
+  
+  // Assess training data quality
+  const workoutData = toolContext?.data?.workoutData;
+  const exerciseSessions = context?.relevantData?.exercise_sessions;
+  if ((workoutData && workoutData.length > 3) || (exerciseSessions && exerciseSessions.length > 2)) {
+    quality.hasTrainingHistory = true;
+    quality.overallScore += 25;
+  }
+  
+  // Check for RAG knowledge availability
+  if (global.lastRAGResults && global.lastRAGResults.results && global.lastRAGResults.results.length > 0) {
+    quality.hasRAGKnowledge = true;
+    quality.overallScore += 20;
+  }
+  
+  // Check user profile completeness
+  const profile = toolContext?.data?.profileData || context?.profile;
+  if (profile && profile.age && profile.height && profile.weight) {
+    quality.hasUserProfile = true;
+    quality.overallScore += 15;
+  }
+  
+  // Determine if data is sparse
+  quality.isDataSparse = quality.overallScore < 30;
+  
+  return quality;
+}
+
+function buildAdaptivePromptSections(context: any, toolContext: any, contextQuality: any): string[] {
+  const sections = [];
+  
+  // High-quality nutrition section
+  if (contextQuality.hasRichNutritionData) {
+    sections.push(`
+📊 ERWEITERTE ERNÄHRUNGSBERATUNG:
+- Nutze detaillierte Mahlzeitendaten für präzise Makro-Analysen
+- Erkenne Ernährungsmuster und schlage Optimierungen vor
+- Berücksichtige Timing und Nährstoffverteilung
+`);
+  } else {
+    sections.push(`
+🍽️ GRUNDLEGENDE ERNÄHRUNGSBERATUNG:
+- Fokussiere auf Mahlzeiten-Tracking und grundlegende Makros
+- Motiviere zur regelmäßigen Dateneingabe
+- Gib allgemeine Ernährungsempfehlungen
+`);
+  }
+  
+  // Training intelligence section
+  if (contextQuality.hasTrainingHistory) {
+    sections.push(`
+💪 PROGRESSIVE TRAININGSBERATUNG:
+- Analysiere Trainingsvolumen und -frequenz für optimale Progression
+- Erkenne Schwachstellen und Ungleichgewichte
+- Schlage evidenzbasierte Anpassungen vor
+`);
+  } else {
+    sections.push(`
+🏃 EINSTEIGER-TRAININGSBERATUNG:
+- Motiviere zum Start der Trainingsaufzeichnung
+- Gib grundlegende Bewegungsempfehlungen
+- Erkläre Trainingsgrundlagen
+`);
+  }
+  
+  // RAG-enhanced section
+  if (contextQuality.hasRAGKnowledge) {
+    sections.push(`
+🧠 WISSENSCHAFTLICH FUNDIERTE BERATUNG:
+- Integriere aktuelle Forschungsergebnisse in deine Antworten
+- Verweise auf evidenzbasierte Methoden
+- Nutze verfügbares Fachwissen für tiefere Analysen
+`);
+  }
+  
+  return sections;
+}
 async function checkTrainingDataSufficiency(supabase: any, userId: string): Promise<{sufficient: boolean, analysis: any}> {
   try {
     const twoWeeksAgo = new Date();
