@@ -46,9 +46,10 @@ import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { WorkoutPlanCreationModal } from './WorkoutPlanCreationModal';
-import { QuickWeightInput } from './QuickWeightInput';
-import { QuickSupplementInput } from './QuickSupplementInput';
-import { QuickWorkoutInput } from './QuickWorkoutInput';
+import { WeightEntryModal } from './WeightEntryModal';
+import { SupplementTrackingModal } from './SupplementTrackingModal';
+import { DiaryEntryModal } from './DiaryEntryModal';
+import { QuickWorkoutModal } from './QuickWorkoutModal';
 import { useToast } from '@/hooks/use-toast';
 
 // SimpleMessageList import removed - not used in this component
