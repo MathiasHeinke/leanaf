@@ -447,6 +447,23 @@ const handlers = {
     const entries = args.entries || 10;
     const result = await get_weight_history(userId, entries, supabaseClient);
     return { success: true, data: result, count: result.length };
+  },
+  // ➍ SUMMARY HISTORY HANDLER
+  get_summary_history: async (args: any, userId: string, supabaseClient: any) => {
+    const days = args.days || 14;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    const { data, error } = await supabaseClient
+      .from('daily_summaries')
+      .select('date, total_calories, total_protein, total_carbs, total_fats, workout_volume, sleep_score')
+      .eq('user_id', userId)
+      .gte('date', startDateStr)
+      .order('date', { ascending: false });
+    
+    if (error) throw error;
+    return { success: true, data: data || [], count: (data || []).length };
   }
 };
 
@@ -1010,6 +1027,21 @@ serve(async (req) => {
           name: "get_today_quickworkout",
           description: "Holt Quick-Workout-Daten des heutigen Tages",
           parameters: { type: "object", properties: {}, required: [] }
+        }
+      },
+      // ➎ SUMMARY HISTORY TOOL
+      {
+        type: "function",
+        function: {
+          name: "get_summary_history",
+          description: "Gibt Daily-Summaries der letzten N Tage zurück",
+          parameters: {
+            type: "object",
+            properties: {
+              days: { type: "number", description: "Zeitraum in Tagen", default: 14 }
+            },
+            required: []
+          }
         }
       }
     ];

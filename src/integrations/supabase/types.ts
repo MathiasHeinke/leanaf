@@ -2287,6 +2287,36 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_workouts: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          description: string | null
+          distance_km: number | null
+          id: string
+          steps: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          distance_km?: number | null
+          id?: string
+          steps?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          distance_km?: number | null
+          id?: string
+          steps?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       rag_performance_metrics: {
         Row: {
           cache_hit: boolean | null
