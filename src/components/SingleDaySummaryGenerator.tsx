@@ -14,8 +14,52 @@ export const SingleDaySummaryGenerator = () => {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [response, setResponse] = useState<any>(null);
+  const [existingSummary, setExistingSummary] = useState<any>(null);
   const [forceUpdate, setForceUpdate] = useState(false);
+
+  const loadExistingSummary = async (date: string) => {
+    if (!user || !date) return;
+
+    setIsLoading(true);
+    setExistingSummary(null);
+    setResponse(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('daily_summaries')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', date)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setExistingSummary(data);
+        toast({
+          title: "Bestehender Summary gefunden",
+          description: `Summary für ${date} bereits vorhanden`,
+        });
+      } else {
+        toast({
+          title: "Kein Summary vorhanden",
+          description: `Für ${date} wurde noch kein Summary erstellt`,
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error('Error loading existing summary:', error);
+      toast({
+        title: "Fehler",
+        description: error.message || 'Fehler beim Laden des Summaries',
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGenerateSummary = async () => {
     if (!user || !selectedDate) {
@@ -27,7 +71,7 @@ export const SingleDaySummaryGenerator = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsGenerating(true);
     setResponse(null);
 
     try {
@@ -35,7 +79,7 @@ export const SingleDaySummaryGenerator = () => {
         body: {
           userId: user.id,
           date: selectedDate,
-          forceUpdate
+          forceUpdate: true
         }
       });
 
@@ -45,9 +89,12 @@ export const SingleDaySummaryGenerator = () => {
       
       toast({
         title: "Erfolgreich",
-        description: `Summary für ${selectedDate} ${data.status === 'success' ? 'erstellt' : data.status === 'skipped' ? 'übersprungen (bereits vorhanden)' : 'teilweise erstellt'}`,
+        description: `Summary für ${selectedDate} ${data.status === 'success' ? 'neu erstellt' : data.status === 'skipped' ? 'übersprungen (bereits vorhanden)' : 'teilweise erstellt'}`,
         variant: data.status === 'success' ? "default" : "destructive"
       });
+
+      // Lade den aktualisierten Summary
+      await loadExistingSummary(selectedDate);
 
     } catch (error: any) {
       console.error('Error generating summary:', error);
@@ -57,7 +104,7 @@ export const SingleDaySummaryGenerator = () => {
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -82,28 +129,22 @@ export const SingleDaySummaryGenerator = () => {
               id="date"
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                if (e.target.value) {
+                  loadExistingSummary(e.target.value);
+                }
+              }}
               max={new Date().toISOString().split('T')[0]}
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="forceUpdate"
-              checked={forceUpdate}
-              onChange={(e) => setForceUpdate(e.target.checked)}
-              className="rounded"
-            />
-            <label htmlFor="forceUpdate" className="text-sm">
-              Überschreiben
-            </label>
-          </div>
           <Button 
             onClick={handleGenerateSummary}
-            disabled={!selectedDate || isLoading}
+            disabled={!selectedDate || isGenerating}
+            variant={existingSummary ? "outline" : "default"}
             className="min-w-[120px]"
           >
-            {isLoading ? (
+            {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Lädt...
@@ -111,11 +152,121 @@ export const SingleDaySummaryGenerator = () => {
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Erstellen
+                {existingSummary ? 'Neu generieren' : 'Erstellen'}
               </>
             )}
           </Button>
         </div>
+
+        {/* Bestehender Summary anzeigen */}
+        {existingSummary && !response && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Bestehender Summary - {existingSummary.date}
+              </CardTitle>
+              <CardDescription>
+                Dieser Summary wurde bereits erstellt am {new Date(existingSummary.created_at).toLocaleString('de-DE')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              
+              {/* KPIs Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-lg font-bold">{Math.round(existingSummary.total_calories || 0)}</div>
+                  <div className="text-xs text-muted-foreground">Kalorien</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold">{Math.round(existingSummary.total_protein || 0)}g</div>
+                  <div className="text-xs text-muted-foreground">Protein</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold">{Math.round(existingSummary.workout_volume || 0)}</div>
+                  <div className="text-xs text-muted-foreground">Workout Vol.</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold">{existingSummary.workout_muscle_groups?.length || 0}</div>
+                  <div className="text-xs text-muted-foreground">Muskelgruppen</div>
+                </div>
+              </div>
+
+              {/* XL Summary */}
+              {existingSummary.summary_xl_md && (
+                <div className="p-4 border-l-4 border-primary bg-primary/5">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    XL-Summary (Detailliert)
+                  </h4>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {existingSummary.summary_xl_md}
+                  </p>
+                </div>
+              )}
+
+              {/* Standard Summary (Fallback) */}
+              {!existingSummary.summary_xl_md && existingSummary.summary_md && (
+                <div className="p-4 border-l-4 border-secondary bg-secondary/5">
+                  <h4 className="font-semibold mb-2">Standard-Summary</h4>
+                  <p className="text-sm leading-relaxed">
+                    {existingSummary.summary_md}
+                  </p>
+                </div>
+              )}
+
+              {/* Top Foods */}
+              {existingSummary.top_foods && existingSummary.top_foods.length > 0 && (
+                <div>
+                  <h5 className="font-medium mb-2">🍽️ Top Lebensmittel</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {existingSummary.top_foods.map((food: any, idx: number) => (
+                      <Badge key={idx} variant="secondary">
+                        {food.food} ({food.count}x)
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Muscle Groups */}
+              {existingSummary.workout_muscle_groups && existingSummary.workout_muscle_groups.length > 0 && (
+                <div>
+                  <h5 className="font-medium mb-2">💪 Trainierte Muskelgruppen</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {existingSummary.workout_muscle_groups.map((group: string, idx: number) => (
+                      <Badge key={idx} variant="outline">
+                        {group}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Macro Distribution */}
+              {existingSummary.macro_distribution && (
+                <div>
+                  <h5 className="font-medium mb-2">📊 Makro-Verteilung</h5>
+                  <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="text-center p-2 bg-protein-light dark:bg-protein-light rounded">
+                      <div className="font-semibold text-protein dark:text-protein">{existingSummary.macro_distribution.protein_percent || 0}%</div>
+                      <div className="text-xs text-muted-foreground">Protein</div>
+                    </div>
+                    <div className="text-center p-2 bg-carbs-light dark:bg-carbs-light rounded">
+                      <div className="font-semibold text-carbs dark:text-carbs">{existingSummary.macro_distribution.carbs_percent || 0}%</div>
+                      <div className="text-xs text-muted-foreground">Carbs</div>
+                    </div>
+                    <div className="text-center p-2 bg-fats-light dark:bg-fats-light rounded">
+                      <div className="font-semibold text-fats dark:text-fats">{existingSummary.macro_distribution.fats_percent || 0}%</div>
+                      <div className="text-xs text-muted-foreground">Fette</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </CardContent>
+          </Card>
+        )}
 
 {response && (
           <div className="space-y-6 mt-6">
