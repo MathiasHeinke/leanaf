@@ -22,7 +22,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
     case 'weight':
       return (
         <SmartCard
-          tool="exercise"
+          tool="gewicht"
           icon="⚖️"
           title="Gewichtseintrag"
           defaultCollapsed
@@ -39,10 +39,11 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
         </SmartCard>
       );
     
+    case 'workout_plan':
     case 'plan':
       return (
         <SmartCard
-          tool="plan"
+          tool="trainingsplan"
           icon="📋"
           title="Trainingsplan"
           defaultCollapsed
@@ -59,9 +60,48 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
     case 'exercise':
       return (
         <SmartCard
-          tool="exercise"
+          tool="uebung"
           icon="🏋️"
           title="Übung"
+          defaultCollapsed
+          actions={payload?.actions}
+        >
+          {payload?.html ? (
+            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+          ) : (
+            <div>{JSON.stringify(payload, null, 2)}</div>
+          )}
+        </SmartCard>
+      );
+
+    case 'quickworkout':
+      return (
+        <SmartCard
+          tool="quickworkout"
+          icon="🏃"
+          title="Quick-Workout"
+          defaultCollapsed
+          actions={payload?.actions}
+        >
+          {payload?.html ? (
+            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+          ) : (
+            <div className="space-y-2">
+              <p><strong>{payload?.description}</strong></p>
+              {payload?.steps && <p>📱 {payload.steps} Schritte</p>}
+              {payload?.distance && <p>📏 {payload.distance} km</p>}
+              {payload?.duration && <p>⏱️ {payload.duration} Minuten</p>}
+            </div>
+          )}
+        </SmartCard>
+      );
+
+    case 'foto':
+      return (
+        <SmartCard
+          tool="foto"
+          icon="📸"
+          title="Foto-Analyse"
           defaultCollapsed
           actions={payload?.actions}
         >
@@ -93,7 +133,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
     default:
       return (
         <SmartCard
-          tool="supplement"
+          tool="chat"
           icon="❓"
           title="Unbekannter Kartentyp"
           defaultCollapsed

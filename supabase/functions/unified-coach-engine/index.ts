@@ -20,6 +20,75 @@ const DISABLE_LIMITS = Deno.env.get('DISABLE_COACH_LIMITS') === 'true';
 const PROMPT_VERSION = '2025-08-01-XL';
 
 // ============================================================================
+// TOOL DETECTION & HANDLERS
+// ============================================================================
+
+// Tool Detection Logic
+type ToolName = 'trainingsplan' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout';
+
+interface ToolContext {
+  tool: ToolName | 'chat';
+  description: string;
+  confidence: number;
+}
+
+function detectToolIntent(text: string): ToolContext {
+  const toolMap: Record<ToolName, { regex: RegExp; description: string }> = {
+    trainingsplan: {
+      regex: /(trainingsplan|workout.*plan|push.*pull|split|4.*tag|3.*tag|ganzkörper|upperbody|lowerbody|plan.*erstell)/i,
+      description: 'Trainingsplan erstellen/bearbeiten'
+    },
+    supplement: {
+      regex: /(supplement|kreatin|creatine|vitamin|zink|omega|protein.*pulver|magnesium|d3|b12|eisen)/i,
+      description: 'Supplement-Empfehlung'
+    },
+    gewicht: {
+      regex: /(gewicht|wiegen|kg|waage|gramm|pfund|weight|scale)/i,
+      description: 'Gewicht erfassen'
+    },
+    uebung: {
+      regex: /(übung|exercise|versuch.*mal|neue.*übung|bankdrücken|kniebeuge|kreuzheben|klimmzug)/i,
+      description: 'Übung hinzufügen/analysieren'
+    },
+    foto: {
+      regex: /(foto|picture|progress.*pic|bild|vorher.*nachher|transformation|körper.*foto)/i,
+      description: 'Fortschritts-Foto analysieren'
+    },
+    quickworkout: {
+      regex: /(schritte|walk|joggen|lauf|quickworkout|spazier|cardio|schnell.*training|10.*min)/i,
+      description: 'Quick-Workout erfassen'
+    }
+  };
+
+  let bestMatch: { tool: ToolName | 'chat'; confidence: number; description: string } = {
+    tool: 'chat',
+    confidence: 0,
+    description: 'Freies Gespräch'
+  };
+
+  for (const [toolName, config] of Object.entries(toolMap)) {
+    if (config.regex.test(text)) {
+      const matches = text.match(config.regex);
+      const confidence = matches ? Math.min(matches.length * 0.3 + 0.7, 1.0) : 0;
+      
+      if (confidence > bestMatch.confidence) {
+        bestMatch = {
+          tool: toolName as ToolName,
+          confidence,
+          description: config.description
+        };
+      }
+    }
+  }
+
+  return {
+    tool: bestMatch.tool,
+    description: bestMatch.description,
+    confidence: bestMatch.confidence
+  };
+}
+
+// ============================================================================
 // TOOL HANDLERS - Inline implementations
 // ============================================================================
 
@@ -98,6 +167,55 @@ function extractGoals(message: string): string[] {
   if (lowerMessage.includes('muskel') || lowerMessage.includes('masse')) {
     goals.push('Muskelaufbau');
   }
+  if (lowerMessage.includes('kraft') || lowerMessage.includes('stärk')) {
+    goals.push('Kraftaufbau');
+  }
+  if (lowerMessage.includes('ausdauer') || lowerMessage.includes('cardio')) {
+    goals.push('Ausdauer');
+  }
+  
+  return goals.length > 0 ? goals : ['Allgemeine Fitness'];
+}
+
+function extractQuickWorkoutData(message: string): {
+  description: string;
+  steps: number | null;
+  distance: number | null;
+  duration: number | null;
+} {
+  const lowerMessage = message.toLowerCase();
+  
+  // Extrahiere Schritte
+  const stepsMatch = message.match(/(\d+(?:\.\d+)?)\s*(?:schritte|steps)/i);
+  const steps = stepsMatch ? parseInt(stepsMatch[1]) : null;
+  
+  // Extrahiere Distanz
+  const distanceMatch = message.match(/(\d+(?:[\.,]\d+)?)\s*(?:km|kilometer|meter|m)/i);
+  let distance = null;
+  if (distanceMatch) {
+    const value = parseFloat(distanceMatch[1].replace(',', '.'));
+    distance = lowerMessage.includes('meter') && !lowerMessage.includes('kilometer') ? value / 1000 : value;
+  }
+  
+  // Extrahiere Dauer
+  const durationMatch = message.match(/(\d+(?:[\.,]\d+)?)\s*(?:min|minuten|stunden|h)/i);
+  let duration = null;
+  if (durationMatch) {
+    const value = parseFloat(durationMatch[1].replace(',', '.'));
+    duration = lowerMessage.includes('stunden') || lowerMessage.includes(' h') ? value * 60 : value;
+  }
+  
+  // Beschreibung generieren
+  let description = 'Quick-Workout';
+  if (lowerMessage.includes('jogg') || lowerMessage.includes('lauf')) {
+    description = 'Joggen/Laufen';
+  } else if (lowerMessage.includes('walk') || lowerMessage.includes('spazier')) {
+    description = 'Spaziergang/Walking';
+  } else if (lowerMessage.includes('cardio')) {
+    description = 'Cardio-Training';
+  }
+  
+  return { description, steps, distance, duration };
   if (lowerMessage.includes('kraft')) {
     goals.push('Kraftsteigerung');
   }
@@ -416,13 +534,74 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
   }
 }
 
-// Tool-Handler-Map
+// Tool-Handler-Map (Enhanced v2 with QuickWorkout)
 const handlers = {
   trainingsplan: handleTrainingsplan,
   uebung: handleUebung,
   supplement: handleSupplement,
   gewicht: handleGewicht,
   foto: handleFoto,
+  quickworkout: async (conv: any[], userId: string, supabase: any) => {
+    const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+    
+    console.log(`🛠️ TOOL quickworkout executed for`, userId, { message: lastUserMsg });
+    
+    try {
+      const workoutData = extractQuickWorkoutData(lastUserMsg);
+      
+      const { data: workout, error } = await supabase.from('quick_workouts').insert({
+        user_id: userId,
+        description: workoutData.description,
+        steps: workoutData.steps,
+        distance_km: workoutData.distance,
+        duration_minutes: workoutData.duration,
+        date: new Date().toISOString().split('T')[0],
+        created_at: new Date().toISOString()
+      }).select().single();
+      
+      if (error) {
+        console.error('Error saving quick workout:', error);
+        return {
+          role: 'assistant',
+          content: 'Fehler beim Speichern des Quick-Workouts. Bitte versuche es erneut.',
+        };
+      }
+      
+      return {
+        role: 'assistant',
+        type: 'card',
+        card: 'quickworkout',
+        payload: { 
+          description: workout.description,
+          steps: workout.steps,
+          distance: workout.distance_km,
+          duration: workout.duration_minutes,
+          html: `<div class="p-4 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+            <h3 class="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">🏃 Quick-Workout erfasst</h3>
+            <p class="text-green-700 dark:text-green-300 mb-2"><strong>${workout.description}</strong></p>
+            ${workout.steps ? `<p class="text-sm text-green-600 dark:text-green-400">📱 ${workout.steps} Schritte</p>` : ''}
+            ${workout.distance_km ? `<p class="text-sm text-green-600 dark:text-green-400">📏 ${workout.distance_km} km</p>` : ''}
+            ${workout.duration_minutes ? `<p class="text-sm text-green-600 dark:text-green-400">⏱️ ${workout.duration_minutes} Minuten</p>` : ''}
+          </div>`,
+          ts: Date.now(),
+          actions: [
+            {
+              label: 'Zum Trainingstagebuch',
+              action: 'navigate',
+              target: '/workout/history'
+            }
+          ]
+        },
+        meta: { clearTool: true }
+      };
+    } catch (error) {
+      console.error('Error in quickworkout handler:', error);
+      return {
+        role: 'assistant',
+        content: 'Ein Fehler ist aufgetreten beim Erfassen des Quick-Workouts.',
+      };
+    }
+  },
   chat: async (conv: any, userId: string) => {
     // Kein Spezial-Output – einfach weiter zum OpenAI-Flow
     return null;
@@ -797,18 +976,44 @@ serve(async (req) => {
     // ============================================================================
     
     // ============================================================================
-    // PHASE B: TOOL-HANDLER-ROUTING
+    // PHASE B: TOOL-PICKER V2 - AUTOMATIC INTENT DETECTION
     // ============================================================================
     
-    // Tool-Handler-Routing: aktiviertes Tool verarbeiten
-    const activeTool = toolContext?.tool || 'chat';
-    console.log(`🔧 [${requestId}] Active tool:`, activeTool);
+    // 🎯 Tool Intent Detection (NEW v2 Framework)
+    console.log(`🎯 [${requestId}] Running Tool-Picker v2 detection on message: "${message?.substring(0, 100)}..."`);
+    const detectedIntent = detectToolIntent(message || '');
+    console.log(`🛠️ [${requestId}] TOOL DETECTION RESULT:`, detectedIntent);
     
+    // Use detected tool if confidence is high enough, otherwise fall back to toolContext
+    let activeTool = 'chat';
+    if (detectedIntent.confidence > 0.6) {
+      activeTool = detectedIntent.tool;
+      console.log(`✅ [${requestId}] AUTO-DETECTED TOOL: ${activeTool} (confidence: ${detectedIntent.confidence})`);
+    } else if (toolContext?.tool) {
+      activeTool = toolContext.tool;
+      console.log(`🔧 [${requestId}] USING FRONTEND TOOL: ${activeTool}`);
+    }
+    
+    console.log(`🔧 [${requestId}] Final active tool: ${activeTool}`);
+    
+    // Tool Handler Execution with Enhanced Logging
     if (handlers[activeTool]) {
-      console.log(`⚡ [${requestId}] Executing tool handler for:`, activeTool);
+      console.log(`⚡ [${requestId}] Executing tool handler for: ${activeTool}`);
+      console.log(`🛠️ TOOL ${activeTool} executed for ${userId}`, { 
+        message: message?.substring(0, 100), 
+        confidence: detectedIntent.confidence,
+        auto_detected: detectedIntent.confidence > 0.6 
+      });
+      
       const toolResult = await handlers[activeTool](conversationHistory, userId, supabase);
       if (toolResult) {
         console.log(`✅ [${requestId}] Tool handler returned result, bypassing OpenAI`);
+        
+        // Add debug comment to response for visibility
+        if (toolResult.role === 'assistant' && toolResult.content) {
+          toolResult.content = `<!-- TOOL: ${activeTool} (${detectedIntent.confidence > 0.6 ? 'auto-detected' : 'manual'}) -->\n${toolResult.content}`;
+        }
+        
         return new Response(JSON.stringify(toolResult), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });

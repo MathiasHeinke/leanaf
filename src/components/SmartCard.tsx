@@ -3,14 +3,16 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SmartCardProps {
-  tool: 'supplement' | 'plan' | 'meal' | 'exercise' | 'mindset';
+  tool: 'supplement' | 'plan' | 'meal' | 'exercise' | 'mindset' | 'trainingsplan' | 'gewicht' | 'uebung' | 'quickworkout' | 'foto' | 'chat';
   icon: string;
   title: string;
   children: React.ReactNode;
   actions?: Array<{
     label: string;
-    variant: 'confirm' | 'reject';
-    onClick: () => void;
+    variant?: 'confirm' | 'reject';
+    action?: string;
+    target?: string;
+    onClick?: () => void;
   }>;
   defaultCollapsed?: boolean;
   onDoubleClick?: () => void;
@@ -28,12 +30,18 @@ export const SmartCard = ({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [showOverlay, setShowOverlay] = useState(false);
 
-  const toolBorderColors = {
+  const toolBorderColors: Record<string, string> = {
     supplement: 'border-teal-400',
     plan: 'border-blue-500', 
     meal: 'border-amber-400',
     exercise: 'border-green-500',
-    mindset: 'border-purple-500'
+    mindset: 'border-purple-500',
+    trainingsplan: 'border-blue-600',
+    gewicht: 'border-purple-600',
+    uebung: 'border-green-600',
+    quickworkout: 'border-emerald-500',
+    foto: 'border-pink-500',
+    chat: 'border-gray-400'
   };
 
   const handleDoubleClick = () => {
@@ -47,7 +55,7 @@ export const SmartCard = ({
   return (
     <>
       <div 
-        className={`smartcard w-full rounded-xl border backdrop-blur shadow-md overflow-hidden ${toolBorderColors[tool]} ${collapsed ? 'collapsed' : ''}`}
+        className={`smartcard w-full rounded-xl border backdrop-blur shadow-md overflow-hidden ${toolBorderColors[tool] || 'border-gray-400'} ${collapsed ? 'collapsed' : ''}`}
         data-tool={tool}
         onDoubleClick={handleDoubleClick}
       >
