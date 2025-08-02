@@ -29,6 +29,7 @@ import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
 import { ActiveWorkoutPlan } from '@/components/ActiveWorkoutPlan';
 import { FloatingWorkoutTimer } from '@/components/FloatingWorkoutTimer';
 import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
+import { ProfileEventsTimeline } from '@/components/ProfileEventsTimeline';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { useNavigate } from 'react-router-dom';
@@ -557,6 +558,9 @@ export const TrainingDashboard: React.FC = () => {
 
             {/* Custom Exercise Manager */}
             <CustomExerciseManager onExerciseAdded={loadSessions} />
+
+            {/* Profile Events Timeline */}
+            <ProfileEventsTimeline maxEvents={5} />
 
             {/* Dual Coach Access */}
             <DualCoachAccess />

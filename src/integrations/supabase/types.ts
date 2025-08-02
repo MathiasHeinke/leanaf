@@ -2278,6 +2278,42 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_reminder_log: {
+        Row: {
+          clicked_at: string | null
+          created_at: string | null
+          days_since_update: number
+          delivered_at: string | null
+          delivery_method: string
+          id: string
+          message: string
+          reminder_type: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string | null
+          created_at?: string | null
+          days_since_update: number
+          delivered_at?: string | null
+          delivery_method?: string
+          id?: string
+          message: string
+          reminder_type?: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string | null
+          created_at?: string | null
+          days_since_update?: number
+          delivered_at?: string | null
+          delivery_method?: string
+          id?: string
+          message?: string
+          reminder_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null

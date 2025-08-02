@@ -224,7 +224,7 @@ export const ProfileEventsTimeline: React.FC<ProfileEventsTimelineProps> = ({
         <ScrollArea className="h-96">
           <div className="space-y-4">
             {events.map((event, index) => {
-              const isExpanded = expandedEvents.has(event.id);
+              const isExpanded = expandedEvents.has(String(event.id));
               const eventDetails = formatEventDetails(event);
               
               return (
@@ -242,7 +242,7 @@ export const ProfileEventsTimeline: React.FC<ProfileEventsTimelineProps> = ({
                     
                     {/* Event content */}
                     <div className="flex-1 min-w-0">
-                      <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(event.id)}>
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(String(event.id))}>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between p-0 h-auto">
                             <div className="text-left">
