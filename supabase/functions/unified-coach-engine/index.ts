@@ -448,22 +448,17 @@ const handlers = {
     const result = await get_weight_history(userId, entries, supabaseClient);
     return { success: true, data: result, count: result.length };
   },
-  // ➍ SUMMARY HISTORY HANDLER
+  // ➍ UPGRADED SUMMARY HISTORY HANDLER (Phase 2-a)
   get_summary_history: async (args: any, userId: string, supabaseClient: any) => {
     const days = args.days || 14;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const startDateStr = startDate.toISOString().split('T')[0];
-    
     const { data, error } = await supabaseClient
-      .from('daily_summaries')
-      .select('date, total_calories, total_protein, total_carbs, total_fats, workout_volume, sleep_score')
-      .eq('user_id', userId)
-      .gte('date', startDateStr)
-      .order('date', { ascending: false });
+      .rpc('get_summary_range', { p_user: userId, p_days: days });
     
-    if (error) throw error;
-    return { success: true, data: data || [], count: (data || []).length };
+    if (error) {
+      console.error('get_summary_history error', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, days, data: data || [] };
   }
 };
 
@@ -1396,6 +1391,11 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
       .limit(7);
     context.structuredSummaries = structuredSummaries || [];
 
+    // History-Snapshots (bis 30 Tage) - Phase 2-b Context Loading
+    const { data: history } = await supabase
+      .rpc('get_summary_range', { p_user: userId, p_days: 30 });
+    context.summaryHistory = history || [];
+
     // Load regular summaries if XL not available (fallback)
     if (context.xlSummaries.length < 3) {
       const { data: summaries } = await supabase
@@ -1708,6 +1708,14 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
       }
     });
     prompt += '\n';
+  }
+
+  // Phase 2-c: Prompt-Injection für Trends (aus History-Snapshots)
+  if (context.summaryHistory && context.summaryHistory.length > 0) {
+    const hist = context.summaryHistory.slice(0, 14); // letzte 14 Tage
+    const avgKcal = Math.round(hist.reduce((s: number, d: any) => s + (d.kcal || 0), 0) / hist.length);
+    const volSum = hist.reduce((s: number, d: any) => s + (d.volume_kg || 0), 0);
+    prompt += `📊 14-Tage-Durchschnitt: ${avgKcal} kcal / ${Math.round(volSum / 14)} kg Volumen pro Tag\n`;
   }
 
   // XL Memory Section - Detailed Daily Summaries (FALLBACK for text summaries)

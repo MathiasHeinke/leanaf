@@ -3503,6 +3503,42 @@ export type Database = {
       }
     }
     Views: {
+      rolling_daily_snapshot: {
+        Row: {
+          date: string | null
+          fluids_ml: number | null
+          hydration_score: number | null
+          kcal: number | null
+          protein_g: number | null
+          sleep_score: number | null
+          user_id: string | null
+          volume_kg: number | null
+          weight: number | null
+        }
+        Insert: {
+          date?: string | null
+          fluids_ml?: never
+          hydration_score?: number | null
+          kcal?: number | null
+          protein_g?: number | null
+          sleep_score?: number | null
+          user_id?: string | null
+          volume_kg?: number | null
+          weight?: never
+        }
+        Update: {
+          date?: string | null
+          fluids_ml?: never
+          hydration_score?: number | null
+          kcal?: number | null
+          protein_g?: number | null
+          sleep_score?: number | null
+          user_id?: string | null
+          volume_kg?: number | null
+          weight?: never
+        }
+        Relationships: []
+      }
       v_fluids_totals: {
         Row: {
           date: string | null
@@ -3625,6 +3661,10 @@ export type Database = {
       get_or_cache_query_embedding: {
         Args: { query_text: string; query_embedding: string }
         Returns: string
+      }
+      get_summary_range: {
+        Args: { p_user: string; p_days?: number }
+        Returns: Json
       }
       halfvec_avg: {
         Args: { "": number[] }

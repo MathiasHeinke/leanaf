@@ -159,6 +159,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   // ============= PROFILE DATA LOADING =============
   const [loadedProfileData, setLoadedProfileData] = useState<any>(null);
   const [loadedDailyGoals, setLoadedDailyGoals] = useState<any>(null);
+  const [summaryHistory, setSummaryHistory] = useState<any>(null);
   
   // Load profile data if not provided as props
   useEffect(() => {
@@ -184,6 +185,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             .eq('user_id', user.id)
             .maybeSingle();
           setLoadedDailyGoals(goals);
+        }
+
+        // Phase 3-a: Auto-Loader für History-Snapshots
+        if (!summaryHistory) {
+          const { data } = await supabase
+            .rpc('get_summary_range', { p_user: user.id, p_days: 14 });
+          setSummaryHistory(data);
         }
       } catch (error) {
         console.error('Error loading profile/goals:', error);
@@ -455,7 +463,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               sleepData: sleepData,
               weightHistory: weightHistory,
               averages: averages,
-              dailyGoals: effectiveDailyGoals
+              dailyGoals: effectiveDailyGoals,
+              summaryHistory: summaryHistory
             }
           }
         }
