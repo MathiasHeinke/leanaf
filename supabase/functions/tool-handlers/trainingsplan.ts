@@ -267,31 +267,135 @@ const COACH_PERSONAS = [
   }
 ];
 
-// Coach persona selection logic
-function selectProgramForUser(userProfile: {
-  goal?: string;
-  experience?: string;
-  experienceYears?: number;
-  timePerSessionMin?: number;
-  injury?: boolean;
-  likesPump?: boolean;
-  likesPeriodization?: boolean;
-}, coachName?: string): string {
+// Enhanced user profile extraction with comprehensive data
+function extractUserProfile(conversation: any[], userId?: string): any {
+  // Convert conversation to simple format for extraction
+  const messages = conversation.map(msg => ({
+    role: msg.role || 'user',
+    content: msg.content || msg.message_content || ''
+  }));
+
+  // Use the embedded intelligent extraction logic (defined below)
+  const extractedProfile = intelligentProfileExtraction(messages);
+  
+  // Add userId if provided
+  if (userId) {
+    extractedProfile.userId = userId;
+  }
+  
+  return extractedProfile;
+}
+
+// Intelligent profile extraction function embedded in edge function
+function intelligentProfileExtraction(messages: any[]): any {
+  const text = messages.map(m => m.content).join(' ').toLowerCase();
+  const profile: any = {};
+
+  // Experience Years - enhanced patterns
+  const yearsMatch = text.match(/\bseit\s+(\d{1,2})\s+jah?re?n?\b/i) || 
+                    text.match(/(\d{1,2})\s+jahre?\s+(training|trainiert|trainiere)/i);
+  if (yearsMatch) {
+    profile.experienceYears = Number(yearsMatch[1]);
+  } else if (text.includes('anfänger') || text.includes('beginner') || text.includes('neu')) {
+    profile.experienceYears = 0.5;
+  } else if (text.includes('fortgeschritten') || text.includes('advanced') || text.includes('profi')) {
+    profile.experienceYears = 5;
+  } else {
+    profile.experienceYears = 2; // intermediate default
+  }
+
+  // Time constraints - multiple patterns
+  const timeMatch = text.match(/(nur|maximal|höchstens)\s+(\d{1,3})\s*(min|stunden?)/i) ||
+                   text.match(/(\d{1,3})\s*(min(uten)?|h(ours?)?|stunden?)/i);
+  if (timeMatch) {
+    const value = Number(timeMatch[2] || timeMatch[1]);
+    const unit = timeMatch[3] || timeMatch[2];
+    profile.availableMinutes = /h|stunden/.test(unit) ? value * 60 : value;
+  } else {
+    profile.availableMinutes = 60; // default
+  }
+
+  // Weekly sessions
+  const sessMatch = text.match(/(\d)\s*(tage|mal|x)\s*(pro|\/)\s*woche/i);
+  if (sessMatch) {
+    profile.weeklySessions = Number(sessMatch[1]);
+  }
+
+  // Injuries - comprehensive detection
+  const injuries: string[] = [];
+  const injuryMatches = text.match(/(rücken|knie|schulter|ellbogen|hüfte|handgelenk)/gi);
+  if (injuryMatches) {
+    injuryMatches.forEach(injury => {
+      const mapped = {
+        'rücken': 'ruecken',
+        'knie': 'knie',
+        'schulter': 'schulter', 
+        'ellbogen': 'ellbogen',
+        'hüfte': 'huefte',
+        'handgelenk': 'sonstige'
+      }[injury.toLowerCase()];
+      if (mapped) injuries.push(mapped);
+    });
+  }
+  profile.injuries = Array.from(new Set(injuries));
+
+  // Goal detection
+  if (/\b(masse|muskeln|hypertrophie|größer|breiter|volumen)\b/i.test(text)) {
+    profile.goal = 'hypertrophy';
+  } else if (/\b(heavy|kraft|stärke|1rm|powerlifting|stark|maximal)\b/i.test(text)) {
+    profile.goal = 'strength';
+  } else if (/\b(cardio|laufen|ausdauer|hiit|kondition)\b/i.test(text)) {
+    profile.goal = 'endurance';
+  }
+
+  // Sex detection
+  if (text.includes('frau') || text.includes('weiblich') || text.includes('female')) {
+    profile.sex = 'female';
+  } else if (text.includes('mann') || text.includes('männlich') || text.includes('male')) {
+    profile.sex = 'male';
+  }
+
+  // Preferences
+  profile.preferences = {};
+  if (/\b(pump|pumpen|brennen|feel)\b/i.test(text)) profile.preferences.pumpStyle = true;
+  if (/\b(heavy|kraft|stärke|1rm|powerlifting|stark|maximal)\b/i.test(text)) profile.preferences.strengthFocus = true;
+  if (/\b(cardio|laufen|ausdauer|hiit|kondition)\b/i.test(text)) profile.preferences.cardio = true;
+  if (/\b(periodisierung|wissenschaftlich|evidenz|studien|progressive|overload)\b/i.test(text)) profile.preferences.periodization = true;
+
+  // Legacy compatibility mappings
+  profile.timePerSessionMin = profile.availableMinutes;
+  profile.injury = profile.injuries && profile.injuries.length > 0;
+  profile.likesPump = profile.preferences.pumpStyle;
+  profile.likesPeriodization = profile.preferences.periodization;
+  
+  if (profile.experienceYears <= 1) profile.experience = 'beginner';
+  else if (profile.experienceYears >= 3) profile.experience = 'advanced';
+  else profile.experience = 'intermediate';
+
+  return profile;
+}
+
+// Coach persona selection logic (updated to use enhanced profiles)
+function selectProgramForUser(userProfile: any, coachName?: string): string {
   // Find coach persona
   const persona = COACH_PERSONAS.find(p => p.coachName === coachName);
   if (!persona) {
     return "cp_nippard"; // default fallback
   }
 
-  const { experienceYears = 0, timePerSessionMin = 60, injury = false, goal, likesPump, likesPeriodization } = userProfile;
-
+  const { experienceYears = 0, availableMinutes = 60, timePerSessionMin = 60, injuries = [], preferences = {}, injury = false } = userProfile;
+  const sessionTime = availableMinutes || timePerSessionMin;
+  const hasInjury = injury || (injuries && injuries.length > 0);
+  const likesPump = preferences?.pumpStyle;
+  const likesPeriodization = preferences?.periodization;
+  
   // Hard gates for primary program (Markus Rühl specific)
   if (persona.id === "persona_ruhl") {
     const meetsRuhlRequirements = 
       experienceYears >= 3 &&
-      goal === "hypertrophy" &&
-      timePerSessionMin >= 90 &&
-      !injury;
+      userProfile.goal === "hypertrophy" &&
+      sessionTime >= 90 &&
+      !hasInjury;
 
     if (meetsRuhlRequirements) {
       return persona.primaryProgram;
@@ -475,63 +579,104 @@ function safeJsonParse(jsonString: string) {
   }
 }
 
-function extractUserProfile(message: string, conv: any[]): { 
-  goal?: string; 
-  sex?: 'male' | 'female'; 
-  experience?: string;
-  experienceYears?: number;
-  timePerSessionMin?: number;
-  injury?: boolean;
-  likesPump?: boolean;
-  likesPeriodization?: boolean;
-} {
-  const profile: any = {};
-  
-  // Extract goal from current message
-  const goals = extractGoals(message);
-  if (goals.includes('Muskelaufbau')) {
-    profile.goal = 'hypertrophy';
-  } else if (goals.includes('Kraftsteigerung')) {
-    profile.goal = 'strength';
-  } else if (goals.includes('Gewichtsverlust')) {
-    profile.goal = 'fat_loss';
-  }
-  
-  // Try to extract sex from conversation history or current message
-  const fullConversation = conv.map(c => c.content).join(' ').toLowerCase();
-  if (fullConversation.includes('frau') || fullConversation.includes('weiblich') || fullConversation.includes('female')) {
-    profile.sex = 'female';
-  } else if (fullConversation.includes('mann') || fullConversation.includes('männlich') || fullConversation.includes('male')) {
-    profile.sex = 'male';
-  }
-  
-  // Extract experience level and years
-  if (fullConversation.includes('anfänger') || fullConversation.includes('beginner') || fullConversation.includes('neu')) {
-    profile.experience = 'beginner';
-    profile.experienceYears = 0.5;
-  } else if (fullConversation.includes('fortgeschritten') || fullConversation.includes('advanced') || fullConversation.includes('profi')) {
-    profile.experience = 'advanced';
-    profile.experienceYears = 5;
-  } else {
-    profile.experience = 'intermediate';
-    profile.experienceYears = 2;
-  }
+// Enhanced user profile extraction using intelligent utils
+function extractUserProfile(message: string, conv: any[]): any {
+  // Simple import simulation (in production, this would be properly imported)
+  const extractUserProfileUtil = (messages: any[]): any => {
+    const text = messages.map(m => m.content).join(' ').toLowerCase();
+    const profile: any = {};
 
-  // Extract time preferences
-  const timeMatches = fullConversation.match(/(\d+)\s*(min|minuten|stunden|h)/gi);
-  if (timeMatches) {
-    const timeValue = parseInt(timeMatches[0]);
-    profile.timePerSessionMin = timeValue > 10 ? timeValue : timeValue * 60; // Convert hours to minutes
-  } else {
-    profile.timePerSessionMin = 60; // default
-  }
+    // Experience Years - enhanced patterns
+    const yearsMatch = text.match(/\bseit\s+(\d{1,2})\s+jah?re?n?\b/i) || 
+                      text.match(/(\d{1,2})\s+jahre?\s+(training|trainiert|trainiere)/i);
+    if (yearsMatch) {
+      profile.experienceYears = Number(yearsMatch[1]);
+    } else if (text.includes('anfänger') || text.includes('beginner') || text.includes('neu')) {
+      profile.experienceYears = 0.5;
+    } else if (text.includes('fortgeschritten') || text.includes('advanced') || text.includes('profi')) {
+      profile.experienceYears = 5;
+    } else {
+      profile.experienceYears = 2; // intermediate default
+    }
 
-  // Extract preferences
-  profile.likesPump = fullConversation.includes('pump') || fullConversation.includes('brennen');
-  profile.likesPeriodization = fullConversation.includes('periodisierung') || fullConversation.includes('variabel');
-  profile.injury = fullConversation.includes('verletz') || fullConversation.includes('schmerz');
-  
-  return profile;
+    // Time constraints - multiple patterns
+    const timeMatch = text.match(/(nur|maximal|höchstens)\s+(\d{1,3})\s*(min|stunden?)/i) ||
+                     text.match(/(\d{1,3})\s*(min(uten)?|h(ours?)?|stunden?)/i);
+    if (timeMatch) {
+      const value = Number(timeMatch[2] || timeMatch[1]);
+      const unit = timeMatch[3] || timeMatch[2];
+      profile.availableMinutes = /h|stunden/.test(unit) ? value * 60 : value;
+    } else {
+      profile.availableMinutes = 60; // default
+    }
+
+    // Weekly sessions
+    const sessMatch = text.match(/(\d)\s*(tage|mal|x)\s*(pro|\/)\s*woche/i);
+    if (sessMatch) {
+      profile.weeklySessions = Number(sessMatch[1]);
+    }
+
+    // Injuries - comprehensive detection
+    const injuries: string[] = [];
+    const injuryMatches = text.match(/(rücken|knie|schulter|ellbogen|hüfte|handgelenk)/gi);
+    if (injuryMatches) {
+      injuryMatches.forEach(injury => {
+        const mapped = {
+          'rücken': 'ruecken',
+          'knie': 'knie',
+          'schulter': 'schulter', 
+          'ellbogen': 'ellbogen',
+          'hüfte': 'huefte',
+          'handgelenk': 'sonstige'
+        }[injury.toLowerCase()];
+        if (mapped) injuries.push(mapped);
+      });
+    }
+    profile.injuries = Array.from(new Set(injuries));
+
+    // Goal detection
+    if (/\b(masse|muskeln|hypertrophie|größer|breiter|volumen)\b/i.test(text)) {
+      profile.goal = 'hypertrophy';
+    } else if (/\b(heavy|kraft|stärke|1rm|powerlifting|stark|maximal)\b/i.test(text)) {
+      profile.goal = 'strength';
+    } else if (/\b(cardio|laufen|ausdauer|hiit|kondition)\b/i.test(text)) {
+      profile.goal = 'endurance';
+    }
+
+    // Sex detection
+    if (text.includes('frau') || text.includes('weiblich') || text.includes('female')) {
+      profile.sex = 'female';
+    } else if (text.includes('mann') || text.includes('männlich') || text.includes('male')) {
+      profile.sex = 'male';
+    }
+
+    // Preferences
+    profile.preferences = {};
+    if (/\b(pump|pumpen|brennen|feel)\b/i.test(text)) profile.preferences.pumpStyle = true;
+    if (/\b(heavy|kraft|stärke|1rm|powerlifting|stark|maximal)\b/i.test(text)) profile.preferences.strengthFocus = true;
+    if (/\b(cardio|laufen|ausdauer|hiit|kondition)\b/i.test(text)) profile.preferences.cardio = true;
+    if (/\b(periodisierung|wissenschaftlich|evidenz|studien|progressive|overload)\b/i.test(text)) profile.preferences.periodization = true;
+
+    // Legacy compatibility mappings
+    profile.timePerSessionMin = profile.availableMinutes;
+    profile.injury = profile.injuries && profile.injuries.length > 0;
+    profile.likesPump = profile.preferences.pumpStyle;
+    profile.likesPeriodization = profile.preferences.periodization;
+    
+    if (profile.experienceYears <= 1) profile.experience = 'beginner';
+    else if (profile.experienceYears >= 3) profile.experience = 'advanced';
+    else profile.experience = 'intermediate';
+
+    return profile;
+  };
+
+  // Convert conversation to format expected by extraction function
+  const messages = [
+    ...conv.map(c => ({ content: c.content || c.message_content || '' })),
+    { content: message }
+  ];
+
+  return extractUserProfileUtil(messages);
 }
 
 export default async function handleTrainingsplan(conv: any[], userId: string) {
@@ -546,10 +691,31 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
   }
   
   try {
-    // Extract user profile and research context
-    const userProfile = extractUserProfile(lastUserMsg, conv);
+    // Extract enhanced user profile with intelligent extraction
+    const userProfile = extractUserProfile(conv, userId);
+    console.log('Enhanced user profile extracted:', JSON.stringify(userProfile, null, 2));
+    
+    // Save/update user profile in database for future reference
+    if (userId && userProfile) {
+      try {
+        await supabase
+          .from('user_profiles')
+          .upsert(
+            { 
+              user_id: userId, 
+              profile: userProfile 
+            }, 
+            { onConflict: 'user_id' }
+          );
+        console.log('✅ User profile saved to database for future personalization');
+      } catch (profileError) {
+        console.warn('⚠️ Could not save user profile:', profileError);
+        // Continue without breaking the flow
+      }
+    }
+    
     const researchContext = formatResearchContext(userProfile);
-    console.log('User profile:', userProfile);
+    console.log('User profile analysis complete. Proceeding with intelligent plan generation...');
     
     // Extrahiere Trainingsplan-Informationen aus der Nachricht
     const planName = extractPlanName(lastUserMsg);
