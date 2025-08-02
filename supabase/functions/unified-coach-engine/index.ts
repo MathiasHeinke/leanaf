@@ -1344,7 +1344,8 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     let litePrompt = coach.basePrompt + '\n\n';
     
     if (context.profile) {
-      litePrompt += `USER: ${context.profile.preferred_name || 'Athlet'}\n`;
+      const displayName = getDisplayName(context.profile);
+      litePrompt += `👤 USER: ${displayName}\n`;
       if (context.profile.age) litePrompt += `Alter: ${context.profile.age}\n`;
     }
     
