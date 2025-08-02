@@ -10,8 +10,16 @@ export const emailSchema = z
 export const passwordSchema = z
   .string()
   .min(8, 'Passwort muss mindestens 8 Zeichen lang sein')
-  .regex(/^(?=.*[a-z])(?=.*[A-Z])|(?=.*[a-z])(?=.*[0-9])|(?=.*[A-Z])(?=.*[0-9])/, 'Passwort muss mindestens 2 der folgenden enthalten: Großbuchstabe, Kleinbuchstabe, oder Zahl')
-  .max(128, 'Passwort ist zu lang');
+  .max(128, 'Passwort ist zu lang')
+  .refine((password) => {
+    // Simple character checks without complex regex
+    const hasLower = /[a-z]/.test(password);
+    const hasUpper = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    
+    const criteria = [hasLower, hasUpper, hasNumber].filter(Boolean).length;
+    return criteria >= 2;
+  }, 'Passwort muss mindestens 2 der folgenden enthalten: Großbuchstabe, Kleinbuchstabe, oder Zahl');
 
 export const signUpSchema = z.object({
   email: emailSchema,
