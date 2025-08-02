@@ -463,7 +463,15 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           weightHistory: weightHistory,
           averages: averages,
           dailyGoals: effectiveDailyGoals,
-          summaryHistory: summaryHistory
+          summaryHistory: summaryHistory,
+          bodyMeasurements: bodyMeasurements,
+          progressPhotos: progressPhotos,
+          // Enhanced context data for better coach analysis
+          contextTokens: tokens,
+          userMemorySummary: memory ? getMemorySummary() : null,
+          // Add current timestamp for temporal context
+          requestTime: new Date().toISOString(),
+          userTimezone: 'Europe/Berlin'
         }
       }
     };

@@ -2294,27 +2294,89 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   if (toolContext?.data) {
     const { 
       profileData, todaysTotals, workoutData, sleepData, weightHistory, dailyGoals,
-      todaysMeals, todaysSupplements, todaysSleep, todaysFluids, todaysQuickWorkout
+      todaysMeals, todaysSupplements, todaysSleep, todaysFluids, todaysQuickWorkout,
+      bodyMeasurements, progressPhotos, contextTokens, userMemorySummary, averages,
+      summaryHistory, requestTime, userTimezone
     } = toolContext.data;
     
-    // Add today's data prominently at the beginning
-    prompt += `🧠 AKTUELLE TAGESDATEN (Full Mode):\n`;
+    // DEBUG LOGGING: Enhanced data visibility
+    console.log(`🎯 [SASCHA-DEBUG] Enhanced Context Data Available:`, {
+      hasProfileData: !!profileData,
+      hasTodaysTotals: !!todaysTotals,
+      hasWorkoutData: !!workoutData && workoutData.length > 0,
+      hasSleepData: !!sleepData,
+      hasWeightHistory: !!weightHistory && weightHistory.length > 0,
+      hasBodyMeasurements: !!bodyMeasurements && bodyMeasurements.length > 0,
+      hasSummaryHistory: !!summaryHistory && summaryHistory.length > 0,
+      hasContextTokens: !!contextTokens,
+      hasUserMemory: !!userMemorySummary,
+      requestTime: requestTime || new Date().toISOString()
+    });
+    
+    // Add today's data prominently at the beginning with enhanced context
+    prompt += `🧠 COMPREHENSIVE USER DATA (Enhanced for ${coachPersonality?.toUpperCase()} Analysis):\n`;
+    prompt += `⏰ Anfrage-Zeit: ${requestTime || new Date().toISOString()} (${userTimezone || 'Europe/Berlin'})\n\n`;
+    
+    // ENHANCED: User Context from tokens
+    if (contextTokens) {
+      prompt += `🎯 BENUTZER-KONTEXT:\n`;
+      prompt += `• Name: ${contextTokens.userName || 'Nicht verfügbar'}\n`;
+      prompt += `• Tageszeit: ${contextTokens.timeOfDay || 'Tag'}\n`;
+      prompt += `• Letzte Aktivität: ${contextTokens.lastWorkout || 'Keine Daten'}\n`;
+      prompt += `• Schlaf letzte Nacht: ${contextTokens.sleepHours || 'Keine Daten'} Stunden\n`;
+      prompt += `• Kalorien übrig heute: ${contextTokens.calLeft || 'Berechnung nicht möglich'}\n`;
+      prompt += `• Letztes Krafttraining: ${contextTokens.lastLift || 'Keine Daten'}\n\n`;
+    }
     
     if (todaysTotals) {
-      prompt += `📊 HEUTE BISHER:\n`;
+      prompt += `📊 HEUTIGE ERNÄHRUNG:\n`;
       prompt += `• Kalorien: ${todaysTotals.calories || 0} kcal\n`;
       prompt += `• Protein: ${todaysTotals.protein || 0}g\n`;
       prompt += `• Kohlenhydrate: ${todaysTotals.carbs || 0}g\n`;
       prompt += `• Fett: ${todaysTotals.fats || 0}g\n`;
-      prompt += `• Mahlzeiten: ${todaysTotals.count || 0}\n`;
+      prompt += `• Mahlzeiten: ${todaysTotals.count || 0}\n\n`;
     } else if (todaysMeals && todaysMeals.length > 0) {
       // Fallback: Calculate from meals array
       const calories = todaysMeals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0);
       const protein = todaysMeals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0);
-      prompt += `📊 HEUTE BISHER (aus Mahlzeiten):\n`;
+      prompt += `📊 HEUTIGE ERNÄHRUNG (berechnet):\n`;
       prompt += `• Kalorien: ${calories} kcal\n`;
       prompt += `• Protein: ${protein}g\n`;
-      prompt += `• Mahlzeiten: ${todaysMeals.length}\n`;
+      prompt += `• Mahlzeiten: ${todaysMeals.length}\n\n`;
+    }
+    
+    // ENHANCED: Recent performance data
+    if (summaryHistory && summaryHistory.length > 0) {
+      prompt += `📈 VERLAUF (letzte ${summaryHistory.length} Tage):\n`;
+      summaryHistory.slice(0, 5).forEach((day: any, i: number) => {
+        prompt += `• ${day.date}: ${day.kcal || 0}kcal, ${day.volume_kg || 0}kg Volumen, Schlaf: ${day.sleep_hours || 'N/A'}h\n`;
+      });
+      prompt += `\n`;
+    }
+    
+    // ENHANCED: Body measurements if available  
+    if (bodyMeasurements && bodyMeasurements.length > 0) {
+      const latest = bodyMeasurements[0];
+      prompt += `📏 KÖRPERMESSUNGEN (neueste):\n`;
+      if (latest.waist) prompt += `• Taille: ${latest.waist}cm\n`;
+      if (latest.chest) prompt += `• Brust: ${latest.chest}cm\n`;
+      if (latest.arms) prompt += `• Arme: ${latest.arms}cm\n`;
+      if (latest.thigh) prompt += `• Oberschenkel: ${latest.thigh}cm\n`;
+      prompt += `• Datum: ${latest.date}\n\n`;
+    }
+    
+    // ENHANCED: User memory summary for personalization
+    if (userMemorySummary) {
+      prompt += `🧠 BENUTZER-GEDÄCHTNIS:\n`;
+      prompt += `• Vertrauenslevel: ${userMemorySummary.trustLevel || 'Neu'}\n`;
+      prompt += `• Beziehungsstadium: ${userMemorySummary.relationshipStage || 'Aufbau'}\n`;
+      if (userMemorySummary.recentMoods && userMemorySummary.recentMoods.length > 0) {
+        prompt += `• Stimmung: ${userMemorySummary.recentMoods.slice(0, 3).join(', ')}\n`;
+      }
+      if (userMemorySummary.preferences && Object.keys(userMemorySummary.preferences).length > 0) {
+        prompt += `• Präferenzen: ${JSON.stringify(userMemorySummary.preferences).slice(0, 100)}\n`;
+      }
+      prompt += `\n`;
     }
     
     // ➍ QUICK-INPUT PROMPT-INJECTION
@@ -2353,10 +2415,26 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     if (dailyGoals) {
       prompt += `🎯 TAGESZIELE:\n`;
       prompt += `• Kalorien-Ziel: ${dailyGoals.calories || 'N/A'} kcal\n`;
-      prompt += `• Protein-Ziel: ${dailyGoals.protein || 'N/A'}g\n\n`;
+      prompt += `• Protein-Ziel: ${dailyGoals.protein || 'N/A'}g\n`;
+      prompt += `• Kohlenhydrate-Ziel: ${dailyGoals.carbs || 'N/A'}g\n`;
+      prompt += `• Fett-Ziel: ${dailyGoals.fats || 'N/A'}g\n\n`;
     }
     
-    // Also include raw data for debugging
+    // Add enhanced weight/progress tracking
+    if (weightHistory && weightHistory.length > 0) {
+      prompt += `⚖️ GEWICHTSVERLAUF:\n`;
+      weightHistory.slice(0, 5).forEach((entry: any) => {
+        prompt += `• ${entry.date}: ${entry.weight}kg\n`;
+      });
+      prompt += `\n`;
+    }
+    
+    // DEBUG LOGGING: Let's see exactly what Sascha receives
+    console.log(`🎯 [SASCHA-DEBUG] Context info: 💯 SASCHA'S BERECHNUNG: Heute bereits ${todaysTotals?.calories || 0}kcal von ${dailyGoals?.calories || 'N/A'}kcal gegessen (${todaysTotals?.count || 0} Mahlzeiten). Noch ${(dailyGoals?.calories || 0) - (todaysTotals?.calories || 0)}kcal übrig heute. Noch ${Math.max(0, (dailyGoals?.protein || 0) - (todaysTotals?.protein || 0))}g Protein benötigt. \n📋 Bisherige Mahlzeiten heute: ${todaysMeals ? todaysMeals.slice(0, 3).map((m: any, i: number) => `${i+1}. "${m.description || m.name || 'Unbekannt'}" (${m.calories || 0}kcal)`).join(' ... ') : 'Keine Daten'}\n`);
+    
+    console.log(`🎯 [SASCHA-DEBUG] Context for feedback: 🕐 Berechnung basiert auf ${userTimezone || 'Europe/Berlin'} Zeitzone, heute: ${new Date().toISOString().split('T')[0]}. 🔍 Gefundene Mahlzeiten: ${todaysTotals?.count || 0} mit insgesamt ${todaysTotals?.calories || 0}kcal. \n`);
+    
+    // Also include raw data for debugging (truncated for performance)
     const ctxData = JSON.stringify(toolContext.data).slice(0, 2000);
     console.log(`📊 Injected toolContext data: ${ctxData.length} chars`);
   }
