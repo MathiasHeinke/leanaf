@@ -69,8 +69,17 @@ serve(async (req) => {
         );
       }
 
+      // Transform response to match frontend expectations
+      const responseData = data ? {
+        userId: data.user_id,
+        profile: data.profile,
+        updated_at: data.updated_at,
+        created_at: data.created_at,
+        id: data.id
+      } : null;
+
       return new Response(
-        JSON.stringify({ data }),
+        JSON.stringify({ data: responseData }),
         { 
           status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -81,10 +90,21 @@ serve(async (req) => {
     if (req.method === 'POST') {
       const body: UserProfileData = await req.json();
 
-      // Validate required fields
-      if (!body.experienceYears || !body.availableMinutes || !body.weeklySessions || !body.goal) {
+      // Enhanced validation
+      const requiredFields = ['experienceYears', 'availableMinutes', 'weeklySessions', 'goal'];
+      const missingFields = requiredFields.filter(field => 
+        body[field as keyof UserProfileData] === undefined || 
+        body[field as keyof UserProfileData] === null
+      );
+
+      if (missingFields.length > 0) {
+        console.error('Missing required fields:', missingFields);
         return new Response(
-          JSON.stringify({ error: 'Missing required fields' }),
+          JSON.stringify({ 
+            error: 'Missing required fields',
+            missingFields,
+            details: `Required fields: ${requiredFields.join(', ')}`
+          }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -132,7 +152,10 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify({ 
+          success: true,
+          message: 'Profile updated successfully'
+        }),
         { 
           status: 200, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -150,8 +173,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Edge function error:', error);
+    
+    // Enhanced error response
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

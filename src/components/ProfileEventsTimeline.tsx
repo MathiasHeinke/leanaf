@@ -48,7 +48,7 @@ export const ProfileEventsTimeline: React.FC<ProfileEventsTimelineProps> = ({
         if (error) throw error;
         
         console.log('📚 Profile events loaded:', data?.length || 0);
-        setEvents((data || []).map(event => ({ ...event, id: String(event.id) })));
+        setEvents(data || []);
       } catch (err) {
         console.error('Error fetching profile events:', err);
         setError(err instanceof Error ? err.message : 'Failed to load events');
@@ -224,11 +224,12 @@ export const ProfileEventsTimeline: React.FC<ProfileEventsTimelineProps> = ({
         <ScrollArea className="h-96">
           <div className="space-y-4">
             {events.map((event, index) => {
-              const isExpanded = expandedEvents.has(String(event.id));
+              const eventId = event.id.toString();
+              const isExpanded = expandedEvents.has(eventId);
               const eventDetails = formatEventDetails(event);
               
               return (
-                <div key={event.id} className="relative">
+                <div key={eventId} className="relative">
                   {/* Timeline line */}
                   {index < events.length - 1 && (
                     <div className="absolute left-4 top-8 w-px h-full bg-border" />
@@ -242,7 +243,7 @@ export const ProfileEventsTimeline: React.FC<ProfileEventsTimelineProps> = ({
                     
                     {/* Event content */}
                     <div className="flex-1 min-w-0">
-                      <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(String(event.id))}>
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(eventId)}>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between p-0 h-auto">
                             <div className="text-left">
