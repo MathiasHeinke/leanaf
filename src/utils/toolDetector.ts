@@ -149,6 +149,46 @@ export function getToolEmoji(tool: ToolName | 'chat'): string {
   return emojiMap[tool];
 }
 
+// Intent filtering function to check if tool usage is appropriate
+export function isIntentAppropriate(text: string, toolContext: ToolContext): boolean {
+  // Check if message is purely emotional/reflective
+  const emotionalPatterns = [
+    /\b(fühl|gefühl|emotion|müde|stress|motivation|durchhang|schwer|hart|anstrengend)\b/i,
+    /\b(bin.*stolz|bin.*dankbar|freue.*mich|bin.*motiviert|schaffe.*es)\b/i,
+    /\b(heute.*war|gestern.*war|war.*schwer|war.*gut|lief.*gut)\b/i
+  ];
+  
+  const isEmotional = emotionalPatterns.some(pattern => pattern.test(text));
+  
+  // For weight tool specifically - check if it's actually about entering weight data
+  if (toolContext.tool === 'gewicht') {
+    const hasNumericWeight = /\b(\d+[\.,]?\d*)\s*(kg|kilogramm)\b/i.test(text);
+    const hasWeightIntent = /\b(wiege|gewicht.*ist|aktuell.*kg|heute.*kg)\b/i.test(text);
+    
+    // Only trigger weight tool if there's clear numeric intent
+    if (!hasNumericWeight && !hasWeightIntent) {
+      return false;
+    }
+    
+    // Don't trigger if it's purely emotional talk about weight struggles
+    if (isEmotional && !hasNumericWeight) {
+      return false;
+    }
+  }
+  
+  // For diary tool - allow emotional content
+  if (toolContext.tool === 'diary' && isEmotional) {
+    return true;
+  }
+  
+  // For other tools, avoid triggering on purely emotional content
+  if (isEmotional && toolContext.tool !== 'diary') {
+    return false;
+  }
+  
+  return true;
+}
+
 export function shouldUseTool(toolContext: ToolContext): boolean {
   return toolContext.tool !== 'chat' && toolContext.confidence > 0.6;
 }

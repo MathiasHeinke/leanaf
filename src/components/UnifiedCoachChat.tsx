@@ -55,6 +55,7 @@ import { ToolPicker } from '@/components/ToolPicker';
 import { UploadProgress } from '@/components/UploadProgress';
 import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
 import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
+import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -433,6 +434,24 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const sendMessageWithRetry = async (message: string, images: string[], maxAttempts = 3) => {
     const hasImages = images.length > 0;
     
+    // Tool detection and intent filtering BEFORE building conversation
+    let detectedTool = selectedTool || 'chat';
+    if (!selectedTool && message) {
+      const toolContext = detectToolIntent(message);
+      console.log('🔧 Tool detection result:', toolContext);
+
+      // Check if tool usage is contextually appropriate
+      const isAppropriate = isIntentAppropriate(message, toolContext);
+      console.log('🧠 Intent appropriateness check:', isAppropriate);
+
+      if (shouldUseTool(toolContext) && isAppropriate) {
+        detectedTool = toolContext.tool;
+        console.log('✅ Auto-detected tool activated:', detectedTool);
+      } else if (toolContext.confidence > 0.3 && !isAppropriate) {
+        console.log('⚠️ Tool detected but context inappropriate - keeping as chat');
+      }
+    }
+    
     // Build conversation history
     const conversationHistory = messages.slice(-10).map(msg => ({
       role: msg.role,
@@ -450,10 +469,10 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       coachPersonality: coach?.id || 'lucy',
       conversationHistory: conversationHistory,
       toolContext: {
-        tool: selectedTool || 'chat',
-        description: (selectedTool || 'chat') === 'chat'
+        tool: detectedTool,
+        description: detectedTool === 'chat'
           ? 'Freies Gespräch / Intent-Analyse'
-          : `Benutzer hat Tool "${selectedTool || 'chat'}" ausgewählt`,
+          : `Tool "${detectedTool}" ${selectedTool ? 'manuell ausgewählt' : 'automatisch erkannt'}`,
         data: {
           mode: mode,
           profileData: effectiveProfileData,
