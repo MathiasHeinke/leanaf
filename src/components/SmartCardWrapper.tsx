@@ -2,6 +2,7 @@ import { SmartCard } from './SmartCard';
 import { CardDiary } from './CardDiary';
 import { CardMeal } from './CardMeal';
 import { CardGoalCheckin } from './CardGoalCheckin';
+import { WorkoutPlanDraftCard } from './WorkoutPlanDraftCard';
 
 export const SmartCardWrapper = ({ card, payload }: any) => {
   switch (card) {
@@ -141,6 +142,9 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
     
     case 'goalCheckin':
       return <CardGoalCheckin payload={payload} />;
+    
+    case 'workout_plan_draft':
+      return <WorkoutPlanDraftCard {...payload} />;
     
     default:
       return (

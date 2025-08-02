@@ -1,4 +1,4 @@
-export type ToolName = 'trainingsplan' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin';
+export type ToolName = 'trainingsplan' | 'createPlanDraft' | 'savePlanDraft' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin';
 
 export interface ToolContext {
   tool: ToolName | 'chat';
@@ -9,16 +9,16 @@ export interface ToolContext {
 export function detectToolIntent(text: string): ToolContext {
   const tools: { tool: ToolName; description: string; confidence: number }[] = [];
 
-  // Trainingsplan detection
-  const trainingsplanPatterns = [
-    /(trainingsplan|workout.*plan|push.*pull|split|4.*tag|3.*tag|ganzkörper|upperbody|lowerbody|plan.*erstell)/i,
-    /\b(training.*programm|splits|routine|krafttraining)\b/i
+  // Trainingsplan draft creation detection
+  const createPlanPatterns = [
+    /(trainingsplan.*erstell|workout.*plan.*bau|push.*pull.*plan|split.*erstell|plan.*für.*training)/i,
+    /\b(erstelle.*plan|baue.*plan|neue.*routine|training.*programm)\b/i
   ];
   
-  const trainingsplanMatches = trainingsplanPatterns.filter(pattern => pattern.test(text)).length;
-  if (trainingsplanMatches > 0) {
-    const confidence = Math.min(0.9, trainingsplanMatches * 0.4);
-    tools.push({ tool: 'trainingsplan', description: 'Trainingsplan erstellen', confidence });
+  const createPlanMatches = createPlanPatterns.filter(pattern => pattern.test(text)).length;
+  if (createPlanMatches > 0) {
+    const confidence = Math.min(0.9, createPlanMatches * 0.4);
+    tools.push({ tool: 'createPlanDraft', description: 'Trainingsplan-Entwurf erstellen', confidence });
   }
 
   // Supplement detection
@@ -134,6 +134,8 @@ export function detectToolIntent(text: string): ToolContext {
 export function getToolEmoji(tool: ToolName | 'chat'): string {
   const emojiMap: Record<ToolName | 'chat', string> = {
     trainingsplan: '📋',
+    createPlanDraft: '📝',
+    savePlanDraft: '💾',
     supplement: '💊',
     gewicht: '⚖️',
     uebung: '🏋️',

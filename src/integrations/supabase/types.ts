@@ -3465,6 +3465,42 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_plan_drafts: {
+        Row: {
+          created_at: string | null
+          days_per_wk: number | null
+          goal: string | null
+          id: string
+          name: string | null
+          notes: string | null
+          structure_json: Json | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          days_per_wk?: number | null
+          goal?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          structure_json?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          days_per_wk?: number | null
+          goal?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          structure_json?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       workout_plans: {
         Row: {
           category: string
