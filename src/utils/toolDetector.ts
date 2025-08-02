@@ -149,21 +149,58 @@ export function getToolEmoji(tool: ToolName | 'chat'): string {
   return emojiMap[tool];
 }
 
+// Check if recent weight data exists
+async function hasRecentWeightData(): Promise<boolean> {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const { data, error } = await supabase
+      .from('body_measurements')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', threeDaysAgo.toISOString())
+      .limit(1);
+
+    if (error) return false;
+    return data && data.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Intent filtering function to check if tool usage is appropriate
-export function isIntentAppropriate(text: string, toolContext: ToolContext): boolean {
+export async function isIntentAppropriate(text: string, toolContext: ToolContext): Promise<boolean> {
   // Check if message is purely emotional/reflective
   const emotionalPatterns = [
     /\b(fühl|gefühl|emotion|müde|stress|motivation|durchhang|schwer|hart|anstrengend)\b/i,
     /\b(bin.*stolz|bin.*dankbar|freue.*mich|bin.*motiviert|schaffe.*es)\b/i,
     /\b(heute.*war|gestern.*war|war.*schwer|war.*gut|lief.*gut)\b/i
   ];
+
+  // Reflective struggles patterns
+  const reflectiveStruggles = [
+    /\b(bauch.*stört|bauch.*massiv|körper.*unzufrieden|noch.*nicht.*zufrieden)\b/i,
+    /\b(wenig.*schlaf|nachts.*arbeiten|kaum.*energie|viel.*zu.*tun)\b/i
+  ];
   
   const isEmotional = emotionalPatterns.some(pattern => pattern.test(text));
+  const isReflectiveStruggle = reflectiveStruggles.some(pattern => pattern.test(text));
   
   // For weight tool specifically - check if it's actually about entering weight data
   if (toolContext.tool === 'gewicht') {
     const hasNumericWeight = /\b(\d+[\.,]?\d*)\s*(kg|kilogramm)\b/i.test(text);
     const hasWeightIntent = /\b(wiege|gewicht.*ist|aktuell.*kg|heute.*kg)\b/i.test(text);
+    
+    // Check if user has entered weight recently
+    const hasRecentWeight = await hasRecentWeightData();
+    if (hasRecentWeight && !hasNumericWeight) {
+      return false;
+    }
     
     // Only trigger weight tool if there's clear numeric intent
     if (!hasNumericWeight && !hasWeightIntent) {
@@ -171,7 +208,7 @@ export function isIntentAppropriate(text: string, toolContext: ToolContext): boo
     }
     
     // Don't trigger if it's purely emotional talk about weight struggles
-    if (isEmotional && !hasNumericWeight) {
+    if ((isEmotional || isReflectiveStruggle) && !hasNumericWeight) {
       return false;
     }
   }
