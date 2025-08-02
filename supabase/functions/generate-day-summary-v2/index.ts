@@ -143,8 +143,18 @@ function errorResponse(status: number, message: string) {
   });
 }
 
-async function collectRawData(userId: string, date: string) {
-  console.log(`📊 Collecting raw data for ${userId} on ${date}`);
+async function collectRawData(userId: string, date: string, timezone: string = 'Europe/Berlin') {
+  console.log(`📊 Collecting raw data for ${userId} on ${date} in timezone ${timezone}`);
+
+  // Calculate timezone-aware day boundaries
+  const dayStart = new Date(`${date}T00:00:00`);
+  const dayEnd = new Date(`${date}T23:59:59`);
+  
+  // For Berlin timezone: adjust UTC boundaries
+  const utcDayStart = new Date(dayStart.getTime() - (2 * 60 * 60 * 1000)); // -2h for CEST
+  const utcDayEnd = new Date(dayEnd.getTime() - (2 * 60 * 60 * 1000));   // -2h for CEST
+  
+  console.log(`📅 Day boundaries: ${utcDayStart.toISOString()} to ${utcDayEnd.toISOString()}`);
 
   // Fast aggregations using RPC functions
   const [fastMeals, fastVolume, fastFluids] = await Promise.all([
@@ -183,7 +193,7 @@ async function collectRawData(userId: string, date: string) {
     .eq('user_id', userId)
     .eq('date', date);
 
-  // Exercise sets (last 15 sets for the day)
+  // Exercise sets (last 15 sets for the day) - timezone-aware
   const { data: exerciseSets } = await supabase
     .from('exercise_sets')
     .select(`
@@ -191,8 +201,7 @@ async function collectRawData(userId: string, date: string) {
       exercises:exercise_id (name, muscle_groups, exercise_type)
     `)
     .eq('user_id', userId)
-    .gte('created_at', `${date}T00:00:00Z`)
-    .lt('created_at', `${date}T23:59:59Z`)
+    .or(`date.eq.${date},and(created_at.gte.${utcDayStart.toISOString()},created_at.lte.${utcDayEnd.toISOString()})`)
     .order('created_at', { ascending: false })
     .limit(15);
 
@@ -212,13 +221,12 @@ async function collectRawData(userId: string, date: string) {
     .eq('date', date)
     .maybeSingle();
 
-  // Fluids (detailed)
+  // Fluids (detailed) - timezone-aware
   const { data: fluids } = await supabase
     .from('user_fluids')
     .select('*')
     .eq('user_id', userId)
-    .gte('consumed_at', `${date}T00:00:00Z`)
-    .lt('consumed_at', `${date}T23:59:59Z`)
+    .or(`date.eq.${date},and(consumed_at.gte.${utcDayStart.toISOString()},consumed_at.lte.${utcDayEnd.toISOString()})`)
     .limit(20);
 
   // Supplements
