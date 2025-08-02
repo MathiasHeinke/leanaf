@@ -3569,6 +3569,48 @@ export type Database = {
         }
         Relationships: []
       }
+      v_summary_rolling_30: {
+        Row: {
+          completeness_score: number | null
+          date: string | null
+          hydration_ml: number | null
+          hydration_score: number | null
+          kcal: number | null
+          mood: string | null
+          sleep_hours: number | null
+          sleep_score: number | null
+          supplement_compliance: number | null
+          user_id: string | null
+          volume_kg: number | null
+        }
+        Insert: {
+          completeness_score?: never
+          date?: string | null
+          hydration_ml?: never
+          hydration_score?: never
+          kcal?: never
+          mood?: never
+          sleep_hours?: never
+          sleep_score?: never
+          supplement_compliance?: never
+          user_id?: string | null
+          volume_kg?: never
+        }
+        Update: {
+          completeness_score?: never
+          date?: string | null
+          hydration_ml?: never
+          hydration_score?: never
+          kcal?: never
+          mood?: never
+          sleep_hours?: never
+          sleep_score?: never
+          supplement_compliance?: never
+          user_id?: string | null
+          volume_kg?: never
+        }
+        Relationships: []
+      }
       v_supplement_flags: {
         Row: {
           compliance_pct: number | null
@@ -3682,33 +3724,19 @@ export type Database = {
         Args: { query_text: string; query_embedding: string }
         Returns: string
       }
-      get_summary_range: {
-        Args: { p_user: string; p_days?: number }
+      get_summary_range_v2: {
+        Args: { p_user_id: string; p_days?: number }
         Returns: {
-          created_at: string
           date: string
-          hydration_score: number | null
-          id: string
-          kpi_xxl_json: Json | null
-          macro_distribution: Json | null
-          recovery_metrics: Json | null
-          schema_version: string | null
-          sleep_score: number | null
-          summary_md: string | null
-          summary_struct_json: Json | null
-          summary_xl_md: string | null
-          summary_xxl_md: string | null
-          text_generated: boolean | null
-          tokens_spent: number | null
-          top_foods: Json | null
-          total_calories: number | null
-          total_carbs: number | null
-          total_fats: number | null
-          total_protein: number | null
-          updated_at: string
-          user_id: string
-          workout_muscle_groups: string[] | null
-          workout_volume: number | null
+          kcal: number
+          volume_kg: number
+          sleep_hours: number
+          sleep_score: number
+          hydration_ml: number
+          hydration_score: number
+          supplement_compliance: number
+          mood: string
+          completeness_score: number
         }[]
       }
       halfvec_avg: {

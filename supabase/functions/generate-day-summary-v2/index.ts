@@ -255,6 +255,12 @@ async function collectRawData(userId: string, date: string) {
     supplements?.length
   );
 
+  console.log('🔍 Debug fastMeals:', { 
+    fastMealsData: fastMeals.data, 
+    error: fastMeals.error,
+    calories: fastMeals.data?.calories 
+  });
+  
   return {
     hasData,
     fastMeals: fastMeals.data,
