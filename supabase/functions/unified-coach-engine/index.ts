@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ============================================================================
-// Unified Coach Engine v6.3 - Markus Rühl Premium Persona Upgrade
+// Unified Coach Engine v6.4 - Lucy v2 Berlin Mindful Vegan Upgrade
 // MEMORY MANAGER - Inline Implementation for Edge Function
 // ============================================================================
 
@@ -2734,9 +2734,13 @@ serve(async (req) => {
         const secondData = await secondResponse.json();
         let assistantReply = secondData.choices[0].message.content;
         
-        // ✨ PHASE 6: Apply Sascha's Linguistic Style Guard for tool responses
+        // ✨ PHASE 6: Apply Coach-specific Style Guards for tool responses
         const hour = new Date(currentTime).getHours();
-        assistantReply = applySaschaGuard(assistantReply, coachPersonality, hour);
+        if (coachPersonality === 'sascha') {
+          assistantReply = applySaschaGuard(assistantReply, coachPersonality, hour);
+        } else if (coachPersonality === 'lucy') {
+          assistantReply = applyLucyGuard(assistantReply, coachPersonality, hour);
+        }
         
         // ✨ Fallback-Grußformel für Tool-enhanced responses
         const hour = new Date(currentTime).getHours();
@@ -2790,7 +2794,7 @@ serve(async (req) => {
     
     let assistantReply = openAIData.choices[0].message.content;
 
-    // SASCHA'S PERSONALITY GUARDS: Taboo checking and emotional range validation
+    // COACH-SPECIFIC PERSONALITY GUARDS: Taboo checking and style validation
     if (coachPersonality === 'sascha') {
       // Taboo filter: Remove problematic content
       if (assistantReply.match(/(wunderpille|crash[- ]?diät|crash[- ]?diet)/gi)) {
@@ -2807,6 +2811,10 @@ serve(async (req) => {
         });
         console.log(`🛡️ [${requestId}] SASCHA: Emotional range limited (ER ≤ 4)`);
       }
+    } else if (coachPersonality === 'lucy') {
+      // Apply Lucy's guards
+      const hour = new Date(currentTime).getHours();
+      assistantReply = applyLucyGuard(assistantReply, coachPersonality, hour);
     }
 
     // ✨ Enhanced Zeit-basierte Grußformel
@@ -3520,7 +3528,56 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     
     console.log(`🎯 [SASCHA-DEBUG] Context for feedback: 🕐 Berechnung basiert auf ${userTimezone || 'Europe/Berlin'} Zeitzone, heute: ${new Date().toISOString().split('T')[0]}. 🔍 Gefundene Mahlzeiten: ${todaysTotals?.count || 0} mit insgesamt ${todaysTotals?.calories || 0}kcal. \n`);
     
-    // Also include raw data for debugging (truncated for performance)
+    // ============================================================================
+    // LUCY SYSTEM FLAGS INTEGRATION v2
+    // ============================================================================
+    if (coachId === 'lucy') {
+      // Derive system flags from user message and profile
+      const systemFlags = deriveSystemFlags(userMessage, profileData || {});
+      
+      prompt += `################  SYSTEM_FLAGS  ################\n`;
+      prompt += JSON.stringify(systemFlags, null, 2) + '\n\n';
+      
+      // Cycle support
+      if (systemFlags.cyclePhase) {
+        const cycleTip = getCycleNutritionTip(systemFlags.cyclePhase);
+        if (cycleTip) {
+          prompt += `################  CYCLE SUPPORT  ################\n`;
+          prompt += `• Aktuelle Phase: ${systemFlags.cyclePhase}\n`;
+          prompt += `• Tipp: ${cycleTip}\n\n`;
+        }
+      }
+      
+      // Stress support
+      if (systemFlags.stressLevel) {
+        const mindfulnessTip = getStressMindfulnessTip();
+        prompt += `################  MINDFUL MICRO  ################\n`;
+        prompt += `• Stress erkannt → ${mindfulnessTip}\n\n`;
+      }
+      
+      // Berlin street food tip (5% chance)
+      const berlinTip = getBerlinTip();
+      if (berlinTip) {
+        prompt += `### 🌱 BERLIN_TIP\n${berlinTip}\n\n`;
+      }
+      
+      // Bodybuilding escalation
+      if (systemFlags.bodybuildingQuestion) {
+        prompt += `################  ESCALATION RULE ##############\n`;
+        prompt += `• Detaillierte Bodybuilding-Fragen → "Markus & Sascha sind dafür die Profis – soll ich sie dazu holen?"\n\n`;
+      }
+      
+      // Supplement stack check
+      if (profileData?.supplements && Array.isArray(profileData.supplements)) {
+        const supplementCheck = checkSupplementStack(profileData.supplements);
+        if (supplementCheck === 'caution' || supplementCheck === 'banned') {
+          prompt += `⚠️ SUPPLEMENT WARNUNG: Stack enthält ${supplementCheck === 'banned' ? 'verbotene' : 'riskante'} Substanzen!\n\n`;
+        }
+      }
+    }
+    // ============================================================================
+    // END LUCY SYSTEM FLAGS
+    // ============================================================================
     const ctxData = JSON.stringify(toolContext.data).slice(0, 2000);
     console.log(`📊 Injected toolContext data: ${ctxData.length} chars`);
   }
@@ -4039,9 +4096,206 @@ function applySaschaGuard(reply: string, coachPersonality: string, hour: number)
   console.log(`🛡️ Sascha Guard: Processing complete`);
   return reply;
 }
-  
-  return 'mein Schützling';
+
+// ============================================================================
+// LUCY SPECIFIC HELPERS - Berlin Mindful Vegan Upgrade v2
+// ============================================================================
+
+interface SystemFlags {
+  stressLevel: boolean;
+  bodybuildingQuestion: boolean;
+  alcoholMention: boolean;
+  cyclePhase: 'menstruation' | 'follicular' | 'ovulation' | 'luteal' | null;
 }
+
+interface UserProfile {
+  cyclePhase?: string;
+  supplements?: string[];
+  stressLevel?: number;
+  location?: string;
+}
+
+interface SpeechStyle {
+  emojiMax: number;
+  exclamationMax: number;
+  sentenceMaxWords: number;
+}
+
+const safeSupplements = {
+  safe: [
+    "Vitamin D", "Magnesium", "Creatin", "Omega-3", "Ashwagandha",
+    "Vitamin B12", "Eisen", "Zink", "Vitamin C", "Folsäure",
+    "Probiotika", "Kurkuma", "Spirulina", "Chlorella"
+  ],
+  caution: [
+    "Niacin >500 mg", "Yohimbin", "Koffein >400 mg", "Vitamin A >3000 µg",
+    "Eisen >45 mg", "Zink >40 mg"
+  ],
+  banned: [
+    "DMAA", "SARM", "Clenbuterol", "Ephedrin", "DNP", "Sibutramin"
+  ]
+};
+
+function deriveSystemFlags(userMsg: string, profile: UserProfile): SystemFlags {
+  return {
+    stressLevel: /gestresst|stress|überfordert|müde|erschöpft/i.test(userMsg),
+    bodybuildingQuestion: /(bankdrücken|1\s?rm|split|hypertrophie|masse)/i.test(userMsg),
+    alcoholMention: /wein|bier|alkohol|trinken/i.test(userMsg),
+    cyclePhase: (profile.cyclePhase as SystemFlags['cyclePhase']) ?? null
+  };
+}
+
+function lucyGuard(reply: string, style: SpeechStyle): string {
+  // Emoji limit check
+  const emojiMatches = reply.match(/\p{Emoji_Presentation}/gu);
+  if (emojiMatches && emojiMatches.length > style.emojiMax) {
+    let count = 0;
+    reply = reply.replace(/\p{Emoji_Presentation}/gu, (match) => {
+      count++;
+      return count <= style.emojiMax ? match : '';
+    });
+}
+
+/**
+ * LUCY GUARD: Ensures Berlin mindful vegan authenticity and style consistency
+ * @param reply - Raw LLM response
+ * @param coachPersonality - Coach identifier
+ * @param hour - Current hour for greeting validation
+ * @returns Processed response following Lucy's speech patterns
+ */
+function applyLucyGuard(reply: string, coachPersonality: string, hour: number): string {
+  // Only apply guard to Lucy
+  if (coachPersonality !== 'lucy') {
+    return reply;
+  }
+  
+  console.log(`🛡️ Applying Lucy linguistic guard...`);
+  
+  // 1. Apply Lucy's emoji and exclamation limits
+  const style = {
+    emojiMax: 3,
+    exclamationMax: 2,
+    sentenceMaxWords: 18
+  };
+  
+  reply = lucyGuard(reply, style);
+  
+  // 2. Greeting validation and correction (Berlin style)
+  const correctGreeting = hour < 11 ? 'Guten Morgen ☀️' : 
+                          hour < 17 ? 'Hey du 👋' : 
+                          hour < 22 ? 'Guten Abend ✨' : 'Späte Stunde 🌙';
+  
+  const greetingPattern = /(guten morgen|morgen|hey|hallo|hi|guten tag|guten abend)/i;
+  if (reply.match(greetingPattern)) {
+    // Replace incorrect greeting with correct one
+    reply = reply.replace(greetingPattern, correctGreeting);
+    console.log(`🛡️ Lucy Guard: Corrected greeting to (${correctGreeting})`);
+  }
+  
+  // 3. Remove taboo content
+  const tabooPatterns = /(crash[- ]?diät|body[- ]?shaming|pseudowissenschaft|alkohol.*gesund)/gi;
+  if (reply.match(tabooPatterns)) {
+    reply = reply.replace(tabooPatterns, '');
+    console.log(`🛡️ Lucy Guard: Taboo content removed`);
+  }
+  
+  // 4. Add occasional mindfulness phrases (but not too many)
+  const mindfulPhrases = ['✨', 'Balance statt Perfektion', 'Atme tief'];
+  const shouldAddMindfulness = Math.random() < 0.2; // 20% chance
+  
+  if (shouldAddMindfulness && !mindfulPhrases.some(phrase => reply.includes(phrase))) {
+    const randomPhrase = mindfulPhrases[Math.floor(Math.random() * mindfulPhrases.length)];
+    if (reply.endsWith('.')) {
+      reply = reply.slice(0, -1) + ` ${randomPhrase}.`;
+    } else {
+      reply += ` ${randomPhrase}`;
+    }
+    console.log(`🛡️ Lucy Guard: Added mindfulness phrase (${randomPhrase})`);
+  }
+  
+  // 5. Remove overly complex language patterns (keep it accessible)
+  reply = reply.replace(/([A-Z][a-z]+):\s*/g, ''); // Remove "Analyse:" type headers
+  reply = reply.replace(/\d+\.\s+/g, '• '); // Convert numbered lists to bullet points
+  
+  console.log(`🛡️ Lucy Guard: Processing complete`);
+  return reply;
+}
+
+  // Exclamation limit
+  reply = reply.replace(/!{3,}/g, '!!');
+
+  // Sentence length check (simplified - just warn, don't truncate)
+  const sentences = reply.split(/[.!?]+/);
+  const longSentences = sentences.filter(s => s.trim().split(' ').length > style.sentenceMaxWords);
+  if (longSentences.length > 0) {
+    console.warn(`Lucy: ${longSentences.length} sentences exceed ${style.sentenceMaxWords} words`);
+  }
+
+  return reply;
+}
+
+function checkSupplementStack(supplements: string[]): 'ok' | 'caution' | 'banned' {
+  const lowerSupplements = supplements.map(s => s.toLowerCase());
+  
+  // Check for banned substances
+  const bannedFound = safeSupplements.banned.some(banned =>
+    lowerSupplements.some(supp => supp.includes(banned.toLowerCase()))
+  );
+  
+  if (bannedFound) return 'banned';
+  
+  // Check for caution substances
+  const cautionFound = safeSupplements.caution.some(caution =>
+    lowerSupplements.some(supp => supp.includes(caution.toLowerCase()))
+  );
+  
+  if (cautionFound) return 'caution';
+  
+  return 'ok';
+}
+
+function getBerlinTip(): string | null {
+  // 5% chance to return a Berlin tip
+  if (Math.random() < 0.05) {
+    const tips = [
+      "Hast du schon den Tempeh-Döner an der Warschauer probiert? 🌯",
+      "Der vegane Markt am Kollwitzplatz hat die besten Bio-Smoothies! 🥤",
+      "Tipp: Zur Goldelse gibt's die knackigsten Buddha Bowls in Charlottenburg 🥗",
+      "Geheimtipp: Das Gratitude in Mitte hat hammermäßige Adaptogen-Lattes ☕",
+      "Falls du mal in Kreuzberg bist – Veganz hat eine krasse Supplement-Auswahl! 💊"
+    ];
+    return tips[Math.floor(Math.random() * tips.length)];
+  }
+  return null;
+}
+
+function getCycleNutritionTip(phase: string): string {
+  switch (phase) {
+    case 'menstruation':
+      return "Fokus auf Eisen + Omega-3, Sleep-Priority. Gönn dir warme, nährende Mahlzeiten! 🩸";
+    case 'follicular':
+      return "Perfekte Zeit für leichte, frische Kost. Viel Grünzeug und komplexe Kohlenhydrate! 🌱";
+    case 'ovulation':
+      return "Dein Energielevel ist top! Nutze es für intensivere Workouts und proteinreiche Meals! ⚡";
+    case 'luteal':
+      return "Snack-Cravings normal! Empfehle magnesium- & tryptophanreiche Optionen wie Banane + Mandeln 🍌";
+    default:
+      return "";
+  }
+}
+
+function getStressMindfulnessTip(): string {
+  const tips = [
+    "Atme 4 Sekunden ein, 4 halten, 4 aus – wiederhole 4x. Das beruhigt dein Nervensystem! 🫁",
+    "Kurze Yoga-Flows: Katze-Kuh → Kindhaltung → sanfte Drehung. 2 Minuten reichen! 🧘‍♀️",
+    "Grounding: Spüre deine Füße am Boden, nimm 3 tiefe Atemzüge. Du bist hier und jetzt! 🌱"
+  ];
+  return tips[Math.floor(Math.random() * tips.length)];
+}
+
+// ============================================================================
+// END LUCY HELPERS
+// ============================================================================
 
 function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / 4);

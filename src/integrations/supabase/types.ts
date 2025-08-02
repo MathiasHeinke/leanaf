@@ -445,6 +445,77 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_chat_memory: {
+        Row: {
+          coach_id: string
+          convo_id: string
+          created_at: string
+          last_messages: Json
+          message_count: number
+          rolling_summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_id: string
+          convo_id: string
+          created_at?: string
+          last_messages?: Json
+          message_count?: number
+          rolling_summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          convo_id?: string
+          created_at?: string
+          last_messages?: Json
+          message_count?: number
+          rolling_summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      coach_chat_packets: {
+        Row: {
+          convo_id: string
+          created_at: string
+          from_msg: number
+          id: number
+          message_count: number
+          packet_summary: string
+          to_msg: number
+        }
+        Insert: {
+          convo_id: string
+          created_at?: string
+          from_msg: number
+          id?: number
+          message_count: number
+          packet_summary: string
+          to_msg: number
+        }
+        Update: {
+          convo_id?: string
+          created_at?: string
+          from_msg?: number
+          id?: number
+          message_count?: number
+          packet_summary?: string
+          to_msg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_chat_packets_convo_id_fkey"
+            columns: ["convo_id"]
+            isOneToOne: false
+            referencedRelation: "coach_chat_memory"
+            referencedColumns: ["convo_id"]
+          },
+        ]
+      }
       coach_conversations: {
         Row: {
           coach_personality: string | null
@@ -2143,6 +2214,48 @@ export type Database = {
           language?: string | null
           quote_text?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      monthly_challenges: {
+        Row: {
+          challenge: string
+          challenge_type: string | null
+          created_at: string
+          id: string
+          is_completed: boolean | null
+          month: number
+          progress: number | null
+          target: number | null
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          challenge: string
+          challenge_type?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          month: number
+          progress?: number | null
+          target?: number | null
+          updated_at?: string
+          user_id: string
+          year?: number
+        }
+        Update: {
+          challenge?: string
+          challenge_type?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean | null
+          month?: number
+          progress?: number | null
+          target?: number | null
+          updated_at?: string
+          user_id?: string
+          year?: number
         }
         Relationships: []
       }
