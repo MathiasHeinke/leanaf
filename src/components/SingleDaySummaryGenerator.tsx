@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Calendar, Play, Database, BarChart3, FileText, Activity } from 'lucide-react';
+import { Loader2, Calendar, Play, Database, BarChart3, FileText, Activity, Code } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -316,13 +316,219 @@ export const SingleDaySummaryGenerator = () => {
                          </div>
                        </CollapsibleContent>
                      </Collapsible>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+                   </div>
+                 </CardContent>
+               </Card>
+             )}
+
+             {/* Structured JSON Data */}
+             {response.structured_summary && (
+               <Card>
+                 <CardHeader>
+                   <CardTitle className="text-lg flex items-center gap-2">
+                     <Code className="h-5 w-5" />
+                     🤖 Strukturierte JSON-Daten
+                   </CardTitle>
+                   <CardDescription>
+                     Maschinenlesbare Daten mit Supplements, Coach-Gesprächen und detaillierten Informationen
+                   </CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                   <Collapsible>
+                     <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                       <span className="font-medium">JSON-Daten anzeigen</span>
+                       <span className="text-xs text-muted-foreground">Alle strukturierten Daten</span>
+                     </CollapsibleTrigger>
+                     <CollapsibleContent className="mt-2">
+                       <div className="space-y-4">
+                         {/* Nutrition Section */}
+                         {response.structured_summary.nutrition && (
+                           <div className="p-4 bg-orange-50 rounded-lg">
+                             <h4 className="font-semibold text-orange-800 mb-3">🍽️ Ernährung</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                               <div>
+                                 <span className="font-medium">Kalorien:</span> {response.structured_summary.nutrition.totalCalories || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Protein:</span> {response.structured_summary.nutrition.totalProtein || 0}g
+                               </div>
+                               <div>
+                                 <span className="font-medium">Kohlenhydrate:</span> {response.structured_summary.nutrition.totalCarbs || 0}g
+                               </div>
+                               <div>
+                                 <span className="font-medium">Fette:</span> {response.structured_summary.nutrition.totalFats || 0}g
+                               </div>
+                             </div>
+                             {response.structured_summary.nutrition.topFoods && response.structured_summary.nutrition.topFoods.length > 0 && (
+                               <div className="mt-3">
+                                 <span className="font-medium text-sm">Top Lebensmittel:</span>
+                                 <div className="flex flex-wrap gap-2 mt-2">
+                                   {response.structured_summary.nutrition.topFoods.map((food: string, index: number) => (
+                                     <Badge key={index} variant="secondary" className="text-xs bg-orange-100 text-orange-800">
+                                       {food}
+                                     </Badge>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         )}
+
+                         {/* Training Section */}
+                         {response.structured_summary.training && (
+                           <div className="p-4 bg-blue-50 rounded-lg">
+                             <h4 className="font-semibold text-blue-800 mb-3">💪 Training</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                               <div>
+                                 <span className="font-medium">Volumen:</span> {response.structured_summary.training.totalVolume || 0}kg
+                               </div>
+                               <div>
+                                 <span className="font-medium">Sessions:</span> {response.structured_summary.training.totalSessions || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Übungen:</span> {response.structured_summary.training.totalExercises || 0}
+                               </div>
+                             </div>
+                             {response.structured_summary.training.muscleGroups && response.structured_summary.training.muscleGroups.length > 0 && (
+                               <div className="mt-3">
+                                 <span className="font-medium text-sm">Muskelgruppen:</span>
+                                 <div className="flex flex-wrap gap-2 mt-2">
+                                   {response.structured_summary.training.muscleGroups.map((muscle: string, index: number) => (
+                                     <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                                       {muscle}
+                                     </Badge>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         )}
+
+                         {/* Body Section */}
+                         {response.structured_summary.body && (
+                           <div className="p-4 bg-green-50 rounded-lg">
+                             <h4 className="font-semibold text-green-800 mb-3">⚖️ Körper</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                               {response.structured_summary.body.weight && (
+                                 <div>
+                                   <span className="font-medium">Gewicht:</span> {response.structured_summary.body.weight}kg
+                                 </div>
+                               )}
+                               <div>
+                                 <span className="font-medium">Messungen:</span> {response.structured_summary.body.measurementCount || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Hydration:</span> {response.structured_summary.body.hydrationScore || 0}/10
+                               </div>
+                             </div>
+                           </div>
+                         )}
+
+                         {/* Supplements Section */}
+                         {response.structured_summary.supplements && (
+                           <div className="p-4 bg-purple-50 rounded-lg">
+                             <h4 className="font-semibold text-purple-800 mb-3">💊 Supplements</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                               <div>
+                                 <span className="font-medium">Einnahmen:</span> {response.structured_summary.supplements.totalIntakes || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Compliance:</span> {response.structured_summary.supplements.complianceScore || 0}/10
+                               </div>
+                               <div>
+                                 <span className="font-medium">Verschiedene:</span> {response.structured_summary.supplements.uniqueSupplements || 0}
+                               </div>
+                             </div>
+                             {response.structured_summary.supplements.supplementDetails && response.structured_summary.supplements.supplementDetails.length > 0 && (
+                               <div className="mt-3">
+                                 <span className="font-medium text-sm">Details:</span>
+                                 <div className="flex flex-wrap gap-2 mt-2">
+                                   {response.structured_summary.supplements.supplementDetails.map((supplement: any, index: number) => (
+                                     <Badge key={index} variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                                       {supplement.name || supplement}
+                                     </Badge>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
+                           </div>
+                         )}
+
+                         {/* Coach Conversations Section */}
+                         {response.structured_summary.coaching && (
+                           <div className="p-4 bg-cyan-50 rounded-lg">
+                             <h4 className="font-semibold text-cyan-800 mb-3">🧠 Coach-Gespräche</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                               <div>
+                                 <span className="font-medium">Nachrichten:</span> {response.structured_summary.coaching.totalMessages || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Themen:</span> {response.structured_summary.coaching.mainTopics?.length || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Stimmung:</span> {response.structured_summary.coaching.emotionalTone || 'neutral'}
+                               </div>
+                             </div>
+                             {response.structured_summary.coaching.mainTopics && response.structured_summary.coaching.mainTopics.length > 0 && (
+                               <div className="mt-3">
+                                 <span className="font-medium text-sm">Themen:</span>
+                                 <div className="flex flex-wrap gap-2 mt-2">
+                                   {response.structured_summary.coaching.mainTopics.map((topic: string, index: number) => (
+                                     <Badge key={index} variant="secondary" className="text-xs bg-cyan-100 text-cyan-800">
+                                       {topic}
+                                     </Badge>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
+                             {response.structured_summary.coaching.keyInsights && (
+                               <div className="mt-3">
+                                 <span className="font-medium text-sm">Erkenntnisse:</span>
+                                 <p className="text-xs mt-1 text-muted-foreground">{response.structured_summary.coaching.keyInsights}</p>
+                               </div>
+                             )}
+                           </div>
+                         )}
+
+                         {/* Activity Section */}
+                         {response.structured_summary.activity && (
+                           <div className="p-4 bg-yellow-50 rounded-lg">
+                             <h4 className="font-semibold text-yellow-800 mb-3">🚶 Aktivität</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                               <div>
+                                 <span className="font-medium">Schritte:</span> {response.structured_summary.activity.steps || 0}
+                               </div>
+                               <div>
+                                 <span className="font-medium">Distanz:</span> {response.structured_summary.activity.distance || 0}km
+                               </div>
+                               <div>
+                                 <span className="font-medium">Aktive Min:</span> {response.structured_summary.activity.activeMinutes || 0}
+                               </div>
+                             </div>
+                           </div>
+                         )}
+
+                         {/* Raw JSON for developers */}
+                         <Collapsible>
+                           <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                             <span className="font-medium text-sm">Raw JSON anzeigen</span>
+                             <span className="text-xs text-muted-foreground">Für Entwickler</span>
+                           </CollapsibleTrigger>
+                           <CollapsibleContent className="mt-2 p-3 bg-gray-50 rounded-lg max-h-64 overflow-y-auto">
+                             <pre className="text-xs font-mono whitespace-pre-wrap">
+                               {JSON.stringify(response.structured_summary, null, 2)}
+                             </pre>
+                           </CollapsibleContent>
+                         </Collapsible>
+                       </div>
+                     </CollapsibleContent>
+                   </Collapsible>
+                 </CardContent>
+               </Card>
+             )}
+           </div>
+         )}
+       </CardContent>
+     </Card>
+   );
+ };

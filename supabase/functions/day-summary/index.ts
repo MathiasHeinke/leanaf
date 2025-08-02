@@ -187,7 +187,9 @@ serve(async (req) => {
         xxl: xxl.substring(0, 400) + "..."
       },
       // 📄 FULL XXL TEXT for frontend display
-      summary_xxl_full: xxl
+      summary_xxl_full: xxl,
+      // 🤖 STRUCTURED JSON DATA for machine-readable information
+      structured_summary: structuredSummary
     });
   } catch (e) {
     console.error(`❌ Fehler bei Day-Summary:`, e);
