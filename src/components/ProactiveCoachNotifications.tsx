@@ -17,6 +17,11 @@ export const ProactiveCoachNotifications = ({ onMessageClick }: ProactiveCoachNo
   const [showNotification, setShowNotification] = useState(false);
   const [displayedMessage, setDisplayedMessage] = useState<any>(null);
 
+  // Temporarily disabled - early return
+  if (!isEnabled) {
+    return null;
+  }
+
   useEffect(() => {
     if (lastMessage && isEnabled) {
       setDisplayedMessage(lastMessage);

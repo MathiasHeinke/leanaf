@@ -23,7 +23,7 @@ interface UserActivityPattern {
 
 export const useProactiveCoaching = () => {
   const { user } = useAuth();
-  const [isEnabled, setIsEnabled] = useState(true);
+  const [isEnabled, setIsEnabled] = useState(false); // Temporarily disabled
   const [lastMessage, setLastMessage] = useState<ProactiveMessage | null>(null);
 
   // Check for proactive opportunities every 5 minutes when app is active
