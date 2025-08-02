@@ -887,12 +887,14 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          hydration_score: number | null
           id: string
           kpi_xxl_json: Json | null
           macro_distribution: Json | null
           recovery_metrics: Json | null
           sleep_score: number | null
           summary_md: string | null
+          summary_struct_json: Json | null
           summary_xl_md: string | null
           summary_xxl_md: string | null
           text_generated: boolean | null
@@ -910,12 +912,14 @@ export type Database = {
         Insert: {
           created_at?: string
           date?: string
+          hydration_score?: number | null
           id?: string
           kpi_xxl_json?: Json | null
           macro_distribution?: Json | null
           recovery_metrics?: Json | null
           sleep_score?: number | null
           summary_md?: string | null
+          summary_struct_json?: Json | null
           summary_xl_md?: string | null
           summary_xxl_md?: string | null
           text_generated?: boolean | null
@@ -933,12 +937,14 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          hydration_score?: number | null
           id?: string
           kpi_xxl_json?: Json | null
           macro_distribution?: Json | null
           recovery_metrics?: Json | null
           sleep_score?: number | null
           summary_md?: string | null
+          summary_struct_json?: Json | null
           summary_xl_md?: string | null
           summary_xxl_md?: string | null
           text_generated?: boolean | null
@@ -3497,7 +3503,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_fluids_totals: {
+        Row: {
+          date: string | null
+          fluids_ml: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_meal_totals: {
+        Row: {
+          carbs_g: number | null
+          d: string | null
+          fats_g: number | null
+          kcal: number | null
+          meals: Json | null
+          protein_g: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_missing_summaries: {
+        Row: {
+          date: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_supplement_flags: {
+        Row: {
+          compliance_pct: number | null
+          date: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_workout_totals: {
+        Row: {
+          d: string | null
+          user_id: string | null
+          volume_kg: number | null
+          workouts: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       award_badge_atomically: {
@@ -3568,6 +3617,10 @@ export type Database = {
       fast_sets_volume: {
         Args: { p_user: string; p_d: string }
         Returns: number
+      }
+      get_day_context: {
+        Args: { p_user: string; p_day: string }
+        Returns: Json
       }
       get_or_cache_query_embedding: {
         Args: { query_text: string; query_embedding: string }
