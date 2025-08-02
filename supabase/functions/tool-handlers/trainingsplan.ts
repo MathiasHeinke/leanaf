@@ -14,19 +14,23 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
     
     // Erstelle Trainingsplan-Entry in der DB
     const { data: planData, error } = await supabase.from('workout_plans').insert({
-      user_id: userId,
+      created_by: userId,               // <- Spaltenname in DB
       name: planName,
-      description: `Automatisch erstellt: ${lastUserMsg}`,
-      goals: goals,
-      created_at: new Date().toISOString(),
-      is_active: true
+      category: goals[0] ?? 'Allgemein',  // Pflichtfeld „category"
+      description: [
+        `Automatisch erstellt am ${new Date().toLocaleDateString('de-DE')}`,
+        goals.length ? `Ziel(e): ${goals.join(', ')}` : ''
+      ].join('\n').trim(),
+      exercises: [],                   // leeres JSON = Draft
+      estimated_duration_minutes: null,
+      is_public: false
     }).select().single();
     
     if (error) {
-      console.error('Error saving workout plan:', error);
+      console.error('[trainingsplan]', error);
       return {
         role: 'assistant',
-        content: 'Fehler beim Speichern des Trainingsplans. Bitte versuche es erneut.',
+        content: 'Uups – der Plan wurde nicht gespeichert. Ich prüfe gerade die Datenbank-Felder und versuche es gleich nochmal!',
       };
     }
     
