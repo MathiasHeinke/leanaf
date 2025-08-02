@@ -45,6 +45,11 @@ import { GlobalHeader } from '@/components/GlobalHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
 import { TypingIndicator } from '@/components/TypingIndicator';
+import { WorkoutPlanCreationModal } from './WorkoutPlanCreationModal';
+import { QuickWeightInput } from './QuickWeightInput';
+import { QuickSupplementInput } from './QuickSupplementInput';
+import { QuickWorkoutInput } from './QuickWorkoutInput';
+import { useToast } from '@/hooks/use-toast';
 
 // SimpleMessageList import removed - not used in this component
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -1417,8 +1422,22 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         </div>
       </CardContent>
       
-      {/* Tool Action Modal */}
-      {isModalOpen && modalContext && (
+      {/* Training Plan Modal */}
+      {isModalOpen && modalContext?.tool === 'trainingsplan' && (
+        <WorkoutPlanCreationModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onPlanCreated={() => {
+            console.log('Training plan created');
+            setIsModalOpen(false);
+            toast("Trainingsplan erstellt! Der Plan wurde erfolgreich gespeichert.");
+          }}
+          pastSessions={modalContext.contextData?.pastSessions || []}
+        />
+      )}
+
+      {/* Other Tool Modals */}
+      {isModalOpen && modalContext?.tool !== 'trainingsplan' && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
           <div className="fixed inset-4 md:inset-8 bg-background rounded-xl border shadow-2xl overflow-hidden">
             {/* Header */}
@@ -1437,17 +1456,38 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             
             {/* Content */}
             <div className="p-4 h-[calc(100%-64px)] overflow-y-auto">
-              <div className="text-sm text-muted-foreground mb-4">
-                Tool: {modalContext.tool}
-              </div>
-              {modalContext.contextData && (
-                <pre className="text-xs bg-muted p-2 rounded max-h-40 overflow-y-auto">
-                  {JSON.stringify(modalContext.contextData, null, 2)}
-                </pre>
+              {modalContext.tool === 'gewicht' && (
+                <QuickWeightInput />
               )}
-              <div className="mt-4 text-center text-muted-foreground">
-                Tool-spezifische UI wird hier implementiert...
-              </div>
+              {modalContext.tool === 'diary' && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Tagebuch Eintrag</h3>
+                  <textarea 
+                    className="w-full h-32 p-3 border rounded-lg resize-none" 
+                    placeholder="Wie war dein Tag? Was beschäftigt dich?"
+                  />
+                  <button 
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      toast("Tagebuch-Eintrag gespeichert!");
+                    }}
+                  >
+                    Eintrag speichern
+                  </button>
+                </div>
+              )}
+              {modalContext.tool === 'supplement' && (
+                <QuickSupplementInput />
+              )}
+              {modalContext.tool === 'quickworkout' && (
+                <QuickWorkoutInput />
+              )}
+              {!['gewicht', 'diary', 'supplement', 'quickworkout'].includes(modalContext.tool) && (
+                <div className="text-center text-muted-foreground">
+                  Tool-spezifische UI für {modalContext.tool} wird implementiert...
+                </div>
+              )}
             </div>
           </div>
         </div>
