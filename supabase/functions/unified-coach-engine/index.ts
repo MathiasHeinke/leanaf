@@ -1526,7 +1526,8 @@ serve(async (req) => {
           tool: detectedIntent.tool,
           confidence: detectedIntent.confidence,
           label: getToolLabel(detectedIntent.tool),
-          description: getToolDescription(detectedIntent.tool)
+          description: getToolDescription(detectedIntent.tool),
+          contextData: hasTrainingData.analysis
         };
         
         // This will be included in the chat response for button rendering

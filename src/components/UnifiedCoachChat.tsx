@@ -704,21 +704,47 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const handleToolAction = useCallback((tool: string, contextData?: any) => {
     console.log('🔧 Tool action triggered:', tool, contextData);
     
-    // Tool-specific modal handling
-    if (tool === 'trainingsplan') {
-      setIsModalOpen(true);
-      setModalContext(contextData);
-    } else if (tool === 'gewicht') {
-      // Handle weight input modal
-      setSelectedTool('gewicht');
-    } else if (tool === 'diary') {
-      // Handle diary modal
-      setSelectedTool('diary');
-    } else {
-      // Default: set selected tool for next message
-      setSelectedTool(tool as any);
+    // Set modal context for tool-specific data
+    setModalContext({
+      tool,
+      contextData: contextData || {},
+      coachPersonality: coach?.personality || 'motivierend'
+    });
+    
+    // Open appropriate modal based on tool type
+    switch(tool) {
+      case 'trainingsplan':
+        setIsModalOpen(true);
+        break;
+      case 'uebung':
+        setIsModalOpen(true);
+        break;
+      case 'quickworkout':
+        setIsModalOpen(true);
+        break;
+      case 'supplement':
+        setIsModalOpen(true);
+        break;
+      case 'gewicht':
+        setIsModalOpen(true);
+        break;
+      case 'diary':
+        setIsModalOpen(true);
+        break;
+      case 'goalCheckin':
+        setIsModalOpen(true);
+        break;
+      default:
+        console.warn('Unknown tool type:', tool);
+        return;
     }
-  }, []);
+    
+    // Clear the pending tool after action
+    setMessages(prev => prev.map(msg => ({
+      ...msg,
+      pendingTools: msg.pendingTools?.filter(t => t.tool !== tool)
+    })));
+  }, [coach]);
 
   // Handle voice recording
   const handleVoiceToggle = useCallback(async () => {
@@ -1390,6 +1416,42 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           </div>
         </div>
       </CardContent>
+      
+      {/* Tool Action Modal */}
+      {isModalOpen && modalContext && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-4 md:inset-8 bg-background rounded-xl border shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-white/30 dark:bg-black/30 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🛠️</span>
+                <h2 className="font-semibold">{modalContext.tool} Tool</h2>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="rounded-full p-2 hover:bg-white/20 dark:hover:bg-black/20"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-4 h-[calc(100%-64px)] overflow-y-auto">
+              <div className="text-sm text-muted-foreground mb-4">
+                Tool: {modalContext.tool}
+              </div>
+              {modalContext.contextData && (
+                <pre className="text-xs bg-muted p-2 rounded max-h-40 overflow-y-auto">
+                  {JSON.stringify(modalContext.contextData, null, 2)}
+                </pre>
+              )}
+              <div className="mt-4 text-center text-muted-foreground">
+                Tool-spezifische UI wird hier implementiert...
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

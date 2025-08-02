@@ -16,6 +16,13 @@ export interface CardMessage {
   payload: any;
   created_at: string;
   coach_personality: string;
+  pendingTools?: Array<{
+    tool: string;
+    label: string;
+    description?: string;
+    confidence: number;
+    contextData?: any;
+  }>;
 }
 
 export interface TextMessage {
