@@ -378,10 +378,10 @@ async function collectDayData(supabase: any, userId: string, date: string, req?:
     supabase
       .from('profiles')
       .select(`
-        preferred_name, age, gender, height, weight, activity_level, goal,
+        preferred_name, first_name, display_name, age, gender, height, weight, activity_level, goal,
         target_weight, target_date
       `)
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle()
       .then((result: any) => {
         console.log(`👤 Profile query result:`, result.error || 'Profile found');
