@@ -1054,6 +1054,42 @@ export type Database = {
         }
         Relationships: []
       }
+      diary_entries: {
+        Row: {
+          content: string
+          created_at: string
+          date: string
+          entry_type: string | null
+          id: string
+          mood: string | null
+          prompt_used: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          date: string
+          entry_type?: string | null
+          id?: string
+          mood?: string | null
+          prompt_used?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          date?: string
+          entry_type?: string | null
+          id?: string
+          mood?: string | null
+          prompt_used?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_campaigns: {
         Row: {
           campaign_type: string

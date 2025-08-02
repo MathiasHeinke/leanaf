@@ -1437,62 +1437,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         />
       )}
 
-      {/* Other Tool Modals */}
-      {isModalOpen && modalContext?.tool !== 'trainingsplan' && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-          <div className="fixed inset-4 md:inset-8 bg-background rounded-xl border shadow-2xl overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b bg-white/30 dark:bg-black/30 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🛠️</span>
-                <h2 className="font-semibold">{modalContext.tool} Tool</h2>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-full p-2 hover:bg-white/20 dark:hover:bg-black/20"
-              >
-                ✕
-              </button>
-            </div>
-            
-            {/* Content */}
-            <div className="p-4 h-[calc(100%-64px)] overflow-y-auto">
-              {modalContext.tool === 'gewicht' && (
-                <QuickWeightInput />
-              )}
-              {modalContext.tool === 'diary' && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Tagebuch Eintrag</h3>
-                  <textarea 
-                    className="w-full h-32 p-3 border rounded-lg resize-none" 
-                    placeholder="Wie war dein Tag? Was beschäftigt dich?"
-                  />
-                  <button 
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"
-                    onClick={() => {
-                      setIsModalOpen(false);
-                      toast("Tagebuch-Eintrag gespeichert!");
-                    }}
-                  >
-                    Eintrag speichern
-                  </button>
-                </div>
-              )}
-              {modalContext.tool === 'supplement' && (
-                <QuickSupplementInput />
-              )}
-              {modalContext.tool === 'quickworkout' && (
-                <QuickWorkoutInput />
-              )}
-              {!['gewicht', 'diary', 'supplement', 'quickworkout'].includes(modalContext.tool) && (
-                <div className="text-center text-muted-foreground">
-                  Tool-spezifische UI für {modalContext.tool} wird implementiert...
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </Card>
   );
 };
