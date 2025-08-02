@@ -2190,23 +2190,6 @@ serve(async (req) => {
           return labels[tool] || '🔧 Aktion starten';
         }
 
-        function getToolLabel(tool: string): string {
-          const labels: Record<string, string> = {
-            'trainingsplan': 'Trainingsplan erstellen',
-            'createPlanDraft': 'Plan entwerfen',
-            'savePlanDraft': 'Plan speichern',
-            'gewicht': 'Gewicht eingeben',
-            'supplement': 'Supplement tracken',
-            'foto': 'Bild analysieren',
-            'quickworkout': 'Quick Workout',
-            'uebung': 'Übung hinzufügen',
-            'diary': 'Tagebuch schreiben',
-            'mealCapture': 'Mahlzeit erfassen',
-            'goalCheckin': 'Fortschritt checken',
-            'ragKnowledge': 'Wissen suchen'
-          };
-          return labels[tool] || 'Tool ausführen';
-        }
 
         function getToolDescription(tool: string): string {
           const descriptions: Record<string, string> = {
