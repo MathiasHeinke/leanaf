@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ============================================================================
+// Unified Coach Engine v6.1 - Sascha Enhanced (Restarted)
 // MEMORY MANAGER - Inline Implementation for Edge Function
 // ============================================================================
 
