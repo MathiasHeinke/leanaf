@@ -84,33 +84,52 @@ const Auth = () => {
     setError('');
     const errors: Record<string, string> = {};
     
+    // Email validation
+    if (!email || email.trim() === '') {
+      errors.email = 'E-Mail ist erforderlich';
+    } else if (email.length > 254) {
+      errors.email = 'E-Mail ist zu lang';
+    } else {
+      // Simple email regex without unsafe-eval
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errors.email = 'Bitte geben Sie eine gültige E-Mail-Adresse ein';
+      }
+    }
+    
+    // Password validation
+    if (!password || password.trim() === '') {
+      errors.password = 'Passwort ist erforderlich';
+    } else if (isSignUp) {
+      // Only validate password strength for sign up
+      if (password.length < 8) {
+        errors.password = 'Passwort muss mindestens 8 Zeichen lang sein';
+      } else if (password.length > 128) {
+        errors.password = 'Passwort ist zu lang';
+      } else {
+        // Check for at least 2 of: lowercase, uppercase, number
+        const hasLower = /[a-z]/.test(password);
+        const hasUpper = /[A-Z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const criteria = [hasLower, hasUpper, hasNumber].filter(Boolean).length;
+        
+        if (criteria < 2) {
+          errors.password = 'Passwort muss mindestens 2 der folgenden enthalten: Großbuchstabe, Kleinbuchstabe, oder Zahl';
+        }
+      }
+    }
+    
+    // Confirm password validation (only for sign up)
     if (isSignUp) {
-      // Check privacy acceptance for sign up
+      if (!confirmPassword || confirmPassword.trim() === '') {
+        errors.confirmPassword = 'Passwort bestätigen ist erforderlich';
+      } else if (password !== confirmPassword) {
+        errors.confirmPassword = 'Passwörter stimmen nicht überein';
+      }
+      
+      // Privacy policy validation
       if (!privacyAccepted) {
         errors.privacy = 'Sie müssen der Datenschutzerklärung zustimmen, um sich zu registrieren.';
-      }
-      
-      const result = signUpSchema.safeParse({
-        email,
-        password,
-        confirmPassword,
-      });
-      
-      if (!result.success) {
-        result.error.issues.forEach((error) => {
-          errors[error.path[0] as string] = error.message;
-        });
-      }
-    } else {
-      const result = signInSchema.safeParse({
-        email,
-        password,
-      });
-      
-      if (!result.success) {
-        result.error.issues.forEach((error) => {
-          errors[error.path[0] as string] = error.message;
-        });
       }
     }
 
