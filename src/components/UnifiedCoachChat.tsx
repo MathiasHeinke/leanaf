@@ -381,6 +381,140 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     init();
   }, [user?.id, coach?.name, coach?.id, coach?.personality, mode, tokens]);
   
+  // Helper function for human-like fallback messages
+  const getHumanFallbackMessage = (coachId: string, attempt: number) => {
+    const fallbackMessages: Record<string, string[]> = {
+      'lucy': [
+        "Oh nein, da ist wohl gerade etwas schief gelaufen 😅 Lass mich das nochmal versuchen!",
+        "Hmm, ich hab dich gerade nicht richtig verstanden. Magst du das nochmal für mich wiederholen?",
+        "Entschuldige, mein Kopf ist gerade etwas vernebelt. Kannst du mir das nochmal sagen?",
+        "Ups, da war wohl ein kleiner Schluckauf! Versuchen wir's nochmal, okay?"
+      ],
+      'sascha': [
+        "Verdammt, da ist was schief gelaufen! 💪 Lass uns das nochmal rocken!",
+        "Kein Problem, wir packen das! 🔥 Versuch's einfach nochmal!",
+        "Shit happens! 😅 Aber wir geben nicht auf - nochmal!",
+        "Technical difficulties, aber wir bleiben am Ball! Los geht's!"
+      ],
+      'sophia': [
+        "Entschuldige, da gab es eine kleine Störung in meinem System. 🧘‍♀️ Lass uns achtsam neu beginnen.",
+        "Die digitale Welt kann manchmal unberechenbar sein. Möchtest du es nochmal versuchen?",
+        "Wie bei der Meditation - manchmal müssen wir neu anfangen. Bitte wiederhole deine Frage.",
+        "Ein kleiner technischer Stolperstein. Lass uns mit Ruhe einen neuen Versuch starten."
+      ],
+      'dr_vita': [
+        "Liebe, da ist gerade etwas nicht richtig angekommen bei mir. 💚 Kannst du das nochmal für mich sagen?",
+        "Entschuldige, meine Aufmerksamkeit war kurz woanders. Wiederhole das bitte für mich.",
+        "Oh je, da war wohl ein kleiner Aussetzer. Lass uns das nochmal angehen, okay?",
+        "Manchmal haben auch wir Frauen unsere technischen Momente! 😊 Versuch's nochmal."
+      ],
+      'kai': [
+        "Whoops! ⚡ Da ist was schief gegangen. Ready für Runde 2?",
+        "System-Glitch! 🚀 Aber wir lassen uns nicht stoppen - nochmal!",
+        "Error 404: Antwort not found! 😅 Aber ich bin ready für den Retry!",
+        "Technical timeout! Aber meine Energie ist noch da - weiter geht's!"
+      ],
+      'markus': [
+        "Hajo, da ist was schief gelaufen! 💪 Aber wir schaffe des schon - nochmal!",
+        "Scheiss Computer! 😅 Aber wir geben net auf, Jung! Versuch's wieder!",
+        "Technical bullshit! 🔥 Aber wir bleiben dran - noch ein Versuch!",
+        "System spinnt rum! Aber wir Schwoba geben net auf - weiter!"
+      ]
+    };
+    
+    const messages = fallbackMessages[coachId] || fallbackMessages['lucy'];
+    return messages[Math.min(attempt - 1, messages.length - 1)];
+  };
+
+  // Auto-retry mechanism with human fallbacks
+  const sendMessageWithRetry = async (message: string, images: string[], maxAttempts = 3) => {
+    const hasImages = images.length > 0;
+    
+    // Build conversation history
+    const conversationHistory = messages.slice(-10).map(msg => ({
+      role: msg.role,
+      content: ('content' in msg) ? msg.content : '',
+      images: ('images' in msg) ? (msg.images || []) : [],
+      created_at: msg.created_at
+    }));
+
+    const requestData = {
+      userId: user.id,
+      message: message || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
+      images: images,
+      mediaType: hasImages ? 'image' : undefined,
+      analysisType: 'general',
+      coachPersonality: coach?.id || 'lucy',
+      conversationHistory: conversationHistory,
+      toolContext: {
+        tool: selectedTool || 'chat',
+        description: (selectedTool || 'chat') === 'chat'
+          ? 'Freies Gespräch / Intent-Analyse'
+          : `Benutzer hat Tool "${selectedTool || 'chat'}" ausgewählt`,
+        data: {
+          mode: mode,
+          profileData: effectiveProfileData,
+          todaysTotals: todaysTotals,
+          workoutData: workoutData,
+          sleepData: sleepData,
+          weightHistory: weightHistory,
+          averages: averages,
+          dailyGoals: effectiveDailyGoals,
+          summaryHistory: summaryHistory
+        }
+      }
+    };
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Wait between retries (except for first attempt)
+        if (attempt > 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+
+        // Choose function based on attempt
+        const targetFunction = attempt <= 2 ? 'unified-coach-engine' : 'debug-direct-chat';
+        
+        console.log(`🚀 Attempt ${attempt}/${maxAttempts} using ${targetFunction}`);
+
+        let response;
+        if (targetFunction === 'debug-direct-chat') {
+          // Simplified request for debug fallback
+          response = await supabase.functions.invoke(targetFunction, {
+            body: {
+              userId: user.id,
+              message: message || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
+              coachId: coach?.id || 'lucy'
+            }
+          });
+        } else {
+          response = await supabase.functions.invoke(targetFunction, {
+            body: requestData
+          });
+        }
+
+        // Success - return the response
+        if (!response.error && response.data) {
+          console.log(`✅ Success on attempt ${attempt}`);
+          return response.data;
+        }
+
+        // Log error for debugging
+        console.warn(`❌ Attempt ${attempt} failed:`, response.error);
+
+      } catch (error) {
+        console.warn(`❌ Attempt ${attempt} threw error:`, error);
+      }
+    }
+
+    // All attempts failed - return human fallback message
+    console.log('💬 All attempts failed, using human fallback');
+    return {
+      content: getHumanFallbackMessage(coach?.id || 'lucy', maxAttempts),
+      type: 'text'
+    };
+  };
+
   // ============= REAL COACH CHAT WITH AI =============
   const sendMessage = useCallback(async () => {
     // Allow image-only messages or text messages
@@ -398,7 +532,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
 
     setMessages(prev => [...prev, userMessage]);
     
-    // Nutzer-Nachricht sofort in DB speichern (mit Bildern)
+    // Save user message to DB immediately
     const today = new Date().toISOString().split('T')[0];
     const messageContent = uploadedImages.length > 0 
       ? `${inputText}\n\nImages: ${uploadedImages.join(', ')}`
@@ -416,141 +550,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }
     });
     
+    // Clear input and show thinking
+    const currentInput = inputText;
+    const currentImages = [...uploadedImages];
     setInputText('');
     setUploadedImages([]);
     setHasFiles(false);
     setIsThinking(true);
 
     try {
-      // Check if we have images to analyze
-      const hasImages = uploadedImages.length > 0;
-      let data, error;
-
-      // Build conversation history for the unified engine
-      const conversationHistory = messages.slice(-10).map(msg => ({
-        role: msg.role,
-        content: ('content' in msg) ? msg.content : '',
-        images: ('images' in msg) ? (msg.images || []) : [],
-        created_at: msg.created_at
-      }));
-
-      // Route to correct endpoint based on debug mode (Shift+Enter = debug)
-      const targetFunction = 'unified-coach-engine'; // Always use unified-coach-engine for normal chat
-      
-      console.log(`🚀 Sending message to ${targetFunction} with XXL-Memory`);
-      
-      const response = await supabase.functions.invoke(targetFunction, {
-        body: {
-          userId: user.id,
-          message: inputText || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
-          images: uploadedImages,
-          mediaType: hasImages ? 'image' : undefined,
-          analysisType: 'general',
-          coachPersonality: coach?.id || 'lucy',
-          conversationHistory: conversationHistory,
-          toolContext: {
-            tool: selectedTool || 'chat',
-            description: (selectedTool || 'chat') === 'chat'
-              ? 'Freies Gespräch / Intent-Analyse'
-              : `Benutzer hat Tool "${selectedTool || 'chat'}" ausgewählt`,
-            data: {
-              mode: mode,
-              profileData: effectiveProfileData,
-              todaysTotals: todaysTotals,
-              workoutData: workoutData,
-              sleepData: sleepData,
-              weightHistory: weightHistory,
-              averages: averages,
-              dailyGoals: effectiveDailyGoals,
-              summaryHistory: summaryHistory
-            }
-          }
-        }
-      });
-      data = response.data;
-      error = response.error;
+      // Use the new retry mechanism
+      const data = await sendMessageWithRetry(currentInput, currentImages);
 
       // Ensure consistent response format
-      if (hasImages && data?.analysis && !data?.response) {
+      if (uploadedImages.length > 0 && data?.analysis && !data?.response) {
         data.response = data.analysis;
-      }
-
-      if (error) {
-        const fullMsg = error.message ?? '';
-        const status = error.status ?? 0;
-
-        // 👉 Debug info für Dev/Power-User 
-        console.warn('Chat-Error Details:', { status, fullMsg, error });
-
-        // 🔄 Test-Flag für Fallback-Testing
-        const force429 = false; // ← testflag
-
-        // Auto-Fallback bei 429 oder Rate-Limit
-        const isUsageLimit = (status: number, error: any) => 
-          force429 ||
-          status === 429 || 
-          error?.message?.includes('USAGE_LIMIT_REACHED') ||
-          (status === 0 && error?.message?.includes('non-2xx status code')); // Supabase SDK Error für 429
-        
-        let userMsg = 'Entschuldigung, es gab ein technisches Problem.';
-        
-        if (isUsageLimit(status, error)) {
-          console.warn('🔄 [Fallback►debug-direct-chat] reason:', { status, error });
-          try {
-            const fallbackResponse = await supabase.functions.invoke('debug-direct-chat', {
-              body: {
-                userId: user.id,
-                message: inputText || (uploadedImages.length > 0 ? 'Bitte analysiere dieses Bild.' : ''),
-                coachId: coach?.id || 'lucy'
-              }
-            });
-            
-            if (fallbackResponse.data?.content) {
-              const fallbackMessage: UnifiedMessage = {
-                id: `fallback-${Date.now()}`,
-                role: 'assistant',
-                content: fallbackResponse.data.content + '\n\n_⚡ Ausweich-Antwort (Engine überlastet)_',
-                timestamp: new Date(),
-                coach_personality: coach?.personality || 'motivierend',
-                created_at: new Date().toISOString(),
-                images: [],
-                mode: mode
-              };
-              setMessages(prev => [...prev, fallbackMessage]);
-              console.log('✅ Fallback auf debug-direct-chat erfolgreich');
-              setIsThinking(false);
-              return;
-            }
-          } catch (fallbackError) {
-            console.error('❌ Fallback zu debug-direct-chat failed:', fallbackError);
-          }
-        }
-        
-        if (status === 429) {
-          userMsg = 'Engine überlastet – versuche es in 1-2 Minuten erneut 🚀';
-        } else if (fullMsg.includes('context_length')) {
-          userMsg = 'Nachricht zu lang – bitte kürzer formulieren 🙏';
-        } else if (fullMsg.includes('OpenAI API error')) {
-          userMsg = 'KI-Service temporär nicht verfügbar – versuche es gleich nochmal.';
-        } else if (status >= 500) {
-          userMsg = 'Serverfehler – versuche es später erneut.';
-        } else if (status === 400) {
-          userMsg = 'Anfrage konnte nicht verarbeitet werden – bitte anders formulieren.';
-        }
-
-        const fallbackResponse: UnifiedMessage = {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content: userMsg,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'empathisch',
-          images: [],
-          mode: mode
-        };
-
-        setMessages(prev => [...prev, fallbackResponse]);
-        setIsThinking(false);
-        return;
       }
 
       // Handle different response types (text or card)
@@ -590,12 +604,12 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         }
       }
       
-      // AI-Antwort auch in DB speichern
-      if (data.type !== 'card') { // Nur Text-Nachrichten speichern, keine Cards
+      // Save AI response to DB (only text messages, not cards)
+      if (data.type !== 'card') {
         await supabase.from('coach_conversations').insert({
           user_id: user.id,
           message_role: 'assistant',
-          message_content: data.response || 'Entschuldigung, ich konnte nicht antworten.',
+          message_content: data.content || data.response || 'Entschuldigung, ich konnte nicht antworten.',
           coach_personality: coach?.id || 'lucy',
           conversation_date: today
         });
