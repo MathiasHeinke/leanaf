@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Import new handlers
+import trainingsplan from '../tool-handlers/trainingsplan.ts';
 import diary from '../tool-handlers/diary.ts';
 import mealCapture from '../tool-handlers/mealCapture.ts';
 import goalCheckin from '../tool-handlers/goalCheckin.ts';
@@ -563,8 +564,8 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
 
 // Tool-Handler-Map (Enhanced v2 with QuickWorkout)
 const handlers = {
-  // EXISTING
-  trainingsplan: handleTrainingsplan,
+  // EXISTING - use imported version
+  trainingsplan,
   uebung: handleUebung,
   supplement: handleSupplement,
   gewicht: handleGewicht,

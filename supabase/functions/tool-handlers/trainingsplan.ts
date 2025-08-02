@@ -42,13 +42,13 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
         id: planData.id,
         name: planData.name,
         description: planData.description,
-        goals: planData.goals,
+        goals,
         html: `<div class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
           <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">✅ Trainingsplan erstellt</h3>
           <p class="text-blue-700 dark:text-blue-300 mb-2"><strong>${planData.name}</strong></p>
           <p class="text-sm text-blue-600 dark:text-blue-400">${planData.description}</p>
           <div class="mt-3 text-xs text-blue-500 dark:text-blue-500">
-            Ziele: ${Array.isArray(planData.goals) ? planData.goals.join(', ') : 'Allgemeine Fitness'}
+            Ziele: ${Array.isArray(goals) ? goals.join(', ') : 'Allgemeine Fitness'}
           </div>
         </div>`,
         ts: Date.now()
