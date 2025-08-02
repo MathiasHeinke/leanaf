@@ -1130,8 +1130,8 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
         supabase.rpc('fast_sets_volume', { p_user: userId, p_d: new Date().toISOString().split('T')[0] }),
         supabase.rpc('fast_fluid_totals', { p_user: userId, p_d: new Date().toISOString().split('T')[0] }),
         supabase.from('profiles')
-          .select('preferred_name, age, gender, height_cm')
-          .eq('user_id', userId)
+          .select('preferred_name, first_name, display_name, age, gender, height_cm')
+          .eq('id', userId)
           .maybeSingle()
       ]);
 
@@ -1179,7 +1179,7 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle();
     if (profileError) console.warn('⚠️ Profile load error:', profileError.message);
     context.profile = profile;
