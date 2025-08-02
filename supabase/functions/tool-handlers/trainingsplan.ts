@@ -140,6 +140,20 @@ const RESEARCH_DATA: (Principle | CoachProgram | GoalGuideline | SexSpecific)[] 
     "tags": ["goal","natural"]
   },
   {
+    "id": "goal_hypertrophy_extreme",
+    "goal": "hypertrophy",
+    "recommended": {
+      "frequency": "1",
+      "volume": "20-30",
+      "intensity": "to exhaustion",
+      "training_time_required": ">6h/week"
+    },
+    "suitablePrograms": ["cp_ruhl"],
+    "description": "Extreme High-Volume-Ansätze für sehr erfahrene Athleten mit viel Zeit und robuster Regeneration.",
+    "citations": [1,2,3,4,7,9,11,12],
+    "tags": ["goal","advanced","high-volume","german"]
+  },
+  {
     "id": "goal_strength",
     "goal": "strength",
     "recommended": {
@@ -190,6 +204,46 @@ const RESEARCH_DATA: (Principle | CoachProgram | GoalGuideline | SexSpecific)[] 
     "description": "Mehr Typ-II-Fasern, höheres Testosteron – größere Lasten, längere Pausen sinnvoll.",
     "citations": [8,12],
     "tags": ["sex-diff","male"]
+  },
+  {
+    "id": "pr_pump",
+    "name": "Pump Orientation",
+    "param": "pump_focus",
+    "recommended": { "typical": "maximize", "unit": "subjective" },
+    "description": "Der Trainingsreiz wird primär über metabolischen Stress (‚Pump') gesetzt. Ein hoher intramuskulärer Blutfluss dient als Qualitäts-Indikator der Einheit.",
+    "citations": [1,9,10],
+    "tags": ["hypertrophy","metabolic-stress"]
+  },
+  {
+    "id": "pr_adaptive_loading",
+    "name": "Adaptive Loading",
+    "param": "weight_selection_strategy",
+    "recommended": { "typical": "adjust_daily_by_pump" },
+    "description": "Last und Volumen werden spontan an das Tages-Feedback (Pump-Gefühl, Energielevel) angepasst, statt strikt periodisiert zu werden.",
+    "citations": [1,7],
+    "tags": ["auto-regulation","intuitive"]
+  },
+  {
+    "id": "cp_ruhl",
+    "coach": "Markus Rühl",
+    "alias": "Schwer & Falsch / The German Beast",
+    "corePrinciples": [
+      "Training Volume",
+      "Training Intensity",
+      "Pump Orientation",
+      "Adaptive Loading"
+    ],
+    "recommendations": {
+      "frequency": 1,
+      "volume": "20-30",
+      "intensity": "to exhaustion (pump-based)",
+      "split": "5-Day",
+      "runtime_per_session_min": 90
+    },
+    "splitExample": "Mo Brust/Bauch · Di Rücken · Mi Arme/Bauch · Fr Beine/Waden · Sa Schultern/Trap",
+    "notes": "Extrem hohes Volumen, sehr schwere Gewichte mit bewusst nachlassender Technik, tägliche Gewichts-Modifikation basierend auf Pump. Geeignet für sehr erfahrene Athleten mit viel Trainingszeit und robuster Regeneration.",
+    "citations": [1,2,3,4,7,9,11,12],
+    "tags": ["coach","high-volume","pump","german"]
   }
 ];
 
