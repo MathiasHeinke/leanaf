@@ -44,24 +44,34 @@ serve(async (req) => {
     }
 
     // Collect raw data
+    console.log('🔍 Step 1: Collecting raw data...');
     const raw = await collectRawData(userId, date);
+    console.log('✅ Raw data collected:', { hasData: raw.hasData, userProfile: !!raw.userProfile });
+    
     if (!raw.hasData) {
       console.log(`⚠️ No data found for ${date}`);
       return okResponse({ status: "skipped", reason: "no_data" });
     }
 
     // Derive KPIs and build blueprint JSON
+    console.log('📊 Step 2: Deriving KPIs...');
     const kpi = deriveKPIs(raw);
+    console.log('✅ KPIs derived:', { totalCalories: kpi.nutrition?.totals?.kcal });
+    
+    console.log('🏗️ Step 3: Building blueprint JSON...');
     const blueprintJson = buildBlueprintJson(date, kpi, raw);
+    console.log('✅ Blueprint built, size:', JSON.stringify(blueprintJson).length);
 
     // Optional GPT text generation
     let summaryMd = null, summaryXl = null, summaryXxl = null, tokens = 0;
     if (text) {
+      console.log('🤖 Step 4: Generating GPT text...');
       const gptResult = await generateGPTSummary(kpi, raw);
       summaryXxl = gptResult.text;
       tokens = gptResult.tokens;
       summaryXl = summaryXxl.split(/\s+/).slice(0, 240).join(" ");
       summaryMd = summaryXl.split(/\s+/).slice(0, 120).join(" ");
+      console.log('✅ GPT text generated, tokens:', tokens);
     }
 
     // 📝 Debug: Log vor Upsert
