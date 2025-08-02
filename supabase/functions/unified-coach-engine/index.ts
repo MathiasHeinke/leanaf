@@ -471,13 +471,11 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // LITE MODE: Feature flag detection
-    const liteCtx = req.headers.get('x-lite-context') === 'true';
-    console.log(`🚀 [${requestId}] LITE MODE: ${liteCtx}`);
+    // LITE MODE: Permanently disabled - always use full context
+    const liteCtx = false;
+    console.log(`🚀 [${requestId}] LITE MODE: disabled (always full context)`);
     
-    if (liteCtx) {
-      console.log(`⚡ [${requestId}] Running in LITE MODE - simplified data collection`);
-    }
+    console.log(`💪 [${requestId}] Running in FULL MODE - complete data collection`);
     
     // ============================================================================
     // API-GOVERNOR: Rate-Limiting und Circuit-Breaker
@@ -761,34 +759,8 @@ serve(async (req) => {
       console.warn(`⚠️ [${requestId}] Large payload detected: ${payloadSize} chars`);
     }
 
-    // LITE MODE: Skip OpenAI call entirely
-    if (liteCtx) {
-      console.log(`⚡ [${requestId}] LITE MODE: Bypassing OpenAI, returning direct response`);
-      
-      const liteResponse = {
-        role: 'assistant',
-        content: `✨ Hallo! Ich bin gerade im Lite-Modus und kann dir mit den Grunddaten helfen. ${
-          smartContext.profile?.preferred_name ? `${smartContext.profile.preferred_name}, ` : ''
-        }hier sind deine heutigen Basics: ${
-          smartContext.fastMealTotals ? `🍽️ ${smartContext.fastMealTotals.calories || 0} kcal` : ''
-        }${
-          smartContext.fastWorkoutVolume > 0 ? ` | 💪 ${smartContext.fastWorkoutVolume}kg Trainingsvolumen` : ''
-        }${
-          smartContext.fastFluidTotal > 0 ? ` | 💧 ${smartContext.fastFluidTotal}ml Flüssigkeit` : ''
-        }. Stelle gerne konkrete Fragen! 🚀`,
-        meta: { 
-          lite_mode: true,
-          processing_time: Date.now() - startTime,
-          prompt_version: PROMPT_VERSION
-        }
-      };
-      
-      console.log(`✅ [${requestId}] LITE MODE response completed in ${Date.now() - startTime}ms`);
-      
-      return new Response(JSON.stringify(liteResponse), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    // LITE MODE: Permanently disabled - always proceed to OpenAI
+    console.log(`💪 [${requestId}] FULL MODE: Always proceeding with complete OpenAI call`);
 
     // FULL MODE: Continue with OpenAI call
     console.log(`🤖 [${requestId}] FULL MODE: Proceeding with OpenAI call`);
