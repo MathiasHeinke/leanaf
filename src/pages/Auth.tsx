@@ -56,55 +56,62 @@ const Auth = () => {
   }, [user, navigate, rateLimiter, logSuspiciousActivity]);
 
   const cleanupAuthState = () => {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    Object.keys(sessionStorage || {}).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
-      }
-    });
+    try {
+      // Force sign out first
+      supabase.auth.signOut({ scope: 'global' }).catch(() => {});
+      
+      // Clear localStorage
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clear sessionStorage
+      Object.keys(sessionStorage || {}).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      console.log('Auth state cleaned up successfully');
+    } catch (error) {
+      console.error('Error during auth cleanup:', error);
+    }
   };
 
   const validateForm = () => {
     setError('');
     const errors: Record<string, string> = {};
     
-    try {
-      if (isSignUp) {
-        // Check privacy acceptance for sign up
-        if (!privacyAccepted) {
-          errors.privacy = 'Sie müssen der Datenschutzerklärung zustimmen, um sich zu registrieren.';
-        }
-        
-        const result = signUpSchema.safeParse({
-          email,
-          password,
-          confirmPassword,
-        });
-        
-        if (!result.success) {
-          result.error.issues.forEach((error) => {
-            errors[error.path[0] as string] = error.message;
-          });
-        }
-      } else {
-        const result = signInSchema.safeParse({
-          email,
-          password,
-        });
-        
-        if (!result.success) {
-          result.error.issues.forEach((error) => {
-            errors[error.path[0] as string] = error.message;
-          });
-        }
+    if (isSignUp) {
+      // Check privacy acceptance for sign up
+      if (!privacyAccepted) {
+        errors.privacy = 'Sie müssen der Datenschutzerklärung zustimmen, um sich zu registrieren.';
       }
-    } catch (error) {
-      // Secure error logging for validation
-      errors.general = 'Validierungsfehler aufgetreten';
+      
+      const result = signUpSchema.safeParse({
+        email,
+        password,
+        confirmPassword,
+      });
+      
+      if (!result.success) {
+        result.error.issues.forEach((error) => {
+          errors[error.path[0] as string] = error.message;
+        });
+      }
+    } else {
+      const result = signInSchema.safeParse({
+        email,
+        password,
+      });
+      
+      if (!result.success) {
+        result.error.issues.forEach((error) => {
+          errors[error.path[0] as string] = error.message;
+        });
+      }
     }
 
     setValidationErrors(errors);
@@ -266,7 +273,7 @@ const Auth = () => {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth`
+        redirectTo: `${window.location.origin}/`
       });
       
       await logAuthAttempt('password_reset', !error);
