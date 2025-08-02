@@ -3534,6 +3534,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profile_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: number
+          profile_delta: Json
+          ts: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: number
+          profile_delta: Json
+          ts?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: number
+          profile_delta?: Json
+          ts?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           created_at: string
