@@ -232,7 +232,7 @@ class EdgeMemoryManager {
   }
 
   private async createNewConversation(userId: string, coachId: string, supabaseClient: any): Promise<any> {
-    const convoId = `${userId}-${coachId}-${Date.now()}`;
+    const convoId = crypto.randomUUID();
     
     const memory = {
       convo_id: convoId,
