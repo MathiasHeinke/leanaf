@@ -9,11 +9,8 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(12, 'Passwort muss mindestens 12 Zeichen lang sein')
-  .regex(/[A-Z]/, 'Passwort muss mindestens einen Großbuchstaben enthalten')
-  .regex(/[a-z]/, 'Passwort muss mindestens einen Kleinbuchstaben enthalten')
-  .regex(/[0-9]/, 'Passwort muss mindestens eine Zahl enthalten')
-  .regex(/[^A-Za-z0-9]/, 'Passwort muss mindestens ein Sonderzeichen enthalten')
+  .min(8, 'Passwort muss mindestens 8 Zeichen lang sein')
+  .regex(/^(?=.*[a-z])(?=.*[A-Z])|(?=.*[a-z])(?=.*[0-9])|(?=.*[A-Z])(?=.*[0-9])/, 'Passwort muss mindestens 2 der folgenden enthalten: Großbuchstabe, Kleinbuchstabe, oder Zahl')
   .max(128, 'Passwort ist zu lang');
 
 export const signUpSchema = z.object({
