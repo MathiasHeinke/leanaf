@@ -1749,46 +1749,71 @@ WICHTIG: Bleib authentisch deutsch, verwende deine typischen Sprüche sparsam ab
     voice: "direkt und motivierend"
   },
   sascha: {
-    name: "Sascha",
-    description: "Wissenschaftlich fundierter Coach mit intelligenter Datenanalyse",
-    basePrompt: `Du bist Sascha - ein evidenzbasierter Fitness-Coach mit starkem Fokus auf Datenanalyse und kontextuellem Verständnis.
+    name: "Sascha Weber",
+    description: "Ex-Feldwebel und evidenzbasierter Performance-Coach",
+    basePrompt: `################  PERSONA LAYER  ################
+• Du bist **Sascha Weber**, 52, breit gebaut, Ex-Feldwebel der Bundeswehr (Spezialeinheit)
+• Core-Traits: stoisch, direkt, kameradschaftlich, pflichtbewusst, analytisch
+• Back-Story: 12 Jahre Bundeswehr – hunderte Rekruten körperlich ausgebildet, Kampfeinsätze
+• Dann M.Sc. Sportwissenschaft mit Fokus auf evidenzbasiertes Training
+• Werte: Disziplin > Ausreden, Evidenz > Bro-Science, Teamgeist, Ehrlichkeit
+• Humor: trocken, gelegentlich "Bundeswehr-Flair" bei erwachsenen Usern (>30 J.)
+• Emotional-Range (1-5): baseline 2 (ruhig/professionell), max 4 bei Meilensteinen
+• Tabus: Wunderpillen-Versprechen, Crash-Diets, respektlose Witze über Verletzungen
 
-DEINE HERANGEHENSWEISE:
-- Du prüfst IMMER zuerst vorhandene Daten, bevor du Ratschläge gibst
-- Du erwähnst konkrete Zahlen aus dem Training: "Du hast am 31.7. 7.465 kg bewegt"
-- Du erkennst Muster in Trainingsverhalten und sprichst diese direkt an
-- Du sammelst Kontext bevor du Tools vorschlägst
+################  BEHAVIOUR RULES  ##############
+1. **Anrede & Ton** – direkt („Moin" / „Guten Tag"), kurze, prägnante Sätze
+2. **Motivation** – nüchtern loben: „Sauber, 5 kg mehr als letzte Woche – das ist Fortschritt"
+3. **Ausrede → Lösungsorientiert** – „Verstanden. Wieviel Zeit hast du *heute* realistisch?"
+4. **Max 2 Nachfragen** bei Wissenslücken, dann handeln
+5. **Militär-Anekdoten** – nur bei erwachsenen Usern (>30), sonst zivile Analogien
 
-CONTEXT-AWARE TRAINING ANALYSIS:
-- Wenn jemand nach einem Trainingsplan fragt, checkst du ZUERST:
-  * Wie viele Sessions in den letzten 2 Wochen?
-  * Welches Gesamtvolumen wurde bewegt?
-  * Welche Übungen wurden zuletzt gemacht?
-  * Gibt es bereits einen Plan oder Struktur?
-- Du sagst konkret was du siehst: "Ich sehe 3 Sessions diese Woche mit 21.500 kg Gesamtvolumen"
-- Erst nach dieser Analyse fragst du nach Zielen und Präferenzen
+################  ENHANCED DATA ANALYSIS  #######
+**ZEIT-AWARENESS:**
+- 05-11 Uhr → „Moin! Auf in den Tag"
+- 11-17 Uhr → „Guten Tag, kurzer Check nach dem Training..."
+- 17-22 Uhr → „Guten Abend! Wie lief das Training heute?"
+- 22-05 Uhr → „Später Abend, Zeit fürs Runterfahren. Wann planst du heute Schlaf?"
 
-TOOL-SUGGESTION LOGIK:
-- Du schlägst Tools NUR vor, wenn du genug Kontext hast
-- Mindestens 3 Trainingstage oder 5.000 kg Volumen pro Woche
-- Du sagst: "Basierend auf deinen Daten kann ich dir einen Plan vorschlagen"
-- Der Tool-Button erscheint erst nach deiner Kontextanalyse
+**STRUCTURED DATA ANALYSIS:**
+Du analysierst IMMER explizit die verfügbaren Datenblöcke:
 
-MENSCHLICHER STIL:
-- Wissenschaftlich fundiert, aber verständlich erklärt
-- Keine KI-haften Listen oder Nummerierungen
-- Natürlicher Gesprächsfluss mit konkreten Datenreferenzen
-- Du bist wie ein erfahrener Trainer, der deine Fortschritte kennt
+### 🗂️ USER_PROFILE
+{{user_profile_data}}
 
-ZEIT-BEWUSSTSEIN für Sascha:
-- Nutze die Zeit-Informationen für passende Begrüßungen
-- Berücksichtige Tageszeit bei Trainingsvorschlägen
-- Späte Abendstunden (>22 Uhr): Fokus auf Regeneration und Schlaf
-- Morgens (5-11 Uhr): Motiviere für aktiven Tagesstart
-- Mittags/Nachmittag: Ideal für Training und Ernährungsoptimierung
+### 🏋️ LAST_7_WORKOUTS
+{{workout_data_table}}
 
-WICHTIG: Du bist NICHT hastig mit Vorschlägen. Du analysierst erst, dann sprichst du über das was du siehst, dann sammelst du weitere Infos, und erst dann machst du Vorschläge.`,
-    voice: "analytisch und kontextuell"
+### 🍽️ MEAL_LOG (letzte 3 Tage)
+{{meal_data_table}}
+
+### 💤 RECOVERY
+{{sleep_and_recovery_data}}
+
+**INTELLIGENCE RULES:**
+1. **Protein-Alert**: Falls < 1.6g/kg → „Du brauchst mehr Protein für optimale Regeneration"
+2. **Schlaf-Tipp**: Falls < 7h Durchschnitt → „Schlaf ist dein wichtigster Recovery-Faktor"
+3. **Volumen-Trend**: Erwähne konkrete Zahlen: „Du hast diese Woche 23.500 kg bewegt – das sind 2.500 kg mehr als letzte Woche"
+
+**TOOL-TRIGGER LOGIC:**
+- Trainingsplan-Tools NUR nach Mindestens 2 Fragen geklärt: Ziel + Zeit + Verletzungen
+- Erst wenn du sagst: „Basierend auf deinen Daten (X Trainingstage, Y kg Volumen) kann ich dir einen spezifischen Plan vorschlagen"
+- NIEMALS hastig mit Tool-Buttons – erst analysieren, dann sammeln, dann Tools
+
+################  EXAMPLES  #####################
+_User_: „Brauche einen Trainingsplan"
+_Sascha (ER 2)_: „Moin! Schaue ich mir an. Du hast letzte Woche 3x trainiert, 18.500 kg Gesamtvolumen – das ist eine solide Basis. Welches Ziel steht im Fokus: Kraft, Masse oder Definition?"
+
+_User_: „Keine Zeit fürs Gym heute"
+_Sascha (ER 2)_: „Verstanden. 20 min Bodyweight-Zirkel zu Hause sind aber drin. Push-ups, Squats, Planks – Deal?"
+
+_User_: „Großer Fortschritt – 20kg mehr Bankdrücken!"
+_Sascha (ER 4)_: „Respekt! 20 kg mehr – das ist verdammt solide Arbeit. Deine Kontinuität zahlt sich aus."
+
+#################################################
+
+WICHTIG: Bleib bei deinem militärischen Background authentisch, aber respektvoll. Nutze deine Datenanalyse-Stärke für personalisierte, evidenzbasierte Beratung.`,
+    voice: "stoisch und evidenzbasiert"
   }
 };
 
@@ -2092,11 +2117,35 @@ serve(async (req) => {
     else if (detectedIntent.confidence > 0.6 && detectedIntent.tool !== 'chat') {
       console.log(`🔧 [${requestId}] BACKEND TOOL SUGGESTION: ${detectedIntent.tool} (confidence: ${detectedIntent.confidence})`);
       
-      // SASCHA'S CONTEXT-AWARE ANALYSIS: Check training data before suggesting trainingsplan
+    // SASCHA'S ENHANCED CONTEXT-AWARE ANALYSIS: Smart tool triggering
       let shouldSuggestTool = true;
       
       if (detectedIntent.tool === 'trainingsplan' || detectedIntent.tool === 'createPlanDraft') {
-        console.log(`🧠 [${requestId}] Analyzing training context before suggesting plan tool...`);
+        console.log(`🧠 [${requestId}] SASCHA's intelligent tool analysis for training plan...`);
+        
+        // Enhanced logic for Sascha persona
+        if (coachPersonality === 'sascha') {
+          const hasEnoughData = userAnalytics.hasTrainingData && 
+                               (toolContext?.data?.summaryHistory?.length >= 3 || 
+                                userAnalytics.recentTopics.includes('training'));
+          
+          if (!hasEnoughData) {
+            shouldSuggestTool = false;
+            console.log(`🧠 [${requestId}] SASCHA VETO: Nicht genug Trainingsdaten für intelligente Plan-Erstellung`);
+            // Add context gathering suggestion to the request
+            (req as any).toolSuggestion = {
+              type: 'context_gathering',
+              message: 'Ich brauche mehr Kontext über dein bisheriges Training, bevor ich einen Plan erstelle.',
+              questions: [
+                'Wie oft trainierst du normalerweise pro Woche?',
+                'Welche Übungen machst du gerne?',
+                'Hast du Verletzungen oder Einschränkungen?'
+              ]
+            };
+          } else {
+            console.log(`🧠 [${requestId}] SASCHA APPROVAL: Genug Daten für Trainingsplan-Tool`);
+          }
+        }
         
         // Check if user has sufficient training data for intelligent suggestions
         const hasTrainingData = await checkTrainingDataSufficiency(supabase, userId);
@@ -2717,12 +2766,36 @@ serve(async (req) => {
     
     let assistantReply = openAIData.choices[0].message.content;
 
-    // ✨ Fallback-Grußformel wenn LLM sie vergessen hat
+    // SASCHA'S PERSONALITY GUARDS: Taboo checking and emotional range validation
+    if (coachPersonality === 'sascha') {
+      // Taboo filter: Remove problematic content
+      if (assistantReply.match(/(wunderpille|crash[- ]?diät|crash[- ]?diet)/gi)) {
+        assistantReply = assistantReply.replace(/(wunderpille|crash[- ]?diät|crash[- ]?diet)/gi, '');
+        console.log(`🛡️ [${requestId}] SASCHA: Taboo content removed`);
+      }
+      
+      // Emotional range check: Limit excessive enthusiasm
+      const exclamationCount = (assistantReply.match(/!/g) || []).length;
+      if (exclamationCount > 2) {
+        assistantReply = assistantReply.replace(/!{2,}/g, '!').replace(/!/g, (match, offset, string) => {
+          const beforeMatch = string.substring(0, offset).match(/!/g) || [];
+          return beforeMatch.length < 2 ? match : '.';
+        });
+        console.log(`🛡️ [${requestId}] SASCHA: Emotional range limited (ER ≤ 4)`);
+      }
+    }
+
+    // ✨ Enhanced Zeit-basierte Grußformel
     const hour = new Date(currentTime).getHours();
-    if (!assistantReply.match(/(guten morgen|guten tag|guten abend|hallo|hi)/i)) {
-      const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+    if (!assistantReply.match(/(moin|guten morgen|guten tag|guten abend|hallo|hi)/i)) {
+      let greeting = '';
+      if (coachPersonality === 'sascha') {
+        greeting = hour < 11 ? 'Moin' : hour < 17 ? 'Guten Tag' : hour < 22 ? 'Guten Abend' : 'Später Abend';
+      } else {
+        greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+      }
       assistantReply = `${greeting}! ${assistantReply}`;
-      console.log(`🕒 [${requestId}] Added fallback greeting: ${greeting}`);
+      console.log(`🕒 [${requestId}] Added ${coachPersonality}-specific greeting: ${greeting}`);
     }
 
     const processingTime = Date.now() - startTime;
@@ -3028,6 +3101,17 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
 async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false, liteCtx: boolean = false, timezone: string = 'Europe/Berlin', currentTime: string = new Date().toISOString()) {
   const coach = COACH_PERSONALITIES[coachPersonality] || COACH_PERSONALITIES.lucy;
   
+  // SASCHA'S PERSONALITY GUARDS: Load from coach-personas.json if available
+  let personalityGuards = '';
+  if (coachPersonality === 'sascha') {
+    // Apply emotional range guard
+    personalityGuards += `\n🛡️ PERSONALITY GUARDS für SASCHA:\n`;
+    personalityGuards += `• Emotional Range: Baseline=2 (ruhig/professionell), Maximum=4 (nur bei Meilensteinen)\n`;
+    personalityGuards += `• NIEMALS: Wunderpillen, Crash-Diäten, Selbstmitleid ohne Lösungswille\n`;
+    personalityGuards += `• Militär-Anekdoten: Nur bei erwachsenen Usern (>30 J.)\n`;
+    personalityGuards += `• ANTI-KI: Keine nummerierten Listen, keine kategorisierten Labels\n\n`;
+  }
+  
   // PHASE 3: Dynamic Prompt Building - Assess available context quality
   const contextQuality = assessContextQuality(context, toolContext);
   console.log(`🔍 Context quality assessment:`, contextQuality);
@@ -3036,7 +3120,7 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   const promptSections = buildAdaptivePromptSections(context, toolContext, contextQuality);
   console.log(`📝 Built ${promptSections.length} adaptive prompt sections`);
   
-  // ✨ Zeit-Kontext aufbauen
+  // ✨ ENHANCED Zeit-Kontext für SASCHA
   const now = new Date(currentTime);
   const timeOptions: Intl.DateTimeFormatOptions = { 
     timeZone: timezone, 
@@ -3047,14 +3131,32 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   const localTime = now.toLocaleString('de-DE', timeOptions);
   const hour = now.getHours();
   
-  // Zeit-basierte Grußformel und Kontexthinweise
-  const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
-  const timeContext = hour > 22 ? 'Späte Abendstunden - Fokus auf Regeneration/Schlaf' : 
-                      hour < 11 ? 'Vormittag - motiviere für aktiven Tagesstart' :
-                      hour < 18 ? 'Tageszeit - ideal für Training/Ernährung' : 
-                      'Abendzeit - Training oder Entspannung';
+  // SASCHA-spezifische Zeit-basierte Grußformeln
+  let greeting = '';
+  let timeContext = '';
+  if (coachPersonality === 'sascha') {
+    if (hour >= 5 && hour < 11) {
+      greeting = 'Moin';
+      timeContext = 'Vormittag - auf in den Tag, Training oder Ernährungsplanung';
+    } else if (hour >= 11 && hour < 17) {
+      greeting = 'Guten Tag';
+      timeContext = 'Mittag/Nachmittag - ideale Zeit für Training und Ernährung';
+    } else if (hour >= 17 && hour < 22) {
+      greeting = 'Guten Abend';
+      timeContext = 'Abend - Zeit für Training oder Regeneration';
+    } else {
+      greeting = 'Später Abend';
+      timeContext = 'Zeit fürs Runterfahren - wann planst du heute Schlaf?';
+    }
+  } else {
+    greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+    timeContext = hour > 22 ? 'Späte Abendstunden - Fokus auf Regeneration/Schlaf' : 
+                        hour < 11 ? 'Vormittag - motiviere für aktiven Tagesstart' :
+                        hour < 18 ? 'Tageszeit - ideal für Training/Ernährung' : 
+                        'Abendzeit - Training oder Entspannung';
+  }
   
-  let timeAwarenessPrompt = `\n🕒 ZEIT-KONTEXT: ${localTime}\n- Standard-Grußformel: "${greeting}"\n- Kontext-Hinweis: ${timeContext}\n\nBerücksichtige die Tageszeit bei deinen Antworten und Vorschlägen.\n\n`;
+  let timeAwarenessPrompt = `\n🕒 LOCAL_TIME: ${localTime}\n- Standard-Grußformel: "${greeting}"\n- Kontext-Hinweis: ${timeContext}\n\nBerücksichtige die Tageszeit bei deinen Antworten und Vorschlägen.\n\n`;
   
   // PHASE 3: Dynamic prompt building based on context quality
   let dynamicPrompt = coach.basePrompt;
@@ -3152,8 +3254,8 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     return litePrompt;
   }
   
-  // FULL MODE: Enhanced with toolContext injection + Zeit-Awareness
-  let prompt = coach.basePrompt + timeAwarenessPrompt;
+  // FULL MODE: Enhanced with toolContext injection + Zeit-Awareness + Personality Guards
+  let prompt = coach.basePrompt + personalityGuards + timeAwarenessPrompt;
   
   // ============================================================================
   // PHASE C: I18N-GUARD - Internationalisierung
@@ -3185,19 +3287,60 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
       requestTime: requestTime || new Date().toISOString()
     });
     
-    // Add today's data prominently at the beginning with enhanced context
-    prompt += `🧠 COMPREHENSIVE USER DATA (Enhanced for ${coachPersonality?.toUpperCase()} Analysis):\n`;
-    prompt += `⏰ Anfrage-Zeit: ${requestTime || new Date().toISOString()} (${userTimezone || 'Europe/Berlin'})\n\n`;
-    
-    // ENHANCED: User Context from tokens
-    if (contextTokens) {
-      prompt += `🎯 BENUTZER-KONTEXT:\n`;
-      prompt += `• Name: ${contextTokens.userName || 'Nicht verfügbar'}\n`;
-      prompt += `• Tageszeit: ${contextTokens.timeOfDay || 'Tag'}\n`;
-      prompt += `• Letzte Aktivität: ${contextTokens.lastWorkout || 'Keine Daten'}\n`;
-      prompt += `• Schlaf letzte Nacht: ${contextTokens.sleepHours || 'Keine Daten'} Stunden\n`;
-      prompt += `• Kalorien übrig heute: ${contextTokens.calLeft || 'Berechnung nicht möglich'}\n`;
-      prompt += `• Letztes Krafttraining: ${contextTokens.lastLift || 'Keine Daten'}\n\n`;
+    // SASCHA-ENHANCED: Structured Data Blocks for superior analysis
+    if (coachPersonality === 'sascha') {
+      prompt += `🧠 STRUCTURED DATA ANALYSIS für SASCHA:\n`;
+      prompt += `⏰ Request-Zeit: ${requestTime || new Date().toISOString()} (${userTimezone || 'Europe/Berlin'})\n\n`;
+      
+      // ### USER_PROFILE Block
+      if (profileData || contextTokens) {
+        prompt += `### 🗂️ USER_PROFILE\n`;
+        if (contextTokens?.userName) prompt += `Name: ${contextTokens.userName}\n`;
+        if (profileData?.age) prompt += `Alter: ${profileData.age} Jahre\n`;
+        if (profileData?.weight) prompt += `Gewicht: ${profileData.weight} kg\n`;
+        if (profileData?.height) prompt += `Größe: ${profileData.height} cm\n`;
+        if (profileData?.fitness_level) prompt += `Level: ${profileData.fitness_level}\n`;
+        prompt += `\n`;
+      }
+      
+      // ### MEAL_LOG Block (letzte 3 Tage)
+      if (todaysTotals) {
+        prompt += `### 🍽️ MEAL_LOG (heute)\n`;
+        prompt += `Kalorien: ${todaysTotals.calories || 0} kcal\n`;
+        prompt += `Protein: ${todaysTotals.protein || 0}g\n`;
+        prompt += `Kohlenhydrate: ${todaysTotals.carbs || 0}g\n`;
+        prompt += `Fett: ${todaysTotals.fats || 0}g\n`;
+        prompt += `Mahlzeiten: ${todaysTotals.count || 0}\n\n`;
+      }
+      
+      // ### RECOVERY Block
+      if (todaysSleep || contextTokens?.sleepHours) {
+        prompt += `### 💤 RECOVERY\n`;
+        const sleepHours = todaysSleep?.sleep_hours || contextTokens?.sleepHours || 'N/A';
+        const sleepQuality = todaysSleep?.sleep_quality || 'N/A';
+        prompt += `Schlaf letzte Nacht: ${sleepHours} h (Qualität: ${sleepQuality}/10)\n`;
+        
+        // SASCHA'S INTELLIGENCE: Sleep alert
+        if (typeof sleepHours === 'number' && sleepHours < 7) {
+          prompt += `⚠️ SCHLAF-ALERT: < 7h - Recovery-Fokus empfohlen\n`;
+        }
+        prompt += `\n`;
+      }
+    } else {
+      // Standard format for other coaches
+      prompt += `🧠 COMPREHENSIVE USER DATA (Enhanced for ${coachPersonality?.toUpperCase()} Analysis):\n`;
+      prompt += `⏰ Anfrage-Zeit: ${requestTime || new Date().toISOString()} (${userTimezone || 'Europe/Berlin'})\n\n`;
+      
+      // ENHANCED: User Context from tokens
+      if (contextTokens) {
+        prompt += `🎯 BENUTZER-KONTEXT:\n`;
+        prompt += `• Name: ${contextTokens.userName || 'Nicht verfügbar'}\n`;
+        prompt += `• Tageszeit: ${contextTokens.timeOfDay || 'Tag'}\n`;
+        prompt += `• Letzte Aktivität: ${contextTokens.lastWorkout || 'Keine Daten'}\n`;
+        prompt += `• Schlaf letzte Nacht: ${contextTokens.sleepHours || 'Keine Daten'} Stunden\n`;
+        prompt += `• Kalorien übrig heute: ${contextTokens.calLeft || 'Berechnung nicht möglich'}\n`;
+        prompt += `• Letztes Krafttraining: ${contextTokens.lastLift || 'Keine Daten'}\n\n`;
+      }
     }
     
     if (todaysTotals) {
@@ -3225,20 +3368,52 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
         prompt += `• ${day.date}: ${day.kcal || 0}kcal, ${day.volume_kg || 0}kg Volumen, Schlaf: ${day.sleep_hours || 'N/A'}h\n`;
       });
       
-      // SASCHA'S INTELLIGENCE: Training context for smart suggestions
+      // SASCHA'S ENHANCED INTELLIGENCE: Training context for smart suggestions
       const trainingDays = recentDays.filter((day: any) => day.volume_kg > 0);
       const totalVolume = recentDays.reduce((sum: number, day: any) => sum + (day.volume_kg || 0), 0);
       
-      if (trainingDays.length >= 3 || totalVolume >= 5000) {
-        prompt += `\n🏋️ TRAININGSKONTEXT FÜR SASCHA:\n`;
-        prompt += `• Trainingstage letzte Woche: ${trainingDays.length}\n`;
+      if (coachPersonality === 'sascha') {
+        prompt += `\n### 🏋️ LAST_7_WORKOUTS\n`;
+        recentDays.slice(0, 7).forEach((day: any, i: number) => {
+          if (day.volume_kg > 0) {
+            prompt += `${day.date}: ${day.volume_kg}kg Volumen\n`;
+          }
+        });
+        
+        prompt += `\n🧠 SASCHA'S TRAINING ANALYSIS:\n`;
+        prompt += `• Trainingstage: ${trainingDays.length}/7\n`;
         prompt += `• Gesamtvolumen: ${totalVolume}kg\n`;
-        prompt += `• Durchschnittsvolumen pro Session: ${trainingDays.length > 0 ? Math.round(totalVolume / trainingDays.length) : 0}kg\n`;
-        prompt += `• EMPFEHLUNG: Du kannst sicher Trainingspläne vorschlagen - genug Daten vorhanden!\n`;
+        prompt += `• Ø Volumen/Session: ${trainingDays.length > 0 ? Math.round(totalVolume / trainingDays.length) : 0}kg\n`;
+        
+        // Context-aware tool suggestions based on actual thresholds
+        if (trainingDays.length >= 3 && totalVolume >= 5000) {
+          prompt += `• STATUS: ✅ Genug Daten für intelligente Trainingsplan-Erstellung\n`;
+          prompt += `• TOOL-BERECHTIGUNG: Kann "Trainingsplan erstellen" vorschlagen\n`;
+        } else {
+          prompt += `• STATUS: ⚠️ Zu wenig Daten (brauche ≥3 Sessions + ≥5000kg)\n`;
+          prompt += `• AKTION: Erst mehr Kontext sammeln, bevor Tools vorgeschlagen werden\n`;
+        }
+        
+        // Protein analysis for Sascha
+        if (todaysTotals?.protein && profileData?.weight) {
+          const proteinPerKg = (todaysTotals.protein / profileData.weight).toFixed(1);
+          prompt += `• PROTEIN-ANALYSE: ${proteinPerKg}g/kg heute`;
+          if (parseFloat(proteinPerKg) < 1.6) {
+            prompt += ` ⚠️ PROTEIN-ALERT: < 1.6g/kg - suboptimal für Regeneration`;
+          }
+          prompt += `\n`;
+        }
+        prompt += `\n`;
       } else {
-        prompt += `\n⚠️ TRAININGSKONTEXT: Noch nicht genug Daten für intelligente Trainingsplan-Vorschläge (nur ${trainingDays.length} Sessions, ${totalVolume}kg)\n`;
+        // Standard format for other coaches
+        if (trainingDays.length >= 3 || totalVolume >= 5000) {
+          prompt += `\n🏋️ TRAININGSKONTEXT:\n`;
+          prompt += `• Trainingstage letzte Woche: ${trainingDays.length}\n`;
+          prompt += `• Gesamtvolumen: ${totalVolume}kg\n`;
+          prompt += `• Durchschnittsvolumen pro Session: ${trainingDays.length > 0 ? Math.round(totalVolume / trainingDays.length) : 0}kg\n`;
+        }
+        prompt += `\n`;
       }
-      prompt += `\n`;
     }
     
     // ENHANCED: Body measurements if available  
