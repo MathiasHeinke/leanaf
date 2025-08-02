@@ -2,6 +2,260 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// ============================================================================
+// MEMORY MANAGER - Inline Implementation for Edge Function
+// ============================================================================
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  metadata?: any;
+}
+
+interface MemoryPacket {
+  id?: number;
+  convo_id: string;
+  from_msg: number;
+  to_msg: number;
+  message_count: number;
+  packet_summary: string;
+  created_at: string;
+}
+
+interface ConversationMemory {
+  convo_id: string;
+  user_id: string;
+  coach_id: string;
+  last_messages: ChatMessage[];
+  message_count: number;
+  rolling_summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+class EdgeMemoryManager {
+  private readonly MESSAGE_LIMIT = 10;
+
+  async getConversationContext(
+    userId: string, 
+    coachId: string, 
+    supabaseClient: any
+  ): Promise<{
+    recentMessages: ChatMessage[];
+    historicalSummary: string | null;
+    messageCount: number;
+  }> {
+    try {
+      const { data: memory } = await supabaseClient
+        .from('coach_chat_memory')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('coach_id', coachId)
+        .maybeSingle();
+
+      if (!memory) {
+        return {
+          recentMessages: [],
+          historicalSummary: null,
+          messageCount: 0
+        };
+      }
+
+      // Get recent packet summaries for additional context
+      const { data: recentPackets } = await supabaseClient
+        .from('coach_chat_packets')
+        .select('packet_summary, message_count')
+        .eq('convo_id', memory.convo_id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const historicalSummary = recentPackets?.length 
+        ? recentPackets.map((p: any) => p.packet_summary).join('\n\n') 
+        : memory.rolling_summary;
+
+      return {
+        recentMessages: memory.last_messages || [],
+        historicalSummary,
+        messageCount: memory.message_count || 0
+      };
+    } catch (error) {
+      console.error('Error getting conversation context:', error);
+      return {
+        recentMessages: [],
+        historicalSummary: null,
+        messageCount: 0
+      };
+    }
+  }
+
+  async addMessage(
+    userId: string,
+    coachId: string,
+    message: ChatMessage,
+    supabaseClient: any,
+    openAIApiKey?: string
+  ): Promise<void> {
+    try {
+      // Load or create conversation memory
+      let { data: memory } = await supabaseClient
+        .from('coach_chat_memory')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('coach_id', coachId)
+        .maybeSingle();
+
+      if (!memory) {
+        memory = await this.createNewConversation(userId, coachId, supabaseClient);
+      }
+
+      // Add new message
+      const updatedMessages = [...(memory.last_messages || []), message];
+      const newMessageCount = (memory.message_count || 0) + 1;
+
+      // Check if compression is needed
+      if (updatedMessages.length > this.MESSAGE_LIMIT && openAIApiKey) {
+        await this.compressMessages(memory, updatedMessages, newMessageCount, supabaseClient, openAIApiKey);
+      } else {
+        // Regular update
+        await supabaseClient
+          .from('coach_chat_memory')
+          .upsert({
+            convo_id: memory.convo_id,
+            user_id: userId,
+            coach_id: coachId,
+            last_messages: updatedMessages,
+            message_count: newMessageCount,
+            rolling_summary: memory.rolling_summary,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'convo_id'
+          });
+      }
+    } catch (error) {
+      console.error('Error adding message to memory:', error);
+    }
+  }
+
+  private async compressMessages(
+    memory: any,
+    messages: ChatMessage[],
+    messageCount: number,
+    supabaseClient: any,
+    openAIApiKey: string
+  ): Promise<void> {
+    try {
+      // Take first 8 messages for compression, keep last 2
+      const messagesToCompress = messages.slice(0, -2);
+      const recentMessages = messages.slice(-2);
+
+      // Generate summary using OpenAI
+      const summary = await this.generateSummary(messagesToCompress, openAIApiKey);
+
+      // Create packet entry
+      const packet = {
+        convo_id: memory.convo_id,
+        from_msg: Math.max(1, messageCount - messagesToCompress.length),
+        to_msg: messageCount - 2,
+        message_count: messagesToCompress.length,
+        packet_summary: summary,
+        created_at: new Date().toISOString()
+      };
+
+      // Save packet to database
+      await supabaseClient.from('coach_chat_packets').insert(packet);
+
+      // Update memory with compressed data
+      await supabaseClient
+        .from('coach_chat_memory')
+        .upsert({
+          convo_id: memory.convo_id,
+          user_id: memory.user_id,
+          coach_id: memory.coach_id,
+          last_messages: recentMessages,
+          message_count: messageCount,
+          rolling_summary: summary,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'convo_id'
+        });
+
+      console.log(`✅ Compressed ${messagesToCompress.length} messages into summary`);
+    } catch (error) {
+      console.error('Error in compression:', error);
+      // Fallback: simple truncation
+      await supabaseClient
+        .from('coach_chat_memory')
+        .upsert({
+          convo_id: memory.convo_id,
+          user_id: memory.user_id,
+          coach_id: memory.coach_id,
+          last_messages: messages.slice(-this.MESSAGE_LIMIT),
+          message_count: messageCount,
+          rolling_summary: memory.rolling_summary,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'convo_id'
+        });
+    }
+  }
+
+  private async generateSummary(messages: ChatMessage[], apiKey: string): Promise<string> {
+    const conversation = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Erstelle eine präzise Zusammenfassung des Gesprächs zwischen User und Coach. Fokussiere auf: Hauptthemen, Ziele, Fortschritte, wichtige Erkenntnisse. Maximal 200 Wörter, auf Deutsch.'
+          },
+          {
+            role: 'user',
+            content: `Fasse diese Unterhaltung zusammen:\n\n${conversation}`
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.3
+      }),
+    });
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || 'Gespräch zusammengefasst.';
+  }
+
+  private async createNewConversation(userId: string, coachId: string, supabaseClient: any): Promise<any> {
+    const convoId = `${userId}-${coachId}-${Date.now()}`;
+    
+    const memory = {
+      convo_id: convoId,
+      user_id: userId,
+      coach_id: coachId,
+      last_messages: [],
+      message_count: 0,
+      rolling_summary: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data } = await supabaseClient
+      .from('coach_chat_memory')
+      .insert(memory)
+      .select()
+      .single();
+      
+    return data;
+  }
+}
+
+const edgeMemoryManager = new EdgeMemoryManager();
+
 // All handlers are now inlined below to avoid import issues
 
 const corsHeaders = {
@@ -2041,7 +2295,7 @@ serve(async (req) => {
         await saveConversation(supabase, userId, message, assistantReply, coachPersonality, images, toolContext);
 
         // Update Memory nach dem Chat
-        await updateMemoryAfterChat(supabase, userId, message, assistantReply, toolContext?.data?.profileData);
+        await updateMemoryAfterChat(supabase, userId, message, assistantReply, toolContext?.data?.profileData, coachPersonality);
 
         console.log(`💾 [${requestId}] Conversation saved and memory updated`);
 
@@ -2083,7 +2337,7 @@ serve(async (req) => {
     await saveConversation(supabase, userId, message, assistantReply, coachPersonality, images, toolContext);
 
     // Update Memory nach dem Chat
-    await updateMemoryAfterChat(supabase, userId, message, assistantReply, toolContext?.data?.profileData);
+    await updateMemoryAfterChat(supabase, userId, message, assistantReply, toolContext?.data?.profileData, coachPersonality);
 
     console.log(`💾 [${requestId}] Conversation saved and memory updated`);
 
@@ -2703,7 +2957,35 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     prompt += '\n';
   }
 
-  // Conversation Memory
+  // NEW: Rolling Conversation Memory Integration
+  const memoryContext = await edgeMemoryManager.getConversationContext(
+    userId, 
+    coachPersonality || 'default', 
+    supabase
+  );
+  
+  if (memoryContext.messageCount > 0) {
+    prompt += `🧠 GESPRÄCHS-GEDÄCHTNIS:\n`;
+    prompt += `Gespräche gesamt: ${memoryContext.messageCount} Nachrichten\n`;
+    
+    if (memoryContext.historicalSummary) {
+      prompt += `Verlaufs-Zusammenfassung:\n${memoryContext.historicalSummary}\n\n`;
+    }
+    
+    if (memoryContext.recentMessages.length > 0) {
+      prompt += `Letzte Nachrichten:\n`;
+      memoryContext.recentMessages.slice(-4).forEach((msg: any) => {
+        const role = msg.role === 'user' ? 'User' : 'Coach';
+        const content = msg.content.length > 150 
+          ? msg.content.substring(0, 150) + '...' 
+          : msg.content;
+        prompt += `${role}: ${content}\n`;
+      });
+    }
+    prompt += '\n';
+  }
+
+  // Legacy Memory (keep for compatibility)
   if (context.memory && context.memory.memory_data) {
     const memoryData = context.memory.memory_data;
     prompt += `🧠 PERSÖNLICHES GEDÄCHTNIS:\n`;
@@ -2874,12 +3156,30 @@ async function saveConversation(supabase: any, userId: string, userMessage: stri
   }
 }
 
-async function updateMemoryAfterChat(supabase: any, userId: string, userMessage: string, assistantReply: string, profileData?: any) {
+async function updateMemoryAfterChat(supabase: any, userId: string, userMessage: string, assistantReply: string, profileData?: any, coachPersonality?: string) {
   try {
-    // Simple sentiment analysis
+    // NEW: Rolling Memory System Update
+    if (coachPersonality) {
+      const userMsg: ChatMessage = {
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date().toISOString()
+      };
+      
+      const assistantMsg: ChatMessage = {
+        role: 'assistant', 
+        content: assistantReply,
+        timestamp: new Date().toISOString()
+      };
+
+      // Add both messages to rolling memory with compression
+      await edgeMemoryManager.addMessage(userId, coachPersonality, userMsg, supabase, openAIApiKey);
+      await edgeMemoryManager.addMessage(userId, coachPersonality, assistantMsg, supabase, openAIApiKey);
+    }
+
+    // Legacy Memory System (keep for compatibility)
     const sentiment = analyzeSentiment(userMessage);
     
-    // Update coach memory with new interaction
     const { data: existingMemory } = await supabase
       .from('coach_memory')
       .select('memory_data')

@@ -710,10 +710,26 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const handleToolAction = useCallback((tool: string, contextData?: any) => {
     console.log('🔧 Tool action triggered:', tool, contextData);
     
+    // Enhanced context data preparation based on tool type
+    const enhancedContextData = {
+      profileData,
+      dailyGoals,
+      weightHistory,
+      currentWeight: weightHistory?.[0]?.weight,
+      targetWeight: profileData?.target_weight,
+      weightTrend: weightHistory?.length > 1 ? 
+        (weightHistory[0]?.weight > weightHistory[1]?.weight ? 'down' : 'up') : 'stable',
+      todaysCalories: todaysTotals?.calories || 0,
+      todaysProtein: todaysTotals?.protein || 0,
+      recentWorkouts: workoutData?.slice(0, 3) || [],
+      sleepScore: sleepData?.sleep_score || 0,
+      ...contextData
+    };
+    
     // Set modal context for tool-specific data
     setModalContext({
       tool,
-      contextData: contextData || {},
+      contextData: enhancedContextData,
       coachPersonality: coach?.personality || 'motivierend'
     });
     
