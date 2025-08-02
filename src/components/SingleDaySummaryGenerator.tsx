@@ -34,7 +34,15 @@ export const SingleDaySummaryGenerator = () => {
         .eq('date', date)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        toast({
+          title: "Verbindungsfehler",
+          description: "Kann nicht auf die Datenbank zugreifen. Bitte versuchen Sie es später erneut.",
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (data) {
         setExistingSummary(data);
@@ -46,14 +54,13 @@ export const SingleDaySummaryGenerator = () => {
         toast({
           title: "Kein Summary vorhanden",
           description: `Für ${date} wurde noch kein Summary erstellt`,
-          variant: "destructive"
         });
       }
     } catch (error: any) {
       console.error('Error loading existing summary:', error);
       toast({
-        title: "Fehler",
-        description: error.message || 'Fehler beim Laden des Summaries',
+        title: "Netzwerkfehler",
+        description: "Verbindungsprobleme zur Datenbank. Bitte prüfen Sie Ihre Internetverbindung.",
         variant: "destructive"
       });
     } finally {
@@ -83,7 +90,15 @@ export const SingleDaySummaryGenerator = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge Function error:', error);
+        toast({
+          title: "Server-Fehler",
+          description: "Der Summary-Service ist temporär nicht verfügbar. Bitte versuchen Sie es später erneut.",
+          variant: "destructive"
+        });
+        return;
+      }
 
       setResponse(data);
       
@@ -93,14 +108,16 @@ export const SingleDaySummaryGenerator = () => {
         variant: data.status === 'success' ? "default" : "destructive"
       });
 
-      // Lade den aktualisierten Summary
-      await loadExistingSummary(selectedDate);
+      // Lade den aktualisierten Summary nach einer kurzen Verzögerung
+      setTimeout(() => {
+        loadExistingSummary(selectedDate);
+      }, 1000);
 
     } catch (error: any) {
       console.error('Error generating summary:', error);
       toast({
-        title: "Fehler",
-        description: error.message || 'Fehler beim Erstellen der Summary',
+        title: "Netzwerkfehler",
+        description: "Verbindungsprobleme zum Server. Bitte prüfen Sie Ihre Internetverbindung.",
         variant: "destructive"
       });
     } finally {
