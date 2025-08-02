@@ -2,6 +2,13 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Import new handlers
+import { diary } from '../tool-handlers/diary.ts';
+import { mealCapture } from '../tool-handlers/mealCapture.ts';
+import { goalCheckin } from '../tool-handlers/goalCheckin.ts';
+import { createPlanDraft } from '../tool-handlers/createPlanDraft.ts';
+import { savePlanDraft } from '../tool-handlers/savePlanDraft.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept, accept-profile, content-profile',
@@ -24,7 +31,7 @@ const PROMPT_VERSION = '2025-08-01-XL';
 // ============================================================================
 
 // Tool Detection Logic
-type ToolName = 'trainingsplan' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin';
+type ToolName = 'trainingsplan' | 'createPlanDraft' | 'savePlanDraft' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin';
 
 interface ToolContext {
   tool: ToolName | 'chat';
@@ -37,6 +44,14 @@ function detectToolIntent(text: string): ToolContext {
     trainingsplan: {
       regex: /(trainingsplan|workout.*plan|push.*pull|split|4.*tag|3.*tag|ganzkörper|upperbody|lowerbody|plan.*erstell)/i,
       description: 'Trainingsplan erstellen/bearbeiten'
+    },
+    createPlanDraft: {
+      regex: /(trainingsplan.*erstell|workout.*plan.*bau|push.*pull.*plan|split.*erstell|plan.*für.*training)/i,
+      description: 'Trainingsplan-Entwurf erstellen'
+    },
+    savePlanDraft: {
+      regex: /(plan.*speicher|draft.*save|entwurf.*aktiv)/i,
+      description: 'Trainingsplan-Entwurf speichern'
     },
     supplement: {
       regex: /(supplement|kreatin|creatine|vitamin|zink|omega|protein.*pulver|magnesium|d3|b12|eisen)/i,
@@ -548,115 +563,19 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
 
 // Tool-Handler-Map (Enhanced v2 with QuickWorkout)
 const handlers = {
+  // EXISTING
   trainingsplan: handleTrainingsplan,
   uebung: handleUebung,
   supplement: handleSupplement,
   gewicht: handleGewicht,
   foto: handleFoto,
-  diary: async (conv: any[], userId: string, supabase: any) => {
-    const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
-    
-    // Simple sentiment analysis
-    const positiveWords = ['gut', 'super', 'dankbar', 'glücklich', 'freude'];
-    const negativeWords = ['schlecht', 'müde', 'stress', 'traurig', 'frustriert'];
-    const lowerText = lastUserMsg.toLowerCase();
-    
-    const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
-    const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
-    
-    let mood_score = 0;
-    let sentiment_tag = 'neutral';
-    
-    if (positiveCount > negativeCount) {
-      mood_score = Math.min(5, positiveCount);
-      sentiment_tag = 'positive';
-    } else if (negativeCount > positiveCount) {
-      mood_score = Math.max(-5, -negativeCount);
-      sentiment_tag = 'negative';
-    }
-    
-    return {
-      role: 'assistant',
-      type: 'card',
-      card: 'diary',
-      payload: {
-        raw_text: lastUserMsg,
-        mood_score,
-        sentiment_tag,
-        excerpt: lastUserMsg.length > 120 ? lastUserMsg.slice(0, 120) + '...' : lastUserMsg,
-        date: new Date().toISOString().split('T')[0],
-        ts: Date.now(),
-        actions: [{
-          type: 'save_diary',
-          label: 'Tagebuch speichern',
-          data: { raw_text: lastUserMsg, mood_score, sentiment_tag, date: new Date().toISOString().split('T')[0] }
-        }]
-      },
-      meta: { clearTool: true }
-    };
-  },
-  mealCapture: async (conv: any[], userId: string, supabase: any) => {
-    const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
-    
-    // Simple food parsing
-    const amountMatch = lastUserMsg.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l)?/i);
-    const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
-    const unit = amountMatch?.[2]?.toLowerCase() || 'g';
-    
-    // Mock nutritional data
-    let calories = 0, protein = 0, carbs = 0, fats = 0;
-    if (amount && lastUserMsg.toLowerCase().includes('haferflocken')) {
-      const factor = amount / 100;
-      calories = Math.round(380 * factor);
-      protein = Math.round(13 * factor * 10) / 10;
-      carbs = Math.round(60 * factor * 10) / 10;
-      fats = Math.round(7 * factor * 10) / 10;
-    }
-    
-    return {
-      role: 'assistant',
-      type: 'card',
-      card: 'meal',
-      payload: {
-        food_name: lastUserMsg,
-        amount, unit, calories, protein, carbs, fats,
-        meal_type: 'snack',
-        ts: Date.now(),
-        actions: [{
-          type: 'save_meal',
-          label: 'Mahlzeit speichern',
-          data: { food_name: lastUserMsg, amount, unit, calories, protein, carbs, fats, date: new Date().toISOString().split('T')[0] }
-        }]
-      },
-      meta: { clearTool: true }
-    };
-  },
-  goalCheckin: async (conv: any[], userId: string, supabase: any) => {
-    // Mock progress data
-    const mockProgress = {
-      calories: { current: 1850, target: 2000, percentage: 92.5 },
-      protein: { current: 145, target: 150, percentage: 96.7 },
-      workouts: { current: 4, target: 5, percentage: 80 },
-      sleep: { current: 7.2, target: 8, percentage: 90 }
-    };
-    
-    const overallScore = Math.round((92.5 + 96.7 + 80 + 90) / 4);
-    const status = overallScore >= 90 ? 'excellent' : overallScore >= 75 ? 'good' : 'needs_attention';
-    
-    return {
-      role: 'assistant',
-      type: 'card',
-      card: 'goalCheckin',
-      payload: {
-        overall_score: overallScore,
-        status,
-        progress: mockProgress,
-        message: status === 'excellent' ? 'Du bist voll auf Kurs! 🎯' : 'Gute Fortschritte möglich 👍',
-        ts: Date.now()
-      },
-      meta: { clearTool: true }
-    };
-  },
+  
+  // NEW - imported from separate files
+  diary,
+  mealCapture,
+  goalCheckin,
+  createPlanDraft,
+  savePlanDraft,
   quickworkout: async (conv: any[], userId: string, supabase: any) => {
     const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
     
@@ -1377,6 +1296,76 @@ serve(async (req) => {
               days: { type: "number", description: "Zeitraum in Tagen", default: 14 }
             },
             required: []
+          }
+        }
+      },
+      // 👉 NEW TOOLS FOR LEAN-STARTER SUITE
+      {
+        type: "function",
+        function: {
+          name: "diary",
+          description: "Speichert einen Tagebuch-Eintrag mit Stimmung",
+          parameters: {
+            type: "object",
+            properties: {
+              mood: { type: "string", enum: ["happy", "neutral", "sad", "stressed"] },
+              text: { type: "string" }
+            },
+            required: ["text"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "mealCapture",
+          description: "Analysiert Text oder Bild einer Mahlzeit & legt Meal-Draft an",
+          parameters: {
+            type: "object",
+            properties: {
+              description: { type: "string" },
+              image_url: { type: "string", format: "uri", description: "optional" }
+            },
+            required: ["description"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "goalCheckin",
+          description: "Vergleicht letzte 7-Tage KPIs mit den Zielen",
+          parameters: { type: "object", properties: {}, required: [] }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "createPlanDraft",
+          description: "Erstellt einen Trainingsplan-Entwurf",
+          parameters: {
+            type: "object",
+            properties: {
+              plan_name: { type: "string" },
+              goal: { type: "string" },
+              days_per_wk: { type: "integer" },
+              notes: { type: "string" }
+            },
+            required: ["plan_name", "goal"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "savePlanDraft",
+          description: "Speichert einen Entwurf als aktiven Plan",
+          parameters: {
+            type: "object",
+            properties: { 
+              draft_id: { type: "string" } 
+            },
+            required: ["draft_id"]
           }
         }
       }
