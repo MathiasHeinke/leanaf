@@ -46,6 +46,7 @@ export const CheckUpModal: React.FC<CheckUpModalProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -82,42 +83,35 @@ export const CheckUpModal: React.FC<CheckUpModalProps> = ({
     if (!user) return;
     
     setIsLoading(true);
+    setError(null);
+    
     try {
-      const profileData = { ...data, userId: user.id };
+      console.log('💾 Saving profile data via edge function:', data);
       
-      // Upsert user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          user_id: user.id,
-          profile: profileData,
-          updated_at: new Date().toISOString()
-        });
-
-      if (profileError) throw profileError;
-
-      // Log profile event
-      const { error: eventError } = await supabase
-        .from('user_profile_events')
-        .insert({
-          user_id: user.id,
-          profile_delta: profileData,
-          event_type: 'profile_update'
-        });
-
-      if (eventError) throw eventError;
-
-      toast({
-        title: "Profil aktualisiert",
-        description: "Deine Trainingsdaten wurden erfolgreich gespeichert.",
+      const response = await supabase.functions.invoke('user-profile', {
+        body: { 
+          ...data,
+          userId: user.id 
+        }
       });
 
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to save profile');
+      }
+
+      console.log('✅ Profile saved successfully');
+      toast({
+        title: "Profil gespeichert",
+        description: "Dein Trainingsprofil wurde erfolgreich aktualisiert!",
+      });
       onClose();
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error('❌ Error saving profile:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler beim Speichern';
+      setError(errorMessage);
       toast({
-        title: "Fehler",
-        description: "Beim Speichern ist ein Fehler aufgetreten.",
+        title: "Fehler beim Speichern",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -178,6 +172,12 @@ export const CheckUpModal: React.FC<CheckUpModalProps> = ({
               Hey! {coachName} hier. Lass uns deine aktuellen Trainingsdaten aktualisieren, 
               damit ich dir den perfekten Plan erstellen kann.
             </p>
+          )}
+          
+          {error && (
+            <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
           )}
         </DialogHeader>
 

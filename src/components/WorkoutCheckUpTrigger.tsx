@@ -17,23 +17,61 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
   className = ''
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { profile, shouldShowCheckUp, isStale, missingRequired, refreshProfile } = useUserProfile();
+  const { profile, shouldShowCheckUp, isStale, missingRequired, refreshProfile, isLoading, error, isFirstAppStart } = useUserProfile();
 
   // Auto-show modal on first app start or missing required fields
   useEffect(() => {
-    if (missingRequired) {
+    if (missingRequired && !isLoading) {
+      console.log('🚨 Auto-opening CheckUp modal - missing required fields');
       setIsModalOpen(true);
     }
-  }, [missingRequired]);
+  }, [missingRequired, isLoading]);
 
   const handleOpenModal = () => {
+    console.log('👆 Manual CheckUp modal open');
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    console.log('✅ CheckUp modal closed');
     setIsModalOpen(false);
     refreshProfile(); // Refresh profile data after modal closes
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={`rounded-lg border border-border bg-card p-4 ${className}`}>
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="flex-1">
+            <div className="h-4 bg-muted rounded animate-pulse mb-2" />
+            <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className={`rounded-lg border border-destructive/50 bg-destructive/10 p-4 ${className}`}>
+        <div className="flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-destructive" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-destructive">Profil-Laden fehlgeschlagen</h3>
+            <p className="text-sm text-destructive/80">
+              {error}
+            </p>
+          </div>
+          <Button onClick={refreshProfile} variant="outline" size="sm">
+            Erneut versuchen
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   // Show different UI states based on profile status
   if (missingRequired) {
@@ -43,13 +81,17 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-orange-600" />
             <div className="flex-1">
-              <h3 className="font-semibold text-orange-900">Profil-Setup erforderlich</h3>
+              <h3 className="font-semibold text-orange-900">
+                {isFirstAppStart ? 'Willkommen! Profil-Setup erforderlich' : 'Profil-Setup erforderlich'}
+              </h3>
               <p className="text-sm text-orange-700">
-                Vervollständige dein Trainingsprofil für personalisierte Pläne.
+                {isFirstAppStart 
+                  ? 'Vervollständige dein Trainingsprofil für personalisierte Pläne.' 
+                  : 'Einige wichtige Profildaten fehlen für optimale Trainingsplanung.'}
               </p>
             </div>
             <Button onClick={handleOpenModal} size="sm">
-              Jetzt einrichten
+              {isFirstAppStart ? 'Profil erstellen' : 'Vervollständigen'}
             </Button>
           </div>
         </div>
