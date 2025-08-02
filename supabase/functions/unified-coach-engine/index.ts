@@ -4476,3 +4476,5 @@ async function checkTrainingDataSufficiency(supabase: any, userId: string): Prom
     return { sufficient: false, analysis: {} };
   }
 }
+
+}); // Close serve() function
