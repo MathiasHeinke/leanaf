@@ -53,7 +53,7 @@ function detectToolIntent(text: string): ToolContext {
       description: 'Supplement-Empfehlung'
     },
     gewicht: {
-      regex: /(gewicht|wiegen|kg|waage|gramm|pfund|weight|scale)/i,
+      regex: /\b(gewicht|wiege?n?|kg|waage|gramm|pfund|weight|scale)\b/i,
       description: 'Gewicht erfassen'
     },
     uebung: {
@@ -89,9 +89,13 @@ function detectToolIntent(text: string): ToolContext {
   };
 
   for (const [toolName, config] of Object.entries(toolMap)) {
-    if (config.regex.test(text)) {
+    const regexMatch = config.regex.test(text);
+    console.log(`🔍 Testing ${toolName}: "${config.regex}" -> ${regexMatch}`);
+    
+    if (regexMatch) {
       const matches = text.match(config.regex);
       const confidence = matches ? Math.min(matches.length * 0.3 + 0.7, 1.0) : 0;
+      console.log(`✅ ${toolName} matched with confidence: ${confidence}`);
       
       if (confidence > bestMatch.confidence) {
         bestMatch = {
@@ -1409,15 +1413,17 @@ serve(async (req) => {
     // PRIORITY: Frontend tool decision has precedence over backend detection
     let activeTool = 'chat';
     
-    // 1. Check if frontend sent explicit tool decision with appropriateness check
-    if (toolContext?.tool && toolContext.tool !== 'chat') {
-      if (toolContext.isAppropriate !== false) {
-        activeTool = toolContext.tool;
-        console.log(`🎯 [${requestId}] USING FRONTEND TOOL DECISION: ${activeTool} (frontend analyzed context)`);
-      } else {
-        console.log(`⚠️ [${requestId}] Frontend marked tool as inappropriate, staying with chat`);
-        activeTool = 'chat';
-      }
+    // 1. BINDENDE Frontend-Entscheidung - isAppropriate: false = ABSOLUTES VETO
+    console.log(`🔍 [${requestId}] ToolContext vom Frontend:`, JSON.stringify(toolContext, null, 2));
+    
+    if (toolContext?.isAppropriate === false) {
+      console.log(`🛑 [${requestId}] Frontend VETO: Tool als unangemessen markiert -> ZWINGEN zu Chat-Modus`);
+      activeTool = 'chat';
+    }
+    // 2. Nur wenn Frontend KEIN Veto, dann Tool-Logik
+    else if (toolContext?.tool && toolContext.tool !== 'chat') {
+      activeTool = toolContext.tool;
+      console.log(`🎯 [${requestId}] USING FRONTEND TOOL DECISION: ${activeTool} (frontend analyzed context)`);
     }
     // 2. Fallback to backend detection only if frontend didn't decide
     else if (detectedIntent.confidence > 0.6) {
