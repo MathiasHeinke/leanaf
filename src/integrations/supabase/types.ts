@@ -3648,7 +3648,12 @@ export type Database = {
       }
       fast_meal_totals: {
         Args: { p_user: string; p_d: string }
-        Returns: Json
+        Returns: {
+          calories: number
+          protein: number
+          carbs: number
+          fats: number
+        }[]
       }
       fast_sets_volume: {
         Args: { p_user: string; p_d: string }
@@ -3664,7 +3669,32 @@ export type Database = {
       }
       get_summary_range: {
         Args: { p_user: string; p_days?: number }
-        Returns: Json
+        Returns: {
+          created_at: string
+          date: string
+          hydration_score: number | null
+          id: string
+          kpi_xxl_json: Json | null
+          macro_distribution: Json | null
+          recovery_metrics: Json | null
+          schema_version: string | null
+          sleep_score: number | null
+          summary_md: string | null
+          summary_struct_json: Json | null
+          summary_xl_md: string | null
+          summary_xxl_md: string | null
+          text_generated: boolean | null
+          tokens_spent: number | null
+          top_foods: Json | null
+          total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
+          total_protein: number | null
+          updated_at: string
+          user_id: string
+          workout_muscle_groups: string[] | null
+          workout_volume: number | null
+        }[]
       }
       halfvec_avg: {
         Args: { "": number[] }
