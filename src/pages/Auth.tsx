@@ -86,7 +86,7 @@ const Auth = () => {
         });
         
         if (!result.success) {
-          result.error.errors.forEach((error) => {
+          result.error.issues.forEach((error) => {
             errors[error.path[0] as string] = error.message;
           });
         }
@@ -97,7 +97,7 @@ const Auth = () => {
         });
         
         if (!result.success) {
-          result.error.errors.forEach((error) => {
+          result.error.issues.forEach((error) => {
             errors[error.path[0] as string] = error.message;
           });
         }

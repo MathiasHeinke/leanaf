@@ -1,8 +1,37 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://esm.sh/zod@latest';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Training Plan Validation Schema
+const TrainingPlanResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+  goals: z.array(z.string()).min(1),
+  html: z.string().optional(),
+  ts: z.number(),
+  actions: z.array(z.object({
+    label: z.string(),
+    variant: z.enum(['confirm', 'reject']),
+    onClick: z.function().optional()
+  })).optional()
+});
+
+const ToolResponseSchema = z.object({
+  role: z.literal('assistant'),
+  type: z.literal('card'),
+  card: z.enum(['workout_plan', 'trainingsplan', 'plan']),
+  payload: TrainingPlanResponseSchema,
+  meta: z.object({
+    clearTool: z.boolean().optional()
+  }).optional()
+});
+
+type TrainingPlanResponse = z.infer<typeof TrainingPlanResponseSchema>;
+type ToolResponse = z.infer<typeof ToolResponseSchema>;
 
 export default async function handleTrainingsplan(conv: any[], userId: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
@@ -34,32 +63,55 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
       };
     }
     
-    return {
+    // Create validated payload with actions
+    const payload: TrainingPlanResponse = {
+      id: planData.id,
+      name: planData.name,
+      description: planData.description,
+      goals,
+      html: generatePlanHtml(planData, goals),
+      ts: Date.now(),
+      actions: [
+        {
+          label: '✏️ Plan bearbeiten',
+          variant: 'confirm' as const
+        },
+        {
+          label: '📋 Plan aktivieren', 
+          variant: 'confirm' as const
+        }
+      ]
+    };
+
+    // Validate the entire response
+    const response: ToolResponse = {
       role: 'assistant',
       type: 'card',
       card: 'workout_plan',
-      payload: { 
-        id: planData.id,
-        name: planData.name,
-        description: planData.description,
-        goals,
-        html: `<div class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-          <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">✅ Trainingsplan erstellt</h3>
-          <p class="text-blue-700 dark:text-blue-300 mb-2"><strong>${planData.name}</strong></p>
-          <p class="text-sm text-blue-600 dark:text-blue-400">${planData.description}</p>
-          <div class="mt-3 text-xs text-blue-500 dark:text-blue-500">
-            Ziele: ${Array.isArray(goals) ? goals.join(', ') : 'Allgemeine Fitness'}
-          </div>
-        </div>`,
-        ts: Date.now()
-      },
+      payload,
       meta: { clearTool: true }
     };
+    
+    const validatedResponse = ToolResponseSchema.parse(response);
+    return validatedResponse;
   } catch (error) {
     console.error('Error in trainingsplan handler:', error);
+    
+    // Return a fallback response that doesn't break the UI
     return {
       role: 'assistant',
-      content: 'Ein Fehler ist aufgetreten beim Erstellen des Trainingsplans.',
+      type: 'card' as const,
+      card: 'workout_plan' as const,
+      payload: {
+        id: crypto.randomUUID(),
+        name: 'Fehler beim Erstellen',
+        description: 'Ein Fehler ist aufgetreten beim Erstellen des Trainingsplans.',
+        goals: ['Allgemein'],
+        html: generateErrorHtml(error),
+        ts: Date.now(),
+        actions: []
+      },
+      meta: { clearTool: true }
     };
   }
 }
@@ -94,4 +146,30 @@ function extractGoals(message: string): string[] {
   }
   
   return goals.length > 0 ? goals : ['Allgemeine Fitness'];
+}
+
+function generatePlanHtml(planData: any, goals: string[]): string {
+  const sanitizedName = planData.name?.replace(/[<>]/g, '') || 'Unbenannter Plan';
+  const sanitizedDescription = planData.description?.replace(/[<>]/g, '') || '';
+  
+  return `<div class="p-4 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
+    <h3 class="text-lg font-semibold text-primary dark:text-primary mb-2">✅ Trainingsplan erstellt</h3>
+    <p class="text-foreground dark:text-foreground mb-2"><strong>${sanitizedName}</strong></p>
+    <p class="text-sm text-muted-foreground">${sanitizedDescription}</p>
+    <div class="mt-3 text-xs text-muted-foreground">
+      Ziele: ${Array.isArray(goals) ? goals.join(', ') : 'Allgemeine Fitness'}
+    </div>
+    <div class="mt-4 p-3 bg-background/50 rounded-md">
+      <p class="text-xs text-muted-foreground">Plan-ID: ${planData.id}</p>
+      <p class="text-xs text-muted-foreground">Erstellt: ${new Date().toLocaleDateString('de-DE')}</p>
+    </div>
+  </div>`;
+}
+
+function generateErrorHtml(error: any): string {
+  return `<div class="p-4 bg-gradient-to-r from-destructive/10 to-destructive/5 dark:from-destructive/20 dark:to-destructive/10 rounded-lg border border-destructive/20 dark:border-destructive/30">
+    <h3 class="text-lg font-semibold text-destructive dark:text-destructive mb-2">❌ Fehler aufgetreten</h3>
+    <p class="text-sm text-muted-foreground">Der Trainingsplan konnte nicht erstellt werden.</p>
+    <p class="text-xs text-muted-foreground mt-2">Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.</p>
+  </div>`;
 }

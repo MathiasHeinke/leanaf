@@ -52,7 +52,7 @@ export const mealTextSchema = z
   );
 
 export const mealTypeSchema = z.enum(['breakfast', 'lunch', 'dinner', 'snack', 'other'], {
-  errorMap: () => ({ message: 'Ungültiger Mahlzeit-Typ' }),
+  message: 'Ungültiger Mahlzeit-Typ',
 });
 
 // File upload validation schemas

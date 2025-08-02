@@ -4,13 +4,14 @@ import { SupplementCard } from '@/components/SupplementCard';
 import { MealCard } from '@/components/MealCard';
 import { ExerciseCard } from '@/components/ExerciseCard';
 import { MindsetCard } from '@/components/MindsetCard';
+import { TrainingPlanCard } from '@/components/TrainingPlanCard';
 import { SimpleMessageItem } from '@/components/SimpleMessageItem';
 
 export interface CardMessage {
   id: string;
   role: 'assistant';
   type: 'card';
-  tool: 'supplement' | 'meal' | 'exercise' | 'mindset' | 'plan';
+  tool: 'supplement' | 'meal' | 'exercise' | 'mindset' | 'plan' | 'workout_plan' | 'trainingsplan';
   payload: any;
   created_at: string;
   coach_personality: string;
@@ -81,24 +82,17 @@ export function renderMessage(message: UnifiedMessage): React.ReactElement {
         );
       
       case 'plan':
-        // For training plans, use a generic SmartCard for now
+      case 'workout_plan':
+      case 'trainingsplan':
+        // Use TrainingPlanCard component
         return (
-          <SmartCard
+          <TrainingPlanCard
             key={cardMessage.id}
-            tool="plan"
-            icon="🏋️‍♂️"
-            title="Trainingsplan"
-            defaultCollapsed={true}
-          >
-            <div className="space-y-2">
-              {cardMessage.payload.days?.map((day: any, index: number) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <span className="font-medium">{day.name}</span>
-                  <span className="text-muted-foreground">{day.type}</span>
-                </div>
-              ))}
-            </div>
-          </SmartCard>
+            plan={cardMessage.payload.plan || cardMessage.payload.days || []}
+            onConfirm={cardMessage.payload.onConfirm}
+            onReject={cardMessage.payload.onReject}
+            htmlContent={cardMessage.payload.html}
+          />
         );
       
       default:
