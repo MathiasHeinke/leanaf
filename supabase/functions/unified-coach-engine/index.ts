@@ -288,80 +288,135 @@ interface ToolContext {
   confidence: number;
 }
 
-function detectToolIntent(text: string): ToolContext {
-  const toolMap: Record<ToolName, { regex: RegExp; description: string }> = {
+function detectToolIntent(text: string, userContext?: any): ToolContext {
+  const toolMap: Record<ToolName, { regex: RegExp; description: string; semanticKeywords: string[]; contextRequirements?: string[] }> = {
     trainingsplan: {
       regex: /(trainingsplan|workout.*plan|push.*pull|split|4.*tag|3.*tag|ganzkörper|upperbody|lowerbody|plan.*erstell)/i,
-      description: 'Trainingsplan erstellen/bearbeiten'
+      description: 'Trainingsplan erstellen/bearbeiten',
+      semanticKeywords: ['plan', 'training', 'workout', 'split', 'push', 'pull', 'beine', 'oberkörper', 'ganzkörper', 'hypertrophie', 'kraft'],
+      contextRequirements: ['hasTrainingHistory']
     },
     createPlanDraft: {
       regex: /(trainingsplan.*erstell|workout.*plan.*bau|push.*pull.*plan|split.*erstell|plan.*für.*training)/i,
-      description: 'Trainingsplan-Entwurf erstellen'
+      description: 'Trainingsplan-Entwurf erstellen',
+      semanticKeywords: ['erstellen', 'planen', 'anfangen', 'beginnen', 'neuer plan'],
+      contextRequirements: ['hasTrainingHistory']
     },
     savePlanDraft: {
       regex: /(plan.*speicher|draft.*save|entwurf.*aktiv)/i,
-      description: 'Trainingsplan-Entwurf speichern'
+      description: 'Trainingsplan-Entwurf speichern',
+      semanticKeywords: ['speichern', 'aktivieren', 'übernehmen', 'starten']
     },
     supplement: {
       regex: /(supplement|kreatin|creatine|vitamin|zink|omega|protein.*pulver|magnesium|d3|b12|eisen)/i,
-      description: 'Supplement-Empfehlung'
+      description: 'Supplement-Empfehlung',
+      semanticKeywords: ['supplement', 'vitamin', 'mineral', 'kreatin', 'protein', 'omega', 'zink', 'magnesium', 'nahrungsergänzung']
     },
     gewicht: {
       regex: /\b(gewicht|wiege?n?|kg|waage|gramm|pfund|weight|scale)\b/i,
-      description: 'Gewicht erfassen'
+      description: 'Gewicht erfassen',
+      semanticKeywords: ['gewicht', 'wiegen', 'waage', 'körpergewicht', 'tracking']
     },
     uebung: {
       regex: /(übung|exercise|versuch.*mal|neue.*übung|bankdrücken|kniebeuge|kreuzheben|klimmzug)/i,
-      description: 'Übung hinzufügen/analysieren'
+      description: 'Übung hinzufügen/analysieren',
+      semanticKeywords: ['übung', 'bankdrücken', 'kniebeuge', 'kreuzheben', 'klimmzug', 'squats', 'deadlift', 'benchpress']
     },
     foto: {
       regex: /(foto|picture|progress.*pic|bild|vorher.*nachher|transformation|körper.*foto)/i,
-      description: 'Fortschritts-Foto analysieren'
+      description: 'Fortschritts-Foto analysieren',
+      semanticKeywords: ['foto', 'bild', 'progress', 'fortschritt', 'transformation', 'vorher', 'nachher']
     },
     quickworkout: {
       regex: /(schritte|walk|joggen|lauf|quickworkout|spazier|cardio|schnell.*training|10.*min)/i,
-      description: 'Quick-Workout erfassen'
+      description: 'Quick-Workout erfassen',
+      semanticKeywords: ['schritte', 'laufen', 'joggen', 'cardio', 'spazieren', 'quick', 'schnell']
     },
     diary: {
       regex: /(tagebuch|reflexion|dankbar|gefühl|heute\s+war|bin\s+dankbar|journal|stimmung|mood)/i,
-      description: 'Tagebuch-Eintrag erstellen'
+      description: 'Tagebuch-Eintrag erstellen',
+      semanticKeywords: ['tagebuch', 'reflexion', 'gefühl', 'stimmung', 'dankbar', 'mood', 'journal']
     },
     mealCapture: {
       regex: /(\d+)\s*(g|kg|gramm|ml|liter)\s+\w+|(gegessen|essen|mahlzeit|kalorien|nährwerte|haferflocken|reis|hähnchen)/i,
-      description: 'Mahlzeit erfassen'
+      description: 'Mahlzeit erfassen',
+      semanticKeywords: ['essen', 'mahlzeit', 'kalorien', 'protein', 'kohlenhydrate', 'nährwerte', 'gramm', 'gegessen']
     },
     goalCheckin: {
       regex: /(fortschritt|auf\s+kurs|ziel|progress|check|stand|bin\s+ich|wie\s+stehe)/i,
-      description: 'Fortschritt überprüfen'
+      description: 'Fortschritt überprüfen',
+      semanticKeywords: ['fortschritt', 'ziel', 'progress', 'entwicklung', 'erfolg', 'ergebnis']
     },
     ragKnowledge: {
       regex: /(warum|wie\s+funktioniert|studien|forschung|wissenschaft|belege|erklär|grund|hintergrund|theorie|prinzip)/i,
-      description: 'Wissenschaftlichen Hintergrund aus Knowledge Base suchen'
+      description: 'Wissenschaftlichen Hintergrund aus Knowledge Base suchen',
+      semanticKeywords: ['warum', 'wie', 'wissenschaft', 'studie', 'forschung', 'erklärung', 'hintergrund', 'theorie', 'prinzip', 'belege']
     }
   };
 
-  let bestMatch: { tool: ToolName | 'chat'; confidence: number; description: string } = {
+  let bestMatch: { tool: ToolName | 'chat'; confidence: number; description: string; semanticScore: number } = {
     tool: 'chat',
     confidence: 0,
-    description: 'Freies Gespräch'
+    description: 'Freies Gespräch',
+    semanticScore: 0
   };
 
+  // Enhanced semantic analysis
+  const textLower = text.toLowerCase();
+  const words = textLower.split(/\s+/);
+
   for (const [toolName, config] of Object.entries(toolMap)) {
+    // 1. Regex-based matching (existing)
     const regexMatch = config.regex.test(text);
-    console.log(`🔍 Testing ${toolName}: "${config.regex}" -> ${regexMatch}`);
+    let regexScore = regexMatch ? 0.7 : 0;
     
-    if (regexMatch) {
-      const matches = text.match(config.regex);
-      const confidence = matches ? Math.min(matches.length * 0.3 + 0.7, 1.0) : 0;
-      console.log(`✅ ${toolName} matched with confidence: ${confidence}`);
-      
-      if (confidence > bestMatch.confidence) {
-        bestMatch = {
-          tool: toolName as ToolName,
-          confidence,
-          description: config.description
-        };
+    // 2. NEW: Semantic keyword matching
+    let semanticScore = 0;
+    const matchedKeywords = config.semanticKeywords.filter(keyword => 
+      textLower.includes(keyword.toLowerCase())
+    );
+    semanticScore = Math.min(matchedKeywords.length * 0.2, 0.6);
+    
+    // 3. NEW: Context-aware boosting
+    let contextBoost = 0;
+    if (config.contextRequirements && userContext) {
+      if (config.contextRequirements.includes('hasTrainingHistory') && userContext.hasTrainingData) {
+        contextBoost = 0.3;
       }
+    }
+    
+    // 4. NEW: Word proximity analysis (advanced semantic)
+    let proximityScore = 0;
+    if (semanticScore > 0) {
+      const toolWords = config.semanticKeywords.map(k => k.toLowerCase());
+      let proximityMatches = 0;
+      for (let i = 0; i < words.length - 1; i++) {
+        if (toolWords.includes(words[i]) && toolWords.some(tw => words.slice(i, i + 3).includes(tw))) {
+          proximityMatches++;
+        }
+      }
+      proximityScore = Math.min(proximityMatches * 0.1, 0.2);
+    }
+    
+    const totalConfidence = Math.min(regexScore + semanticScore + contextBoost + proximityScore, 1.0);
+    const totalSemanticScore = semanticScore + proximityScore;
+    
+    console.log(`🔍 Enhanced analysis ${toolName}:`, {
+      regex: regexScore,
+      semantic: semanticScore,
+      context: contextBoost,
+      proximity: proximityScore,
+      total: totalConfidence,
+      keywords: matchedKeywords
+    });
+    
+    if (totalConfidence > bestMatch.confidence) {
+      bestMatch = {
+        tool: toolName as ToolName,
+        confidence: totalConfidence,
+        description: config.description,
+        semanticScore: totalSemanticScore
+      };
     }
   }
 
@@ -379,6 +434,24 @@ function detectToolIntent(text: string): ToolContext {
 async function handleTrainingsplan(conv: any[], userId: string, supabase: any, coachPersonality?: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
   
+  // PHASE 2: Check for RAG context from previous queries
+  let ragEnhancedDescription = '';
+  if (global.lastRAGResults && global.lastRAGResults.timestamp) {
+    const ragAge = Date.now() - new Date(global.lastRAGResults.timestamp).getTime();
+    // Use RAG results if they're less than 5 minutes old
+    if (ragAge < 5 * 60 * 1000) {
+      const relevantKnowledge = global.lastRAGResults.results
+        .filter((result: any) => result.expertise_area === 'training' || result.expertise_area === 'exercise')
+        .slice(0, 2); // Top 2 most relevant
+      
+      if (relevantKnowledge.length > 0) {
+        ragEnhancedDescription = `\n\n🧠 **Wissenschaftliche Grundlage:**\n` +
+          relevantKnowledge.map((k: any) => `• ${k.title}: ${k.content.substring(0, 150)}...`).join('\n');
+        console.log(`🔗 Enhanced training plan with RAG knowledge: ${relevantKnowledge.length} sources`);
+      }
+    }
+  }
+  
   // Map frontend coach IDs to coach names for persona lookup
   const coachMapping: Record<string, string> = {
     'markus': 'Markus Rühl',
@@ -393,6 +466,7 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any, c
     : 'Sascha'; // Default fallback
     
   console.log(`🎯 Training plan requested by coach: ${coachName} (${coachPersonality || 'default'})`);
+  console.log(`🧠 RAG-enhanced plan: ${ragEnhancedDescription ? 'YES' : 'NO'}`);
   
   try {
     // Extrahiere Trainingsplan-Informationen aus der Nachricht
@@ -402,7 +476,7 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any, c
     // Add coach information to plan description
     const coachInfo = coachName !== 'Sascha' ? `Coach: ${coachName}` : '';
     
-    // Erstelle Trainingsplan-Entry in der DB
+    // Erstelle Trainingsplan-Entry in der DB with RAG enhancement
     const { data: planData, error } = await supabase.from('workout_plans').insert({
       created_by: userId,               // <- Spaltenname in DB
       name: planName,
@@ -410,7 +484,8 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any, c
       description: [
         `Automatisch erstellt am ${new Date().toLocaleDateString('de-DE')}`,
         coachInfo,
-        goals.length ? `Ziel(e): ${goals.join(', ')}` : ''
+        goals.length ? `Ziel(e): ${goals.join(', ')}` : '',
+        ragEnhancedDescription  // PHASE 2: Include RAG-enhanced scientific foundation
       ].filter(Boolean).join('\n').trim(),
       exercises: [],                   // leeres JSON = Draft
       estimated_duration_minutes: null,
@@ -1196,7 +1271,7 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
   }
 }
 
-// RAG Knowledge Handler
+// RAG Knowledge Handler with Cross-Tool Data Sharing
 async function handleRAGKnowledge(conv: any[], userId: string, supabase: any, coachPersonality?: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
   
@@ -1227,6 +1302,18 @@ async function handleRAGKnowledge(conv: any[], userId: string, supabase: any, co
 
     console.log(`✅ RAG found ${ragResponse.context.length} relevant knowledge entries`);
     
+    // PHASE 2: Store RAG results for cross-tool sharing
+    const ragContext = {
+      timestamp: new Date().toISOString(),
+      query: lastUserMsg,
+      results: ragResponse.context,
+      metadata: ragResponse.metadata
+    };
+    
+    // Store in temporary global context (could be enhanced with caching)
+    global.lastRAGResults = ragContext;
+    console.log(`💾 Stored RAG results for cross-tool sharing:`, ragContext.results.length, 'entries');
+    
     // Format the knowledge for display
     const knowledgeContext = ragResponse.context
       .map((chunk: any, index: number) => 
@@ -1234,15 +1321,26 @@ async function handleRAGKnowledge(conv: any[], userId: string, supabase: any, co
       )
       .join('\n\n---\n\n');
 
+    // ENHANCED: Add actionable suggestions based on knowledge
+    let actionableSuggestions = '';
+    const expertise_areas = [...new Set(ragResponse.context.map((c: any) => c.expertise_area))];
+    if (expertise_areas.includes('training') || expertise_areas.includes('exercise')) {
+      actionableSuggestions += '\n\n💡 **Möchtest du einen wissenschaftlich fundierten Trainingsplan erstellen?**';
+    }
+    if (expertise_areas.includes('nutrition') || expertise_areas.includes('supplements')) {
+      actionableSuggestions += '\n\n💊 **Soll ich dir personalisierte Supplement-Empfehlungen geben?**';
+    }
+
     const responseContent = `🧠 **Wissenschaftlicher Hintergrund:**
 
 ${knowledgeContext}
 
-*Relevanz-Score: ${ragResponse.metadata.relevance_score.toFixed(2)} | Suchmethode: ${ragResponse.metadata.search_method} | ${ragResponse.metadata.results_count} Ergebnisse*`;
+*Relevanz-Score: ${ragResponse.metadata.relevance_score.toFixed(2)} | Suchmethode: ${ragResponse.metadata.search_method} | ${ragResponse.metadata.results_count} Ergebnisse*${actionableSuggestions}`;
 
     return {
       role: 'assistant',
-      content: responseContent
+      content: responseContent,
+      ragContext: ragContext // Include for potential frontend use
     };
     
   } catch (error) {
@@ -1764,10 +1862,46 @@ serve(async (req) => {
     // PHASE B: TOOL-PICKER V2 - AUTOMATIC INTENT DETECTION
     // ============================================================================
     
-    // 🎯 Tool Intent Detection (NEW v2 Framework)
-    console.log(`🎯 [${requestId}] Running Tool-Picker v2 detection on message: "${message?.substring(0, 100)}..."`);
-    const detectedIntent = detectToolIntent(message || '');
-    console.log(`🛠️ [${requestId}] TOOL DETECTION RESULT:`, detectedIntent);
+    // PHASE 2: Build Enhanced User Context for Smart Tool Detection
+    let userAnalytics = {
+      hasTrainingData: false,
+      hasNutritionData: false,
+      lastActivity: null as string | null,
+      preferredTools: [] as string[],
+      recentTopics: [] as string[]
+    };
+    
+    // Build user analytics for smarter tool detection (only for non-lite mode)
+    if (liteCtx === false) {
+      try {
+        // Check training data
+        const { data: recentSessions } = await supabase
+          .from('exercise_sessions')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .limit(1);
+        userAnalytics.hasTrainingData = (recentSessions?.length || 0) > 0;
+        
+        // Check nutrition data
+        const { data: recentMeals } = await supabase
+          .from('meals')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('created_at', new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(1);
+        userAnalytics.hasNutritionData = (recentMeals?.length || 0) > 0;
+        
+        console.log(`📊 [${requestId}] User analytics built:`, userAnalytics);
+      } catch (error) {
+        console.warn(`⚠️ [${requestId}] Error building user analytics:`, error);
+      }
+    }
+    
+    // 🎯 Tool Intent Detection (Enhanced v2 with Context)
+    console.log(`🎯 [${requestId}] Running Enhanced Tool-Picker v2 detection on message: "${message?.substring(0, 100)}..."`);
+    const detectedIntent = detectToolIntent(message || '', userAnalytics);
+    console.log(`🛠️ [${requestId}] ENHANCED TOOL DETECTION RESULT:`, detectedIntent);
     
     // PRIORITY: Frontend tool decision has precedence over backend detection
     let activeTool = 'chat';
@@ -1943,7 +2077,9 @@ serve(async (req) => {
     const isNonGerman = preferredLocale && preferredLocale !== 'de';
     
     // Erstelle erweiterten System-Prompt mit Versionierung und i18n (mit Lite-Mode Support)
-    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext, isNonGerman, liteCtx, timezone, currentTime);
+    // Enhance toolContext with user analytics for proactive suggestions  
+    const enhancedToolContext = { ...toolContext, userAnalytics };
+    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, enhancedToolContext, isNonGerman, liteCtx, timezone, currentTime);
     console.log(`💭 [${requestId}] XL System prompt created, tokens:`, estimateTokenCount(systemPrompt), 'i18n:', isNonGerman, 'lite:', liteCtx);
 
     // Bereite Messages für OpenAI vor
@@ -3009,6 +3145,29 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     prompt += '\n';
   } else {
     prompt += `⚠️ Profil nicht geladen – rufe get_user_profile() bei Bedarf\n\n`;
+  }
+
+  // PHASE 2: Proactive Tool Suggestions based on User Analytics
+  if (toolContext?.userAnalytics) {
+    const analytics = toolContext.userAnalytics;
+    prompt += `🤖 PROAKTIVE TOOL-EMPFEHLUNGEN:\n`;
+    
+    if (!analytics.hasTrainingData) {
+      prompt += `• USER hat noch KEINE Trainingsdaten → Vorschlagen: Erstes Workout erfassen oder Trainingsplan erstellen\n`;
+    } else if (analytics.hasTrainingData) {
+      prompt += `• USER hat Trainingsdaten → Kann intelligente Trainingspläne vorschlagen\n`;
+    }
+    
+    if (!analytics.hasNutritionData) {
+      prompt += `• USER hat wenig Ernährungsdaten → Vorschlagen: Mahlzeiten tracken für bessere Beratung\n`;
+    }
+    
+    // Check for RAG opportunities
+    if (global.lastRAGResults && global.lastRAGResults.results.length > 0) {
+      prompt += `• Verfügbares Fachwissen aus letzter Suche → Kann wissenschaftlich fundierte Empfehlungen geben\n`;
+    }
+    
+    prompt += `\n`;
   }
 
   // Goals Section
