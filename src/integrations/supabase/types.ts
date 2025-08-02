@@ -3595,6 +3595,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      backfill_daily_summaries_v2: {
+        Args: { p_user_id: string; p_days?: number }
+        Returns: {
+          date_processed: string
+          request_id: number
+          status: string
+        }[]
+      }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
