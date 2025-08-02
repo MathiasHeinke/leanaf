@@ -114,13 +114,31 @@ function detectToolIntent(text: string): ToolContext {
 // TOOL HANDLERS - Inline implementations
 // ============================================================================
 
-async function handleTrainingsplan(conv: any[], userId: string, supabase: any) {
+async function handleTrainingsplan(conv: any[], userId: string, supabase: any, coachPersonality?: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  // Map frontend coach IDs to coach names for persona lookup
+  const coachMapping: Record<string, string> = {
+    'markus': 'Markus Rühl',
+    'sascha': 'Sascha', 
+    'lucy': 'Lucy',
+    'kai': 'Kai',
+    'dr_vita': 'Dr. Vita Femina'
+  };
+  
+  const coachName = (coachPersonality && coachMapping[coachPersonality]) 
+    ? coachMapping[coachPersonality] 
+    : 'Sascha'; // Default fallback
+    
+  console.log(`🎯 Training plan requested by coach: ${coachName} (${coachPersonality || 'default'})`);
   
   try {
     // Extrahiere Trainingsplan-Informationen aus der Nachricht
     const planName = extractPlanName(lastUserMsg);
     const goals = extractGoals(lastUserMsg);
+    
+    // Add coach information to plan description
+    const coachInfo = coachName !== 'Sascha' ? `Coach: ${coachName}` : '';
     
     // Erstelle Trainingsplan-Entry in der DB
     const { data: planData, error } = await supabase.from('workout_plans').insert({
@@ -129,8 +147,9 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any) {
       category: goals[0] ?? 'Allgemein',  // Pflichtfeld „category"
       description: [
         `Automatisch erstellt am ${new Date().toLocaleDateString('de-DE')}`,
+        coachInfo,
         goals.length ? `Ziel(e): ${goals.join(', ')}` : ''
-      ].join('\n').trim(),
+      ].filter(Boolean).join('\n').trim(),
       exercises: [],                   // leeres JSON = Draft
       estimated_duration_minutes: null,
       is_public: false
@@ -1394,7 +1413,10 @@ serve(async (req) => {
         auto_detected: detectedIntent.confidence > 0.6 
       });
       
-      const toolResult = await handlers[activeTool](conversationHistory, userId, supabase);
+      // Pass coach personality to tool handlers that support it
+      const toolResult = activeTool === 'trainingsplan' 
+        ? await handlers[activeTool](conversationHistory, userId, supabase, coachPersonality)
+        : await handlers[activeTool](conversationHistory, userId, supabase);
       if (toolResult) {
         console.log(`✅ [${requestId}] Tool handler returned result, bypassing OpenAI`);
         

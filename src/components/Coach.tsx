@@ -3,7 +3,10 @@ import { useParams } from 'react-router-dom';
 import { CoachSelection } from '@/components/CoachSelection';
 import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
 
-// Import coach profiles from CoachSelection to find the coach by ID
+// Import coach personas and map to frontend profiles
+import coachPersonasData from '@/data/coach-personas.json';
+
+// Map coach personas to frontend coach profiles
 const coachProfiles = [
   {
     id: 'lucy',
@@ -13,7 +16,8 @@ const coachProfiles = [
     imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
     color: 'green',
     accentColor: 'from-green-500 to-green-600',
-    description: 'Unterstützt dich bei einer ausgewogenen Ernährung ohne Verzicht. Spezialistin für Stoffwechsel und metabolische Flexibilität.'
+    description: 'Unterstützt dich bei einer ausgewogenen Ernährung ohne Verzicht. Spezialistin für Stoffwechsel und metabolische Flexibilität.',
+    persona: null // No persona mapping for Lucy yet
   },
   {
     id: 'sascha',
@@ -23,7 +27,8 @@ const coachProfiles = [
     imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
     color: 'blue',
     accentColor: 'from-blue-500 to-blue-600',
-    description: 'Dein Experte für effektives Krafttraining und Leistungssteigerung.'
+    description: 'Dein Experte für effektives Krafttraining und Leistungssteigerung.',
+    persona: coachPersonasData.find(p => p.id === 'persona_sascha')
   },
   {
     id: 'kai',
@@ -33,7 +38,8 @@ const coachProfiles = [
     imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
-    description: 'Hilft dir dabei, mentale Stärke aufzubauen und deine Regeneration zu optimieren.'
+    description: 'Hilft dir dabei, mentale Stärke aufzubauen und deine Regeneration zu optimieren.',
+    persona: null // No persona mapping for Kai yet
   },
   {
     id: 'markus',
@@ -43,7 +49,8 @@ const coachProfiles = [
     imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
     color: 'red',
     accentColor: 'from-red-500 to-red-600',
-    description: 'Legendärer Bodybuilder und Transformations-Experte.'
+    description: 'Legendärer Bodybuilder und Transformations-Experte.',
+    persona: coachPersonasData.find(p => p.id === 'persona_ruhl')
   },
   {
     id: 'dr-vita',
@@ -53,7 +60,8 @@ const coachProfiles = [
     imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
-    description: 'Expertin für weibliche Gesundheit und hormonelle Balance.'
+    description: 'Expertin für weibliche Gesundheit und hormonelle Balance.',
+    persona: null // No persona mapping for Dr. Vita yet
   }
 ];
 
@@ -69,7 +77,7 @@ const Coach = () => {
     return (
       <UnifiedCoachChat
         mode="specialized"
-        coach={coach}
+        coach={{...coach, personaId: coach.persona?.id}}
         useFullscreenLayout={true}
       />
     );

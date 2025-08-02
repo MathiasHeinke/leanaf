@@ -645,8 +645,40 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
       }
     }
     
+    // Dynamic coach detection from conversation context
+    const extractCoachFromContext = (conversationData: any): string => {
+      // 1. Priority: Check for coach personality in conversation data
+      const coachPersonality = conversationData?.coachPersonality || conversationData?.coachId;
+      
+      // Map frontend coach IDs to coach names for persona lookup
+      const coachMapping: Record<string, string> = {
+        'markus': 'Markus Rühl',
+        'sascha': 'Sascha', 
+        'lucy': 'Lucy',
+        'kai': 'Kai',
+        'dr_vita': 'Dr. Vita Femina'
+      };
+      
+      if (coachPersonality && coachMapping[coachPersonality]) {
+        console.log(`🎯 Coach detected from context: ${coachMapping[coachPersonality]} (${coachPersonality})`);
+        return coachMapping[coachPersonality];
+      }
+      
+      // 2. Fallback: Try to extract from user message
+      const lowerText = lastUserMsg.toLowerCase();
+      if (lowerText.includes('markus') || lowerText.includes('rühl') || lowerText.includes('ruhl')) return 'Markus Rühl';
+      if (lowerText.includes('sascha')) return 'Sascha';
+      if (lowerText.includes('lucy')) return 'Lucy';
+      if (lowerText.includes('kai')) return 'Kai';
+      if (lowerText.includes('dr vita') || lowerText.includes('vita femina')) return 'Dr. Vita Femina';
+      
+      // 3. Default fallback (could be made smarter based on user profile)
+      console.log(`⚠️ No coach context found, using Sascha as default`);
+      return 'Sascha';
+    };
+    
     // Use coach persona system for intelligent program selection
-    const coachName = "Markus Rühl"; // This would come from the route/context in real implementation
+    const coachName = extractCoachFromContext(conv);
     const selectedProgramId = selectProgramForUser(userProfile, coachName);
     const recommendedProgram = getCoachPrograms().find(p => p.id === selectedProgramId) || getCoachPrograms()[0];
     

@@ -83,6 +83,8 @@ export interface CoachProfile {
   color?: string;
   accentColor?: string;
   description?: string;
+  persona?: any; // Coach persona data from coach-personas.json
+  personaId?: string; // Coach persona ID for backend routing
 }
 
 export interface UnifiedCoachChatProps {
