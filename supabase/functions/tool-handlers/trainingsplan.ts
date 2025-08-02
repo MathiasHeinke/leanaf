@@ -2,6 +2,290 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://esm.sh/zod@latest';
 import { jsonrepair } from 'https://esm.sh/jsonrepair@3.13.0';
 
+// Research data types and manager for evidence-based training
+interface ResearchNode {
+  id: string;
+  tags: string[];
+  citations?: number[];
+}
+
+interface Principle extends ResearchNode {
+  name: string;
+  param: string;
+  recommended: {
+    min?: number;
+    max?: number;
+    typical?: string;
+    unit?: string;
+  };
+  description: string;
+}
+
+interface CoachProgram extends ResearchNode {
+  coach: string;
+  alias?: string;
+  corePrinciples: string[];
+  recommendations: Record<string, string | number>;
+  splitExample?: string;
+  notes?: string;
+}
+
+interface GoalGuideline extends ResearchNode {
+  goal: "hypertrophy" | "strength" | "fat_loss";
+  recommended: Record<string, string | number>;
+  suitablePrograms: string[];
+  description?: string;
+}
+
+interface SexSpecific extends ResearchNode {
+  sex: "male" | "female";
+  adjustments: Record<string, string | number>;
+  description: string;
+}
+
+// Research data - embedded for edge function use
+const RESEARCH_DATA: (Principle | CoachProgram | GoalGuideline | SexSpecific)[] = [
+  {
+    "id": "pr_01",
+    "name": "Training Volume",
+    "param": "sets_per_muscle_per_week",
+    "recommended": { "min": 10, "max": 20, "unit": "sets" },
+    "description": "Dosis-Wirkungs-Beziehung: 10-20 Arbeitssätze liefern die höchsten Hypertrophie-Zuwächse; 1-4 Sätze ≈64 %, 5-9 Sätze ≈84 %.",
+    "citations": [1],
+    "tags": ["hypertrophy","universal"]
+  },
+  {
+    "id": "pr_02",
+    "name": "Training Frequency",
+    "param": "sessions_per_muscle_per_week",
+    "recommended": { "typical": "2-3", "unit": "sessions" },
+    "description": "2-3 Stimulationen pro Muskel/Woche führen zu größerer MPS & Muskelaufbau als 1×.",
+    "citations": [3,4],
+    "tags": ["hypertrophy","universal"]
+  },
+  {
+    "id": "pr_03",
+    "name": "Training Intensity",
+    "param": "reps_in_reserve",
+    "recommended": { "typical": "2-3", "unit": "RIR" },
+    "description": "Muskelversagen ist nicht zwingend; 2-3 RIR bringt vergleichbare Ergebnisse bei geringerem Stress.",
+    "citations": [1,2],
+    "tags": ["hypertrophy","injury-prevention"]
+  },
+  {
+    "id": "cp_nippard",
+    "coach": "Jeff Nippard",
+    "alias": "Evidence-Based Training",
+    "corePrinciples": ["Training Volume", "Training Frequency", "Training Intensity"],
+    "recommendations": { "frequency": "2-3", "volume": 20, "intensity": "2-3 RIR" },
+    "notes": "Übungsauswahl nach ROM, Wohlbefinden, Progressionsfähigkeit.",
+    "citations": [13,14],
+    "tags": ["coach","evidence-based"]
+  },
+  {
+    "id": "cp_mentzer",
+    "coach": "Mike Mentzer",
+    "alias": "Heavy Duty (HIT)",
+    "corePrinciples": ["Training Intensity"],
+    "recommendations": { "frequency": "0.25-1×", "volume": 2, "intensity": "beyond failure" },
+    "notes": "Forced/negative reps, extreme Intensität, lange Regeneration.",
+    "citations": [15,16],
+    "tags": ["coach","hit","time-efficient"]
+  },
+  {
+    "id": "cp_israetel",
+    "coach": "Mike Israetel",
+    "alias": "Renaissance Periodization",
+    "corePrinciples": ["Volume Landmarks"],
+    "recommendations": {
+      "frequency": "2-4",
+      "volume_range": "10-20",
+      "intensity": "0-3 RIR",
+      "landmarks": ["MV","MEV","MAV","MRV"]
+    },
+    "citations": [22,23],
+    "tags": ["coach","periodization"]
+  },
+  {
+    "id": "cp_athleanx",
+    "coach": "Jeff Cavaliere",
+    "alias": "Athlean-X",
+    "corePrinciples": ["Functional Movement", "Training Intensity"],
+    "recommendations": { "frequency": "2-3", "volume": 12, "intensity": "2-3 RIR", "focus": "compound + functional" },
+    "notes": "Athletic performance focus with injury prevention emphasis.",
+    "citations": [24],
+    "tags": ["coach","functional","athletic"]
+  },
+  {
+    "id": "cp_meadows",
+    "coach": "John Meadows",
+    "alias": "Mountain Dog",
+    "corePrinciples": ["Phase Potentiation"],
+    "recommendations": { "frequency": "2-3", "volume": 16, "intensity": "varies per phase" },
+    "notes": "Pre-Pump, Explosive, Pump, Stretch innerhalb einer Einheit.",
+    "citations": [20,21],
+    "tags": ["coach","pump","advanced"]
+  },
+  {
+    "id": "goal_hypertrophy_nat",
+    "goal": "hypertrophy",
+    "recommended": {
+      "frequency": "2-3",
+      "volume": "15-20",
+      "intensity": "2-3 RIR"
+    },
+    "suitablePrograms": ["cp_nippard","cp_israetel"],
+    "description": "Natural-freundliche Ansätze mit höherer Frequenz & moderatem Volumen.",
+    "citations": [24,25],
+    "tags": ["goal","natural"]
+  },
+  {
+    "id": "goal_strength",
+    "goal": "strength",
+    "recommended": {
+      "frequency_mainlifts": "3-4",
+      "volume": "12-16",
+      "intensity": "85-95 % 1RM",
+      "reps": "1-5"
+    },
+    "suitablePrograms": ["cp_mentzer","cp_israetel"],
+    "description": "Niedrigeres Volumen, hohe Intensität; ideal für Fortgeschrittene.",
+    "citations": [30,31],
+    "tags": ["goal"]
+  },
+  {
+    "id": "goal_fat_loss",
+    "goal": "fat_loss",
+    "recommended": {
+      "strength_sessions": "3-4",
+      "cardio_sessions": "2",
+      "method_female40plus": "4-2-1"
+    },
+    "suitablePrograms": ["cp_nippard","cp_israetel","cp_athleanx"],
+    "description": "Kombi Kraft + Cardio; 4-2-1-Ansatz speziell für Frauen 40+.",
+    "citations": [26,27,28,29],
+    "tags": ["goal","fat-loss"]
+  },
+  {
+    "id": "sx_female",
+    "sex": "female",
+    "adjustments": {
+      "frequency": "higher (2-3×)",
+      "rest_between_sets": "1-2 min",
+      "rep_range_upper": 20,
+      "cycle_periodization": "strength 1st half, endurance 2nd half"
+    },
+    "description": "Schnellere Regeneration, mehr Typ-I-Fasern, hormonelle Unterschiede.",
+    "citations": [5,6,7,8,10,11],
+    "tags": ["sex-diff","female"]
+  },
+  {
+    "id": "sx_male",
+    "sex": "male",
+    "adjustments": {
+      "volume_per_session": "higher",
+      "rest_between_sets": "2-3 min",
+      "focus": "heavy compound lifts"
+    },
+    "description": "Mehr Typ-II-Fasern, höheres Testosteron – größere Lasten, längere Pausen sinnvoll.",
+    "citations": [8,12],
+    "tags": ["sex-diff","male"]
+  }
+];
+
+// Research data utility functions
+function getCoachPrograms(): CoachProgram[] {
+  return RESEARCH_DATA.filter((item): item is CoachProgram => 'coach' in item);
+}
+
+function getPrinciplesForGoal(goal: string): Principle[] {
+  return RESEARCH_DATA.filter((item): item is Principle => 
+    'param' in item && (item.tags.includes(goal) || item.tags.includes('universal'))
+  );
+}
+
+function getSexSpecificAdjustments(sex: 'male' | 'female'): SexSpecific | undefined {
+  return RESEARCH_DATA.filter((item): item is SexSpecific => 
+    'sex' in item
+  ).find(s => s.sex === sex);
+}
+
+function getSuitablePrograms(userProfile: { goal?: string; experience?: string }): CoachProgram[] {
+  const { goal, experience } = userProfile;
+  let suitablePrograms = getCoachPrograms();
+
+  // Filter by goal if specified
+  if (goal) {
+    const goalGuideline = RESEARCH_DATA.filter((item): item is GoalGuideline => 
+      'goal' in item && item.goal === goal
+    )[0];
+    if (goalGuideline) {
+      suitablePrograms = suitablePrograms.filter(program =>
+        goalGuideline.suitablePrograms.includes(program.id)
+      );
+    }
+  }
+
+  // Filter by experience level
+  if (experience === 'beginner') {
+    suitablePrograms = suitablePrograms.filter(program =>
+      !program.tags.includes('advanced') && !program.tags.includes('hit')
+    );
+  }
+
+  return suitablePrograms;
+}
+
+function formatResearchContext(userProfile: { goal?: string; sex?: 'male' | 'female'; experience?: string }): string {
+  const { goal, sex } = userProfile;
+  
+  let context = `# Research-Based Training Guidelines\n\n`;
+  
+  // Add principles
+  if (goal) {
+    const principles = getPrinciplesForGoal(goal);
+    if (principles.length > 0) {
+      context += `## Core Training Principles for ${goal}:\n`;
+      principles.forEach(principle => {
+        context += `- **${principle.name}**: ${principle.description}\n`;
+        if (principle.recommended.typical) {
+          context += `  Empfehlung: ${principle.recommended.typical} ${principle.recommended.unit || ''}\n`;
+        }
+      });
+      context += `\n`;
+    }
+  }
+
+  // Add sex-specific adjustments
+  if (sex) {
+    const sexAdjustments = getSexSpecificAdjustments(sex);
+    if (sexAdjustments) {
+      context += `## Geschlechtsspezifische Anpassungen (${sex}):\n`;
+      context += `${sexAdjustments.description}\n`;
+      Object.entries(sexAdjustments.adjustments).forEach(([key, value]) => {
+        context += `- ${key}: ${value}\n`;
+      });
+      context += `\n`;
+    }
+  }
+
+  // Add suitable coach programs
+  const suitablePrograms = getSuitablePrograms(userProfile);
+  if (suitablePrograms.length > 0) {
+    context += `## Empfohlene Trainingsmethoden:\n`;
+    suitablePrograms.forEach(program => {
+      context += `### ${program.coach} - ${program.alias || program.coach}\n`;
+      context += `Kernprinzipien: ${program.corePrinciples.join(', ')}\n`;
+      if (program.notes) {
+        context += `Besonderheiten: ${program.notes}\n`;
+      }
+      context += `\n`;
+    });
+  }
+
+  return context;
+}
+
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -66,6 +350,39 @@ function safeJsonParse(jsonString: string) {
   }
 }
 
+function extractUserProfile(message: string, conv: any[]): { goal?: string; sex?: 'male' | 'female'; experience?: string } {
+  const profile: { goal?: string; sex?: 'male' | 'female'; experience?: string } = {};
+  
+  // Extract goal from current message
+  const goals = extractGoals(message);
+  if (goals.includes('Muskelaufbau')) {
+    profile.goal = 'hypertrophy';
+  } else if (goals.includes('Kraftsteigerung')) {
+    profile.goal = 'strength';
+  } else if (goals.includes('Gewichtsverlust')) {
+    profile.goal = 'fat_loss';
+  }
+  
+  // Try to extract sex from conversation history or current message
+  const fullConversation = conv.map(c => c.content).join(' ').toLowerCase();
+  if (fullConversation.includes('frau') || fullConversation.includes('weiblich') || fullConversation.includes('female')) {
+    profile.sex = 'female';
+  } else if (fullConversation.includes('mann') || fullConversation.includes('männlich') || fullConversation.includes('male')) {
+    profile.sex = 'male';
+  }
+  
+  // Extract experience level
+  if (fullConversation.includes('anfänger') || fullConversation.includes('beginner') || fullConversation.includes('neu')) {
+    profile.experience = 'beginner';
+  } else if (fullConversation.includes('fortgeschritten') || fullConversation.includes('advanced') || fullConversation.includes('profi')) {
+    profile.experience = 'advanced';
+  } else {
+    profile.experience = 'intermediate';
+  }
+  
+  return profile;
+}
+
 export default async function handleTrainingsplan(conv: any[], userId: string) {
   const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
   
@@ -78,20 +395,39 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
   }
   
   try {
+    // Extract user profile and research context
+    const userProfile = extractUserProfile(lastUserMsg, conv);
+    const researchContext = formatResearchContext(userProfile);
+    console.log('User profile:', userProfile);
+    console.log('Research context generated');
+    
     // Extrahiere Trainingsplan-Informationen aus der Nachricht
     const planName = extractPlanName(lastUserMsg);
     const goals = extractGoals(lastUserMsg);
     
-    // Erstelle Trainingsplan-Entry in der DB
+    // Get suitable coach methodology
+    const suitablePrograms = getSuitablePrograms(userProfile);
+    const recommendedProgram = suitablePrograms[0] || getCoachPrograms()[0];
+    
+    // Erstelle Trainingsplan-Entry in der DB mit research-based data
     const { data: planData, error } = await supabase.from('workout_plans').insert({
-      created_by: userId,               // <- Spaltenname in DB
+      created_by: userId,
       name: planName,
-      category: goals[0] ?? 'Allgemein',  // Pflichtfeld „category"
+      category: goals[0] ?? 'Allgemein',
       description: [
-        `Automatisch erstellt am ${new Date().toLocaleDateString('de-DE')}`,
-        goals.length ? `Ziel(e): ${goals.join(', ')}` : ''
+        `Evidenzbasierter Trainingsplan erstellt am ${new Date().toLocaleDateString('de-DE')}`,
+        goals.length ? `Ziel(e): ${goals.join(', ')}` : '',
+        `Basiert auf: ${recommendedProgram?.coach} (${recommendedProgram?.alias}) Methodik`,
+        userProfile.sex ? `Geschlechtsspezifische Anpassungen: ${userProfile.sex}` : ''
       ].join('\n').trim(),
-      exercises: [],                   // leeres JSON = Draft
+      exercises: {
+        researchBased: true,
+        userProfile: userProfile,
+        appliedPrinciples: getPrinciplesForGoal(userProfile.goal || 'hypertrophy').map(p => p.name),
+        coachMethodology: recommendedProgram?.coach || 'Evidence-Based',
+        sexSpecificAdjustments: userProfile.sex ? getSexSpecificAdjustments(userProfile.sex) : null,
+        researchContext: researchContext
+      },
       estimated_duration_minutes: null,
       is_public: false
     }).select().single();
@@ -100,7 +436,7 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
       console.error('[trainingsplan]', error);
       return {
         role: 'assistant',
-        content: 'Uups – der Plan wurde nicht gespeichert. Ich prüfe gerade die Datenbank-Felder und versuche es gleich nochmal!',
+        content: 'Uups – der evidenzbasierte Plan wurde nicht gespeichert. Ich prüfe gerade die Datenbank-Felder und versuche es gleich nochmal!',
       };
     }
     
@@ -110,7 +446,7 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
       name: planData.name,
       description: planData.description,
       goals,
-      html: generatePlanHtml(planData, goals),
+      html: generatePlanHtml(planData, goals, recommendedProgram),
       ts: Date.now(),
       actions: [
         {
@@ -150,7 +486,7 @@ export default async function handleTrainingsplan(conv: any[], userId: string) {
       payload: {
         id: crypto.randomUUID(),
         name: 'Fehler beim Erstellen',
-        description: 'Ein Fehler ist aufgetreten beim Erstellen des Trainingsplans.',
+        description: 'Ein Fehler ist aufgetreten beim Erstellen des evidenzbasierten Trainingsplans.',
         goals: ['Allgemein'],
         html: generateErrorHtml(error),
         ts: Date.now(),
@@ -177,7 +513,7 @@ function extractPlanName(message: string): string {
   if (matches && matches[1]) {
     return matches[1].trim().slice(0, 50);
   }
-  return `Trainingsplan ${new Date().toLocaleDateString('de-DE')}`;
+  return `Evidenzbasierter Trainingsplan ${new Date().toLocaleDateString('de-DE')}`;
 }
 
 function extractGoals(message: string): string[] {
@@ -203,20 +539,24 @@ function extractGoals(message: string): string[] {
   return goals.length > 0 ? goals : ['Allgemeine Fitness'];
 }
 
-function generatePlanHtml(planData: any, goals: string[]): string {
+function generatePlanHtml(planData: any, goals: string[], recommendedProgram?: CoachProgram): string {
   const sanitizedName = planData.name?.replace(/[<>]/g, '') || 'Unbenannter Plan';
   const sanitizedDescription = planData.description?.replace(/[<>]/g, '') || '';
   
   return `<div class="p-4 bg-gradient-to-r from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10 rounded-lg border border-primary/20 dark:border-primary/30">
-    <h3 class="text-lg font-semibold text-primary dark:text-primary mb-2">✅ Trainingsplan erstellt</h3>
+    <h3 class="text-lg font-semibold text-primary dark:text-primary mb-2">✅ Evidenzbasierter Trainingsplan erstellt</h3>
     <p class="text-foreground dark:text-foreground mb-2"><strong>${sanitizedName}</strong></p>
     <p class="text-sm text-muted-foreground">${sanitizedDescription}</p>
     <div class="mt-3 text-xs text-muted-foreground">
       Ziele: ${Array.isArray(goals) ? goals.join(', ') : 'Allgemeine Fitness'}
     </div>
+    ${recommendedProgram ? `<div class="mt-2 text-xs text-muted-foreground">
+      Basiert auf: ${recommendedProgram.coach} (${recommendedProgram.alias}) Methodik
+    </div>` : ''}
     <div class="mt-4 p-3 bg-background/50 rounded-md">
       <p class="text-xs text-muted-foreground">Plan-ID: ${planData.id}</p>
       <p class="text-xs text-muted-foreground">Erstellt: ${new Date().toLocaleDateString('de-DE')}</p>
+      <p class="text-xs text-green-600">🔬 Research-based methodology</p>
     </div>
   </div>`;
 }
@@ -224,7 +564,7 @@ function generatePlanHtml(planData: any, goals: string[]): string {
 function generateErrorHtml(error: any): string {
   return `<div class="p-4 bg-gradient-to-r from-destructive/10 to-destructive/5 dark:from-destructive/20 dark:to-destructive/10 rounded-lg border border-destructive/20 dark:border-destructive/30">
     <h3 class="text-lg font-semibold text-destructive dark:text-destructive mb-2">❌ Fehler aufgetreten</h3>
-    <p class="text-sm text-muted-foreground">Der Trainingsplan konnte nicht erstellt werden.</p>
+    <p class="text-sm text-muted-foreground">Der evidenzbasierte Trainingsplan konnte nicht erstellt werden.</p>
     <p class="text-xs text-muted-foreground mt-2">Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.</p>
   </div>`;
 }

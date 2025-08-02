@@ -1,0 +1,201 @@
+[
+  {
+    "id": "pr_01",
+    "name": "Training Volume",
+    "param": "sets_per_muscle_per_week",
+    "recommended": { "min": 10, "max": 20, "unit": "sets" },
+    "description": "Dosis-Wirkungs-Beziehung: 10-20 Arbeitssätze liefern die höchsten Hypertrophie-Zuwächse; 1-4 Sätze ≈64 %, 5-9 Sätze ≈84 %.",
+    "citations": [1],
+    "tags": ["hypertrophy","universal"]
+  },
+  {
+    "id": "pr_02",
+    "name": "Training Frequency",
+    "param": "sessions_per_muscle_per_week",
+    "recommended": { "typical": "2-3", "unit": "sessions" },
+    "description": "2-3 Stimulationen pro Muskel/Woche führen zu größerer MPS & Muskelaufbau als 1×.",
+    "citations": [3,4],
+    "tags": ["hypertrophy","universal"]
+  },
+  {
+    "id": "pr_03",
+    "name": "Training Intensity",
+    "param": "reps_in_reserve",
+    "recommended": { "typical": "2-3", "unit": "RIR" },
+    "description": "Muskelversagen ist nicht zwingend; 2-3 RIR bringt vergleichbare Ergebnisse bei geringerem Stress.",
+    "citations": [1,2],
+    "tags": ["hypertrophy","injury-prevention"]
+  },
+  {
+    "id": "pr_04",
+    "name": "Progressive Overload",
+    "param": "weekly_progression",
+    "recommended": { "typical": "2-5", "unit": "% increase" },
+    "description": "Kontinuierliche Steigerung von Gewicht, Wiederholungen oder Volumen zur Anpassung.",
+    "citations": [9],
+    "tags": ["hypertrophy","strength","universal"]
+  },
+  {
+    "id": "pr_05",
+    "name": "Rest Between Sets",
+    "param": "rest_duration_seconds",
+    "recommended": { "min": 90, "max": 180, "unit": "seconds" },
+    "description": "Adequate rest ensures better performance and muscle growth stimulus.",
+    "citations": [2],
+    "tags": ["hypertrophy","strength","universal"]
+  },
+  {
+    "id": "sx_female",
+    "sex": "female",
+    "adjustments": {
+      "frequency": "higher (2-3×)",
+      "rest_between_sets": "1-2 min",
+      "rep_range_upper": 20,
+      "rep_range_lowerbody": "6-12",
+      "cycle_periodization": "strength 1st half, endurance 2nd half"
+    },
+    "description": "Schnellere Regeneration, mehr Typ-I-Fasern, hormonelle Unterschiede.",
+    "citations": [5,6,7,8,10,11],
+    "tags": ["sex-diff","female"]
+  },
+  {
+    "id": "sx_male",
+    "sex": "male",
+    "adjustments": {
+      "volume_per_session": "higher",
+      "rest_between_sets": "2-3 min",
+      "focus": "heavy compound lifts"
+    },
+    "description": "Mehr Typ-II-Fasern, höheres Testosteron – größere Lasten, längere Pausen sinnvoll.",
+    "citations": [8,12],
+    "tags": ["sex-diff","male"]
+  },
+  {
+    "id": "cp_nippard",
+    "coach": "Jeff Nippard",
+    "alias": "Evidence-Based Training",
+    "corePrinciples": ["Training Volume", "Training Frequency", "Training Intensity"],
+    "recommendations": { "frequency": "2-3", "volume": 20, "intensity": "2-3 RIR" },
+    "notes": "Übungsauswahl nach ROM, Wohlbefinden, Progressionsfähigkeit.",
+    "citations": [13,14],
+    "tags": ["coach","evidence-based"]
+  },
+  {
+    "id": "cp_mentzer",
+    "coach": "Mike Mentzer",
+    "alias": "Heavy Duty (HIT)",
+    "corePrinciples": ["Training Intensity"],
+    "recommendations": { "frequency": "0.25-1×", "volume": 2, "intensity": "beyond failure" },
+    "notes": "Forced/negative reps, extreme Intensität, lange Regeneration.",
+    "citations": [15,16],
+    "tags": ["coach","hit","time-efficient"]
+  },
+  {
+    "id": "cp_yates",
+    "coach": "Dorian Yates",
+    "alias": "Blood & Guts",
+    "corePrinciples": ["Training Intensity"],
+    "recommendations": { "frequency": "≈0.2×", "volume": 4, "intensity": "to failure" },
+    "splitExample": "4-Day Split: Delts/Tris, Back/Rear Delts, Chest/Bis, Legs",
+    "citations": [17,18,19],
+    "tags": ["coach","hit"]
+  },
+  {
+    "id": "cp_meadows",
+    "coach": "John Meadows",
+    "alias": "Mountain Dog",
+    "corePrinciples": ["Phase Potentiation"],
+    "recommendations": { "frequency": "2-3", "volume": 16, "intensity": "varies per phase" },
+    "notes": "Pre-Pump, Explosive, Pump, Stretch innerhalb einer Einheit.",
+    "citations": [20,21],
+    "tags": ["coach","pump","advanced"]
+  },
+  {
+    "id": "cp_israetel",
+    "coach": "Mike Israetel",
+    "alias": "Renaissance Periodization",
+    "corePrinciples": ["Volume Landmarks"],
+    "recommendations": {
+      "frequency": "2-4",
+      "volume_range": "10-20",
+      "intensity": "0-3 RIR",
+      "landmarks": ["MV","MEV","MAV","MRV"]
+    },
+    "citations": [22,23],
+    "tags": ["coach","periodization"]
+  },
+  {
+    "id": "cp_athleanx",
+    "coach": "Jeff Cavaliere",
+    "alias": "Athlean-X",
+    "corePrinciples": ["Functional Movement", "Training Intensity"],
+    "recommendations": { "frequency": "2-3", "volume": 12, "intensity": "2-3 RIR", "focus": "compound + functional" },
+    "notes": "Athletic performance focus with injury prevention emphasis.",
+    "citations": [24],
+    "tags": ["coach","functional","athletic"]
+  },
+  {
+    "id": "cp_cbum",
+    "coach": "Chris Bumstead",
+    "alias": "Classic Physique",
+    "corePrinciples": ["Training Volume", "Mind-Muscle Connection"],
+    "recommendations": { "frequency": "2", "volume": 18, "intensity": "1-2 RIR", "focus": "aesthetics" },
+    "notes": "Emphasis on symmetry, proportion, and controlled movements.",
+    "citations": [25],
+    "tags": ["coach","aesthetics","classic"]
+  },
+  {
+    "id": "goal_hypertrophy_nat",
+    "goal": "hypertrophy",
+    "recommended": {
+      "frequency": "2-3",
+      "volume": "15-20",
+      "intensity": "2-3 RIR"
+    },
+    "suitablePrograms": ["cp_nippard","cp_meadows","cp_israetel","cp_cbum"],
+    "description": "Natural-freundliche Ansätze mit höherer Frequenz & moderatem Volumen.",
+    "citations": [24,25],
+    "tags": ["goal","natural"]
+  },
+  {
+    "id": "goal_strength",
+    "goal": "strength",
+    "recommended": {
+      "frequency_mainlifts": "3-4",
+      "volume": "12-16",
+      "intensity": "85-95 % 1RM",
+      "reps": "1-5"
+    },
+    "suitablePrograms": ["cp_mentzer","cp_yates"],
+    "description": "Niedrigeres Volumen, hohe Intensität; ideal für Fortgeschrittene.",
+    "citations": [30,31],
+    "tags": ["goal"]
+  },
+  {
+    "id": "goal_fat_loss",
+    "goal": "fat_loss",
+    "recommended": {
+      "strength_sessions": "3-4",
+      "cardio_sessions": "2",
+      "method_female40plus": "4-2-1"
+    },
+    "suitablePrograms": ["cp_nippard","cp_israetel","cp_athleanx"],
+    "description": "Kombi Kraft + Cardio; 4-2-1-Ansatz speziell für Frauen 40+.",
+    "citations": [26,27,28,29],
+    "tags": ["goal","fat-loss"]
+  },
+  {
+    "id": "goal_athletic",
+    "goal": "strength",
+    "recommended": {
+      "frequency": "3-4",
+      "volume": "12-15",
+      "intensity": "70-85 % 1RM",
+      "focus": "compound movements"
+    },
+    "suitablePrograms": ["cp_athleanx","cp_nippard"],
+    "description": "Performance-orientiert mit funktionellen Bewegungen.",
+    "citations": [32],
+    "tags": ["goal","athletic","performance"]
+  }
+]
