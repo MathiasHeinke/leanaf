@@ -23,6 +23,10 @@ serve(async (req) => {
   try {
     console.log("🚀 Starting daily summaries generation...");
 
+    // Check for force header
+    const force = req.headers.get("x-force") === "true";
+    console.log(`🔧 Force mode: ${force}`);
+
     // Get all missing summaries from the last 30 days
     const { data: missingDays, error: fetchError } = await supabase
       .from("v_missing_summaries")
@@ -41,6 +45,27 @@ serve(async (req) => {
     for (const row of missingDays ?? []) {
       try {
         console.log(`⏳ Processing ${row.date} for user ${row.user_id}...`);
+
+        // Check if summary already exists and has complete data (unless force mode)
+        if (!force) {
+          const { data: existing, error: existingError } = await supabase
+            .from("daily_summaries")
+            .select("summary_struct_json")
+            .eq("user_id", row.user_id)
+            .eq("date", row.date)
+            .maybeSingle();
+
+          if (existingError) {
+            console.error(`❌ Error checking existing summary for ${row.date}:`, existingError);
+            errors++;
+            continue;
+          }
+
+          if (existing?.summary_struct_json) {
+            console.log(`🔄 Skip – already complete: ${row.date}`);
+            continue;
+          }
+        }
 
         // Get complete day context using our new RPC function
         const { data: dayContext, error: contextError } = await supabase
