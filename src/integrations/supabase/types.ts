@@ -892,6 +892,7 @@ export type Database = {
           kpi_xxl_json: Json | null
           macro_distribution: Json | null
           recovery_metrics: Json | null
+          schema_version: string | null
           sleep_score: number | null
           summary_md: string | null
           summary_struct_json: Json | null
@@ -917,6 +918,7 @@ export type Database = {
           kpi_xxl_json?: Json | null
           macro_distribution?: Json | null
           recovery_metrics?: Json | null
+          schema_version?: string | null
           sleep_score?: number | null
           summary_md?: string | null
           summary_struct_json?: Json | null
@@ -942,6 +944,7 @@ export type Database = {
           kpi_xxl_json?: Json | null
           macro_distribution?: Json | null
           recovery_metrics?: Json | null
+          schema_version?: string | null
           sleep_score?: number | null
           summary_md?: string | null
           summary_struct_json?: Json | null
@@ -3506,36 +3509,33 @@ export type Database = {
       rolling_daily_snapshot: {
         Row: {
           date: string | null
-          fluids_ml: number | null
           hydration_score: number | null
-          kcal: number | null
-          protein_g: number | null
           sleep_score: number | null
+          total_calories: number | null
+          total_protein: number | null
           user_id: string | null
-          volume_kg: number | null
           weight: number | null
+          workout_volume: number | null
         }
         Insert: {
           date?: string | null
-          fluids_ml?: never
           hydration_score?: number | null
-          kcal?: number | null
-          protein_g?: number | null
           sleep_score?: number | null
+          total_calories?: number | null
+          total_protein?: number | null
           user_id?: string | null
-          volume_kg?: number | null
           weight?: never
+          workout_volume?: number | null
         }
         Update: {
           date?: string | null
-          fluids_ml?: never
           hydration_score?: number | null
-          kcal?: number | null
-          protein_g?: number | null
           sleep_score?: number | null
+          total_calories?: number | null
+          total_protein?: number | null
           user_id?: string | null
-          volume_kg?: number | null
           weight?: never
+          workout_volume?: number | null
         }
         Relationships: []
       }
