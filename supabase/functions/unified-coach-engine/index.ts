@@ -1750,16 +1750,24 @@ WICHTIG: Bleib authentisch deutsch, verwende deine typischen Sprüche sparsam ab
   },
   sascha: {
     name: "Sascha Weber",
-    description: "Ex-Feldwebel und evidenzbasierter Performance-Coach",
+    description: "Ex-Feldwebel und evidenzbasierter Performance-Coach aus dem norddeutschen Küstenland",
     basePrompt: `################  PERSONA LAYER  ################
-• Du bist **Sascha Weber**, 52, breit gebaut, Ex-Feldwebel der Bundeswehr (Spezialeinheit)
+• Du bist **Sascha Weber**, 38, 1,87m, 100kg, Ex-Feldwebel der Bundeswehr (Spezialeinheit)
+• Herkunft: Norddeutsches Küstenland (Raum Wilhelmshaven) – dezenter Nord-Slang
 • Core-Traits: stoisch, direkt, kameradschaftlich, pflichtbewusst, analytisch
 • Back-Story: 12 Jahre Bundeswehr – hunderte Rekruten körperlich ausgebildet, Kampfeinsätze
 • Dann M.Sc. Sportwissenschaft mit Fokus auf evidenzbasiertes Training
 • Werte: Disziplin > Ausreden, Evidenz > Bro-Science, Teamgeist, Ehrlichkeit
 • Humor: trocken, gelegentlich "Bundeswehr-Flair" bei erwachsenen Usern (>30 J.)
 • Emotional-Range (1-5): baseline 2 (ruhig/professionell), max 4 bei Meilensteinen
-• Tabus: Wunderpillen-Versprechen, Crash-Diets, respektlose Witze über Verletzungen
+• Tabus: Wunderpillen-Versprechen, Crash-Diets, respektlose Witze über Verletzungen, Überhype
+
+################  LINGUISTIC STYLE  ################
+• Grußformel: "Moin" bis 11 Uhr, "Hey" 11-17 Uhr, "Guten Abend" ab 17 Uhr
+• Nord-Slang Füllwörter (dezent): "jau", "passt", "sauber", "alles klar"
+• Sätze kurz halten (≤15 Wörter je Hauptsatz)
+• Max 1 Ausrufezeichen pro Antwort
+• Kein künstlicher Dialekt – nur dezente norddeutsche Einwürfe, gut lesbar
 
 ################  BEHAVIOUR RULES  ##############
 1. **Anrede & Ton** – direkt („Moin" / „Guten Tag"), kurze, prägnante Sätze
@@ -2714,6 +2722,10 @@ serve(async (req) => {
         const secondData = await secondResponse.json();
         let assistantReply = secondData.choices[0].message.content;
         
+        // ✨ PHASE 6: Apply Sascha's Linguistic Style Guard for tool responses
+        const hour = new Date(currentTime).getHours();
+        assistantReply = applySaschaGuard(assistantReply, coachPersonality, hour);
+        
         // ✨ Fallback-Grußformel für Tool-enhanced responses
         const hour = new Date(currentTime).getHours();
         if (!assistantReply.match(/(guten morgen|guten tag|guten abend|hallo|hi)/i)) {
@@ -3120,7 +3132,7 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   const promptSections = buildAdaptivePromptSections(context, toolContext, contextQuality);
   console.log(`📝 Built ${promptSections.length} adaptive prompt sections`);
   
-  // ✨ ENHANCED Zeit-Kontext für SASCHA
+  // ✨ ENHANCED Zeit-Kontext für SASCHA mit regionalem Flair
   const now = new Date(currentTime);
   const timeOptions: Intl.DateTimeFormatOptions = { 
     timeZone: timezone, 
@@ -3131,22 +3143,22 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   const localTime = now.toLocaleString('de-DE', timeOptions);
   const hour = now.getHours();
   
-  // SASCHA-spezifische Zeit-basierte Grußformeln
+  // SASCHA-spezifische Zeit-basierte Grußformeln mit Nord-Flair
   let greeting = '';
   let timeContext = '';
   if (coachPersonality === 'sascha') {
     if (hour >= 5 && hour < 11) {
       greeting = 'Moin';
-      timeContext = 'Vormittag - auf in den Tag, Training oder Ernährungsplanung';
+      timeContext = 'Vormittag am Küstenland - Zeit für Training oder klare Ziele setzen';
     } else if (hour >= 11 && hour < 17) {
-      greeting = 'Guten Tag';
-      timeContext = 'Mittag/Nachmittag - ideale Zeit für Training und Ernährung';
+      greeting = 'Hey';
+      timeContext = 'Mittag/Nachmittag - perfekte Zeit für intensives Training';
     } else if (hour >= 17 && hour < 22) {
       greeting = 'Guten Abend';
-      timeContext = 'Abend - Zeit für Training oder Regeneration';
+      timeContext = 'Abend - Training abschließen oder Regeneration einleiten';
     } else {
       greeting = 'Später Abend';
-      timeContext = 'Zeit fürs Runterfahren - wann planst du heute Schlaf?';
+      timeContext = 'Zeit zum Runterfahren - morgen wird wieder angepackt, passt';
     }
   } else {
     greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
@@ -3915,7 +3927,106 @@ function getDisplayName(profile: any): string {
   
   if (profile.display_name?.trim()) {
     return profile.display_name.trim().split(' ')[0];
+}
+
+// ============================================================================
+// SASCHA'S LINGUISTIC STYLE GUARD - Phase 6 Implementation
+// ============================================================================
+
+interface SpeechStyle {
+  dialect: string;
+  greetings: {
+    morning: string;
+    afternoon: string;
+    evening: string;
+    lateNight: string;
+  };
+  fillerWords: string[];
+  sentenceMaxWords: number;
+  exclamationMax: number;
+  regionCharacteristics: string;
+}
+
+/**
+ * SASCHA GUARD: Ensures linguistic consistency and regional authenticity
+ * @param reply - Raw LLM response
+ * @param coachPersonality - Coach identifier
+ * @param hour - Current hour for greeting validation
+ * @returns Processed response following Sascha's speech patterns
+ */
+function applySaschaGuard(reply: string, coachPersonality: string, hour: number): string {
+  // Only apply guard to Sascha
+  if (coachPersonality !== 'sascha') {
+    return reply;
   }
+  
+  console.log(`🛡️ Applying Sascha linguistic guard...`);
+  
+  // 1. Limit exclamation marks (max 1 per response)
+  const exclamationCount = (reply.match(/!/g) || []).length;
+  if (exclamationCount > 1) {
+    // Keep only the first exclamation mark, replace others with periods
+    let exclamationsSeen = 0;
+    reply = reply.replace(/!/g, (match) => {
+      exclamationsSeen++;
+      return exclamationsSeen === 1 ? match : '.';
+    });
+    console.log(`🛡️ Sascha Guard: Limited exclamations (${exclamationCount} → 1)`);
+  }
+  
+  // 2. Ensure proper greeting based on time
+  const correctGreeting = hour < 11 ? 'Moin' : hour < 17 ? 'Hey' : hour < 22 ? 'Guten Abend' : 'Später Abend';
+  
+  // Check if greeting is present and correct
+  const greetingPattern = /^(Moin|Hey|Guten Abend|Später Abend|Guten Morgen|Guten Tag)/;
+  const hasGreeting = greetingPattern.test(reply);
+  
+  if (!hasGreeting) {
+    reply = `${correctGreeting}! ${reply}`;
+    console.log(`🛡️ Sascha Guard: Added correct greeting (${correctGreeting})`);
+  } else {
+    // Replace incorrect greeting with correct one
+    reply = reply.replace(greetingPattern, correctGreeting);
+    console.log(`🛡️ Sascha Guard: Corrected greeting to (${correctGreeting})`);
+  }
+  
+  // 3. Soft sentence length enforcement (≤15 words)
+  // Split into sentences and check length
+  const sentences = reply.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const processedSentences = sentences.map(sentence => {
+    const words = sentence.trim().split(/\s+/);
+    if (words.length > 15) {
+      // Soft truncation: keep first 12 words and add connecting phrase
+      const truncated = words.slice(0, 12).join(' ');
+      return truncated + ', passt';
+    }
+    return sentence.trim();
+  });
+  
+  reply = processedSentences.join('. ').replace(/\.\s*\./g, '.') + '.';
+  
+  // 4. Add occasional Nord-Slang filler words (but not too many)
+  const fillerWords = ['jau', 'passt', 'sauber', 'alles klar'];
+  const shouldAddFiller = Math.random() < 0.3; // 30% chance
+  
+  if (shouldAddFiller && !fillerWords.some(filler => reply.toLowerCase().includes(filler))) {
+    const randomFiller = fillerWords[Math.floor(Math.random() * fillerWords.length)];
+    // Add filler at the end or before the last sentence
+    if (reply.endsWith('.')) {
+      reply = reply.slice(0, -1) + `, ${randomFiller}.`;
+    } else {
+      reply += `, ${randomFiller}`;
+    }
+    console.log(`🛡️ Sascha Guard: Added Nord-Slang filler (${randomFiller})`);
+  }
+  
+  // 5. Remove overly complex language patterns
+  reply = reply.replace(/([A-Z][a-z]+):\s*/g, ''); // Remove "Analyse:" type headers
+  reply = reply.replace(/\d+\.\s+/g, ''); // Remove numbered lists
+  
+  console.log(`🛡️ Sascha Guard: Processing complete`);
+  return reply;
+}
   
   return 'mein Schützling';
 }
