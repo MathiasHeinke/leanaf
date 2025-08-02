@@ -186,6 +186,20 @@ async function handleFoto(images: string[], userId: string) {
   };
 }
 
+// BMR calculation using Mifflin-St Jeor equation
+function calculateBMR(weightKg: number, heightCm: number, age: number, gender: string): number {
+  if (!weightKg || !heightCm || !age) return 0;
+  
+  let bmr = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  if (gender === 'male') {
+    bmr += 5;
+  } else {
+    bmr -= 161;
+  }
+  
+  return Math.round(bmr);
+}
+
 // FALLBACK TOOLS für Lucy - wenn XL-Context fehlschlägt
 async function get_user_profile(userId: string, supabaseClient: any) {
   try {
@@ -196,6 +210,12 @@ async function get_user_profile(userId: string, supabaseClient: any) {
       .maybeSingle();
     
     if (error) throw error;
+    
+    // Calculate BMR if profile exists
+    if (data && data.weight && data.height && data.age) {
+      data.bmr = calculateBMR(data.weight, data.height, data.age, data.gender);
+    }
+    
     return data || { id: userId, name: 'Unbekannt' };
   } catch (error) {
     console.error('❌ get_user_profile error:', error);
@@ -1182,7 +1202,7 @@ serve(async (req) => {
         await saveConversation(supabase, userId, message, assistantReply, coachPersonality, images, toolContext);
 
         // Update Memory nach dem Chat
-        await updateMemoryAfterChat(supabase, userId, message, assistantReply);
+        await updateMemoryAfterChat(supabase, userId, message, assistantReply, toolContext?.data?.profileData);
 
         console.log(`💾 [${requestId}] Conversation saved and memory updated`);
 
@@ -1223,7 +1243,7 @@ serve(async (req) => {
     await saveConversation(supabase, userId, message, assistantReply, coachPersonality, images, toolContext);
 
     // Update Memory nach dem Chat
-    await updateMemoryAfterChat(supabase, userId, message, assistantReply);
+    await updateMemoryAfterChat(supabase, userId, message, assistantReply, toolContext?.data?.profileData);
 
     console.log(`💾 [${requestId}] Conversation saved and memory updated`);
 
@@ -1348,6 +1368,12 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
       .eq('id', userId)
       .maybeSingle();
     if (profileError) console.warn('⚠️ Profile load error:', profileError.message);
+    
+    // Calculate BMR if profile exists
+    if (profile) {
+      profile.bmr = calculateBMR(profile.weight, profile.height, profile.age, profile.gender);
+    }
+    
     context.profile = profile;
     console.log('📊 Profile loaded:', !!profile);
 
@@ -1653,12 +1679,21 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   const profileData = toolContext?.data?.profileData || context.profile;
   if (profileData) {
     const displayName = getDisplayName(profileData);
+    const bmr = profileData.bmr || (profileData.weight && profileData.height && profileData.age 
+      ? calculateBMR(profileData.weight, profileData.height, profileData.age, profileData.gender) 
+      : null);
+    
     prompt += `👤 NUTZER-PROFIL:\n`;
-    prompt += `Name: ${displayName}\n`;
+    prompt += `Name: ${displayName}`;
+    if (bmr) prompt += ` – BMR: ${bmr} kcal`;
+    prompt += `\n`;
     if (profileData.age) prompt += `Alter: ${profileData.age} Jahre\n`;
     if (profileData.height) prompt += `Größe: ${profileData.height} cm\n`;
+    if (profileData.weight) prompt += `Gewicht: ${profileData.weight} kg\n`;
     if (profileData.fitness_level) prompt += `Fitness-Level: ${profileData.fitness_level}\n`;
     prompt += '\n';
+  } else {
+    prompt += `⚠️ Profil nicht geladen – rufe get_user_profile() bei Bedarf\n\n`;
   }
 
   // Goals Section
@@ -1879,7 +1914,7 @@ async function saveConversation(supabase: any, userId: string, userMessage: stri
   }
 }
 
-async function updateMemoryAfterChat(supabase: any, userId: string, userMessage: string, assistantReply: string) {
+async function updateMemoryAfterChat(supabase: any, userId: string, userMessage: string, assistantReply: string, profileData?: any) {
   try {
     // Simple sentiment analysis
     const sentiment = analyzeSentiment(userMessage);
@@ -1889,7 +1924,7 @@ async function updateMemoryAfterChat(supabase: any, userId: string, userMessage:
       .from('coach_memory')
       .select('memory_data')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     let memoryData = existingMemory?.memory_data || {
       relationship_stage: 'building_trust',
@@ -1899,6 +1934,12 @@ async function updateMemoryAfterChat(supabase: any, userId: string, userMessage:
       struggles: [],
       trust_level: 1
     };
+
+    // Store preferred name in memory if available
+    if (profileData?.preferred_name || profileData?.first_name || profileData?.display_name) {
+      if (!memoryData.preferences) memoryData.preferences = {};
+      memoryData.preferences.preferred_name = getDisplayName(profileData);
+    }
 
     // Add mood entry
     if (sentiment !== 'neutral') {

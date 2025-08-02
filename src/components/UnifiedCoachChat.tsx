@@ -161,21 +161,19 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const [loadedDailyGoals, setLoadedDailyGoals] = useState<any>(null);
   const [summaryHistory, setSummaryHistory] = useState<any>(null);
   
-  // Load profile data if not provided as props
+  // 🟢 Load profile data if not provided as props - ALWAYS ensure we have profile
   useEffect(() => {
     if (!user?.id) return;
     
     const loadProfileData = async () => {
       try {
-        // Load profile if not provided
-        if (!profileData) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-          setLoadedProfileData(profile);
-        }
+        // ✅ ALWAYS load profile to ensure it's available in toolContext
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+        setLoadedProfileData(profile);
         
         // Load daily goals if not provided
         if (!dailyGoals) {
