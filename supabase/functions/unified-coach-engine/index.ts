@@ -253,6 +253,88 @@ async function get_recent_meals(userId: string, days: number = 3, supabaseClient
   }
 }
 
+// ➊ NEUE QUICK-INPUT SAMMLER
+async function get_today_supplements(userId: string, supabaseClient: any) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabaseClient
+      .from('supplement_intake_log')
+      .select(`
+        created_at, dosage, timing, taken,
+        food_supplements(name, category, dosage_unit)
+      `)
+      .eq('user_id', userId)
+      .eq('date', today);
+    
+    if (error) throw error;
+    console.log(`💊 get_today_supplements: Found ${(data || []).length} supplements for today`);
+    return data || [];
+  } catch (error) {
+    console.error('❌ get_today_supplements error:', error);
+    return [];
+  }
+}
+
+async function get_today_sleep(userId: string, supabaseClient: any) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabaseClient
+      .from('sleep_tracking')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .maybeSingle();
+    
+    if (error) throw error;
+    console.log(`😴 get_today_sleep: Sleep data found: ${!!data}`);
+    return data;
+  } catch (error) {
+    console.error('❌ get_today_sleep error:', error);
+    return null;
+  }
+}
+
+async function get_today_fluids(userId: string, supabaseClient: any) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabaseClient
+      .from('user_fluids')
+      .select(`
+        amount_ml, consumed_at,
+        fluid_database(name, category, caffeine_mg_per_100ml, calories_per_100ml)
+      `)
+      .eq('user_id', userId)
+      .eq('date', today);
+    
+    if (error) throw error;
+    const totalMl = (data || []).reduce((sum, f) => sum + (f.amount_ml || 0), 0);
+    console.log(`💧 get_today_fluids: Found ${(data || []).length} entries, total: ${totalMl}ml`);
+    return data || [];
+  } catch (error) {
+    console.error('❌ get_today_fluids error:', error);
+    return [];
+  }
+}
+
+async function get_today_quickworkout(userId: string, supabaseClient: any) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabaseClient
+      .from('quick_workouts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .maybeSingle();
+    
+    if (error) throw error;
+    console.log(`🚶 get_today_quickworkout: Quick workout found: ${!!data}`);
+    return data;
+  } catch (error) {
+    console.error('❌ get_today_quickworkout error:', error);
+    return null;
+  }
+}
+
 async function get_workout_sessions(userId: string, days: number = 7, supabaseClient: any) {
   try {
     // Erweitere das Zeitfenster um 2 Tage für Timezone-Sicherheit
@@ -325,6 +407,23 @@ const handlers = {
     // Kein Spezial-Output – einfach weiter zum OpenAI-Flow
     return null;
   },
+  // ➋ NEUE QUICK-INPUT HANDLERS
+  get_today_supplements: async (_args: any, uid: string, sb: any) => ({
+    success: true,
+    data: await get_today_supplements(uid, sb)
+  }),
+  get_today_sleep: async (_args: any, uid: string, sb: any) => ({
+    success: true,
+    data: await get_today_sleep(uid, sb)
+  }),
+  get_today_fluids: async (_args: any, uid: string, sb: any) => ({
+    success: true,
+    data: await get_today_fluids(uid, sb)
+  }),
+  get_today_quickworkout: async (_args: any, uid: string, sb: any) => ({
+    success: true,
+    data: await get_today_quickworkout(uid, sb)
+  }),
   // Neue Fallback-Tools
   get_user_profile: async (args: any, userId: string, supabaseClient: any) => {
     const result = await get_user_profile(userId, supabaseClient);
@@ -498,19 +597,35 @@ serve(async (req) => {
     let toolContext = body.toolContext;
     if (!toolContext) {
       console.log(`🔄 [${requestId}] Loading fallback toolContext...`);
-      const [profile, goals, today] = await Promise.all([
+      const [profile, goals, todayMeals, todaySupps, todaySleep, todayFluids, todayQw] = await Promise.all([
         get_user_profile(userId, supabase),
         get_daily_goals(userId, supabase),
-        get_recent_meals(userId, 1, supabase)
+        get_recent_meals(userId, 1, supabase),
+        get_today_supplements(userId, supabase),
+        get_today_sleep(userId, supabase),
+        get_today_fluids(userId, supabase),
+        get_today_quickworkout(userId, supabase)
       ]);
       toolContext = {
         description: 'Auto-injected fallback context',
-        data: { profileData: profile, dailyGoals: goals, todaysMeals: today }
+        data: { 
+          profileData: profile, 
+          dailyGoals: goals, 
+          todaysMeals: todayMeals,
+          todaysSupplements: todaySupps,
+          todaysSleep: todaySleep,
+          todaysFluids: todayFluids,
+          todaysQuickWorkout: todayQw
+        }
       };
       console.log(`✅ [${requestId}] Fallback context loaded:`, {
         hasProfile: !!profile,
         hasGoals: !!goals,
-        mealsCount: today?.length || 0
+        mealsCount: todayMeals?.length || 0,
+        supplementsCount: todaySupps?.length || 0,
+        hasSleep: !!todaySleep,
+        fluidsCount: todayFluids?.length || 0,
+        hasQuickWorkout: !!todayQw
       });
     }
 
@@ -863,8 +978,40 @@ serve(async (req) => {
             required: []
           }
         }
+      },
+      // ➌ NEUE QUICK-INPUT TOOLS FÜR OPENAI
+      {
+        type: "function",
+        function: {
+          name: "get_today_supplements",
+          description: "Holt alle Supplement-Einträge des heutigen Tages",
+          parameters: { type: "object", properties: {}, required: [] }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_today_sleep",
+          description: "Holt Schlafdaten des heutigen Tages",
+          parameters: { type: "object", properties: {}, required: [] }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_today_fluids",
+          description: "Holt alle Flüssigkeitseinträge des heutigen Tages",
+          parameters: { type: "object", properties: {}, required: [] }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_today_quickworkout",
+          description: "Holt Quick-Workout-Daten des heutigen Tages",
+          parameters: { type: "object", properties: {}, required: [] }
+        }
       }
-    ];
 
     console.log(`🔄 [${requestId}] Making OpenAI API call with model: ${selectedModel}`);
     console.log(`📝 [${requestId}] Message count: ${messages.length}, System prompt length: ${systemPrompt.length}`);
@@ -1400,7 +1547,10 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
   
   // TOOLCONTEXT INJECTION: Add structured data at the top (Full Mode)
   if (toolContext?.data) {
-    const { profileData, todaysTotals, workoutData, sleepData, weightHistory, dailyGoals } = toolContext.data;
+    const { 
+      profileData, todaysTotals, workoutData, sleepData, weightHistory, dailyGoals,
+      todaysMeals, todaysSupplements, todaysSleep, todaysFluids, todaysQuickWorkout
+    } = toolContext.data;
     
     // Add today's data prominently at the beginning
     prompt += `🧠 AKTUELLE TAGESDATEN (Full Mode):\n`;
@@ -1411,8 +1561,37 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
       prompt += `• Protein: ${todaysTotals.protein || 0}g\n`;
       prompt += `• Kohlenhydrate: ${todaysTotals.carbs || 0}g\n`;
       prompt += `• Fett: ${todaysTotals.fats || 0}g\n`;
-      prompt += `• Mahlzeiten: ${todaysTotals.count || 0}\n\n`;
+      prompt += `• Mahlzeiten: ${todaysTotals.count || 0}\n`;
+    } else if (todaysMeals && todaysMeals.length > 0) {
+      // Fallback: Calculate from meals array
+      const calories = todaysMeals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0);
+      const protein = todaysMeals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0);
+      prompt += `📊 HEUTE BISHER (aus Mahlzeiten):\n`;
+      prompt += `• Kalorien: ${calories} kcal\n`;
+      prompt += `• Protein: ${protein}g\n`;
+      prompt += `• Mahlzeiten: ${todaysMeals.length}\n`;
     }
+    
+    // ➍ QUICK-INPUT PROMPT-INJECTION
+    if (todaysSupplements && todaysSupplements.length > 0) {
+      const taken = todaysSupplements.filter((s: any) => s.taken).length;
+      prompt += `💊 Supplements: ${taken}/${todaysSupplements.length} genommen\n`;
+    }
+    
+    if (todaysFluids && todaysFluids.length > 0) {
+      const ml = todaysFluids.reduce((sum: number, f: any) => sum + (f.amount_ml || 0), 0);
+      prompt += `💧 Flüssigkeit: ${ml} ml\n`;
+    }
+    
+    if (todaysSleep) {
+      prompt += `😴 Schlaf letzte Nacht: ${todaysSleep.sleep_hours || 'N/A'} h (Qualität ${todaysSleep.sleep_quality || 'N/A'}/10)\n`;
+    }
+    
+    if (todaysQuickWorkout) {
+      prompt += `🚶 Schritte/Laufen heute: ${todaysQuickWorkout.steps || 0} Stk, ${todaysQuickWorkout.distance_km || 0} km\n`;
+    }
+    
+    prompt += '\n';
     
     if (workoutData && workoutData.length > 0) {
       prompt += `💪 HEUTIGES TRAINING:\n`;
