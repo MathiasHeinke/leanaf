@@ -6,6 +6,7 @@ import { ExerciseCard } from '@/components/ExerciseCard';
 import { MindsetCard } from '@/components/MindsetCard';
 import { TrainingPlanCard } from '@/components/TrainingPlanCard';
 import { SimpleMessageItem } from '@/components/SimpleMessageItem';
+import { ToolActionButton } from '@/components/ToolActionButton';
 
 export interface CardMessage {
   id: string;
@@ -31,11 +32,21 @@ export interface TextMessage {
   mode?: string;
   metadata?: any;
   timestamp?: Date; // Add for compatibility
+  pendingTools?: Array<{
+    tool: string;
+    label: string;
+    description?: string;
+    confidence: number;
+    contextData?: any;
+  }>;
 }
 
 export type UnifiedMessage = CardMessage | TextMessage;
 
-export function renderMessage(message: UnifiedMessage): React.ReactElement {
+export function renderMessage(
+  message: UnifiedMessage, 
+  onToolAction?: (tool: string, data?: any) => void
+): React.ReactElement {
   // Check if it's a card message
   if ('type' in message && message.type === 'card') {
     const cardMessage = message as CardMessage;
@@ -113,23 +124,41 @@ export function renderMessage(message: UnifiedMessage): React.ReactElement {
     }
   }
   
-  // Default to text message rendering
+  // Default to text message rendering with tool buttons
   const textMessage = message as TextMessage;
+  
   return (
-    <SimpleMessageItem
-      key={textMessage.id}
-      message={{
-        ...textMessage,
-        timestamp: new Date(textMessage.created_at)
-      }}
-      coach={{
-        name: textMessage.coach_name || 'Coach',
-        avatar: textMessage.coach_avatar || '/placeholder.svg',
-        primaryColor: textMessage.coach_color || '#3b82f6',
-        secondaryColor: textMessage.coach_accent_color || '#1d4ed8',
-        personality: textMessage.coach_personality || ''
-      }}
-    />
+    <div key={textMessage.id}>
+      <SimpleMessageItem
+        message={{
+          ...textMessage,
+          timestamp: new Date(textMessage.created_at)
+        }}
+        coach={{
+          name: textMessage.coach_name || 'Coach',
+          avatar: textMessage.coach_avatar || '/placeholder.svg',
+          primaryColor: textMessage.coach_color || '#3b82f6',
+          secondaryColor: textMessage.coach_accent_color || '#1d4ed8',
+          personality: textMessage.coach_personality || ''
+        }}
+      />
+      
+      {/* Render tool action buttons if present */}
+      {textMessage.pendingTools && textMessage.pendingTools.length > 0 && textMessage.role === 'assistant' && (
+        <div className="mt-3 flex flex-wrap gap-2 justify-start">
+          {textMessage.pendingTools.map((pendingTool, index) => (
+            <ToolActionButton
+              key={`${pendingTool.tool}-${index}`}
+              tool={pendingTool.tool}
+              label={pendingTool.label}
+              description={pendingTool.description}
+              onClick={() => onToolAction?.(pendingTool.tool, pendingTool.contextData)}
+              isVisible={true}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

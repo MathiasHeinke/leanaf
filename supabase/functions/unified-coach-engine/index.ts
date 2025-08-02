@@ -1425,10 +1425,23 @@ serve(async (req) => {
       activeTool = toolContext.tool;
       console.log(`🎯 [${requestId}] USING FRONTEND TOOL DECISION: ${activeTool} (frontend analyzed context)`);
     }
-    // 2. Fallback to backend detection only if frontend didn't decide
-    else if (detectedIntent.confidence > 0.6) {
-      activeTool = detectedIntent.tool;
-      console.log(`🔧 [${requestId}] BACKEND FALLBACK TOOL: ${activeTool} (confidence: ${detectedIntent.confidence})`);
+    // 3. NEW: Backend suggestion mode (detect but don't execute)
+    else if (detectedIntent.confidence > 0.6 && detectedIntent.tool !== 'chat') {
+      console.log(`🔧 [${requestId}] BACKEND TOOL SUGGESTION: ${detectedIntent.tool} (confidence: ${detectedIntent.confidence})`);
+      
+      // For suggestion mode, we continue with chat but include tool suggestion metadata
+      activeTool = 'chat';
+      
+      // Add tool suggestion to the response metadata for frontend
+      const toolSuggestion = {
+        tool: detectedIntent.tool,
+        confidence: detectedIntent.confidence,
+        label: getToolLabel(detectedIntent.tool),
+        description: getToolDescription(detectedIntent.tool)
+      };
+      
+      // This will be included in the chat response for button rendering
+      (req as any).toolSuggestion = toolSuggestion;
     }
     
     console.log(`🔧 [${requestId}] Final active tool: ${activeTool}`);
@@ -1981,6 +1994,10 @@ serve(async (req) => {
       meta: { 
         prompt_version: PROMPT_VERSION,
         clearTool: !!toolContext
+      },
+      metadata: {
+        // Include tool suggestion if it was detected
+        toolSuggestion: (req as any).toolSuggestion || null
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

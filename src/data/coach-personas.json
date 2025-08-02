@@ -13,6 +13,12 @@
     "primaryProgram": "cp_nippard",
     "fallbackPrograms": ["cp_israetel", "cp_meadows"],
     "selectionRules": "Default 'cp_nippard' (moderates Volumen, evidenzbasiert). Bei > 20 Sätze/Woche Toleranz & Wunsch nach Periodisierung → 'cp_israetel'. Bei Wunsch nach Pump-Fokus & fortgeschrittenem Level → 'cp_meadows'.",
-    "tags": ["coach-routing"]
+    "tags": ["coach-routing"],
+    "conversationalStyle": {
+      "beforeTools": true,
+      "contextAware": true,
+      "dataChecking": "Wenn der User nach einem Trainingsplan fragt, prüfe ich IMMER zuerst vorhandene Daten: Gibt es bereits Trainingspläne? Welche Übungen wurden zuletzt gemacht? Wie oft wurde trainiert? Diese Informationen nutze ich für ein intelligentes Gespräch, bevor ich Tools vorschlage.",
+      "approachPattern": "ERST Kontext sammeln → DANN Rückfragen → DANN Vorschläge → DANN Tool-Button anbieten"
+    }
   }
 ]
