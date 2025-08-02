@@ -332,6 +332,30 @@ function buildBlueprintJson(date: string, kpi: any, raw: any) {
   const now = new Date().toISOString();
   
   return {
+    // Top-level KPIs for frontend compatibility
+    kpis: {
+      nutrition: {
+        totals: kpi.nutrition.totals
+      },
+      training: {
+        volume_kg: kpi.training.volume_kg,
+        sets: kpi.training.sets,
+        avg_rpe: kpi.training.avg_rpe,
+        duration_min: kpi.training.duration_min
+      },
+      recovery: {
+        sleep_hours: kpi.recovery.sleep_hours,
+        sleep_score: kpi.recovery.sleep_score
+      },
+      hydration: {
+        total_ml: kpi.hydration.total_ml,
+        hydration_score: kpi.hydration.hydration_score
+      },
+      supplements: {
+        compliance_pct: kpi.supplements.compliance_pct
+      }
+    },
+
     // Day header & meta
     day: date,
     meta: {
