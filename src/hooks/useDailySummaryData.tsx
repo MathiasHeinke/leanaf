@@ -38,11 +38,22 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
 
   const parseStructuredData = (summary: any): DailySummaryData => {
     const structJson = summary.summary_struct_json || {};
-    const kpis = structJson.kpis || {};
-    const nutrition = kpis.nutrition || {};
-    const training = kpis.training || {};
-    const sleep = kpis.sleep || {};
-    const hydration = kpis.hydration || {};
+    
+    // Handle multiple JSON structure formats
+    const kpis = structJson.kpis || structJson;
+    const nutrition = kpis.nutrition || structJson.nutrition || {};
+    const training = kpis.training || structJson.training || {};
+    const sleep = kpis.sleep || structJson.sleep || {};
+    const hydration = kpis.hydration || structJson.hydration || {};
+
+    console.log('🔍 Daily Summary Data for', summary.date, {
+      summary,
+      structJson,
+      nutrition,
+      training,
+      sleep,
+      hydration
+    });
 
     // Format date for display
     const date = new Date(summary.date);
@@ -51,26 +62,29 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
       month: '2-digit'
     });
 
-    return {
+    const result = {
       date: summary.date,
       displayDate,
-      totalCalories: nutrition.totals?.kcal || summary.total_calories || 0,
-      totalProtein: nutrition.totals?.protein || summary.total_protein || 0,
-      totalCarbs: nutrition.totals?.carbs || summary.total_carbs || 0,
-      totalFats: nutrition.totals?.fats || summary.total_fats || 0,
-      workoutVolume: training.volume_kg || summary.workout_volume || 0,
+      totalCalories: nutrition.totals?.kcal || nutrition.kcal || summary.total_calories || 0,
+      totalProtein: nutrition.totals?.protein || nutrition.protein || summary.total_protein || 0,
+      totalCarbs: nutrition.totals?.carbs || nutrition.carbs || summary.total_carbs || 0,
+      totalFats: nutrition.totals?.fats || nutrition.fats || summary.total_fats || 0,
+      workoutVolume: training.volume_kg || training.volume || summary.workout_volume || 0,
       workoutMuscleGroups: training.muscle_groups || summary.workout_muscle_groups || [],
-      sleepScore: sleep.quality_score || summary.sleep_score || 0,
-      hydrationScore: hydration.score || summary.hydration_score || 0,
+      sleepScore: sleep.quality_score || sleep.score || summary.sleep_score || 0,
+      hydrationScore: hydration.score || hydration.quality_score || summary.hydration_score || 0,
       topFoods: nutrition.top_foods || summary.top_foods || [],
       macroDistribution: {
-        protein: nutrition.distribution?.protein || 0,
-        carbs: nutrition.distribution?.carbs || 0,
-        fats: nutrition.distribution?.fats || 0
+        protein: nutrition.distribution?.protein || nutrition.protein_percent || 0,
+        carbs: nutrition.distribution?.carbs || nutrition.carbs_percent || 0,
+        fats: nutrition.distribution?.fats || nutrition.fats_percent || 0
       },
       recoveryMetrics: summary.recovery_metrics || {},
       rawData: structJson
     };
+
+    console.log('📊 Parsed result:', result);
+    return result;
   };
 
   const fetchData = async () => {
