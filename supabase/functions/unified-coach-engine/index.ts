@@ -1452,6 +1452,13 @@ MENSCHLICHER STIL:
 - Natürlicher Gesprächsfluss mit konkreten Datenreferenzen
 - Du bist wie ein erfahrener Trainer, der deine Fortschritte kennt
 
+ZEIT-BEWUSSTSEIN für Sascha:
+- Nutze die Zeit-Informationen für passende Begrüßungen
+- Berücksichtige Tageszeit bei Trainingsvorschlägen
+- Späte Abendstunden (>22 Uhr): Fokus auf Regeneration und Schlaf
+- Morgens (5-11 Uhr): Motiviere für aktiven Tagesstart
+- Mittags/Nachmittag: Ideal für Training und Ernährungsoptimierung
+
 WICHTIG: Du bist NICHT hastig mit Vorschlägen. Du analysierst erst, dann sprichst du über das was du siehst, dann sammelst du weitere Infos, und erst dann machst du Vorschläge.`,
     voice: "analytisch und kontextuell"
   }
@@ -1514,7 +1521,10 @@ serve(async (req) => {
       images = [],
       coachPersonality = 'lucy',
       conversationHistory = [],
-      preferredLocale = 'de'
+      preferredLocale = 'de',
+      // ✨ Zeit-Awareness
+      timezone = 'Europe/Berlin',
+      currentTime = new Date().toISOString()
     } = body;
 
     // ------------------------------------------------------------------ 
@@ -1870,7 +1880,7 @@ serve(async (req) => {
     const isNonGerman = preferredLocale && preferredLocale !== 'de';
     
     // Erstelle erweiterten System-Prompt mit Versionierung und i18n (mit Lite-Mode Support)
-    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext, isNonGerman, liteCtx);
+    const systemPrompt = await createXLSystemPrompt(smartContext, coachPersonality, relevantDataTypes, toolContext, isNonGerman, liteCtx, timezone, currentTime);
     console.log(`💭 [${requestId}] XL System prompt created, tokens:`, estimateTokenCount(systemPrompt), 'i18n:', isNonGerman, 'lite:', liteCtx);
 
     // Bereite Messages für OpenAI vor
@@ -2284,7 +2294,16 @@ serve(async (req) => {
       
       if (secondResponse.ok) {
         const secondData = await secondResponse.json();
-        const assistantReply = secondData.choices[0].message.content;
+        let assistantReply = secondData.choices[0].message.content;
+        
+        // ✨ Fallback-Grußformel für Tool-enhanced responses
+        const hour = new Date(currentTime).getHours();
+        if (!assistantReply.match(/(guten morgen|guten tag|guten abend|hallo|hi)/i)) {
+          const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+          assistantReply = `${greeting}! ${assistantReply}`;
+          console.log(`🕒 [${requestId}] Added fallback greeting to tool response: ${greeting}`);
+        }
+        
         console.log(`✅ [${requestId}] Tool-enhanced response generated`);
         
         const processingTime = Date.now() - startTime;
@@ -2327,7 +2346,15 @@ serve(async (req) => {
       }
     }
     
-    const assistantReply = openAIData.choices[0].message.content;
+    let assistantReply = openAIData.choices[0].message.content;
+
+    // ✨ Fallback-Grußformel wenn LLM sie vergessen hat
+    const hour = new Date(currentTime).getHours();
+    if (!assistantReply.match(/(guten morgen|guten tag|guten abend|hallo|hi)/i)) {
+      const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+      assistantReply = `${greeting}! ${assistantReply}`;
+      console.log(`🕒 [${requestId}] Added fallback greeting: ${greeting}`);
+    }
 
     const processingTime = Date.now() - startTime;
     console.log(`✅ [${requestId}] OpenAI response received, length:`, assistantReply.length, 'time:', processingTime + 'ms');
@@ -2629,8 +2656,44 @@ async function buildSmartContextXL(supabase: any, userId: string, relevantDataTy
   }
 }
 
-async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false, liteCtx: boolean = false) {
+async function createXLSystemPrompt(context: any, coachPersonality: string, relevantDataTypes: string[], toolContext: any, isNonGerman: boolean = false, liteCtx: boolean = false, timezone: string = 'Europe/Berlin', currentTime: string = new Date().toISOString()) {
   const coach = COACH_PERSONALITIES[coachPersonality] || COACH_PERSONALITIES.lucy;
+  
+  // ✨ Zeit-Kontext aufbauen
+  const now = new Date(currentTime);
+  const timeOptions: Intl.DateTimeFormatOptions = { 
+    timeZone: timezone, 
+    weekday: 'long', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  };
+  const localTime = now.toLocaleString('de-DE', timeOptions);
+  const hour = now.getHours();
+  
+  // Zeit-basierte Grußformel und Kontexthinweise
+  const greeting = hour < 12 ? 'Guten Morgen' : hour < 18 ? 'Guten Tag' : 'Guten Abend';
+  const timeContext = hour > 22 ? 'Späte Abendstunden - Fokus auf Regeneration/Schlaf' : 
+                      hour < 11 ? 'Vormittag - motiviere für aktiven Tagesstart' :
+                      hour < 18 ? 'Tageszeit - ideal für Training/Ernährung' : 
+                      'Abendzeit - Training oder Entspannung';
+  
+  let timeAwarenessPrompt = `\n🕒 ZEIT-KONTEXT: ${localTime}\n- Standard-Grußformel: "${greeting}"\n- Kontext-Hinweis: ${timeContext}\n\nBerücksichtige die Tageszeit bei deinen Antworten und Vorschlägen.\n\n`;
+  
+  // ⏱️ Kontext aus letzten Aktivitäten hinzufügen
+  let activityContext = '';
+  if (toolContext?.data?.workoutData?.length > 0) {
+    const lastWorkout = toolContext.data.workoutData.slice(-1)[0];
+    const workoutAge = lastWorkout?.date ? calculateTimeSince(lastWorkout.date) : 'unbekannt';
+    activityContext += `⏱️ LETZTES TRAINING: ${workoutAge}\n`;
+  }
+  if (toolContext?.data?.sleepData?.length > 0) {
+    const lastSleep = toolContext.data.sleepData.slice(-1)[0];
+    const sleepQuality = lastSleep?.sleep_quality || 'unbekannt';
+    activityContext += `💤 LETZTER SCHLAF: Qualität ${sleepQuality}/10\n`;
+  }
+  if (activityContext) {
+    timeAwarenessPrompt += activityContext + '\n';
+  }
   
     // LITE MODE: Minimal prompt + toolContext injection
     if (liteCtx) {
@@ -2690,8 +2753,8 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     return litePrompt;
   }
   
-  // FULL MODE: Enhanced with toolContext injection
-  let prompt = coach.basePrompt + '\n\n';
+  // FULL MODE: Enhanced with toolContext injection + Zeit-Awareness
+  let prompt = coach.basePrompt + timeAwarenessPrompt;
   
   // ============================================================================
   // PHASE C: I18N-GUARD - Internationalisierung
@@ -3262,6 +3325,18 @@ function getDisplayName(profile: any): string {
 
 function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+function calculateTimeSince(dateString: string): string {
+  const now = new Date();
+  const then = new Date(dateString);
+  const diffMs = now.getTime() - then.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'heute';
+  if (diffDays === 1) return 'gestern';
+  if (diffDays < 7) return `vor ${diffDays} Tagen`;
+  return `vor ${Math.floor(diffDays / 7)} Wochen`;
 }
 
 function intelligentTokenShortening(messages: any[], targetTokens: number): any[] {

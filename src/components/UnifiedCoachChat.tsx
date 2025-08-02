@@ -482,6 +482,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       analysisType: 'general',
       coachPersonality: coach?.id || 'lucy',
       conversationHistory: conversationHistory,
+      // ✨ Zeit-Awareness für Coach
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      currentTime: new Date().toISOString(),
       toolContext: {
         tool: detectedTool,
         description: detectedTool === 'chat'
