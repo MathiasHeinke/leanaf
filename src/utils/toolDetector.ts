@@ -182,10 +182,13 @@ export async function isIntentAppropriate(text: string, toolContext: ToolContext
     /\b(heute.*war|gestern.*war|war.*schwer|war.*gut|lief.*gut)\b/i
   ];
 
-  // Reflective struggles patterns
+  // Reflective struggles patterns - ERWEITERT für Work/Programming Context
   const reflectiveStruggles = [
     /\b(bauch.*stört|bauch.*massiv|körper.*unzufrieden|noch.*nicht.*zufrieden)\b/i,
-    /\b(wenig.*schlaf|nachts.*arbeiten|kaum.*energie|viel.*zu.*tun)\b/i
+    /\b(wenig.*schlaf|nachts.*arbeiten|kaum.*energie|viel.*zu.*tun)\b/i,
+    /\b(programmieren|handy.*programmieren|arbeiten.*bis|nacht.*arbeiten)\b/i,
+    /\b(app.*entwickeln|code.*schreiben|bis.*spät|zu.*lange.*wach)\b/i,
+    /\b(am.*handy.*programmieren|handy.*coden|mobile.*dev|coding.*late)\b/i
   ];
   
   const isEmotional = emotionalPatterns.some(pattern => pattern.test(text));

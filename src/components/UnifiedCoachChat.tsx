@@ -443,6 +443,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       // Check if tool usage is contextually appropriate
       const isAppropriate = await isIntentAppropriate(message, toolContext);
       console.log('🧠 Intent appropriateness check:', isAppropriate);
+      console.log('🔍 DEBUG: Tool detected:', toolContext.tool, 'Confidence:', toolContext.confidence, 'Appropriate:', isAppropriate);
 
       if (shouldUseTool(toolContext) && isAppropriate) {
         detectedTool = toolContext.tool;
@@ -473,6 +474,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         description: detectedTool === 'chat'
           ? 'Freies Gespräch / Intent-Analyse'
           : `Tool "${detectedTool}" ${selectedTool ? 'manuell ausgewählt' : 'automatisch erkannt'}`,
+        isAppropriate: detectedTool !== 'chat' ? await isIntentAppropriate(message, { tool: detectedTool as any, description: '', confidence: 1 }) : true,
         data: {
           mode: mode,
           profileData: effectiveProfileData,

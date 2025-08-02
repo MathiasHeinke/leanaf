@@ -1406,14 +1406,23 @@ serve(async (req) => {
     const detectedIntent = detectToolIntent(message || '');
     console.log(`🛠️ [${requestId}] TOOL DETECTION RESULT:`, detectedIntent);
     
-    // Use detected tool if confidence is high enough, otherwise fall back to toolContext
+    // PRIORITY: Frontend tool decision has precedence over backend detection
     let activeTool = 'chat';
-    if (detectedIntent.confidence > 0.6) {
+    
+    // 1. Check if frontend sent explicit tool decision with appropriateness check
+    if (toolContext?.tool && toolContext.tool !== 'chat') {
+      if (toolContext.isAppropriate !== false) {
+        activeTool = toolContext.tool;
+        console.log(`🎯 [${requestId}] USING FRONTEND TOOL DECISION: ${activeTool} (frontend analyzed context)`);
+      } else {
+        console.log(`⚠️ [${requestId}] Frontend marked tool as inappropriate, staying with chat`);
+        activeTool = 'chat';
+      }
+    }
+    // 2. Fallback to backend detection only if frontend didn't decide
+    else if (detectedIntent.confidence > 0.6) {
       activeTool = detectedIntent.tool;
-      console.log(`✅ [${requestId}] AUTO-DETECTED TOOL: ${activeTool} (confidence: ${detectedIntent.confidence})`);
-    } else if (toolContext?.tool) {
-      activeTool = toolContext.tool;
-      console.log(`🔧 [${requestId}] USING FRONTEND TOOL: ${activeTool}`);
+      console.log(`🔧 [${requestId}] BACKEND FALLBACK TOOL: ${activeTool} (confidence: ${detectedIntent.confidence})`);
     }
     
     console.log(`🔧 [${requestId}] Final active tool: ${activeTool}`);
