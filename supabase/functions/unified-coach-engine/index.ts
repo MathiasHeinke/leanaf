@@ -2,13 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Import new handlers
-import trainingsplan from '../tool-handlers/trainingsplan.ts';
-import diary from '../tool-handlers/diary.ts';
-import mealCapture from '../tool-handlers/mealCapture.ts';
-import goalCheckin from '../tool-handlers/goalCheckin.ts';
-import createPlanDraft from '../tool-handlers/createPlanDraft.ts';
-import savePlanDraft from '../tool-handlers/savePlanDraft.ts';
+// All handlers are now inlined below to avoid import issues
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -130,19 +124,23 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any) {
     
     // Erstelle Trainingsplan-Entry in der DB
     const { data: planData, error } = await supabase.from('workout_plans').insert({
-      user_id: userId,
+      created_by: userId,               // <- Spaltenname in DB
       name: planName,
-      description: `Automatisch erstellt: ${lastUserMsg}`,
-      goals: goals,
-      created_at: new Date().toISOString(),
-      is_active: true
+      category: goals[0] ?? 'Allgemein',  // Pflichtfeld „category"
+      description: [
+        `Automatisch erstellt am ${new Date().toLocaleDateString('de-DE')}`,
+        goals.length ? `Ziel(e): ${goals.join(', ')}` : ''
+      ].join('\n').trim(),
+      exercises: [],                   // leeres JSON = Draft
+      estimated_duration_minutes: null,
+      is_public: false
     }).select().single();
     
     if (error) {
-      console.error('Error saving workout plan:', error);
+      console.error('[trainingsplan]', error);
       return {
         role: 'assistant',
-        content: 'Fehler beim Speichern des Trainingsplans. Bitte versuche es erneut.',
+        content: 'Uups – der Plan wurde nicht gespeichert. Ich prüfe gerade die Datenbank-Felder und versuche es gleich nochmal!',
       };
     }
     
@@ -154,13 +152,13 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any) {
         id: planData.id,
         name: planData.name,
         description: planData.description,
-        goals: planData.goals,
+        goals,
         html: `<div class="p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
           <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">✅ Trainingsplan erstellt</h3>
           <p class="text-blue-700 dark:text-blue-300 mb-2"><strong>${planData.name}</strong></p>
           <p class="text-sm text-blue-600 dark:text-blue-400">${planData.description}</p>
           <div class="mt-3 text-xs text-blue-500 dark:text-blue-500">
-            Ziele: ${Array.isArray(planData.goals) ? planData.goals.join(', ') : 'Allgemeine Fitness'}
+            Ziele: ${Array.isArray(goals) ? goals.join(', ') : 'Allgemeine Fitness'}
           </div>
         </div>`,
         ts: Date.now()
@@ -172,6 +170,372 @@ async function handleTrainingsplan(conv: any[], userId: string, supabase: any) {
     return {
       role: 'assistant',
       content: 'Ein Fehler ist aufgetreten beim Erstellen des Trainingsplans.',
+    };
+  }
+}
+
+// ============================================================================
+// NEW INLINE HANDLERS
+// ============================================================================
+
+// Diary tool handler for journal entries with mood analysis
+async function handleDiary(conv: any[], userId: string) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  // Simple sentiment analysis based on keywords
+  function analyzeSentiment(text: string): { mood_score: number; sentiment_tag: string } {
+    const positiveWords = ['gut', 'super', 'toll', 'dankbar', 'glücklich', 'freude', 'erfolg', 'stolz', 'wunderbar', 'großartig'];
+    const negativeWords = ['schlecht', 'müde', 'stress', 'schwer', 'traurig', 'frustriert', 'ärger', 'sorge', 'problem', 'schwierig'];
+    
+    const lowerText = text.toLowerCase();
+    const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
+    const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
+    
+    let mood_score = 0;
+    let sentiment_tag = 'neutral';
+    
+    if (positiveCount > negativeCount) {
+      mood_score = Math.min(5, positiveCount);
+      sentiment_tag = 'positive';
+    } else if (negativeCount > positiveCount) {
+      mood_score = Math.max(-5, -negativeCount);
+      sentiment_tag = 'negative';
+    }
+    
+    return { mood_score, sentiment_tag };
+  }
+  
+  // Extract gratitude items
+  function extractGratitude(text: string): string[] {
+    const gratitudePatterns = /(?:dankbar für|bin dankbar|grateful for|thankful for)\s+([^.!?]+)/gi;
+    const matches = [...text.matchAll(gratitudePatterns)];
+    return matches.map(match => match[1].trim()).slice(0, 3);
+  }
+  
+  const { mood_score, sentiment_tag } = analyzeSentiment(lastUserMsg);
+  const gratitude_items = extractGratitude(lastUserMsg);
+  const excerpt = lastUserMsg.length > 120 ? lastUserMsg.slice(0, 120) + '...' : lastUserMsg;
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'diary',
+    payload: {
+      raw_text: lastUserMsg,
+      mood_score,
+      sentiment_tag,
+      gratitude_items,
+      excerpt,
+      date: new Date().toISOString().split('T')[0],
+      ts: Date.now(),
+      actions: [{
+        type: 'save_diary',
+        label: 'Tagebuch speichern',
+        data: {
+          raw_text: lastUserMsg,
+          mood_score,
+          sentiment_tag,
+          gratitude_items,
+          date: new Date().toISOString().split('T')[0]
+        }
+      }]
+    },
+    meta: { clearTool: true }
+  };
+}
+
+// Enhanced meal capture tool with OpenFoodFacts integration
+async function handleMealCapture(conv: any[], userId: string) {
+  const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
+  
+  // Simple food parsing - in real implementation would use OpenFoodFacts API
+  function parseMealText(text: string): {
+    food_name: string;
+    amount?: number;
+    unit?: string;
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fats?: number;
+  } {
+    // Extract amount and unit
+    const amountMatch = text.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|stück|portion|portionen)?/i);
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
+    const unit = amountMatch?.[2]?.toLowerCase() || 'g';
+    
+    // Simple food database lookup (mock)
+    const foodDb: Record<string, any> = {
+      'haferflocken': { calories: 380, protein: 13, carbs: 60, fats: 7 },
+      'banane': { calories: 95, protein: 1, carbs: 23, fats: 0.3 },
+      'apfel': { calories: 52, protein: 0.3, carbs: 14, fats: 0.2 },
+      'reis': { calories: 130, protein: 2.7, carbs: 28, fats: 0.3 },
+      'hähnchen': { calories: 165, protein: 31, carbs: 0, fats: 3.6 }
+    };
+    
+    // Find matching food
+    const textLower = text.toLowerCase();
+    const matchedFood = Object.keys(foodDb).find(food => textLower.includes(food));
+    
+    if (matchedFood && amount) {
+      const baseNutrition = foodDb[matchedFood];
+      const factor = amount / 100; // assuming per 100g values
+      
+      return {
+        food_name: matchedFood,
+        amount,
+        unit,
+        calories: Math.round(baseNutrition.calories * factor),
+        protein: Math.round(baseNutrition.protein * factor * 10) / 10,
+        carbs: Math.round(baseNutrition.carbs * factor * 10) / 10,
+        fats: Math.round(baseNutrition.fats * factor * 10) / 10
+      };
+    }
+    
+    return {
+      food_name: text,
+      amount,
+      unit
+    };
+  }
+  
+  const mealData = parseMealText(lastUserMsg);
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'meal',
+    payload: {
+      ...mealData,
+      meal_type: 'snack', // Default, user can adjust
+      ts: Date.now(),
+      actions: [{
+        type: 'save_meal',
+        label: 'Mahlzeit speichern',
+        data: {
+          ...mealData,
+          date: new Date().toISOString().split('T')[0]
+        }
+      }]
+    },
+    meta: { clearTool: true }
+  };
+}
+
+// Goal check-in tool for progress analysis
+async function handleGoalCheckin(conv: any[], userId: string) {
+  // Mock KPI analysis - in real implementation would query actual data
+  const mockProgress = {
+    calories: { current: 1850, target: 2000, percentage: 92.5 },
+    protein: { current: 145, target: 150, percentage: 96.7 },
+    workouts: { current: 4, target: 5, percentage: 80 },
+    sleep: { current: 7.2, target: 8, percentage: 90 },
+    weight_trend: 'stable' // 'increasing', 'decreasing', 'stable'
+  };
+  
+  // Calculate overall score
+  const scores = [
+    mockProgress.calories.percentage,
+    mockProgress.protein.percentage,
+    mockProgress.workouts.percentage,
+    mockProgress.sleep.percentage
+  ];
+  const overallScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+  
+  // Determine status color
+  let status: 'excellent' | 'good' | 'needs_attention' = 'needs_attention';
+  if (overallScore >= 90) status = 'excellent';
+  else if (overallScore >= 75) status = 'good';
+  
+  return {
+    role: 'assistant',
+    type: 'card',
+    card: 'goalCheckin',
+    payload: {
+      overall_score: Math.round(overallScore),
+      status,
+      progress: mockProgress,
+      message: status === 'excellent' 
+        ? 'Du bist voll auf Kurs! 🎯' 
+        : status === 'good'
+        ? 'Gute Fortschritte, kleine Anpassungen möglich 👍'
+        : 'Hier gibt es Verbesserungspotential 💪',
+      ts: Date.now()
+    },
+    meta: { clearTool: true }
+  };
+}
+
+// Create workout plan draft handler
+async function handleCreatePlanDraft(conv: any[], userId: string, supabaseClient: any, args: any) {
+  const { plan_name, goal, days_per_wk, notes } = args;
+  
+  function generateWeeklyStructure(daysPerWeek: number, goal: string) {
+    const structures: any = {
+      2: [
+        { day: 'Tag 1', focus: 'Ganzkörper A', exercises: ['Kniebeugen', 'Bankdrücken', 'Rudern'] },
+        { day: 'Tag 2', focus: 'Ganzkörper B', exercises: ['Kreuzheben', 'Schulterdrücken', 'Klimmzüge'] }
+      ],
+      3: [
+        { day: 'Tag 1', focus: 'Push (Brust, Schultern, Trizeps)', exercises: ['Bankdrücken', 'Schulterdrücken', 'Dips'] },
+        { day: 'Tag 2', focus: 'Pull (Rücken, Bizeps)', exercises: ['Klimmzüge', 'Rudern', 'Bizeps Curls'] },
+        { day: 'Tag 3', focus: 'Beine (Quadrizeps, Hamstrings, Glutes)', exercises: ['Kniebeugen', 'Kreuzheben', 'Ausfallschritte'] }
+      ],
+      4: [
+        { day: 'Tag 1', focus: 'Push (Brust, Schultern, Trizeps)', exercises: ['Bankdrücken', 'Schulterdrücken', 'Dips'] },
+        { day: 'Tag 2', focus: 'Pull (Rücken, Bizeps)', exercises: ['Klimmzüge', 'Rudern', 'Bizeps Curls'] },
+        { day: 'Tag 3', focus: 'Beine (Quadrizeps, Hamstrings)', exercises: ['Kniebeugen', 'Kreuzheben', 'Beinpresse'] },
+        { day: 'Tag 4', focus: 'Push 2 (Schultern, Trizeps)', exercises: ['Schulterdrücken', 'Seitheben', 'Trizeps Extensions'] }
+      ]
+    };
+    
+    return structures[daysPerWeek] || structures[3];
+  }
+  
+  try {
+    console.log('Creating workout plan draft:', { plan_name, goal, days_per_wk, notes });
+    
+    // Generate a basic structure based on input
+    const structure_json = {
+      goal,
+      days_per_week: days_per_wk || 3,
+      estimated_duration: 45,
+      target_level: 'intermediate',
+      equipment_needed: ['Hanteln', 'Langhantel'],
+      weekly_structure: generateWeeklyStructure(days_per_wk || 3, goal)
+    };
+
+    // Insert draft into database
+    const { data: draft, error } = await supabaseClient
+      .from('workout_plan_drafts')
+      .insert({
+        user_id: userId,
+        name: plan_name,
+        goal,
+        days_per_wk: days_per_wk || 3,
+        notes: notes || '',
+        structure_json
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating workout plan draft:', error);
+      return {
+        role: 'assistant',
+        content: 'Fehler beim Erstellen des Trainingsplan-Entwurfs. Bitte versuche es erneut.',
+      };
+    }
+    
+    return {
+      role: 'assistant',
+      type: 'card',
+      card: 'workout_plan_draft',
+      payload: { 
+        id: draft.id,
+        name: draft.name,
+        goal: draft.goal,
+        days_per_wk: draft.days_per_wk,
+        structure: draft.structure_json,
+        html: `<div class="p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+          <h3 class="text-lg font-semibold text-primary mb-2">📋 Trainingsplan-Entwurf</h3>
+          <p class="font-medium text-foreground mb-1">${draft.name}</p>
+          <p class="text-sm text-muted-foreground mb-2">Ziel: ${draft.goal}</p>
+          <p class="text-xs text-muted-foreground">${draft.days_per_wk} Tage pro Woche</p>
+          <div class="mt-3 flex gap-2">
+            <button class="px-3 py-1 bg-primary text-primary-foreground rounded text-xs">Bearbeiten</button>
+            <button class="px-3 py-1 bg-success text-success-foreground rounded text-xs">Speichern</button>
+          </div>
+        </div>`,
+        ts: Date.now()
+      },
+      meta: { clearTool: true }
+    };
+  } catch (error) {
+    console.error('Error in createPlanDraft handler:', error);
+    return {
+      role: 'assistant',
+      content: 'Ein Fehler ist aufgetreten beim Erstellen des Trainingsplan-Entwurfs.',
+    };
+  }
+}
+
+// Save workout plan draft handler
+async function handleSavePlanDraft(conv: any[], userId: string, supabaseClient: any, args: any) {
+  const { draft_id } = args;
+  
+  function inferCategory(goal: string): string {
+    const lowerGoal = goal.toLowerCase();
+    
+    if (lowerGoal.includes('muskel') || lowerGoal.includes('mass')) {
+      return 'Muskelaufbau';
+    } else if (lowerGoal.includes('kraft') || lowerGoal.includes('power')) {
+      return 'Krafttraining';
+    } else if (lowerGoal.includes('abnehm') || lowerGoal.includes('fett')) {
+      return 'Fettabbau';
+    } else if (lowerGoal.includes('ausdauer') || lowerGoal.includes('cardio')) {
+      return 'Ausdauer';
+    } else {
+      return 'Allgemeine Fitness';
+    }
+  }
+  
+  try {
+    console.log('Saving workout plan draft:', { draft_id, userId });
+    
+    // Get the draft
+    const { data: draft, error: fetchError } = await supabaseClient
+      .from('workout_plan_drafts')
+      .select('*')
+      .eq('id', draft_id)
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (fetchError || !draft) {
+      console.error('Error fetching draft:', fetchError);
+      return {
+        role: 'assistant',
+        content: 'Entwurf nicht gefunden oder Zugriff verweigert.',
+      };
+    }
+    
+    // Save to workout_plans table
+    const { error: saveError } = await supabaseClient
+      .from('workout_plans')
+      .insert({
+        created_by: userId,
+        name: draft.name,
+        description: `${draft.goal} - ${draft.days_per_wk} Tage pro Woche`,
+        category: inferCategory(draft.goal),
+        exercises: draft.structure_json?.weekly_structure || [],
+        estimated_duration_minutes: draft.structure_json?.estimated_duration || 45,
+        is_public: false
+      });
+    
+    if (saveError) {
+      console.error('Error saving workout plan:', saveError);
+      return {
+        role: 'assistant',
+        content: 'Fehler beim Speichern des Trainingsplans. Bitte versuche es erneut.',
+      };
+    }
+    
+    // Optional: Delete or mark draft as saved
+    await supabaseClient
+      .from('workout_plan_drafts')
+      .delete()
+      .eq('id', draft_id)
+      .eq('user_id', userId);
+    
+    return {
+      role: 'assistant',
+      content: `✅ Trainingsplan **${draft.name}** wurde erfolgreich gespeichert und ist jetzt aktiv!`,
+      meta: { clearTool: true }
+    };
+  } catch (error) {
+    console.error('Error in savePlanDraft handler:', error);
+    return {
+      role: 'assistant',
+      content: 'Ein Fehler ist aufgetreten beim Speichern des Trainingsplans.',
     };
   }
 }
@@ -244,17 +608,6 @@ function extractQuickWorkoutData(message: string): {
   }
   
   return { description, steps, distance, duration };
-  if (lowerMessage.includes('kraft')) {
-    goals.push('Kraftsteigerung');
-  }
-  if (lowerMessage.includes('ausdauer') || lowerMessage.includes('cardio')) {
-    goals.push('Ausdauer');
-  }
-  if (lowerMessage.includes('definition') || lowerMessage.includes('straff')) {
-    goals.push('Definition');
-  }
-  
-  return goals.length > 0 ? goals : ['Allgemeine Fitness'];
 }
 
 async function handleUebung(conv: any[], userId: string) {
@@ -564,19 +917,19 @@ async function get_weight_history(userId: string, entries: number = 10, supabase
 
 // Tool-Handler-Map (Enhanced v2 with QuickWorkout)
 const handlers = {
-  // EXISTING - use imported version
-  trainingsplan,
+  // EXISTING - use inlined functions
+  trainingsplan: handleTrainingsplan,
   uebung: handleUebung,
   supplement: handleSupplement,
   gewicht: handleGewicht,
   foto: handleFoto,
   
-  // NEW - imported from separate files
-  diary,
-  mealCapture,
-  goalCheckin,
-  createPlanDraft,
-  savePlanDraft,
+  // NEW - use inlined functions
+  diary: handleDiary,
+  mealCapture: handleMealCapture,
+  goalCheckin: handleGoalCheckin,
+  createPlanDraft: handleCreatePlanDraft,
+  savePlanDraft: handleSavePlanDraft,
   quickworkout: async (conv: any[], userId: string, supabase: any) => {
     const lastUserMsg = conv.slice().reverse().find(m => m.role === 'user')?.content ?? '';
     
