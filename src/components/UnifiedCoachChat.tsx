@@ -171,7 +171,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
         setLoadedProfileData(profile);
         
