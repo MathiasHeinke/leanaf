@@ -271,22 +271,22 @@ export const SingleDaySummaryGenerator = () => {
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-xl font-bold text-blue-600">{response.debug.summaryLengths.standard}</div>
+                      <div className="text-xl font-bold text-primary">{response.debug.summaryLengths.standard}</div>
                       <div className="text-sm text-muted-foreground">Standard Wörter</div>
                     </div>
                     <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-xl font-bold text-purple-600">{response.debug.summaryLengths.xl}</div>
+                      <div className="text-xl font-bold text-primary">{response.debug.summaryLengths.xl}</div>
                       <div className="text-sm text-muted-foreground">XL Wörter</div>
                     </div>
                     <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-xl font-bold text-green-600">{response.debug.summaryLengths.xxl}</div>
+                      <div className="text-xl font-bold text-primary">{response.debug.summaryLengths.xxl}</div>
                       <div className="text-sm text-muted-foreground">XXL Wörter</div>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <Collapsible>
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                         <span className="font-medium">Standard Summary Preview</span>
                         <span className="text-xs text-muted-foreground">Klicken zum erweitern</span>
                       </CollapsibleTrigger>
@@ -296,7 +296,7 @@ export const SingleDaySummaryGenerator = () => {
                     </Collapsible>
 
                     <Collapsible>
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                         <span className="font-medium">XL Summary Preview</span>
                         <span className="text-xs text-muted-foreground">Klicken zum erweitern</span>
                       </CollapsibleTrigger>
@@ -306,7 +306,7 @@ export const SingleDaySummaryGenerator = () => {
                     </Collapsible>
 
                      <Collapsible>
-                       <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                       <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                          <span className="font-medium">XXL Summary Full Text</span>
                          <span className="text-xs text-muted-foreground">Klicken zum erweitern</span>
                        </CollapsibleTrigger>
@@ -334,17 +334,17 @@ export const SingleDaySummaryGenerator = () => {
                    </CardDescription>
                  </CardHeader>
                  <CardContent>
-                   <Collapsible>
-                     <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                       <span className="font-medium">JSON-Daten anzeigen</span>
-                       <span className="text-xs text-muted-foreground">Alle strukturierten Daten</span>
-                     </CollapsibleTrigger>
+                    <Collapsible>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                        <span className="font-medium">JSON-Daten anzeigen</span>
+                        <span className="text-xs text-muted-foreground">Alle strukturierten Daten</span>
+                      </CollapsibleTrigger>
                      <CollapsibleContent className="mt-2">
                        <div className="space-y-4">
-                         {/* Nutrition Section */}
-                         {response.structured_summary.nutrition && (
-                           <div className="p-4 bg-orange-50 rounded-lg">
-                             <h4 className="font-semibold text-orange-800 mb-3">🍽️ Ernährung</h4>
+                          {/* Nutrition Section */}
+                          {response.structured_summary.nutrition && (
+                            <div className="p-4 bg-muted/30 rounded-lg">
+                              <h4 className="font-semibold mb-3">🍽️ Ernährung</h4>
                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                <div>
                                  <span className="font-medium">Kalorien:</span> {response.structured_summary.nutrition.totalCalories || 0}
@@ -362,12 +362,12 @@ export const SingleDaySummaryGenerator = () => {
                              {response.structured_summary.nutrition.topFoods && response.structured_summary.nutrition.topFoods.length > 0 && (
                                <div className="mt-3">
                                  <span className="font-medium text-sm">Top Lebensmittel:</span>
-                                 <div className="flex flex-wrap gap-2 mt-2">
-                                   {response.structured_summary.nutrition.topFoods.map((food: string, index: number) => (
-                                     <Badge key={index} variant="secondary" className="text-xs bg-orange-100 text-orange-800">
-                                       {food}
-                                     </Badge>
-                                   ))}
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {response.structured_summary.nutrition.topFoods.map((food: string, index: number) => (
+                                      <Badge key={index} variant="secondary" className="text-xs">
+                                        {food}
+                                      </Badge>
+                                    ))}
                                  </div>
                                </div>
                              )}

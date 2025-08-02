@@ -266,18 +266,18 @@ const Last3DaysSummary = () => {
                 <div>
                   <h5 className="font-medium mb-2">📊 Makro-Verteilung</h5>
                   <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div className="text-center p-2 bg-blue-50 rounded">
-                      <div className="font-semibold">{summary.macro_distribution.protein_percent || 0}%</div>
-                      <div className="text-xs text-muted-foreground">Protein</div>
-                    </div>
-                    <div className="text-center p-2 bg-green-50 rounded">
-                      <div className="font-semibold">{summary.macro_distribution.carbs_percent || 0}%</div>
-                      <div className="text-xs text-muted-foreground">Carbs</div>
-                    </div>
-                    <div className="text-center p-2 bg-orange-50 rounded">
-                      <div className="font-semibold">{summary.macro_distribution.fats_percent || 0}%</div>
-                      <div className="text-xs text-muted-foreground">Fette</div>
-                    </div>
+                <div className="text-center p-2 bg-protein-light dark:bg-protein-light rounded">
+                  <div className="font-semibold text-protein dark:text-protein">{summary.macro_distribution.protein_percent || 0}%</div>
+                  <div className="text-xs text-muted-foreground">Protein</div>
+                </div>
+                <div className="text-center p-2 bg-carbs-light dark:bg-carbs-light rounded">
+                  <div className="font-semibold text-carbs dark:text-carbs">{summary.macro_distribution.carbs_percent || 0}%</div>
+                  <div className="text-xs text-muted-foreground">Carbs</div>
+                </div>
+                <div className="text-center p-2 bg-fats-light dark:bg-fats-light rounded">
+                  <div className="font-semibold text-fats dark:text-fats">{summary.macro_distribution.fats_percent || 0}%</div>
+                  <div className="text-xs text-muted-foreground">Fette</div>
+                </div>
                   </div>
                 </div>
               )}
