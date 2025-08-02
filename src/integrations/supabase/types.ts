@@ -1760,6 +1760,54 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          ai_summary_md: string | null
+          audio_url: string | null
+          challenge: string | null
+          created_at: string
+          date: string
+          gratitude_items: string[] | null
+          highlight: string | null
+          id: string
+          mood_score: number | null
+          raw_text: string | null
+          sentiment_tag: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_summary_md?: string | null
+          audio_url?: string | null
+          challenge?: string | null
+          created_at?: string
+          date: string
+          gratitude_items?: string[] | null
+          highlight?: string | null
+          id?: string
+          mood_score?: number | null
+          raw_text?: string | null
+          sentiment_tag?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_summary_md?: string | null
+          audio_url?: string | null
+          challenge?: string | null
+          created_at?: string
+          date?: string
+          gratitude_items?: string[] | null
+          highlight?: string | null
+          id?: string
+          mood_score?: number | null
+          raw_text?: string | null
+          sentiment_tag?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_base_embeddings: {
         Row: {
           chunk_index: number
@@ -1870,6 +1918,7 @@ export type Database = {
           evaluation_criteria: Json | null
           fats: number | null
           id: string
+          image_meta: Json | null
           images: string[] | null
           leftover_analysis_metadata: Json | null
           leftover_images: string[] | null
@@ -1891,6 +1940,7 @@ export type Database = {
           evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
+          image_meta?: Json | null
           images?: string[] | null
           leftover_analysis_metadata?: Json | null
           leftover_images?: string[] | null
@@ -1912,6 +1962,7 @@ export type Database = {
           evaluation_criteria?: Json | null
           fats?: number | null
           id?: string
+          image_meta?: Json | null
           images?: string[] | null
           leftover_analysis_metadata?: Json | null
           leftover_images?: string[] | null

@@ -1,4 +1,4 @@
-export type ToolName = 'trainingsplan' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout';
+export type ToolName = 'trainingsplan' | 'supplement' | 'gewicht' | 'uebung' | 'foto' | 'quickworkout' | 'diary' | 'mealCapture' | 'goalCheckin';
 
 export interface ToolContext {
   tool: ToolName | 'chat';
@@ -7,75 +7,144 @@ export interface ToolContext {
 }
 
 export function detectToolIntent(text: string): ToolContext {
-  const toolMap: Record<ToolName, { regex: RegExp; description: string }> = {
-    trainingsplan: {
-      regex: /(trainingsplan|workout.*plan|push.*pull|split|4.*tag|3.*tag|ganzkörper|upperbody|lowerbody|plan.*erstell)/i,
-      description: 'Trainingsplan erstellen/bearbeiten'
-    },
-    supplement: {
-      regex: /(supplement|kreatin|creatine|vitamin|zink|omega|protein.*pulver|magnesium|d3|b12|eisen)/i,
-      description: 'Supplement-Empfehlung'
-    },
-    gewicht: {
-      regex: /(gewicht|wiegen|kg|waage|gramm|pfund|weight|scale)/i,
-      description: 'Gewicht erfassen'
-    },
-    uebung: {
-      regex: /(übung|exercise|versuch.*mal|neue.*übung|bankdrücken|kniebeuge|kreuzheben|klimmzug)/i,
-      description: 'Übung hinzufügen/analysieren'
-    },
-    foto: {
-      regex: /(foto|picture|progress.*pic|bild|vorher.*nachher|transformation|körper.*foto)/i,
-      description: 'Fortschritts-Foto analysieren'
-    },
-    quickworkout: {
-      regex: /(schritte|walk|joggen|lauf|quickworkout|spazier|cardio|schnell.*training|10.*min)/i,
-      description: 'Quick-Workout erfassen'
-    }
-  };
+  const tools: { tool: ToolName; description: string; confidence: number }[] = [];
 
-  // Suche nach dem besten Match
-  let bestMatch: { tool: ToolName | 'chat'; confidence: number; description: string } = {
-    tool: 'chat',
-    confidence: 0,
-    description: 'Freies Gespräch'
-  };
-
-  for (const [toolName, config] of Object.entries(toolMap)) {
-    if (config.regex.test(text)) {
-      // Berechne Confidence basierend auf Wort-Matches
-      const matches = text.match(config.regex);
-      const confidence = matches ? Math.min(matches.length * 0.3 + 0.7, 1.0) : 0;
-      
-      if (confidence > bestMatch.confidence) {
-        bestMatch = {
-          tool: toolName as ToolName,
-          confidence,
-          description: config.description
-        };
-      }
-    }
+  // Trainingsplan detection
+  const trainingsplanPatterns = [
+    /(trainingsplan|workout.*plan|push.*pull|split|4.*tag|3.*tag|ganzkörper|upperbody|lowerbody|plan.*erstell)/i,
+    /\b(training.*programm|splits|routine|krafttraining)\b/i
+  ];
+  
+  const trainingsplanMatches = trainingsplanPatterns.filter(pattern => pattern.test(text)).length;
+  if (trainingsplanMatches > 0) {
+    const confidence = Math.min(0.9, trainingsplanMatches * 0.4);
+    tools.push({ tool: 'trainingsplan', description: 'Trainingsplan erstellen', confidence });
   }
 
-  return {
-    tool: bestMatch.tool,
-    description: bestMatch.description,
-    confidence: bestMatch.confidence
-  };
+  // Supplement detection
+  const supplementPatterns = [
+    /(supplement|kreatin|creatine|vitamin|zink|omega|protein.*pulver|magnesium|d3|b12|eisen)/i,
+    /\b(nahrungsergänzung|pillen|tabletten|kapsel)\b/i
+  ];
+  
+  const supplementMatches = supplementPatterns.filter(pattern => pattern.test(text)).length;
+  if (supplementMatches > 0) {
+    const confidence = Math.min(0.9, supplementMatches * 0.4);
+    tools.push({ tool: 'supplement', description: 'Supplement-Empfehlung', confidence });
+  }
+
+  // Weight detection
+  const weightPatterns = [
+    /(gewicht|wiegen|kg|waage|gramm|pfund|weight|scale)/i,
+    /\b(\d+[\.,]?\d*)\s*(kg|kilogramm|pfund)\b/i
+  ];
+  
+  const weightMatches = weightPatterns.filter(pattern => pattern.test(text)).length;
+  if (weightMatches > 0) {
+    const confidence = Math.min(0.9, weightMatches * 0.4);
+    tools.push({ tool: 'gewicht', description: 'Gewicht erfassen', confidence });
+  }
+
+  // Exercise detection
+  const exercisePatterns = [
+    /(übung|exercise|versuch.*mal|neue.*übung|bankdrücken|kniebeuge|kreuzheben|klimmzug)/i,
+    /\b(sätze|wiederholung|reps|set|trainieren)\b/i
+  ];
+  
+  const exerciseMatches = exercisePatterns.filter(pattern => pattern.test(text)).length;
+  if (exerciseMatches > 0) {
+    const confidence = Math.min(0.9, exerciseMatches * 0.4);
+    tools.push({ tool: 'uebung', description: 'Übung hinzufügen', confidence });
+  }
+
+  // Photo detection
+  const photoPatterns = [
+    /(foto|picture|progress.*pic|bild|vorher.*nachher|transformation|körper.*foto)/i,
+    /\b(selfie|photo|aufnahme|knipsen)\b/i
+  ];
+  
+  const photoMatches = photoPatterns.filter(pattern => pattern.test(text)).length;
+  if (photoMatches > 0) {
+    const confidence = Math.min(0.9, photoMatches * 0.4);
+    tools.push({ tool: 'foto', description: 'Foto analysieren', confidence });
+  }
+
+  // Quickworkout detection
+  const quickworkoutPatterns = [
+    /\b(spazier|walk|lauf|jogg|cardio|training|sport)\b/i,
+    /\b(\d+)\s*(schritte|steps|km|meter|minuten|min)\b/i,
+    /\b(bewegung|aktivität|quick.*workout)\b/i
+  ];
+  
+  const quickworkoutMatches = quickworkoutPatterns.filter(pattern => pattern.test(text)).length;
+  if (quickworkoutMatches > 0) {
+    const confidence = Math.min(0.9, quickworkoutMatches * 0.3);
+    tools.push({ tool: 'quickworkout', description: 'Quick-Workout dokumentieren', confidence });
+  }
+
+  // Diary detection
+  const diaryPatterns = [
+    /\b(tagebuch|reflexion|dankbar|gefühl|heute\s+war|bin\s+dankbar|journal)\b/i,
+    /\b(stimmung|mood|emotional|gedanken|erlebnis|highlight)\b/i,
+    /\b(herausforderung|schwierigkeit|positive|negative|empfindung)\b/i
+  ];
+  
+  const diaryMatches = diaryPatterns.filter(pattern => pattern.test(text)).length;
+  if (diaryMatches > 0) {
+    const confidence = Math.min(0.9, diaryMatches * 0.4);
+    tools.push({ tool: 'diary', description: 'Tagebuch-Eintrag erstellen', confidence });
+  }
+
+  // Meal capture detection
+  const mealPatterns = [
+    /\b(\d+)\s*(g|kg|gramm|ml|liter)\s+\w+/i,
+    /\b(gegessen|essen|mahlzeit|kalorien|nährwerte|haferflocken|reis|hähnchen)\b/i,
+    /\b(frühstück|mittagessen|abendessen|snack|zwischenmahlzeit)\b/i
+  ];
+  
+  const mealMatches = mealPatterns.filter(pattern => pattern.test(text)).length;
+  if (mealMatches > 0) {
+    const confidence = Math.min(0.9, mealMatches * 0.4);
+    tools.push({ tool: 'mealCapture', description: 'Mahlzeit erfassen', confidence });
+  }
+
+  // Goal check-in detection
+  const goalPatterns = [
+    /\b(fortschritt|auf\s+kurs|ziel|progress|check|stand)\b/i,
+    /\b(bin\s+ich|wie\s+stehe|schaffe\s+ich|erreiche\s+ich)\b/i,
+    /\b(kpi|kennzahl|bilanz|erfolg|zielerreichung)\b/i
+  ];
+  
+  const goalMatches = goalPatterns.filter(pattern => pattern.test(text)).length;
+  if (goalMatches > 0) {
+    const confidence = Math.min(0.9, goalMatches * 0.4);
+    tools.push({ tool: 'goalCheckin', description: 'Fortschritt überprüfen', confidence });
+  }
+
+  // Return the best match or default to chat
+  if (tools.length === 0) {
+    return { tool: 'chat', description: 'Freies Gespräch', confidence: 0 };
+  }
+
+  // Sort by confidence and return the best match
+  tools.sort((a, b) => b.confidence - a.confidence);
+  return tools[0];
 }
 
 export function getToolEmoji(tool: ToolName | 'chat'): string {
   const emojiMap: Record<ToolName | 'chat', string> = {
-    trainingsplan: '🏋️',
+    trainingsplan: '📋',
     supplement: '💊',
     gewicht: '⚖️',
-    uebung: '💪',
+    uebung: '🏋️',
     foto: '📸',
     quickworkout: '🏃',
+    diary: '📖',
+    mealCapture: '🍽️',
+    goalCheckin: '🎯',
     chat: '💬'
   };
-  
-  return emojiMap[tool] || '❓';
+  return emojiMap[tool];
 }
 
 export function shouldUseTool(toolContext: ToolContext): boolean {
