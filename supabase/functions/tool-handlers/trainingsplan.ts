@@ -286,6 +286,29 @@ function extractUserProfile(conversation: any[], userId?: string): any {
   return extractedProfile;
 }
 
+// Load user profile from database and merge with extracted profile
+async function loadUserProfile(supabase: any, userId: string, extractedProfile?: any): Promise<any> {
+  try {
+    const { data: profileData } = await supabase
+      .from('user_profiles')
+      .select('profile')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    const existingProfile = profileData?.profile || {};
+    
+    // Merge extracted with existing (extracted has priority for new data)
+    return {
+      ...existingProfile,
+      ...extractedProfile,
+      userId
+    };
+  } catch (error) {
+    console.error('Error loading user profile:', error);
+    return extractedProfile || { userId };
+  }
+}
+
 // Intelligent profile extraction function embedded in edge function
 function intelligentProfileExtraction(messages: any[]): any {
   const text = messages.map(m => m.content).join(' ').toLowerCase();

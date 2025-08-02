@@ -28,6 +28,7 @@ import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
 import { ActiveWorkoutPlan } from '@/components/ActiveWorkoutPlan';
 import { FloatingWorkoutTimer } from '@/components/FloatingWorkoutTimer';
+import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { useNavigate } from 'react-router-dom';

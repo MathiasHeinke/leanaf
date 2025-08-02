@@ -53,6 +53,7 @@ import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
 import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
 import { ToolPicker } from '@/components/ToolPicker';
 import { UploadProgress } from '@/components/UploadProgress';
+import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
 import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
 
 // ============= TYPES =============
