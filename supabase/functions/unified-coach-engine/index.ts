@@ -1379,11 +1379,43 @@ async function createXLSystemPrompt(context: any, coachPersonality: string, rele
     prompt = `LANG:EN - Please respond in English unless specifically asked otherwise.\n\n` + prompt;
   }
   
-  // TOOLCONTEXT INJECTION: Add structured data at the top
+  // TOOLCONTEXT INJECTION: Add structured data at the top (Full Mode)
   if (toolContext?.data) {
-    const ctxData = JSON.stringify(toolContext.data).slice(0, 8000); // Limit to 8000 chars
-    prompt += `🧠 TAGESKONTEXT-DATEN: ${ctxData}\n\n`;
-    console.log(`📊 [${requestId}] Injected toolContext data: ${ctxData.length} chars`);
+    const { profileData, todaysTotals, workoutData, sleepData, weightHistory, dailyGoals } = toolContext.data;
+    
+    // Add today's data prominently at the beginning
+    prompt += `🧠 AKTUELLE TAGESDATEN (Full Mode):\n`;
+    
+    if (todaysTotals) {
+      prompt += `📊 HEUTE BISHER:\n`;
+      prompt += `• Kalorien: ${todaysTotals.calories || 0} kcal\n`;
+      prompt += `• Protein: ${todaysTotals.protein || 0}g\n`;
+      prompt += `• Kohlenhydrate: ${todaysTotals.carbs || 0}g\n`;
+      prompt += `• Fett: ${todaysTotals.fats || 0}g\n`;
+      prompt += `• Mahlzeiten: ${todaysTotals.count || 0}\n\n`;
+    }
+    
+    if (workoutData && workoutData.length > 0) {
+      prompt += `💪 HEUTIGES TRAINING:\n`;
+      workoutData.forEach((workout: any) => {
+        prompt += `• ${workout.exercise_name}: ${workout.sets}x${workout.reps} @ ${workout.weight_kg}kg\n`;
+      });
+      prompt += '\n';
+    }
+    
+    if (sleepData) {
+      prompt += `😴 SCHLAF: ${sleepData.hours_slept || 'N/A'} Stunden (Qualität: ${sleepData.quality || 'N/A'})\n\n`;
+    }
+    
+    if (dailyGoals) {
+      prompt += `🎯 TAGESZIELE:\n`;
+      prompt += `• Kalorien-Ziel: ${dailyGoals.calories || 'N/A'} kcal\n`;
+      prompt += `• Protein-Ziel: ${dailyGoals.protein || 'N/A'}g\n\n`;
+    }
+    
+    // Also include raw data for debugging
+    const ctxData = JSON.stringify(toolContext.data).slice(0, 2000);
+    console.log(`📊 Injected toolContext data: ${ctxData.length} chars`);
   }
   
   // User Profile Section - prefer toolContext data
