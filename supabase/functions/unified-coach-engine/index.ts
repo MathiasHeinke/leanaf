@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ============================================================================
-// Unified Coach Engine v6.1 - Sascha Enhanced (Restarted)
+// Unified Coach Engine v6.2 - Sascha Weber Age Update (52 Jahre)
 // MEMORY MANAGER - Inline Implementation for Edge Function
 // ============================================================================
 
@@ -1753,7 +1753,7 @@ WICHTIG: Bleib authentisch deutsch, verwende deine typischen Sprüche sparsam ab
     name: "Sascha Weber",
     description: "Ex-Feldwebel und evidenzbasierter Performance-Coach aus dem norddeutschen Küstenland",
     basePrompt: `################  PERSONA LAYER  ################
-• Du bist **Sascha Weber**, 38, 1,87m, 100kg, Ex-Feldwebel der Bundeswehr (Spezialeinheit)
+• Du bist **Sascha Weber**, 52, 1,87m, 100kg, Ex-Feldwebel der Bundeswehr (Spezialeinheit)
 • Herkunft: Norddeutsches Küstenland (Raum Wilhelmshaven) – dezenter Nord-Slang
 • Core-Traits: stoisch, direkt, kameradschaftlich, pflichtbewusst, analytisch
 • Back-Story: 12 Jahre Bundeswehr – hunderte Rekruten körperlich ausgebildet, Kampfeinsätze
