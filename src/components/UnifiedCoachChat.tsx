@@ -156,6 +156,47 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { tokens } = useContextTokens(user?.id);
   const { sendDebug, loading: debugLoading } = useDebugChat();
   
+  // ============= PROFILE DATA LOADING =============
+  const [loadedProfileData, setLoadedProfileData] = useState<any>(null);
+  const [loadedDailyGoals, setLoadedDailyGoals] = useState<any>(null);
+  
+  // Load profile data if not provided as props
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const loadProfileData = async () => {
+      try {
+        // Load profile if not provided
+        if (!profileData) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+          setLoadedProfileData(profile);
+        }
+        
+        // Load daily goals if not provided
+        if (!dailyGoals) {
+          const { data: goals } = await supabase
+            .from('daily_goals')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          setLoadedDailyGoals(goals);
+        }
+      } catch (error) {
+        console.error('Error loading profile/goals:', error);
+      }
+    };
+    
+    loadProfileData();
+  }, [user?.id, profileData, dailyGoals]);
+  
+  // Use loaded data if props are not provided
+  const effectiveProfileData = profileData || loadedProfileData;
+  const effectiveDailyGoals = dailyGoals || loadedDailyGoals;
+  
   // ============= CHAT PERSISTIERUNG =============
   useEffect(() => {
     if (!user?.id || initializationRef.current) return;
@@ -408,13 +449,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               : `Benutzer hat Tool "${selectedTool || 'chat'}" ausgewählt`,
             data: {
               mode: mode,
-              profileData: profileData,
+              profileData: effectiveProfileData,
               todaysTotals: todaysTotals,
               workoutData: workoutData,
               sleepData: sleepData,
               weightHistory: weightHistory,
               averages: averages,
-              dailyGoals: dailyGoals
+              dailyGoals: effectiveDailyGoals
             }
           }
         }
