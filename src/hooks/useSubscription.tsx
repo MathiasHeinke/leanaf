@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { secureLogger } from '@/utils/secureLogger';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
 interface TrialData {
   hasActiveTrial: boolean;
@@ -60,6 +61,7 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
   const [debugTier, setDebugTierState] = useState<string | null>(null);
   
   const { user } = useAuth();
+  const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
 
   const refreshSubscription = async (forceRefresh = false) => {
     if (!user) {
@@ -170,20 +172,27 @@ export const SubscriptionProvider = ({ children }: { children: React.ReactNode }
       }
 
       const isSubscribed = subscriptionData?.subscribed || false;
-      const premium = isSubscribed || hasActiveTrial;
+      // Super Admins get unlimited Premium access
+      const premium = isSubscribed || hasActiveTrial || (!adminLoading && isSuperAdmin);
       const basic = !premium;
 
       secureLogger.info('Subscription Final status', {
         isSubscribed,
         subscriptionTier: subscriptionData?.subscription_tier,
         hasActiveTrial,
+        isSuperAdmin: !adminLoading && isSuperAdmin,
         premium,
         basic
       });
 
       setIsPremium(premium);
       setIsBasic(basic);
-      setSubscriptionTier(subscriptionData?.subscription_tier || (hasActiveTrial ? 'premium' : null));
+      // Super Admins get "Super Admin" tier, otherwise use existing logic
+      setSubscriptionTier(
+        (!adminLoading && isSuperAdmin) 
+          ? 'Super Admin' 
+          : subscriptionData?.subscription_tier || (hasActiveTrial ? 'premium' : null)
+      );
       setSubscriptionEnd(subscriptionData?.subscription_end || null);
       setTrial({
         hasActiveTrial,

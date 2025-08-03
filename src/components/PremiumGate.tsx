@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
 interface PremiumGateProps {
   children: ReactNode;
@@ -29,6 +30,7 @@ export const PremiumGate = ({
   const { trial, startPremiumTrial, isPremium } = useSubscription();
   const { hasFeatureAccess, getFeatureStatus } = useFeatureAccess();
   const { user } = useAuth();
+  const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
   const navigate = useNavigate();
   const [hidePremiumFeatures, setHidePremiumFeatures] = useState(false);
 
@@ -58,7 +60,8 @@ export const PremiumGate = ({
 
   const featureStatus = getFeatureStatus(feature);
   
-  if (featureStatus.hasAccess) {
+  // Super Admins get unlimited access to all premium features
+  if (featureStatus.hasAccess || (!adminLoading && isSuperAdmin)) {
     return <>{children}</>;
   }
 

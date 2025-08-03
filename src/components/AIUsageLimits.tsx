@@ -7,6 +7,7 @@ import { Brain, Zap, Crown, Lock } from 'lucide-react';
 import { useAIUsageLimits } from '@/hooks/useAIUsageLimits';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
 interface AIUsageLimitsProps {
   featureType: 'meal_analysis' | 'coach_chat' | 'coach_recipes' | 'daily_analysis';
@@ -16,22 +17,26 @@ interface AIUsageLimitsProps {
 export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, className }) => {
   const { getCurrentUsage } = useAIUsageLimits();
   const { isPremium } = useSubscription();
+  const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
   const navigate = useNavigate();
   const [usage, setUsage] = useState<{ daily_count: number; monthly_count: number } | null>(null);
 
   useEffect(() => {
-    if (!isPremium) {
+    if (!isPremium && (adminLoading || !isSuperAdmin)) {
       getCurrentUsage(featureType).then(setUsage);
     }
-  }, [featureType, isPremium, getCurrentUsage]);
+  }, [featureType, isPremium, isSuperAdmin, adminLoading, getCurrentUsage]);
 
-  if (isPremium) {
+  // Super Admins and Premium users get unlimited AI access
+  if (isPremium || (!adminLoading && isSuperAdmin)) {
     return (
       <Card className={`border-primary/20 bg-primary/5 ${className}`}>
         <CardContent className="pt-4">
           <div className="flex items-center gap-2">
             <Crown className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Pro - Unlimited AI</span>
+            <span className="text-sm font-medium text-primary">
+              {(!adminLoading && isSuperAdmin) ? 'Super Admin - Unlimited AI' : 'Pro - Unlimited AI'}
+            </span>
           </div>
         </CardContent>
       </Card>
