@@ -186,7 +186,7 @@ const EnhancedPipelineDebugger = () => {
     }
   };
 
-  // Test Unified Engine
+  // Test Unified Engine (NON-STREAMING)
   const testUnifiedEngine = async () => {
     if (!user?.id) return;
 
@@ -197,7 +197,9 @@ const EnhancedPipelineDebugger = () => {
       
       updatePipelineStatus('context', 10, 'Lade Context...');
 
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = {
+        'x-disable-streaming': 'true' // Force non-streaming mode
+      };
       
       // Apply context configuration
       if (contextConfig.minimalMode) {
@@ -208,6 +210,12 @@ const EnhancedPipelineDebugger = () => {
       }
       if (!contextConfig.enableMemory) {
         headers['x-disable-memory'] = 'true';
+      }
+      if (!contextConfig.enableDailySummary) {
+        headers['x-disable-daily-summary'] = 'true';
+      }
+      if (!contextConfig.enableConversationHistory) {
+        headers['x-disable-conversation-history'] = 'true';
       }
 
       updatePipelineStatus('openai', 60, 'Sende an unified-coach-engine...');
@@ -234,13 +242,14 @@ const EnhancedPipelineDebugger = () => {
         debug: {
           ...data.debug,
           contextConfig,
-          headers
+          headers,
+          nonStreaming: true
         }
       });
       
       toast({
         title: "🚀 Unified Engine erfolgreich!",
-        description: "Pipeline komplett durchlaufen",
+        description: "Pipeline komplett durchlaufen (ohne Streaming)",
       });
 
     } catch (error) {
@@ -412,21 +421,21 @@ const EnhancedPipelineDebugger = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6 p-2 lg:p-0">
       {/* Engine Selection */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+            <Settings className="h-4 w-4 lg:h-5 lg:w-5" />
             Pipeline Engine Selection
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs lg:text-sm">
             Wähle welche Engine/Pipeline getestet werden soll
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-4">
+            <div className="flex items-center space-x-2 p-2 lg:p-0">
               <input
                 type="radio"
                 id="direct"
@@ -434,15 +443,15 @@ const EnhancedPipelineDebugger = () => {
                 value="direct"
                 checked={selectedEngine === 'direct'}
                 onChange={(e) => setSelectedEngine(e.target.value as EngineType)}
-                className="w-4 h-4"
+                className="w-3 h-3 lg:w-4 lg:h-4"
               />
-              <Label htmlFor="direct" className="text-sm font-medium">
+              <Label htmlFor="direct" className="text-xs lg:text-sm font-medium cursor-pointer">
                 🤖 Direct OpenAI
                 <div className="text-xs text-muted-foreground">Direkt ohne Pipeline</div>
               </Label>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 p-2 lg:p-0">
               <input
                 type="radio"
                 id="unified"
@@ -450,15 +459,15 @@ const EnhancedPipelineDebugger = () => {
                 value="unified"
                 checked={selectedEngine === 'unified'}
                 onChange={(e) => setSelectedEngine(e.target.value as EngineType)}
-                className="w-4 h-4"
+                className="w-3 h-3 lg:w-4 lg:h-4"
               />
-              <Label htmlFor="unified" className="text-sm font-medium">
+              <Label htmlFor="unified" className="text-xs lg:text-sm font-medium cursor-pointer">
                 🔧 Unified Engine
                 <div className="text-xs text-muted-foreground">Mit Context Pipeline</div>
               </Label>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 p-2 lg:p-0">
               <input
                 type="radio"
                 id="streaming"
@@ -466,30 +475,30 @@ const EnhancedPipelineDebugger = () => {
                 value="streaming"
                 checked={selectedEngine === 'streaming'}
                 onChange={(e) => setSelectedEngine(e.target.value as EngineType)}
-                className="w-4 h-4"
+                className="w-3 h-3 lg:w-4 lg:h-4"
               />
-              <Label htmlFor="streaming" className="text-sm font-medium">
+              <Label htmlFor="streaming" className="text-xs lg:text-sm font-medium cursor-pointer">
                 🔄 Streaming Engine
                 <div className="text-xs text-muted-foreground">Mit SSE Streaming</div>
               </Label>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Test Nachricht:</Label>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs lg:text-sm font-medium">Test Nachricht:</Label>
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Nachricht für Pipeline Test..."
-                className="mt-1"
-                rows={3}
+                className="text-xs lg:text-sm"
+                rows={2}
               />
             </div>
-            <div>
-              <Label className="text-sm font-medium">OpenAI Model:</Label>
+            <div className="space-y-2">
+              <Label className="text-xs lg:text-sm font-medium">OpenAI Model:</Label>
               <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className="text-xs lg:text-sm">
                   <SelectValue placeholder="Wähle ein Model" />
                 </SelectTrigger>
                 <SelectContent>
@@ -509,17 +518,17 @@ const EnhancedPipelineDebugger = () => {
       {selectedEngine !== 'direct' && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+              <Brain className="h-4 w-4 lg:h-5 lg:w-5" />
               Context Control Panel
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs lg:text-sm">
               Einzelne Context-Komponenten an/ausschalten
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="flex items-center space-x-2">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
+              <div className="flex items-center space-x-2 p-1">
                 <Switch
                   id="minimal"
                   checked={contextConfig.minimalMode}
@@ -527,12 +536,12 @@ const EnhancedPipelineDebugger = () => {
                     setContextConfig(prev => ({ ...prev, minimalMode: checked }))
                   }
                 />
-                <Label htmlFor="minimal" className="text-sm">
+                <Label htmlFor="minimal" className="text-xs lg:text-sm cursor-pointer">
                   Minimal Mode
                 </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 p-1">
                 <Switch
                   id="rag"
                   checked={contextConfig.enableRAG}
@@ -541,12 +550,12 @@ const EnhancedPipelineDebugger = () => {
                   }
                   disabled={contextConfig.minimalMode}
                 />
-                <Label htmlFor="rag" className="text-sm">
+                <Label htmlFor="rag" className="text-xs lg:text-sm cursor-pointer">
                   RAG (Knowledge)
                 </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 p-1">
                 <Switch
                   id="memory"
                   checked={contextConfig.enableMemory}
@@ -555,12 +564,12 @@ const EnhancedPipelineDebugger = () => {
                   }
                   disabled={contextConfig.minimalMode}
                 />
-                <Label htmlFor="memory" className="text-sm">
+                <Label htmlFor="memory" className="text-xs lg:text-sm cursor-pointer">
                   Coach Memory
                 </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 p-1">
                 <Switch
                   id="daily"
                   checked={contextConfig.enableDailySummary}
@@ -569,12 +578,12 @@ const EnhancedPipelineDebugger = () => {
                   }
                   disabled={contextConfig.minimalMode}
                 />
-                <Label htmlFor="daily" className="text-sm">
+                <Label htmlFor="daily" className="text-xs lg:text-sm cursor-pointer">
                   Daily Summary
                 </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 p-1">
                 <Switch
                   id="history"
                   checked={contextConfig.enableConversationHistory}
@@ -583,7 +592,7 @@ const EnhancedPipelineDebugger = () => {
                   }
                   disabled={contextConfig.minimalMode}
                 />
-                <Label htmlFor="history" className="text-sm">
+                <Label htmlFor="history" className="text-xs lg:text-sm cursor-pointer">
                   Chat History
                 </Label>
               </div>
@@ -595,25 +604,28 @@ const EnhancedPipelineDebugger = () => {
       {/* Pipeline Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+            <Activity className="h-4 w-4 lg:h-5 lg:w-5" />
             Live Pipeline Status
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 lg:gap-3">
             {getStageIcon(pipelineStatus.stage)}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium">{pipelineStatus.message}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs lg:text-sm font-medium truncate">{pipelineStatus.message}</span>
+                <span className="text-xs text-muted-foreground ml-2">
                   {pipelineStatus.progress}%
                 </span>
               </div>
-              <Progress value={pipelineStatus.progress} className="h-2" />
+              <Progress value={pipelineStatus.progress} className="h-1 lg:h-2" />
             </div>
-            <Badge variant={pipelineStatus.stage === 'error' ? 'destructive' : 
-                           pipelineStatus.stage === 'complete' ? 'default' : 'secondary'}>
+            <Badge 
+              variant={pipelineStatus.stage === 'error' ? 'destructive' : 
+                      pipelineStatus.stage === 'complete' ? 'default' : 'secondary'}
+              className="text-xs"
+            >
               {pipelineStatus.stage}
             </Badge>
           </div>
@@ -623,20 +635,21 @@ const EnhancedPipelineDebugger = () => {
       {/* Test Execution */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TestTube className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+            <TestTube className="h-4 w-4 lg:h-5 lg:w-5" />
             Pipeline Test Execution
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 lg:gap-3">
             <Button 
               onClick={executeTest}
               disabled={isLoading || debugLoading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-xs lg:text-sm lg:col-span-4"
+              size="sm"
             >
-              <Play className="h-4 w-4" />
-              {(isLoading || debugLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Play className="h-3 w-3 lg:h-4 lg:w-4" />
+              {(isLoading || debugLoading) && <Loader2 className="h-3 w-3 lg:h-4 lg:w-4 animate-spin" />}
               Test {selectedEngine.charAt(0).toUpperCase() + selectedEngine.slice(1)}
             </Button>
             
@@ -645,6 +658,7 @@ const EnhancedPipelineDebugger = () => {
               disabled={isLoading || debugLoading}
               variant="outline"
               size="sm"
+              className="text-xs"
             >
               🚀 Minimal
             </Button>
@@ -654,6 +668,7 @@ const EnhancedPipelineDebugger = () => {
               disabled={isLoading || debugLoading}
               variant="outline"
               size="sm"
+              className="text-xs"
             >
               🤖 + Persona
             </Button>
@@ -663,19 +678,21 @@ const EnhancedPipelineDebugger = () => {
               disabled={isLoading || debugLoading}
               variant="outline"
               size="sm"
+              className="text-xs"
             >
               🔧 Full Pipeline
             </Button>
+            
+            <Button 
+              onClick={quickTestStreaming}
+              disabled={isLoading || debugLoading}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              🔄 Streaming Test
+            </Button>
           </div>
-          
-          <Button 
-            onClick={quickTestStreaming}
-            disabled={isLoading || debugLoading}
-            variant="outline"
-            className="w-full"
-          >
-            🔄 Streaming Test
-          </Button>
         </CardContent>
       </Card>
 
@@ -683,21 +700,21 @@ const EnhancedPipelineDebugger = () => {
       {selectedEngine === 'streaming' && streamingConfig.showSSEEvents && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Radio className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+              <Radio className="h-4 w-4 lg:h-5 lg:w-5" />
               SSE Events Monitor
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div 
               ref={sseLogRef}
-              className="bg-muted p-3 rounded-lg h-32 overflow-y-auto text-xs font-mono"
+              className="bg-muted p-2 lg:p-3 rounded-lg h-24 lg:h-32 overflow-y-auto text-xs font-mono"
             >
               {sseEvents.length === 0 ? (
                 <div className="text-muted-foreground">Keine SSE Events bisher...</div>
               ) : (
                 sseEvents.map((event, index) => (
-                  <div key={index} className="mb-1">{event}</div>
+                  <div key={index} className="mb-1 break-words">{event}</div>
                 ))
               )}
             </div>
@@ -709,39 +726,44 @@ const EnhancedPipelineDebugger = () => {
       {response && (
         <Card>
           <CardHeader>
-            <CardTitle>Pipeline Response - {response.engine?.toUpperCase()} Engine</CardTitle>
+            <CardTitle className="text-sm lg:text-base">
+              Pipeline Response - {response.engine?.toUpperCase()} Engine
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {response.error ? (
               <div className="text-red-600">
-                <Badge variant="destructive">Error</Badge>
-                <Badge variant="outline" className="ml-2">{response.engine}</Badge>
-                {response.model && <Badge variant="outline" className="ml-2">{response.model}</Badge>}
-                <pre className="mt-2 text-sm">{response.error}</pre>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <Badge variant="destructive" className="text-xs">Error</Badge>
+                  <Badge variant="outline" className="text-xs">{response.engine}</Badge>
+                  {response.model && <Badge variant="outline" className="text-xs">{response.model}</Badge>}
+                </div>
+                <pre className="text-xs lg:text-sm bg-muted p-2 rounded overflow-auto">{response.error}</pre>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="default">{response.engine} Engine</Badge>
-                  {response.model && <Badge variant="outline">{response.model}</Badge>}
+                  <Badge variant="default" className="text-xs">{response.engine} Engine</Badge>
+                  {response.model && <Badge variant="outline" className="text-xs">{response.model}</Badge>}
                   {response.processingTime && (
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="text-xs">
                       {`${response.processingTime}ms`}
                     </Badge>
                   )}
-                  {response.debug?.streaming && <Badge variant="default">Streaming</Badge>}
-                  {response.debug?.contextConfig?.minimalMode && <Badge variant="secondary">Minimal</Badge>}
+                  {response.debug?.streaming && <Badge variant="default" className="text-xs">Streaming</Badge>}
+                  {response.debug?.nonStreaming && <Badge variant="secondary" className="text-xs">Non-Streaming</Badge>}
+                  {response.debug?.contextConfig?.minimalMode && <Badge variant="secondary" className="text-xs">Minimal</Badge>}
                 </div>
                 
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="font-medium">AI Response:</p>
-                  <p className="mt-1 whitespace-pre-wrap">{response.content || response.response}</p>
+                <div className="bg-muted p-3 lg:p-4 rounded-lg">
+                  <p className="font-medium text-xs lg:text-sm">AI Response:</p>
+                  <p className="mt-1 whitespace-pre-wrap text-xs lg:text-sm">{response.content || response.response}</p>
                 </div>
                 
                 {response.debug && (
                   <details className="mt-4">
-                    <summary className="cursor-pointer font-medium">Debug Information</summary>
-                    <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto max-h-64">
+                    <summary className="cursor-pointer font-medium text-xs lg:text-sm">Debug Information</summary>
+                    <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto max-h-48 lg:max-h-64">
                       {JSON.stringify(response.debug, null, 2)}
                     </pre>
                   </details>
