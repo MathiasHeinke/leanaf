@@ -49,8 +49,8 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
       }
 
       // Start performance tracking
-      startPerformanceTracking();
       resetPerformanceTracking();
+      startPerformanceTracking();
 
       // Create abort controller
       abortControllerRef.current = new AbortController();
@@ -199,13 +199,11 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
       }
 
       // If we reach here without [DONE], complete the message
-      if (streamingMessage && !streamingMessage.isComplete) {
-        console.log('📝 Completing stream without [DONE] signal');
-        trackStreamingComplete();
-        setStreamingMessage(prev => prev ? { ...prev, isComplete: true, isStreaming: false } : null);
-        setIsConnected(false);
-        options.onStreamEnd?.();
-      }
+      console.log('📝 Completing stream without [DONE] signal');
+      trackStreamingComplete();
+      setStreamingMessage(prev => prev ? { ...prev, isComplete: true, isStreaming: false } : null);
+      setIsConnected(false);
+      options.onStreamEnd?.();
 
     } catch (error) {
       console.error('💥 Real streaming error:', error);
