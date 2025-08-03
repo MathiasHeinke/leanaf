@@ -162,7 +162,7 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
             try {
               const event = JSON.parse(data);
               
-              if (event.type === 'content' && event.content) {
+              if ((event.type === 'content' && event.content) || (event.type === 'delta' && event.delta)) {
                 if (!firstTokenReceived) {
                   trackFirstToken();
                   firstTokenReceived = true;
@@ -174,7 +174,8 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
 
                 setStreamingMessage(prev => {
                   if (!prev) return null;
-                  const newContent = prev.content + event.content;
+                  const deltaContent = event.content || event.delta || '';
+                  const newContent = prev.content + deltaContent;
                   return {
                     ...prev,
                     content: newContent,
