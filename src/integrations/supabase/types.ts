@@ -4235,22 +4235,6 @@ export type Database = {
       }
     }
     Views: {
-      rolling_daily_snapshot: {
-        Row: {
-          completeness_score: number | null
-          date: string | null
-          hydration_ml: number | null
-          hydration_score: number | null
-          kcal: number | null
-          mood: string | null
-          sleep_hours: number | null
-          sleep_score: number | null
-          supplement_compliance: number | null
-          user_id: string | null
-          volume_kg: number | null
-        }
-        Relationships: []
-      }
       v_fluids_totals: {
         Row: {
           date: string | null
@@ -4275,22 +4259,6 @@ export type Database = {
         Row: {
           date: string | null
           user_id: string | null
-        }
-        Relationships: []
-      }
-      v_summary_rolling_30: {
-        Row: {
-          completeness_score: number | null
-          date: string | null
-          hydration_ml: number | null
-          hydration_score: number | null
-          kcal: number | null
-          mood: string | null
-          sleep_hours: number | null
-          sleep_score: number | null
-          supplement_compliance: number | null
-          user_id: string | null
-          volume_kg: number | null
         }
         Relationships: []
       }
