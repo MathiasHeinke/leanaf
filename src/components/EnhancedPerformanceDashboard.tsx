@@ -249,7 +249,7 @@ const EnhancedPerformanceDashboard: React.FC = () => {
             <span className="text-sm text-muted-foreground">Lade Metriken...</span>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {[1,2,3,4].map(i => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
@@ -267,20 +267,9 @@ const EnhancedPerformanceDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 p-6">
-      {/* Header mit Live-Indikator */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-foreground">Production Admin</h1>
-            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-              Live
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">Real-time monitoring & control center</p>
-        </div>
-        
+    <div className="space-y-8">
+      {/* Simplified Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">        
         <div className="flex gap-2">
           <Button 
             onClick={fetchAllMetrics} 
@@ -302,32 +291,11 @@ const EnhancedPerformanceDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            <span className="hidden sm:inline">Production</span>
-          </TabsTrigger>
-          <TabsTrigger value="trace" className="flex items-center gap-2">
-            <Database className="w-4 h-4" />
-            <span className="hidden sm:inline">Live Trace</span>
-          </TabsTrigger>
-          <TabsTrigger value="performance" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            <span className="hidden sm:inline">Performance</span>
-          </TabsTrigger>
-          <TabsTrigger value="system" className="flex items-center gap-2">
-            <Gauge className="w-4 h-4" />
-            <span className="hidden sm:inline">System & Security</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Performance Tab */}
-        <TabsContent value="performance" className="space-y-8">
+      {/* Direct Performance Content */}
+      <div className="space-y-8">
           
           {/* Performance Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             
             {/* Average Response Time */}
             <Card className="bg-card border-border">
@@ -409,7 +377,7 @@ const EnhancedPerformanceDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               {openaiMetrics && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                   
                   {/* Reasoning Card */}
                   <Card className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 border-purple-200 dark:border-purple-800">
@@ -573,7 +541,7 @@ const EnhancedPerformanceDashboard: React.FC = () => {
                     </h4>
                     <p className="text-sm text-muted-foreground mb-4">Status der Wissensbasis-Vektorisierung</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-1 gap-4 mb-6">
                       <div className="text-center p-4 bg-primary/10 dark:bg-primary/20 border border-primary/20 rounded-lg">
                         <div className="text-2xl font-bold text-primary">{ragMetrics.totalEmbeddings}</div>
                         <div className="text-sm text-muted-foreground">Embeddings</div>
@@ -733,7 +701,7 @@ const EnhancedPerformanceDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               {telemetryMetrics && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                   
                   {/* Daily Cost */}
                   <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 border-green-200 dark:border-green-800">
@@ -828,31 +796,7 @@ const EnhancedPerformanceDashboard: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Andere Tabs bleiben gleich - Platzhalter */}
-        <TabsContent value="overview">
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-foreground">Production Overview</h3>
-            <p className="text-muted-foreground">Dashboard für Produktionsübersicht</p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="trace">
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-foreground">Live Trace</h3>
-            <p className="text-muted-foreground">Live-Verfolgung von Systemereignissen</p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="system">
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-foreground">System & Security</h3>
-            <p className="text-muted-foreground">System- und Sicherheitsüberwachung</p>
-          </div>
-        </TabsContent>
-
-      </Tabs>
+        </div>
     </div>
   );
 };
