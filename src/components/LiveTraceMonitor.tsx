@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Activity, 
@@ -19,7 +21,14 @@ import {
   Send,
   RefreshCw,
   PlayCircle,
-  Loader2
+  Loader2,
+  Copy,
+  Eye,
+  RotateCcw,
+  ChevronDown,
+  Layers,
+  Code,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -47,6 +56,9 @@ interface GroupedTrace {
   startTime: string;
   totalDuration?: number;
   status: 'running' | 'completed' | 'error';
+  totalSteps: number;
+  completedSteps: number;
+  errorSteps: number;
 }
 
 const COACHES = [
@@ -63,16 +75,20 @@ const STEP_ICONS: Record<string, React.ComponentType<any>> = {
   'openai_call': Cpu,
   'stream': Zap,
   'complete': CheckCircle,
-  'error': XCircle
+  'error': XCircle,
+  'config_check': Database,
+  'validation': AlertCircle
 };
 
 const STEP_NAMES: Record<string, string> = {
   'message_received': 'Nachricht empfangen',
+  'config_check': 'Konfiguration prüfen',
+  'validation': 'Parameter validiert',
   'buildAIContext': 'KI-Kontext aufbauen',
   'openai_call': 'OpenAI Anfrage',
   'stream': 'Antwort streamen',
   'complete': 'Verarbeitung abgeschlossen',
-  'error': 'Fehler'
+  'error': 'Fehler aufgetreten'
 };
 
 const STATUS_COLORS = {
@@ -82,6 +98,8 @@ const STATUS_COLORS = {
   error: 'text-red-500'
 };
 
+const PRIORITY_STEPS = ['openai_call', 'buildAIContext', 'stream', 'error'];
+
 export const LiveTraceMonitor = () => {
   const [traces, setTraces] = useState<GroupedTrace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +107,7 @@ export const LiveTraceMonitor = () => {
   const [testMessage, setTestMessage] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
   const [currentTraceId, setCurrentTraceId] = useState<string | null>(null);
+  const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchTraces = async () => {
@@ -97,11 +116,11 @@ export const LiveTraceMonitor = () => {
         .from('coach_trace_events')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(300);
 
       if (error) throw error;
 
-      // Group events by trace_id
+      // Group events by trace_id with enhanced processing
       const groupedTraces = new Map<string, GroupedTrace>();
       
       data?.forEach((event: any) => {
@@ -112,29 +131,37 @@ export const LiveTraceMonitor = () => {
             messageId: event.message_id,
             events: [],
             startTime: event.created_at,
-            status: 'running'
+            status: 'running',
+            totalSteps: 0,
+            completedSteps: 0,
+            errorSteps: 0
           });
         }
         
         const trace = groupedTraces.get(event.trace_id)!;
         trace.events.push(event);
         
-        // Update trace status based on events
-        const hasError = trace.events.some(e => e.status === 'error');
-        const hasComplete = trace.events.some(e => e.step === 'complete' && e.status === 'complete');
+        // Enhanced status calculation
+        const errorEvents = trace.events.filter(e => e.status === 'error');
+        const completeEvents = trace.events.filter(e => e.status === 'complete');
+        const hasCompleteStep = trace.events.some(e => e.step === 'complete' && e.status === 'complete');
         
-        if (hasError) {
+        trace.totalSteps = trace.events.length;
+        trace.completedSteps = completeEvents.length;
+        trace.errorSteps = errorEvents.length;
+        
+        if (errorEvents.length > 0) {
           trace.status = 'error';
-        } else if (hasComplete) {
+        } else if (hasCompleteStep) {
           trace.status = 'completed';
         } else {
           trace.status = 'running';
         }
         
-        // Calculate total duration
-        const completedEvents = trace.events.filter(e => e.duration_ms);
-        if (completedEvents.length > 0) {
-          trace.totalDuration = completedEvents.reduce((sum, e) => sum + (e.duration_ms || 0), 0);
+        // Calculate total duration more accurately
+        const eventsWithDuration = trace.events.filter(e => e.duration_ms);
+        if (eventsWithDuration.length > 0) {
+          trace.totalDuration = eventsWithDuration.reduce((sum, e) => sum + (e.duration_ms || 0), 0);
         }
       });
 
@@ -145,6 +172,11 @@ export const LiveTraceMonitor = () => {
       setTraces(tracesArray);
     } catch (error) {
       console.error('Failed to fetch traces:', error);
+      toast({
+        title: "Fehler beim Laden",
+        description: "Trace-Events konnten nicht geladen werden.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -163,7 +195,8 @@ export const LiveTraceMonitor = () => {
           schema: 'public',
           table: 'coach_trace_events'
         },
-        () => {
+        (payload) => {
+          console.log('New trace event received:', payload);
           fetchTraces(); // Refetch when new events arrive
         }
       )
@@ -189,6 +222,7 @@ export const LiveTraceMonitor = () => {
       const messageId = `msg_${Date.now()}`;
       const traceId = `trace_${Date.now()}`;
       setCurrentTraceId(traceId);
+      setExpandedTrace(traceId);
 
       // Call the unified coach engine
       const response = await supabase.functions.invoke('unified-coach-engine', {
@@ -209,7 +243,7 @@ export const LiveTraceMonitor = () => {
 
       toast({
         title: "Test-Nachricht gesendet",
-        description: `Nachricht an ${COACHES.find(c => c.id === selectedCoach)?.name} gesendet. Verfolge die Pipeline unten.`
+        description: `Nachricht an ${COACHES.find(c => c.id === selectedCoach)?.name} gesendet. Pipeline wird live verfolgt.`
       });
 
       setTestMessage('');
@@ -225,27 +259,190 @@ export const LiveTraceMonitor = () => {
     }
   };
 
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Kopiert",
+        description: `${label} wurde in die Zwischenablage kopiert.`
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Kopieren fehlgeschlagen.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStepIcon = (step: string) => {
     const IconComponent = STEP_ICONS[step] || Activity;
     return <IconComponent className="w-4 h-4" />;
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string, isRunning?: boolean) => {
     switch (status) {
       case 'complete': return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'error': return <XCircle className="w-4 h-4 text-red-500" />;
       case 'progress': 
-      case 'started': return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
-      default: return <AlertCircle className="w-4 h-4 text-blue-500" />;
+      case 'started': return isRunning ? <Loader2 className="w-4 h-4 text-blue-500 animate-spin" /> : <Clock className="w-4 h-4 text-blue-500" />;
+      default: return <AlertCircle className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const getTraceStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed': return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Abgeschlossen</Badge>;
-      case 'error': return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Fehler</Badge>;
-      default: return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Läuft</Badge>;
+  const getTraceStatusBadge = (trace: GroupedTrace) => {
+    const isRunning = trace.status === 'running';
+    const hasLongRunningSteps = trace.events.some(e => 
+      e.status === 'started' && 
+      Date.now() - new Date(e.created_at).getTime() > 10000
+    );
+
+    switch (trace.status) {
+      case 'completed': 
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+          ✅ Abgeschlossen ({trace.completedSteps}/{trace.totalSteps})
+        </Badge>;
+      case 'error': 
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          ❌ Fehler ({trace.errorSteps} Fehler)
+        </Badge>;
+      default: 
+        return <Badge className={`${isRunning ? 'animate-pulse' : ''} ${hasLongRunningSteps ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}>
+          {hasLongRunningSteps ? '⚠️ Langsam' : '🔄 Läuft'} ({trace.completedSteps}/{trace.totalSteps})
+        </Badge>;
     }
+  };
+
+  const formatDuration = (ms?: number): string => {
+    if (!ms) return '—';
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
+
+  const renderEventDetails = (event: TraceEvent) => {
+    const hasInput = event.data?.input;
+    const hasOutput = event.data?.output;
+    const hasRequestPayload = event.data?.request_payload;
+    const hasError = event.error_message;
+    const hasGeneralData = Object.keys(event.data || {}).length > 0;
+
+    return (
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Übersicht</TabsTrigger>
+          <TabsTrigger value="data" disabled={!hasGeneralData}>Daten</TabsTrigger>
+          <TabsTrigger value="payload" disabled={!hasRequestPayload}>Request</TabsTrigger>
+          <TabsTrigger value="raw">Raw JSON</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview" className="space-y-3">
+          <div className="grid grid-cols-2 gap-4 p-3 bg-muted/30 rounded-lg">
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">Status</div>
+              <div className="flex items-center gap-2">
+                {getStatusIcon(event.status)}
+                <span className="capitalize">{event.status}</span>
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">Dauer</div>
+              <div>{formatDuration(event.duration_ms)}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">Zeitstempel</div>
+              <div className="text-xs font-mono">{format(new Date(event.created_at), 'HH:mm:ss.SSS')}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium text-muted-foreground">Event ID</div>
+              <div className="text-xs font-mono">{event.id.substring(0, 8)}...</div>
+            </div>
+          </div>
+
+          {hasInput && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <Layers className="w-4 h-4" />
+                Input-Parameter
+              </div>
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                <pre className="text-xs overflow-auto max-h-32">
+                  {JSON.stringify(event.data.input, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {hasOutput && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Output-Daten
+              </div>
+              <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <pre className="text-xs overflow-auto max-h-32">
+                  {JSON.stringify(event.data.output, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {hasError && (
+            <div className="space-y-2">
+              <div className="text-sm font-medium flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-4 h-4" />
+                Fehler-Details
+              </div>
+              <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <div className="text-sm text-red-800 dark:text-red-300">
+                  {event.error_message}
+                </div>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="data" className="space-y-3">
+          <div className="p-3 bg-muted/30 rounded-lg">
+            <pre className="text-xs overflow-auto max-h-64">
+              {JSON.stringify(event.data, null, 2)}
+            </pre>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="payload" className="space-y-3">
+          {hasRequestPayload ? (
+            <div className="space-y-3">
+              <div className="text-sm font-medium">OpenAI Request Payload</div>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <pre className="text-xs overflow-auto max-h-64">
+                  {JSON.stringify(event.data.request_payload, null, 2)}
+                </pre>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Keine Request-Daten verfügbar</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="raw" className="space-y-3">
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => copyToClipboard(JSON.stringify(event, null, 2), 'Raw Event JSON')}
+            >
+              <Copy className="w-4 h-4 mr-1" />
+              Kopieren
+            </Button>
+          </div>
+          <div className="p-3 bg-muted/30 rounded-lg">
+            <pre className="text-xs overflow-auto max-h-64">
+              {JSON.stringify(event, null, 2)}
+            </pre>
+          </div>
+        </TabsContent>
+      </Tabs>
+    );
   };
 
   // Filter to show current trace first
@@ -279,12 +476,13 @@ export const LiveTraceMonitor = () => {
 
   return (
     <div className="space-y-4">
-      {/* Test Message Sender */}
+      {/* Enhanced Test Message Sender */}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
             <PlayCircle className="w-5 h-5" />
-            Live Coach Pipeline Monitor
+            Pro Live Coach Pipeline Monitor
+            <Badge variant="outline">Observability v2.0</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -308,7 +506,7 @@ export const LiveTraceMonitor = () => {
               <label className="text-sm font-medium mb-2 block">Test-Nachricht</label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="z.B. Wie kann ich besser schlafen?"
+                  placeholder="z.B. Erstelle mir einen Trainingsplan für 3 Tage"
                   value={testMessage}
                   onChange={(e) => setTestMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !isSending && sendTestMessage()}
@@ -330,8 +528,10 @@ export const LiveTraceMonitor = () => {
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              {traces.length} Traces gefunden
+            <div className="text-sm text-muted-foreground flex items-center gap-4">
+              <span>{traces.length} Traces</span>
+              <span>{traces.filter(t => t.status === 'running').length} aktiv</span>
+              <span>{traces.filter(t => t.status === 'error').length} Fehler</span>
             </div>
             <Button variant="outline" size="sm" onClick={fetchTraces}>
               <RefreshCw className="w-4 h-4 mr-1" />
@@ -341,9 +541,9 @@ export const LiveTraceMonitor = () => {
         </CardContent>
       </Card>
 
-      {/* Live Traces */}
-      <ScrollArea className="h-[600px]">
-        <div className="grid grid-cols-1 gap-4">
+      {/* Enhanced Live Traces with Accordion */}
+      <ScrollArea className="h-[700px]">
+        <div className="space-y-4">
           {sortedTraces.map((trace) => (
             <Card 
               key={trace.traceId} 
@@ -358,10 +558,16 @@ export const LiveTraceMonitor = () => {
                       {trace.traceId === currentTraceId && '🎯 '}
                       {trace.traceId}
                     </CardTitle>
-                    {getTraceStatusBadge(trace.status)}
+                    {getTraceStatusBadge(trace)}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {format(new Date(trace.startTime), 'HH:mm:ss')}
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    {trace.totalDuration && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatDuration(trace.totalDuration)}
+                      </span>
+                    )}
+                    <span>{format(new Date(trace.startTime), 'HH:mm:ss')}</span>
                   </div>
                 </div>
                 {trace.messageId && (
@@ -369,66 +575,75 @@ export const LiveTraceMonitor = () => {
                     Message: {trace.messageId}
                   </div>
                 )}
-                {trace.totalDuration && (
-                  <div className="text-xs text-muted-foreground">
-                    Gesamt: {trace.totalDuration}ms
-                  </div>
-                )}
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {trace.events
-                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                    .map((event, index) => (
-                    <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {getStepIcon(event.step)}
-                        <span className="text-sm font-medium">
-                          {STEP_NAMES[event.step] || event.step}
-                        </span>
-                        {getStatusIcon(event.status)}
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {event.duration_ms && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {event.duration_ms}ms
-                          </span>
-                        )}
-                        <span>{format(new Date(event.created_at), 'HH:mm:ss.SSS')}</span>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Error details */}
-                  {trace.status === 'error' && (
-                    <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
-                      <div className="text-sm text-red-800 dark:text-red-300">
-                        {trace.events.find(e => e.error_message)?.error_message || 'Unknown error'}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Additional data preview */}
-                  {trace.events.some(e => Object.keys(e.data || {}).length > 0) && (
-                    <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                        Event-Daten anzeigen
-                      </summary>
-                      <div className="mt-2 space-y-1">
-                        {trace.events.map((event) => (
-                          event.data && Object.keys(event.data).length > 0 && (
-                            <div key={event.id} className="p-2 bg-muted rounded">
-                              <div className="font-medium">{STEP_NAMES[event.step] || event.step}:</div>
-                              <pre className="text-xs text-muted-foreground overflow-auto max-h-32">
-                                {JSON.stringify(event.data, null, 2)}
-                              </pre>
-                            </div>
-                          )
+                <Accordion 
+                  type="single" 
+                  collapsible 
+                  value={expandedTrace === trace.traceId ? 'steps' : undefined}
+                  onValueChange={(value) => setExpandedTrace(value ? trace.traceId : null)}
+                >
+                  <AccordionItem value="steps">
+                    <AccordionTrigger className="text-sm">
+                      Pipeline Steps ({trace.events.length}) - Details anzeigen
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-3">
+                        {trace.events
+                          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                          .map((event) => (
+                          <Accordion key={event.id} type="single" collapsible>
+                            <AccordionItem value={event.id}>
+                              <AccordionTrigger className="py-2">
+                                <div className="flex items-center gap-3 w-full">
+                                  <div className="flex items-center gap-2">
+                                    {getStepIcon(event.step)}
+                                    <span className="text-sm font-medium">
+                                      {STEP_NAMES[event.step] || event.step}
+                                    </span>
+                                    {getStatusIcon(event.status, trace.status === 'running')}
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground ml-auto">
+                                    {event.duration_ms && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {formatDuration(event.duration_ms)}
+                                      </span>
+                                    )}
+                                    <span>{format(new Date(event.created_at), 'HH:mm:ss.SSS')}</span>
+                                  </div>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent>
+                                <div className="pl-6 pr-2">
+                                  {renderEventDetails(event)}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
                         ))}
                       </div>
-                    </details>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Quick Overview ohne Aufklappen */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {trace.events.slice(0, 6).map((event) => (
+                    <div 
+                      key={event.id} 
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-muted/50"
+                    >
+                      {getStepIcon(event.step)}
+                      <span>{STEP_NAMES[event.step] || event.step}</span>
+                      {getStatusIcon(event.status, trace.status === 'running')}
+                    </div>
+                  ))}
+                  {trace.events.length > 6 && (
+                    <div className="text-xs text-muted-foreground px-2 py-1">
+                      +{trace.events.length - 6} weitere
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -439,7 +654,7 @@ export const LiveTraceMonitor = () => {
             <Card>
               <CardContent className="text-center py-8">
                 <div className="text-muted-foreground">
-                  Noch keine Trace-Events gefunden. Sende eine Test-Nachricht oben!
+                  Noch keine Trace-Events gefunden. Sende eine Test-Nachricht oben um die Pipeline live zu verfolgen!
                 </div>
               </CardContent>
             </Card>

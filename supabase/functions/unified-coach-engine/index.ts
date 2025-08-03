@@ -323,7 +323,12 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     await mark("chat_start", { userId: hashedUserId, coachId: coachId || 'lucy', messageId, traceId });
 
     // 📊 TRACE: Building AI context
-    await traceEvent(traceId, 'buildAIContext', 'started', {}, conversationId, messageId);
+    await traceEvent(traceId, 'buildAIContext', 'started', {
+      userId: hashedUserId,
+      messagePreview: message.substring(0, 100),
+      enableRag,
+      tokenCap: 6000
+    }, conversationId, messageId);
     
     // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
     const contextStart = Date.now();
@@ -335,12 +340,23 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       tokenCap: 6000 // Reduced from 8k based on usage analytics
     });
     
-    // 📊 TRACE: Context ready
+    // 📊 TRACE: Context ready with detailed output
     await traceEvent(traceId, 'buildAIContext', 'complete', {
-      tokensIn: ctx.metrics.tokensIn,
-      hasMemory: !!ctx.memory,
-      hasRag: !!ctx.ragChunks,
-      hasDaily: !!ctx.daily
+      input: {
+        userId: hashedUserId,
+        messageLength: message.length,
+        enableRag,
+        tokenCap: 6000
+      },
+      output: {
+        tokensIn: ctx.metrics.tokensIn,
+        hasMemory: !!ctx.memory,
+        hasRag: !!ctx.ragChunks,
+        hasDaily: !!ctx.daily,
+        ragChunksCount: ctx.ragChunks?.length || 0,
+        memoryTrust: ctx.memory?.trust || 0,
+        dailyCaloriesLeft: ctx.daily?.caloriesLeft || 0
+      }
     }, undefined, messageId, Date.now() - contextStart);
 
     await trace(traceId, 'B_context_ready', { 
@@ -381,10 +397,23 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     }
 
     if (enableStreaming) {
-      // 📊 TRACE: Starting OpenAI call
+      // 📊 TRACE: Starting OpenAI call with full request details
       await traceEvent(traceId, 'openai_call', 'started', {
-        model: 'gpt-4o',
-        streaming: true
+        input: {
+          model: 'gpt-4o',
+          temperature: 0.7,
+          max_tokens: 2000,
+          streaming: true,
+          systemPromptLength: systemPrompt.length,
+          messagesCount: messages.length + 1,
+          userMessageLength: message.length
+        },
+        request_payload: {
+          model: 'gpt-4o',
+          prompt_preview: systemPrompt.substring(0, 200) + '...',
+          user_message_preview: message.substring(0, 100),
+          estimated_prompt_tokens: ctx.metrics.tokensIn
+        }
       }, undefined, messageId);
       
       await trace(traceId, 'C_openai_call', { streaming: true }, {
