@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -922,7 +923,9 @@ const EmailMarketingAdmin = () => {
                               >
                                 <div 
                                   className="text-sm font-mono max-h-32 overflow-y-auto"
-                                  dangerouslySetInnerHTML={{ __html: template.html_content.substring(0, 500) + '...' }}
+                                  dangerouslySetInnerHTML={{ 
+                                    __html: DOMPurify.sanitize(template.html_content.substring(0, 500) + '...') 
+                                  }}
                                 />
                               </div>
                             )}
