@@ -1854,6 +1854,54 @@ WICHTIG: Bleib bei deinem militärischen Background authentisch, aber respektvol
   }
 };
 
+// Training data analysis function for Sascha's intelligence
+async function checkTrainingDataSufficiency(supabase: any, userId: string): Promise<{sufficient: boolean, analysis: any}> {
+  try {
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    
+    // Check for recent exercise sessions
+    const { data: sessions } = await supabase
+      .from('exercise_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', twoWeeksAgo.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+      .limit(10);
+    
+    // Check for recent exercise sets
+    const { data: sets } = await supabase
+      .from('exercise_sets')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', twoWeeksAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    const sessionCount = sessions?.length || 0;
+    const setCount = sets?.length || 0;
+    const totalVolume = sets?.reduce((sum: number, set: any) => sum + (set.reps * set.weight_kg || 0), 0) || 0;
+    
+    const analysis = {
+      sessionCount,
+      setCount,
+      totalVolume,
+      averageVolumePerSession: sessionCount > 0 ? totalVolume / sessionCount : 0,
+      lastSessionDate: sessions?.[0]?.date || null
+    };
+    
+    // Sascha's intelligence: Need at least 3 sessions OR 5000kg total volume
+    const sufficient = sessionCount >= 3 || totalVolume >= 5000;
+    
+    console.log(`📊 Training data analysis for ${userId}:`, analysis, `Sufficient: ${sufficient}`);
+    
+    return { sufficient, analysis };
+  } catch (error) {
+    console.error('Error checking training data:', error);
+    return { sufficient: false, analysis: {} };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -4456,49 +4504,8 @@ function buildAdaptivePromptSections(context: any, toolContext: any, contextQual
   
   return sections;
 }
-async function checkTrainingDataSufficiency(supabase: any, userId: string): Promise<{sufficient: boolean, analysis: any}> {
-  try {
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-    
-    // Check for recent exercise sessions
-    const { data: sessions } = await supabase
-      .from('exercise_sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('date', twoWeeksAgo.toISOString().split('T')[0])
-      .order('date', { ascending: false })
-      .limit(10);
-    
-    // Check for recent exercise sets
-    const { data: sets } = await supabase
-      .from('exercise_sets')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('created_at', twoWeeksAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(50);
-    
-    const sessionCount = sessions?.length || 0;
-    const setCount = sets?.length || 0;
-    const totalVolume = sets?.reduce((sum: number, set: any) => sum + (set.reps * set.weight_kg || 0), 0) || 0;
-    
-    const analysis = {
-      sessionCount,
-      setCount,
-      totalVolume,
-      averageVolumePerSession: sessionCount > 0 ? totalVolume / sessionCount : 0,
-      lastSessionDate: sessions?.[0]?.date || null
-    };
-    
-    // Sascha's intelligence: Need at least 3 sessions OR 5000kg total volume
-    const sufficient = sessionCount >= 3 || totalVolume >= 5000;
-    
-    console.log(`📊 Training data analysis for ${userId}:`, analysis, `Sufficient: ${sufficient}`);
-    
-    return { sufficient, analysis };
-  } catch (error) {
-    console.error('Error checking training data:', error);
-    return { sufficient: false, analysis: {} };
-  }
 });
+
+// ============================================================================
+// END OF UNIFIED COACH ENGINE
+// ============================================================================
