@@ -845,23 +845,24 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     } catch (error: any) {
       console.error('Send error:', error);
       
+      // Mark message as failed for retry
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId ? { ...msg, status: 'failed' } : msg
+      ));
+      
       // Enhanced error handling based on diagnostic guide
       let errorContent = 'Entschuldigung, ich konnte deine Nachricht nicht verarbeiten. Versuche es bitte nochmal.';
       
       if (error?.status === 429) {
         if (error?.usage_limit_reached) {
           errorContent = 'Du hast dein tägliches Chat-Limit erreicht. Upgrade auf Premium 🚀';
-          // Remove toast for better UX
         } else {
           errorContent = 'Zu viele Anfragen. Warte kurz und versuche es nochmal.';
-          // Remove toast for better UX
         }
       } else if (error?.status === 404) {
         errorContent = 'Service vorübergehend nicht verfügbar. Versuche es gleich nochmal.';
-        // Remove toast for better UX
       } else if (error?.status >= 500) {
         errorContent = 'Technisches Problem auf unserer Seite. Wir arbeiten daran!';
-        // Remove toast for better UX
       }
       
       const errorMessage: UnifiedMessage = {
@@ -874,11 +875,43 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         mode: mode
       };
       setMessages(prev => [...prev, errorMessage]);
+      
+      // Show retry toast with action
+      sonnerToast.error('Nachricht konnte nicht gesendet werden', {
+        action: {
+          label: 'Wiederholen',
+          onClick: () => handleRetryMessage(messageId)
+        }
+      });
     } finally {
       setIsThinking(false);
       setSelectedTool(null); // Reset tool after use
     }
   }, [inputText, uploadedImages, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, messages]);
+
+  // Retry failed message
+  const handleRetryMessage = useCallback(async (messageId: string) => {
+    const failedMessage = messages.find(msg => msg.id === messageId);
+    if (!failedMessage) return;
+
+    await manualRetry(messageId, async () => {
+      // Reset message status and retry
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, status: 'sending' } 
+          : msg
+      ));
+      
+      // Re-send the message with original content
+      if ('content' in failedMessage) {
+        setInputText(failedMessage.content);
+        setUploadedImages(('images' in failedMessage && failedMessage.images) || []);
+        
+        // Trigger send message again
+        setTimeout(() => sendMessage(), 100);
+      }
+    });
+  }, [messages, manualRetry, sendMessage]);
 
   // Handle tool action buttons
   const handleToolAction = useCallback((tool: string, contextData?: any) => {

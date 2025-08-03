@@ -4262,6 +4262,22 @@ export type Database = {
         }
         Relationships: []
       }
+      v_summary_rolling_30: {
+        Row: {
+          completeness_score: number | null
+          date: string | null
+          hydration_ml: number | null
+          hydration_score: number | null
+          kcal: number | null
+          mood: string | null
+          sleep_hours: number | null
+          sleep_score: number | null
+          supplement_compliance: number | null
+          user_id: string | null
+          volume_kg: number | null
+        }
+        Relationships: []
+      }
       v_supplement_flags: {
         Row: {
           compliance_pct: number | null

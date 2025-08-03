@@ -227,7 +227,9 @@ export class MemoryManager {
    * Create new conversation memory
    */
   private async createNewConversation(userId: string, coachId: string): Promise<ConversationMemory> {
-    const convoId = `${userId}-${coachId}-${Date.now()}`;
+    // Use pure UUID format for convo_id
+    const { v4: uuidv4 } = await import('uuid');
+    const convoId = uuidv4();
     
     const memory: ConversationMemory = {
       convo_id: convoId,

@@ -1,10 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Generate a unique message ID for idempotency
+ * Generate a unique message ID for idempotency - pure UUID format
  */
 export const generateMessageId = (): string => {
-  return `msg_${Date.now()}_${uuidv4()}`;
+  return uuidv4();
 };
 
 /**
