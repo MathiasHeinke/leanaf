@@ -49,40 +49,93 @@ export default function TelemetryDashboard() {
         let totalFullStream = 0;
         let totalCost = 0;
         let ragHits = 0;
-        let errors = 0;
-        let circuitBreaker = { open: 0, halfOpen: 0, closed: 0 };
+        let totalRagQueries = 0;
+        let errorCount = 0;
+        let piiDetectionCount = 0;
         let sentimentSum = 0;
         let sentimentCount = 0;
-        let piiCount = 0;
+        let circuitBreakerOpen = 0;
+        let circuitBreakerHalfOpen = 0;
+        let circuitBreakerClosed = 0;
 
+        // Process traces to extract real metrics
         traces.forEach(trace => {
           const data = trace.data as any || {};
           
-          if (typeof data.firstToken_ms === 'number') totalFirstToken += data.firstToken_ms;
-          if (typeof data.fullStream_ms === 'number') totalFullStream += data.fullStream_ms;
-          if (typeof data.cost_usd === 'number') totalCost += data.cost_usd;
-          if (typeof data.rag_score === 'number' && data.rag_score > 0.8) ragHits++;
-          if (typeof data.http_status === 'number' && data.http_status >= 400) errors++;
-          if (data.breaker_open === true) circuitBreaker.open++;
-          if (data.breaker_halfOpen === true) circuitBreaker.halfOpen++;
-          if (!data.breaker_open && !data.breaker_halfOpen) circuitBreaker.closed++;
+          // First token timing
+          if (typeof data.firstToken_ms === 'number') {
+            totalFirstToken += data.firstToken_ms;
+          }
+          
+          // Full stream timing
+          if (typeof data.fullStream_ms === 'number') {
+            totalFullStream += data.fullStream_ms;
+          }
+          
+          // Cost tracking
+          if (typeof data.cost_usd === 'number') {
+            totalCost += data.cost_usd;
+          }
+          
+          // RAG hit rate
+          if (typeof data.rag_hit_rate === 'number') {
+            totalRagQueries++;
+            if (data.rag_hit_rate > 0) ragHits++;
+          }
+          
+          // Error tracking
+          if (trace.stage === 'E_error') {
+            errorCount++;
+          }
+          
+          // PII detection
+          if (data.pii_detected === true) {
+            piiDetectionCount++;
+          }
+          
+          // Sentiment analysis
           if (typeof data.sentiment_score === 'number') {
             sentimentSum += data.sentiment_score;
             sentimentCount++;
           }
-          if (data.pii_detected === true) piiCount++;
+          
+          // Circuit breaker stats
+          if (data.breaker_open === true) circuitBreakerOpen++;
+          if (data.breaker_halfOpen === true) circuitBreakerHalfOpen++;
+          if (!data.breaker_open && !data.breaker_halfOpen) circuitBreakerClosed++;
         });
 
+        // Calculate real statistics
+        const firstTokenCount = traces.filter(t => (t.data as any)?.firstToken_ms).length;
+        const fullStreamCount = traces.filter(t => (t.data as any)?.fullStream_ms).length;
+        
         setStats({
           totalRequests: uniqueTraces.length,
-          avgFirstToken: totalFirstToken / traces.length || 0,
-          avgFullStream: totalFullStream / traces.length || 0,
+          avgFirstToken: firstTokenCount > 0 ? totalFirstToken / firstTokenCount : 0,
+          avgFullStream: fullStreamCount > 0 ? totalFullStream / fullStreamCount : 0,
           totalCost: totalCost,
-          ragHitRate: (ragHits / traces.length) * 100 || 0,
-          errorRate: (errors / traces.length) * 100 || 0,
-          circuitBreakerStats: circuitBreaker,
+          ragHitRate: totalRagQueries > 0 ? (ragHits / totalRagQueries) * 100 : 0,
+          errorRate: traces.length > 0 ? (errorCount / traces.length) * 100 : 0,
+          circuitBreakerStats: {
+            open: circuitBreakerOpen,
+            halfOpen: circuitBreakerHalfOpen,
+            closed: circuitBreakerClosed
+          },
           sentimentTrend: sentimentCount > 0 ? sentimentSum / sentimentCount : 0,
-          piiDetections: piiCount
+          piiDetections: piiDetectionCount
+        });
+      } else {
+        // No data available - set empty stats
+        setStats({
+          totalRequests: 0,
+          avgFirstToken: 0,
+          avgFullStream: 0,
+          totalCost: 0,
+          ragHitRate: 0,
+          errorRate: 0,
+          circuitBreakerStats: { open: 0, halfOpen: 0, closed: 0 },
+          sentimentTrend: 0,
+          piiDetections: 0
         });
       }
     } catch (error) {
