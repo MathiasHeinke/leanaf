@@ -2142,8 +2142,6 @@ export type Database = {
           embedding: string | null
           id: string
           knowledge_id: string
-          metadata: Json | null
-          updated_at: string
         }
         Insert: {
           chunk_index?: number
@@ -2152,8 +2150,6 @@ export type Database = {
           embedding?: string | null
           id?: string
           knowledge_id: string
-          metadata?: Json | null
-          updated_at?: string
         }
         Update: {
           chunk_index?: number
@@ -2162,8 +2158,6 @@ export type Database = {
           embedding?: string | null
           id?: string
           knowledge_id?: string
-          metadata?: Json | null
-          updated_at?: string
         }
         Relationships: [
           {
@@ -3106,30 +3100,27 @@ export type Database = {
       }
       semantic_query_cache: {
         Row: {
-          cached_results: Json
-          created_at: string
-          hit_count: number
+          created_at: string | null
+          hit_count: number | null
           id: string
-          last_used_at: string
-          query_embedding: string | null
+          last_used_at: string | null
+          query_embedding: string
           query_text: string
         }
         Insert: {
-          cached_results?: Json
-          created_at?: string
-          hit_count?: number
+          created_at?: string | null
+          hit_count?: number | null
           id?: string
-          last_used_at?: string
-          query_embedding?: string | null
+          last_used_at?: string | null
+          query_embedding: string
           query_text: string
         }
         Update: {
-          cached_results?: Json
-          created_at?: string
-          hit_count?: number
+          created_at?: string | null
+          hit_count?: number | null
           id?: string
-          last_used_at?: string
-          query_embedding?: string | null
+          last_used_at?: string | null
+          query_embedding?: string
           query_text?: string
         }
         Relationships: []
@@ -4595,10 +4586,6 @@ export type Database = {
           status: string
         }[]
       }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
       calculate_sleep_score: {
         Args: { sleep_hours: number; sleep_quality: number }
         Returns: number
@@ -4686,22 +4673,6 @@ export type Database = {
           completeness_score: number
         }[]
       }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
       has_admin_access: {
         Args: { user_uuid?: string }
         Returns: boolean
@@ -4712,22 +4683,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
-      }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
       }
       is_admin_by_email: {
         Args: Record<PropertyKey, never>
@@ -4752,26 +4707,6 @@ export type Database = {
       is_super_admin_user: {
         Args: { user_uuid?: string }
         Returns: boolean
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
       }
       log_admin_access_attempt: {
         Args: {
@@ -4893,18 +4828,6 @@ export type Database = {
           fats: number
         }[]
       }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
       update_user_points_and_level: {
         Args: {
           p_user_id: string
@@ -4931,30 +4854,6 @@ export type Database = {
       validate_password_strength: {
         Args: { password: string }
         Returns: Json
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
     }
     Enums: {
