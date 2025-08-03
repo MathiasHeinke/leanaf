@@ -191,7 +191,7 @@ const RAGPerformanceMonitor = () => {
         <CardContent className="space-y-4">
           {embeddingHealth && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="text-center p-3 border rounded-lg">
                   <div className="text-2xl font-bold text-primary">{embeddingHealth.totalEmbeddings}</div>
                   <div className="text-sm text-muted-foreground">Embeddings</div>
@@ -252,7 +252,7 @@ const RAGPerformanceMonitor = () => {
       {/* Performance Metrics */}
       {metrics && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">

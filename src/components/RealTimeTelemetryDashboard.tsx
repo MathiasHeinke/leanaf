@@ -94,7 +94,7 @@ export default function RealTimeTelemetryDashboard() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader className="pb-2">
@@ -156,7 +156,7 @@ export default function RealTimeTelemetryDashboard() {
       </Card>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">

@@ -196,7 +196,7 @@ const OpenAIPerformanceDashboard: React.FC = () => {
       </div>
 
       {/* Model Strategy Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {Object.entries(modelCategories).map(([model, config]) => {
           const Icon = config.icon;
           const modelMetrics = metrics.filter(m => m.model === model);
@@ -242,7 +242,7 @@ const OpenAIPerformanceDashboard: React.FC = () => {
       </div>
 
       {/* Detailed Function Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {metrics.map((metric) => {
           const modelConfig = modelCategories[metric.model as keyof typeof modelCategories];
           const performance = getPerformanceStatus(metric.avg_duration);
@@ -268,7 +268,7 @@ const OpenAIPerformanceDashboard: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">Latenz</span>
@@ -313,7 +313,7 @@ const OpenAIPerformanceDashboard: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
               <h4 className="font-medium text-green-800 dark:text-green-300 mb-2">
                 ✅ Modell-Routing
