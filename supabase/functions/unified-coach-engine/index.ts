@@ -237,7 +237,20 @@ serve(async (req) => {
   
   // POST Handler für normale Anfragen
   if (req.method === 'POST') {
-    try {
+  console.log(`🔧 DEBUG: POST request received, about to parse body...`);
+
+  // TEMPORARY: Simple test response
+  if (req.headers.get('x-debug-mode') === 'true') {
+    console.log(`🔧 DEBUG: Debug mode enabled, sending test response`);
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Debug test response from unified-coach-engine",
+      timestamp: new Date().toISOString()
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
       const body = await req.json() as RequestBody;
       return handleRequest(req, body, corsHeaders, start);
     } catch (error: any) {
