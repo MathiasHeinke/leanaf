@@ -60,7 +60,7 @@ import { renderMessage, createCardMessage } from '@/utils/messageRenderer';
 import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
 import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
-import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { useRealStreamingChat } from '@/hooks/useRealStreamingChat';
 import { useMemorySync } from '@/hooks/useMemorySync';
 import { useEnhancedStreamingChat } from '@/hooks/useEnhancedStreamingChat';
 import { useErrorRecovery } from '@/hooks/useErrorRecovery';
@@ -209,8 +209,12 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     isConnected: isStreamingConnected, 
     startStreaming, 
     stopStreaming,
-    clearStreamingMessage 
-  } = useStreamingChat({
+    clearStreamingMessage,
+    metrics,
+    streamingStage,
+    streamError,
+    isHealthy
+  } = useRealStreamingChat({
     onStreamStart: () => {
       console.log('🚀 Streaming started');
       setIsThinking(true);
@@ -246,10 +250,10 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   });
 
-  // Enhanced streaming with performance monitoring
+  // Enhanced streaming with performance monitoring  
   const {
     metrics: streamingMetrics,
-    streamingStage,
+    streamingStage: enhancedStreamingStage,
     error: streamingError,
     startPerformanceTracking,
     trackContextLoaded,
@@ -1624,10 +1628,41 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                }}>
             {/* Render all messages using the unified message renderer */}
             <div className="space-y-3 pb-4">
-              {messages.map(message => renderMessage(message, handleToolAction, handleRetryMessage))}
-              {isThinking && (
-                <TypingIndicator name={coach?.name || 'Coach'} />
-              )}
+            {messages.map(message => renderMessage(message, handleToolAction, handleRetryMessage))}
+            {/* Show different states based on streaming stage */}
+            {isThinking && !isStreamingConnected && (
+              <TypingIndicator name={coach?.name || 'Coach'} />
+            )}
+            {isStreamingConnected && streamingStage && (
+              <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                <span className="text-sm text-muted-foreground">
+                  {streamingStage.stage === 'connecting' && 'Verbindung wird aufgebaut...'}
+                  {streamingStage.stage === 'context' && 'Kontext wird geladen...'}
+                  {streamingStage.stage === 'streaming' && `${coach?.name || 'Coach'} denkt...`}
+                  {streamingStage.stage === 'complete' && 'Antwort abgeschlossen'}
+                  {streamingStage.stage === 'error' && 'Fehler beim Streaming'}
+                </span>
+                {streamingStage.progress > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {Math.round(streamingStage.progress)}%
+                  </div>
+                )}
+              </div>
+            )}
+            {streamError && (
+              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <span className="text-sm text-destructive">
+                  ⚠️ Stream-Fehler: {streamError} 
+                  <button 
+                    onClick={() => clearStreamingMessage()} 
+                    className="ml-2 underline hover:no-underline"
+                  >
+                    Wiederholen
+                  </button>
+                </span>
+              </div>
+            )}
               {/* Invisible div to scroll to */}
               <div ref={messagesEndRef} />
             </div>
@@ -1660,14 +1695,14 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           {/* Enhanced Streaming Indicator */}
           <div className="px-3 py-1 bg-card/50">
             <EnhancedStreamingIndicator
-              isConnected={isStreamingConnected || streamingStage.stage !== 'connecting'}
-              isStreaming={streamingStage.stage === 'streaming'}
-              progress={streamingStage.progress}
-              stage={streamingStage.stage}
+              isConnected={isStreamingConnected || enhancedStreamingStage.stage !== 'connecting'}
+              isStreaming={enhancedStreamingStage.stage === 'streaming'}
+              progress={enhancedStreamingStage.progress}
+              stage={enhancedStreamingStage.stage}
               metrics={{
                 tokensIn: streamingMetrics.contextLoadTime ? Math.round(streamingMetrics.contextLoadTime / 10) : undefined,
                 duration: streamingMetrics.totalDuration,
-                contextLoaded: streamingStage.stage !== 'connecting'
+                contextLoaded: enhancedStreamingStage.stage !== 'connecting'
               }}
             />
           </div>
@@ -1705,8 +1740,39 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           {/* Render all messages using the unified message renderer */}
           <div className="space-y-3 p-4">
             {messages.map(message => renderMessage(message, handleToolAction, handleRetryMessage))}
-            {isThinking && (
+            {/* Show different states based on streaming stage */}
+            {isThinking && !isStreamingConnected && (
               <TypingIndicator name={coach?.name || 'Coach'} />
+            )}
+            {isStreamingConnected && streamingStage && (
+              <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                <span className="text-sm text-muted-foreground">
+                  {streamingStage.stage === 'connecting' && 'Verbindung wird aufgebaut...'}
+                  {streamingStage.stage === 'context' && 'Kontext wird geladen...'}
+                  {streamingStage.stage === 'streaming' && `${coach?.name || 'Coach'} denkt...`}
+                  {streamingStage.stage === 'complete' && 'Antwort abgeschlossen'}
+                  {streamingStage.stage === 'error' && 'Fehler beim Streaming'}
+                </span>
+                {streamingStage.progress > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {Math.round(streamingStage.progress)}%
+                  </div>
+                )}
+              </div>
+            )}
+            {streamError && (
+              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <span className="text-sm text-destructive">
+                  ⚠️ Stream-Fehler: {streamError} 
+                  <button 
+                    onClick={() => clearStreamingMessage()} 
+                    className="ml-2 underline hover:no-underline"
+                  >
+                    Wiederholen
+                  </button>
+                </span>
+              </div>
             )}
             {/* Invisible div to scroll to */}
             <div ref={messagesEndRef} />
