@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { OpenAI } from "https://esm.sh/openai@4.67.1";
 import { SupabaseClient, createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
 
 // CORS headers
 const corsHeaders = {
@@ -256,14 +257,27 @@ serve(async (req) => {
       );
     }
 
-    // Call the OpenAI API
-    const chatCompletion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: messages,
+    // Call OpenAI API with optimized config
+    const startTime = Date.now();
+    const config = TASK_CONFIGS['unified-coach-engine'];
+    console.log(`🤖 Using ${config.model} for unified coach engine`);
+
+    const chatCompletion = await callOpenAIWithRetry(async () => {
+      return await openai.chat.completions.create({
+        model: config.model,
+        messages: messages,
+        temperature: config.temperature,
+        top_p: config.top_p,
+        stream: config.stream,
+        max_tokens: 1200,
+      });
     });
 
     const assistantMessage = chatCompletion.choices[0].message.content;
     const usage = chatCompletion.usage;
+
+    // Log performance metrics
+    logPerformanceMetrics('unified-coach-engine', config.model, startTime, usage?.total_tokens);
 
     // Log the interaction to Supabase
     const { error: logError } = await supabase

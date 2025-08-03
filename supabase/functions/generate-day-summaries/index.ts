@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,40 +86,49 @@ serve(async (req) => {
           continue;
         }
 
-        // Generate AI summary using GPT-4o in JSON mode
-        const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            response_format: { type: "json_object" },
-            messages: [
-              {
-                role: "system", 
-                content: `Erstelle eine maschinenlesbare Tageszusammenfassung im JSON-Format. 
-                Struktur: {
-                  "nutrition": {"kcal": number, "protein_g": number, "carbs_g": number, "fats_g": number, "quality_note": "string"},
-                  "training": {"volume_kg": number, "sessions": number, "type": "string", "intensity_note": "string"},
-                  "sleep": {"score": number, "hours": number, "quality": "string"},
-                  "hydration": {"score": number, "ml": number, "adequate": boolean},
-                  "supplements": {"compliance_pct": number, "note": "string"},
-                  "meta": {
-                    "gpt_summary": "Kurze deutsche Zusammenfassung in 2-3 Sätzen über die wichtigsten Erkenntnisse des Tages"
+        // Generate AI summary with optimized config
+        const startTime = Date.now();
+        const config = TASK_CONFIGS['generate-day-summaries'];
+        console.log(`🤖 Using ${config.model} for day summary generation`);
+
+        const aiResponse = await callOpenAIWithRetry(async () => {
+          return await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${OPENAI_API_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: config.model,
+              response_format: { type: "json_object" },
+              messages: [
+                {
+                  role: "system", 
+                  content: `Erstelle eine maschinenlesbare Tageszusammenfassung im JSON-Format. 
+                  Struktur: {
+                    "nutrition": {"kcal": number, "protein_g": number, "carbs_g": number, "fats_g": number, "quality_note": "string"},
+                    "training": {"volume_kg": number, "sessions": number, "type": "string", "intensity_note": "string"},
+                    "sleep": {"score": number, "hours": number, "quality": "string"},
+                    "hydration": {"score": number, "ml": number, "adequate": boolean},
+                    "supplements": {"compliance_pct": number, "note": "string"},
+                    "meta": {
+                      "gpt_summary": "Kurze deutsche Zusammenfassung in 2-3 Sätzen über die wichtigsten Erkenntnisse des Tages"
+                    }
                   }
+                  Alle Werte in deutschen Begriffen, realistische Scores von 1-10.`
+                },
+                {
+                  role: "user", 
+                  content: JSON.stringify(dayContext)
                 }
-                Alle Werte in deutschen Begriffen, realistische Scores von 1-10.`
-              },
-              {
-                role: "user", 
-                content: JSON.stringify(dayContext)
-              }
-            ],
-            temperature: 0.3,
-            max_tokens: 800
-          })
+              ],
+              temperature: config.temperature,
+              top_p: config.top_p,
+              frequency_penalty: config.frequency_penalty,
+              stream: config.stream,
+              max_tokens: 800
+            })
+          });
         });
 
         if (!aiResponse.ok) {
@@ -129,6 +139,9 @@ serve(async (req) => {
 
         const aiData = await aiResponse.json();
         const structuredSummary = JSON.parse(aiData.choices[0].message.content);
+        
+        // Log performance metrics
+        logPerformanceMetrics('generate-day-summaries', config.model, startTime, aiData.usage?.total_tokens);
         
         // Extract text summaries of different lengths
         const fullText = structuredSummary.meta?.gpt_summary || "";

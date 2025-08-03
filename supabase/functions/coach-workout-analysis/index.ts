@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -179,21 +180,32 @@ ${isUndertraining ? '⚠️ Zu wenig Training (<2 Workouts/Woche)' : ''}
 ${isConsistent ? '✅ Konsistentes Training (3+ Workouts/Woche)' : ''}
 ${hasBalance ? '✅ Ausgewogene Trainingsverteilung' : ''}`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
-      }),
+    // Call OpenAI with optimized config and retry logic
+    const startTime = Date.now();
+    const config = TASK_CONFIGS['coach-workout-analysis'];
+    console.log(`🤖 Using ${config.model} for workout analysis`);
+
+    const response = await callOpenAIWithRetry(async () => {
+      return await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          max_tokens: 1500,
+          temperature: config.temperature,
+          top_p: config.top_p,
+          frequency_penalty: config.frequency_penalty,
+          presence_penalty: config.presence_penalty,
+          stream: config.stream,
+        }),
+      });
     });
 
     if (!response.ok) {
@@ -202,6 +214,9 @@ ${hasBalance ? '✅ Ausgewogene Trainingsverteilung' : ''}`;
 
     const aiResponse = await response.json();
     const coachFeedback = aiResponse.choices[0].message.content;
+
+    // Log performance metrics
+    logPerformanceMetrics('coach-workout-analysis', config.model, startTime, aiResponse.usage?.total_tokens);
 
     return new Response(
       JSON.stringify({ 
