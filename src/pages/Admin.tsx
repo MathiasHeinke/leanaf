@@ -113,44 +113,47 @@ export const AdminPage = () => {
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
-          {/* 📱 RESPONSIVE TAB NAVIGATION */}
-          <TabsList className="grid w-full grid-cols-2 mb-8 h-12 sm:h-10 overflow-x-auto">
-            <TabsTrigger value="production" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+          {/* 📱 RESPONSIVE TAB NAVIGATION - Erweitert für alle Tabs ohne Scrollen */}
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-8 h-auto min-h-[80px] p-2 bg-muted rounded-lg">
+            <TabsTrigger value="production" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <Monitor className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Production</span>
-              <span className="sm:hidden">Prod</span>
+              <span className="sm:hidden text-[10px]">Prod</span>
             </TabsTrigger>
-            <TabsTrigger value="performance" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="performance" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Performance</span>
-              <span className="sm:hidden">Perf</span>
+              <span className="sm:hidden text-[10px]">Perf</span>
             </TabsTrigger>
-            <TabsTrigger value="trace" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="trace" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <Route className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Live Trace</span>
-              <span className="sm:hidden">Trace</span>
+              <span className="sm:hidden text-[10px]">Trace</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="security" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
-              Security
+              <span className="hidden sm:inline">Security</span>
+              <span className="sm:hidden text-[10px]">Sec</span>
             </TabsTrigger>
-            <TabsTrigger value="health" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="health" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <Database className="w-3 h-3 sm:w-4 sm:h-4" />
-              Health
+              <span className="hidden sm:inline">Health</span>
+              <span className="sm:hidden text-[10px]">Health</span>
             </TabsTrigger>
-            <TabsTrigger value="features" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="features" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <Flag className="w-3 h-3 sm:w-4 sm:h-4" />
-              Features
+              <span className="hidden sm:inline">Features</span>
+              <span className="sm:hidden text-[10px]">Feat</span>
             </TabsTrigger>
-            <TabsTrigger value="streaming" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="streaming" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Streaming</span>
-              <span className="sm:hidden">Stream</span>
+              <span className="sm:hidden text-[10px]">Stream</span>
             </TabsTrigger>
-            <TabsTrigger value="debug" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+            <TabsTrigger value="debug" className="text-xs sm:text-sm flex flex-col sm:flex-row items-center gap-1 min-h-[44px] px-2 py-2">
               <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Coach Monitor</span>
-              <span className="sm:hidden">Coach</span>
+              <span className="sm:hidden text-[10px]">Coach</span>
             </TabsTrigger>
           </TabsList>
 
