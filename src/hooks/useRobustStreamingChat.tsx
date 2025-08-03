@@ -187,7 +187,7 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       setupDynamicTimeout();
 
       // Start SSE stream with proper error handling
-      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
+      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/streaming-coach-engine', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
