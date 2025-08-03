@@ -113,29 +113,25 @@ export const AdminPage = () => {
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
-          {/* 🎛️ SCROLLABLE TAB NAVIGATION - 7 tabs */}
+          {/* 🎛️ SCROLLABLE TAB NAVIGATION - 4 tabs */}
           <div className="w-full mb-8 overflow-x-auto">
-            <TabsList className="inline-flex h-auto bg-card border border-border/50 rounded-lg p-1 shadow-sm min-w-full">
+            <TabsList className="inline-flex h-auto bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm min-w-full">
               <div className="flex gap-1 min-w-max">
-                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
+                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
                   <Monitor className="w-4 h-4" />
                   <span>Production</span>
                 </TabsTrigger>
-                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
+                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
                   <Route className="w-4 h-4" />
                   <span>Live Trace</span>
                 </TabsTrigger>
-                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
+                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
                   <Activity className="w-4 h-4" />
                   <span>Performance</span>
                 </TabsTrigger>
-                <TabsTrigger value="security" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
+                <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
                   <Shield className="w-4 h-4" />
-                  <span>Security</span>
-                </TabsTrigger>
-                <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
-                  <Database className="w-4 h-4" />
-                  <span>System</span>
+                  <span>System & Security</span>
                 </TabsTrigger>
               </div>
             </TabsList>
@@ -210,28 +206,26 @@ export const AdminPage = () => {
             </div>
           </TabsContent>
 
-          {/* 🔒 SECURITY MONITORING */}
-          <TabsContent value="security" className="space-y-6 mt-6 safe-area-pb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Security Monitor
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SecurityMonitor />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* 🏥 SYSTEM OVERVIEW - Combined Health, Features & Streaming */}
+          {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
           <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
             <div className="grid grid-cols-1 gap-6">
+              {/* Security Monitor */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <Shield className="w-5 h-5 mr-2" />
+                    Security Monitor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SecurityMonitor />
+                </CardContent>
+              </Card>
+
               {/* System Health */}
               <Card className="bg-background border-border dark:bg-card dark:border-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
                     <Database className="w-5 h-5 mr-2" />
                     System Health
                   </CardTitle>
@@ -244,7 +238,7 @@ export const AdminPage = () => {
               {/* Feature Flags */}
               <Card className="bg-background border-border dark:bg-card dark:border-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
                     <Flag className="w-5 h-5 mr-2" />
                     Feature Flags
                   </CardTitle>
@@ -257,7 +251,7 @@ export const AdminPage = () => {
               {/* Streaming Analytics */}
               <Card className="bg-background border-border dark:bg-card dark:border-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-foreground">
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
                     <BarChart3 className="w-5 h-5 mr-2" />
                     Streaming Analytics
                   </CardTitle>
