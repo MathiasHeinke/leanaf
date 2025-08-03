@@ -115,7 +115,11 @@ serve(async (req) => {
                 embedding,
                 content_chunk: chunk,
                 chunk_index: i,
-                text_content: chunk
+                metadata: {
+                  title: entry.title,
+                  expertise_area: entry.expertise_area,
+                  coach_id: entry.coach_id
+                }
               });
 
             if (insertError) {
