@@ -22,6 +22,7 @@ serve(async req => {
     }
 
     console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Model ${model}, Message: ${message.substring(0, 50)}...`);
+    console.log(`🔧 Deployment timestamp: ${new Date().toISOString()}`);
 
     /* ---------- 1. minimales System-Prompt (Coach-Persona) ---------- */
     const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } });
