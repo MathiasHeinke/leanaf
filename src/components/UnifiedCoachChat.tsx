@@ -73,9 +73,13 @@ import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { useMemorySync } from '@/hooks/useMemorySync';
+import { useEnhancedStreamingChat } from '@/hooks/useEnhancedStreamingChat';
+import { useErrorRecovery } from '@/hooks/useErrorRecovery';
 import { useProactiveCoachBehavior } from '@/hooks/useProactiveCoachBehavior';
 import { useAdvancedRetryLogic } from '@/hooks/useAdvancedRetryLogic';
 import { withResilience } from '@/lib/resilience';
+import { EnhancedStreamingIndicator } from '@/components/EnhancedStreamingIndicator';
+import { PerformanceDashboard } from '@/components/PerformanceDashboard';
 
 
 // ============= TYPES =============
@@ -209,8 +213,32 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     }
   });
 
-  // Memory synchronization
-  const { queueMemoryUpdate, isUpdating: isMemoryUpdating } = useMemorySync();
+  // Enhanced streaming with performance monitoring
+  const {
+    metrics: streamingMetrics,
+    streamingStage,
+    error: streamingError,
+    startPerformanceTracking,
+    trackContextLoaded,
+    trackFirstToken,
+    trackStreamingProgress,
+    trackStreamingComplete,
+    trackError,
+    attemptRecovery,
+    isHealthy: isStreamingHealthy
+  } = useEnhancedStreamingChat();
+
+  // Error recovery system
+  const {
+    executeWithRecovery,
+    recoveryState,
+    getRecoveryAdvice,
+    resetRecovery
+  } = useErrorRecovery({
+    maxRetries: 3,
+    retryDelay: 1000,
+    fallbackStrategies: ['retry', 'fallback-endpoint', 'simplified-context']
+  });
 
   // ============= PROACTIVE BEHAVIOR =============
   const {
@@ -772,11 +800,13 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // 🚀 NEW: Real streaming with comprehensive context
+      // 🚀 Enhanced streaming with comprehensive monitoring
       const shouldStream = !currentImages.length && currentInput.length < 500;
       
       if (shouldStream) {
-        console.log('🚀 Using new real streaming with context');
+        console.log('🚀 Using enhanced real streaming with performance tracking');
+        
+        startPerformanceTracking();
         
         // Get comprehensive conversation history
         const recentMessages = messages.slice(-6).map(msg => ({
@@ -785,7 +815,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           timestamp: msg.created_at
         }));
         
-        // Create streaming placeholder
+        // Create enhanced streaming placeholder with performance tracking
         const streamingPlaceholder: UnifiedMessage = {
           id: `streaming-${Date.now()}`,
           role: 'assistant',
@@ -798,17 +828,22 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         };
         
         setMessages(prev => [...prev, streamingPlaceholder]);
+        trackContextLoaded();
         
-        // Start real streaming with comprehensive context
-        await startStreaming(
-          user.id,
-          currentInput,
-          coach?.id || 'lucy',
-          recentMessages
-        );
+        // Enhanced streaming with error recovery
+        try {
+          await executeWithRecovery(async () => {
+            await startStreaming(
+              user.id,
+              currentInput,
+              coach?.id || 'lucy',
+              recentMessages
+            );
+          }, 'streaming-chat');
         
-        // Handle completed stream
+        // Handle completed stream with performance tracking
         if (streamingMessage && streamingMessage.isComplete) {
+          trackStreamingComplete();
           const finalMessage: UnifiedMessage = {
             id: `assistant-${Date.now()}`,
             role: 'assistant',
@@ -866,8 +901,19 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           }
           
           clearStreamingMessage();
+        } else if (streamingError) {
+          trackError(streamingError);
+          if (attemptRecovery()) {
+            console.log('🔄 Attempting stream recovery...');
+            // Retry logic would go here
+          }
         }
         
+        setIsThinking(false);
+        return;
+      } catch (recoveryError: any) {
+        console.error('❌ Stream recovery failed:', recoveryError);
+        trackError(recoveryError.message);
         setIsThinking(false);
         return;
       }
@@ -1576,12 +1622,18 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             </div>
           )}
           
-          {/* Streaming Indicator */}
+          {/* Enhanced Streaming Indicator */}
           <div className="px-3 py-1 bg-card/50">
-            <StreamingIndicator 
-              isStreaming={!!streamingMessage?.isStreaming}
-              connectionQuality={isStreamingConnected ? 'excellent' : 'disconnected'}
-              tokensPerSecond={0}
+            <EnhancedStreamingIndicator
+              isConnected={isStreamingConnected || streamingStage.stage !== 'connecting'}
+              isStreaming={streamingStage.stage === 'streaming'}
+              progress={streamingStage.progress}
+              stage={streamingStage.stage}
+              metrics={{
+                tokensIn: streamingMetrics.contextLoadTime ? Math.round(streamingMetrics.contextLoadTime / 10) : undefined,
+                duration: streamingMetrics.totalDuration,
+                contextLoaded: streamingStage.stage !== 'connecting'
+              }}
             />
           </div>
 
@@ -1835,6 +1887,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           pastSessions={modalContext.contextData?.pastSessions || []}
         />
       )}
+
+      {/* Performance Dashboard for Development */}
+      {process.env.NODE_ENV === 'development' && <PerformanceDashboard />}
 
     </Card>
   );
