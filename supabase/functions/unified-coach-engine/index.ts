@@ -141,8 +141,9 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-force-non-streaming, x-debug-mode',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400'
 };
 
 const encoder = new TextEncoder();
@@ -194,8 +195,11 @@ serve(async (req) => {
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log(`🔧 DEBUG: CORS preflight handled`);
-    return new Response(null, { headers: corsHeaders });
+    console.log(`🔧 DEBUG: CORS preflight handled for headers: ${req.headers.get('access-control-request-headers')}`);
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   const start = Date.now();
