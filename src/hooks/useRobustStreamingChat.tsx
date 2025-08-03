@@ -186,19 +186,30 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       transitionToState('loading-context');
       setupDynamicTimeout();
 
-      // EMERGENCY TEST: Use simple test function
-      console.log('🚀 Sending POST to test-simple function for emergency test');
+      // Back to unified-coach-engine with CORS fix
+      console.log('🚀 Sending POST to unified-coach-engine (CORS fixed):', {
+        userId,
+        messageId,
+        message: message.substring(0, 20) + '...'
+      });
       
-      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/test-simple', {
+      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I',
+          'x-force-non-streaming': 'true',
+          'x-debug-mode': 'true'
         },
         body: JSON.stringify({
-          test: 'simple',
-          timestamp: Date.now()
+          userId,
+          message,
+          messageId,
+          coachId: coachPersonality,
+          conversationHistory,
+          enableStreaming: false,
+          traceId: `stream-${messageId}`
         }),
         signal: abortControllerRef.current.signal
       });
