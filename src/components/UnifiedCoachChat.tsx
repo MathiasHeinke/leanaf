@@ -72,8 +72,10 @@ import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } fr
 import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { useMemorySync } from '@/hooks/useMemorySync';
 import { useProactiveCoachBehavior } from '@/hooks/useProactiveCoachBehavior';
 import { useAdvancedRetryLogic } from '@/hooks/useAdvancedRetryLogic';
+import { withResilience } from '@/lib/resilience';
 
 
 // ============= TYPES =============
@@ -206,6 +208,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setIsThinking(false);
     }
   });
+
+  // Memory synchronization
+  const { queueMemoryUpdate, isUpdating: isMemoryUpdating } = useMemorySync();
 
   // ============= PROACTIVE BEHAVIOR =============
   const {
@@ -767,19 +772,34 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // 🚀 PHASE 3: Try streaming first for instant feedback
-      const shouldStream = !currentImages.length && currentInput.length < 500; // Stream for short text-only messages
+      // 🚀 NEW: Real streaming with comprehensive context
+      const shouldStream = !currentImages.length && currentInput.length < 500;
       
       if (shouldStream) {
-        console.log('🚀 Using streaming response for instant feedback');
+        console.log('🚀 Using new real streaming with context');
         
-        // Get recent conversation history for context
-        const recentMessages = messages.slice(-4).map(msg => ({
+        // Get comprehensive conversation history
+        const recentMessages = messages.slice(-6).map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: msg.content,
+          timestamp: msg.created_at
         }));
         
-        // Start streaming
+        // Create streaming placeholder
+        const streamingPlaceholder: UnifiedMessage = {
+          id: `streaming-${Date.now()}`,
+          role: 'assistant',
+          content: '',
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          images: [],
+          mode: mode,
+          isStreaming: true
+        };
+        
+        setMessages(prev => [...prev, streamingPlaceholder]);
+        
+        // Start real streaming with comprehensive context
         await startStreaming(
           user.id,
           currentInput,
@@ -787,30 +807,76 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           recentMessages
         );
         
-        // Add streaming message to UI when it completes
+        // Handle completed stream
         if (streamingMessage && streamingMessage.isComplete) {
-          const streamedResponse: UnifiedMessage = {
-            id: streamingMessage.id,
+          const finalMessage: UnifiedMessage = {
+            id: `assistant-${Date.now()}`,
             role: 'assistant',
             content: streamingMessage.content,
             created_at: new Date().toISOString(),
             coach_personality: coach?.personality || 'motivierend',
+            coach_name: coach?.name,
+            coach_avatar: coach?.imageUrl,
+            coach_color: coach?.color,
+            coach_accent_color: coach?.accentColor,
             images: [],
             mode: mode
           };
           
-          setMessages(prev => [...prev, streamedResponse]);
+          // Replace streaming placeholder with final message
+          setMessages(prev => prev.map(msg => 
+            msg.isStreaming ? finalMessage : msg
+          ));
+          
+          // Save to database
+          const { error: assistantDbError } = await supabase.from('coach_conversations').insert({
+            user_id: user.id,
+            message_role: 'assistant',
+            message_content: streamingMessage.content,
+            coach_personality: coach?.id || 'lucy',
+            conversation_date: today
+          });
+          
+          if (assistantDbError) {
+            console.error('❌ Error saving streamed message:', assistantDbError);
+          } else {
+            console.log('✅ Streamed message saved to database');
+          }
+          
+          // Update conversation memory and queue memory sync
+          try {
+            await addToMemory({
+              role: 'assistant',
+              content: streamingMessage.content,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Queue comprehensive memory update
+            queueMemoryUpdate({
+              userId: user.id,
+              coachId: coach?.id || 'lucy',
+              userMessage: currentInput,
+              assistantResponse: streamingMessage.content,
+              timestamp: new Date().toISOString()
+            });
+            
+            console.log('✅ Streamed message added to memory');
+          } catch (error) {
+            console.warn('⚠️ Failed to update memory with streamed message:', error);
+          }
+          
           clearStreamingMessage();
         }
         
+        setIsThinking(false);
         return;
       }
       
-      // Fallback to advanced retry mechanism for complex requests
-      const data = await executeWithRetry(async () => {
+      // Enhanced fallback with resilience patterns
+      const data = await withResilience(async () => {
         const contextualEnhancement = getContextualPromptEnhancement();
         return await sendMessageWithRetry(currentInput, currentImages);
-      }, messageId);
+      });
 
       // Ensure consistent response format
       if (uploadedImages.length > 0 && data?.analysis && !data?.response) {
@@ -853,7 +919,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         return [...clearedMessages, assistantMessage];
       });
       
-      // Add message to conversation memory with error handling
+      // Enhanced memory update with comprehensive data
       if (data.response) {
         setIsSyncing(true);
         try {
@@ -862,6 +928,16 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             content: data.response,
             timestamp: new Date().toISOString()
           });
+          
+          // Queue comprehensive memory update
+          queueMemoryUpdate({
+            userId: user.id,
+            coachId: coach?.id || 'lucy',
+            userMessage: currentInput,
+            assistantResponse: data.response,
+            timestamp: new Date().toISOString()
+          });
+          
           console.log('✅ Assistant message added to conversation memory');
           setMemoryError(null);
         } catch (error) {

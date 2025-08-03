@@ -17,6 +17,7 @@ export interface CardMessage {
   created_at: string;
   coach_personality: string;
   content?: string; // Add content field for compatibility
+  isStreaming?: boolean; // Add streaming support
   pendingTools?: Array<{
     tool: string;
     label: string;
@@ -41,6 +42,7 @@ export interface TextMessage {
   metadata?: any;
   timestamp?: Date; // Add for compatibility
   status?: 'sending' | 'sent' | 'failed'; // Add status field
+  isStreaming?: boolean; // Add streaming support
   pendingTools?: Array<{
     tool: string;
     label: string;
