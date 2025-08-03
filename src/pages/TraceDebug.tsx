@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import MermaidChart from '@/components/MermaidChart';
-import { AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react';
+import TraceGantt from '@/components/TraceGantt';
+import TelemetryDashboard from '@/components/TelemetryDashboard';
+import { AlertCircle, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
 
 interface TraceEvent {
   id: number;
@@ -23,6 +25,7 @@ export default function TraceDebug() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<TraceEvent | null>(null);
+  const [activeTab, setActiveTab] = useState<'trace' | 'telemetry'>('trace');
 
   const fetchTrace = async (id: string) => {
     if (!id.trim()) return;
@@ -108,34 +111,73 @@ export default function TraceDebug() {
     <div className="container mx-auto py-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Request Trace Debug
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Request Trace Debug & Telemetry
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={activeTab === 'trace' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('trace')}
+              >
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Trace
+              </Button>
+              <Button
+                variant={activeTab === 'telemetry' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('telemetry')}
+              >
+                <BarChart3 className="h-4 w-4 mr-1" />
+                Telemetry
+              </Button>
+            </div>
           </CardTitle>
           <CardDescription>
-            Visualize and debug the complete journey of a coach request
+            {activeTab === 'trace' 
+              ? 'Visualize and debug the complete journey of a coach request'
+              : 'Real-time performance metrics and health monitoring'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <Input
-              placeholder="Enter trace ID (e.g. t_abc123def)"
-              value={inputTraceId}
-              onChange={(e) => setInputTraceId(e.target.value)}
-              className="flex-1"
-            />
-            <Button 
-              onClick={() => fetchTrace(inputTraceId)}
-              disabled={loading || !inputTraceId.trim()}
-            >
-              {loading ? 'Loading...' : 'Load Trace'}
-            </Button>
-          </div>
+          {activeTab === 'trace' && (
+            <div className="flex gap-4">
+              <Input
+                placeholder="Enter trace ID (e.g. t_abc123def)"
+                value={inputTraceId}
+                onChange={(e) => setInputTraceId(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                onClick={() => fetchTrace(inputTraceId)}
+                disabled={loading || !inputTraceId.trim()}
+              >
+                {loading ? 'Loading...' : 'Load Trace'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {events.length > 0 && (
+      {activeTab === 'telemetry' && <TelemetryDashboard />}
+
+      {activeTab === 'trace' && events.length > 0 && (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Gantt Timeline</CardTitle>
+              <CardDescription>
+                Performance breakdown by stage with timing visualization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TraceGantt events={events} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Flow Visualization</CardTitle>
@@ -223,7 +265,7 @@ export default function TraceDebug() {
         </>
       )}
 
-      {events.length === 0 && !loading && inputTraceId && (
+      {activeTab === 'trace' && events.length === 0 && !loading && inputTraceId && (
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">
