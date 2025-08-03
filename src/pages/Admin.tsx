@@ -113,40 +113,39 @@ export const AdminPage = () => {
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
-          {/* 🎛️ UNIFIED TAB NAVIGATION - Alle Geräte gleich */}
-          <div className="w-full mb-8">
-            <TabsList className="w-full h-auto bg-card border border-border/50 rounded-lg p-1 shadow-sm">
-              {/* Einheitliches Layout: 2 columns, 4 rows für alle Geräte */}
-              <div className="grid grid-cols-2 gap-1 w-full">
-                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+          {/* 🎛️ SCROLLABLE TAB NAVIGATION - All 8 tabs visible */}
+          <div className="w-full mb-8 overflow-x-auto">
+            <TabsList className="inline-flex h-auto bg-card border border-border/50 rounded-lg p-1 shadow-sm min-w-full">
+              <div className="flex gap-1 min-w-max">
+                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <Monitor className="w-4 h-4" />
                   <span>Production</span>
                 </TabsTrigger>
-                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                  <Activity className="w-4 h-4" />
-                  <span>Performance</span>
-                </TabsTrigger>
-                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <Route className="w-4 h-4" />
                   <span>Live Trace</span>
                 </TabsTrigger>
-                <TabsTrigger value="security" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
+                  <Activity className="w-4 h-4" />
+                  <span>Performance</span>
+                </TabsTrigger>
+                <TabsTrigger value="security" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <Shield className="w-4 h-4" />
                   <span>Security</span>
                 </TabsTrigger>
-                <TabsTrigger value="health" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="health" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <Database className="w-4 h-4" />
                   <span>Health</span>
                 </TabsTrigger>
-                <TabsTrigger value="features" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="features" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <Flag className="w-4 h-4" />
                   <span>Features</span>
                 </TabsTrigger>
-                <TabsTrigger value="streaming" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="streaming" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <BarChart3 className="w-4 h-4" />
                   <span>Streaming</span>
                 </TabsTrigger>
-                <TabsTrigger value="debug" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="debug" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
                   <MessageSquare className="w-4 h-4" />
                   <span>Coach Monitor</span>
                 </TabsTrigger>
