@@ -69,6 +69,36 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
+// Enhanced traceEvent function for detailed pipeline monitoring
+async function traceEvent(
+  traceId: string,
+  step: string,
+  status: 'started' | 'progress' | 'complete' | 'error' = 'started',
+  data: Record<string, any> = {},
+  conversationId?: string,
+  messageId?: string,
+  duration?: number,
+  error?: string
+): Promise<void> {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    
+    await supabase.from('coach_trace_events').insert({
+      trace_id: traceId,
+      conversation_id: conversationId,
+      message_id: messageId,
+      step,
+      status,
+      data,
+      duration_ms: duration,
+      error_message: error
+    });
+  } catch (err) {
+    console.warn('Trace event logging failed:', err);
+  }
+}
+
 async function trace(traceId: string, stage: string, payload: Record<string, any> = {}, metrics: Record<string, any> = {}): Promise<void> {
   const enrichedPayload = {
     ...payload,
@@ -224,6 +254,15 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     );
   }
   
+  // 📊 TRACE: Message received
+  await traceEvent(traceId, 'message_received', 'started', {
+    userId: await hashUserId(userId),
+    coachId: coachId || coachPersonality || 'unknown',
+    messageLength: message.length,
+    enableStreaming,
+    enableRag
+  }, undefined, messageId);
+  
   // 🔒 DSGVO: Hash User-ID für Logs  
   const hashedUserId = await hashUserId(userId);
   
@@ -263,7 +302,11 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       );
     }
 
+    // 📊 TRACE: Building AI context
+    await traceEvent(traceId, 'buildAIContext', 'started', {}, undefined, messageId);
+    
     // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
+    const contextStart = Date.now();
     const ctx = await buildAIContext({
       userId,
       coachId: coachId || coachPersonality || 'lucy',
@@ -271,6 +314,14 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       enableRag,
       tokenCap: 6000 // Reduced from 8k based on usage analytics
     });
+    
+    // 📊 TRACE: Context ready
+    await traceEvent(traceId, 'buildAIContext', 'complete', {
+      tokensIn: ctx.metrics.tokensIn,
+      hasMemory: !!ctx.memory,
+      hasRag: !!ctx.ragChunks,
+      hasDaily: !!ctx.daily
+    }, undefined, messageId, Date.now() - contextStart);
 
     await trace(traceId, 'B_context_ready', { 
       tokensIn: ctx.metrics.tokensIn, 
@@ -310,6 +361,12 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     }
 
     if (enableStreaming) {
+      // 📊 TRACE: Starting OpenAI call
+      await traceEvent(traceId, 'openai_call', 'started', {
+        model: 'gpt-4o',
+        streaming: true
+      }, undefined, messageId);
+      
       await trace(traceId, 'C_openai_call', { streaming: true }, {
         openai_model: 'gpt-4o',
         active_calls: 1,
@@ -357,6 +414,9 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
             if (!reader) {
               throw new Error('No response body reader');
             }
+            
+            // 📊 TRACE: Start streaming
+            await traceEvent(traceId, 'stream', 'started', {}, undefined, messageId);
 
             // 🔥 ROBUST STREAM PARSER WITH ENHANCED ERROR HANDLING
             const parser = createParser({
@@ -365,8 +425,14 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
                   const data = event.data;
                   
                   if (data === '[DONE]') {
-                    // Get final token count from last chunk if available
+                    // 📊 TRACE: Streaming complete
                     const finalTokens = Math.round(responseText.length / 4);
+                    await traceEvent(traceId, 'stream', 'complete', {
+                      responseLength: responseText.length,
+                      deltaCount,
+                      finalTokens
+                    }, undefined, messageId, Date.now() - start);
+                    
                     trace(traceId, 'F_streaming_done', { 
                       responseLength: responseText.length,
                       deltaCount 
@@ -447,6 +513,13 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
               tokens_in: ctx.metrics.tokensIn
             })));
 
+            // 📊 TRACE: Complete processing
+            await traceEvent(traceId, 'complete', 'complete', {
+              totalResponseLength: responseText.length,
+              totalDeltas: deltaCount,
+              duration_ms: duration
+            }, undefined, messageId, duration);
+            
             await trace(traceId, 'G_complete', { 
               totalResponseLength: responseText.length,
               totalDeltas: deltaCount
@@ -458,6 +531,12 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
             mark("streaming_complete", { messageId, duration_ms: duration, traceId });
             
           } catch (error: any) {
+            // 📊 TRACE: Error occurred
+            await traceEvent(traceId, 'error', 'error', {
+              error: error.message,
+              stack: error.stack
+            }, undefined, messageId, undefined, error.message);
+            
             await trace(traceId, 'E_error', { error: error.message }, {
               http_status: 500,
               openai_status: 'error',

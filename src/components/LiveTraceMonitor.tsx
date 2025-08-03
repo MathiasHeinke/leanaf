@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Activity, 
   Clock, 
@@ -16,14 +16,14 @@ import {
   Brain,
   Database,
   Cpu,
-  Search,
-  HardDrive,
-  Play,
-  Pause,
-  RefreshCw
+  Send,
+  RefreshCw,
+  PlayCircle,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface TraceEvent {
   id: string;
@@ -49,31 +49,47 @@ interface GroupedTrace {
   status: 'running' | 'completed' | 'error';
 }
 
+const COACHES = [
+  { id: 'lucy', name: 'Lucy - Ernährungscoach' },
+  { id: 'sascha', name: 'Sascha - Fitness & Krafttraining' },
+  { id: 'kai', name: 'Kai - KI-Coach' },
+  { id: 'markus', name: 'Markus Rühl - Bodybuilding' },
+  { id: 'dr-vita', name: 'Dr. Vita Femina - Frauengesundheit' }
+];
+
 const STEP_ICONS: Record<string, React.ComponentType<any>> = {
-  'handleMessage': MessageSquare,
+  'message_received': MessageSquare,
   'buildAIContext': Brain,
-  'RAG Knowledge': Database,
-  'Coach Memory': HardDrive,
-  'OpenAI Call': Cpu,
-  'Stream SSE': Zap,
-  'Memory Update': HardDrive,
-  'Tool Trigger': Activity,
-  'Summary Generation': Brain,
-  'Display in UI': Play
+  'openai_call': Cpu,
+  'stream': Zap,
+  'complete': CheckCircle,
+  'error': XCircle
+};
+
+const STEP_NAMES: Record<string, string> = {
+  'message_received': 'Nachricht empfangen',
+  'buildAIContext': 'KI-Kontext aufbauen',
+  'openai_call': 'OpenAI Anfrage',
+  'stream': 'Antwort streamen',
+  'complete': 'Verarbeitung abgeschlossen',
+  'error': 'Fehler'
 };
 
 const STATUS_COLORS = {
-  started: 'bg-blue-500',
-  progress: 'bg-yellow-500', 
-  complete: 'bg-green-500',
-  error: 'bg-red-500'
+  started: 'text-blue-500',
+  progress: 'text-yellow-500', 
+  complete: 'text-green-500',
+  error: 'text-red-500'
 };
 
 export const LiveTraceMonitor = () => {
   const [traces, setTraces] = useState<GroupedTrace[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isLive, setIsLive] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCoach, setSelectedCoach] = useState<string>('lucy');
+  const [testMessage, setTestMessage] = useState<string>('');
+  const [isSending, setIsSending] = useState(false);
+  const [currentTraceId, setCurrentTraceId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const fetchTraces = async () => {
     try {
@@ -105,11 +121,11 @@ export const LiveTraceMonitor = () => {
         
         // Update trace status based on events
         const hasError = trace.events.some(e => e.status === 'error');
-        const allComplete = trace.events.every(e => e.status === 'complete');
+        const hasComplete = trace.events.some(e => e.step === 'complete' && e.status === 'complete');
         
         if (hasError) {
           trace.status = 'error';
-        } else if (allComplete && trace.events.length > 0) {
+        } else if (hasComplete) {
           trace.status = 'completed';
         } else {
           trace.status = 'running';
@@ -134,22 +150,80 @@ export const LiveTraceMonitor = () => {
     }
   };
 
+  // Set up realtime subscription
   useEffect(() => {
     fetchTraces();
 
-    if (isLive) {
-      const interval = setInterval(fetchTraces, 2000); // Poll every 2 seconds
-      return () => clearInterval(interval);
-    }
-  }, [isLive]);
+    const channel = supabase
+      .channel('coach_trace_events_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'coach_trace_events'
+        },
+        () => {
+          fetchTraces(); // Refetch when new events arrive
+        }
+      )
+      .subscribe();
 
-  const filteredTraces = traces.filter(trace => 
-    !searchTerm || 
-    trace.traceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trace.conversationId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trace.messageId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trace.events.some(e => e.step.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const sendTestMessage = async () => {
+    if (!testMessage.trim()) {
+      toast({
+        title: "Nachricht erforderlich",
+        description: "Bitte gib eine Test-Nachricht ein.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const messageId = `msg_${Date.now()}`;
+      const traceId = `trace_${Date.now()}`;
+      setCurrentTraceId(traceId);
+
+      // Call the unified coach engine
+      const response = await supabase.functions.invoke('unified-coach-engine', {
+        body: {
+          userId: 'test-user-admin',
+          coachId: selectedCoach,
+          message: testMessage,
+          messageId,
+          traceId,
+          enableStreaming: true,
+          enableRag: false
+        }
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      toast({
+        title: "Test-Nachricht gesendet",
+        description: `Nachricht an ${COACHES.find(c => c.id === selectedCoach)?.name} gesendet. Verfolge die Pipeline unten.`
+      });
+
+      setTestMessage('');
+    } catch (error: any) {
+      console.error('Error sending test message:', error);
+      toast({
+        title: "Fehler beim Senden",
+        description: error.message || "Die Test-Nachricht konnte nicht gesendet werden.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const getStepIcon = (step: string) => {
     const IconComponent = STEP_ICONS[step] || Activity;
@@ -160,18 +234,28 @@ export const LiveTraceMonitor = () => {
     switch (status) {
       case 'complete': return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'error': return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'progress': return <Activity className="w-4 h-4 text-yellow-500 animate-spin" />;
+      case 'progress': 
+      case 'started': return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
       default: return <AlertCircle className="w-4 h-4 text-blue-500" />;
     }
   };
 
   const getTraceStatusBadge = (status: string) => {
     switch (status) {
-      case 'completed': return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
-      case 'error': return <Badge className="bg-red-100 text-red-800">Error</Badge>;
-      default: return <Badge className="bg-blue-100 text-blue-800">Running</Badge>;
+      case 'completed': return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Abgeschlossen</Badge>;
+      case 'error': return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Fehler</Badge>;
+      default: return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Läuft</Badge>;
     }
   };
+
+  // Filter to show current trace first
+  const sortedTraces = currentTraceId 
+    ? traces.sort((a, b) => {
+        if (a.traceId === currentTraceId) return -1;
+        if (b.traceId === currentTraceId) return 1;
+        return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+      })
+    : traces;
 
   if (loading) {
     return (
@@ -195,55 +279,83 @@ export const LiveTraceMonitor = () => {
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
+      {/* Test Message Sender */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Live Pipeline Monitor
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={isLive ? "default" : "outline"}
-                size="sm"
-                onClick={() => setIsLive(!isLive)}
-              >
-                {isLive ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-                {isLive ? 'Live' : 'Paused'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={fetchTraces}>
-                <RefreshCw className="w-4 h-4" />
-              </Button>
+          <CardTitle className="flex items-center gap-2">
+            <PlayCircle className="w-5 h-5" />
+            Live Coach Pipeline Monitor
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Coach auswählen</label>
+              <Select value={selectedCoach} onValueChange={setSelectedCoach}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COACHES.map((coach) => (
+                    <SelectItem key={coach.id} value={coach.id}>
+                      {coach.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium mb-2 block">Test-Nachricht</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="z.B. Wie kann ich besser schlafen?"
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !isSending && sendTestMessage()}
+                  disabled={isSending}
+                />
+                <Button 
+                  onClick={sendTestMessage} 
+                  disabled={isSending || !testMessage.trim()}
+                  size="sm"
+                >
+                  {isSending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  Send & Monitor
+                </Button>
+              </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search by trace ID, conversation, message, or step..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-            </div>
+          <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              {filteredTraces.length} traces
+              {traces.length} Traces gefunden
             </div>
+            <Button variant="outline" size="sm" onClick={fetchTraces}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Aktualisieren
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Traces */}
+      {/* Live Traces */}
       <ScrollArea className="h-[600px]">
         <div className="grid grid-cols-1 gap-4">
-          {filteredTraces.map((trace) => (
-            <Card key={trace.traceId} className="relative">
+          {sortedTraces.map((trace) => (
+            <Card 
+              key={trace.traceId} 
+              className={`relative ${
+                trace.traceId === currentTraceId ? 'ring-2 ring-blue-500 ring-opacity-50' : ''
+              }`}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-sm font-mono">
+                      {trace.traceId === currentTraceId && '🎯 '}
                       {trace.traceId}
                     </CardTitle>
                     {getTraceStatusBadge(trace.status)}
@@ -252,14 +364,14 @@ export const LiveTraceMonitor = () => {
                     {format(new Date(trace.startTime), 'HH:mm:ss')}
                   </div>
                 </div>
-                {trace.conversationId && (
+                {trace.messageId && (
                   <div className="text-xs text-muted-foreground">
-                    Conversation: {trace.conversationId} | Message: {trace.messageId}
+                    Message: {trace.messageId}
                   </div>
                 )}
                 {trace.totalDuration && (
                   <div className="text-xs text-muted-foreground">
-                    Total Duration: {trace.totalDuration}ms
+                    Gesamt: {trace.totalDuration}ms
                   </div>
                 )}
               </CardHeader>
@@ -268,10 +380,12 @@ export const LiveTraceMonitor = () => {
                   {trace.events
                     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                     .map((event, index) => (
-                    <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                    <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         {getStepIcon(event.step)}
-                        <span className="text-sm font-medium truncate">{event.step}</span>
+                        <span className="text-sm font-medium">
+                          {STEP_NAMES[event.step] || event.step}
+                        </span>
                         {getStatusIcon(event.status)}
                       </div>
                       
@@ -284,22 +398,12 @@ export const LiveTraceMonitor = () => {
                         )}
                         <span>{format(new Date(event.created_at), 'HH:mm:ss.SSS')}</span>
                       </div>
-                      
-                      {/* Progress indicator */}
-                      {trace.events.length > 1 && (
-                        <div className="w-16">
-                          <Progress 
-                            value={((index + 1) / trace.events.length) * 100} 
-                            className="h-1"
-                          />
-                        </div>
-                      )}
                     </div>
                   ))}
                   
                   {/* Error details */}
                   {trace.status === 'error' && (
-                    <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                    <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
                       <div className="text-sm text-red-800 dark:text-red-300">
                         {trace.events.find(e => e.error_message)?.error_message || 'Unknown error'}
                       </div>
@@ -310,14 +414,14 @@ export const LiveTraceMonitor = () => {
                   {trace.events.some(e => Object.keys(e.data || {}).length > 0) && (
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                        Show Event Data
+                        Event-Daten anzeigen
                       </summary>
                       <div className="mt-2 space-y-1">
                         {trace.events.map((event) => (
                           event.data && Object.keys(event.data).length > 0 && (
                             <div key={event.id} className="p-2 bg-muted rounded">
-                              <div className="font-medium">{event.step}:</div>
-                              <pre className="text-xs text-muted-foreground overflow-auto">
+                              <div className="font-medium">{STEP_NAMES[event.step] || event.step}:</div>
+                              <pre className="text-xs text-muted-foreground overflow-auto max-h-32">
                                 {JSON.stringify(event.data, null, 2)}
                               </pre>
                             </div>
@@ -331,11 +435,11 @@ export const LiveTraceMonitor = () => {
             </Card>
           ))}
           
-          {filteredTraces.length === 0 && (
+          {sortedTraces.length === 0 && (
             <Card>
               <CardContent className="text-center py-8">
                 <div className="text-muted-foreground">
-                  {searchTerm ? 'No traces match your search' : 'No trace events found'}
+                  Noch keine Trace-Events gefunden. Sende eine Test-Nachricht oben!
                 </div>
               </CardContent>
             </Card>
