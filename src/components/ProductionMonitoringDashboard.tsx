@@ -35,6 +35,7 @@ import {
   Cell
 } from 'recharts';
 import { toast } from 'sonner';
+import { EmbeddingManagerCard } from './EmbeddingManagerCard';
 
 // 🔥 PRODUCTION MONITORING INTERFACES
 interface LoadTestMetrics {
@@ -468,6 +469,9 @@ export function ProductionMonitoringDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Embedding Manager Card */}
+        <EmbeddingManagerCard />
 
         {/* 🔧 CIRCUIT BREAKER TELEMETRY */}
         <Card>
