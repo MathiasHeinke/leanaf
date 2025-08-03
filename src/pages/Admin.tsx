@@ -148,7 +148,59 @@ export const AdminPage = () => {
 
           {/* 📊 PERFORMANCE MONITORING */}
           <TabsContent value="performance" className="space-y-6 mt-6 safe-area-pb-6">
-            <EnhancedPerformanceDashboard />
+            <div className="grid grid-cols-1 gap-6">
+              {/* OpenAI Performance */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    OpenAI Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <OpenAIPerformanceDashboard />
+                </CardContent>
+              </Card>
+
+              {/* RAG Performance */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <Database className="w-5 h-5 mr-2" />
+                    RAG Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RAGPerformanceMonitor />
+                </CardContent>
+              </Card>
+
+              {/* Real-Time Telemetry */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <Activity className="w-5 h-5 mr-2" />
+                    Real-Time Telemetry
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RealTimeTelemetryDashboard />
+                </CardContent>
+              </Card>
+
+              {/* Enhanced Performance */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <Monitor className="w-5 h-5 mr-2" />
+                    Enhanced Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <EnhancedPerformanceDashboard />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
