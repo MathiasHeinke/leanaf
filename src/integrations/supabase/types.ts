@@ -4237,34 +4237,16 @@ export type Database = {
     Views: {
       rolling_daily_snapshot: {
         Row: {
+          created_at: string | null
           date: string | null
           hydration_score: number | null
           sleep_score: number | null
           total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
           total_protein: number | null
           user_id: string | null
-          weight: number | null
           workout_volume: number | null
-        }
-        Insert: {
-          date?: string | null
-          hydration_score?: number | null
-          sleep_score?: number | null
-          total_calories?: number | null
-          total_protein?: number | null
-          user_id?: string | null
-          weight?: never
-          workout_volume?: number | null
-        }
-        Update: {
-          date?: string | null
-          hydration_score?: number | null
-          sleep_score?: number | null
-          total_calories?: number | null
-          total_protein?: number | null
-          user_id?: string | null
-          weight?: never
-          workout_volume?: number | null
         }
         Relationships: []
       }
@@ -4347,17 +4329,12 @@ export type Database = {
       }
       v_user_strength_profile: {
         Row: {
-          avg_estimated_1rm: number | null
-          avg_rpe: number | null
-          avg_rpe_endurance: number | null
-          avg_rpe_hypertrophy: number | null
-          avg_rpe_strength: number | null
-          avg_volume_load: number | null
+          avg_weight: number | null
+          category: string | null
           exercise_name: string | null
-          last_training_week: string | null
-          max_estimated_1rm: number | null
-          strength_level: string | null
-          total_sessions: number | null
+          last_performed: string | null
+          max_weight: number | null
+          total_sets: number | null
           user_id: string | null
         }
         Relationships: []
