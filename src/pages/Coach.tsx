@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import SimpleUnifiedCoachChat from "@/components/SimpleUnifiedCoachChat";
+import EnhancedUnifiedCoachChat from "@/components/EnhancedUnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
 
 // Coach profiles data (same as in CoachSelection)
@@ -78,10 +78,11 @@ const CoachPage = () => {
     
     return (
       <div className="h-screen">
-        <SimpleUnifiedCoachChat
+        <EnhancedUnifiedCoachChat
           mode="specialized"
           coach={selectedCoach}
           useFullscreenLayout={true}
+          enableAdvancedFeatures={true}
         />
       </div>
     );
