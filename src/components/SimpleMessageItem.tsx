@@ -20,10 +20,11 @@ interface ChatMessage {
 
 interface CoachProfile {
   name: string;
-  avatar: string;
-  primaryColor: string;
-  secondaryColor: string;
-  personality: string;
+  avatar?: string;
+  imageUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  personality?: string;
 }
 
 interface SimpleMessageItemProps {
@@ -127,9 +128,13 @@ export const SimpleMessageItem = React.memo(({
         <div className={`footer-row ${isUser ? 'user' : ''}`}>
           {!isUser && (
             <img 
-              src={coach.avatar} 
+              src={coach.avatar || coach.imageUrl || '/placeholder.svg'} 
               alt={coach.name}
               className="avatar"
+              onError={(e) => {
+                console.log(`Failed to load coach avatar: ${coach.avatar || coach.imageUrl}`);
+                e.currentTarget.src = '/placeholder.svg';
+              }}
             />
           )}
           <span className="time">

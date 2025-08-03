@@ -580,8 +580,40 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             const analysisResult = await analyzeImage(images[0], message);
             if (analysisResult && analysisResult.analysisData) {
               console.log('✅ Image analysis successful');
+              
+              // 🔥 FIX: Process user's text question after image analysis
+              let finalContent = analysisResult.analysisData.analysis || 'Bild erfolgreich analysiert!';
+              
+              if (message && message.trim()) {
+                console.log('🤔 Processing user question after image analysis...');
+                try {
+                  // Make additional AI call to answer the user's question
+                  const { data: aiResponse, error: aiError } = await supabase.functions.invoke('unified-coach-engine', {
+                    body: {
+                      userId: user.id,
+                      message: message,
+                      coachPersonality: coach?.id || 'lucy',
+                      conversationHistory: [
+                        { role: 'assistant', content: finalContent },
+                        { role: 'user', content: message }
+                      ],
+                      toolContext: { tool: 'chat', description: 'Antwort auf Benutzerfrage nach Bildanalyse' }
+                    }
+                  });
+                  
+                  if (!aiError && aiResponse?.content) {
+                    console.log('✅ User question processed successfully');
+                    finalContent = `${finalContent}\n\n${aiResponse.content}`;
+                  } else {
+                    console.warn('⚠️ AI response failed, showing only image analysis');
+                  }
+                } catch (aiError) {
+                  console.warn('⚠️ Failed to process user question:', aiError);
+                }
+              }
+              
               return {
-                content: analysisResult.analysisData.analysis || 'Bild erfolgreich analysiert!',
+                content: finalContent,
                 type: 'text',
                 imageAnalysis: analysisResult
               };
