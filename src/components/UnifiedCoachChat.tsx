@@ -705,7 +705,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       message_content: messageContent,
       coach_personality: coach?.id || 'lucy',
       conversation_date: today,
-      images: uploadedImages.length > 0 ? uploadedImages : null
+      context_data: uploadedImages.length > 0 ? { images: uploadedImages } : null
     });
     
     if (dbError) {
