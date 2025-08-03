@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { FeatureFlagsManager } from '@/components/FeatureFlagsManager';
 import { StreamingDashboard } from '@/components/StreamingDashboard';
 import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
+import TelemetryDashboard from '@/components/TelemetryDashboard';
 
 export const AdminPage = () => {
   const { user } = useAuth();
@@ -160,6 +161,21 @@ export const AdminPage = () => {
                 </CardHeader>
                 <CardContent>
                   <RAGPerformanceMonitor />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    Enhanced Telemetry
+                  </CardTitle>
+                  <CardDescription>
+                    Real-time telemetry data from coach traces
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TelemetryDashboard />
                 </CardContent>
               </Card>
             </div>

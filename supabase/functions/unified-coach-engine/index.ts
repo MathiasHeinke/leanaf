@@ -58,21 +58,25 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
     ...sanitizeLogData(enrichedPayload)
   }));
   
-  // Fire-and-forget to Supabase
+  // FIXED: Proper error logging and await for Supabase
   try {
     const supabase = createClient(
       'https://gzczjscctgyxjyodhnhk.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mjc0Nzk4MiwiZXhwIjoyMDY4MzIzOTgyfQ.c1pPZNMFb9TK8x8sfzcnCMgpJaKcVYRBsrBYGHqfvMU'
     );
     
-    await supabase.from('coach_traces').insert({
+    const { error } = await supabase.from('coach_traces').insert({
       trace_id: traceId,
       ts: new Date().toISOString(),
       stage,
       data: enrichedPayload
     });
+    
+    if (error) {
+      console.error('Failed to insert trace:', error);
+    }
   } catch (error) {
-    // Silent fail - tracing should never break the main flow
+    console.error('Trace insertion failed:', error);
   }
 }
 

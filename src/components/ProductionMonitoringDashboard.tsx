@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -85,88 +86,169 @@ export function ProductionMonitoringDashboard() {
   const [systemHealth, setSystemHealth] = useState<SystemHealthMetrics | null>(null);
   const [logAuditResults, setLogAuditResults] = useState<any>(null);
 
-  // 📊 Mock Data Generation für Demo
+  // 🔥 REAL DATA FETCHING - Enhanced Telemetry
   useEffect(() => {
-    generateMockData();
-    const interval = setInterval(generateMockData, 30000); // Update every 30s
+    fetchRealMetrics();
+    const interval = setInterval(fetchRealMetrics, 30000); // Update every 30s
     return () => clearInterval(interval);
   }, []);
 
-  const generateMockData = () => {
-    // Mock Load Test Metrics
-    const mockLoadMetrics: LoadTestMetrics[] = Array.from({ length: 24 }, (_, i) => ({
-      p95_response_time: 1200 + Math.random() * 800,
-      p99_response_time: 1800 + Math.random() * 1200,
-      avg_response_time: 800 + Math.random() * 400,
-      total_requests: 15000 + Math.random() * 5000,
-      failed_requests: Math.floor(Math.random() * 50),
-      error_rate: Math.random() * 2,
-      virtual_users: 200,
-      test_duration: 300,
-      timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toISOString()
-    }));
-    setLoadTestMetrics(mockLoadMetrics);
+  const fetchRealMetrics = async () => {
+    try {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data: traces, error } = await supabase
+        .from('coach_traces')
+        .select('*')
+        .gte('ts', since);
 
-    // Mock Circuit Breaker Stats
-    setCircuitBreakerStats({
-      total_requests: 125000,
-      successful_requests: 124850,
-      failed_requests: 150,
-      open_events: 3,
-      open_percentage: 0.24,
-      avg_failure_recovery_time: 45000,
-      last_failure: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      if (error) throw error;
+
+      if (!traces || traces.length === 0) {
+        // No trace data - show empty state
+        setLoadTestMetrics([]);
+        setCircuitBreakerStats({
+          total_requests: 0,
+          successful_requests: 0,
+          failed_requests: 0,
+          open_events: 0,
+          open_percentage: 0,
+          avg_failure_recovery_time: 0,
+          last_failure: null
+        });
+        setTokenBudgetData([]);
+        setSystemHealth({
+          first_token_p95: 0,
+          total_latency_p95: 0,
+          error_5xx_rate: 0,
+          circuit_breaker_opens: 0,
+          status: 'healthy',
+          last_updated: new Date().toISOString()
+        });
+        setLogAuditResults({
+          total_logs: 0,
+          hashed_user_ids: 0,
+          plain_text_emails: 0,
+          gps_coordinates: 0,
+          compliance_score: 100,
+          violations: []
+        });
+        return;
+      }
+
+      // Process real trace data
+      const processedMetrics = processTraceData(traces);
+      setLoadTestMetrics(processedMetrics.loadTestMetrics);
+      setCircuitBreakerStats(processedMetrics.circuitBreakerStats);
+      setTokenBudgetData(processedMetrics.tokenBudgetData);
+      setSystemHealth(processedMetrics.systemHealth);
+      setLogAuditResults(processedMetrics.logAuditResults);
+    } catch (error) {
+      console.error('Failed to fetch real metrics:', error);
+    }
+  };
+
+  const processTraceData = (traces: any[]) => {
+    const uniqueTraces = [...new Set(traces.map(t => t.trace_id))];
+    
+    // Calculate real metrics from traces
+    let totalFirstToken = 0;
+    let totalFullStream = 0;
+    let totalCost = 0;
+    let errorCount = 0;
+    let circuitBreakerOpen = 0;
+    let tokenUsage = 0;
+    let firstTokenCount = 0;
+    let fullStreamCount = 0;
+    
+    traces.forEach(trace => {
+      const data = trace.data as any || {};
+      
+      if (typeof data.firstToken_ms === 'number') {
+        totalFirstToken += data.firstToken_ms;
+        firstTokenCount++;
+      }
+      if (typeof data.fullStream_ms === 'number') {
+        totalFullStream += data.fullStream_ms;
+        fullStreamCount++;
+      }
+      if (typeof data.cost_usd === 'number') {
+        totalCost += data.cost_usd;
+      }
+      if (trace.stage === 'E_error') {
+        errorCount++;
+      }
+      if (data.breaker_open === true) {
+        circuitBreakerOpen++;
+      }
+      if (typeof data.prompt_tokens === 'number') {
+        tokenUsage += data.prompt_tokens;
+      }
     });
 
-    // Mock Token Budget Data (last 1000 prompts)
-    const mockTokenData: TokenBudgetStats[] = Array.from({ length: 100 }, (_, i) => ({
-      prompt_tokens: Math.floor(2000 + Math.random() * 4000),
-      budget_limit: 6000,
-      utilization_percent: Math.floor(40 + Math.random() * 50),
-      timestamp: new Date(Date.now() - i * 10 * 60 * 1000).toISOString(),
-      user_hash: `usr_${Math.random().toString(36).substr(2, 12)}`
-    }));
-    setTokenBudgetData(mockTokenData);
+    const avgFirstToken = firstTokenCount > 0 ? totalFirstToken / firstTokenCount : 0;
+    const avgFullStream = fullStreamCount > 0 ? totalFullStream / fullStreamCount : 0;
+    const errorRate = traces.length > 0 ? (errorCount / traces.length) * 100 : 0;
 
-    // Mock System Health
-    const latestLoadTest = mockLoadMetrics[mockLoadMetrics.length - 1];
-    const health: SystemHealthMetrics = {
-      first_token_p95: 1400 + Math.random() * 600,
-      total_latency_p95: latestLoadTest.p95_response_time,
-      error_5xx_rate: latestLoadTest.error_rate,
-      circuit_breaker_opens: 0.24,
-      status: latestLoadTest.p95_response_time > 4000 ? 'warning' : 
-              latestLoadTest.error_rate > 3 ? 'critical' : 'healthy',
-      last_updated: new Date().toISOString()
+    return {
+      loadTestMetrics: [{
+        p95_response_time: avgFullStream * 1.2, // Estimate P95 from avg
+        p99_response_time: avgFullStream * 1.5,
+        avg_response_time: avgFullStream,
+        total_requests: uniqueTraces.length,
+        failed_requests: errorCount,
+        error_rate: errorRate,
+        virtual_users: 1,
+        test_duration: 86400, // 24h
+        timestamp: new Date().toISOString()
+      }],
+      circuitBreakerStats: {
+        total_requests: traces.length,
+        successful_requests: traces.length - errorCount,
+        failed_requests: errorCount,
+        open_events: circuitBreakerOpen,
+        open_percentage: traces.length > 0 ? (circuitBreakerOpen / traces.length) * 100 : 0,
+        avg_failure_recovery_time: 30000, // Estimate
+        last_failure: errorCount > 0 ? traces.find(t => t.stage === 'E_error')?.ts : null
+      },
+      tokenBudgetData: [{
+        prompt_tokens: tokenUsage,
+        budget_limit: 100000,
+        utilization_percent: tokenUsage > 0 ? Math.min(100, (tokenUsage / 100000) * 100) : 0,
+        timestamp: new Date().toISOString(),
+        user_hash: 'system'
+      }],
+      systemHealth: {
+        first_token_p95: avgFirstToken * 1.2,
+        total_latency_p95: avgFullStream * 1.2,
+        error_5xx_rate: errorRate,
+        circuit_breaker_opens: traces.length > 0 ? (circuitBreakerOpen / traces.length) * 100 : 0,
+        status: (avgFullStream > 6000 ? 'critical' : avgFullStream > 4000 ? 'warning' : 'healthy') as 'healthy' | 'warning' | 'critical',
+        last_updated: new Date().toISOString()
+      },
+      logAuditResults: {
+        total_logs: traces.length,
+        hashed_user_ids: traces.filter(t => (t.data as any)?.user_id).length,
+        plain_text_emails: traces.filter(t => (t.data as any)?.pii_detected === true).length,
+        gps_coordinates: 0,
+        compliance_score: traces.length > 0 ? Math.max(90, 100 - traces.filter(t => (t.data as any)?.pii_detected === true).length) : 100,
+        violations: []
+      }
     };
-    setSystemHealth(health);
-
-    // Mock Log Audit
-    setLogAuditResults({
-      total_logs: 50000,
-      hashed_user_ids: 49950,
-      plain_text_emails: 0,
-      gps_coordinates: 0,
-      compliance_score: 99.9,
-      violations: []
-    });
   };
 
   const runLoadTest = async () => {
     setIsLoadTesting(true);
-    toast.info('🚀 Starting Load Test with 200 VU...');
+    toast.info('🚀 Refreshing real telemetry data...');
     
     try {
-      // Simulate load test execution
-      setTimeout(() => {
-        generateMockData();
-        setIsLoadTesting(false);
-        toast.success('✅ Load Test completed successfully!');
-      }, 10000);
-    } catch (error) {
-      console.error('Load test failed:', error);
+      await fetchRealMetrics();
       setIsLoadTesting(false);
-      toast.error('❌ Load Test failed');
+      toast.success('✅ Telemetry data refreshed!');
+    } catch (error) {
+      console.error('Refresh failed:', error);
+      setIsLoadTesting(false);
+      toast.error('❌ Refresh failed');
     }
   };
 
@@ -323,7 +405,7 @@ export function ProductionMonitoringDashboard() {
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center">
                 <Monitor className="w-5 h-5 mr-2" />
-                Load Test (200 VU)
+                Real Telemetry Data
               </span>
               <Button 
                 onClick={runLoadTest} 
@@ -335,7 +417,7 @@ export function ProductionMonitoringDashboard() {
                 ) : (
                   <Play className="w-4 h-4 mr-2" />
                 )}
-                {isLoadTesting ? 'Running...' : 'Run Test'}
+                {isLoadTesting ? 'Refreshing...' : 'Refresh'}
               </Button>
             </CardTitle>
           </CardHeader>
