@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Zap, MessageSquare, TestTube, Play } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDebugChat } from '@/hooks/useDebugChat';
+import EnhancedPipelineDebugger from './EnhancedPipelineDebugger';
 
 const LiteDebugChat = () => {
   const [message, setMessage] = useState('Wie geht es mir heute?');
@@ -182,199 +184,210 @@ const LiteDebugChat = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* OpenAI Model Testing */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TestTube className="h-5 w-5" />
-            OpenAI Model Testing
-          </CardTitle>
-          <CardDescription>
-            Test different OpenAI models directly via debug-direct-chat
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Test Nachricht:</label>
-              <Textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Nachricht an OpenAI..."
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">OpenAI Model:</label>
-              <Select value={selectedModel} onValueChange={setSelectedModel}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Wähle ein Model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {openAIModels.map((model) => (
-                    <SelectItem key={model.value} value={model.value}>
-                      {model.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Button 
-              onClick={testDirectOpenAI}
-              disabled={isLoading || debugLoading}
-              className="flex items-center gap-2"
-            >
-              <Play className="h-4 w-4" />
-              {(isLoading || debugLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
-              Test {selectedModel}
-            </Button>
-            
-            <Button 
-              onClick={testAllModels}
-              disabled={isLoading || debugLoading}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <TestTube className="h-4 w-4" />
-              {(isLoading || debugLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
-              Test All Models
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Legacy Lite/Full Mode Testing */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
-            Legacy: Lite vs Full Mode
-          </CardTitle>
-          <CardDescription>
-            Test unified-coach-engine pipeline (kann nicht funktionieren bis deployment)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Button 
-              onClick={testLiteMode}
-              disabled={isLoading}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Zap className="h-4 w-4" />
-              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Lite Mode (unter 1s)
-            </Button>
-            
-            <Button 
-              onClick={() => toast({ title: "Info", description: "Full Mode entfernt - nutze Direct OpenAI Tests oben" })}
-              disabled={true}
-              variant="ghost"
-              className="flex items-center gap-2"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Full Mode (deprecated)
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Single Model Response */}
-      {response && (
+    <Tabs defaultValue="enhanced" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="enhanced">🔧 Enhanced Pipeline Debugger</TabsTrigger>
+        <TabsTrigger value="legacy">📊 Legacy Model Testing</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="enhanced" className="space-y-6">
+        <EnhancedPipelineDebugger />
+      </TabsContent>
+      
+      <TabsContent value="legacy" className="space-y-6">
+        {/* OpenAI Model Testing */}
         <Card>
           <CardHeader>
-            <CardTitle>Debug Response - {response.model || 'Unknown Model'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {response.error ? (
-              <div className="text-red-600">
-                <Badge variant="destructive">Error</Badge>
-                {response.model && <Badge variant="outline" className="ml-2">{response.model}</Badge>}
-                <pre className="mt-2 text-sm">{response.error}</pre>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  {response.model && <Badge variant="default">{response.model}</Badge>}
-                  <Badge variant={response.isLiteMode ? 'secondary' : 'default'}>
-                    {response.debug?.directOpenAI ? 'Direct OpenAI' : response.isLiteMode ? 'Lite Mode' : 'Full Mode'}
-                  </Badge>
-                  {response.processingTime && (
-                    <Badge variant="outline">
-                      {`${response.processingTime}ms`}
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="font-medium">OpenAI Response:</p>
-                  <p className="mt-1">{response.content || response.response}</p>
-                </div>
-                
-                {response.debug && (
-                  <details className="mt-4">
-                    <summary className="cursor-pointer font-medium">Debug Data</summary>
-                    <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
-                      {JSON.stringify(response.debug, null, 2)}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* All Models Results */}
-      {allModelsResults.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>All Models Comparison</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TestTube className="h-5 w-5" />
+              OpenAI Model Testing
+            </CardTitle>
             <CardDescription>
-              A/B test results for all OpenAI models
+              Test different OpenAI models directly via debug-direct-chat
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {allModelsResults.map((result, index) => (
-                <div key={index} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={result.success ? 'default' : 'destructive'}>
-                        {result.label}
-                      </Badge>
-                      {result.success && (
-                        <Badge variant="outline">
-                          {result.duration}ms
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {result.success ? '✅ Success' : '❌ Failed'}
-                    </div>
-                  </div>
-                  
-                  {result.success ? (
-                    <div className="bg-muted p-3 rounded text-sm">
-                      {result.content}
-                    </div>
-                  ) : (
-                    <div className="bg-destructive/10 p-3 rounded text-sm text-destructive">
-                      {result.error}
-                    </div>
-                  )}
-                </div>
-              ))}
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Test Nachricht:</label>
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Nachricht an OpenAI..."
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">OpenAI Model:</label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Wähle ein Model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {openAIModels.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Button 
+                onClick={testDirectOpenAI}
+                disabled={isLoading || debugLoading}
+                className="flex items-center gap-2"
+              >
+                <Play className="h-4 w-4" />
+                {(isLoading || debugLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                Test {selectedModel}
+              </Button>
+              
+              <Button 
+                onClick={testAllModels}
+                disabled={isLoading || debugLoading}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <TestTube className="h-4 w-4" />
+                {(isLoading || debugLoading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                Test All Models
+              </Button>
             </div>
           </CardContent>
         </Card>
-      )}
-    </div>
+
+        {/* Legacy Lite/Full Mode Testing */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Legacy: Lite vs Full Mode
+            </CardTitle>
+            <CardDescription>
+              Test unified-coach-engine pipeline (kann nicht funktionieren bis deployment)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Button 
+                onClick={testLiteMode}
+                disabled={isLoading}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Zap className="h-4 w-4" />
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                Lite Mode (unter 1s)
+              </Button>
+              
+              <Button 
+                onClick={() => toast({ title: "Info", description: "Full Mode entfernt - nutze Direct OpenAI Tests oben" })}
+                disabled={true}
+                variant="ghost"
+                className="flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Full Mode (deprecated)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Single Model Response */}
+        {response && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Debug Response - {response.model || 'Unknown Model'}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {response.error ? (
+                <div className="text-red-600">
+                  <Badge variant="destructive">Error</Badge>
+                  {response.model && <Badge variant="outline" className="ml-2">{response.model}</Badge>}
+                  <pre className="mt-2 text-sm">{response.error}</pre>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    {response.model && <Badge variant="default">{response.model}</Badge>}
+                    <Badge variant={response.isLiteMode ? 'secondary' : 'default'}>
+                      {response.debug?.directOpenAI ? 'Direct OpenAI' : response.isLiteMode ? 'Lite Mode' : 'Full Mode'}
+                    </Badge>
+                    {response.processingTime && (
+                      <Badge variant="outline">
+                        {`${response.processingTime}ms`}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="font-medium">OpenAI Response:</p>
+                    <p className="mt-1">{response.content || response.response}</p>
+                  </div>
+                  
+                  {response.debug && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer font-medium">Debug Data</summary>
+                      <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
+                        {JSON.stringify(response.debug, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* All Models Results */}
+        {allModelsResults.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>All Models Comparison</CardTitle>
+              <CardDescription>
+                A/B test results for all OpenAI models
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {allModelsResults.map((result, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={result.success ? 'default' : 'destructive'}>
+                          {result.label}
+                        </Badge>
+                        {result.success && (
+                          <Badge variant="outline">
+                            {result.duration}ms
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {result.success ? '✅ Success' : '❌ Failed'}
+                      </div>
+                    </div>
+                    
+                    {result.success ? (
+                      <div className="bg-muted p-3 rounded text-sm">
+                        {result.content}
+                      </div>
+                    ) : (
+                      <div className="bg-destructive/10 p-3 rounded text-sm text-destructive">
+                        {result.error}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 };
 
