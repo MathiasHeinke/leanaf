@@ -397,10 +397,11 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     }
 
     if (enableStreaming) {
-      // 📊 TRACE: Starting OpenAI call with full request details
+      // 📊 TRACE: Starting OpenAI call with full request details (DEBUGGING: Temporarily using gpt-4o)
+      const DEBUG_MODEL = 'gpt-4o'; // Temporarily switched from gpt-4.1-2025-04-14 for debugging
       await traceEvent(traceId, 'openai_call', 'started', {
         input: {
-          model: 'gpt-4.1-2025-04-14',
+          model: DEBUG_MODEL,
           temperature: 0.7,
           max_tokens: 2000,
           streaming: true,
@@ -409,7 +410,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
           userMessageLength: message.length
         },
         request_payload: {
-          model: 'gpt-4.1-2025-04-14',
+          model: DEBUG_MODEL,
           prompt_preview: systemPrompt.substring(0, 1000) + '...',
           user_message_preview: message.substring(0, 100),
           estimated_prompt_tokens: ctx.metrics.tokensIn,
@@ -418,7 +419,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       }, undefined, messageId);
       
       await trace(traceId, 'C_openai_call', { streaming: true }, {
-        openai_model: 'gpt-4.1-2025-04-14',
+        openai_model: DEBUG_MODEL,
         active_calls: 1,
         waiting_calls: 0
       });
@@ -437,6 +438,9 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
           let responseText = '';
 
            try {
+            const DEBUG_MODEL = 'gpt-4o'; // Temporarily switched for debugging
+            console.log(`🔧 DEBUG: Making OpenAI call to ${DEBUG_MODEL} with streaming=true`);
+            
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -444,7 +448,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'gpt-4.1-2025-04-14',
+                model: DEBUG_MODEL,
                 temperature: 0.7,
                 max_tokens: 2000,
                 stream: true,
@@ -456,8 +460,26 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
               }),
             });
 
+            // 🔧 ENHANCED DEBUGGING: Log OpenAI response details
+            console.log(`🔧 DEBUG: OpenAI HTTP Status: ${response.status}`);
+            console.log(`🔧 DEBUG: OpenAI Response Headers:`, Object.fromEntries(response.headers.entries()));
+            console.log(`🔧 DEBUG: OpenAI Response OK: ${response.ok}`);
+            console.log(`🔧 DEBUG: OpenAI Response Body Available: ${!!response.body}`);
+            
+            // Log detailed response for debugging
+            await traceEvent(traceId, 'openai_response_debug', 'progress', {
+              http_status: response.status,
+              response_ok: response.ok,
+              headers: Object.fromEntries(response.headers.entries()),
+              body_available: !!response.body,
+              content_type: response.headers.get('content-type'),
+              content_length: response.headers.get('content-length')
+            }, undefined, messageId);
+
             if (!response.ok) {
-              throw new Error(`OpenAI API error: ${response.status}`);
+              const errorText = await response.text();
+              console.error(`🔧 DEBUG: OpenAI Error Response Body:`, errorText);
+              throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
             }
 
             const reader = response.body?.getReader();
@@ -483,17 +505,20 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
                       finalTokens
                     }, undefined, messageId, Date.now() - start);
                     
+                    console.log(`🔧 DEBUG: Stream complete - deltaCount: ${deltaCount}, responseLength: ${responseText.length}`);
+                    
                     trace(traceId, 'F_streaming_done', { 
                       responseLength: responseText.length,
                       deltaCount 
                     }, {
                       fullStream_ms: Date.now() - start,
                       completion_tokens: finalTokens,
-                      cost_usd: calculateCost('gpt-4.1-2025-04-14', ctx.metrics.tokensIn, finalTokens),
-                      model_fingerprint: 'gpt-4.1-2025-04-14',
+                      cost_usd: calculateCost('gpt-4o', ctx.metrics.tokensIn, finalTokens), // Updated for gpt-4o
+                      model_fingerprint: 'gpt-4o',
                       response_preview: responseText.substring(0, 100) + '...',
                       total_deltas: deltaCount,
-                      empty_response_warning: deltaCount === 0 ? 'OpenAI returned empty response' : null
+                      empty_response_warning: deltaCount === 0 ? '🚨 CRITICAL: OpenAI returned ZERO deltas - API/Model/Streaming issue!' : null,
+                      debug_model_used: 'gpt-4o' // Debug info
                     });
                     controller.enqueue(encoder.encode(sse({ messageId, traceId }, "end")));
                     return;
@@ -537,15 +562,31 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
             });
 
             try {
+              let chunkCount = 0;
               while (true) {
                 const { done, value } = await reader.read();
-                if (done) break;
+                if (done) {
+                  console.log(`🔧 DEBUG: Stream ended after ${chunkCount} chunks`);
+                  break;
+                }
                 
+                chunkCount++;
                 const chunk = new TextDecoder().decode(value);
+                
+                // 🔧 ENHANCED DEBUGGING: Log first few chunks
+                if (chunkCount <= 3) {
+                  console.log(`🔧 DEBUG: Raw Chunk #${chunkCount}:`, chunk.substring(0, 200));
+                  await traceEvent(traceId, `raw_chunk_${chunkCount}`, 'progress', {
+                    chunk_preview: chunk.substring(0, 200),
+                    chunk_length: chunk.length,
+                    is_empty: chunk.trim() === ''
+                  }, undefined, messageId);
+                }
+                
                 parser.feed(chunk);
               }
             } catch (readError) {
-              console.error('Stream read error:', readError);
+              console.error('🔧 DEBUG: Stream read error:', readError);
               throw readError;
             } finally {
               // 🔧 PROPER READER CLEANUP (FIX #5)
