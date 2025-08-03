@@ -1454,6 +1454,57 @@ export type Database = {
         }
         Relationships: []
       }
+      embedding_generation_jobs: {
+        Row: {
+          batch_size: number
+          completed_at: string | null
+          created_at: string | null
+          current_batch: number
+          error_message: string | null
+          failed_entries: number
+          id: string
+          last_batch_at: string | null
+          metadata: Json | null
+          processed_entries: number
+          started_at: string | null
+          status: string
+          total_entries: number
+          updated_at: string | null
+        }
+        Insert: {
+          batch_size?: number
+          completed_at?: string | null
+          created_at?: string | null
+          current_batch?: number
+          error_message?: string | null
+          failed_entries?: number
+          id?: string
+          last_batch_at?: string | null
+          metadata?: Json | null
+          processed_entries?: number
+          started_at?: string | null
+          status?: string
+          total_entries?: number
+          updated_at?: string | null
+        }
+        Update: {
+          batch_size?: number
+          completed_at?: string | null
+          created_at?: string | null
+          current_batch?: number
+          error_message?: string | null
+          failed_entries?: number
+          id?: string
+          last_batch_at?: string | null
+          metadata?: Json | null
+          processed_entries?: number
+          started_at?: string | null
+          status?: string
+          total_entries?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       exercise_sessions: {
         Row: {
           created_at: string

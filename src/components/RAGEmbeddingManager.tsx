@@ -6,7 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { RAGEmbeddingManager } from "@/utils/ragEmbeddingManager";
-import { Database, Activity, Zap, BarChart3, RefreshCw, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Database, Activity, Zap, BarChart3, RefreshCw, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { PerplexityKnowledgePipeline } from './PerplexityKnowledgePipeline';
 import { RAGTestingSuite } from './RAGTestingSuite';
 import { AutomatedPipelineManager } from './AutomatedPipelineManager';
@@ -33,6 +34,9 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [jobStatus, setJobStatus] = useState<any>(null);
+  const [jobProgress, setJobProgress] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
   const loadData = async () => {
@@ -67,28 +71,97 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
       
       toast({
         title: "Embedding-Generierung gestartet",
-        description: "Dies kann einige Minuten dauern...",
+        description: "Starte timeout-resistante Batch-Verarbeitung...",
       });
 
-      const result = await RAGEmbeddingManager.generateAllEmbeddings();
+      // Start the job
+      const response = await supabase.functions.invoke('batch-embeddings-job', {
+        body: { action: 'start', batch_size: 50 }
+      });
+
+      if (response.error) throw response.error;
       
-      toast({
-        title: "Embeddings erfolgreich generiert",
-        description: `${result.processed} von ${result.total} Einträgen verarbeitet (${result.failed} Fehler)`,
-      });
+      const { job_id, total_entries } = response.data;
+      
+      if (!job_id) {
+        toast({
+          title: "Alle Embeddings vorhanden",
+          description: "Alle Knowledge-Einträge haben bereits Embeddings",
+        });
+        await loadData();
+        return;
+      }
 
-      // Daten neu laden
-      await loadData();
+      setJobStatus({ id: job_id, total_entries });
+      toast({
+        title: "Job gestartet",
+        description: `Verarbeite ${total_entries} Einträge in 50er-Batches`,
+      });
+      
+      // Start processing batches
+      startBatchProcessing(job_id);
+      
     } catch (error) {
       console.error('Error generating embeddings:', error);
       toast({
         title: "Fehler bei Embedding-Generierung",
-        description: "Embeddings konnten nicht generiert werden",
+        description: "Job konnte nicht gestartet werden",
         variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const startBatchProcessing = async (job_id: string) => {
+    setIsProcessing(true);
+    
+    const processBatch = async (): Promise<boolean> => {
+      try {
+        const response = await supabase.functions.invoke('batch-embeddings-job', {
+          body: { action: 'process_batch', job_id }
+        });
+
+        if (response.error) throw response.error;
+        
+        const { progress, job_completed } = response.data;
+        setJobProgress(progress);
+        
+        toast({
+          title: `Batch abgeschlossen`,
+          description: `${progress.processed_entries}/${progress.total_entries} (${progress.percentage}%)`,
+        });
+        
+        return job_completed;
+      } catch (error) {
+        console.error('Error processing batch:', error);
+        toast({
+          title: "Batch-Fehler",
+          description: "Fehler bei der Batch-Verarbeitung",
+          variant: "destructive"
+        });
+        return true; // Stop on error
+      }
+    };
+
+    // Process batches with delay
+    let completed = false;
+    while (!completed) {
+      completed = await processBatch();
+      if (!completed) {
+        // Wait 2 seconds before next batch
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    setIsProcessing(false);
+    setJobStatus(null);
+    setJobProgress(null);
+    toast({
+      title: "Embedding-Generierung abgeschlossen!",
+      description: "Alle Batches wurden erfolgreich verarbeitet",
+    });
+    await loadData();
   };
 
   const testRAGSearch = async () => {
@@ -201,10 +274,49 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
                 </Alert>
               )}
               
-              <div className="flex gap-2">
+               {/* Job Progress Display */}
+               {(jobStatus || isProcessing) && (
+                 <Alert className="mb-4">
+                   <AlertDescription>
+                     <div className="space-y-2">
+                       {jobStatus && (
+                         <div className="flex items-center gap-2">
+                           <Clock className="w-4 h-4" />
+                           <span>Job ID: {jobStatus.id}</span>
+                           <Badge variant="outline">{jobStatus.total_entries} Einträge</Badge>
+                         </div>
+                       )}
+                       {jobProgress && (
+                         <>
+                           <div className="flex items-center justify-between">
+                             <span>Batch-Fortschritt:</span>
+                             <Badge variant={jobProgress.status === 'completed' ? "default" : "secondary"}>
+                               {jobProgress.processed_entries}/{jobProgress.total_entries} ({jobProgress.percentage}%)
+                             </Badge>
+                           </div>
+                           <Progress value={jobProgress.percentage} className="w-full" />
+                           {jobProgress.failed_entries > 0 && (
+                             <div className="text-sm text-orange-600">
+                               {jobProgress.failed_entries} Fehler aufgetreten
+                             </div>
+                           )}
+                         </>
+                       )}
+                       {isProcessing && (
+                         <div className="flex items-center gap-2 text-blue-600">
+                           <Loader2 className="w-4 h-4 animate-spin" />
+                           <span>Verarbeite Batches...</span>
+                         </div>
+                       )}
+                     </div>
+                   </AlertDescription>
+                 </Alert>
+               )}
+
+               <div className="flex gap-2">
                 <Button 
                   onClick={handleGenerateAllEmbeddings}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isProcessing}
                   className="flex items-center gap-2"
                 >
                   {isGenerating ? (
@@ -212,7 +324,7 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
                   ) : (
                     <Zap className="w-4 h-4" />
                   )}
-                  {isGenerating ? 'Generiere...' : 'Alle Embeddings generieren'}
+                  {isGenerating ? 'Starte Job...' : 'Timeout-resistante Embedding-Generierung'}
                 </Button>
                 
                 <Button
