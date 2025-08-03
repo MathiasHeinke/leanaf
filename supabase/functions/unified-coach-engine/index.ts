@@ -4504,7 +4504,6 @@ function buildAdaptivePromptSections(context: any, toolContext: any, contextQual
   
   return sections;
 }
-});
 
 // ============================================================================
 // END OF UNIFIED COACH ENGINE
