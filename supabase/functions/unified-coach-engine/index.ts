@@ -358,55 +358,62 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
               throw new Error('No response body reader');
             }
 
-            // 🔥 ROBUST STREAM PARSER (FIX #1)
-            const parser = createParser((event) => {
-              if (event.type === 'event') {
-                const data = event.data;
-                
-                if (data === '[DONE]') {
-                  // Get final token count from last chunk if available
-                  const finalTokens = Math.round(responseText.length / 4);
-                  trace(traceId, 'F_streaming_done', { 
-                    responseLength: responseText.length,
-                    deltaCount 
-                  }, {
-                    fullStream_ms: Date.now() - start,
-                    completion_tokens: finalTokens,
-                    cost_usd: calculateCost('gpt-4o', ctx.metrics.tokensIn, finalTokens),
-                    model_fingerprint: 'gpt-4o-2024'
-                  });
-                  controller.enqueue(encoder.encode(sse({ messageId, traceId }, "end")));
-                  return;
-                }
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta?.content;
+            // 🔥 ROBUST STREAM PARSER WITH ENHANCED ERROR HANDLING
+            const parser = createParser({
+              onEvent: (event) => {
+                if (event.type === 'event') {
+                  const data = event.data;
                   
-                  if (delta) {
-                    responseText += delta;
-                    deltaCount++;
-                    
-                    // Reduced logging for production (FIX #5)
-                    if (deltaCount === 1 || deltaCount === 25 || deltaCount % 100 === 0) {
-                      trace(traceId, 'D_delta', { 
-                        chunk: delta.slice(0, 20),
-                        deltaCount 
-                      }, {
-                        firstToken_ms: deltaCount === 1 ? (Date.now() - start) : undefined
-                      });
-                    }
-                    
-                    controller.enqueue(encoder.encode(sse({ 
-                      type: "delta", 
-                      messageId, 
-                      delta,
-                      traceId
-                    })));
+                  if (data === '[DONE]') {
+                    // Get final token count from last chunk if available
+                    const finalTokens = Math.round(responseText.length / 4);
+                    trace(traceId, 'F_streaming_done', { 
+                      responseLength: responseText.length,
+                      deltaCount 
+                    }, {
+                      fullStream_ms: Date.now() - start,
+                      completion_tokens: finalTokens,
+                      cost_usd: calculateCost('gpt-4o', ctx.metrics.tokensIn, finalTokens),
+                      model_fingerprint: 'gpt-4o-2024'
+                    });
+                    controller.enqueue(encoder.encode(sse({ messageId, traceId }, "end")));
+                    return;
                   }
-                } catch (e) {
-                  // Skip invalid JSON
+                  
+                  try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta?.content;
+                    
+                    if (delta) {
+                      responseText += delta;
+                      deltaCount++;
+                      
+                      // Reduced logging for production (FIX #5)
+                      if (deltaCount === 1 || deltaCount === 25 || deltaCount % 100 === 0) {
+                        trace(traceId, 'D_delta', { 
+                          chunk: delta.slice(0, 20),
+                          deltaCount 
+                        }, {
+                          firstToken_ms: deltaCount === 1 ? (Date.now() - start) : undefined
+                        });
+                      }
+                      
+                      controller.enqueue(encoder.encode(sse({ 
+                        type: "delta", 
+                        messageId, 
+                        delta,
+                        traceId
+                      })));
+                    }
+                  } catch (parseError) {
+                    console.warn('Failed to parse SSE chunk:', parseError);
+                    // Skip invalid JSON
+                  }
                 }
+              },
+              onError: (error) => {
+                console.error('SSE Parser error:', error);
+                throw error;
               }
             });
 
