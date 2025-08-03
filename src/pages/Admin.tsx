@@ -20,6 +20,7 @@ import { SecurityMonitor } from '@/components/SecurityMonitor';
 import { AppHealthCheck } from '@/components/AppHealthCheck';
 import { FeatureFlagsManager } from '@/components/FeatureFlagsManager';
 import { StreamingDashboard } from '@/components/StreamingDashboard';
+import { CoachTestPanel } from '@/components/CoachTestPanel';
 import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
@@ -114,6 +115,10 @@ export const AdminPage = () => {
               <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Streaming</span>
               <span className="sm:hidden">Stream</span>
+            </TabsTrigger>
+            <TabsTrigger value="debug" className="text-xs sm:text-sm flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+              Debug
             </TabsTrigger>
           </TabsList>
 
@@ -242,6 +247,11 @@ export const AdminPage = () => {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 🔧 DEBUG PANEL */}
+          <TabsContent value="debug" className="space-y-6">
+            <CoachTestPanel />
           </TabsContent>
         </Tabs>
       </div>

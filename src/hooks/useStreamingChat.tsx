@@ -50,92 +50,36 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
       setIsConnected(true);
       options.onStreamStart?.();
 
-      // 🚀 PRODUCTION-READY: Direct fetch with mobile Safari fallback
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // 🚀 PRODUCTION-READY: Use Supabase client directly
+      console.log('🚀 Starting unified coach stream...');
       
-      // Check for mobile Safari
-      const isMobileSafari = /iPhone|iPad|iPod|Safari/i.test(navigator.userAgent) && 
-                           !/Chrome|Firefox/i.test(navigator.userAgent);
-      
-      let streamUrl: string;
-      let requestOptions: RequestInit;
-      
-      if (isMobileSafari) {
-        // GET fallback for mobile Safari
-        console.log('📱 Using GET fallback for Mobile Safari');
-        const params = new URLSearchParams({
+      const response = await supabase.functions.invoke('unified-coach-engine', {
+        body: {
           userId,
-          message: message.substring(0, 500), // Limit for URL length  
+          message,
           messageId,
-          coachId: coachPersonality
-        });
-        streamUrl = `${SUPABASE_URL}/functions/v1/unified-coach-engine?${params.toString()}`;
-        requestOptions = {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          signal: abortControllerRef.current.signal
-        };
-      } else {
-        // Standard POST request
-        streamUrl = `${SUPABASE_URL}/functions/v1/unified-coach-engine`;
-        requestOptions = {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId,
-            message,
-            messageId,
-            coachPersonality,
-            conversationHistory,
-            enableStreaming: true
-          }),
-          signal: abortControllerRef.current.signal
-        };
-      }
-
-      const response = await fetch(streamUrl, requestOptions);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let content = '';
-
-      if (reader) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value, { stream: true });
-            content += chunk;
-            
-            // Update streaming message
-            setStreamingMessage(prev => prev ? {
-              ...prev,
-              content: content
-            } : null);
-          }
-        } finally {
-          reader.releaseLock();
+          coachPersonality,
+          conversationHistory,
+          enableStreaming: true
         }
+      });
+
+      if (response.error) {
+        console.error('❌ Supabase function error:', response.error);
+        throw new Error(`Coach engine error: ${response.error.message}`);
       }
 
-      // Mark as complete
-      setStreamingMessage(prev => prev ? {
-        ...prev,
-        isComplete: true,
-        isStreaming: false
-      } : null);
+      // Handle successful response
+      if (response.data) {
+        const responseContent = response.data.content || response.data.message || response.data.response || 'Response received';
+        console.log('✅ Coach response received, simulating stream');
+        await simulateStreaming(messageId, responseContent);
+        return;
+      }
+
+      // If no data, show fallback
+      console.warn('⚠️ No response data, using fallback');
+      await simulateStreaming(messageId, 'Entschuldigung, es gab ein technisches Problem. Bitte versuche es erneut.');
 
       options.onStreamEnd?.();
 

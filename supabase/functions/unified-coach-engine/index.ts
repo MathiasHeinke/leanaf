@@ -43,6 +43,25 @@ function calculateSentiment(text: string): number {
 // Global circuit breaker state
 let circuitBreakerState = { open: false, halfOpen: false, retryCount: 0 };
 
+function sanitizeLogData(data: any): any {
+  if (typeof data !== 'object' || data === null) return data;
+  
+  const sanitized: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    // Remove potentially sensitive data
+    if (key.toLowerCase().includes('password') || 
+        key.toLowerCase().includes('token') || 
+        key.toLowerCase().includes('secret')) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof value === 'string' && value.length > 500) {
+      sanitized[key] = value.substring(0, 500) + '...';
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 async function trace(traceId: string, stage: string, payload: Record<string, any> = {}, metrics: Record<string, any> = {}): Promise<void> {
   const enrichedPayload = {
     ...payload,

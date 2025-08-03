@@ -211,6 +211,27 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     onError: (error) => {
       console.error('❌ Streaming error:', error);
       setIsThinking(false);
+      
+      // Show user-friendly error message
+      const errorMessage: UnifiedMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: '❌ Entschuldigung, es gab ein technisches Problem. Bitte versuche es in einem Moment erneut.',
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.personality || 'helpful',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor,
+        images: [],
+        mode: mode
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      sonnerToast.error('Coach-Verbindung fehlgeschlagen', {
+        description: 'Bitte versuche es in einem Moment erneut.',
+        duration: 5000
+      });
     }
   });
 
