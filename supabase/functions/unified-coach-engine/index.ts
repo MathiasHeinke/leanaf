@@ -1,7 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { OpenAI } from "https://esm.sh/openai@4.67.1";
 import { SupabaseClient, createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { Database } from '../_shared/database.types.ts'
 
 // CORS headers
 const corsHeaders = {
@@ -147,7 +146,7 @@ serve(async (req) => {
   }
 
   // Initialize Supabase client
-  const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
