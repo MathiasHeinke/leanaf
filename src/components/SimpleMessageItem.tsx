@@ -48,10 +48,10 @@ export const SimpleMessageItem = React.memo(({
   return (
     <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
       {/* Message bubble */}
-      <div className={`rounded-xl px-4 py-3 max-w-[75%] whitespace-pre-wrap ${
+      <div className={`rounded-lg px-4 py-2 max-w-[75%] whitespace-pre-wrap ${
         isUser 
           ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
       }`}>
         <div className="prose prose-sm max-w-none dark:prose-invert">
           <ReactMarkdown 

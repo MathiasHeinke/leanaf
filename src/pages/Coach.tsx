@@ -3,6 +3,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import EnhancedUnifiedCoachChat from "@/components/EnhancedUnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
+import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 
 // Coach profiles data (same as in CoachSelection)
 const coachProfiles = [
@@ -77,13 +78,23 @@ const CoachPage = () => {
     }
     
     return (
-      <div className="h-screen">
-        <EnhancedUnifiedCoachChat
-          mode="specialized"
-          coach={selectedCoach}
-          useFullscreenLayout={true}
-          enableAdvancedFeatures={true}
+      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+        <CollapsibleCoachHeader 
+          coach={{
+            name: selectedCoach.name,
+            imageUrl: selectedCoach.imageUrl,
+            specialization: selectedCoach.expertise.join(', ')
+          }}
         />
+        
+        <main className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+          <EnhancedUnifiedCoachChat
+            mode="specialized"
+            coach={selectedCoach}
+            useFullscreenLayout={false}
+            enableAdvancedFeatures={true}
+          />
+        </main>
       </div>
     );
   }
