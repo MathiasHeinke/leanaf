@@ -2142,6 +2142,7 @@ export type Database = {
           embedding: string | null
           id: string
           knowledge_id: string
+          metadata: Json | null
         }
         Insert: {
           chunk_index?: number
@@ -2150,6 +2151,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           knowledge_id: string
+          metadata?: Json | null
         }
         Update: {
           chunk_index?: number
@@ -2158,6 +2160,7 @@ export type Database = {
           embedding?: string | null
           id?: string
           knowledge_id?: string
+          metadata?: Json | null
         }
         Relationships: [
           {
