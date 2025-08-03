@@ -1,6 +1,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import DOMPurify from 'dompurify';
 import { Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -141,9 +142,9 @@ export const InfoButton = ({
                   <div key={index} className="text-xs text-muted-foreground">
                     {tip.includes('**') ? (
                       <div dangerouslySetInnerHTML={{
-                        __html: tip
+                        __html: DOMPurify.sanitize(tip
                           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\n/g, '<br/>')
+                          .replace(/\n/g, '<br/>'))
                       }} />
                     ) : (
                       tip

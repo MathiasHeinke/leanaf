@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { SmartCard } from './SmartCard';
 import { CardDiary } from './CardDiary';
 import { CardMeal } from './CardMeal';
@@ -16,7 +17,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -54,7 +55,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -71,7 +72,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -88,7 +89,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
           ) : (
             <div className="space-y-2">
               <p><strong>{payload?.description}</strong></p>
@@ -110,7 +111,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -127,7 +128,7 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
