@@ -483,7 +483,7 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
                 model: DEBUG_MODEL,
                 temperature: 0.7,
                 max_tokens: 2000,
-                stream: true,
+                stream: forceNonStreaming ? false : true,
                 messages: [
                   { role: 'system', content: systemPrompt },
                   ...messages,

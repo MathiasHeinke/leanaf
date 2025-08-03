@@ -19,7 +19,7 @@ export const MODEL_CONFIGS = {
     temperature: 0.2,
     top_p: 0.95,
     frequency_penalty: 0.1,
-    stream: true
+    stream: false
   } as OpenAIConfig,
 
   // GPT-4.1 für Vision + rasches Feedback (≤3s)
@@ -27,7 +27,7 @@ export const MODEL_CONFIGS = {
     model: 'gpt-4.1-2025-04-14', 
     temperature: 0.4,
     top_p: 1,
-    stream: true
+    stream: false
   } as OpenAIConfig,
 
   // GPT-4o-mini für Massendurchsatz, unkritisch
@@ -35,7 +35,7 @@ export const MODEL_CONFIGS = {
     model: 'gpt-4o-mini',
     temperature: 0.6,
     top_p: 1,
-    stream: true
+    stream: false
   } as OpenAIConfig,
 
   // Verifikation / Parsing (Verify Meal, Extract Exercise)
@@ -54,7 +54,7 @@ export const MODEL_CONFIGS = {
     top_p: 1,
     frequency_penalty: 0,
     presence_penalty: 0.5,
-    stream: true
+    stream: false
   } as OpenAIConfig,
 
   // Zusammenfassen (Day Summary)
@@ -64,7 +64,7 @@ export const MODEL_CONFIGS = {
     top_p: 0.9,
     frequency_penalty: 0.2,
     presence_penalty: 0,
-    stream: true
+    stream: false
   } as OpenAIConfig,
 
   // Langketten-Analyse (Sleep/Workout Analysis)  
@@ -74,7 +74,7 @@ export const MODEL_CONFIGS = {
     top_p: 0.95,
     frequency_penalty: 0.1,
     presence_penalty: 0,
-    stream: true
+    stream: false
   } as OpenAIConfig,
 
   // Emotions-/Intent-Klassen, JSON-Output

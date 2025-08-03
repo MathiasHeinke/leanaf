@@ -186,13 +186,14 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       transitionToState('loading-context');
       setupDynamicTimeout();
 
-      // Start SSE stream with proper error handling
-      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/streaming-coach-engine', {
+      // Start unified engine with non-streaming
+      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I',
+          'x-force-non-streaming': 'true'
         },
         body: JSON.stringify({
           userId,
@@ -200,7 +201,7 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
           messageId,
           coachId: coachPersonality,
           conversationHistory,
-          enableStreaming: true,
+          enableStreaming: false,
           traceId: `stream-${messageId}`
         }),
         signal: abortControllerRef.current.signal
@@ -221,113 +222,28 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       }
 
       trackContextLoaded();
-      transitionToState('streaming');
-      setupDynamicTimeout();
+      transitionToState('completing');
       
-      console.log('✅ Context loaded, starting stream parsing...');
+      console.log('✅ Context loaded, processing non-streaming response...');
 
-      // Parse SSE stream with robust error handling
-      const reader = response.body.getReader();
-      readerRef.current = reader;
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let tokenCount = 0;
-      let firstTokenReceived = false;
-
-      try {
-        while (streamStateRef.current === 'streaming') {
-          const { done, value } = await reader.read();
-          
-          if (done) {
-            console.log('✅ Stream completed naturally');
-            break;
-          }
-
-          // Check abort status
-          if (abortControllerRef.current?.signal.aborted) {
-            console.log('🛑 Stream aborted during reading');
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Process complete SSE events
-          let boundary;
-          while ((boundary = buffer.indexOf('\n\n')) !== -1) {
-            const chunk = buffer.slice(0, boundary).trim();
-            buffer = buffer.slice(boundary + 2);
-
-            if (!chunk.startsWith('data:')) continue;
-            const data = chunk.slice(5).trim();
-            
-            if (data === '[DONE]') {
-              console.log('🏁 Stream done signal received');
-              transitionToState('completing');
-              trackStreamingComplete();
-              setStreamingMessage(prev => prev ? { ...prev, isComplete: true, isStreaming: false } : null);
-              transitionToState('idle');
-              options.onStreamEnd?.();
-              return true;
-            }
-
-            if (data === '') continue;
-
-            try {
-              const event = JSON.parse(data);
-              
-              if ((event.type === 'content' && event.content) || (event.type === 'delta' && event.delta)) {
-                if (!firstTokenReceived) {
-                  trackFirstToken();
-                  firstTokenReceived = true;
-                  console.log('🎯 First token received');
-                }
-
-                tokenCount++;
-                trackStreamingProgress(tokenCount);
-
-                setStreamingMessage(prev => {
-                  if (!prev) return null;
-                  const deltaContent = event.content || event.delta || '';
-                  const newContent = prev.content + deltaContent;
-                  const updatedMessage = {
-                    ...prev,
-                    content: newContent,
-                    isStreaming: true,
-                    isComplete: false
-                  };
-                  streamingRef.current = updatedMessage;
-                  return updatedMessage;
-                });
-              } else if (event.type === 'error') {
-                console.error('❌ Stream error event:', event.error);
-                trackError(event.error || 'Unknown stream error');
-                throw new Error(event.error || 'Stream error occurred');
-              }
-            } catch (parseError) {
-              console.warn('⚠️ Failed to parse SSE data:', data, parseError);
-              // Continue processing other chunks
-            }
-          }
-        }
-      } finally {
-        if (readerRef.current) {
-          try {
-            readerRef.current.releaseLock();
-          } catch (e) {
-            console.warn('Reader release error:', e);
-          }
-          readerRef.current = null;
-        }
-      }
-
-      // Complete stream if no [DONE] signal
-      if (streamStateRef.current === 'streaming') {
-        console.log('📝 Completing stream without [DONE] signal');
-        transitionToState('completing');
+      // Handle non-streaming JSON response
+      const jsonResponse = await response.json();
+      
+      if (jsonResponse.response) {
+        // Update streaming message with complete response
+        setStreamingMessage(prev => prev ? {
+          ...prev,
+          content: jsonResponse.response,
+          isComplete: true,
+          isStreaming: false
+        } : null);
+        
         trackStreamingComplete();
-        setStreamingMessage(prev => prev ? { ...prev, isComplete: true, isStreaming: false } : null);
         transitionToState('idle');
         options.onStreamEnd?.();
+        return true;
+      } else {
+        throw new Error('Keine gültige Antwort erhalten');
       }
 
       return true;
