@@ -26,19 +26,32 @@ serve(async (req) => {
 
     console.log('Starting batch embedding generation...');
 
-    // Get all knowledge entries without embeddings
-    const { data: missingEmbeddings, error: queryError } = await supabase
+    // Get all knowledge entries without embeddings - fixed query
+    const { data: allKnowledge, error: allError } = await supabase
       .from('coach_knowledge_base')
-      .select('id, title, content, coach_id')
-      .not('id', 'in', 
-        supabase.from('knowledge_base_embeddings').select('knowledge_id')
-      )
-      .limit(50); // Process in batches of 50
+      .select('id, title, content, coach_id, expertise_area');
 
-    if (queryError) {
-      console.error('Query error:', queryError);
-      throw queryError;
+    if (allError) {
+      console.error('Error fetching all knowledge:', allError);
+      throw allError;
     }
+
+    // Get knowledge IDs that already have embeddings
+    const { data: existingEmbeddings, error: embError } = await supabase
+      .from('knowledge_base_embeddings')
+      .select('knowledge_id');
+
+    if (embError) {
+      console.error('Error fetching existing embeddings:', embError);
+      throw embError;
+    }
+
+    const existingIds = new Set(existingEmbeddings?.map(e => e.knowledge_id) || []);
+    const missingEmbeddings = allKnowledge?.filter(k => !existingIds.has(k.id)) || [];
+
+    console.log(`Total knowledge entries: ${allKnowledge?.length || 0}`);
+    console.log(`Existing embeddings: ${existingIds.size}`);
+    console.log(`Missing embeddings: ${missingEmbeddings.length}`);
 
     if (!missingEmbeddings || missingEmbeddings.length === 0) {
       return new Response(JSON.stringify({ 
@@ -55,63 +68,77 @@ serve(async (req) => {
     let processed = 0;
     let failed = 0;
 
-    for (const entry of missingEmbeddings) {
-      try {
-        // Create text content for embedding
-        const textContent = `${entry.title}\n\n${entry.content}`;
-        const chunks = splitIntoChunks(textContent, 8000); // Split large content
+    // Process in smaller batches to avoid overwhelming the API
+    const batchSize = 10;
+    for (let batchStart = 0; batchStart < missingEmbeddings.length; batchStart += batchSize) {
+      const batch = missingEmbeddings.slice(batchStart, batchStart + batchSize);
+      console.log(`Processing batch ${Math.floor(batchStart / batchSize) + 1}/${Math.ceil(missingEmbeddings.length / batchSize)}`);
 
-        for (let i = 0; i < chunks.length; i++) {
-          const chunk = chunks[i];
-          
-          // Generate embedding using OpenAI
-          const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'text-embedding-3-small',
-              input: chunk,
-              encoding_format: 'float',
-            }),
-          });
+      for (const entry of batch) {
+        try {
+          // Create text content for embedding including all relevant info
+          const textContent = `${entry.title}\n\n${entry.content}\n\nExpertise: ${entry.expertise_area}\nCoach: ${entry.coach_id}`;
+          const chunks = splitIntoChunks(textContent, 8000); // Split large content
 
-          if (!embeddingResponse.ok) {
-            console.error(`Failed to generate embedding for ${entry.id} chunk ${i}`);
-            failed++;
-            continue;
-          }
-
-          const embeddingData = await embeddingResponse.json();
-          const embedding = embeddingData.data[0].embedding;
-
-          // Insert embedding into database
-          const { error: insertError } = await supabase
-            .from('knowledge_base_embeddings')
-            .insert({
-              knowledge_id: entry.id,
-              embedding,
-              content_chunk: chunk,
-              chunk_index: i,
-              text_content: chunk
+          for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            
+            // Generate embedding using OpenAI
+            const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openAIApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'text-embedding-3-small',
+                input: chunk,
+                encoding_format: 'float',
+              }),
             });
 
-          if (insertError) {
-            console.error(`Failed to insert embedding for ${entry.id} chunk ${i}:`, insertError);
-            failed++;
-          } else {
-            processed++;
-            console.log(`✅ Generated embedding for ${entry.coach_id}/${entry.title} chunk ${i + 1}/${chunks.length}`);
-          }
+            if (!embeddingResponse.ok) {
+              const errorText = await embeddingResponse.text();
+              console.error(`Failed to generate embedding for ${entry.id} chunk ${i}:`, errorText);
+              failed++;
+              continue;
+            }
 
-          // Rate limiting: wait 100ms between requests
-          await new Promise(resolve => setTimeout(resolve, 100));
+            const embeddingData = await embeddingResponse.json();
+            const embedding = embeddingData.data[0].embedding;
+
+            // Insert embedding into database
+            const { error: insertError } = await supabase
+              .from('knowledge_base_embeddings')
+              .insert({
+                knowledge_id: entry.id,
+                embedding,
+                content_chunk: chunk,
+                chunk_index: i,
+                text_content: chunk
+              });
+
+            if (insertError) {
+              console.error(`Failed to insert embedding for ${entry.id} chunk ${i}:`, insertError);
+              failed++;
+            } else {
+              processed++;
+              console.log(`✅ Generated embedding for ${entry.coach_id}/${entry.title} chunk ${i + 1}/${chunks.length}`);
+            }
+
+            // Rate limiting: wait 100ms between requests
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        } catch (error) {
+          console.error(`Error processing entry ${entry.id}:`, error);
+          failed++;
         }
-      } catch (error) {
-        console.error(`Error processing entry ${entry.id}:`, error);
-        failed++;
+      }
+
+      // Wait between batches to avoid rate limits
+      if (batchStart + batchSize < missingEmbeddings.length) {
+        console.log('Waiting 2 seconds before next batch...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 

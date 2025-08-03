@@ -86,3 +86,6 @@ verify_jwt = true
 
 [functions.unified-coach-engine]
 verify_jwt = true
+
+[functions.batch-generate-embeddings]
+verify_jwt = true
