@@ -13,7 +13,8 @@ import {
   Monitor,
   BarChart3,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Route
 } from 'lucide-react';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
@@ -25,6 +26,7 @@ import { CoachConversationMonitor } from '@/components/CoachConversationMonitor'
 import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
+import { LiveTraceMonitor } from '@/components/LiveTraceMonitor';
 
 export const AdminPage = () => {
   const { user } = useAuth();
@@ -123,6 +125,11 @@ export const AdminPage = () => {
               <span className="hidden sm:inline">Performance</span>
               <span className="sm:hidden">Perf</span>
             </TabsTrigger>
+            <TabsTrigger value="trace" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
+              <Route className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Live Trace</span>
+              <span className="sm:hidden">Trace</span>
+            </TabsTrigger>
             <TabsTrigger value="security" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
               Security
@@ -150,6 +157,11 @@ export const AdminPage = () => {
           {/* 🔥 PRODUCTION MONITORING - MAIN TAB */}
           <TabsContent value="production" className="space-y-6 mt-6 safe-area-pb-6">
             <ProductionMonitoringDashboard />
+          </TabsContent>
+
+          {/* 🔍 LIVE TRACE MONITORING */}
+          <TabsContent value="trace" className="space-y-6 mt-6 safe-area-pb-6">
+            <LiveTraceMonitor />
           </TabsContent>
 
           {/* 📊 PERFORMANCE MONITORING */}

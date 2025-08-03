@@ -882,6 +882,48 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_trace_events: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          data: Json | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          message_id: string | null
+          status: string
+          step: string
+          trace_id: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          data?: Json | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          status?: string
+          step: string
+          trace_id: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          data?: Json | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          status?: string
+          step?: string
+          trace_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_traces: {
         Row: {
           data: Json | null

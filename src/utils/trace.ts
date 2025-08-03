@@ -1,8 +1,13 @@
 import { nanoid } from 'nanoid';
 import { mark } from '@/lib/metrics';
+import { supabase } from '@/integrations/supabase/client';
 
 export function newTraceId(): string {
   return `t_${nanoid(10)}`;
+}
+
+export function newMessageId(): string {
+  return `msg_${nanoid(8)}`;
 }
 
 // Enhanced telemetry metrics interface
@@ -31,6 +36,34 @@ export interface TelemetryMetrics {
   model_fingerprint?: string;
   openai_model?: string;
   queue_depth?: number;
+}
+
+// Enhanced trace event logging for detailed pipeline monitoring
+export async function traceEvent(
+  traceId: string,
+  step: string,
+  status: 'started' | 'progress' | 'complete' | 'error' = 'started',
+  data: Record<string, any> = {},
+  conversationId?: string,
+  messageId?: string,
+  duration?: number,
+  error?: string
+): Promise<void> {
+  try {
+    // Log to new detailed trace events table
+    await supabase.from('coach_trace_events').insert({
+      trace_id: traceId,
+      conversation_id: conversationId,
+      message_id: messageId,
+      step,
+      status,
+      data,
+      duration_ms: duration,
+      error_message: error
+    });
+  } catch (err) {
+    console.warn('Trace event logging failed:', err);
+  }
 }
 
 export async function trace(
