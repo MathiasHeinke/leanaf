@@ -185,8 +185,11 @@ function hardTrim(str: string, tokenCap: number): string {
 }
 
 serve(async (req) => {
+  console.log(`🔧 DEBUG: Unified Coach Engine started - method: ${req.method}, url: ${req.url}`);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log(`🔧 DEBUG: CORS preflight handled`);
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -245,6 +248,17 @@ serve(async (req) => {
 
 async function handleRequest(req: Request, body: any, corsHeaders: any, start: number) {
   const traceId = body.traceId || newTraceId();
+  
+  // 🔧 ENHANCED DEBUGGING: Log request start
+  await traceEvent(traceId, 'handleRequest_start', 'started', { 
+    bodyKeys: Object.keys(body),
+    hasUserId: !!body.userId,
+    hasMessage: !!body.message,
+    hasCoachId: !!body.coachId,
+    method: 'POST'
+  }, body.conversationId, body.messageId);
+
+  console.log(`🔧 DEBUG: handleRequest started - traceId: ${traceId}, userId: ${body.userId}, coachId: ${body.coachId}`);
   const { userId, message, messageId, coachPersonality, coachId, conversationHistory } = body;
   const conversationId = `conv_${userId}_${coachId || 'lucy'}`;
   
@@ -273,6 +287,17 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
       liteContext
     });
   }
+  
+  // 🔧 ENHANCED DEBUGGING: Context built successfully
+  await traceEvent(traceId, 'contextBuilt', 'complete', {
+    tokensIn: 0, // Will be updated after context build
+    hasMemory: !disableMemory,
+    ragChunks: !disableRag ? 'enabled' : 'disabled',
+    hasDaily: !disableDaily,
+    contextKeys: ['persona', 'memory', 'daily', 'rag']
+  }, conversationId, messageId);
+
+  console.log(`🔧 DEBUG: About to build context - disableMemory: ${disableMemory}, disableDaily: ${disableDaily}, disableRag: ${disableRag}`);
   
   // 📊 TRACE: Request received
   await traceEvent(traceId, 'message_received', 'started', {
@@ -449,6 +474,17 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
           full_system_prompt: systemPrompt // Debug: vollständiger Prompt
         }
       }, undefined, messageId);
+      
+      // 🔧 ENHANCED DEBUGGING: About to fetch OpenAI
+      await traceEvent(traceId, 'about_to_fetch', 'started', {
+        model: DEBUG_MODEL,
+        enableStreaming: enableStreaming,
+        systemPromptLength: systemPrompt.length,
+        messageCount: messages.length + 1,
+        forceNonStreaming: forceNonStreaming
+      }, conversationId, messageId);
+
+      console.log(`🔧 DEBUG: About to fetch OpenAI - model: ${DEBUG_MODEL}, streaming: ${enableStreaming}, forceNonStreaming: ${forceNonStreaming}`);
       
       await trace(traceId, 'C_openai_call', { streaming: true }, {
         openai_model: DEBUG_MODEL,
@@ -780,7 +816,21 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error: any) {
+  } catch (err: any) {
+    // 🔧 ENHANCED DEBUGGING: Log complete error details
+    await traceEvent(traceId, 'handleRequest_error', 'error', {
+      message: err.message,
+      stack: err.stack?.split('\n').slice(0, 5), // ersten 5 Zeilen
+      errorType: err.constructor.name,
+      timestamp: Date.now()
+    }, conversationId, messageId, undefined, err.message);
+
+    console.error(`🔧 DEBUG: Complete error in handleRequest:`, {
+      message: err.message,
+      stack: err.stack,
+      type: err.constructor.name
+    });
+
     const duration = Date.now() - start;
     
     // 📊 TRACE: Error occurred  
