@@ -23,6 +23,7 @@ function calculateCost(model: string, promptTokens: number, completionTokens: nu
 }
 
 function detectPII(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
   const phoneRegex = /(\+\d{1,3}[-.\s]?)?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}/;
   const ibanRegex = /[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}/;
@@ -30,6 +31,7 @@ function detectPII(text: string): boolean {
 }
 
 function calculateSentiment(text: string): number {
+  if (!text || typeof text !== 'string') return 0;
   const positiveWords = ['gut', 'super', 'toll', 'prima', 'klasse', 'perfekt', 'danke', 'freue'];
   const negativeWords = ['schlecht', 'furchtbar', 'ärgerlich', 'frustriert', 'nervt', 'blöd', 'dumm'];
   const words = text.toLowerCase().split(/\s+/);
@@ -204,30 +206,36 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
   const traceId = body.traceId || newTraceId();
   const { userId, message, messageId, coachPersonality, coachId, conversationHistory, enableStreaming = true, enableRag = false } = body;
     
-  // 🔒 DSGVO: Hash User-ID für Logs
-  const hashedUserId = await hashUserId(userId);
-  
-  await trace(traceId, 'A_received', { 
-    userId: hashedUserId,
-    coachId: coachId || coachPersonality || 'unknown',
-    enableStreaming,
-    enableRag
-  }, {
-    pii_detected: detectPII(message),
-    sentiment_score: calculateSentiment(message),
-    breaker_open: circuitBreakerState.open,
-    breaker_halfOpen: circuitBreakerState.halfOpen,
-    retry_count: circuitBreakerState.retryCount
-  });
-  
-  await mark("chat_start", { userId: hashedUserId, coachId: coachId || coachPersonality, messageId, traceId });
-
+  // ✅ PARAMETER VALIDATION FIRST - before any processing
   if (!userId || !message || !messageId) {
     return new Response(
       JSON.stringify({ error: 'Missing required parameters: userId, message, messageId' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
+  
+  // 🔒 DSGVO: Hash User-ID für Logs  
+  const hashedUserId = await hashUserId(userId);
+  
+  // ✅ SAFE TRACE CALLS with try-catch
+  try {
+    await trace(traceId, 'A_received', { 
+      userId: hashedUserId,
+      coachId: coachId || coachPersonality || 'unknown',
+      enableStreaming,
+      enableRag
+    }, {
+      pii_detected: detectPII(message),
+      sentiment_score: calculateSentiment(message),
+      breaker_open: circuitBreakerState.open,
+      breaker_halfOpen: circuitBreakerState.halfOpen,
+      retry_count: circuitBreakerState.retryCount
+    });
+  } catch (traceError) {
+    console.warn('⚠️ Trace failed but continuing:', traceError);
+  }
+  
+  await mark("chat_start", { userId: hashedUserId, coachId: coachId || coachPersonality, messageId, traceId });
 
   try {
     // Validate API key
