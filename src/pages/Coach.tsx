@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { UnifiedCoachChat } from "@/components/UnifiedCoachChat";
+// import { UnifiedCoachChat } from "@/components/UnifiedCoachChat"; // TEMP DISABLED DUE TO SYNTAX ERROR
 import { CoachSelection } from "@/components/CoachSelection";
 
 // Coach profiles data (same as in CoachSelection)
@@ -77,12 +77,15 @@ const CoachPage = () => {
     }
     
     return (
-      <div className="h-screen">
-        <UnifiedCoachChat
-          mode="specialized"
-          coach={selectedCoach}
-          useFullscreenLayout={true}
-        />
+      <div className="h-screen p-4">
+        {/* UnifiedCoachChat temporarily disabled due to syntax error */}
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Coach {selectedCoach.name}</h2>
+          <p className="text-muted-foreground mb-4">Chat temporär deaktiviert</p>
+          <a href="/lucy/test" className="text-blue-500 underline">
+            → Simple Lucy Test verwenden
+          </a>
+        </div>
       </div>
     );
   }

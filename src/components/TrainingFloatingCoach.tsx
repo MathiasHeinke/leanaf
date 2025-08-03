@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
+// import { UnifiedCoachChat } from '@/components/UnifiedCoachChat'; // TEMP DISABLED DUE TO SYNTAX ERROR
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { MessageCircle, X, Minimize2, Maximize2, Timer } from 'lucide-react';
 
@@ -125,8 +125,10 @@ export const TrainingFloatingCoach: React.FC<TrainingFloatingCoachProps> = ({
             <WorkoutTimer variant="compact" />
           </div>
           
-          <div className="flex-1 overflow-hidden">
-            <UnifiedCoachChat mode="training" onExerciseLogged={onExerciseLogged} />
+          <div className="flex-1 overflow-hidden p-4">
+            <div className="text-center">
+              <p className="text-muted-foreground">Coach temporär deaktiviert</p>
+            </div>
           </div>
         </CardContent>
       </Card>
