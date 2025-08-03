@@ -22,9 +22,9 @@ export const MODEL_CONFIGS = {
     stream: true
   } as OpenAIConfig,
 
-  // GPT-4o für Vision + rasches Feedback (≤3s)
+  // GPT-4.1 für Vision + rasches Feedback (≤3s)
   VISION_FAST: {
-    model: 'gpt-4o', 
+    model: 'gpt-4.1-2025-04-14', 
     temperature: 0.4,
     top_p: 1,
     stream: true
@@ -79,7 +79,7 @@ export const MODEL_CONFIGS = {
 
   // Emotions-/Intent-Klassen, JSON-Output
   STRUCTURED: {
-    model: 'gpt-4o',
+    model: 'gpt-4.1-2025-04-14',
     temperature: 0.1,
     top_p: 0.9,
     frequency_penalty: 0,
@@ -109,7 +109,7 @@ export const TASK_CONFIGS = {
   'coach-media-analysis': MODEL_CONFIGS.REASONING,
   'coach-recipes': MODEL_CONFIGS.REASONING,
   'generate-coach-suggestions': MODEL_CONFIGS.CREATIVE,
-  'unified-coach-engine': MODEL_CONFIGS.BULK,
+  'unified-coach-engine': MODEL_CONFIGS.REASONING,
 
   // Summaries & Reports
   'day-summary': MODEL_CONFIGS.SUMMARY,

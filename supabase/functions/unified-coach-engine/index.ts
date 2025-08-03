@@ -400,7 +400,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       // 📊 TRACE: Starting OpenAI call with full request details
       await traceEvent(traceId, 'openai_call', 'started', {
         input: {
-          model: 'gpt-4o',
+          model: 'gpt-4.1-2025-04-14',
           temperature: 0.7,
           max_tokens: 2000,
           streaming: true,
@@ -409,15 +409,16 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
           userMessageLength: message.length
         },
         request_payload: {
-          model: 'gpt-4o',
-          prompt_preview: systemPrompt.substring(0, 200) + '...',
+          model: 'gpt-4.1-2025-04-14',
+          prompt_preview: systemPrompt.substring(0, 1000) + '...',
           user_message_preview: message.substring(0, 100),
-          estimated_prompt_tokens: ctx.metrics.tokensIn
+          estimated_prompt_tokens: ctx.metrics.tokensIn,
+          full_system_prompt: systemPrompt // Debug: vollständiger Prompt
         }
       }, undefined, messageId);
       
       await trace(traceId, 'C_openai_call', { streaming: true }, {
-        openai_model: 'gpt-4o',
+        openai_model: 'gpt-4.1-2025-04-14',
         active_calls: 1,
         waiting_calls: 0
       });
@@ -443,7 +444,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'gpt-4o',
+                model: 'gpt-4.1-2025-04-14',
                 temperature: 0.7,
                 max_tokens: 2000,
                 stream: true,
@@ -488,8 +489,11 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
                     }, {
                       fullStream_ms: Date.now() - start,
                       completion_tokens: finalTokens,
-                      cost_usd: calculateCost('gpt-4o', ctx.metrics.tokensIn, finalTokens),
-                      model_fingerprint: 'gpt-4o-2024'
+                      cost_usd: calculateCost('gpt-4.1-2025-04-14', ctx.metrics.tokensIn, finalTokens),
+                      model_fingerprint: 'gpt-4.1-2025-04-14',
+                      response_preview: responseText.substring(0, 100) + '...',
+                      total_deltas: deltaCount,
+                      empty_response_warning: deltaCount === 0 ? 'OpenAI returned empty response' : null
                     });
                     controller.enqueue(encoder.encode(sse({ messageId, traceId }, "end")));
                     return;
@@ -620,7 +624,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
 
     // Fallback to non-streaming response
     await trace(traceId, 'C_openai_call', { streaming: false }, {
-      openai_model: 'gpt-4o',
+      openai_model: 'gpt-4.1-2025-04-14',
       active_calls: 1,
       waiting_calls: 0
     });
@@ -633,7 +637,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-2025-04-14',
         temperature: 0.7,
         max_tokens: 2000,
         stream: false,
@@ -671,10 +675,13 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     }, {
       fullStream_ms: Date.now() - start,
       completion_tokens: chatCompletion.usage?.completion_tokens || 0,
-      cost_usd: calculateCost('gpt-4o', 
+      cost_usd: calculateCost('gpt-4.1-2025-04-14', 
         chatCompletion.usage?.prompt_tokens || 0, 
         chatCompletion.usage?.completion_tokens || 0),
-      model_fingerprint: chatCompletion.model || 'gpt-4o'
+      model_fingerprint: chatCompletion.model || 'gpt-4.1-2025-04-14',
+      response_preview: content.substring(0, 100) + '...',
+      response_length: content.length,
+      empty_response_warning: content.length === 0 ? 'OpenAI returned empty response' : null
     });
 
     await trace(traceId, 'G_complete', {
