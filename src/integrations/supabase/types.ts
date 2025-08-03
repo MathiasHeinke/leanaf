@@ -702,6 +702,39 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_plans: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          json_payload: Json | null
+          status: string
+          title: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          json_payload?: Json | null
+          status?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          json_payload?: Json | null
+          status?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coach_ratings: {
         Row: {
           coach_id: string
@@ -2655,6 +2688,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rag_chunk_logs: {
+        Row: {
+          chunk_id: string | null
+          content_snippet: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          score: number | null
+          source_doc: string | null
+        }
+        Insert: {
+          chunk_id?: string | null
+          content_snippet?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          score?: number | null
+          source_doc?: string | null
+        }
+        Update: {
+          chunk_id?: string | null
+          content_snippet?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          score?: number | null
+          source_doc?: string | null
+        }
+        Relationships: []
+      }
       rag_performance_metrics: {
         Row: {
           cache_hit: boolean | null
@@ -3196,6 +3259,39 @@ export type Database = {
           recognized_supplements?: Json
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      tool_usage_events: {
+        Row: {
+          confidence: number | null
+          conversation_id: string
+          created_at: string
+          id: string
+          is_applied: boolean | null
+          metadata: Json | null
+          source: string
+          tool: string
+        }
+        Insert: {
+          confidence?: number | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_applied?: boolean | null
+          metadata?: Json | null
+          source?: string
+          tool: string
+        }
+        Update: {
+          confidence?: number | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_applied?: boolean | null
+          metadata?: Json | null
+          source?: string
+          tool?: string
         }
         Relationships: []
       }
@@ -4295,6 +4391,23 @@ export type Database = {
       }
     }
     Views: {
+      v_coach_dashboard: {
+        Row: {
+          admin_status: string | null
+          coach: string | null
+          coach_msgs: number | null
+          conversation_id: string | null
+          last_msg_at: string | null
+          plan_count: number | null
+          started_at: string | null
+          tool_list: Json | null
+          used_rag: boolean | null
+          used_tool: boolean | null
+          user_id: string | null
+          user_msgs: number | null
+        }
+        Relationships: []
+      }
       v_fluids_totals: {
         Row: {
           date: string | null
