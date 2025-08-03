@@ -1722,18 +1722,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             </div>
           )}
           
-          {/* Robust Streaming Indicator */}
-          <div className="px-3 py-1 bg-card/50">
-            <RobustStreamingIndicator
-              streamState={streamState}
-              isRecovering={isRecovering}
-              retryCount={retryCount}
-              canRetry={canRetry}
-              metrics={metrics}
-              error={streamError}
-              onRetry={handleStreamingRetry}
-            />
-          </div>
+          {/* Streaming Indicator ausgeblendet für non-streaming mode */}
+          {false && (
+            <div className="px-3 py-1 bg-card/50">
+              <RobustStreamingIndicator
+                streamState={streamState}
+                isRecovering={isRecovering}
+                retryCount={retryCount}
+                canRetry={canRetry}
+                metrics={metrics}
+                error={streamError}
+                onRetry={handleStreamingRetry}
+              />
+            </div>
+          )}
 
           {/* Eingabefeld direkt auf Footer */}
           <div className="px-3 py-1 bg-card border-t border-border">

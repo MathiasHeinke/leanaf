@@ -222,7 +222,6 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       }
 
       trackContextLoaded();
-      transitionToState('completing');
       
       console.log('✅ Context loaded, processing non-streaming response...');
 
@@ -230,7 +229,7 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       const jsonResponse = await response.json();
       
       if (jsonResponse.response) {
-        // Update streaming message with complete response
+        // Update streaming message with complete response immediately
         setStreamingMessage(prev => prev ? {
           ...prev,
           content: jsonResponse.response,
@@ -239,7 +238,7 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
         } : null);
         
         trackStreamingComplete();
-        transitionToState('idle');
+        transitionToState('idle'); // Sofort zu idle
         options.onStreamEnd?.();
         return true;
       } else {
