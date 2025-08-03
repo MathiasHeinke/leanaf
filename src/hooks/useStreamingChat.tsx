@@ -50,31 +50,75 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
       setIsConnected(true);
       options.onStreamStart?.();
 
-      // 🚀 PRODUCTION-READY: Use Supabase client directly
+      // 🚀 PRODUCTION-READY: Enhanced error handling with fallback
       console.log('🚀 Starting unified coach stream...');
       
-      const response = await supabase.functions.invoke('unified-coach-engine', {
-        body: {
-          userId,
-          message,
-          messageId,
-          coachPersonality,
-          conversationHistory,
-          enableStreaming: true
+      let response;
+      try {
+        response = await supabase.functions.invoke('unified-coach-engine', {
+          body: {
+            userId,
+            message,
+            messageId,
+            coachPersonality,
+            conversationHistory,
+            enableStreaming: true,
+            traceId: `stream-${messageId}`
+          }
+        });
+
+        if (response.error) {
+          console.error('❌ Supabase function error:', response.error);
+          
+          // Try direct HTTP call as fallback
+          console.log('🔄 Attempting direct HTTP fallback...');
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          const fallbackResponse = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session?.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I'
+            },
+            body: JSON.stringify({
+              userId,
+              message,
+              messageId,
+              coachPersonality,
+              conversationHistory,
+              enableStreaming: true,
+              traceId: `stream-fallback-${messageId}`
+            })
+          });
+          
+          if (!fallbackResponse.ok) {
+            throw new Error(`Both Supabase client and direct HTTP failed. Status: ${fallbackResponse.status}`);
+          }
+          
+          const fallbackData = await fallbackResponse.json();
+          console.log('✅ Fallback HTTP call successful');
+          
+          // Handle successful fallback response
+          if (fallbackData) {
+            const responseContent = fallbackData.content || fallbackData.message || fallbackData.response || 'Response received via fallback';
+            await simulateStreaming(messageId, responseContent);
+            return;
+          }
+        } else {
+          console.log('✅ Supabase function call successful');
+          
+          // Handle successful response
+          if (response.data) {
+            const responseContent = response.data.content || response.data.message || response.data.response || 'Response received';
+            console.log('✅ Coach response received, simulating stream');
+            await simulateStreaming(messageId, responseContent);
+            return;
+          }
         }
-      });
-
-      if (response.error) {
-        console.error('❌ Supabase function error:', response.error);
-        throw new Error(`Coach engine error: ${response.error.message}`);
-      }
-
-      // Handle successful response
-      if (response.data) {
-        const responseContent = response.data.content || response.data.message || response.data.response || 'Response received';
-        console.log('✅ Coach response received, simulating stream');
-        await simulateStreaming(messageId, responseContent);
-        return;
+      } catch (networkError) {
+        console.error('🔥 Critical network error:', networkError);
+        throw new Error(`Network failure: ${(networkError as Error).message}`);
       }
 
       // If no data, show fallback

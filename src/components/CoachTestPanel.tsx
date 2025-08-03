@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Play, Database, MessageSquare } from 'lucide-react';
+import { EdgeFunctionDebugger } from './EdgeFunctionDebugger';
+import { TraceMonitor } from './TraceMonitor';
 
 export const CoachTestPanel: React.FC = () => {
   const [isTestingEngine, setIsTestingEngine] = useState(false);
@@ -87,70 +89,79 @@ export const CoachTestPanel: React.FC = () => {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Play className="h-5 w-5" />
-          Coach System Test Panel
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Coach Engine Test */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Coach Engine Test
-            </h3>
-            <Button 
-              onClick={testCoachEngine}
-              disabled={isTestingEngine}
-              size="sm"
-            >
-              {isTestingEngine ? 'Testing...' : 'Test Engine'}
-            </Button>
-          </div>
-          
-          {engineResult && (
-            <div className="p-3 bg-muted rounded-md">
-              <pre className="text-xs whitespace-pre-wrap">{engineResult}</pre>
+    <div className="space-y-6">
+      {/* Advanced Diagnostics */}
+      <EdgeFunctionDebugger />
+      
+      {/* Live Trace Monitoring */}
+      <TraceMonitor />
+      
+      {/* Simple Test Panel */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Play className="h-5 w-5" />
+            Quick Coach Tests
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Coach Engine Test */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Coach Engine Test
+              </h3>
+              <Button 
+                onClick={testCoachEngine}
+                disabled={isTestingEngine}
+                size="sm"
+              >
+                {isTestingEngine ? 'Testing...' : 'Test Engine'}
+              </Button>
             </div>
-          )}
-        </div>
-
-        {/* Trace System Test */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Trace System Test
-            </h3>
-            <Button 
-              onClick={testTraceSystem}
-              disabled={isTestingTrace}
-              size="sm"
-            >
-              {isTestingTrace ? 'Testing...' : 'Test Traces'}
-            </Button>
+            
+            {engineResult && (
+              <div className="p-3 bg-muted rounded-md">
+                <pre className="text-xs whitespace-pre-wrap">{engineResult}</pre>
+              </div>
+            )}
           </div>
-          
-          {traceResult && (
-            <div className="p-3 bg-muted rounded-md">
-              <pre className="text-xs whitespace-pre-wrap">{traceResult}</pre>
-            </div>
-          )}
-        </div>
 
-        {/* Status Indicators */}
-        <div className="flex gap-2 pt-3 border-t">
-          <Badge variant={engineResult?.includes('✅') ? 'default' : 'destructive'}>
-            Engine: {engineResult?.includes('✅') ? 'OK' : 'ERROR'}
-          </Badge>
-          <Badge variant={traceResult?.includes('✅') ? 'default' : 'destructive'}>
-            Traces: {traceResult?.includes('✅') ? 'OK' : 'ERROR'}
-          </Badge>
-        </div>
-      </CardContent>
-    </Card>
+          {/* Trace System Test */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Trace System Test
+              </h3>
+              <Button 
+                onClick={testTraceSystem}
+                disabled={isTestingTrace}
+                size="sm"
+              >
+                {isTestingTrace ? 'Testing...' : 'Test Traces'}
+              </Button>
+            </div>
+            
+            {traceResult && (
+              <div className="p-3 bg-muted rounded-md">
+                <pre className="text-xs whitespace-pre-wrap">{traceResult}</pre>
+              </div>
+            )}
+          </div>
+
+          {/* Status Indicators */}
+          <div className="flex gap-2 pt-3 border-t">
+            <Badge variant={engineResult?.includes('✅') ? 'default' : 'destructive'}>
+              Engine: {engineResult?.includes('✅') ? 'OK' : 'ERROR'}
+            </Badge>
+            <Badge variant={traceResult?.includes('✅') ? 'default' : 'destructive'}>
+              Traces: {traceResult?.includes('✅') ? 'OK' : 'ERROR'}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
