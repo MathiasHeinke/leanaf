@@ -190,6 +190,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
   const { tokens } = useContextTokens(user?.id);
   const { sendDebug, loading: debugLoading } = useDebugChat();
+  const { queueMemoryUpdate } = useMemorySync();
   
   // ============= STREAMING INTEGRATION =============
   const { 
@@ -1019,6 +1020,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         console.log('🔄 Clearing tool after card response');
         setSelectedTool(null);
       }
+    } // Added missing closing brace for main try block
     } catch (error: any) {
       console.error('Send error:', error);
       

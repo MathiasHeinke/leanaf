@@ -7,7 +7,7 @@ interface StreamingIndicatorProps {
   isConnected: boolean;
   isStreaming?: boolean;
   progress?: number;
-  stage?: 'connecting' | 'context' | 'streaming' | 'complete';
+  stage?: 'connecting' | 'context' | 'streaming' | 'complete' | 'error';
   metrics?: {
     tokensIn?: number;
     duration?: number;
