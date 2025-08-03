@@ -1,26 +1,36 @@
-// Circuit breaker for API reliability
+// 🔥 PRODUCTION-READY Circuit breaker with exponential backoff
 let failureCount = 0;
 let lastFailureTime = 0;
 const FAILURE_THRESHOLD = 5;
-const RECOVERY_TIMEOUT = 30000; // 30 seconds
+const RECOVERY_TIMEOUT = 90000; // 90s for OpenAI rate limits (60s) + buffer
+const MAX_BACKOFF_TIME = 300000; // 5 min max backoff
+const BACKOFF_MULTIPLIER = 2;
 
 export function withCircuitBreaker<T>(fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
   
-  // Reset failure count after recovery timeout
-  if (now - lastFailureTime > RECOVERY_TIMEOUT) {
+  // Calculate exponential backoff time
+  const backoffTime = Math.min(
+    RECOVERY_TIMEOUT * Math.pow(BACKOFF_MULTIPLIER, Math.min(failureCount - FAILURE_THRESHOLD, 8)),
+    MAX_BACKOFF_TIME
+  );
+  
+  // Reset failure count after full recovery timeout
+  if (now - lastFailureTime > backoffTime) {
     failureCount = 0;
   }
   
-  // Circuit is open - reject immediately
+  // Circuit is open - reject with backoff info
   if (failureCount >= FAILURE_THRESHOLD) {
-    return Promise.reject(new Error('Circuit breaker is open - service temporarily unavailable'));
+    const remainingTime = Math.round((backoffTime - (now - lastFailureTime)) / 1000);
+    console.warn(`🚫 Circuit breaker OPEN - retry in ${remainingTime}s (failures: ${failureCount})`);
+    return Promise.reject(new Error(`Circuit breaker open. Retry in ${remainingTime}s.`));
   }
   
   return fn().catch(error => {
     failureCount++;
     lastFailureTime = now;
-    console.warn(`Circuit breaker: failure ${failureCount}/${FAILURE_THRESHOLD}`);
+    console.warn(`🔥 Circuit breaker: failure ${failureCount}/${FAILURE_THRESHOLD} - next backoff: ${Math.round(backoffTime/1000)}s`);
     throw error;
   });
 }

@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { hashUserId, sanitizeLogData } from './hash-helpers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,8 +28,10 @@ function sse(data: unknown, event?: string) {
   return `${prefix}data: ${JSON.stringify(data)}\n\n`;
 }
 
-function mark(event: string, fields: Record<string, unknown> = {}) {
-  console.log(JSON.stringify({ ts: Date.now(), event, ...fields }));
+// 🔒 DSGVO-konforme mark function mit User-ID hashing
+async function mark(event: string, fields: Record<string, unknown> = {}) {
+  const sanitizedFields = sanitizeLogData(fields);
+  console.log(JSON.stringify({ ts: Date.now(), event, ...sanitizedFields }));
 }
 
 async function safe<T>(p: Promise<T>): Promise<T | null> {
@@ -46,6 +49,13 @@ function hardTrim(str: string, tokenCap: number): string {
 }
 
 serve(async (req) => {
+  // 🔒 Enhanced CORS Headers für alle HTTP-Methoden
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+  };
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -53,43 +63,97 @@ serve(async (req) => {
 
   const start = Date.now();
   
-  try {
-    const body = await req.json() as RequestBody;
-    const { userId, message, messageId, coachPersonality, coachId, conversationHistory, enableStreaming = true, enableRag = false } = body;
+  // 🚀 GET-FALLBACK für SSE (Mobile Safari Kompatibilität)
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    const message = url.searchParams.get('message');
+    const userId = url.searchParams.get('userId');
+    const coachId = url.searchParams.get('coachId');
+    const messageId = url.searchParams.get('messageId') || `msg_${Date.now()}`;
     
-    mark("chat_start", { userId, coachId: coachId || coachPersonality, messageId });
-
-    if (!userId || !message || !messageId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required parameters: userId, message, messageId' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!message || !userId) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required parameters: message, userId' 
+      }), { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    // Validate API key
-    const apiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Build AI context (fail-soft)
-    const ctx = await buildAIContext({
+    // Convert GET params to request body format
+    const requestBody = {
       userId,
-      coachId: coachId || coachPersonality || 'lucy',
-      userMessage: message,
-      enableRag,
-      tokenCap: 8000
-    });
+      message,
+      messageId,
+      coachId: coachId || 'lucy',
+      conversationHistory: [],
+      enableStreaming: true,
+      enableRag: false
+    };
 
-    mark("context_built", { 
-      tokensIn: ctx.metrics.tokensIn, 
-      hasMemory: !!ctx.memory,
-      hasRag: !!ctx.ragChunks,
-      hasDaily: !!ctx.daily
-    });
+    return handleRequest(requestBody, corsHeaders, start);
+  }
+  
+  // POST Handler für normale Anfragen
+  if (req.method === 'POST') {
+    try {
+      const body = await req.json() as RequestBody;
+      return handleRequest(body, corsHeaders, start);
+    } catch (error: any) {
+      console.error('❌ Error parsing request:', error);
+      return new Response(JSON.stringify({ error: 'Invalid request format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  return new Response('Method not allowed', { 
+    status: 405, 
+    headers: corsHeaders 
+  });
+});
+
+async function handleRequest(body: any, corsHeaders: any, start: number) {
+  const { userId, message, messageId, coachPersonality, coachId, conversationHistory, enableStreaming = true, enableRag = false } = body;
+    
+  // 🔒 DSGVO: Hash User-ID für Logs
+  const hashedUserId = await hashUserId(userId);
+  
+  await mark("chat_start", { userId: hashedUserId, coachId: coachId || coachPersonality, messageId });
+
+  if (!userId || !message || !messageId) {
+    return new Response(
+      JSON.stringify({ error: 'Missing required parameters: userId, message, messageId' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Validate API key
+  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!apiKey) {
+    return new Response(
+      JSON.stringify({ error: 'OpenAI API key not configured' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
+  const ctx = await buildAIContext({
+    userId,
+    coachId: coachId || coachPersonality || 'lucy',
+    userMessage: message,
+    enableRag,
+    tokenCap: 6000 // Reduced from 8k based on usage analytics
+  });
+
+  await mark("context_built", { 
+    tokensIn: ctx.metrics.tokensIn, 
+    hasMemory: !!ctx.memory,
+    hasRag: !!ctx.ragChunks,
+    hasDaily: !!ctx.daily,
+    userId: hashedUserId
+  });
 
     // Build system prompt
     const systemPrompt = buildSystemPrompt(ctx, coachId || coachPersonality || 'lucy');
@@ -277,8 +341,12 @@ serve(async (req) => {
 
   } catch (error: any) {
     const duration = Date.now() - start;
-    mark("chat_error", { 
-      userId, 
+    
+    // 🔒 DSGVO: Hash user-ID in error logs
+    const hashedUserId = await hashUserId(body?.userId || 'unknown');
+    
+    await mark("chat_error", { 
+      userId: hashedUserId, 
       messageId: body?.messageId, 
       error: error.message, 
       duration_ms: duration 
@@ -289,9 +357,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}
 
-// Context building functions
+// 🔥 PRODUCTION-OPTIMIZED Context building functions
 async function buildAIContext(input: {
   userId: string;
   coachId: string;
@@ -299,7 +367,7 @@ async function buildAIContext(input: {
   enableRag: boolean;
   tokenCap?: number;
 }) {
-  const tokenCap = input.tokenCap || 8000;
+  const tokenCap = input.tokenCap || 6000; // Default to 6k based on analytics
   const metrics = { tokensIn: 0 };
 
   // Parallel load with fail-soft

@@ -50,32 +50,94 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
       setIsConnected(true);
       options.onStreamStart?.();
 
-      // Call the unified coach engine with streaming enabled
-      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
-        body: {
-          userId,
-          message,
-          coachPersonality,
-          conversationHistory,
-          enableStreaming: true
-        },
-        headers: {
-          'Accept': 'text/event-stream',
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      // For now, handle the response directly since Supabase client doesn't support SSE yet
-      // In a real implementation, you'd parse the SSE stream
-      const content = data?.response || data?.content || '';
+      // 🚀 PRODUCTION-READY: Direct fetch with mobile Safari fallback
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      // Simulate streaming by chunking the response
-      if (content) {
-        await simulateStreaming(messageId, content);
+      // Check for mobile Safari
+      const isMobileSafari = /iPhone|iPad|iPod|Safari/i.test(navigator.userAgent) && 
+                           !/Chrome|Firefox/i.test(navigator.userAgent);
+      
+      let streamUrl: string;
+      let requestOptions: RequestInit;
+      
+      if (isMobileSafari) {
+        // GET fallback for mobile Safari
+        console.log('📱 Using GET fallback for Mobile Safari');
+        const params = new URLSearchParams({
+          userId,
+          message: message.substring(0, 500), // Limit for URL length  
+          messageId,
+          coachId: coachPersonality
+        });
+        streamUrl = `${SUPABASE_URL}/functions/v1/unified-coach-engine?${params.toString()}`;
+        requestOptions = {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          signal: abortControllerRef.current.signal
+        };
+      } else {
+        // Standard POST request
+        streamUrl = `${SUPABASE_URL}/functions/v1/unified-coach-engine`;
+        requestOptions = {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId,
+            message,
+            messageId,
+            coachPersonality,
+            conversationHistory,
+            enableStreaming: true
+          }),
+          signal: abortControllerRef.current.signal
+        };
       }
+
+      const response = await fetch(streamUrl, requestOptions);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let content = '';
+
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            content += chunk;
+            
+            // Update streaming message
+            setStreamingMessage(prev => prev ? {
+              ...prev,
+              content: content
+            } : null);
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
+
+      // Mark as complete
+      setStreamingMessage(prev => prev ? {
+        ...prev,
+        isComplete: true,
+        isStreaming: false
+      } : null);
+
+      options.onStreamEnd?.();
 
     } catch (error) {
       console.error('Streaming error:', error);
