@@ -185,7 +185,12 @@ function hardTrim(str: string, tokenCap: number): string {
 }
 
 serve(async (req) => {
-  console.log(`🔧 DEBUG: Unified Coach Engine started - method: ${req.method}, url: ${req.url}`);
+  console.log("▶️ [handleRequest_start]", {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers),
+    timestamp: new Date().toISOString()
+  });
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -817,10 +822,12 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
     });
 
   } catch (err: any) {
+    console.error("🛑 [handleRequest_error]", err.message, err.stack?.split("\n").slice(0,3));
+    
     // 🔧 ENHANCED DEBUGGING: Log complete error details
     await traceEvent(traceId, 'handleRequest_error', 'error', {
       message: err.message,
-      stack: err.stack?.split('\n').slice(0, 5), // ersten 5 Zeilen
+      stack: err.stack?.split('\n').slice(0, 3),
       errorType: err.constructor.name,
       timestamp: Date.now()
     }, conversationId, messageId, undefined, err.message);
