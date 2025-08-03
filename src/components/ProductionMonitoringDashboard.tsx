@@ -297,12 +297,12 @@ export function ProductionMonitoringDashboard() {
     <div className="p-4 space-y-6 max-w-7xl mx-auto">
       {/* 🚨 SYSTEM HEALTH OVERVIEW */}
       <div className="grid grid-cols-1 gap-4">
-        <Card className={`border-l-4 ${
+        <Card className={`border-l-4 bg-background dark:bg-card border-border dark:border-border ${
           systemHealth.status === 'healthy' ? 'border-l-green-500' :
           systemHealth.status === 'warning' ? 'border-l-yellow-500' : 'border-l-red-500'
         }`}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
+            <CardTitle className="text-sm font-medium flex items-center text-foreground dark:text-foreground">
               <HealthIcon className={`w-4 h-4 mr-2 ${healthConfig.color}`} />
               System Status
             </CardTitle>
@@ -322,9 +322,9 @@ export function ProductionMonitoringDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
+            <CardTitle className="text-sm font-medium flex items-center text-foreground dark:text-foreground">
               <Clock className="w-4 h-4 mr-2" />
               First Token P95
             </CardTitle>
@@ -343,9 +343,9 @@ export function ProductionMonitoringDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
+            <CardTitle className="text-sm font-medium flex items-center text-foreground dark:text-foreground">
               <TrendingUp className="w-4 h-4 mr-2" />
               Total Latency P95
             </CardTitle>
@@ -364,9 +364,9 @@ export function ProductionMonitoringDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
+            <CardTitle className="text-sm font-medium flex items-center text-foreground dark:text-foreground">
               <AlertTriangle className="w-4 h-4 mr-2" />
               Error Rate
             </CardTitle>
@@ -402,9 +402,9 @@ export function ProductionMonitoringDashboard() {
 
       <div className="grid grid-cols-1 gap-6">
         {/* 📊 LOAD TEST DASHBOARD */}
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between text-foreground dark:text-foreground">
               <span className="flex items-center">
                 <Monitor className="w-5 h-5 mr-2" />
                 Real Telemetry Data
@@ -474,9 +474,9 @@ export function ProductionMonitoringDashboard() {
         <EmbeddingManagerCard />
 
         {/* 🔧 CIRCUIT BREAKER TELEMETRY */}
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-foreground dark:text-foreground">
               <Shield className="w-5 h-5 mr-2" />
               Circuit Breaker Telemetry
             </CardTitle>
@@ -485,7 +485,7 @@ export function ProductionMonitoringDashboard() {
             {circuitBreakerStats && (
               <>
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
                       {circuitBreakerStats.open_percentage.toFixed(2)}%
                     </div>
@@ -494,7 +494,7 @@ export function ProductionMonitoringDashboard() {
                       Target: &lt; 0.5% {circuitBreakerStats.open_percentage > 0.5 && '⚠️'}
                     </div>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">
                       {(circuitBreakerStats.avg_failure_recovery_time / 1000).toFixed(0)}s
                     </div>
@@ -536,9 +536,9 @@ export function ProductionMonitoringDashboard() {
         </Card>
 
         {/* 📈 TOKEN BUDGET HISTOGRAM */}
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-foreground dark:text-foreground">
               <BarChart3 className="w-5 h-5 mr-2" />
               Token Budget Distribution
             </CardTitle>
@@ -573,9 +573,9 @@ export function ProductionMonitoringDashboard() {
         </Card>
 
         {/* 🔍 LOG AUDIT RESULTS */}
-        <Card>
+        <Card className="bg-background dark:bg-card border-border dark:border-border">
           <CardHeader>
-            <CardTitle className="flex items-center">
+            <CardTitle className="flex items-center text-foreground dark:text-foreground">
               <Database className="w-5 h-5 mr-2" />
               DSGVO Log Audit
             </CardTitle>
@@ -583,7 +583,7 @@ export function ProductionMonitoringDashboard() {
           <CardContent>
             {logAuditResults && (
               <div className="space-y-4">
-                <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                   <div className="text-3xl font-bold text-green-600">
                     {logAuditResults.compliance_score}%
                   </div>
@@ -618,12 +618,12 @@ export function ProductionMonitoringDashboard() {
                   </div>
                 </div>
 
-                <div className="p-3 bg-green-50 rounded border-l-4 border-l-green-500">
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded border-l-4 border-l-green-500">
                   <div className="flex items-center">
                     <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                    <span className="font-medium text-green-800">All Hash-Prefixes: usr_...</span>
+                    <span className="font-medium text-green-800 dark:text-green-600">All Hash-Prefixes: usr_...</span>
                   </div>
-                  <p className="text-green-700 text-sm mt-1">
+                  <p className="text-green-700 dark:text-green-600 text-sm mt-1">
                     DSGVO compliance verified ✓
                   </p>
                 </div>
@@ -634,9 +634,9 @@ export function ProductionMonitoringDashboard() {
       </div>
 
       {/* 📋 MONITORING TARGETS TABLE */}
-      <Card>
+      <Card className="bg-background dark:bg-card border-border dark:border-border">
         <CardHeader>
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center text-foreground dark:text-foreground">
             <Activity className="w-5 h-5 mr-2" />
             24h Monitoring Targets
           </CardTitle>
@@ -645,16 +645,16 @@ export function ProductionMonitoringDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Metrik</th>
-                  <th className="text-left p-2">Ziel</th>
-                  <th className="text-left p-2">Aktuell</th>
-                  <th className="text-left p-2">Alarm</th>
-                  <th className="text-left p-2">Status</th>
+                <tr className="border-b border-border dark:border-border">
+                  <th className="text-left p-2 text-foreground dark:text-foreground">Metrik</th>
+                  <th className="text-left p-2 text-foreground dark:text-foreground">Ziel</th>
+                  <th className="text-left p-2 text-foreground dark:text-foreground">Aktuell</th>
+                  <th className="text-left p-2 text-foreground dark:text-foreground">Alarm</th>
+                  <th className="text-left p-2 text-foreground dark:text-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b">
+                <tr className="border-b border-border dark:border-border">
                   <td className="p-2 font-medium">First-Token P95</td>
                   <td className="p-2">&lt; 2s</td>
                   <td className="p-2">{(systemHealth.first_token_p95 / 1000).toFixed(1)}s</td>
@@ -668,7 +668,7 @@ export function ProductionMonitoringDashboard() {
                     }
                   </td>
                 </tr>
-                <tr className="border-b">
+                <tr className="border-b border-border dark:border-border">
                   <td className="p-2 font-medium">Gesamt P95</td>
                   <td className="p-2">&lt; 4s</td>
                   <td className="p-2">{(systemHealth.total_latency_p95 / 1000).toFixed(1)}s</td>
@@ -682,7 +682,7 @@ export function ProductionMonitoringDashboard() {
                     }
                   </td>
                 </tr>
-                <tr className="border-b">
+                <tr className="border-b border-border dark:border-border">
                   <td className="p-2 font-medium">5xx-Rate</td>
                   <td className="p-2">&lt; 1%</td>
                   <td className="p-2">{systemHealth.error_5xx_rate.toFixed(2)}%</td>
