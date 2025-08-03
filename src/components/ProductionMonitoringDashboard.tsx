@@ -79,6 +79,7 @@ interface SystemHealthMetrics {
 const COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export function ProductionMonitoringDashboard() {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadTesting, setIsLoadTesting] = useState(false);
   const [loadTestMetrics, setLoadTestMetrics] = useState<LoadTestMetrics[]>([]);
   const [circuitBreakerStats, setCircuitBreakerStats] = useState<CircuitBreakerStats | null>(null);

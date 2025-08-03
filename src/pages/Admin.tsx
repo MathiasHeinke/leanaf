@@ -22,7 +22,7 @@ import { FeatureFlagsManager } from '@/components/FeatureFlagsManager';
 import { StreamingDashboard } from '@/components/StreamingDashboard';
 import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
-import TelemetryDashboard from '@/components/TelemetryDashboard';
+import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
 
 export const AdminPage = () => {
   const { user } = useAuth();
@@ -175,7 +175,7 @@ export const AdminPage = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <TelemetryDashboard />
+                  <RealTimeTelemetryDashboard />
                 </CardContent>
               </Card>
             </div>
