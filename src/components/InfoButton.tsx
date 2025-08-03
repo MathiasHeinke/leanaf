@@ -144,7 +144,12 @@ export const InfoButton = ({
                       <div dangerouslySetInnerHTML={{
                         __html: DOMPurify.sanitize(tip
                           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\n/g, '<br/>'))
+                          .replace(/\n/g, '<br/>'), {
+                          ALLOWED_TAGS: ['strong', 'br'],
+                          ALLOWED_ATTR: [],
+                          FORBID_TAGS: ['script', 'object', 'embed'],
+                          FORBID_ATTR: ['onerror', 'onload', 'onclick']
+                        })
                       }} />
                     ) : (
                       tip

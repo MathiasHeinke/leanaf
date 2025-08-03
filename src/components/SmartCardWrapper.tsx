@@ -17,7 +17,14 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
+            <div dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(payload.html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span'],
+                ALLOWED_ATTR: ['class'],
+                FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+              })
+            }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -55,7 +62,14 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
+            <div dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(payload.html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span'],
+                ALLOWED_ATTR: ['class'],
+                FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+              })
+            }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -72,7 +86,14 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
+            <div dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(payload.html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span'],
+                ALLOWED_ATTR: ['class'],
+                FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+              })
+            }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -89,7 +110,14 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
+            <div dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(payload.html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span'],
+                ALLOWED_ATTR: ['class'],
+                FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+              })
+            }} />
           ) : (
             <div className="space-y-2">
               <p><strong>{payload?.description}</strong></p>
@@ -111,7 +139,14 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
+            <div dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(payload.html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span'],
+                ALLOWED_ATTR: ['class'],
+                FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+              })
+            }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}
@@ -128,7 +163,14 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
           actions={payload?.actions}
         >
           {payload?.html ? (
-            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(payload.html) }} />
+            <div dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(payload.html, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span'],
+                ALLOWED_ATTR: ['class'],
+                FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link'],
+                FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+              })
+            }} />
           ) : (
             <div>{JSON.stringify(payload, null, 2)}</div>
           )}

@@ -63,9 +63,17 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
   
   // PRODUCTION TRACE: Enhanced with detailed error logging
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.warn('⚠️ Trace disabled: Missing Supabase configuration');
+      return;
+    }
+    
     const supabase = createClient(
-      'https://gzczjscctgyxjyodhnhk.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mjc0Nzk4MiwiZXhwIjoyMDY4MzIzOTgyfQ.c1pPZNMFb9TK8x8sfzcnCMgpJaKcVYRBsrBYGHqfvMU',
+      supabaseUrl,
+      supabaseServiceKey,
       { auth: { persistSession: false } }
     );
     
@@ -76,22 +84,14 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
       data: enrichedPayload
     };
     
-    console.log('🔍 Attempting trace insert:', JSON.stringify(insertData, null, 2));
-    
+    // Remove verbose logging in production
     const { data, error } = await supabase
       .from('coach_traces')
       .insert(insertData)
       .select();
     
     if (error) {
-      console.error('❌ Trace insertion failed:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
-    } else {
-      console.log('✅ Trace inserted successfully:', data);
+      console.warn('Trace insertion failed:', error.message);
     }
   } catch (error) {
     console.error('❌ Trace insertion exception:', error);

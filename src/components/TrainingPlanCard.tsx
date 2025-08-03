@@ -57,8 +57,10 @@ export const TrainingPlanCard = ({
           className="prose prose-sm dark:prose-invert max-w-none"
           dangerouslySetInnerHTML={{ 
             __html: DOMPurify.sanitize(htmlContent, {
-              ALLOWED_TAGS: ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'ul', 'ol', 'li', 'br'],
-              ALLOWED_ATTR: ['class', 'style'],
+              ALLOWED_TAGS: ['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'],
+              ALLOWED_ATTR: ['class'],
+              FORBID_TAGS: ['script', 'object', 'embed', 'base', 'link', 'meta'],
+              FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style', 'onmouseover'],
               ALLOW_DATA_ATTR: false
             })
           }} 

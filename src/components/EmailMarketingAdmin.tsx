@@ -924,7 +924,12 @@ const EmailMarketingAdmin = () => {
                                 <div 
                                   className="text-sm font-mono max-h-32 overflow-y-auto"
                                   dangerouslySetInnerHTML={{ 
-                                    __html: DOMPurify.sanitize(template.html_content.substring(0, 500) + '...') 
+                                    __html: DOMPurify.sanitize(template.html_content.substring(0, 500) + '...', {
+                                      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'span'],
+                                      ALLOWED_ATTR: ['class'],
+                                      FORBID_TAGS: ['script', 'object', 'embed', 'iframe'],
+                                      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'style']
+                                    }) 
                                   }}
                                 />
                               </div>
