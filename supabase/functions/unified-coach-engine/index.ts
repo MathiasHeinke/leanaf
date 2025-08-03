@@ -238,30 +238,19 @@ serve(async (req) => {
   // POST Handler für normale Anfragen
   if (req.method === 'POST') {
     console.log(`🔧 DEBUG: POST request received, about to parse body...`);
-
-    // TEMPORARY: Simple test response
-    if (req.headers.get('x-debug-mode') === 'true') {
-      console.log(`🔧 DEBUG: Debug mode enabled, sending test response`);
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Debug test response from unified-coach-engine",
-        timestamp: new Date().toISOString()
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    try {
-      const body = await req.json() as RequestBody;
-      return handleRequest(req, body, corsHeaders, start);
-    } catch (error: any) {
-      console.error('❌ Error parsing request:', error);
-      return new Response(JSON.stringify({ error: 'Invalid request format' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    
+    // EMERGENCY: Always return debug response first
+    console.log(`🔧 DEBUG: Returning emergency debug response`);
+    return new Response(JSON.stringify({
+      success: true,
+      message: "EMERGENCY: Function is working!",
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      url: req.url
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   return new Response('Method not allowed', { 
