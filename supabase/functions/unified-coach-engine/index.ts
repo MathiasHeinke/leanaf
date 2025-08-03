@@ -237,20 +237,18 @@ serve(async (req) => {
   
   // POST Handler für normale Anfragen
   if (req.method === 'POST') {
-    console.log(`🔧 DEBUG: POST request received, about to parse body...`);
+    console.log(`🔧 DEBUG: POST request received, parsing body...`);
     
-    // EMERGENCY: Always return debug response first
-    console.log(`🔧 DEBUG: Returning emergency debug response`);
-    return new Response(JSON.stringify({
-      success: true,
-      message: "EMERGENCY: Function is working!",
-      timestamp: new Date().toISOString(),
-      method: req.method,
-      url: req.url
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    try {
+      const body = await req.json() as RequestBody;
+      return handleRequest(req, body, corsHeaders, start);
+    } catch (error: any) {
+      console.error('❌ Error parsing request:', error);
+      return new Response(JSON.stringify({ error: 'Invalid request format' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
   }
 
   return new Response('Method not allowed', { 
