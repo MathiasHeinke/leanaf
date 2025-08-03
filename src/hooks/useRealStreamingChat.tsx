@@ -67,13 +67,13 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
       setIsConnected(true);
       options.onStreamStart?.();
 
-      // 30s timeout for hanging streams
+      // 60s timeout for hanging streams (increased from 30s due to context loading time)
       timeoutRef.current = setTimeout(() => {
-        console.error('🕐 Stream timeout after 30s');
-        trackError('Stream timeout after 30 seconds');
+        console.error('🕐 Stream timeout after 60s');
+        trackError('Stream timeout after 60 seconds');
         stopStreaming();
         options.onError?.(new Error('Stream timeout - bitte versuche es erneut'));
-      }, 30000);
+      }, 60000);
 
       console.log('🚀 Starting real SSE stream...', {
         userId,
