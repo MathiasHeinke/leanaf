@@ -438,8 +438,8 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
           let responseText = '';
 
            try {
-            const DEBUG_MODEL = 'gpt-4o'; // Temporarily switched for debugging
-            console.log(`🔧 DEBUG: Making OpenAI call to ${DEBUG_MODEL} with streaming=true`);
+            const DEBUG_MODEL = 'gpt-4o'; // DEBUG VERSION 2025-08-03-v2 - Temporarily switched for debugging  
+            console.log(`🔧 DEBUG v2: Making OpenAI call to ${DEBUG_MODEL} with streaming=true`);
             
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
