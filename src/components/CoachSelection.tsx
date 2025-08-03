@@ -2,6 +2,7 @@
 import React from 'react';
 import { CoachCard } from './CoachCard';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { Button } from '@/components/ui/button';
 import { Crown, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -205,7 +206,11 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
   onCoachChange 
 }) => {
   const { isPremium } = useSubscription();
+  const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
   const navigate = useNavigate();
+  
+  // Super Admins get all premium features
+  const hasFullAccess = isPremium || (!adminLoading && isSuperAdmin);
 
   const handleUpgrade = () => {
     navigate('/subscription');
@@ -216,15 +221,17 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
       <div className="text-center mb-6">
         <h3 className="text-lg font-semibold mb-2">Wähle deinen Coach</h3>
         <p className="text-sm text-muted-foreground">
-          {isPremium 
-          ? 'Alle Experten-Coaches stehen dir zur Verfügung!' 
+          {hasFullAccess 
+          ? (!adminLoading && isSuperAdmin) 
+            ? 'Als Super Admin stehen dir alle Experten-Coaches zur Verfügung!' 
+            : 'Alle Experten-Coaches stehen dir zur Verfügung!'
             : 'Lucy ist dein kostenloser Coach - oder upgrade für alle Experten!'
           }
         </p>
       </div>
 
       {/* Premium Upgrade Banner for Free Users */}
-      {!isPremium && (
+      {!hasFullAccess && (
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -251,7 +258,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
       
       <div className="space-y-4">
         {coachProfiles.map((coach) => {
-          const isLocked = coach.isPremium && !isPremium;
+          const isLocked = coach.isPremium && !hasFullAccess;
           const isDisabled = isLocked;
 
           return (
