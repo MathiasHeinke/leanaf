@@ -1,7 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
-import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,26 +8,63 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
+const encoder = new TextEncoder();
+const HEARTBEAT_MS = 15_000;
+
+type RequestBody = {
+  userId: string;
+  coachId?: string;
+  coachPersonality?: string;
+  messageId: string;
+  message: string;
+  conversationHistory?: any[];
+  enableStreaming?: boolean;
+  enableRag?: boolean;
+};
+
+function sse(data: unknown, event?: string) {
+  const prefix = event ? `event: ${event}\n` : "";
+  return `${prefix}data: ${JSON.stringify(data)}\n\n`;
+}
+
+function mark(event: string, fields: Record<string, unknown> = {}) {
+  console.log(JSON.stringify({ ts: Date.now(), event, ...fields }));
+}
+
+async function safe<T>(p: Promise<T>): Promise<T | null> {
+  try { return await p; } catch { return null; }
+}
+
+function approxTokens(s: string): number {
+  return Math.ceil((s || "").length / 4);
+}
+
+function hardTrim(str: string, tokenCap: number): string {
+  const charCap = tokenCap * 4;
+  if (str.length <= charCap) return str;
+  return str.slice(0, charCap);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const start = Date.now();
+  
   try {
-    const { userId, message, conversationHistory, coachPersonality, enableStreaming = true } = await req.json();
+    const body = await req.json() as RequestBody;
+    const { userId, message, messageId, coachPersonality, coachId, conversationHistory, enableStreaming = true, enableRag = false } = body;
+    
+    mark("chat_start", { userId, coachId: coachId || coachPersonality, messageId });
 
-    if (!userId || !message) {
+    if (!userId || !message || !messageId) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ error: 'Missing required parameters: userId, message, messageId' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Validate API key
     const apiKey = Deno.env.get('OPENAI_API_KEY');
@@ -39,15 +75,27 @@ serve(async (req) => {
       );
     }
 
-    // Build system message with coach personality
-    const systemMessage = `Du bist ein persönlicher AI-Coach mit folgender Persönlichkeit: ${coachPersonality || 'empathisch und motivierend'}.
+    // Build AI context (fail-soft)
+    const ctx = await buildAIContext({
+      userId,
+      coachId: coachId || coachPersonality || 'lucy',
+      userMessage: message,
+      enableRag,
+      tokenCap: 8000
+    });
 
-Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie für besseren Kontext.`;
+    mark("context_built", { 
+      tokensIn: ctx.metrics.tokensIn, 
+      hasMemory: !!ctx.memory,
+      hasRag: !!ctx.ragChunks,
+      hasDaily: !!ctx.daily
+    });
 
-    // Prepare messages for OpenAI
+    // Build system prompt
+    const systemPrompt = buildSystemPrompt(ctx, coachId || coachPersonality || 'lucy');
+
+    // Prepare conversation history
     const messages = [];
-    
-    // Add conversation history if available (last 6 messages for context)
     if (conversationHistory && Array.isArray(conversationHistory)) {
       conversationHistory.slice(-6).forEach((msg: any) => {
         if (msg.role && msg.content) {
@@ -58,28 +106,20 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
         }
       });
     }
-    
-    // Add current user message
-    messages.push({
-      role: 'user',
-      content: message
-    });
 
-    const startTime = Date.now();
-    
-    // Configure for streaming or regular response
-    const config = TASK_CONFIGS['unified-coach-engine'];
-    
     if (enableStreaming) {
-      console.log('🚀 Starting streaming response...');
+      mark("streaming_start", { messageId });
       
-      // Create streaming response
-      const stream = new ReadableStream({
+      // Create real SSE streaming response
+      const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
+          // Handshake
+          controller.enqueue(encoder.encode(sse({ ok: true, messageId }, "open")));
+
+          // Heartbeat
+          const hb = setInterval(() => controller.enqueue(encoder.encode(": ping\n\n")), HEARTBEAT_MS);
+
           try {
-            // Send initial connection message
-            controller.enqueue(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
-            
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -87,15 +127,15 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'gpt-4.1-2025-04-14',
-                messages: [
-                  { role: 'system', content: systemMessage },
-                  ...messages
-                ],
-                temperature: config.temperature,
-                top_p: config.top_p,
+                model: 'gpt-4o',
+                temperature: 0.7,
+                max_tokens: 2000,
                 stream: true,
-                max_tokens: 1500,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  ...messages,
+                  { role: 'user', content: message }
+                ]
               }),
             });
 
@@ -114,40 +154,31 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
             try {
               while (true) {
                 const { done, value } = await reader.read();
-                
                 if (done) break;
                 
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || '';
                 
-                 for (const line of lines) {
+                for (const line of lines) {
                   if (line.startsWith('data: ')) {
                     const data = line.slice(6);
                     
                     if (data === '[DONE]') {
-                      try {
-                        controller.enqueue(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-                      } catch (e) {
-                        console.log('Stream already closed');
-                      }
+                      controller.enqueue(encoder.encode(sse({ messageId }, "end")));
                       break;
                     }
                     
                     try {
                       const parsed = JSON.parse(data);
-                      const content = parsed.choices?.[0]?.delta?.content;
+                      const delta = parsed.choices?.[0]?.delta?.content;
                       
-                      if (content) {
-                        try {
-                          controller.enqueue(`data: ${JSON.stringify({ 
-                            type: 'content', 
-                            content 
-                          })}\n\n`);
-                        } catch (e) {
-                          console.log('Stream already closed');
-                          break;
-                        }
+                      if (delta) {
+                        controller.enqueue(encoder.encode(sse({ 
+                          type: "delta", 
+                          messageId, 
+                          delta 
+                        })));
                       }
                     } catch (e) {
                       // Skip invalid JSON
@@ -159,17 +190,26 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
               reader.releaseLock();
             }
 
-            // Log performance
-            const duration = Date.now() - startTime;
-            logPerformanceMetrics('unified-coach-engine-streaming', duration, 0);
+            // Performance metrics
+            const duration = Date.now() - start;
+            controller.enqueue(encoder.encode(sse({
+              type: "metrics",
+              messageId,
+              duration_ms: duration,
+              tokens_in: ctx.metrics.tokensIn
+            })));
+
+            mark("streaming_complete", { messageId, duration_ms: duration });
             
-            controller.close();
-          } catch (error) {
-            console.error('Streaming error:', error);
-            controller.enqueue(`data: ${JSON.stringify({ 
-              type: 'error', 
-              error: error.message 
-            })}\n\n`);
+          } catch (error: any) {
+            mark("streaming_error", { messageId, error: error.message });
+            controller.enqueue(encoder.encode(sse({
+              type: "error",
+              messageId,
+              error: error?.message ?? "stream_error"
+            })));
+          } finally {
+            clearInterval(hb);
             controller.close();
           }
         }
@@ -178,53 +218,71 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
       return new Response(stream, {
         headers: {
           ...corsHeaders,
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no'
         },
       });
     }
 
     // Fallback to non-streaming response
-    console.log('📄 Using non-streaming response...');
+    mark("non_streaming_start", { messageId });
     
-    // Add 30 second timeout
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
-    );
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          temperature: 0.7,
+          max_tokens: 2000,
+          stream: false,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+            { role: 'user', content: message }
+          ]
+        }),
+      });
 
-    const chatCompletion = await Promise.race([
-      callOpenAIWithRetry({
-        model: 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: systemMessage },
-          ...messages
-        ],
-        ...config,
-        stream: false,
-        max_tokens: 1500,
-      }),
-      timeoutPromise
-    ]);
-
-    const content = chatCompletion.choices[0].message.content;
-    const duration = Date.now() - startTime;
-
-    // Log performance metrics
-    logPerformanceMetrics('unified-coach-engine', duration, chatCompletion.usage?.total_tokens || 0);
-
-    return new Response(JSON.stringify({ 
-      response: content,
-      type: 'text',
-      performance: {
-        duration,
-        tokens: chatCompletion.usage?.total_tokens || 0
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status}`);
       }
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
 
-  } catch (error) {
+      const chatCompletion = await response.json();
+      const content = chatCompletion.choices[0].message.content;
+      const duration = Date.now() - start;
+
+      mark("non_streaming_complete", { messageId, duration_ms: duration });
+
+      return new Response(JSON.stringify({ 
+        response: content,
+        type: 'text',
+        messageId,
+        performance: {
+          duration,
+          tokens: chatCompletion.usage?.total_tokens || 0
+        }
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (error: any) {
+      mark("non_streaming_error", { messageId, error: error.message });
+      throw error;
+    }
+
+  } catch (error: any) {
+    const duration = Date.now() - start;
+    mark("chat_error", { 
+      userId, 
+      messageId: body?.messageId, 
+      error: error.message, 
+      duration_ms: duration 
+    });
     console.error('Error in unified coach engine:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
@@ -232,3 +290,107 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
     });
   }
 });
+
+// Context building functions
+async function buildAIContext(input: {
+  userId: string;
+  coachId: string;
+  userMessage: string;
+  enableRag: boolean;
+  tokenCap?: number;
+}) {
+  const tokenCap = input.tokenCap || 8000;
+  const metrics = { tokensIn: 0 };
+
+  // Parallel load with fail-soft
+  const [personaRes, memoryRes, dailyRes, ragRes] = await Promise.allSettled([
+    getCoachPersona(input.coachId),
+    loadCoachMemory(input.userId, input.coachId),
+    loadDailySummary(input.userId),
+    input.enableRag ? runRag(input.userMessage, input.coachId) : null
+  ]);
+
+  const persona = personaRes.status === "fulfilled" 
+    ? personaRes.value 
+    : { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+
+  const memory = memoryRes.status === "fulfilled" ? memoryRes.value : null;
+  const daily = dailyRes.status === "fulfilled" ? dailyRes.value : null;
+  const ragChunks = ragRes?.status === "fulfilled" ? ragRes.value?.chunks : null;
+
+  const trim = (txt?: string | null) => {
+    if (!txt) return txt;
+    metrics.tokensIn += approxTokens(txt);
+    return hardTrim(txt, tokenCap);
+  };
+
+  return {
+    persona,
+    memory,
+    daily,
+    ragChunks: ragChunks?.slice(0, 6) ?? null,
+    conversationSummary: trim("Gesprächskontext wird aufgebaut..."),
+    metrics
+  };
+}
+
+function buildSystemPrompt(ctx: any, coachId: string) {
+  const persona = ctx.persona;
+  const ragBlock = ctx.ragChunks?.length
+    ? ctx.ragChunks.map((c: any, i: number) => `[#${i+1} ${c.source}]\n${c.text}`).join("\n\n")
+    : "—";
+
+  const daily = ctx.daily ?? {};
+  const mem = ctx.memory ?? {};
+
+  return [
+    `Du bist ${persona.name}, ein professioneller Coach.`,
+    `Stilregeln: ${persona.style.join(", ")}. Keine Floskeln, klare Sätze, Praxisfokus.`,
+    `Wenn Tools/Pläne betroffen sind: erst kurz zusammenfassen, Zustimmung einholen, dann Aktion vorschlagen.`,
+    `Wenn Stimmung negativ: erst 1 empathischer Satz, dann konkret werden.`,
+    `Antworte kurz genug zum Scannen, aber vollständig.`,
+    ``,
+    `[Beziehungsstatus] ${mem.relationship ?? "unbekannt"} | Vertrauen: ${mem.trust ?? 50}/100`,
+    `[Gesprächszusammenfassung] ${ctx.conversationSummary ?? "—"}`,
+    `[Tageskontext] kcal übrig: ${daily.caloriesLeft ?? "?"}, letztes Workout: ${daily.lastWorkout ?? "?"}, Schlaf: ${daily.sleepHours ?? "?"}h`,
+    `[RAG-Kontext]\n${ragBlock}`,
+    ``,
+    `Halte dich an die Persona.`
+  ].join("\n");
+}
+
+// Dummy loaders (replace with real implementations)
+async function getCoachPersona(coachId: string) {
+  const personas: Record<string, any> = {
+    lucy: { name: "Lucy", style: ["direkt", "empathisch", "lösungsorientiert"] },
+    markus: { name: "Markus", style: ["motivierend", "kraftsport-fokussiert", "präzise"] },
+    vita: { name: "Dr. Vita", style: ["wissenschaftlich", "ganzheitlich", "präventiv"] },
+    sophia: { name: "Dr. Sophia", style: ["integral", "bewusstseinsorientiert", "transformativ"] }
+  };
+  return personas[coachId] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+}
+
+async function loadCoachMemory(userId: string, coachId: string) {
+  return {
+    relationship: "aufbauend",
+    trust: 75,
+    summary: "Nutzer bevorzugt kurze, präzise Anweisungen"
+  };
+}
+
+async function loadDailySummary(userId: string) {
+  return {
+    caloriesLeft: 520,
+    lastWorkout: "Push Training gestern",
+    sleepHours: 7.2
+  };
+}
+
+async function runRag(query: string, coachId: string) {
+  return {
+    chunks: [
+      { source: "nutrition-guide.md", text: "Proteinziel: 1.8-2.2g/kg Körpergewicht täglich" },
+      { source: "training-basics.md", text: "Progressive Overload ist der Schlüssel für kontinuierliche Kraftsteigerung" }
+    ]
+  };
+}
