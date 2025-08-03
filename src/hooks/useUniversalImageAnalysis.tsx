@@ -143,12 +143,7 @@ export const useUniversalImageAnalysis = () => {
 
       setAnalysisResult(result);
       
-      // Show user feedback
-      if (analysisData) {
-        toast.success(`${classification.description} - ${classification.suggestedAction}`);
-      } else {
-        toast.info(`Bildinhalt erkannt: ${classification.description}`);
-      }
+      // ✅ NO MORE TOAST - Chat integration only
 
       return result;
 

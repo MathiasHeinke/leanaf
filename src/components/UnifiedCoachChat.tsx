@@ -285,7 +285,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         setIsThinking(true);
         setIsLoading(true);
         
-        // 1. Erst versuchen, heutige Chat-History zu laden
+        // 1. Chat-History aus coach_conversations laden (aktuelle Tabelle)
         const today = new Date().toISOString().split('T')[0];
         const { data: existingMessages, error: historyError } = await supabase
           .from('coach_conversations')
