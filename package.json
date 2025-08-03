@@ -58,6 +58,7 @@
     "dompurify": "^3.2.6",
     "embla-carousel-react": "^8.3.0",
     "eventsource-parser": "^3.0.3",
+    "framer-motion": "^12.23.12",
     "input-otp": "^1.2.4",
     "isomorphic-dompurify": "^2.26.0",
     "jsonrepair": "^3.13.0",
