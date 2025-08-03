@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard'
 
 export const AdminPage = () => {
   const { user } = useAuth();
+  const { isAdmin, loading: adminLoading, error: adminError } = useSecureAdminAccess('admin_panel');
   
   // Mock performance metrics for the dashboard
   const performanceMetrics = {
@@ -42,10 +44,25 @@ export const AdminPage = () => {
     totalMessages: 2400,
     p95ResponseTime: 1500
   };
-  
-  // Basic admin check - in production, check user roles
-  const isAdmin = user?.email?.includes('admin') || process.env.NODE_ENV === 'development';
 
+  // Show loading state while checking admin access
+  if (adminLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-96">
+          <CardHeader className="text-center">
+            <RefreshCw className="w-12 h-12 mx-auto text-muted-foreground mb-4 animate-spin" />
+            <CardTitle>Berechtigung wird überprüft...</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center text-muted-foreground">
+            Bitte warten Sie, während Ihre Administratorrechte überprüft werden.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show access denied for non-admin users
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -54,8 +71,15 @@ export const AdminPage = () => {
             <Shield className="w-12 h-12 mx-auto text-destructive mb-4" />
             <CardTitle>Zugriff verweigert</CardTitle>
           </CardHeader>
-          <CardContent className="text-center text-muted-foreground">
-            Sie haben keine Berechtigung für diese Seite.
+          <CardContent className="text-center">
+            <p className="text-muted-foreground mb-4">
+              Sie haben keine Berechtigung für diese Seite.
+            </p>
+            {adminError && (
+              <p className="text-destructive text-sm">
+                Fehler: {adminError}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

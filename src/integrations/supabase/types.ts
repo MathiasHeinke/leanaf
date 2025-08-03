@@ -4461,6 +4461,10 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      has_admin_access: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _user_id: string
@@ -4488,6 +4492,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_admin_user: {
+        Args: { user_uuid?: string }
+        Returns: boolean
+      }
       is_enterprise_or_super_admin: {
         Args: { user_uuid?: string }
         Returns: boolean
@@ -4498,6 +4506,10 @@ export type Database = {
       }
       is_super_admin_by_email: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_super_admin_user: {
+        Args: { user_uuid?: string }
         Returns: boolean
       }
       ivfflat_bit_support: {
@@ -4519,6 +4531,16 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      log_admin_access_attempt: {
+        Args: {
+          p_user_id: string
+          p_access_granted: boolean
+          p_requested_resource: string
+          p_ip_address?: unknown
+          p_user_agent?: string
+        }
+        Returns: undefined
       }
       log_failed_login_attempt: {
         Args: {
@@ -4660,6 +4682,10 @@ export type Database = {
           p_activity_date?: string
         }
         Returns: number
+      }
+      validate_admin_access: {
+        Args: { p_resource?: string }
+        Returns: boolean
       }
       validate_password_strength: {
         Args: { password: string }
