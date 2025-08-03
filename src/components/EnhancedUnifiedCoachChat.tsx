@@ -426,24 +426,21 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     
     setInputText(fullMessage);
     handleSendMessage();
-  }, [handleSendMessage, setInputText]);
-
-  // ============= ENHANCED CHAT INPUT COMPONENT =============
-  const EnhancedChatInputComponent = () => (
-    <EnhancedChatInput
-      inputText={inputText}
-      setInputText={setInputText}
-      onSendMessage={handleEnhancedSendMessage}
-      isLoading={isChatLoading}
-      placeholder={enableAdvancedFeatures ? "Nachricht eingeben... (mit vollem Kontext)" : "Nachricht eingeben..."}
-    />
-  );
+  }, [handleSendMessage]);
 
   // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
     return (
       <ChatLayout 
-        chatInput={<EnhancedChatInputComponent />}
+        chatInput={
+          <EnhancedChatInput
+            inputText={inputText}
+            setInputText={setInputText}
+            onSendMessage={handleEnhancedSendMessage}
+            isLoading={isChatLoading}
+            placeholder={enableAdvancedFeatures ? "Nachricht eingeben... (mit vollem Kontext)" : "Nachricht eingeben..."}
+          />
+        }
         bannerCollapsed={bannerCollapsed}
       >
         {/* Collapsible Coach Header */}
@@ -518,7 +515,13 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 
         {/* Input */}
         <div className="border-t bg-background p-4">
-          <EnhancedChatInputComponent />
+          <EnhancedChatInput
+            inputText={inputText}
+            setInputText={setInputText}
+            onSendMessage={handleEnhancedSendMessage}
+            isLoading={isChatLoading}
+            placeholder={enableAdvancedFeatures ? "Nachricht eingeben... (mit vollem Kontext)" : "Nachricht eingeben..."}
+          />
         </div>
       </CardContent>
     </Card>
