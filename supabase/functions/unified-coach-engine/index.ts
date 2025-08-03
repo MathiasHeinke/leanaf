@@ -165,18 +165,34 @@ serve(async (req) => {
   });
 
   try {
-    const { messages, coach, userId, sessionId } = await req.json();
+    const { 
+      userId, 
+      message, 
+      conversationHistory, 
+      coachPersonality,
+      toolContext 
+    } = await req.json();
 
     // Validate request body
-    if (!messages || !coach || !userId || !sessionId) {
+    if (!userId || !message || !coachPersonality) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields: userId, message, or coachPersonality' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if coach is a valid Coach type
-    const selectedCoach: Coach = coach as Coach;
+    // Create a mock coach object from the personality
+    const selectedCoach: Coach = {
+      id: coachPersonality,
+      name: coachPersonality,
+      personality: coachPersonality,
+      expertise: ['fitness', 'nutrition'],
+      imageUrl: '',
+      color: '',
+      accentColor: '',
+      description: `Coach ${coachPersonality}`,
+      personaId: null
+    };
 
     // Check if user has sufficient training data
     const hasSufficientData = await checkTrainingDataSufficiency(supabase, userId);
@@ -192,12 +208,15 @@ serve(async (req) => {
     }
 
     // Enhanced context building with comprehensive user data
-    const contextSections = await buildComprehensiveContext(supabase, userId, coach);
+    const contextSections = await buildComprehensiveContext(supabase, userId, selectedCoach);
     
-    const prompt = [
-      {
-        role: 'system',
-        content: `
+    // Build messages array from conversation history and current message
+    const messages = [];
+    
+    // Add system message
+    messages.push({
+      role: 'system',
+      content: `
         Du bist ein persönlicher KI-Coach namens ${selectedCoach.name}. ${selectedCoach.description}
         Deine Expertise umfasst: ${selectedCoach.expertise.join(', ')}.
         Nutze dein Wissen, um personalisierte und hilfreiche Antworten zu geben.
@@ -209,9 +228,25 @@ serve(async (req) => {
         ${section.content}
         `).join('\n')}
         `
-      },
-      ...messages,
-    ];
+    });
+    
+    // Add conversation history if available
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      conversationHistory.forEach(msg => {
+        if (msg.role && msg.content) {
+          messages.push({
+            role: msg.role,
+            content: msg.content
+          });
+        }
+      });
+    }
+    
+    // Add current user message
+    messages.push({
+      role: 'user',
+      content: message
+    });
 
     // Validate API key before making request
     if (!apiKey) {
@@ -224,7 +259,7 @@ serve(async (req) => {
     // Call the OpenAI API
     const chatCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: prompt,
+      messages: messages,
     });
 
     const assistantMessage = chatCompletion.choices[0].message.content;
@@ -236,8 +271,8 @@ serve(async (req) => {
       .insert({
         user_id: userId,
         coach_id: selectedCoach.id,
-        session_id: sessionId,
-        user_message: messages[messages.length - 1].content,
+        session_id: `${userId}-${selectedCoach.id}-${Date.now()}`,
+        user_message: message,
         assistant_message: assistantMessage,
         context: contextSections.map(section => `=== ${section.title} ===\n${section.content}`).join('\n'),
         prompt_tokens: usage?.prompt_tokens,
