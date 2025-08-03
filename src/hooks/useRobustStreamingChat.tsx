@@ -241,23 +241,35 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       // Handle non-streaming JSON response
       const jsonResponse = await response.json();
       
+      console.log('🔍 DEBUG: Response format received:', jsonResponse);
+      
+      // Check multiple possible response formats
+      let responseContent = null;
       if (jsonResponse.response) {
-        // Update streaming message with complete response immediately
-        setStreamingMessage(prev => prev ? {
-          ...prev,
-          content: jsonResponse.response,
-          isComplete: true,
-          isStreaming: false
-        } : null);
-        
-        trackStreamingComplete();
-        transitionToState('idle'); // Sofort zu idle
-        options.onStreamEnd?.();
-        return true;
+        responseContent = jsonResponse.response;
+      } else if (jsonResponse.message) {
+        responseContent = jsonResponse.message;
+      } else if (jsonResponse.content) {
+        responseContent = jsonResponse.content;
+      } else if (typeof jsonResponse === 'string') {
+        responseContent = jsonResponse;
       } else {
-        throw new Error('Keine gültige Antwort erhalten');
+        console.error('🔍 DEBUG: Unknown response format:', jsonResponse);
+        throw new Error(`Unexpected response format: ${JSON.stringify(jsonResponse)}`);
       }
-
+      
+      // Update streaming message with complete response immediately
+      setStreamingMessage(prev => prev ? {
+        ...prev,
+        content: responseContent,
+        isComplete: true,
+        isStreaming: false
+      } : null);
+      
+      trackStreamingComplete();
+      transitionToState('idle');
+      options.onStreamEnd?.();
+      
       return true;
 
     }).catch(async (error: Error) => {
