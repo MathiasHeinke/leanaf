@@ -72,6 +72,9 @@ import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } fr
 import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
+import { useProactiveCoachBehavior } from '@/hooks/useProactiveCoachBehavior';
+import { useAdvancedRetryLogic } from '@/hooks/useAdvancedRetryLogic';
+import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -203,6 +206,25 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setIsThinking(false);
     }
   });
+
+  // ============= PROACTIVE BEHAVIOR =============
+  const {
+    context: proactiveContext,
+    suggestions,
+    analyzeUserMessage,
+    applySuggestion,
+    dismissSuggestion,
+    getContextualPromptEnhancement
+  } = useProactiveCoachBehavior(coach?.id || 'general');
+
+  // ============= ADVANCED RETRY LOGIC =============
+  const {
+    executeWithRetry,
+    manualRetry,
+    getRetryInfo,
+    performanceMetrics,
+    retryStates
+  } = useAdvancedRetryLogic();
   
   // ============= PROFILE DATA LOADING =============
   const [loadedProfileData, setLoadedProfileData] = useState<any>(null);
@@ -643,6 +665,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setIsSyncing(false);
     }
     
+    // Analyze message for proactive behavior
+    analyzeUserMessage(inputText, messages);
+    
     // Save user message to DB immediately
     const today = new Date().toISOString().split('T')[0];
     const messageContent = uploadedImages.length > 0 
@@ -732,8 +757,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         return;
       }
       
-      // Fallback to retry mechanism for complex requests
-      const data = await sendMessageWithRetry(currentInput, currentImages);
+      // Fallback to advanced retry mechanism for complex requests
+      const data = await executeWithRetry(async () => {
+        const contextualEnhancement = getContextualPromptEnhancement();
+        return await sendMessageWithRetry(currentInput, currentImages);
+      }, messageId);
 
       // Ensure consistent response format
       if (uploadedImages.length > 0 && data?.analysis && !data?.response) {
@@ -1364,6 +1392,50 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         {/* Chat Input + Footer (gemeinsamer Block!) */}
         <div className="flex-shrink-0">
           
+          {/* Proactive Suggestions */}
+          {suggestions.length > 0 && (
+            <div className="px-3 py-2 bg-card border-t border-border/50">
+              <div className="flex flex-wrap gap-2">
+                {suggestions.slice(0, 2).map((suggestion) => (
+                  <button
+                    key={suggestion.id}
+                    onClick={() => {
+                      const content = applySuggestion(suggestion);
+                      setInputText(content);
+                    }}
+                    className="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors"
+                  >
+                    {suggestion.content}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Performance Monitoring (Debug Mode) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="px-3 py-2 bg-muted/30 border-t border-border/50">
+              <PerformanceMonitoringDashboard
+                performanceMetrics={performanceMetrics}
+                retryStates={retryStates}
+                streamingMetrics={{
+                  isConnected: isStreamingConnected,
+                  tokensPerSecond: 0,
+                  connectionQuality: isStreamingConnected ? 'excellent' : 'disconnected'
+                }}
+              />
+            </div>
+          )}
+          
+          {/* Streaming Indicator */}
+          <div className="px-3 py-1 bg-card/50">
+            <StreamingIndicator 
+              isStreaming={!!streamingMessage?.isStreaming}
+              connectionQuality={isStreamingConnected ? 'excellent' : 'disconnected'}
+              tokensPerSecond={0}
+            />
+          </div>
+
           {/* Eingabefeld direkt auf Footer */}
           <div className="px-3 py-1 bg-card border-t border-border">
             {chatInput}
