@@ -32,6 +32,9 @@ serve(async (req) => {
     // Create response stream
     const stream = new ReadableStream({
       async start(controller) {
+        // Send initial open event
+        controller.enqueue(`event: open\ndata: {"ok":true}\n\n`);
+        
         try {
           // Get coach data
           const { data: coach } = await supabase
@@ -80,7 +83,7 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                     const data = line.slice(6);
                     
                     if (data === '[DONE]') {
-                      controller.enqueue(`data: {"type":"done"}\n\n`);
+                      controller.enqueue(`data: {"type":"stream_done"}\n\n`);
                       controller.close();
                       return;
                     }
