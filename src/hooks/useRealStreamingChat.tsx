@@ -18,6 +18,10 @@ interface UseRealStreamingChatOptions {
 export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) => {
   const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  
+  // Refs to avoid stale closures in useCallback
+  const streamingRef = useRef<StreamingMessage | null>(null);
+  const isConnectedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -41,8 +45,8 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
     conversationHistory: any[] = []
   ) => {
     try {
-      // Prevent concurrent streams
-      if (isConnected || streamingMessage || abortControllerRef.current) {
+      // Prevent concurrent streams using refs to avoid stale closures
+      if (isConnectedRef.current || streamingRef.current || abortControllerRef.current) {
         console.warn('⚠️ Streaming already active, stopping previous stream');
         stopStreaming();
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -55,16 +59,20 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
       // Create abort controller
       abortControllerRef.current = new AbortController();
       
-      // Initialize streaming message
+      // Initialize streaming message and sync refs
       const messageId = `stream-${Date.now()}`;
-      setStreamingMessage({
+      const newStreamingMessage = {
         id: messageId,
         content: '',
         isComplete: false,
         isStreaming: true
-      });
-
+      };
+      
+      setStreamingMessage(newStreamingMessage);
+      streamingRef.current = newStreamingMessage;
+      
       setIsConnected(true);
+      isConnectedRef.current = true;
       options.onStreamStart?.();
 
       // 60s timeout for hanging streams (increased from 30s due to context loading time)
@@ -176,12 +184,15 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
                   if (!prev) return null;
                   const deltaContent = event.content || event.delta || '';
                   const newContent = prev.content + deltaContent;
-                  return {
+                  const updatedMessage = {
                     ...prev,
                     content: newContent,
                     isStreaming: true,
                     isComplete: false
                   };
+                  // Sync ref
+                  streamingRef.current = updatedMessage;
+                  return updatedMessage;
                 });
               } else if (event.type === 'error') {
                 console.error('❌ Stream error event:', event.error);
@@ -217,7 +228,7 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
         timeoutRef.current = null;
       }
     }
-  }, [options, startPerformanceTracking, trackContextLoaded, trackFirstToken, trackStreamingProgress, trackStreamingComplete, trackError, resetPerformanceTracking, streamingMessage]);
+  }, [options, startPerformanceTracking, trackContextLoaded, trackFirstToken, trackStreamingProgress, trackStreamingComplete, trackError, resetPerformanceTracking]);
 
   const stopStreaming = useCallback(() => {
     console.log('🛑 Stopping real streaming...');
@@ -233,7 +244,9 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
     }
     
     setIsConnected(false);
+    isConnectedRef.current = false;
     setStreamingMessage(null);
+    streamingRef.current = null;
     options.onStreamEnd?.();
   }, [options]);
 
