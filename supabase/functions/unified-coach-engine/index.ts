@@ -245,65 +245,85 @@ serve(async (req) => {
 async function handleRequest(body: any, corsHeaders: any, start: number) {
   const traceId = body.traceId || newTraceId();
   const { userId, message, messageId, coachPersonality, coachId, conversationHistory, enableStreaming = true, enableRag = false } = body;
-    
-  // ✅ PARAMETER VALIDATION FIRST - before any processing
-  if (!userId || !message || !messageId) {
-    return new Response(
-      JSON.stringify({ error: 'Missing required parameters: userId, message, messageId' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  const conversationId = `conv_${userId}_${coachId || 'lucy'}`;
   
-  // 📊 TRACE: Message received
+  // 📊 TRACE: Request received
   await traceEvent(traceId, 'message_received', 'started', {
-    userId: await hashUserId(userId),
-    coachId: coachId || coachPersonality || 'unknown',
-    messageLength: message.length,
-    enableStreaming,
-    enableRag
-  }, undefined, messageId);
-  
-  // 🔒 DSGVO: Hash User-ID für Logs  
-  const hashedUserId = await hashUserId(userId);
-  
-  // 🔧 Circuit Breaker Recovery (FIX #3)
-  if (circuitBreakerState.open && Date.now() - circuitBreakerState.lastFailure > RECOVERY_TIMEOUT) {
-    circuitBreakerState = { open: false, halfOpen: true, retryCount: 0, lastFailure: 0 };
-    console.log('🔄 Circuit breaker transitioning to half-open');
-  }
-  
-  // ✅ SAFE TRACE CALLS with try-catch
+    userId: hashUserId(userId),
+    coachId: coachId || 'lucy',
+    messageLength: message?.length || 0,
+    hasStreaming: enableStreaming,
+    hasRag: enableRag,
+    hasHistory: conversationHistory?.length > 0
+  }, conversationId, messageId);
+    
   try {
-    await trace(traceId, 'A_received', { 
-      userId: hashedUserId,
-      coachId: coachId || coachPersonality || 'unknown',
-      enableStreaming,
-      enableRag
-    }, {
-      pii_detected: detectPII(message),
-      sentiment_score: calculateSentiment(message),
-      breaker_open: circuitBreakerState.open,
-      breaker_halfOpen: circuitBreakerState.halfOpen,
-      retry_count: circuitBreakerState.retryCount
-    });
-  } catch (traceError) {
-    console.warn('⚠️ Trace failed but continuing:', traceError);
-  }
-  
-  await mark("chat_start", { userId: hashedUserId, coachId: coachId || coachPersonality, messageId, traceId });
-
-  try {
-    // Validate API key
-    const apiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ✅ PARAMETER VALIDATION FIRST - before any processing
+    if (!userId || !message || !messageId) {
+      const error = 'Missing required parameters: userId, message, messageId';
+      await traceEvent(traceId, 'validation', 'error', {
+        missing: {
+          userId: !userId,
+          message: !message,
+          messageId: !messageId
+        }
+      }, conversationId, messageId, undefined, error);
+      
+      return new Response(JSON.stringify({ error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
+    // Check OpenAI API key
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      const error = 'OpenAI API key not configured';
+      await traceEvent(traceId, 'config_check', 'error', {}, conversationId, messageId, undefined, error);
+      
+      return new Response(JSON.stringify({ error }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // 📊 TRACE: Configuration validated
+    await traceEvent(traceId, 'config_check', 'complete', {
+      hasApiKey: true,
+      parametersValid: true
+    }, conversationId, messageId);
+    
+    // 🔒 DSGVO: Hash User-ID für Logs  
+    const hashedUserId = await hashUserId(userId);
+    
+    // 🔧 Circuit Breaker Recovery (FIX #3)
+    if (circuitBreakerState.open && Date.now() - circuitBreakerState.lastFailure > RECOVERY_TIMEOUT) {
+      circuitBreakerState = { open: false, halfOpen: true, retryCount: 0, lastFailure: 0 };
+      console.log('🔄 Circuit breaker transitioning to half-open');
+    }
+    
+    // ✅ SAFE TRACE CALLS with try-catch
+    try {
+      await trace(traceId, 'A_received', { 
+        userId: hashedUserId,
+        coachId: coachId || 'lucy',
+        enableStreaming,
+        enableRag
+      }, {
+        pii_detected: detectPII(message),
+        sentiment_score: calculateSentiment(message),
+        breaker_open: circuitBreakerState.open,
+        breaker_halfOpen: circuitBreakerState.halfOpen,
+        retry_count: circuitBreakerState.retryCount
+      });
+    } catch (traceError) {
+      console.warn('⚠️ Trace failed but continuing:', traceError);
+    }
+    
+    await mark("chat_start", { userId: hashedUserId, coachId: coachId || 'lucy', messageId, traceId });
+
     // 📊 TRACE: Building AI context
-    await traceEvent(traceId, 'buildAIContext', 'started', {}, undefined, messageId);
+    await traceEvent(traceId, 'buildAIContext', 'started', {}, conversationId, messageId);
     
     // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
     const contextStart = Date.now();
@@ -386,11 +406,11 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
           let deltaCount = 0;
           let responseText = '';
 
-          try {
+           try {
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${apiKey}`,
+                'Authorization': `Bearer ${openAIApiKey}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
@@ -580,7 +600,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -654,6 +674,15 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
   } catch (error: any) {
     const duration = Date.now() - start;
     
+    // 📊 TRACE: Error occurred  
+    await traceEvent(traceId, 'error', 'error', {
+      error: error.message,
+      stack: error.stack?.substring(0, 500), // Limit stack trace length
+      duration_ms: duration,
+      userId: hashUserId(body?.userId || 'unknown'),
+      coachId: body?.coachId || 'unknown'
+    }, conversationId, messageId, duration, error.message);
+    
     // 🔒 DSGVO: Hash user-ID in error logs
     const hashedUserId = await hashUserId(body?.userId || 'unknown');
     
@@ -661,10 +690,23 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       userId: hashedUserId, 
       messageId: body?.messageId, 
       error: error.message, 
-      duration_ms: duration 
+      duration_ms: duration,
+      traceId 
     });
-    console.error('Error in unified coach engine:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    
+    console.error('❌ Error in unified coach engine:', {
+      error: error.message,
+      traceId,
+      messageId: body?.messageId,
+      userId: hashedUserId,
+      duration_ms: duration
+    });
+    
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      messageId: body?.messageId,
+      traceId 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
