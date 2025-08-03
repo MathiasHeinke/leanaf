@@ -51,7 +51,7 @@ interface AdminNote {
   id: string;
   conversation_id: string;
   note: string;
-  status: 'gelesen' | 'verstanden' | 'abgelegt';
+  status: string;
   created_at: string;
   admin_user_id: string;
 }
@@ -139,21 +139,19 @@ export const CoachConversationMonitor: React.FC = () => {
     if (!selectedConversation || !newNote.trim()) return;
 
     try {
-      // In a real implementation, you'd save to an admin_notes table
-      // For now, we'll use localStorage as a temporary solution
-      const notes = JSON.parse(localStorage.getItem('admin_notes') || '[]');
-      const note: AdminNote = {
-        id: `note-${Date.now()}`,
-        conversation_id: selectedConversation,
-        note: newNote,
-        status: newStatus,
-        created_at: new Date().toISOString(),
-        admin_user_id: user?.id || ''
-      };
+      const { error } = await supabase
+        .from('admin_conversation_notes')
+        .insert({
+          conversation_id: selectedConversation,
+          note: newNote,
+          status: newStatus,
+          admin_user_id: user?.id
+        });
+
+      if (error) throw error;
       
-      notes.push(note);
-      localStorage.setItem('admin_notes', JSON.stringify(notes));
-      setAdminNotes(notes);
+      // Refresh notes
+      await loadAdminNotes();
       
       setNewNote('');
       toast.success(`Gespräch als "${newStatus}" markiert`);
@@ -163,14 +161,24 @@ export const CoachConversationMonitor: React.FC = () => {
     }
   };
 
-  // Load admin notes from localStorage
-  useEffect(() => {
-    const notes = JSON.parse(localStorage.getItem('admin_notes') || '[]');
-    setAdminNotes(notes);
-  }, []);
+  // Load admin notes from database
+  const loadAdminNotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_conversation_notes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAdminNotes(data || []);
+    } catch (error) {
+      console.error('Error loading admin notes:', error);
+    }
+  };
 
   useEffect(() => {
     loadConversations();
+    loadAdminNotes();
   }, []);
 
   const filteredSummaries = conversationSummaries.filter(summary => {

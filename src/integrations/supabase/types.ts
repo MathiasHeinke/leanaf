@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_conversation_notes: {
+        Row: {
+          admin_user_id: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          note: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_user_id: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          note: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          admin_user_id?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          note?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_emails: {
         Row: {
           created_at: string
