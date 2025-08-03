@@ -51,7 +51,14 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
       options.onStreamStart?.();
 
       // 🚀 PRODUCTION-READY: Enhanced error handling with fallback
-      console.log('🚀 Starting unified coach stream...');
+      console.log('🚀 Starting unified coach stream...', {
+        userId,
+        message: message.substring(0, 50) + '...',
+        messageId,
+        coachPersonality,
+        conversationHistory: conversationHistory?.length || 0,
+        enableStreaming: true
+      });
       
       let response;
       try {
@@ -60,7 +67,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
             userId,
             message,
             messageId,
-            coachPersonality,
+            coachId: coachPersonality, // Using coachId as expected by Edge Function
             conversationHistory,
             enableStreaming: true,
             traceId: `stream-${messageId}`
@@ -69,6 +76,11 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
 
         if (response.error) {
           console.error('❌ Supabase function error:', response.error);
+          
+          // Check if it's a 400 error (parameter validation)
+          if (response.error.message?.includes('400') || response.error.message?.includes('Missing required parameters')) {
+            throw new Error(`Parametervalidierung fehlgeschlagen: ${response.error.message}. Bitte überprüfe die Eingabeparameter.`);
+          }
           
           // Try direct HTTP call as fallback
           console.log('🔄 Attempting direct HTTP fallback...');
@@ -85,7 +97,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
               userId,
               message,
               messageId,
-              coachPersonality,
+              coachId: coachPersonality, // Using coachId for consistency
               conversationHistory,
               enableStreaming: true,
               traceId: `stream-fallback-${messageId}`
@@ -93,7 +105,11 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
           });
           
           if (!fallbackResponse.ok) {
-            throw new Error(`Both Supabase client and direct HTTP failed. Status: ${fallbackResponse.status}`);
+            const errorText = await fallbackResponse.text();
+            if (fallbackResponse.status === 400) {
+              throw new Error(`HTTP 400 Parametervalidierung fehlgeschlagen: ${errorText}`);
+            }
+            throw new Error(`Beide Aufrufmethoden fehlgeschlagen. HTTP Status: ${fallbackResponse.status} - ${errorText}`);
           }
           
           const fallbackData = await fallbackResponse.json();

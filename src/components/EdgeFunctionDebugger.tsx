@@ -54,10 +54,16 @@ export const EdgeFunctionDebugger: React.FC = () => {
       return `✅ Connected. Found ${data?.length || 0} profiles`;
     });
 
-    // Test 2: Edge Function Reachability (minimal call)
+    // Test 2: Edge Function Reachability (with required params)
     await runTest(1, async () => {
       const response = await supabase.functions.invoke('unified-coach-engine', {
-        body: { test: true }
+        body: { 
+          userId: 'test-user-001',
+          message: 'Test message',
+          messageId: `test-${Date.now()}`,
+          coachId: 'lucy',
+          enableStreaming: false
+        }
       });
       
       if (response.error) {
@@ -66,7 +72,7 @@ export const EdgeFunctionDebugger: React.FC = () => {
       return `✅ Edge Function reached. Response: ${JSON.stringify(response.data)}`;
     });
 
-    // Test 3: Direct HTTP Call (fallback method)
+    // Test 3: Direct HTTP Call (with required params)
     await runTest(2, async () => {
       const url = 'https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine';
       const { data: { session } } = await supabase.auth.getSession();
@@ -78,11 +84,18 @@ export const EdgeFunctionDebugger: React.FC = () => {
           'Content-Type': 'application/json',
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I'
         },
-        body: JSON.stringify({ test: true })
+        body: JSON.stringify({ 
+          userId: 'test-user-002',
+          message: 'HTTP test message',
+          messageId: `http-test-${Date.now()}`,
+          coachId: 'lucy',
+          enableStreaming: false
+        })
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
       
       const data = await response.json();
@@ -113,10 +126,10 @@ export const EdgeFunctionDebugger: React.FC = () => {
     await runTest(4, async () => {
       const response = await supabase.functions.invoke('unified-coach-engine', {
         body: {
-          userId: 'debug-user',
+          userId: 'debug-user-pipeline',
           message: debugMessage,
           messageId: `debug-${Date.now()}`,
-          coachPersonality: 'lucy',
+          coachId: 'lucy', // Using coachId instead of coachPersonality
           conversationHistory: [],
           enableStreaming: false,
           traceId: `debug-${Date.now()}`
