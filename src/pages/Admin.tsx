@@ -113,27 +113,25 @@ export const AdminPage = () => {
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
-          {/* 🎛️ SCROLLABLE TAB NAVIGATION - 4 tabs */}
-          <div className="w-full mb-8 overflow-x-auto">
-            <TabsList className="inline-flex h-auto bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm min-w-full">
-              <div className="flex gap-1 min-w-max">
-                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
-                  <Monitor className="w-4 h-4" />
-                  <span>Production</span>
-                </TabsTrigger>
-                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
-                  <Route className="w-4 h-4" />
-                  <span>Live Trace</span>
-                </TabsTrigger>
-                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
-                  <Activity className="w-4 h-4" />
-                  <span>Performance</span>
-                </TabsTrigger>
-                <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-16 px-6 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[120px]">
-                  <Shield className="w-4 h-4" />
-                  <span>System & Security</span>
-                </TabsTrigger>
-              </div>
+          {/* 🎛️ COMPACT TAB NAVIGATION - 4 tabs ohne Scrollen */}
+          <div className="w-full mb-8">
+            <TabsList className="grid w-full grid-cols-4 h-auto bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm">
+              <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Monitor className="w-4 h-4" />
+                <span>Production</span>
+              </TabsTrigger>
+              <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Route className="w-4 h-4" />
+                <span>Live Trace</span>
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Activity className="w-4 h-4" />
+                <span>Performance</span>
+              </TabsTrigger>
+              <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Shield className="w-4 h-4" />
+                <span>System & Security</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
