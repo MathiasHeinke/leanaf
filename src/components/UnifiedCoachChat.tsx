@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-
-// ✅ EMPTY_ARRAY als echte Konstante außerhalb der Komponente
-const EMPTY_ARRAY: any[] = []; // Cache fix
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,11 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { debounce } from 'lodash';
-
-// Add missing debouncedSendMessage
-const debouncedSendMessage = debounce(() => {}, 500);
 import { 
   Send, 
   Mic, 
@@ -33,10 +26,9 @@ import {
   Heart,
   Target,
   X,
-  Paperclip
+  Paperclip,
+  Plus
 } from 'lucide-react';
-import { Plus } from 'lucide-react';
-
 import { useAuth } from '@/hooks/useAuth';
 import { useDebugChat } from '@/hooks/useDebugChat';
 import { useVoiceRecording } from '@/hooks/useVoiceRecording';
@@ -47,7 +39,6 @@ import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
-// AI-Greeting-Revolution: No more static templates!
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { ProgressIndicator } from '@/components/ProgressIndicator';
 import { StreamingIndicator } from '@/components/StreamingIndicator';
@@ -56,10 +47,8 @@ import { WeightEntryModal } from './WeightEntryModal';
 import { SupplementTrackingModal } from './SupplementTrackingModal';
 import { DiaryEntryModal } from './DiaryEntryModal';
 import { QuickWorkoutModal } from './QuickWorkoutModal';
-import { useToast } from '@/hooks/use-toast';
+import { useToast, toast as uiToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
-
-// SimpleMessageList import removed - not used in this component
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { ExercisePreviewCard } from '@/components/ExercisePreviewCard';
@@ -67,7 +56,7 @@ import { CoachWorkoutPlanSaver } from '@/components/CoachWorkoutPlanSaver';
 import { ToolPicker } from '@/components/ToolPicker';
 import { UploadProgress } from '@/components/UploadProgress';
 import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
-import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
+import { renderMessage, createCardMessage } from '@/utils/messageRenderer';
 import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
 import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
@@ -81,17 +70,31 @@ import { withResilience } from '@/lib/resilience';
 import { EnhancedStreamingIndicator } from '@/components/EnhancedStreamingIndicator';
 import { PerformanceDashboard } from '@/components/PerformanceDashboard';
 
+// ✅ EMPTY_ARRAY als echte Konstante außerhalb der Komponente
+const EMPTY_ARRAY: any[] = [];
+
 
 // ============= TYPES =============
-export interface ChatMessage {
+export interface UnifiedMessage {
   id: string;
   role: 'user' | 'assistant';
-  content: string;
+  content: string; // Make required to match messageRenderer
   created_at: string;
-  coach_personality: string;
   images?: string[];
+  coach_personality: string; // Make required to match messageRenderer
+  coach_name?: string;
+  coach_avatar?: string;
+  coach_color?: string;
+  coach_accent_color?: string;
   mode?: string;
-  status?: 'sending' | 'sent' | 'failed'; // Add status field for optimistic UI
+  status?: 'sending' | 'sent' | 'failed';
+  // 👇 Extended properties from diagnosis
+  isStreaming?: boolean;
+  type?: 'card' | 'text';
+  tool?: string;
+  pendingTools?: any[];
+  timestamp?: Date;
+  payload?: any; // Add payload property
   metadata?: {
     suggestions?: string[];
     actionButtons?: Array<{
@@ -100,6 +103,14 @@ export interface ChatMessage {
       data?: any;
     }>;
   };
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  coach_personality: string;
 }
 
 export interface CoachProfile {
@@ -802,7 +813,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         msg.id === messageId ? { ...msg, status: 'failed' } : msg
       ));
       setIsThinking(false);
-      toast('Fehler beim Speichern der Nachricht');
+      sonnerToast.error('Fehler beim Speichern der Nachricht');
       return;
     } else {
       console.log('✅ User message saved to coach_conversations');
@@ -958,6 +969,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         assistantMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
+          content: data.card?.description || 'Card Response', // Add required content
           type: 'card',
           tool: data.card,
           payload: data.payload,
@@ -1402,7 +1414,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         {uploadedImages.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-2">
             {uploadedImages.map((imageUrl, index) => (
-              <div key={index} className="relative group">
+              <div key={`${index}-${imageUrl}`} className="relative group">
                 <img
                   src={imageUrl}
                   alt={`Hochgeladenes Bild ${index + 1}`}
@@ -1479,11 +1491,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                    };
                   
                   setMessages(prev => [...prev, debugMessage]);
-                  toast.success("🔧 Debug: Direkte GPT-4.1 Antwort erhalten!");
+                   sonnerToast.success("🔧 Debug: Direkte GPT-4.1 Antwort erhalten!");
                   
                 } catch (error) {
                   console.error('Debug chat error:', error);
-                  toast.error("🔧 Debug-Fehler: " + (error as Error).message);
+                   sonnerToast.error("🔧 Debug-Fehler: " + (error as Error).message);
                 } finally {
                   setIsThinking(false);
                 }
@@ -1710,7 +1722,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             {uploadedImages.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-2">
                 {uploadedImages.map((imageUrl, index) => (
-                  <div key={index} className="relative group">
+                  <div key={`${index}-${imageUrl}`} className="relative group">
                     <img
                       src={imageUrl}
                       alt={`Hochgeladenes Bild ${index + 1}`}
@@ -1788,11 +1800,11 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                        };
                       
                       setMessages(prev => [...prev, debugMessage]);
-                      toast.success("🔧 Debug: Direkte GPT-4.1 Antwort erhalten!");
+                      sonnerToast.success("🔧 Debug: Direkte GPT-4.1 Antwort erhalten!");
                       
                     } catch (error) {
                       console.error('Debug chat error:', error);
-                      toast.error("🔧 Debug-Fehler: " + (error as Error).message);
+                      sonnerToast.error("🔧 Debug-Fehler: " + (error as Error).message);
                     } finally {
                       setIsThinking(false);
                     }
@@ -1869,7 +1881,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               </button>
               
               <button 
-                onClick={() => { if (!isThinking && !uploading) debouncedSendMessage(); }} 
+                onClick={() => { if (!isThinking && !uploading) sendMessage(); }} 
                 disabled={!canSend || isThinking || recordingState || uploading}
                 className="btn-send px-4 py-2"
               >
@@ -1905,7 +1917,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           onPlanCreated={() => {
             console.log('Training plan created');
             setIsModalOpen(false);
-            toast("Trainingsplan erstellt! Der Plan wurde erfolgreich gespeichert.");
+            sonnerToast.success("Trainingsplan erstellt! Der Plan wurde erfolgreich gespeichert.");
           }}
           pastSessions={modalContext.contextData?.pastSessions || []}
         />
