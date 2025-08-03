@@ -31,6 +31,7 @@ interface SimpleMessageItemProps {
   coach: CoachProfile;
   showFooter?: boolean;
   onConversationAction?: (action: any) => void;
+  onRetry?: () => void;
 }
 
 // Simple message item without any height reporting or layout effects
@@ -38,7 +39,8 @@ export const SimpleMessageItem = React.memo(({
   message,
   coach,
   showFooter = true,
-  onConversationAction
+  onConversationAction,
+  onRetry
 }: SimpleMessageItemProps) => {
   const isUser = message.role === 'user';
 
@@ -138,6 +140,20 @@ export const SimpleMessageItem = React.memo(({
               U
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Show retry button for failed messages */}
+      {onRetry && (
+        <div className="mt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRetry}
+            className="text-xs"
+          >
+            🔄 Wiederholen
+          </Button>
         </div>
       )}
     </div>

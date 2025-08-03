@@ -27,6 +27,14 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
     conversationHistory: any[] = []
   ) => {
     try {
+      // Prevent multiple concurrent streams
+      if (isConnected || streamingMessage || abortControllerRef.current) {
+        console.warn('⚠️ Streaming already active, stopping previous stream');
+        stopStreaming();
+        // Wait briefly for cleanup
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
       // Create abort controller for cancellation
       abortControllerRef.current = new AbortController();
       
@@ -104,8 +112,10 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
   };
 
   const stopStreaming = useCallback(() => {
+    console.log('🛑 Stopping streaming...');
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     
     if (eventSourceRef.current) {
@@ -114,7 +124,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
     }
     
     setIsConnected(false);
-    setStreamingMessage(prev => prev ? { ...prev, isStreaming: false, isComplete: true } : null);
+    setStreamingMessage(null);
     options.onStreamEnd?.();
   }, [options]);
 

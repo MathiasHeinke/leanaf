@@ -54,7 +54,8 @@ export type UnifiedMessage = CardMessage | TextMessage;
 
 export function renderMessage(
   message: UnifiedMessage, 
-  onToolAction?: (tool: string, data?: any) => void
+  onToolAction?: (tool: string, data?: any) => void,
+  onRetryMessage?: (messageId: string) => void
 ): React.ReactElement {
   // Check if it's a card message
   if ('type' in message && message.type === 'card') {
@@ -150,6 +151,7 @@ export function renderMessage(
           secondaryColor: textMessage.coach_accent_color || '#1d4ed8',
           personality: textMessage.coach_personality || ''
         }}
+        onRetry={textMessage.status === 'failed' ? () => onRetryMessage?.(textMessage.id) : undefined}
       />
       
       {/* Render tool action buttons if present */}

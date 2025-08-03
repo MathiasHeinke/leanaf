@@ -449,7 +449,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     };
     
     init();
-  }, [user?.id, coach?.name, coach?.id, coach?.personality, mode, tokens]);
+  }, [user?.id, coach?.name, coach?.id, coach?.personality, mode]);
   
   // Helper function for human-like fallback messages
   const getHumanFallbackMessage = (coachId: string, attempt: number) => {
@@ -573,6 +573,25 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
 
+        // Special handling for images - try image analysis first
+        if (hasImages && attempt === 1) {
+          console.log('🖼️ Attempting image analysis...');
+          try {
+            const analysisResult = await analyzeImage(images[0], message);
+            if (analysisResult && analysisResult.analysisData) {
+              console.log('✅ Image analysis successful');
+              return {
+                content: analysisResult.analysisData.analysis || 'Bild erfolgreich analysiert!',
+                type: 'text',
+                imageAnalysis: analysisResult
+              };
+            }
+          } catch (imageError) {
+            console.warn('⚠️ Image analysis failed, continuing with regular chat:', imageError);
+            // Continue to regular chat processing
+          }
+        }
+
         // Choose function based on attempt
         const targetFunction = attempt <= 2 ? 'unified-coach-engine' : 'debug-direct-chat';
         
@@ -584,7 +603,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
           response = await supabase.functions.invoke(targetFunction, {
             body: {
               userId: user.id,
-              message: message || (hasImages ? 'Bitte analysiere dieses Bild.' : ''),
+              message: message || (hasImages ? 'Entschuldige, ich hatte Probleme mit der Bildanalyse. Kannst du mir beschreiben, was auf dem Bild zu sehen ist?' : ''),
               coachId: coach?.id || 'lucy'
             }
           });
@@ -608,11 +627,16 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       }
     }
 
-    // All attempts failed - return human fallback message
+    // All attempts failed - return human fallback message with image context
     console.log('💬 All attempts failed, using human fallback');
+    const fallbackMessage = hasImages 
+      ? `Entschuldige, ich hatte Schwierigkeiten mit der Bildanalyse. ${getHumanFallbackMessage(coach?.id || 'lucy', maxAttempts)} Kannst du mir beschreiben, was auf dem Bild zu sehen ist?`
+      : getHumanFallbackMessage(coach?.id || 'lucy', maxAttempts);
+    
     return {
-      content: getHumanFallbackMessage(coach?.id || 'lucy', maxAttempts),
-      type: 'text'
+      content: fallbackMessage,
+      type: 'text',
+      hasRetryButton: true
     };
   };
 
@@ -1412,7 +1436,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                }}>
             {/* Render all messages using the unified message renderer */}
             <div className="space-y-3 pb-4">
-              {messages.map(message => renderMessage(message, handleToolAction))}
+              {messages.map(message => renderMessage(message, handleToolAction, handleRetryMessage))}
               {isThinking && (
                 <TypingIndicator name={coach?.name || 'Coach'} />
               )}
@@ -1486,7 +1510,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         <ScrollArea ref={scrollRef} className="flex-1">
           {/* Render all messages using the unified message renderer */}
           <div className="space-y-3 p-4">
-            {messages.map(message => renderMessage(message))}
+            {messages.map(message => renderMessage(message, handleToolAction, handleRetryMessage))}
             {isThinking && (
               <TypingIndicator name={coach?.name || 'Coach'} />
             )}

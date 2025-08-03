@@ -121,12 +121,16 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
                 const lines = buffer.split('\n');
                 buffer = lines.pop() || '';
                 
-                for (const line of lines) {
+                 for (const line of lines) {
                   if (line.startsWith('data: ')) {
                     const data = line.slice(6);
                     
                     if (data === '[DONE]') {
-                      controller.enqueue(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+                      try {
+                        controller.enqueue(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+                      } catch (e) {
+                        console.log('Stream already closed');
+                      }
                       break;
                     }
                     
@@ -135,10 +139,15 @@ Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie f�
                       const content = parsed.choices?.[0]?.delta?.content;
                       
                       if (content) {
-                        controller.enqueue(`data: ${JSON.stringify({ 
-                          type: 'content', 
-                          content 
-                        })}\n\n`);
+                        try {
+                          controller.enqueue(`data: ${JSON.stringify({ 
+                            type: 'content', 
+                            content 
+                          })}\n\n`);
+                        } catch (e) {
+                          console.log('Stream already closed');
+                          break;
+                        }
                       }
                     } catch (e) {
                       // Skip invalid JSON

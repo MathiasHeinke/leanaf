@@ -84,8 +84,8 @@ export const useUniversalImageAnalysis = () => {
           } else {
             analysisData = mealData;
             suggestedModal = 'meal';
-          }
-          break;
+      }
+      break;
 
         case 'supplement':
           console.log('💊 Analyzing supplements...');
@@ -99,6 +99,13 @@ export const useUniversalImageAnalysis = () => {
           
           if (supplementError) {
             console.warn('Supplement analysis failed:', supplementError);
+            // Still provide fallback data for user feedback
+            analysisData = {
+              error: supplementError.message,
+              fallback: true,
+              category: 'supplement'
+            };
+            suggestedModal = 'supplement';
           } else {
             analysisData = supplementData;
             suggestedModal = 'supplement';
