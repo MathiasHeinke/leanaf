@@ -187,6 +187,13 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       setupDynamicTimeout();
 
       // Start unified engine with non-streaming
+      console.log('🚀 Sending POST to unified-coach-engine:', {
+        url: 'https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine',
+        userId,
+        messageId,
+        message: message.substring(0, 20) + '...'
+      });
+      
       const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
         method: 'POST',
         headers: {
@@ -206,6 +213,12 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
           traceId: `stream-${messageId}`
         }),
         signal: abortControllerRef.current.signal
+      });
+
+      console.log('📥 Response received:', {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
       });
 
       // Check for abort before processing response
