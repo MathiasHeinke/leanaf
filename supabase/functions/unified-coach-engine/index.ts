@@ -547,7 +547,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-}
+} // End of handleRequest function
 
 // 🔥 PRODUCTION-OPTIMIZED Context building functions
 async function buildAIContext(input: {
