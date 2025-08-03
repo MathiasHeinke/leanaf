@@ -1,11 +1,19 @@
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import coachPersonasData from "@/data/coach-personas.json";
 
 export const CtxInput = z.object({
   userId: z.string().uuid(),
   coachId: z.string(),
   userMessage: z.string(),
   enableRag: z.boolean().optional().default(false),
-  tokenCap: z.number().optional().default(8_000)
+  tokenCap: z.number().optional().default(8_000),
+  // Debug headers
+  disableMemory: z.boolean().optional().default(false),
+  disableDaily: z.boolean().optional().default(false),
+  disableRag: z.boolean().optional().default(false),
+  liteContext: z.boolean().optional().default(false),
+  debugMode: z.boolean().optional().default(false)
 });
 export type CtxInput = z.infer<typeof CtxInput>;
 
@@ -37,49 +45,157 @@ async function safe<T>(p: Promise<T>): Promise<T | null> {
   }
 }
 
-// Dummy loaders that integrate with existing infrastructure
+// Real coach persona loader using actual JSON data
 async function getCoachPersona(coachId: string) {
-  // This would integrate with your existing coach personas
-  const personas: Record<string, any> = {
-    lucy: { name: "Lucy", style: ["direkt", "empathisch", "lösungsorientiert"] },
-    markus: { name: "Markus", style: ["motivierend", "kraftsport-fokussiert", "präzise"] },
-    vita: { name: "Dr. Vita", style: ["wissenschaftlich", "ganzheitlich", "präventiv"] },
-    sophia: { name: "Dr. Sophia", style: ["integral", "bewusstseinsorientiert", "transformativ"] }
-  };
-  return personas[coachId] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+  try {
+    const persona = coachPersonasData.find(p => 
+      p.id === `persona_${coachId}` || 
+      p.coachName.toLowerCase().includes(coachId.toLowerCase())
+    );
+    
+    if (persona) {
+      return {
+        name: persona.coachName,
+        style: persona.personality.coreTraits || ["direkt", "lösungsorientiert"]
+      };
+    }
+    
+    // Fallback mapping for compatibility
+    const fallbackPersonas: Record<string, any> = {
+      lucy: { name: "Dr. Lucy Martinez", style: ["empathisch", "motivierend", "lernorientiert"] },
+      markus: { name: "Markus Rühl", style: ["direkt", "brachial", "old-school"] },
+      sascha: { name: "Sascha Weber", style: ["stoisch", "direkt", "analytisch"] }
+    };
+    
+    return fallbackPersonas[coachId] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+  } catch (error) {
+    console.warn('Failed to load coach persona:', error);
+    return { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+  }
 }
 
 async function loadCoachMemory(userId: string, coachId: string) {
-  // This would integrate with your existing coach memory system
-  return {
-    relationship: "aufbauend",
-    trust: 75,
-    summary: "Nutzer bevorzugt kurze, präzise Anweisungen"
-  };
+  try {
+    const { data, error } = await supabase
+      .from('coach_memory')
+      .select('memory_data')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error) {
+      console.warn('Coach memory loading failed:', error.message);
+      return null;
+    }
+    
+    if (data && data.memory_data) {
+      const memoryData = data.memory_data as any;
+      return {
+        relationship: memoryData.relationshipStage || "aufbauend",
+        trust: memoryData.trustLevel || 50,
+        summary: memoryData.preferences?.join(', ') || "Neuer Nutzer"
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('Coach memory loading exception:', error);
+    return null;
+  }
 }
 
 async function loadConversationSummary(userId: string, coachId: string) {
-  // This would integrate with your existing conversation memory
-  return "Letzte Sessions: Fokus auf Ernährungsoptimierung und Trainingsplanung";
+  try {
+    const { data, error } = await supabase
+      .from('conversation_summaries')
+      .select('summary_content, key_topics')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.warn('Conversation summary loading failed:', error.message);
+      return null;
+    }
+    
+    return data?.summary_content || null;
+  } catch (error) {
+    console.warn('Conversation summary loading exception:', error);
+    return null;
+  }
 }
 
 async function loadDailySummary(userId: string) {
-  // This would integrate with your existing daily tracking
-  return {
-    caloriesLeft: 520,
-    lastWorkout: "Push Training gestern",
-    sleepHours: 7.2
-  };
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
+    // Get today's summary or yesterday's
+    const { data: summaryData, error: summaryError } = await supabase
+      .from('daily_summaries')
+      .select('total_calories, workout_volume, sleep_score, summary_md')
+      .eq('user_id', userId)
+      .in('date', [today, yesterday])
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    // Get daily goals for context
+    const { data: goalsData } = await supabase
+      .from('daily_goals')
+      .select('calories, protein')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (summaryError) {
+      console.warn('Daily summary loading failed:', summaryError.message);
+    }
+    
+    if (summaryData && goalsData) {
+      const caloriesLeft = Math.max(0, (goalsData.calories || 2000) - (summaryData.total_calories || 0));
+      return {
+        caloriesLeft,
+        lastWorkout: summaryData.workout_volume > 0 ? "Training absolviert" : "Kein Training",
+        sleepHours: summaryData.sleep_score ? Math.round(summaryData.sleep_score / 10 * 8) : null
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.warn('Daily summary loading exception:', error);
+    return null;
+  }
 }
 
 async function runRag(query: string, coachId: string) {
-  // This would integrate with your existing RAG system
-  return {
-    chunks: [
-      { source: "nutrition-guide.md", text: "Proteinziel: 1.8-2.2g/kg Körpergewicht täglich" },
-      { source: "training-basics.md", text: "Progressive Overload ist der Schlüssel für kontinuierliche Kraftsteigerung" }
-    ]
-  };
+  try {
+    const { data, error } = await supabase.functions.invoke('enhanced-coach-rag', {
+      body: {
+        query,
+        coachId,
+        maxResults: 3
+      }
+    });
+    
+    if (error) {
+      console.warn('RAG system failed:', error.message);
+      return { chunks: [] };
+    }
+    
+    if (data?.chunks && Array.isArray(data.chunks)) {
+      return {
+        chunks: data.chunks.map((chunk: any) => ({
+          source: chunk.source || 'knowledge-base',
+          text: chunk.content || chunk.text || ''
+        }))
+      };
+    }
+    
+    return { chunks: [] };
+  } catch (error) {
+    console.warn('RAG system exception:', error);
+    return { chunks: [] };
+  }
 }
 
 /**  
@@ -90,20 +206,48 @@ async function runRag(query: string, coachId: string) {
 export async function buildAIContext(rawInput: CtxInput): Promise<BuiltCtx> {
   const input = CtxInput.parse(rawInput);
 
-  // 1) Load everything in parallel - individual failures allowed
+  if (input.debugMode) {
+    console.log('🔧 DEBUG: buildAIContext called with:', {
+      userId: input.userId.substring(0, 8) + '...',
+      coachId: input.coachId,
+      enableRag: input.enableRag,
+      disableMemory: input.disableMemory,
+      disableDaily: input.disableDaily,
+      disableRag: input.disableRag,
+      liteContext: input.liteContext
+    });
+  }
+
+  // 1) Load everything in parallel with debug flags - individual failures allowed
+  const contextLoaders = [
+    { name: 'persona', loader: () => getCoachPersona(input.coachId), skip: false },
+    { name: 'memory', loader: () => loadCoachMemory(input.userId, input.coachId), skip: input.disableMemory || input.liteContext },
+    { name: 'conversation', loader: () => loadConversationSummary(input.userId, input.coachId), skip: input.liteContext },
+    { name: 'daily', loader: () => loadDailySummary(input.userId), skip: input.disableDaily || input.liteContext },
+    { name: 'rag', loader: () => runRag(input.userMessage, input.coachId), skip: input.disableRag || !input.enableRag }
+  ];
+
+  const promises = contextLoaders.map(loader => 
+    loader.skip ? Promise.resolve(null) : loader.loader()
+  );
+
   const [
     personaRes,
     memoryRes,
     convoRes,
     dailyRes,
     ragRes
-  ] = await Promise.allSettled([
-    getCoachPersona(input.coachId),
-    loadCoachMemory(input.userId, input.coachId),
-    loadConversationSummary(input.userId, input.coachId),
-    loadDailySummary(input.userId),
-    input.enableRag ? runRag(input.userMessage, input.coachId) : null
-  ]);
+  ] = await Promise.allSettled(promises);
+
+  if (input.debugMode) {
+    console.log('🔧 DEBUG: Context loading results:', {
+      persona: personaRes.status,
+      memory: input.disableMemory ? 'skipped' : memoryRes.status,
+      conversation: input.liteContext ? 'skipped' : convoRes.status,
+      daily: input.disableDaily ? 'skipped' : dailyRes.status,
+      rag: (input.disableRag || !input.enableRag) ? 'skipped' : ragRes.status
+    });
+  }
 
   // 2) Fail-soft ⇢ null instead of throwing
   const persona = personaRes.status === "fulfilled"

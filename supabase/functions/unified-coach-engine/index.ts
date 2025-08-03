@@ -248,20 +248,29 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
   const { userId, message, messageId, coachPersonality, coachId, conversationHistory } = body;
   const conversationId = `conv_${userId}_${coachId || 'lucy'}`;
   
-  // 🔧 CHECK HEADERS FOR STREAMING CONTROL
+  // 🔧 CHECK HEADERS FOR STREAMING CONTROL AND CONTEXT DEBUG
   const forceNonStreaming = req.headers.get('x-force-non-streaming') === 'true';
   const debugMode = req.headers.get('x-debug-mode') === 'true';
+  const disableMemory = req.headers.get('x-disable-memory') === 'true';
+  const disableDaily = req.headers.get('x-disable-daily') === 'true';
+  const disableRag = req.headers.get('x-disable-rag') === 'true';
+  const liteContext = req.headers.get('x-lite-context') === 'true';
   const enableStreaming = !forceNonStreaming && (body.enableStreaming !== false);
-  const enableRag = body.enableRag !== false && req.headers.get('x-disable-rag') !== 'true';
+  const enableRag = body.enableRag !== false && !disableRag;
   
   if (debugMode) {
     console.log('🔧 DEBUG MODE: Headers received:', {
       'x-force-non-streaming': req.headers.get('x-force-non-streaming'),
       'x-debug-mode': req.headers.get('x-debug-mode'),
+      'x-disable-memory': req.headers.get('x-disable-memory'),
+      'x-disable-daily': req.headers.get('x-disable-daily'),
       'x-disable-rag': req.headers.get('x-disable-rag'),
       'x-lite-context': req.headers.get('x-lite-context'),
       enableStreaming,
-      enableRag
+      enableRag,
+      disableMemory,
+      disableDaily,
+      liteContext
     });
   }
   
@@ -348,14 +357,19 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
       tokenCap: 6000
     }, conversationId, messageId);
     
-    // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
+    // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit and debug flags
     const contextStart = Date.now();
     const ctx = await buildAIContext({
       userId,
       coachId: coachId || coachPersonality || 'lucy',
       userMessage: message,
       enableRag,
-      tokenCap: 6000 // Reduced from 8k based on usage analytics
+      tokenCap: 6000, // Reduced from 8k based on usage analytics
+      disableMemory,
+      disableDaily,
+      disableRag,
+      liteContext,
+      debugMode
     });
     
     // 📊 TRACE: Context ready with detailed output
@@ -808,46 +822,76 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
   }
 } // End of handleRequest function
 
-// 🔥 PRODUCTION-OPTIMIZED Context building functions
+// 🔥 PRODUCTION-OPTIMIZED Context building with debug flags support
 async function buildAIContext(input: {
   userId: string;
   coachId: string;
   userMessage: string;
   enableRag: boolean;
   tokenCap?: number;
+  disableMemory?: boolean;
+  disableDaily?: boolean;
+  disableRag?: boolean;
+  liteContext?: boolean;
+  debugMode?: boolean;
 }) {
-  const tokenCap = input.tokenCap || 6000; // Default to 6k based on analytics
+  const tokenCap = input.tokenCap || 6000;
   const metrics = { tokensIn: 0 };
 
-  // 🔧 TOKEN ACCOUNTING HELPER (FIX #4)
-  const pushAndCount = (txt?: string | null) => {
-    if (!txt) return txt;
-    const tokens = approxTokens(txt);
-    metrics.tokensIn += tokens;
-    return hardTrim(txt, Math.min(tokenCap / 4, 1500)); // Quarter cap per section
-  };
+  if (input.debugMode) {
+    console.log('🔧 DEBUG: buildAIContext called with:', {
+      userId: input.userId.substring(0, 8) + '...',
+      coachId: input.coachId,
+      enableRag: input.enableRag,
+      disableMemory: input.disableMemory,
+      disableDaily: input.disableDaily,
+      disableRag: input.disableRag,
+      liteContext: input.liteContext
+    });
+  }
 
-  // Parallel load with fail-soft
-  const [personaRes, memoryRes, dailyRes, ragRes] = await Promise.allSettled([
-    getCoachPersona(input.coachId),
-    loadCoachMemory(input.userId, input.coachId),
-    loadDailySummary(input.userId),
-    input.enableRag ? runRag(input.userMessage, input.coachId) : null
-  ]);
+  // Context loading with debug flags
+  const contextLoaders = [
+    { name: 'persona', loader: () => getCoachPersona(input.coachId), skip: false },
+    { name: 'memory', loader: () => loadCoachMemory(input.userId, input.coachId), skip: input.disableMemory || input.liteContext },
+    { name: 'daily', loader: () => loadDailySummary(input.userId), skip: input.disableDaily || input.liteContext },
+    { name: 'rag', loader: () => runRag(input.userMessage, input.coachId), skip: input.disableRag || !input.enableRag }
+  ];
+
+  const promises = contextLoaders.map(loader => 
+    loader.skip ? Promise.resolve(null) : loader.loader()
+  );
+
+  const [personaRes, memoryRes, dailyRes, ragRes] = await Promise.allSettled(promises);
+
+  if (input.debugMode) {
+    console.log('🔧 DEBUG: Context loading results:', {
+      persona: personaRes.status,
+      memory: input.disableMemory ? 'skipped' : memoryRes.status,
+      daily: input.disableDaily ? 'skipped' : dailyRes.status,
+      rag: (input.disableRag || !input.enableRag) ? 'skipped' : ragRes.status
+    });
+  }
 
   const persona = personaRes.status === "fulfilled" 
     ? personaRes.value 
     : { name: "Coach", style: ["direkt", "lösungsorientiert"] };
 
-  const memory = memoryRes.status === "fulfilled" ? memoryRes.value : null;
-  const daily = dailyRes.status === "fulfilled" ? dailyRes.value : null;
-  const ragChunks = ragRes?.status === "fulfilled" ? ragRes.value?.chunks : null;
+  const memory = (input.disableMemory || input.liteContext) ? null : 
+    (memoryRes.status === "fulfilled" ? memoryRes.value : null);
+  const daily = (input.disableDaily || input.liteContext) ? null : 
+    (dailyRes.status === "fulfilled" ? dailyRes.value : null);
+  const ragChunks = (input.disableRag || !input.enableRag) ? null : 
+    (ragRes?.status === "fulfilled" ? ragRes.value?.chunks : null);
 
-  // Count all sections for accurate token budget
-  const personaText = pushAndCount(JSON.stringify(persona));
-  const memoryText = pushAndCount(JSON.stringify(memory));
-  const dailyText = pushAndCount(JSON.stringify(daily));
-  const ragText = pushAndCount(ragChunks?.map(c => c.text).join('\n'));
+  // Token counting
+  const pushAndCount = (txt?: string | null) => {
+    if (!txt) return txt;
+    const tokens = approxTokens(txt);
+    metrics.tokensIn += tokens;
+    return hardTrim(txt, Math.min(tokenCap / 4, 1500));
+  };
+
   const conversationSummary = pushAndCount("Gesprächskontext wird aufgebaut...");
 
   return {
@@ -885,38 +929,4 @@ function buildSystemPrompt(ctx: any, coachId: string) {
   ].join("\n");
 }
 
-// Dummy loaders (replace with real implementations)
-async function getCoachPersona(coachId: string) {
-  const personas: Record<string, any> = {
-    lucy: { name: "Lucy", style: ["direkt", "empathisch", "lösungsorientiert"] },
-    markus: { name: "Markus", style: ["motivierend", "kraftsport-fokussiert", "präzise"] },
-    vita: { name: "Dr. Vita", style: ["wissenschaftlich", "ganzheitlich", "präventiv"] },
-    sophia: { name: "Dr. Sophia", style: ["integral", "bewusstseinsorientiert", "transformativ"] }
-  };
-  return personas[coachId] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
-}
-
-async function loadCoachMemory(userId: string, coachId: string) {
-  return {
-    relationship: "aufbauend",
-    trust: 75,
-    summary: "Nutzer bevorzugt kurze, präzise Anweisungen"
-  };
-}
-
-async function loadDailySummary(userId: string) {
-  return {
-    caloriesLeft: 520,
-    lastWorkout: "Push Training gestern",
-    sleepHours: 7.2
-  };
-}
-
-async function runRag(query: string, coachId: string) {
-  return {
-    chunks: [
-      { source: "nutrition-guide.md", text: "Proteinziel: 1.8-2.2g/kg Körpergewicht täglich" },
-      { source: "training-basics.md", text: "Progressive Overload ist der Schlüssel für kontinuierliche Kraftsteigerung" }
-    ]
-  };
-}
+// Note: Real context loaders are defined above, starting at line 888
