@@ -88,47 +88,47 @@ export const AdminPage = () => {
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
           {/* 📱 RESPONSIVE TAB NAVIGATION */}
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-6">
-            <TabsTrigger value="production" className="text-xs sm:text-sm flex items-center gap-1">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 mb-8 h-12 sm:h-10 overflow-x-auto">
+            <TabsTrigger value="production" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Monitor className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Production</span>
               <span className="sm:hidden">Prod</span>
             </TabsTrigger>
-            <TabsTrigger value="performance" className="text-xs sm:text-sm flex items-center gap-1">
+            <TabsTrigger value="performance" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Performance</span>
               <span className="sm:hidden">Perf</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="text-xs sm:text-sm flex items-center gap-1">
+            <TabsTrigger value="security" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
               Security
             </TabsTrigger>
-            <TabsTrigger value="health" className="text-xs sm:text-sm flex items-center gap-1">
+            <TabsTrigger value="health" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Database className="w-3 h-3 sm:w-4 sm:h-4" />
               Health
             </TabsTrigger>
-            <TabsTrigger value="features" className="text-xs sm:text-sm flex items-center gap-1">
+            <TabsTrigger value="features" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Flag className="w-3 h-3 sm:w-4 sm:h-4" />
               Features
             </TabsTrigger>
-            <TabsTrigger value="streaming" className="text-xs sm:text-sm flex items-center gap-1">
+            <TabsTrigger value="streaming" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Streaming</span>
               <span className="sm:hidden">Stream</span>
             </TabsTrigger>
-            <TabsTrigger value="debug" className="text-xs sm:text-sm flex items-center gap-1">
+            <TabsTrigger value="debug" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
               Debug
             </TabsTrigger>
           </TabsList>
 
           {/* 🔥 PRODUCTION MONITORING - MAIN TAB */}
-          <TabsContent value="production" className="space-y-6">
+          <TabsContent value="production" className="space-y-6 mt-6 safe-area-pb-6">
             <ProductionMonitoringDashboard />
           </TabsContent>
 
           {/* 📊 PERFORMANCE MONITORING */}
-          <TabsContent value="performance" className="space-y-6">
+          <TabsContent value="performance" className="space-y-6 mt-6 safe-area-pb-6">
             <div className="grid grid-cols-1 gap-6">
               <Card>
                 <CardHeader>
@@ -187,7 +187,7 @@ export const AdminPage = () => {
           </TabsContent>
 
           {/* 🔒 SECURITY MONITORING */}
-          <TabsContent value="security" className="space-y-6">
+          <TabsContent value="security" className="space-y-6 mt-6 safe-area-pb-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -202,7 +202,7 @@ export const AdminPage = () => {
           </TabsContent>
 
           {/* 🏥 HEALTH CHECK */}
-          <TabsContent value="health" className="space-y-6">
+          <TabsContent value="health" className="space-y-6 mt-6 safe-area-pb-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -217,7 +217,7 @@ export const AdminPage = () => {
           </TabsContent>
 
           {/* 🚩 FEATURE FLAGS */}
-          <TabsContent value="features" className="space-y-6">
+          <TabsContent value="features" className="space-y-6 mt-6 safe-area-pb-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -232,7 +232,7 @@ export const AdminPage = () => {
           </TabsContent>
 
           {/* 📡 STREAMING DASHBOARD */}
-          <TabsContent value="streaming" className="space-y-6">
+          <TabsContent value="streaming" className="space-y-6 mt-6 safe-area-pb-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -250,7 +250,7 @@ export const AdminPage = () => {
           </TabsContent>
 
           {/* 🔧 DEBUG PANEL */}
-          <TabsContent value="debug" className="space-y-6">
+          <TabsContent value="debug" className="space-y-6 mt-6 safe-area-pb-6">
             <CoachTestPanel />
           </TabsContent>
         </Tabs>
