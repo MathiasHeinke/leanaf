@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.205.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import "https://deno.land/x/xhr@0.1.0/mod.ts"; // fetch-polyfill
 
+// Debug Direct Chat v2.1 - Force Deployment
 const supaUrl = Deno.env.get("SUPABASE_URL")!;
 const supaKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const openKey = Deno.env.get("OPENAI_API_KEY")!;
