@@ -85,7 +85,7 @@ const LiteDebugChat = () => {
       const startTime = Date.now();
       const result = await sendDebug({ 
         message, 
-        coachId: selectedModel // Use selected model as coachId for model testing
+        model: selectedModel // Use selected model as model parameter
       });
       const duration = Date.now() - startTime;
 
@@ -139,7 +139,7 @@ const LiteDebugChat = () => {
           const startTime = Date.now();
           const result = await sendDebug({ 
             message, 
-            coachId: model.value 
+            model: model.value 
           });
           const duration = Date.now() - startTime;
           

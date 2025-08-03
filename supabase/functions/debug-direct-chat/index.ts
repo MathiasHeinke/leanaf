@@ -16,12 +16,12 @@ serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const { userId, message, coachId = "lucy" } = await req.json();
+    const { userId, message, coachId = "lucy", model = "gpt-4.1-2025-04-14" } = await req.json();
     if (!userId || !message) {
       return json(400, { error: "`userId` und `message` sind Pflicht." });
     }
 
-    console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Message: ${message.substring(0, 50)}...`);
+    console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Model ${model}, Message: ${message.substring(0, 50)}...`);
 
     /* ---------- 1. minimales System-Prompt (Coach-Persona) ---------- */
     const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } });
@@ -37,7 +37,7 @@ serve(async req => {
     const systemPrompt = coachPersonas[coachId] ?? coachPersonas.lucy;
 
     /* ---------- 2. OpenAI-Call ohne Schnickschnack ---------- */
-    console.log(`🔧 Sending to OpenAI with model: gpt-4.1-2025-04-14`);
+    console.log(`🔧 Sending to OpenAI with model: ${model}`);
     
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -46,7 +46,7 @@ serve(async req => {
         "Content-Type": "application/json" 
       },
       body: JSON.stringify({
-        model: "gpt-4.1-2025-04-14",
+        model: model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: message },
@@ -87,7 +87,7 @@ serve(async req => {
       content: answer,
       debug: { 
         tokens: data.usage?.total_tokens,
-        model: "gpt-4.1-2025-04-14",
+        model: model,
         timestamp: new Date().toISOString()
       },
     });

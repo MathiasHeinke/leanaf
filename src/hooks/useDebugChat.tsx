@@ -8,10 +8,12 @@ export const useDebugChat = () => {
 
   const sendDebug = async ({ 
     message, 
-    coachId = "lucy" 
+    coachId = "lucy",
+    model = "gpt-4.1-2025-04-14"
   }: {
     message: string; 
     coachId?: string;
+    model?: string;
   }) => {
     if (!user?.id) {
       throw new Error("User not authenticated");
@@ -19,15 +21,16 @@ export const useDebugChat = () => {
 
     setLoading(true);
     try {
-      console.log("🔧 Debug-Chat: Sending direct to GPT-4.1...");
-      console.log("🔧 Payload:", { userId: user.id, message: message.substring(0, 50) + "...", coachId });
+      console.log(`🔧 Debug-Chat: Sending direct to ${model}...`);
+      console.log("🔧 Payload:", { userId: user.id, message: message.substring(0, 50) + "...", coachId, model });
       console.log("🔧 About to call supabase.functions.invoke...");
       
       const { data, error } = await supabase.functions.invoke("debug-direct-chat", {
         body: { 
           userId: user.id, 
           message, 
-          coachId 
+          coachId,
+          model
         },
       });
       
