@@ -440,7 +440,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
 
             // 🔥 ROBUST STREAM PARSER WITH ENHANCED ERROR HANDLING
             const parser = createParser({
-              onEvent: (event) => {
+              onEvent: async (event) => {
                 if (event.type === 'event') {
                   const data = event.data;
                   
