@@ -74,7 +74,7 @@ import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers'
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { useProactiveCoachBehavior } from '@/hooks/useProactiveCoachBehavior';
 import { useAdvancedRetryLogic } from '@/hooks/useAdvancedRetryLogic';
-import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
+
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -1442,21 +1442,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Performance Monitoring (Debug Mode) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="px-3 py-2 bg-muted/30 border-t border-border/50">
-              <PerformanceMonitoringDashboard
-                performanceMetrics={performanceMetrics}
-                retryStates={retryStates}
-                streamingMetrics={{
-                  isConnected: isStreamingConnected,
-                  tokensPerSecond: 0,
-                  connectionQuality: isStreamingConnected ? 'excellent' : 'disconnected'
-                }}
-              />
             </div>
           )}
           

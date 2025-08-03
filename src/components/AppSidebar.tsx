@@ -61,6 +61,7 @@ const settingsItems = [
   { title: "Features", url: "/features", icon: Lightbulb },
   { title: "Roadmap", url: "/roadmap", icon: MapPin },
   { title: "Email", url: "/marketing", icon: Mail },
+  { title: "Admin", url: "/admin", icon: Shield, adminOnly: true },
 ];
 
 const legalItems = [
@@ -267,6 +268,11 @@ export function AppSidebar() {
               {settingsItems.map((item) => {
                 // Only show Email item if user has marketing role
                 if (item.url === '/marketing' && !hasMarketingRole) {
+                  return null;
+                }
+                
+                // Only show Admin item for admin users or in development
+                if (item.adminOnly && !(user?.email?.includes('admin') || process.env.NODE_ENV === 'development')) {
                   return null;
                 }
                 

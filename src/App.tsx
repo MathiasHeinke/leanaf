@@ -26,6 +26,7 @@ import Privacy from "./pages/Privacy";
 import Imprint from "./pages/Imprint";
 import Marketing from "./pages/Marketing";
 import NotFound from "./pages/NotFound";
+import { AdminPage } from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
                       <Route path="/privacy" element={<Privacy />} />
                       <Route path="/imprint" element={<Imprint />} />
                       <Route path="/marketing" element={<Marketing />} />
+                      <Route path="/admin" element={<AdminPage />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>
