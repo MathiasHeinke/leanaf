@@ -198,7 +198,8 @@ const EnhancedPipelineDebugger = () => {
       updatePipelineStatus('context', 10, 'Lade Context...');
 
       const headers: Record<string, string> = {
-        'x-disable-streaming': 'true' // Force non-streaming mode
+        'x-force-non-streaming': 'true', // Force non-streaming mode
+        'x-debug-mode': 'true' // Enable debug mode
       };
       
       // Apply context configuration
@@ -220,16 +221,29 @@ const EnhancedPipelineDebugger = () => {
 
       updatePipelineStatus('openai', 60, 'Sende an unified-coach-engine...');
 
+      console.log('🔧 DEBUGGER: Sending request to unified-coach-engine with headers:', headers);
+      console.log('🔧 DEBUGGER: Request body:', {
+        userId: user.id,
+        message,
+        coachId: 'lucy',
+        conversationId: `debug-${Date.now()}`,
+        model: selectedModel,
+        messageId: `debug-msg-${Date.now()}`
+      });
+
       const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
         body: {
           userId: user.id,
           message,
           coachId: 'lucy',
           conversationId: `debug-${Date.now()}`,
-          model: selectedModel
+          model: selectedModel,
+          messageId: `debug-msg-${Date.now()}`
         },
         headers
       });
+
+      console.log('🔧 DEBUGGER: Response received:', { data, error });
 
       if (error) throw error;
 

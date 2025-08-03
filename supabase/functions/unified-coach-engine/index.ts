@@ -216,18 +216,18 @@ serve(async (req) => {
       messageId,
       coachId: coachId || 'lucy',
       conversationHistory: [],
-      enableStreaming: true,
+      enableStreaming: false, // Force non-streaming for GET requests
       enableRag: false
     };
 
-    return handleRequest(requestBody, corsHeaders, start);
+    return handleRequest(req, requestBody, corsHeaders, start);
   }
   
   // POST Handler für normale Anfragen
   if (req.method === 'POST') {
     try {
       const body = await req.json() as RequestBody;
-      return handleRequest(body, corsHeaders, start);
+      return handleRequest(req, body, corsHeaders, start);
     } catch (error: any) {
       console.error('❌ Error parsing request:', error);
       return new Response(JSON.stringify({ error: 'Invalid request format' }), {
@@ -243,10 +243,27 @@ serve(async (req) => {
   });
 });
 
-async function handleRequest(body: any, corsHeaders: any, start: number) {
+async function handleRequest(req: Request, body: any, corsHeaders: any, start: number) {
   const traceId = body.traceId || newTraceId();
-  const { userId, message, messageId, coachPersonality, coachId, conversationHistory, enableStreaming = true, enableRag = false } = body;
+  const { userId, message, messageId, coachPersonality, coachId, conversationHistory } = body;
   const conversationId = `conv_${userId}_${coachId || 'lucy'}`;
+  
+  // 🔧 CHECK HEADERS FOR STREAMING CONTROL
+  const forceNonStreaming = req.headers.get('x-force-non-streaming') === 'true';
+  const debugMode = req.headers.get('x-debug-mode') === 'true';
+  const enableStreaming = !forceNonStreaming && (body.enableStreaming !== false);
+  const enableRag = body.enableRag !== false && req.headers.get('x-disable-rag') !== 'true';
+  
+  if (debugMode) {
+    console.log('🔧 DEBUG MODE: Headers received:', {
+      'x-force-non-streaming': req.headers.get('x-force-non-streaming'),
+      'x-debug-mode': req.headers.get('x-debug-mode'),
+      'x-disable-rag': req.headers.get('x-disable-rag'),
+      'x-lite-context': req.headers.get('x-lite-context'),
+      enableStreaming,
+      enableRag
+    });
+  }
   
   // 📊 TRACE: Request received
   await traceEvent(traceId, 'message_received', 'started', {
