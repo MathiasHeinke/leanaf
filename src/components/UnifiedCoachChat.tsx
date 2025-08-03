@@ -70,6 +70,8 @@ import { withResilience } from '@/lib/resilience';
 import { RobustStreamingIndicator } from '@/components/RobustStreamingIndicator';
 import { PerformanceDashboard } from '@/components/PerformanceDashboard';
 
+// Force cache refresh - fixed EnhancedStreamingIndicator import issue
+
 // ✅ EMPTY_ARRAY als echte Konstante außerhalb der Komponente
 const EMPTY_ARRAY: any[] = [];
 
