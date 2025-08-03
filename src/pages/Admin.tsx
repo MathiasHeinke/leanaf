@@ -113,41 +113,29 @@ export const AdminPage = () => {
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
-          {/* 🎛️ SCROLLABLE TAB NAVIGATION - All 8 tabs visible */}
+          {/* 🎛️ SCROLLABLE TAB NAVIGATION - 7 tabs */}
           <div className="w-full mb-8 overflow-x-auto">
             <TabsList className="inline-flex h-auto bg-card border border-border/50 rounded-lg p-1 shadow-sm min-w-full">
               <div className="flex gap-1 min-w-max">
-                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
+                <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
                   <Monitor className="w-4 h-4" />
                   <span>Production</span>
                 </TabsTrigger>
-                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
+                <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
                   <Route className="w-4 h-4" />
                   <span>Live Trace</span>
                 </TabsTrigger>
-                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
+                <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
                   <Activity className="w-4 h-4" />
                   <span>Performance</span>
                 </TabsTrigger>
-                <TabsTrigger value="security" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
+                <TabsTrigger value="security" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
                   <Shield className="w-4 h-4" />
                   <span>Security</span>
                 </TabsTrigger>
-                <TabsTrigger value="health" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
+                <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-16 px-4 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[100px]">
                   <Database className="w-4 h-4" />
-                  <span>Health</span>
-                </TabsTrigger>
-                <TabsTrigger value="features" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
-                  <Flag className="w-4 h-4" />
-                  <span>Features</span>
-                </TabsTrigger>
-                <TabsTrigger value="streaming" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
-                  <BarChart3 className="w-4 h-4" />
-                  <span>Streaming</span>
-                </TabsTrigger>
-                <TabsTrigger value="debug" className="flex flex-col items-center justify-center gap-1 h-16 px-3 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm whitespace-nowrap min-w-[80px]">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Coach Monitor</span>
+                  <span>System</span>
                 </TabsTrigger>
               </div>
             </TabsList>
@@ -237,57 +225,51 @@ export const AdminPage = () => {
             </Card>
           </TabsContent>
 
-          {/* 🏥 HEALTH CHECK */}
-          <TabsContent value="health" className="space-y-6 mt-6 safe-area-pb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Database className="w-5 h-5 mr-2" />
-                  System Health
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AppHealthCheck />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* 🏥 SYSTEM OVERVIEW - Combined Health, Features & Streaming */}
+          <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
+            <div className="grid grid-cols-1 gap-6">
+              {/* System Health */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <Database className="w-5 h-5 mr-2" />
+                    System Health
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AppHealthCheck />
+                </CardContent>
+              </Card>
 
-          {/* 🚩 FEATURE FLAGS */}
-          <TabsContent value="features" className="space-y-6 mt-6 safe-area-pb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Flag className="w-5 h-5 mr-2" />
-                  Feature Flags
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FeatureFlagsManager />
-              </CardContent>
-            </Card>
-          </TabsContent>
+              {/* Feature Flags */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <Flag className="w-5 h-5 mr-2" />
+                    Feature Flags
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FeatureFlagsManager />
+                </CardContent>
+              </Card>
 
-          {/* 📡 STREAMING DASHBOARD */}
-          <TabsContent value="streaming" className="space-y-6 mt-6 safe-area-pb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  Streaming Analytics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StreamingDashboard 
-                  metrics={streamingMetrics}
-                  isStreaming={false}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* 💬 COACH CONVERSATION MONITOR */}
-          <TabsContent value="debug" className="space-y-6 mt-6 safe-area-pb-6">
-            <CoachConversationMonitor />
+              {/* Streaming Analytics */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    Streaming Analytics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <StreamingDashboard 
+                    metrics={streamingMetrics}
+                    isStreaming={false}
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
