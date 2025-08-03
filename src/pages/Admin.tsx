@@ -112,7 +112,7 @@ export const AdminPage = () => {
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="production" className="w-full">
           {/* 📱 RESPONSIVE TAB NAVIGATION */}
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 mb-8 h-12 sm:h-10 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-2 mb-8 h-12 sm:h-10 overflow-x-auto">
             <TabsTrigger value="production" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
               <Monitor className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Production</span>
