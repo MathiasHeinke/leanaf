@@ -60,14 +60,14 @@ import { renderMessage, createCardMessage } from '@/utils/messageRenderer';
 import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
 import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
-import { useRealStreamingChat } from '@/hooks/useRealStreamingChat';
+import { useRobustStreamingChat } from '@/hooks/useRobustStreamingChat';
 import { useMemorySync } from '@/hooks/useMemorySync';
 import { useEnhancedStreamingChat } from '@/hooks/useEnhancedStreamingChat';
 import { useErrorRecovery } from '@/hooks/useErrorRecovery';
 import { useProactiveCoachBehavior } from '@/hooks/useProactiveCoachBehavior';
 import { useAdvancedRetryLogic } from '@/hooks/useAdvancedRetryLogic';
 import { withResilience } from '@/lib/resilience';
-import { EnhancedStreamingIndicator } from '@/components/EnhancedStreamingIndicator';
+import { RobustStreamingIndicator } from '@/components/RobustStreamingIndicator';
 import { PerformanceDashboard } from '@/components/PerformanceDashboard';
 
 // ✅ EMPTY_ARRAY als echte Konstante außerhalb der Komponente
@@ -204,17 +204,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { queueMemoryUpdate } = useMemorySync();
   
   // ============= STREAMING INTEGRATION =============
-  const { 
+  const {
     streamingMessage, 
     isConnected: isStreamingConnected, 
+    streamState,
     startStreaming, 
     stopStreaming,
     clearStreamingMessage,
     metrics,
     streamingStage,
     streamError,
-    isHealthy
-  } = useRealStreamingChat({
+    isHealthy,
+    isRecovering,
+    canRetry,
+    retryCount
+  } = useRobustStreamingChat({
     onStreamStart: () => {
       console.log('🚀 Streaming started');
       setIsThinking(true);
@@ -1129,6 +1133,30 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     });
   }, [messages, manualRetry, sendMessage]);
 
+  // Handle streaming retry
+  const handleStreamingRetry = useCallback(async () => {
+    if (!user?.id) return;
+    
+    // Get the last user message
+    const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
+    if (!lastUserMessage) return;
+    
+    clearStreamingMessage();
+    
+    // Restart streaming with the last message
+    await startStreaming(
+      user.id,
+      lastUserMessage.content,
+      coach?.personality || 'supportive',
+      messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        images: msg.images || [],
+        created_at: msg.created_at
+      }))
+    );
+  }, [user?.id, messages, coach?.personality, clearStreamingMessage, startStreaming]);
+
   // Handle tool action buttons
   const handleToolAction = useCallback((tool: string, contextData?: any) => {
     console.log('🔧 Tool action triggered:', tool, contextData);
@@ -1692,18 +1720,16 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
             </div>
           )}
           
-          {/* Enhanced Streaming Indicator */}
+          {/* Robust Streaming Indicator */}
           <div className="px-3 py-1 bg-card/50">
-            <EnhancedStreamingIndicator
-              isConnected={isStreamingConnected || enhancedStreamingStage.stage !== 'connecting'}
-              isStreaming={enhancedStreamingStage.stage === 'streaming'}
-              progress={enhancedStreamingStage.progress}
-              stage={enhancedStreamingStage.stage}
-              metrics={{
-                tokensIn: streamingMetrics.contextLoadTime ? Math.round(streamingMetrics.contextLoadTime / 10) : undefined,
-                duration: streamingMetrics.totalDuration,
-                contextLoaded: enhancedStreamingStage.stage !== 'connecting'
-              }}
+            <RobustStreamingIndicator
+              streamState={streamState}
+              isRecovering={isRecovering}
+              retryCount={retryCount}
+              canRetry={canRetry}
+              metrics={metrics}
+              error={streamError}
+              onRetry={handleStreamingRetry}
             />
           </div>
 
