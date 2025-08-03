@@ -30,6 +30,7 @@ import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard'
 import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashboard';
 import { LiveTraceMonitor } from '@/components/LiveTraceMonitor';
 import LiteDebugChat from '@/components/LiteDebugChat';
+import { EmbeddingStatus } from '@/components/EmbeddingStatus';
 
 export const AdminPage = () => {
   const { user } = useAuth();
@@ -178,6 +179,9 @@ export const AdminPage = () => {
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
           <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
             <div className="grid grid-cols-1 gap-6">
+              {/* Embedding Status & RAG System */}
+              <EmbeddingStatus />
+              
               {/* Security Monitor */}
               <Card className="bg-background border-border dark:bg-card dark:border-border">
                 <CardHeader>

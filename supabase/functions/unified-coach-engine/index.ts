@@ -976,6 +976,13 @@ function buildSystemPrompt(ctx: any, coachId: string) {
   const daily = ctx.daily ?? {};
   const mem = ctx.memory ?? {};
 
+  // Build enriched context with real user data
+  const weightInfo = daily.currentWeight ? `${daily.currentWeight}kg` : "unbekannt";
+  const mealSummary = daily.recentMeals?.length 
+    ? daily.recentMeals.slice(0, 3).map(m => `${m.name} (${m.calories}kcal)`).join(", ")
+    : "keine aktuellen Daten";
+  const caloriesInfo = daily.totalCaloriesToday ? `${daily.totalCaloriesToday}kcal heute` : "keine Daten";
+
   return [
     `Du bist ${persona.name}, ein professioneller Coach.`,
     `Stilregeln: ${persona.style.join(", ")}. Keine Floskeln, klare Sätze, Praxisfokus.`,
@@ -986,8 +993,12 @@ function buildSystemPrompt(ctx: any, coachId: string) {
     `[Beziehungsstatus] ${mem.relationship ?? "unbekannt"} | Vertrauen: ${mem.trust ?? 50}/100`,
     `[Gesprächszusammenfassung] ${ctx.conversationSummary ?? "—"}`,
     `[Tageskontext] kcal übrig: ${daily.caloriesLeft ?? "?"}, letztes Workout: ${daily.lastWorkout ?? "?"}, Schlaf: ${daily.sleepHours ?? "?"}h`,
+    `[Aktuelles Gewicht] ${weightInfo}`,
+    `[Heutige Kalorien] ${caloriesInfo}`,
+    `[Letzte Mahlzeiten] ${mealSummary}`,
     `[RAG-Kontext]\n${ragBlock}`,
     ``,
+    `Du hast jetzt Zugriff auf echte Nutzerdaten (Gewicht, Mahlzeiten, Kalorien). Nutze diese Informationen für personalisierte Antworten.`,
     `Halte dich an die Persona.`
   ].join("\n");
 }

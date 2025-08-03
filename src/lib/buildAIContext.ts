@@ -20,7 +20,14 @@ export type CtxInput = z.infer<typeof CtxInput>;
 export type BuiltCtx = {
   persona: { name: string; style: string[] };
   memory: { relationship?: string; trust?: number; summary?: string } | null;
-  daily: { caloriesLeft?: number; lastWorkout?: string; sleepHours?: number } | null;
+  daily: { 
+    caloriesLeft?: number; 
+    lastWorkout?: string; 
+    sleepHours?: number;
+    currentWeight?: number;
+    recentMeals?: Array<{ name: string; calories: number; protein: number; date: string }>;
+    totalCaloriesToday?: number;
+  } | null;
   ragChunks: { source: string; text: string }[] | null;
   conversationSummary: string | null;
   metrics: { tokensIn: number };
@@ -147,20 +154,58 @@ async function loadDailySummary(userId: string) {
       .eq('user_id', userId)
       .maybeSingle();
     
+    // Get current weight from weight_history
+    const { data: weightData } = await supabase
+      .from('weight_history')
+      .select('weight, date')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    // Get recent meals (today and yesterday)
+    const { data: mealsData } = await supabase
+      .from('meals')
+      .select('text, calories, protein, created_at')
+      .eq('user_id', userId)
+      .gte('created_at', yesterday + 'T00:00:00.000Z')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
     if (summaryError) {
       console.warn('Daily summary loading failed:', summaryError.message);
     }
     
+    const baseData = {
+      caloriesLeft: null as number | null,
+      lastWorkout: "Kein Training",
+      sleepHours: null as number | null,
+      currentWeight: null as number | null,
+      recentMeals: [] as any[],
+      totalCaloriesToday: 0
+    };
+    
     if (summaryData && goalsData) {
-      const caloriesLeft = Math.max(0, (goalsData.calories || 2000) - (summaryData.total_calories || 0));
-      return {
-        caloriesLeft,
-        lastWorkout: summaryData.workout_volume > 0 ? "Training absolviert" : "Kein Training",
-        sleepHours: summaryData.sleep_score ? Math.round(summaryData.sleep_score / 10 * 8) : null
-      };
+      baseData.caloriesLeft = Math.max(0, (goalsData.calories || 2000) - (summaryData.total_calories || 0));
+      baseData.lastWorkout = summaryData.workout_volume > 0 ? "Training absolviert" : "Kein Training";
+      baseData.sleepHours = summaryData.sleep_score ? Math.round(summaryData.sleep_score / 10 * 8) : null;
+      baseData.totalCaloriesToday = summaryData.total_calories || 0;
     }
     
-    return null;
+    if (weightData) {
+      baseData.currentWeight = weightData.weight;
+    }
+    
+    if (mealsData && mealsData.length > 0) {
+      baseData.recentMeals = mealsData.map(meal => ({
+        name: meal.text,
+        calories: meal.calories,
+        protein: meal.protein,
+        date: new Date(meal.created_at).toISOString().split('T')[0]
+      }));
+    }
+    
+    return baseData;
   } catch (error) {
     console.warn('Daily summary loading exception:', error);
     return null;
