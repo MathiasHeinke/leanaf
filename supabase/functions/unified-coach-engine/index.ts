@@ -265,9 +265,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 // ----------------------------------------------------------------------------
 // TEMP: Governor ausschalten, wenn ENV = 'true'   (z.B. in Dashboard setzen)
@@ -1855,8 +1855,21 @@ WICHTIG: Bleib bei deinem militärischen Background authentisch, aber respektvol
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Validate environment variables early
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ Missing required Supabase environment variables');
+    return new Response(JSON.stringify({
+      error: 'Server configuration error',
+      message: 'Missing Supabase configuration'
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 
   // ============================================================================
@@ -1903,8 +1916,21 @@ serve(async (req) => {
     // API-GOVERNOR: Rate-Limiting und Circuit-Breaker
     // ============================================================================
     
-    // Parse request body
-    const body = await req.json();
+    // Parse request body with error handling
+    let body;
+    try {
+      body = await req.json();
+    } catch (error) {
+      console.error(`❌ [${requestId}] Invalid JSON in request body:`, error);
+      return new Response(JSON.stringify({
+        error: 'invalid_request_body',
+        message: 'Request body must be valid JSON',
+        request_id: requestId
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     const {
       userId,
       message,
