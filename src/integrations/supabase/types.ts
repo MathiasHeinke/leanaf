@@ -4493,7 +4493,7 @@ export type Database = {
           last_msg_at: string | null
           plan_count: number | null
           started_at: string | null
-          tool_list: Json | null
+          tool_list: string[] | null
           used_rag: boolean | null
           used_tool: boolean | null
           user_id: string | null
@@ -4523,7 +4523,9 @@ export type Database = {
       }
       v_missing_summaries: {
         Row: {
-          date: string | null
+          email: string | null
+          status: string | null
+          summary_date: string | null
           user_id: string | null
         }
         Relationships: []
