@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
@@ -42,25 +43,6 @@ function calculateSentiment(text: string): number {
 
 // Global circuit breaker state
 let circuitBreakerState = { open: false, halfOpen: false, retryCount: 0 };
-
-function sanitizeLogData(data: any): any {
-  if (typeof data !== 'object' || data === null) return data;
-  
-  const sanitized: any = {};
-  for (const [key, value] of Object.entries(data)) {
-    // Remove potentially sensitive data
-    if (key.toLowerCase().includes('password') || 
-        key.toLowerCase().includes('token') || 
-        key.toLowerCase().includes('secret')) {
-      sanitized[key] = '[REDACTED]';
-    } else if (typeof value === 'string' && value.length > 500) {
-      sanitized[key] = value.substring(0, 500) + '...';
-    } else {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
-}
 
 async function trace(traceId: string, stage: string, payload: Record<string, any> = {}, metrics: Record<string, any> = {}): Promise<void> {
   const enrichedPayload = {
@@ -160,13 +142,6 @@ function hardTrim(str: string, tokenCap: number): string {
 }
 
 serve(async (req) => {
-  // 🔒 Enhanced CORS Headers für alle HTTP-Methoden
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-  };
-
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -238,8 +213,8 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     enableStreaming,
     enableRag
   }, {
-    pii_detected: detectPII(userMessage),
-    sentiment_score: calculateSentiment(userMessage),
+    pii_detected: detectPII(message),
+    sentiment_score: calculateSentiment(message),
     breaker_open: circuitBreakerState.open,
     breaker_halfOpen: circuitBreakerState.halfOpen,
     retry_count: circuitBreakerState.retryCount
@@ -254,44 +229,45 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     );
   }
 
-  // Validate API key
-  const apiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: 'OpenAI API key not configured' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  try {
+    // Validate API key
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-  // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
-  const ctx = await buildAIContext({
-    userId,
-    coachId: coachId || coachPersonality || 'lucy',
-    userMessage: message,
-    enableRag,
-    tokenCap: 6000 // Reduced from 8k based on usage analytics
-  });
+    // 🔥 PRODUCTION-OPTIMIZED: Build AI context with 6k token limit
+    const ctx = await buildAIContext({
+      userId,
+      coachId: coachId || coachPersonality || 'lucy',
+      userMessage: message,
+      enableRag,
+      tokenCap: 6000 // Reduced from 8k based on usage analytics
+    });
 
-  await trace(traceId, 'B_context_ready', { 
-    tokensIn: ctx.metrics.tokensIn, 
-    hasMemory: !!ctx.memory,
-    hasRag: !!ctx.ragChunks,
-    hasDaily: !!ctx.daily
-  }, {
-    contextBuild_ms: Date.now() - start,
-    prompt_tokens: ctx.metrics.tokensIn,
-    rag_hit_rate: ctx.ragChunks ? (ctx.ragChunks.length > 0 ? 1 : 0) : 0,
-    rag_score: ctx.ragChunks && ctx.ragChunks.length > 0 ? 0.8 : 0
-  });
+    await trace(traceId, 'B_context_ready', { 
+      tokensIn: ctx.metrics.tokensIn, 
+      hasMemory: !!ctx.memory,
+      hasRag: !!ctx.ragChunks,
+      hasDaily: !!ctx.daily
+    }, {
+      contextBuild_ms: Date.now() - start,
+      prompt_tokens: ctx.metrics.tokensIn,
+      rag_hit_rate: ctx.ragChunks ? (ctx.ragChunks.length > 0 ? 1 : 0) : 0,
+      rag_score: ctx.ragChunks && ctx.ragChunks.length > 0 ? 0.8 : 0
+    });
 
-  await mark("context_built", { 
-    tokensIn: ctx.metrics.tokensIn, 
-    hasMemory: !!ctx.memory,
-    hasRag: !!ctx.ragChunks,
-    hasDaily: !!ctx.daily,
-    userId: hashedUserId,
-    traceId
-  });
+    await mark("context_built", { 
+      tokensIn: ctx.metrics.tokensIn, 
+      hasMemory: !!ctx.memory,
+      hasRag: !!ctx.ragChunks,
+      hasDaily: !!ctx.daily,
+      userId: hashedUserId,
+      traceId
+    });
 
     // Build system prompt
     const systemPrompt = buildSystemPrompt(ctx, coachId || coachPersonality || 'lucy');
@@ -482,87 +458,76 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
     });
     mark("non_streaming_start", { messageId, traceId });
     
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          temperature: 0.7,
-          max_tokens: 2000,
-          stream: false,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...messages,
-            { role: 'user', content: message }
-          ]
-        }),
-      });
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0.7,
+        max_tokens: 2000,
+        stream: false,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+          { role: 'user', content: message }
+        ]
+      }),
+    });
 
-      if (!response.ok) {
-        await trace(traceId, 'E_error', { 
-          openaiStatus: response.status,
-          error: 'OpenAI API error'
-        }, {
-          http_status: response.status,
-          openai_status: response.statusText,
-          retry_count: circuitBreakerState.retryCount
-        });
-        circuitBreakerState.open = response.status === 429;
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-
-      const chatCompletion = await response.json();
-      const content = chatCompletion.choices[0].message.content;
-      const duration = Date.now() - start;
-
-      await trace(traceId, 'F_response_ready', {
-        responseLength: content.length,
-        tokensUsed: chatCompletion.usage?.total_tokens || 0
+    if (!response.ok) {
+      await trace(traceId, 'E_error', { 
+        openaiStatus: response.status,
+        error: 'OpenAI API error'
       }, {
-        fullStream_ms: Date.now() - start,
-        completion_tokens: chatCompletion.usage?.completion_tokens || 0,
-        cost_usd: calculateCost('gpt-4o', 
-          chatCompletion.usage?.prompt_tokens || 0, 
-          chatCompletion.usage?.completion_tokens || 0),
-        model_fingerprint: chatCompletion.model || 'gpt-4o'
+        http_status: response.status,
+        openai_status: response.statusText,
+        retry_count: circuitBreakerState.retryCount
       });
-
-      await trace(traceId, 'G_complete', {
-        totalTokens: chatCompletion.usage?.total_tokens || 0
-      }, {
-        memorySave_ms: 50,
-        queue_depth: 0,
-        persona_score: 0.95
-      });
-
-      mark("non_streaming_complete", { messageId, duration_ms: duration, traceId });
-
-      return new Response(JSON.stringify({ 
-        response: content,
-        type: 'text',
-        messageId,
-        traceId,
-        performance: {
-          duration,
-          tokens: chatCompletion.usage?.total_tokens || 0
-        }
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } catch (error: any) {
-      await trace(traceId, 'E_error', { error: error.message }, {
-        http_status: 500,
-        openai_status: 'error',
-        retry_count: circuitBreakerState.retryCount + 1
-      });
-      circuitBreakerState.retryCount++;
-      mark("non_streaming_error", { messageId, error: error.message, traceId });
-      throw error;
+      circuitBreakerState.open = response.status === 429;
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
+
+    const chatCompletion = await response.json();
+    const content = chatCompletion.choices[0].message.content;
+    const duration = Date.now() - start;
+
+    await trace(traceId, 'F_response_ready', {
+      responseLength: content.length,
+      tokensUsed: chatCompletion.usage?.total_tokens || 0
+    }, {
+      fullStream_ms: Date.now() - start,
+      completion_tokens: chatCompletion.usage?.completion_tokens || 0,
+      cost_usd: calculateCost('gpt-4o', 
+        chatCompletion.usage?.prompt_tokens || 0, 
+        chatCompletion.usage?.completion_tokens || 0),
+      model_fingerprint: chatCompletion.model || 'gpt-4o'
+    });
+
+    await trace(traceId, 'G_complete', {
+      totalTokens: chatCompletion.usage?.total_tokens || 0
+    }, {
+      memorySave_ms: 50,
+      queue_depth: 0,
+      persona_score: 0.95
+    });
+
+    mark("non_streaming_complete", { messageId, duration_ms: duration, traceId });
+
+    return new Response(JSON.stringify({ 
+      response: content,
+      type: 'text',
+      messageId,
+      traceId,
+      performance: {
+        duration,
+        tokens: chatCompletion.usage?.total_tokens || 0
+      }
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error: any) {
     const duration = Date.now() - start;
@@ -582,7 +547,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-} // End of handleRequest function
+}
 
 // 🔥 PRODUCTION-OPTIMIZED Context building functions
 async function buildAIContext(input: {
