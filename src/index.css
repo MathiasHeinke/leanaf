@@ -1,4 +1,4 @@
-@import '@fontsource/inter/variable.css';
+@import '@fontsource/inter';
 
 /* iOS Safari Input Zoom Prevention */
 @supports (-webkit-appearance: none) {
