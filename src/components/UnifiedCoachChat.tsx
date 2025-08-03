@@ -50,6 +50,7 @@ import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { ProgressIndicator } from '@/components/ProgressIndicator';
+import { StreamingIndicator } from '@/components/StreamingIndicator';
 import { WorkoutPlanCreationModal } from './WorkoutPlanCreationModal';
 import { WeightEntryModal } from './WeightEntryModal';
 import { SupplementTrackingModal } from './SupplementTrackingModal';
@@ -70,6 +71,7 @@ import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/m
 import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
 import { prefillModalState } from '@/utils/modalContextHelpers';
 import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
+import { useStreamingChat } from '@/hooks/useStreamingChat';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -179,6 +181,28 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
   const { tokens } = useContextTokens(user?.id);
   const { sendDebug, loading: debugLoading } = useDebugChat();
+  
+  // ============= STREAMING INTEGRATION =============
+  const { 
+    streamingMessage, 
+    isConnected: isStreamingConnected, 
+    startStreaming, 
+    stopStreaming,
+    clearStreamingMessage 
+  } = useStreamingChat({
+    onStreamStart: () => {
+      console.log('🚀 Streaming started');
+      setIsThinking(true);
+    },
+    onStreamEnd: () => {
+      console.log('✅ Streaming completed');
+      setIsThinking(false);
+    },
+    onError: (error) => {
+      console.error('❌ Streaming error:', error);
+      setIsThinking(false);
+    }
+  });
   
   // ============= PROFILE DATA LOADING =============
   const [loadedProfileData, setLoadedProfileData] = useState<any>(null);
@@ -669,7 +693,46 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     setIsThinking(true);
 
     try {
-      // Use the new retry mechanism
+      // 🚀 PHASE 3: Try streaming first for instant feedback
+      const shouldStream = !currentImages.length && currentInput.length < 500; // Stream for short text-only messages
+      
+      if (shouldStream) {
+        console.log('🚀 Using streaming response for instant feedback');
+        
+        // Get recent conversation history for context
+        const recentMessages = messages.slice(-4).map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+        
+        // Start streaming
+        await startStreaming(
+          user.id,
+          currentInput,
+          coach?.id || 'lucy',
+          recentMessages
+        );
+        
+        // Add streaming message to UI when it completes
+        if (streamingMessage && streamingMessage.isComplete) {
+          const streamedResponse: UnifiedMessage = {
+            id: streamingMessage.id,
+            role: 'assistant',
+            content: streamingMessage.content,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.personality || 'motivierend',
+            images: [],
+            mode: mode
+          };
+          
+          setMessages(prev => [...prev, streamedResponse]);
+          clearStreamingMessage();
+        }
+        
+        return;
+      }
+      
+      // Fallback to retry mechanism for complex requests
       const data = await sendMessageWithRetry(currentInput, currentImages);
 
       // Ensure consistent response format

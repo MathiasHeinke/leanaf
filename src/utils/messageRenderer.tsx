@@ -16,6 +16,7 @@ export interface CardMessage {
   payload: any;
   created_at: string;
   coach_personality: string;
+  content?: string; // Add content field for compatibility
   pendingTools?: Array<{
     tool: string;
     label: string;

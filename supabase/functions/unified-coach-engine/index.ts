@@ -1,239 +1,55 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { OpenAI } from "https://esm.sh/openai@4.67.1";
-import { SupabaseClient, createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
 
-// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
-
-// ============================================================================
-// START OF UNIFIED COACH ENGINE
-// ============================================================================
-
-// Env variables
-const apiKey = Deno.env.get("OPENAI_API_KEY");
-const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-
-// Environment variable validation
-if (!apiKey) {
-  console.error('Missing OPENAI_API_KEY environment variable');
-}
-if (!supabaseUrl) {
-  console.error('Missing SUPABASE_URL environment variable');
-}
-if (!supabaseKey) {
-  console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
-}
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: apiKey,
-});
-
-// Type definition for Coach
-type Coach = {
-  id: string;
-  name: string;
-  personality: string;
-  expertise: string[];
-  imageUrl: string;
-  color: string;
-  accentColor: string;
-  description: string;
-  personaId: string | null;
-};
-
-// Helper function to check if user has sufficient training data
-async function checkTrainingDataSufficiency(supabase: any, userId: string): Promise<boolean> {
-  const TRAINING_DATA_THRESHOLD = 3;
-
-  // Fetch the count of training logs for the user
-  const { data, error } = await supabase
-    .from('training_logs')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error('Error fetching training logs count:', error);
-    return false; // Assume insufficient data in case of an error
-  }
-
-  const trainingLogCount = data?.length || 0;
-
-  // Return whether the user has sufficient training data
-  return trainingLogCount >= TRAINING_DATA_THRESHOLD;
-}
-
-// Helper function to build comprehensive context
-async function buildComprehensiveContext(supabase: any, userId: string, coach: any) {
-  const sections = [];
-
-  // Fetch the latest training logs
-  const { data: trainingLogs, error: trainingLogsError } = await supabase
-    .from('training_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  if (trainingLogsError) {
-    console.error('Error fetching training logs:', trainingLogsError);
-  } else if (trainingLogs && trainingLogs.length > 0) {
-    sections.push({
-      title: 'Letzte Trainingseinheiten',
-      content: trainingLogs.map(log => `
-        Datum: ${log.created_at},
-        Typ: ${log.training_type},
-        Dauer: ${log.duration_minutes} Minuten,
-        Intensität: ${log.intensity},
-        Notizen: ${log.notes || 'Keine'}
-      `).join('\n')
-    });
-  }
-
-  // Fetch the latest food logs
-  const { data: foodLogs, error: foodLogsError } = await supabase
-    .from('food_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  if (foodLogsError) {
-    console.error('Error fetching food logs:', foodLogsError);
-  } else if (foodLogs && foodLogs.length > 0) {
-    sections.push({
-      title: 'Letzte Mahlzeiten',
-      content: foodLogs.map(log => `
-        Datum: ${log.created_at},
-        Mahlzeit: ${log.meal_type},
-        Beschreibung: ${log.description},
-        Kalorien: ${log.calories || 'Nicht angegeben'},
-        Protein: ${log.protein || 'Nicht angegeben'}g,
-        Kohlenhydrate: ${log.carbohydrates || 'Nicht angegeben'}g,
-        Fett: ${log.fat || 'Nicht angegeben'}g
-      `).join('\n')
-    });
-  }
-
-  // Fetch user profile information
-  const { data: userProfile, error: userProfileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-
-  if (userProfileError) {
-    console.error('Error fetching user profile:', userProfileError);
-  } else if (userProfile) {
-    sections.push({
-      title: 'Benutzerprofil',
-      content: `
-        Alter: ${userProfile.age || 'Nicht angegeben'},
-        Geschlecht: ${userProfile.gender || 'Nicht angegeben'},
-        Größe: ${userProfile.height_cm || 'Nicht angegeben'} cm,
-        Gewicht: ${userProfile.weight_kg || 'Nicht angegeben'} kg,
-        Aktivitätslevel: ${userProfile.activity_level || 'Nicht angegeben'},
-        Ziele: ${userProfile.goals || 'Nicht angegeben'}
-      `
-    });
-  }
-  
-  return sections;
-}
 
 serve(async (req) => {
-  // Handle CORS pre-flight request
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
-
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
-  }
-
-  // Initialize Supabase client
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
-  });
 
   try {
-    const { 
-      userId, 
-      message, 
-      conversationHistory, 
-      coachPersonality,
-      toolContext 
-    } = await req.json();
+    const { userId, message, conversationHistory, coachPersonality, enableStreaming = true } = await req.json();
 
-    // Validate request body
-    if (!userId || !message || !coachPersonality) {
+    if (!userId || !message) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: userId, message, or coachPersonality' }),
+        JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create a mock coach object from the personality
-    const selectedCoach: Coach = {
-      id: coachPersonality,
-      name: coachPersonality,
-      personality: coachPersonality,
-      expertise: ['fitness', 'nutrition'],
-      imageUrl: '',
-      color: '',
-      accentColor: '',
-      description: `Coach ${coachPersonality}`,
-      personaId: null
-    };
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Check if user has sufficient training data
-    const hasSufficientData = await checkTrainingDataSufficiency(supabase, userId);
-
-    // If user doesn't have enough data, respond accordingly
-    if (!hasSufficientData) {
+    // Validate API key
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!apiKey) {
       return new Response(
-        JSON.stringify({
-          response: "Bitte trage zuerst mehr Daten ein, damit ich dir besser helfen kann."
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Enhanced context building with comprehensive user data
-    const contextSections = await buildComprehensiveContext(supabase, userId, selectedCoach);
-    
-    // Build messages array from conversation history and current message
+    // Build system message with coach personality
+    const systemMessage = `Du bist ein persönlicher AI-Coach mit folgender Persönlichkeit: ${coachPersonality || 'empathisch und motivierend'}.
+
+Antworte hilfreich, persönlich und motivierend. Nutze die Gesprächshistorie für besseren Kontext.`;
+
+    // Prepare messages for OpenAI
     const messages = [];
     
-    // Add system message
-    messages.push({
-      role: 'system',
-      content: `
-        Du bist ein persönlicher KI-Coach namens ${selectedCoach.name}. ${selectedCoach.description}
-        Deine Expertise umfasst: ${selectedCoach.expertise.join(', ')}.
-        Nutze dein Wissen, um personalisierte und hilfreiche Antworten zu geben.
-        Sei immer freundlich, motivierend und unterstützend. Gib präzise und wissenschaftlich fundierte Antworten.
-        In den Fällen, in denen du keine klare Antwort geben kannst, bitte den Benutzer, seine Frage umzuformulieren oder mehr Informationen zu geben.
-        Du hast Zugriff auf die folgenden Informationen über den Benutzer:
-        ${contextSections.map(section => `
-        === ${section.title} ===
-        ${section.content}
-        `).join('\n')}
-        `
-    });
-    
-    // Add conversation history if available
+    // Add conversation history if available (last 6 messages for context)
     if (conversationHistory && Array.isArray(conversationHistory)) {
-      conversationHistory.forEach(msg => {
+      conversationHistory.slice(-6).forEach((msg: any) => {
         if (msg.role && msg.content) {
           messages.push({
             role: msg.role,
@@ -249,94 +65,161 @@ serve(async (req) => {
       content: message
     });
 
-    // Validate API key before making request
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const startTime = Date.now();
+    
+    // Configure for streaming or regular response
+    const config = TASK_CONFIGS['unified-coach-engine'];
+    
+    if (enableStreaming) {
+      console.log('🚀 Starting streaming response...');
+      
+      // Create streaming response
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            // Send initial connection message
+            controller.enqueue(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
+            
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'gpt-4.1-2025-04-14',
+                messages: [
+                  { role: 'system', content: systemMessage },
+                  ...messages
+                ],
+                temperature: config.temperature,
+                top_p: config.top_p,
+                stream: true,
+                max_tokens: 1500,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`OpenAI API error: ${response.status}`);
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) {
+              throw new Error('No response body reader');
+            }
+
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    
+                    if (data === '[DONE]') {
+                      controller.enqueue(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+                      break;
+                    }
+                    
+                    try {
+                      const parsed = JSON.parse(data);
+                      const content = parsed.choices?.[0]?.delta?.content;
+                      
+                      if (content) {
+                        controller.enqueue(`data: ${JSON.stringify({ 
+                          type: 'content', 
+                          content 
+                        })}\n\n`);
+                      }
+                    } catch (e) {
+                      // Skip invalid JSON
+                    }
+                  }
+                }
+              }
+            } finally {
+              reader.releaseLock();
+            }
+
+            // Log performance
+            const duration = Date.now() - startTime;
+            logPerformanceMetrics('unified-coach-engine-streaming', duration, 0);
+            
+            controller.close();
+          } catch (error) {
+            console.error('Streaming error:', error);
+            controller.enqueue(`data: ${JSON.stringify({ 
+              type: 'error', 
+              error: error.message 
+            })}\n\n`);
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
     }
 
-    // Call OpenAI API with optimized config
-        const startTime = Date.now();
-        
-        // Add 30 second timeout
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
-        );
-    const config = TASK_CONFIGS['unified-coach-engine'];
-    console.log(`🤖 Using ${config.model} for unified coach engine`);
+    // Fallback to non-streaming response
+    console.log('📄 Using non-streaming response...');
+    
+    // Add 30 second timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+    );
 
     const chatCompletion = await Promise.race([
-      callOpenAIWithRetry(async () => {
-        return await openai.chat.completions.create({
-          model: config.model,
-          messages: messages,
-          temperature: config.temperature,
-          top_p: config.top_p,
-          stream: config.stream,
-          max_tokens: 1200,
-        });
+      callOpenAIWithRetry({
+        model: 'gpt-4.1-2025-04-14',
+        messages: [
+          { role: 'system', content: systemMessage },
+          ...messages
+        ],
+        ...config,
+        stream: false,
+        max_tokens: 1500,
       }),
       timeoutPromise
     ]);
 
-    const assistantMessage = chatCompletion.choices[0].message.content;
-    const usage = chatCompletion.usage;
+    const content = chatCompletion.choices[0].message.content;
+    const duration = Date.now() - startTime;
 
     // Log performance metrics
-    logPerformanceMetrics('unified-coach-engine', config.model, startTime, usage?.total_tokens);
+    logPerformanceMetrics('unified-coach-engine', duration, chatCompletion.usage?.total_tokens || 0);
 
-    // Log the interaction to Supabase
-    const { error: logError } = await supabase
-      .from('coach_interactions')
-      .insert({
-        user_id: userId,
-        coach_id: selectedCoach.id,
-        session_id: `${userId}-${selectedCoach.id}-${Date.now()}`,
-        user_message: message,
-        assistant_message: assistantMessage,
-        context: contextSections.map(section => `=== ${section.title} ===\n${section.content}`).join('\n'),
-        prompt_tokens: usage?.prompt_tokens,
-        completion_tokens: usage?.completion_tokens,
-        total_tokens: usage?.total_tokens,
-      });
-
-    if (logError) {
-      console.error('Failed to log interaction:', logError);
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        response: assistantMessage,
-        usage: usage || null
-      }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
+    return new Response(JSON.stringify({ 
+      response: content,
+      type: 'text',
+      performance: {
+        duration,
+        tokens: chatCompletion.usage?.total_tokens || 0
       }
-    );
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
     console.error('Error in unified coach engine:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }),
-      { 
-        status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
-
-// ============================================================================
-// END OF UNIFIED COACH ENGINE
-// ============================================================================
