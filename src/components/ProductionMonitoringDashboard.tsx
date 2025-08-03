@@ -296,7 +296,7 @@ export function ProductionMonitoringDashboard() {
   return (
     <div className="p-4 space-y-6 max-w-7xl mx-auto">
       {/* 🚨 SYSTEM HEALTH OVERVIEW */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card className={`border-l-4 ${
           systemHealth.status === 'healthy' ? 'border-l-green-500' :
           systemHealth.status === 'warning' ? 'border-l-yellow-500' : 'border-l-red-500'
@@ -400,7 +400,7 @@ export function ProductionMonitoringDashboard() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* 📊 LOAD TEST DASHBOARD */}
         <Card>
           <CardHeader>
