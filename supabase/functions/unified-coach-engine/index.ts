@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { createParser } from "https://esm.sh/eventsource-parser@3.0.3";
 import { hashUserId, sanitizeLogData } from './hash-helpers.ts';
 
 // Enhanced trace utilities with telemetry metrics
@@ -43,8 +44,30 @@ function calculateSentiment(text: string): number {
   return Math.max(-1, Math.min(1, score / words.length * 10));
 }
 
-// Global circuit breaker state
-let circuitBreakerState = { open: false, halfOpen: false, retryCount: 0 };
+// Global circuit breaker state  
+let circuitBreakerState = { open: false, halfOpen: false, retryCount: 0, lastFailure: 0 };
+const RECOVERY_TIMEOUT = 90_000; // 90 seconds
+
+// 🔥 Single Supabase client instance (FIX #2)
+let supabaseClient: any = null;
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.warn('⚠️ Trace disabled: Missing Supabase configuration');
+      return null;
+    }
+    
+    supabaseClient = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      { auth: { persistSession: false } }
+    );
+  }
+  return supabaseClient;
+}
 
 async function trace(traceId: string, stage: string, payload: Record<string, any> = {}, metrics: Record<string, any> = {}): Promise<void> {
   const enrichedPayload = {
@@ -61,21 +84,10 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
     ...sanitizeLogData(enrichedPayload)
   }));
   
-  // PRODUCTION TRACE: Enhanced with detailed error logging
+  // PRODUCTION TRACE: Enhanced with single client instance
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.warn('⚠️ Trace disabled: Missing Supabase configuration');
-      return;
-    }
-    
-    const supabase = createClient(
-      supabaseUrl,
-      supabaseServiceKey,
-      { auth: { persistSession: false } }
-    );
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
     
     const insertData = {
       trace_id: traceId,
@@ -84,11 +96,9 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
       data: enrichedPayload
     };
     
-    // Remove verbose logging in production
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('coach_traces')
-      .insert(insertData)
-      .select();
+      .insert(insertData);
     
     if (error) {
       console.warn('Trace insertion failed:', error.message);
@@ -217,6 +227,12 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
   // 🔒 DSGVO: Hash User-ID für Logs  
   const hashedUserId = await hashUserId(userId);
   
+  // 🔧 Circuit Breaker Recovery (FIX #3)
+  if (circuitBreakerState.open && Date.now() - circuitBreakerState.lastFailure > RECOVERY_TIMEOUT) {
+    circuitBreakerState = { open: false, halfOpen: true, retryCount: 0, lastFailure: 0 };
+    console.log('🔄 Circuit breaker transitioning to half-open');
+  }
+  
   // ✅ SAFE TRACE CALLS with try-catch
   try {
     await trace(traceId, 'A_received', { 
@@ -342,68 +358,76 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
               throw new Error('No response body reader');
             }
 
-            const decoder = new TextDecoder();
-            let buffer = '';
+            // 🔥 ROBUST STREAM PARSER (FIX #1)
+            const parser = createParser((event) => {
+              if (event.type === 'event') {
+                const data = event.data;
+                
+                if (data === '[DONE]') {
+                  // Get final token count from last chunk if available
+                  const finalTokens = Math.round(responseText.length / 4);
+                  trace(traceId, 'F_streaming_done', { 
+                    responseLength: responseText.length,
+                    deltaCount 
+                  }, {
+                    fullStream_ms: Date.now() - start,
+                    completion_tokens: finalTokens,
+                    cost_usd: calculateCost('gpt-4o', ctx.metrics.tokensIn, finalTokens),
+                    model_fingerprint: 'gpt-4o-2024'
+                  });
+                  controller.enqueue(encoder.encode(sse({ messageId, traceId }, "end")));
+                  return;
+                }
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  const delta = parsed.choices?.[0]?.delta?.content;
+                  
+                  if (delta) {
+                    responseText += delta;
+                    deltaCount++;
+                    
+                    // Reduced logging for production (FIX #5)
+                    if (deltaCount === 1 || deltaCount === 25 || deltaCount % 100 === 0) {
+                      trace(traceId, 'D_delta', { 
+                        chunk: delta.slice(0, 20),
+                        deltaCount 
+                      }, {
+                        firstToken_ms: deltaCount === 1 ? (Date.now() - start) : undefined
+                      });
+                    }
+                    
+                    controller.enqueue(encoder.encode(sse({ 
+                      type: "delta", 
+                      messageId, 
+                      delta,
+                      traceId
+                    })));
+                  }
+                } catch (e) {
+                  // Skip invalid JSON
+                }
+              }
+            });
 
             try {
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-                
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    
-                    if (data === '[DONE]') {
-                      await trace(traceId, 'F_streaming_done', { 
-                        responseLength: responseText.length,
-                        deltaCount 
-                      }, {
-                        fullStream_ms: Date.now() - start,
-                        completion_tokens: Math.round(responseText.length / 4),
-                        cost_usd: calculateCost('gpt-4o', ctx.metrics.tokensIn, Math.round(responseText.length / 4)),
-                        model_fingerprint: 'gpt-4o-2024'
-                      });
-                      controller.enqueue(encoder.encode(sse({ messageId, traceId }, "end")));
-                      break;
-                    }
-                    
-                    try {
-                      const parsed = JSON.parse(data);
-                      const delta = parsed.choices?.[0]?.delta?.content;
-                      
-                      if (delta) {
-                        responseText += delta;
-                        deltaCount++;
-                        
-                        // Log first few deltas for debugging
-                        if (deltaCount <= 3) {
-                          await trace(traceId, 'D_delta', { 
-                            chunk: delta.slice(0, 20),
-                            deltaCount 
-                          }, {
-                            firstToken_ms: deltaCount === 1 ? (Date.now() - start) : undefined
-                          });
-                        }
-                        
-                        controller.enqueue(encoder.encode(sse({ 
-                          type: "delta", 
-                          messageId, 
-                          delta,
-                          traceId
-                        })));
-                      }
-                    } catch (e) {
-                      // Skip invalid JSON
-                    }
-                  }
-                }
+                const chunk = new TextDecoder().decode(value);
+                parser.feed(chunk);
               }
+            } catch (readError) {
+              console.error('Stream read error:', readError);
+              throw readError;
             } finally {
+              // 🔧 PROPER READER CLEANUP (FIX #5)
+              try {
+                reader.cancel();
+              } catch (e) {
+                console.warn('Reader cancel failed:', e);
+              }
               reader.releaseLock();
             }
 
@@ -433,6 +457,7 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
               retry_count: circuitBreakerState.retryCount + 1
             });
             circuitBreakerState.retryCount++;
+            circuitBreakerState.lastFailure = Date.now();
             mark("streaming_error", { messageId, error: error.message, traceId });
             controller.enqueue(encoder.encode(sse({
               type: "error",
@@ -494,7 +519,10 @@ async function handleRequest(body: any, corsHeaders: any, start: number) {
         openai_status: response.statusText,
         retry_count: circuitBreakerState.retryCount
       });
-      circuitBreakerState.open = response.status === 429;
+      if (response.status === 429) {
+        circuitBreakerState.open = true;
+        circuitBreakerState.lastFailure = Date.now();
+      }
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
@@ -568,6 +596,14 @@ async function buildAIContext(input: {
   const tokenCap = input.tokenCap || 6000; // Default to 6k based on analytics
   const metrics = { tokensIn: 0 };
 
+  // 🔧 TOKEN ACCOUNTING HELPER (FIX #4)
+  const pushAndCount = (txt?: string | null) => {
+    if (!txt) return txt;
+    const tokens = approxTokens(txt);
+    metrics.tokensIn += tokens;
+    return hardTrim(txt, Math.min(tokenCap / 4, 1500)); // Quarter cap per section
+  };
+
   // Parallel load with fail-soft
   const [personaRes, memoryRes, dailyRes, ragRes] = await Promise.allSettled([
     getCoachPersona(input.coachId),
@@ -584,18 +620,19 @@ async function buildAIContext(input: {
   const daily = dailyRes.status === "fulfilled" ? dailyRes.value : null;
   const ragChunks = ragRes?.status === "fulfilled" ? ragRes.value?.chunks : null;
 
-  const trim = (txt?: string | null) => {
-    if (!txt) return txt;
-    metrics.tokensIn += approxTokens(txt);
-    return hardTrim(txt, tokenCap);
-  };
+  // Count all sections for accurate token budget
+  const personaText = pushAndCount(JSON.stringify(persona));
+  const memoryText = pushAndCount(JSON.stringify(memory));
+  const dailyText = pushAndCount(JSON.stringify(daily));
+  const ragText = pushAndCount(ragChunks?.map(c => c.text).join('\n'));
+  const conversationSummary = pushAndCount("Gesprächskontext wird aufgebaut...");
 
   return {
     persona,
     memory,
     daily,
     ragChunks: ragChunks?.slice(0, 6) ?? null,
-    conversationSummary: trim("Gesprächskontext wird aufgebaut..."),
+    conversationSummary,
     metrics
   };
 }
