@@ -12,7 +12,7 @@ import {
   Flag,
   Monitor,
   BarChart3,
-  AlertTriangle,
+  MessageSquare,
   RefreshCw
 } from 'lucide-react';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
@@ -21,7 +21,7 @@ import { SecurityMonitor } from '@/components/SecurityMonitor';
 import { AppHealthCheck } from '@/components/AppHealthCheck';
 import { FeatureFlagsManager } from '@/components/FeatureFlagsManager';
 import { StreamingDashboard } from '@/components/StreamingDashboard';
-import { CoachTestPanel } from '@/components/CoachTestPanel';
+import { CoachConversationMonitor } from '@/components/CoachConversationMonitor';
 import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
@@ -141,8 +141,9 @@ export const AdminPage = () => {
               <span className="sm:hidden">Stream</span>
             </TabsTrigger>
             <TabsTrigger value="debug" className="text-xs sm:text-sm flex items-center gap-1 min-h-[44px] px-4">
-              <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
-              Debug
+              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Coach Monitor</span>
+              <span className="sm:hidden">Coach</span>
             </TabsTrigger>
           </TabsList>
 
@@ -273,9 +274,9 @@ export const AdminPage = () => {
             </Card>
           </TabsContent>
 
-          {/* 🔧 DEBUG PANEL */}
+          {/* 💬 COACH CONVERSATION MONITOR */}
           <TabsContent value="debug" className="space-y-6 mt-6 safe-area-pb-6">
-            <CoachTestPanel />
+            <CoachConversationMonitor />
           </TabsContent>
         </Tabs>
       </div>
