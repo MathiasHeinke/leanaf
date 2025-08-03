@@ -120,49 +120,67 @@ export const LiveTraceMonitor = () => {
 
       if (error) throw error;
 
-      // Group events by trace_id with enhanced processing
-      const groupedTraces = new Map<string, GroupedTrace>();
+      // Step 1: Group events by trace_id AND step to get latest status per step
+      const traceStepMap = new Map<string, Map<string, TraceEvent>>();
       
       data?.forEach((event: any) => {
-        if (!groupedTraces.has(event.trace_id)) {
-          groupedTraces.set(event.trace_id, {
-            traceId: event.trace_id,
-            conversationId: event.conversation_id,
-            messageId: event.message_id,
-            events: [],
-            startTime: event.created_at,
-            status: 'running',
-            totalSteps: 0,
-            completedSteps: 0,
-            errorSteps: 0
-          });
+        const traceKey = event.trace_id;
+        
+        if (!traceStepMap.has(traceKey)) {
+          traceStepMap.set(traceKey, new Map());
         }
         
-        const trace = groupedTraces.get(event.trace_id)!;
-        trace.events.push(event);
+        const stepMap = traceStepMap.get(traceKey)!;
+        const existingEvent = stepMap.get(event.step);
         
-        // Enhanced status calculation
-        const errorEvents = trace.events.filter(e => e.status === 'error');
-        const completeEvents = trace.events.filter(e => e.status === 'complete');
-        const hasCompleteStep = trace.events.some(e => e.step === 'complete' && e.status === 'complete');
+        // Keep the event with highest priority status (complete > error > progress > started)
+        const statusPriority = { complete: 4, error: 3, progress: 2, started: 1 };
+        const currentPriority = statusPriority[event.status as keyof typeof statusPriority] || 0;
+        const existingPriority = existingEvent ? statusPriority[existingEvent.status as keyof typeof statusPriority] || 0 : 0;
         
-        trace.totalSteps = trace.events.length;
-        trace.completedSteps = completeEvents.length;
-        trace.errorSteps = errorEvents.length;
+        if (!existingEvent || currentPriority > existingPriority || 
+            (currentPriority === existingPriority && new Date(event.created_at) > new Date(existingEvent.created_at))) {
+          stepMap.set(event.step, event);
+        }
+      });
+
+      // Step 2: Convert to GroupedTrace with correct status per step
+      const groupedTraces = new Map<string, GroupedTrace>();
+      
+      traceStepMap.forEach((stepMap, traceId) => {
+        const events = Array.from(stepMap.values()).sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
         
-        if (errorEvents.length > 0) {
-          trace.status = 'error';
+        const firstEvent = events[0];
+        const errorSteps = events.filter(e => e.status === 'error').length;
+        const completeSteps = events.filter(e => e.status === 'complete').length;
+        const hasCompleteStep = events.some(e => e.step === 'complete' && e.status === 'complete');
+        
+        // Determine overall trace status
+        let traceStatus: 'running' | 'completed' | 'error' = 'running';
+        if (errorSteps > 0) {
+          traceStatus = 'error';
         } else if (hasCompleteStep) {
-          trace.status = 'completed';
-        } else {
-          trace.status = 'running';
+          traceStatus = 'completed';
         }
         
-        // Calculate total duration more accurately
-        const eventsWithDuration = trace.events.filter(e => e.duration_ms);
-        if (eventsWithDuration.length > 0) {
-          trace.totalDuration = eventsWithDuration.reduce((sum, e) => sum + (e.duration_ms || 0), 0);
-        }
+        const totalDuration = events
+          .filter(e => e.duration_ms)
+          .reduce((sum, e) => sum + (e.duration_ms || 0), 0);
+
+        groupedTraces.set(traceId, {
+          traceId,
+          conversationId: firstEvent.conversation_id,
+          messageId: firstEvent.message_id,
+          events,
+          startTime: firstEvent.created_at,
+          status: traceStatus,
+          totalSteps: events.length,
+          completedSteps: completeSteps,
+          errorSteps: errorSteps,
+          totalDuration: totalDuration || undefined
+        });
       });
 
       const tracesArray = Array.from(groupedTraces.values()).sort((a, b) => 
