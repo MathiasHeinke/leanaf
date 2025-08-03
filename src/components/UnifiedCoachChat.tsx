@@ -862,18 +862,6 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               recentMessages
             );
           }, 'streaming-chat');
-          
-          setIsThinking(false);
-          return;
-        } catch (streamError: any) {
-          console.error('❌ Streaming failed:', streamError);
-          trackError(streamError.message);
-          setIsThinking(false);
-          // Fall through to backup processing
-        }
-      } else {
-        console.log('🔄 Using fallback processing for images or long text');
-      }
         
         // Handle completed stream with performance tracking
         if (streamingMessage && streamingMessage.isComplete) {
@@ -1053,6 +1041,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         console.log('🔄 Clearing tool after card response');
         setSelectedTool(null);
       }
+    } // Added missing closing brace for main try block
     } catch (error: any) {
       console.error('Send error:', error);
       
@@ -1098,7 +1087,7 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       setIsThinking(false);
       setSelectedTool(null); // Reset tool after use
     }
-  }, [inputText, uploadedImages, user?.id, coach?.id, mode, selectedTool, messages]);
+  }, [inputText, uploadedImages, user?.id, coach?.personality, mode, selectedTool, profileData, todaysTotals, workoutData, sleepData, weightHistory, averages, dailyGoals, messages]);
 
   // Retry failed message
   const handleRetryMessage = useCallback(async (messageId: string) => {

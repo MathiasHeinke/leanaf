@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { ExerciseProgressCharts } from '@/components/ExerciseProgressCharts';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
-// import { UnifiedCoachChat } from '@/components/UnifiedCoachChat'; // TEMP DISABLED DUE TO SYNTAX ERROR
+import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
 import { DayCard } from '@/components/DayCard';
 import { MonthCard } from '@/components/MonthCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -237,9 +237,12 @@ export const AdvancedWorkoutSection: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="coach" className="space-y-4">
-          <div className="text-center p-8">
-            <p className="text-muted-foreground">Coach Sascha temporär deaktiviert</p>
-          </div>
+          <UnifiedCoachChat 
+            mode="training"
+            onExerciseLogged={(exerciseData) => {
+            // Refresh sessions when exercise is logged through coach
+            loadSessions();
+          }} />
         </TabsContent>
 
 

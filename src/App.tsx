@@ -28,8 +28,6 @@ import Marketing from "./pages/Marketing";
 import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
 import TraceDebug from "./pages/TraceDebug";
-import TraceLive from "./pages/TraceLive";
-import { SimpleLucyChat } from "./components/SimpleLucyChat";
 
 const queryClient = new QueryClient();
 
@@ -69,8 +67,6 @@ const App = () => (
                       <Route path="/marketing" element={<Marketing />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/debug/trace/:traceId?" element={<TraceDebug />} />
-                      <Route path="/trace/live" element={<TraceLive />} />
-                      <Route path="/lucy/test" element={<SimpleLucyChat />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>

@@ -64,8 +64,8 @@ async function trace(traceId: string, stage: string, payload: Record<string, any
   // PRODUCTION TRACE: Enhanced with detailed error logging
   try {
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? 'https://gzczjscctgyxjyodhnhk.supabase.co',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      'https://gzczjscctgyxjyodhnhk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mjc0Nzk4MiwiZXhwIjoyMDY4MzIzOTgyfQ.c1pPZNMFb9TK8x8sfzcnCMgpJaKcVYRBsrBYGHqfvMU',
       { auth: { persistSession: false } }
     );
     

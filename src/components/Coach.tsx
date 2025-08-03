@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { CoachSelection } from '@/components/CoachSelection';
-// import { UnifiedCoachChat } from '@/components/UnifiedCoachChat'; // TEMP DISABLED DUE TO SYNTAX ERROR
+import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
 
 // Import coach personas and map to frontend profiles
 import coachPersonasData from '@/data/coach-personas.json';
@@ -75,13 +75,11 @@ const Coach = () => {
     }
 
     return (
-      <div className="h-screen p-4">
-        {/* UnifiedCoachChat temporarily disabled due to syntax error */}
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Coach {coach.name}</h2>
-          <p className="text-muted-foreground">Chat temporär deaktiviert</p>
-        </div>
-      </div>
+      <UnifiedCoachChat
+        mode="specialized"
+        coach={{...coach, personaId: coach.persona?.id}}
+        useFullscreenLayout={true}
+      />
     );
   }
 
