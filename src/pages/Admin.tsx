@@ -26,6 +26,7 @@ import { CoachConversationMonitor } from '@/components/CoachConversationMonitor'
 import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
+import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashboard';
 import { LiveTraceMonitor } from '@/components/LiveTraceMonitor';
 
 export const AdminPage = () => {
@@ -147,61 +148,7 @@ export const AdminPage = () => {
 
           {/* 📊 PERFORMANCE MONITORING */}
           <TabsContent value="performance" className="space-y-6 mt-6 safe-area-pb-6">
-            <div className="grid grid-cols-1 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Activity className="w-5 h-5 mr-2" />
-                    Performance Monitoring
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <PerformanceMonitoringDashboard 
-                    performanceMetrics={performanceMetrics}
-                    retryStates={{}}
-                  />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    OpenAI Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <OpenAIPerformanceDashboard />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Database className="w-5 h-5 mr-2" />
-                    RAG Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <RAGPerformanceMonitor />
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    Enhanced Telemetry
-                  </CardTitle>
-                  <CardDescription>
-                    Real-time telemetry data from coach traces
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RealTimeTelemetryDashboard />
-                </CardContent>
-              </Card>
-            </div>
+            <EnhancedPerformanceDashboard />
           </TabsContent>
 
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
