@@ -4475,6 +4475,4 @@ async function checkTrainingDataSufficiency(supabase: any, userId: string): Prom
     console.error('Error checking training data:', error);
     return { sufficient: false, analysis: {} };
   }
-}
-
-}); // Close serve() function
+});
