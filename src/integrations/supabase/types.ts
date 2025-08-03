@@ -4237,16 +4237,17 @@ export type Database = {
     Views: {
       rolling_daily_snapshot: {
         Row: {
-          created_at: string | null
+          completeness_score: number | null
           date: string | null
+          hydration_ml: number | null
           hydration_score: number | null
+          kcal: number | null
+          mood: string | null
+          sleep_hours: number | null
           sleep_score: number | null
-          total_calories: number | null
-          total_carbs: number | null
-          total_fats: number | null
-          total_protein: number | null
+          supplement_compliance: number | null
           user_id: string | null
-          workout_volume: number | null
+          volume_kg: number | null
         }
         Relationships: []
       }
@@ -4272,7 +4273,7 @@ export type Database = {
       }
       v_missing_summaries: {
         Row: {
-          missing_date: string | null
+          date: string | null
           user_id: string | null
         }
         Relationships: []
@@ -4304,10 +4305,11 @@ export type Database = {
       v_user_strength_profile: {
         Row: {
           avg_weight: number | null
-          category: string | null
+          exercise_category: string | null
           exercise_name: string | null
           last_performed: string | null
           max_weight: number | null
+          strength_level: string | null
           total_sets: number | null
           user_id: string | null
         }
