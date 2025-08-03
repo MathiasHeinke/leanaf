@@ -4260,19 +4260,19 @@ export type Database = {
       }
       v_meal_totals: {
         Row: {
-          carbs_g: number | null
+          carbs: number | null
           d: string | null
-          fats_g: number | null
+          fats: number | null
           kcal: number | null
           meals: Json | null
-          protein_g: number | null
+          protein: number | null
           user_id: string | null
         }
         Relationships: []
       }
       v_missing_summaries: {
         Row: {
-          date: string | null
+          missing_date: string | null
           user_id: string | null
         }
         Relationships: []
@@ -4290,32 +4290,6 @@ export type Database = {
           supplement_compliance: number | null
           user_id: string | null
           volume_kg: number | null
-        }
-        Insert: {
-          completeness_score?: never
-          date?: string | null
-          hydration_ml?: never
-          hydration_score?: never
-          kcal?: never
-          mood?: never
-          sleep_hours?: never
-          sleep_score?: never
-          supplement_compliance?: never
-          user_id?: string | null
-          volume_kg?: never
-        }
-        Update: {
-          completeness_score?: never
-          date?: string | null
-          hydration_ml?: never
-          hydration_score?: never
-          kcal?: never
-          mood?: never
-          sleep_hours?: never
-          sleep_score?: never
-          supplement_compliance?: never
-          user_id?: string | null
-          volume_kg?: never
         }
         Relationships: []
       }
