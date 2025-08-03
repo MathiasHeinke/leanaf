@@ -3023,6 +3023,7 @@ export type Database = {
       supplement_database: {
         Row: {
           category: string
+          common_brands: string[] | null
           common_timing: string[] | null
           created_at: string
           default_dosage: string | null
@@ -3036,6 +3037,7 @@ export type Database = {
         }
         Insert: {
           category: string
+          common_brands?: string[] | null
           common_timing?: string[] | null
           created_at?: string
           default_dosage?: string | null
@@ -3049,6 +3051,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          common_brands?: string[] | null
           common_timing?: string[] | null
           created_at?: string
           default_dosage?: string | null

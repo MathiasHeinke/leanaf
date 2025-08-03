@@ -692,40 +692,33 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
     // Analyze message for proactive behavior
     analyzeUserMessage(inputText, messages);
     
-    // Save user message to DB immediately
+    // Save user message to DB immediately  
     const today = new Date().toISOString().split('T')[0];
     const messageContent = uploadedImages.length > 0 
       ? `${inputText}\n\nImages: ${uploadedImages.join(', ')}`
       : inputText;
     
-    // Save to database with idempotency
+    // ✅ FIXED: Save to database with correct schema
     const { error: dbError } = await supabase.from('coach_conversations').insert({
-      id: messageId, // Use messageId for idempotency
       user_id: user.id,
       message_role: 'user',
       message_content: messageContent,
       coach_personality: coach?.id || 'lucy',
       conversation_date: today,
-      context_data: {
-        hasImages: uploadedImages.length > 0,
-        images: uploadedImages
-      }
+      images: uploadedImages.length > 0 ? uploadedImages : null
     });
     
     if (dbError) {
-      console.error('Database error:', dbError);
-      if (dbError.code === '23505') { // unique_violation
-        console.log('Duplicate message detected, skipping...');
-        setIsThinking(false);
-        return;
-      }
-      // Mark message as failed
+      console.error('❌ Coach conversations save error:', dbError);
+      console.error('Error details:', dbError);
       setMessages(prev => prev.map(msg => 
         msg.id === messageId ? { ...msg, status: 'failed' } : msg
       ));
       setIsThinking(false);
       toast('Fehler beim Speichern der Nachricht');
       return;
+    } else {
+      console.log('✅ User message saved to coach_conversations');
     }
     
     // Mark message as sent
@@ -850,15 +843,21 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         }
       }
       
-      // Save AI response to DB (only text messages, not cards)
+      // ✅ FIXED: Save AI response to DB
       if (data.type !== 'card') {
-        await supabase.from('coach_conversations').insert({
+        const { error: assistantDbError } = await supabase.from('coach_conversations').insert({
           user_id: user.id,
           message_role: 'assistant',
           message_content: data.content || data.response || 'Entschuldigung, ich konnte nicht antworten.',
           coach_personality: coach?.id || 'lucy',
           conversation_date: today
         });
+        
+        if (assistantDbError) {
+          console.error('❌ Error saving assistant message:', assistantDbError);
+        } else {
+          console.log('✅ Assistant message saved to coach_conversations');
+        }
       }
       
       // Handle tool reset from card metadata
