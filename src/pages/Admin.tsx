@@ -9,11 +9,12 @@ import {
   Activity, 
   Database, 
   Flag,
-  Users,
+  Monitor,
   BarChart3,
   AlertTriangle,
   RefreshCw
 } from 'lucide-react';
+import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
 import { SecurityMonitor } from '@/components/SecurityMonitor';
 import { AppHealthCheck } from '@/components/AppHealthCheck';
@@ -24,22 +25,22 @@ import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 
 export const AdminPage = () => {
   const { user } = useAuth();
-  const [performanceMetrics] = useState({
+  
+  // Mock performance metrics for the dashboard
+  const performanceMetrics = {
     averageResponseTime: 1200,
     successRate: 97.5,
     errorPatterns: { 'timeout': 5, 'rate_limit': 3 },
     totalRequests: 1500
-  });
+  };
   
-  const [streamingMetrics] = useState({
+  const streamingMetrics = {
     avgResponseTime: 800,
     streamingSuccess: 98.2,
     totalMessages: 2400,
     p95ResponseTime: 1500
-  });
-
-  const [retryStates] = useState({});
-
+  };
+  
   // Basic admin check - in production, check user roles
   const isAdmin = user?.email?.includes('admin') || process.env.NODE_ENV === 'development';
 
@@ -60,90 +61,176 @@ export const AdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-            <p className="text-muted-foreground">
-              System-Überwachung und Debug-Tools
-            </p>
+    <div className="min-h-screen bg-background">
+      {/* 📱 MOBILE-OPTIMIZED STICKY HEADER */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">
+                🚀 Production Admin
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Real-time monitoring & control center
+              </p>
+            </div>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Activity className="w-3 h-3 mr-1" />
+              Live
+            </Badge>
           </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-            <Shield className="w-3 h-3 mr-1" />
-            Admin-Modus
-          </Badge>
         </div>
+      </div>
 
-        {/* Main Dashboard */}
-        <Tabs defaultValue="performance" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="performance" className="flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Performance
+      {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
+      <div className="container mx-auto px-4 py-6">
+        <Tabs defaultValue="production" className="w-full">
+          {/* 📱 RESPONSIVE TAB NAVIGATION */}
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 mb-6">
+            <TabsTrigger value="production" className="text-xs sm:text-sm flex items-center gap-1">
+              <Monitor className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Production</span>
+              <span className="sm:hidden">Prod</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
+            <TabsTrigger value="performance" className="text-xs sm:text-sm flex items-center gap-1">
+              <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Performance</span>
+              <span className="sm:hidden">Perf</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="text-xs sm:text-sm flex items-center gap-1">
+              <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
               Security
             </TabsTrigger>
-            <TabsTrigger value="health" className="flex items-center gap-2">
-              <Database className="w-4 h-4" />
+            <TabsTrigger value="health" className="text-xs sm:text-sm flex items-center gap-1">
+              <Database className="w-3 h-3 sm:w-4 sm:h-4" />
               Health
             </TabsTrigger>
-            <TabsTrigger value="features" className="flex items-center gap-2">
-              <Flag className="w-4 h-4" />
+            <TabsTrigger value="features" className="text-xs sm:text-sm flex items-center gap-1">
+              <Flag className="w-3 h-3 sm:w-4 sm:h-4" />
               Features
             </TabsTrigger>
-            <TabsTrigger value="streaming" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Streaming
-            </TabsTrigger>
-            <TabsTrigger value="ai" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              AI & RAG
+            <TabsTrigger value="streaming" className="text-xs sm:text-sm flex items-center gap-1">
+              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Streaming</span>
+              <span className="sm:hidden">Stream</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="performance">
-            <PerformanceMonitoringDashboard
-              performanceMetrics={performanceMetrics}
-              retryStates={retryStates}
-              streamingMetrics={{
-                isConnected: true,
-                tokensPerSecond: 15,
-                connectionQuality: 'excellent' as const
-              }}
-            />
+          {/* 🔥 PRODUCTION MONITORING - MAIN TAB */}
+          <TabsContent value="production" className="space-y-6">
+            <ProductionMonitoringDashboard />
           </TabsContent>
 
-          <TabsContent value="security">
-            <SecurityMonitor />
+          {/* 📊 PERFORMANCE MONITORING */}
+          <TabsContent value="performance" className="space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Activity className="w-5 h-5 mr-2" />
+                    Performance Monitoring
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PerformanceMonitoringDashboard 
+                    performanceMetrics={performanceMetrics}
+                    retryStates={{}}
+                  />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    OpenAI Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <OpenAIPerformanceDashboard />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Database className="w-5 h-5 mr-2" />
+                    RAG Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RAGPerformanceMonitor />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="health">
-            <AppHealthCheck />
+          {/* 🔒 SECURITY MONITORING */}
+          <TabsContent value="security" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="w-5 h-5 mr-2" />
+                  Security Monitor
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SecurityMonitor />
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          <TabsContent value="features">
-            <FeatureFlagsManager />
+          {/* 🏥 HEALTH CHECK */}
+          <TabsContent value="health" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Database className="w-5 h-5 mr-2" />
+                  System Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AppHealthCheck />
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          <TabsContent value="streaming">
-            <StreamingDashboard
-              metrics={streamingMetrics}
-              isStreaming={true}
-              currentLatency={800}
-            />
+          {/* 🚩 FEATURE FLAGS */}
+          <TabsContent value="features" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Flag className="w-5 h-5 mr-2" />
+                  Feature Flags
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FeatureFlagsManager />
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          <TabsContent value="ai" className="space-y-6">
-            <OpenAIPerformanceDashboard />
-            <RAGPerformanceMonitor />
+          {/* 📡 STREAMING DASHBOARD */}
+          <TabsContent value="streaming" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Streaming Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StreamingDashboard 
+                  metrics={streamingMetrics}
+                  isStreaming={false}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 };
+
+export default AdminPage;
