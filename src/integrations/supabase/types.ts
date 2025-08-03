@@ -4275,7 +4275,6 @@ export type Database = {
           avg_weight: number | null
           exercise_category: string | null
           exercise_name: string | null
-          last_performed: string | null
           max_weight: number | null
           strength_level: string | null
           total_sets: number | null
