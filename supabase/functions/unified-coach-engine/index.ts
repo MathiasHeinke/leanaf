@@ -17,6 +17,17 @@ const apiKey = Deno.env.get("OPENAI_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
 
+// Environment variable validation
+if (!apiKey) {
+  console.error('Missing OPENAI_API_KEY environment variable');
+}
+if (!supabaseUrl) {
+  console.error('Missing SUPABASE_URL environment variable');
+}
+if (!supabaseKey) {
+  console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+}
+
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: apiKey,
@@ -202,9 +213,17 @@ serve(async (req) => {
       ...messages,
     ];
 
+    // Validate API key before making request
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Call the OpenAI API
     const chatCompletion = await openai.chat.completions.create({
-      model: 'gpt-4-1106-preview',
+      model: 'gpt-4o-mini',
       messages: prompt,
     });
 
