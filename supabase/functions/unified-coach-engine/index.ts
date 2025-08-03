@@ -1,7 +1,8 @@
 
+
 import { serve } from 'std/server';
 import { corsHeaders } from '../_shared/cors.ts';
-import { OpenAI } from "openai";
+import { OpenAI } from "https://esm.sh/openai@4.67.1";
 import { SupabaseClient, createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Database } from '../_shared/database.types.ts'
 
