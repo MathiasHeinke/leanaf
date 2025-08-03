@@ -258,20 +258,28 @@ serve(async (req) => {
     }
 
     // Call OpenAI API with optimized config
-    const startTime = Date.now();
+        const startTime = Date.now();
+        
+        // Add 30 second timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+        );
     const config = TASK_CONFIGS['unified-coach-engine'];
     console.log(`🤖 Using ${config.model} for unified coach engine`);
 
-    const chatCompletion = await callOpenAIWithRetry(async () => {
-      return await openai.chat.completions.create({
-        model: config.model,
-        messages: messages,
-        temperature: config.temperature,
-        top_p: config.top_p,
-        stream: config.stream,
-        max_tokens: 1200,
-      });
-    });
+    const chatCompletion = await Promise.race([
+      callOpenAIWithRetry(async () => {
+        return await openai.chat.completions.create({
+          model: config.model,
+          messages: messages,
+          temperature: config.temperature,
+          top_p: config.top_p,
+          stream: config.stream,
+          max_tokens: 1200,
+        });
+      }),
+      timeoutPromise
+    ]);
 
     const assistantMessage = chatCompletion.choices[0].message.content;
     const usage = chatCompletion.usage;

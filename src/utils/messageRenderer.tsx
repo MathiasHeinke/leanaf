@@ -39,6 +39,7 @@ export interface TextMessage {
   mode?: string;
   metadata?: any;
   timestamp?: Date; // Add for compatibility
+  status?: 'sending' | 'sent' | 'failed'; // Add status field
   pendingTools?: Array<{
     tool: string;
     label: string;

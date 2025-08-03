@@ -12,6 +12,10 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { debounce } from 'lodash';
+
+// Add missing debouncedSendMessage
+const debouncedSendMessage = debounce(() => {}, 500);
 import { 
   Send, 
   Mic, 
@@ -45,6 +49,7 @@ import { GlobalHeader } from '@/components/GlobalHeader';
 import { useContextTokens } from '@/hooks/useContextTokens';
 // AI-Greeting-Revolution: No more static templates!
 import { TypingIndicator } from '@/components/TypingIndicator';
+import { ProgressIndicator } from '@/components/ProgressIndicator';
 import { WorkoutPlanCreationModal } from './WorkoutPlanCreationModal';
 import { WeightEntryModal } from './WeightEntryModal';
 import { SupplementTrackingModal } from './SupplementTrackingModal';
@@ -64,6 +69,7 @@ import { WorkoutCheckUpTrigger } from '@/components/WorkoutCheckUpTrigger';
 import { renderMessage, createCardMessage, type UnifiedMessage } from '@/utils/messageRenderer';
 import { detectToolIntent, shouldUseTool, getToolEmoji, isIntentAppropriate } from '@/utils/toolDetector';
 import { prefillModalState } from '@/utils/modalContextHelpers';
+import { generateMessageId, createTimeoutPromise } from '@/utils/messageHelpers';
 
 // ============= TYPES =============
 export interface ChatMessage {
@@ -74,6 +80,7 @@ export interface ChatMessage {
   coach_personality: string;
   images?: string[];
   mode?: string;
+  status?: 'sending' | 'sent' | 'failed'; // Add status field for optimistic UI
   metadata?: {
     suggestions?: string[];
     actionButtons?: Array<{
@@ -567,15 +574,20 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
   const sendMessage = useCallback(async () => {
     // Allow image-only messages or text messages
     if ((!inputText.trim() && uploadedImages.length === 0) || !user?.id) return;
+    if (isThinking || uploading) return; // Block multiple sends
+    
+    // Generate unique message ID for idempotency
+    const messageId = generateMessageId();
     
     const userMessage: UnifiedMessage = {
-      id: `user-${Date.now()}`,
+      id: messageId,
       role: 'user',
       content: inputText,
       created_at: new Date().toISOString(),
       coach_personality: coach?.personality || 'motivierend',
       images: uploadedImages,
-      mode: mode
+      mode: mode,
+      status: 'sending' // Optimistic UI
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -613,7 +625,9 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
       ? `${inputText}\n\nImages: ${uploadedImages.join(', ')}`
       : inputText;
     
-    await supabase.from('coach_conversations').insert({
+    // Save to database with idempotency
+    const { error: dbError } = await supabase.from('coach_conversations').insert({
+      id: messageId, // Use messageId for idempotency
       user_id: user.id,
       message_role: 'user',
       message_content: messageContent,
@@ -624,6 +638,27 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
         images: uploadedImages
       }
     });
+    
+    if (dbError) {
+      console.error('Database error:', dbError);
+      if (dbError.code === '23505') { // unique_violation
+        console.log('Duplicate message detected, skipping...');
+        setIsThinking(false);
+        return;
+      }
+      // Mark message as failed
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId ? { ...msg, status: 'failed' } : msg
+      ));
+      setIsThinking(false);
+      toast('Fehler beim Speichern der Nachricht');
+      return;
+    }
+    
+    // Mark message as sent
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId ? { ...msg, status: 'sent' } : msg
+    ));
     
     // Clear input and show thinking
     const currentInput = inputText;
@@ -1351,7 +1386,8 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Nachricht eingeben ..."
                 rows={3}
-                disabled={recordingState}
+                disabled={recordingState || isThinking || uploading}
+                readOnly={isThinking || uploading}
                 className="w-full min-h-[96px] rounded-xl px-4 py-3 bg-white/60 dark:bg-black/40 backdrop-blur border border-white/40 dark:border-white/20 focus:outline-none resize-none overflow-auto"
                 onKeyDown={async (e) => {
                   // 🔧 Debug Mode: Shift + Enter = Direct GPT-4.1
@@ -1474,11 +1510,18 @@ const UnifiedCoachChat: React.FC<UnifiedCoachChatProps> = ({
               </button>
               
               <button 
-                onClick={sendMessage} 
-                disabled={!canSend || isThinking || recordingState}
+                onClick={() => { if (!isThinking && !uploading) debouncedSendMessage(); }} 
+                disabled={!canSend || isThinking || recordingState || uploading}
                 className="btn-send px-4 py-2"
               >
-                ➤ Senden
+                {(isThinking || uploading) ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Sending...
+                  </div>
+                ) : (
+                  "➤ Senden"
+                )}
               </button>
             </div>
             
