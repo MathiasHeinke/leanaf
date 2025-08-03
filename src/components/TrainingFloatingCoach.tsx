@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
+import SimpleUnifiedCoachChat from '@/components/SimpleUnifiedCoachChat';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { MessageCircle, X, Minimize2, Maximize2, Timer } from 'lucide-react';
 
@@ -126,7 +126,7 @@ export const TrainingFloatingCoach: React.FC<TrainingFloatingCoachProps> = ({
           </div>
           
           <div className="flex-1 overflow-hidden">
-            <UnifiedCoachChat mode="training" onExerciseLogged={onExerciseLogged} />
+            <SimpleUnifiedCoachChat mode="training" />
           </div>
         </CardContent>
       </Card>

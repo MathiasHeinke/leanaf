@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { CoachSelection } from '@/components/CoachSelection';
-import { UnifiedCoachChat } from '@/components/UnifiedCoachChat';
+import SimpleUnifiedCoachChat from '@/components/SimpleUnifiedCoachChat';
 
 // Import coach personas and map to frontend profiles
 import coachPersonasData from '@/data/coach-personas.json';
@@ -75,9 +75,9 @@ const Coach = () => {
     }
 
     return (
-      <UnifiedCoachChat
+      <SimpleUnifiedCoachChat
         mode="specialized"
-        coach={{...coach, personaId: coach.persona?.id}}
+        coach={coach}
         useFullscreenLayout={true}
       />
     );
