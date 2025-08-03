@@ -816,6 +816,30 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_traces: {
+        Row: {
+          data: Json | null
+          id: number
+          stage: string
+          trace_id: string
+          ts: string
+        }
+        Insert: {
+          data?: Json | null
+          id?: never
+          stage: string
+          trace_id: string
+          ts?: string
+        }
+        Update: {
+          data?: Json | null
+          id?: never
+          stage?: string
+          trace_id?: string
+          ts?: string
+        }
+        Relationships: []
+      }
       conversation_summaries: {
         Row: {
           created_at: string
