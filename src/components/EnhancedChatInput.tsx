@@ -201,8 +201,8 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           >
             <div className="bg-zinc-100/90 dark:bg-zinc-800/90 rounded-xl px-4 py-3 backdrop-blur-sm border border-border/50 shadow-lg">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 text-sm text-muted-foreground">
-                  <div className="font-medium">Heute: "Hallo! Wie geht's dir heute?" 💪</div>
+                <div className="flex-1 text-sm md:text-base text-muted-foreground leading-snug">
+                  <div className="font-semibold">Heute: "Hallo! Wie geht's dir heute?" 💪</div>
                   <div className="text-xs opacity-75">Gestern: "Wie war dein Training?"</div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -459,14 +459,19 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               placeholder={placeholder}
               disabled={isLoading}
               className={`
-                w-full bg-transparent border-none outline-none resize-none text-base px-3 py-3
-                placeholder:text-muted-foreground text-foreground font-medium
+                w-full bg-transparent border-none outline-none resize-none
+                text-base md:text-lg leading-normal px-4 py-3
+                placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
+                text-zinc-800 dark:text-white font-medium
                 transition-all duration-200
               `}
               style={{ 
                 minHeight: 48, 
                 maxHeight: 120,
-                overflow: 'auto'
+                overflow: 'auto',
+                fontSize: '18px',
+                lineHeight: '1.6',
+                fontFamily: 'InterVariable, Inter, -apple-system, sans-serif'
               }}
             />
           </div>
