@@ -338,38 +338,124 @@ const StepsAnalysisWidget = () => {
           </div>
         )}
 
-        {/* 30 Days Overview */}
-        {stepsData.last30Days.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-muted-foreground">Letzte 30 Tage</h4>
-            <div className="grid grid-cols-10 gap-1">
-              {stepsData.last30Days.map((day, index) => {
-                const progress = (day.steps / DAILY_GOAL) * 100;
-                const isToday = index === 0;
-                
-                return (
-                  <div 
-                    key={day.id || index} 
-                    className={`text-center space-y-1 p-1 rounded ${isToday ? 'bg-muted' : ''}`}
-                  >
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(day.date), 'dd')}
+        {/* Weekly Overview (Last 5 Weeks) */}
+        {stepsData.last30Days.length > 0 && (() => {
+          // Group days into weeks and calculate averages
+          const weeklyData = stepsData.last30Days.reduce((weeks: any[], workout) => {
+            const date = new Date(workout.date);
+            const monday = new Date(date);
+            monday.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+            monday.setHours(0, 0, 0, 0);
+            
+            const weekKey = monday.toISOString().split('T')[0];
+            
+            let week = weeks.find(w => w.weekStart === weekKey);
+            if (!week) {
+              const sunday = new Date(monday);
+              sunday.setDate(monday.getDate() + 6);
+              
+              week = {
+                weekStart: weekKey,
+                weekEnd: sunday.toISOString().split('T')[0],
+                days: [],
+                weekNumber: getWeekNumber(monday),
+                year: monday.getFullYear()
+              };
+              weeks.push(week);
+            }
+            
+            week.days.push(workout);
+            return weeks;
+          }, []);
+
+          // Calculate weekly averages and trends
+          const weeklyAverages = weeklyData
+            .map(week => {
+              const totalSteps = week.days.reduce((sum: number, day: any) => sum + (day.steps || 0), 0);
+              const avgSteps = Math.round(totalSteps / 7);
+              
+              return {
+                ...week,
+                averageSteps: avgSteps,
+                totalSteps,
+                dayCount: week.days.length
+              };
+            })
+            .sort((a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime())
+            .slice(-5);
+
+          // Calculate week-to-week trends
+          const weeksWithTrends = weeklyAverages.map((week, index) => {
+            if (index === 0) return { ...week, trend: 'stable' as const, trendPercentage: 0 };
+            
+            const prevWeek = weeklyAverages[index - 1];
+            const change = week.averageSteps - prevWeek.averageSteps;
+            const percentage = prevWeek.averageSteps > 0 ? Math.round((change / prevWeek.averageSteps) * 100) : 0;
+            
+            let trend: 'up' | 'down' | 'stable' = 'stable';
+            if (Math.abs(percentage) >= 5) {
+              trend = change > 0 ? 'up' : 'down';
+            }
+            
+            return { ...week, trend, trendPercentage: Math.abs(percentage) };
+          });
+
+          function getWeekNumber(date: Date): number {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+          }
+
+          const WEEKLY_GOAL = DAILY_GOAL * 7; // 70k steps per week
+
+          return (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">Letzte 5 Wochen (Durchschnitt)</h4>
+              <div className="grid grid-cols-5 gap-2">
+                {weeksWithTrends.map((week, index) => {
+                  const progress = (week.averageSteps / DAILY_GOAL) * 100;
+                  const weeklyProgress = (week.totalSteps / WEEKLY_GOAL) * 100;
+                  const isCurrentWeek = index === weeksWithTrends.length - 1;
+                  
+                  return (
+                    <div 
+                      key={week.weekStart} 
+                      className={`text-center space-y-2 p-2 rounded ${isCurrentWeek ? 'bg-muted' : ''}`}
+                    >
+                      <div className="text-xs text-muted-foreground">
+                        KW {week.weekNumber}
+                      </div>
+                      <div className="w-full bg-muted h-16 rounded-sm relative overflow-hidden">
+                        <div 
+                          className="absolute bottom-0 w-full bg-primary transition-all"
+                          style={{ height: `${Math.min(progress, 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-xs font-medium">
+                        {week.averageSteps > 0 ? Math.round(week.averageSteps / 1000) + 'k' : '0'}
+                      </div>
+                      {week.trend !== 'stable' && (
+                        <div className="flex items-center justify-center gap-1">
+                          {week.trend === 'up' ? (
+                            <TrendingUp className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3 text-red-500" />
+                          )}
+                          <span className={`text-xs ${week.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                            {week.trendPercentage}%
+                          </span>
+                        </div>
+                      )}
+                      {week.trend === 'stable' && (
+                        <div className="text-xs text-muted-foreground">~</div>
+                      )}
                     </div>
-                    <div className="w-full bg-muted h-12 rounded-sm relative overflow-hidden">
-                      <div 
-                        className="absolute bottom-0 w-full bg-primary transition-all"
-                        style={{ height: `${Math.min(progress, 100)}%` }}
-                      />
-                    </div>
-                    <div className="text-xs">
-                      {day.steps > 0 ? Math.round(day.steps / 1000) + 'k' : '0'}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </CardContent>
     </Card>
   );
