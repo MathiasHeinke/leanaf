@@ -341,24 +341,35 @@ export const SupplementComplianceWidget = () => {
             : "💊 Denk an deine Supplements!"}
         </div>
 
-        {/* Coach Analysis */}
+        {/* Lucy's Analysis */}
         {coachAnalysis && (
           <div className="border-t pt-4">
             <div className="flex items-start gap-3">
-              <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                <Brain className="h-4 w-4 text-white" />
+              <div className="h-8 w-8 bg-gradient-to-br from-pink-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <span className="text-white font-semibold text-xs">L</span>
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-foreground mb-2">Coach Analyse</h4>
+                <h4 className="text-sm font-semibold text-foreground mb-2">Lucy's Supplement-Analyse</h4>
                 {analysisLoading ? (
                   <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    <span className="text-sm text-muted-foreground">Analyse wird erstellt...</span>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-pink-500"></div>
+                    <span className="text-sm text-muted-foreground">Lucy analysiert deinen Stack...</span>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {coachAnalysis}
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {coachAnalysis}
+                    </p>
+                    <button 
+                      className="text-xs text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 font-medium"
+                      onClick={() => {
+                        // TODO: Open chat with Lucy
+                        console.log('Opening chat with Lucy about supplements...');
+                      }}
+                    >
+                      💬 Frag Lucy direkt zu deinen Supplements
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

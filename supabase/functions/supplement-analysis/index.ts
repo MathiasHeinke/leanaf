@@ -9,6 +9,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Lucy's safe supplements from the safety checker
+const SAFE_SUPPLEMENTS = [
+  'vitamin d', 'magnesium', 'creatin', 'omega-3', 'ashwagandha',
+  'vitamin b12', 'eisen', 'zink', 'vitamin c', 'folsäure',
+  'probiotika', 'kurkuma', 'spirulina', 'chlorella'
+];
+
+const CAUTION_SUPPLEMENTS = [
+  'niacin', 'yohimbin', 'koffein', 'vitamin a'
+];
+
+const checkSupplementSafety = (supplements: string[]) => {
+  const lowerSupps = supplements.map(s => s.toLowerCase());
+  const hasUnsafe = lowerSupps.some(supp => 
+    CAUTION_SUPPLEMENTS.some(caution => supp.includes(caution.split(' ')[0]))
+  );
+  return hasUnsafe ? 'caution' : 'safe';
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -20,25 +39,38 @@ serve(async (req) => {
 
     if (!supplements || supplements.length === 0) {
       return new Response(JSON.stringify({ 
-        analysis: "Keine Supplements konfiguriert. Füge deine Supplements hinzu, um eine fundierte Analyse zu erhalten." 
+        analysis: "Hey du 👋 Noch keine Supplements konfiguriert? Kein Problem! Füge deine Supplements hinzu und ich analysiere deinen Stack mit meiner Chrononutrition-Expertise ✨" 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const supplementList = supplements.map((s: any) => s.name).join(', ');
+    const safetyLevel = checkSupplementSafety(supplementList.split(', '));
     
-    const prompt = `Analysiere diese Supplement-Stack als erfahrener Coach:
+    // Get Berlin tip (5% chance)
+    const berlinTip = Math.random() < 0.05 ? ' Übrigens: Hast du schon den Tempeh-Döner an der Warschauer probiert? 🌯' : '';
+    
+    const prompt = `Du bist Dr. Lucy Martinez - PhD Chrononutrition aus Barcelona, seit 8 Jahren Coach in Berlin. 
+Du bist empathisch, wissenschaftlich fundiert, vegan-freundlich und fokussiert auf Balance statt Perfektion.
 
-Supplements: ${supplementList}
-Benutzer: ${userProfile ? `${userProfile.age} Jahre, ${userProfile.gender}, Ziel: ${userProfile.fitness_goal}` : 'Keine Profildaten verfügbar'}
+CHARAKTER:
+- Warmherziger Ton, max 2 Ausrufezeichen, max 3 Emojis
+- Kurze Sätze (max 18 Wörter)
+- Filler: "super", "prima", "okay"
+- Catchphrase: "Balance statt Perfektion ✨"
 
-Erstelle eine kurze Coach-Analyse (maximal 3-4 Sätze):
-1. Worauf zahlt dieser Stack hauptsächlich ein? (Performance, Recovery, Gesundheit, etc.)
-2. Ist das eine sinnvolle Kombination?
-3. Kurzes Fazit zur Qualität/Vollständigkeit
+SUPPLEMENTS ZU ANALYSIEREN: ${supplementList}
+BENUTZER: ${userProfile ? `${userProfile.age} Jahre, ${userProfile.gender}, Ziel: ${userProfile.fitness_goal}` : 'Keine Profildaten verfügbar'}
+SAFETY: ${safetyLevel}
 
-Schreibe auf Deutsch, professionell aber freundlich. Keine Listen, fließtext.`;
+ANALYSE-AUFGABE (maximal 4 kurze Sätze):
+1. Was dieser Stack bewirkt (Anti-Aging, Performance, Recovery)
+2. Vegane Optimierung: Was fehlt noch? (Algenöl statt Fischöl, etc.)
+3. Chrononutrition-Tipp: Timing-Empfehlung (morgens/abends)
+4. Balance-Fazit mit deiner Persönlichkeit
+
+Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -51,7 +83,7 @@ Schreibe auf Deutsch, professionell aber freundlich. Keine Listen, fließtext.`;
         messages: [
           { 
             role: 'system', 
-            content: 'Du bist ein erfahrener Fitness- und Ernährungscoach. Analysiere Supplement-Stacks fundiert und objektiv. Antworte immer auf Deutsch.' 
+            content: 'Du bist Dr. Lucy Martinez - PhD Chrononutrition, vegane Coach in Berlin. Analysiere Supplements wissenschaftlich aber warmherzig. Fokus auf Balance, Timing und vegane Optimierung. Antworte auf Deutsch.' 
           },
           { role: 'user', content: prompt }
         ],
