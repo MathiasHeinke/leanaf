@@ -197,7 +197,8 @@ async function loadDailySummary(userId: string) {
       badgesResult,
       challengesResult,
       fluidResult,
-      bodyMeasResult
+      bodyMeasResult,
+      workoutPlansResult
     ] = await Promise.allSettled([
       // Core daily summary
       supabase
@@ -242,18 +243,26 @@ async function loadDailySummary(userId: string) {
         .order('created_at', { ascending: false })
         .limit(3),
       
-      // Sleep tracking
+      // Sleep tracking - ENHANCED: Added libido & motivation
       supabase
         .from('sleep_tracking')
-        .select('sleep_hours, sleep_quality, sleep_score, date')
+        .select('sleep_hours, sleep_quality, sleep_score, date, bedtime, wake_time, morning_libido, motivation_level')
         .eq('user_id', userId)
         .order('date', { ascending: false })
         .limit(3),
       
-      // Supplement compliance
+      // Supplement compliance - FIXED: Correct JOIN to user_supplements
       supabase
         .from('supplement_intake_log')
-        .select('supplement_name, taken, created_at')
+        .select(`
+          taken, 
+          created_at,
+          user_supplements!inner(
+            supplement_id,
+            custom_name,
+            supplements(name)
+          )
+        `)
         .eq('user_id', userId)
         .gte('created_at', today + 'T00:00:00.000Z')
         .order('created_at', { ascending: false }),
@@ -289,13 +298,22 @@ async function loadDailySummary(userId: string) {
         .gte('created_at', today + 'T00:00:00.000Z')
         .order('created_at', { ascending: false }),
       
-      // Body measurements
+      // Body measurements - FIXED: Using actual available columns
       supabase
         .from('body_measurements')
-        .select('body_fat, muscle_mass, created_at')
+        .select('chest, waist, belly, hips, thigh, arms, neck, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(1)
+        .limit(2),
+      
+      // Workout plans - FIXED: Check current active plans
+      supabase
+        .from('workout_plans')
+        .select('id, name, status, created_by, created_at')
+        .eq('created_by', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(3)
     ]);
     
     // ============= ENHANCED DATA PROCESSING =============
@@ -381,11 +399,40 @@ async function loadDailySummary(userId: string) {
       contextData.trainingFrequency = sessions.length >= 3 ? "hoch" : sessions.length >= 2 ? "mittel" : "niedrig";
     }
     
+    // ENHANCED: Sleep tracking with libido & motivation
     if (sleepResult.status === 'fulfilled' && sleepResult.value?.data?.length > 0) {
       const sleep = sleepResult.value.data[0];
       contextData.sleepHours = sleep.sleep_hours;
       contextData.sleepQuality = sleep.sleep_quality >= 7 ? "gut" : sleep.sleep_quality >= 5 ? "okay" : "schlecht";
       contextData.recoveryScore = sleep.sleep_score || 0;
+      
+      // Add libido & motivation context for Lucy's holistic approach
+      const libido = sleep.morning_libido;
+      const motivation = sleep.motivation_level;
+      if (libido || motivation) {
+        contextData.sleepQuality += ` (Libido: ${libido || 'n/a'}, Motivation: ${motivation || 'n/a'})`;
+      }
+    }
+    
+    // ENHANCED: Supplement compliance calculation
+    if (supplementResult.status === 'fulfilled' && supplementResult.value?.data?.length > 0) {
+      const supplements = supplementResult.value.data;
+      const totalTaken = supplements.filter((s: any) => s.taken).length;
+      const totalExpected = supplements.length;
+      contextData.supplementCompliance = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 0;
+    }
+    
+    // ENHANCED: Body measurements trend analysis
+    if (bodyMeasResult.status === 'fulfilled' && bodyMeasResult.value?.data?.length > 0) {
+      const measurements = bodyMeasResult.value.data;
+      const current = measurements[0];
+      
+      // Calculate body progress from circumference data
+      if (current.waist && measurements.length >= 2) {
+        const previous = measurements[1];
+        const waistDiff = current.waist - (previous.waist || current.waist);
+        contextData.bodyFat = waistDiff < -1 ? 15 : waistDiff > 1 ? 25 : 20; // Simplified estimation
+      }
     }
     
     if (streaksResult.status === 'fulfilled' && streaksResult.value?.data?.length > 0) {
@@ -398,6 +445,23 @@ async function loadDailySummary(userId: string) {
     
     if (badgesResult.status === 'fulfilled' && badgesResult.value?.data?.length > 0) {
       contextData.recentBadges = badgesResult.value.data.map((badge: any) => badge.badge_name);
+    }
+    
+    // ENHANCED: Workout plans context
+    if (workoutPlansResult.status === 'fulfilled' && workoutPlansResult.value?.data?.length > 0) {
+      const plans = workoutPlansResult.value.data;
+      contextData.lastWorkout = `Aktiver Plan: ${plans[0].name}`;
+      contextData.trainingFrequency = plans.length >= 2 ? "hoch" : "mittel";
+    }
+    
+    // Monthly challenges progress
+    if (challengesResult.status === 'fulfilled' && challengesResult.value?.data?.length > 0) {
+      contextData.challengeProgress = challengesResult.value.data.map((challenge: any) => ({
+        type: challenge.challenge_type,
+        progress: challenge.progress,
+        target: challenge.target,
+        completed: challenge.is_completed
+      }));
     }
     
     // Calculate data completeness score
