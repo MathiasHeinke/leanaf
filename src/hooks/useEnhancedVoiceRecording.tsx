@@ -11,9 +11,10 @@ interface UseEnhancedVoiceRecordingReturn {
   transcript: string;
   audioLevel: number;
   startRecording: () => Promise<void>;
-  stopRecording: () => Promise<string | null>;
+  stopRecording: () => Promise<void>;
   clearTranscription: () => void;
   retryTranscription: () => Promise<string | null>;
+  sendTranscription: () => Promise<string | null>;
   hasPermission: boolean;
   hasCachedAudio: boolean;
 }
@@ -109,9 +110,9 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
     }
   }, [monitorAudioLevel]);
 
-  const stopRecording = useCallback(async (): Promise<string | null> => {
+  const stopRecording = useCallback(async (): Promise<void> => {
     if (!mediaRecorderRef.current || !isRecording) {
-      return null;
+      return;
     }
 
     console.log('🛑 Stopping enhanced voice recording...');
@@ -121,7 +122,6 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
       
       mediaRecorder.onstop = async () => {
         setIsRecording(false);
-        setIsProcessing(true);
         setAudioLevel(0);
         
         // Stop audio monitoring
@@ -134,31 +134,18 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
           
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           
-          // Cache audio blob for potential retries
+          // Cache audio blob for sending
           setCachedAudioBlob(audioBlob);
           
-          // Try transcription with retry logic
-          const transcriptionResult = await transcribeWithRetry(audioBlob);
+          console.log('✅ Audio recorded and cached');
           
-          if (transcriptionResult) {
-            setTranscribedText(transcriptionResult);
-            setTranscript(transcriptionResult);
-            toast.success(`Sprache erkannt: "${transcriptionResult.substring(0, 50)}${transcriptionResult.length > 50 ? '...' : ''}"`);
-            // Clear cache on success
-            setCachedAudioBlob(null);
-          } else {
-            toast.error('Audio gespeichert - versuche es nochmal oder nutze den Button "Nochmal senden"');
-          }
-          
-          resolve(transcriptionResult);
+          resolve();
           
         } catch (error) {
           console.error('❌ Error processing enhanced audio:', error);
           toast.error('Fehler bei der Audioverarbeitung');
-          resolve(null);
+          resolve();
         } finally {
-          setIsProcessing(false);
-          
           // Clean up
           mediaRecorder.stream.getTracks().forEach(track => track.stop());
           audioChunksRef.current = [];
@@ -169,6 +156,34 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
       mediaRecorder.stop();
     });
   }, [isRecording]);
+
+  // Send transcription explicitly
+  const sendTranscription = useCallback(async (): Promise<string | null> => {
+    if (!cachedAudioBlob) {
+      toast.error('Kein Audio vorhanden');
+      return null;
+    }
+    
+    setIsProcessing(true);
+    console.log('📤 Sending audio for transcription...');
+    
+    try {
+      const transcriptionResult = await transcribeWithRetry(cachedAudioBlob);
+      
+      if (transcriptionResult) {
+        setTranscribedText(transcriptionResult);
+        setTranscript(transcriptionResult);
+        toast.success(`Sprache erkannt: "${transcriptionResult.substring(0, 50)}${transcriptionResult.length > 50 ? '...' : ''}"`);
+        setCachedAudioBlob(null);
+      } else {
+        toast.error('Transkription fehlgeschlagen');
+      }
+      
+      return transcriptionResult;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [cachedAudioBlob]);
 
   // Transcription with retry logic
   const transcribeWithRetry = async (audioBlob: Blob, maxRetries = 3): Promise<string | null> => {
@@ -254,6 +269,7 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
     stopRecording,
     clearTranscription,
     retryTranscription,
+    sendTranscription,
     hasPermission,
     hasCachedAudio: !!cachedAudioBlob
   };

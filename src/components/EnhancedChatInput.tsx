@@ -27,6 +27,7 @@ import {
   PenTool,
   MessageSquare
 } from 'lucide-react';
+import { VoiceWaveAnimation } from '@/components/VoiceWaveAnimation';
 import { toast } from 'sonner';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
@@ -78,7 +79,9 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     startRecording, 
     stopRecording, 
     transcribedText,
-    clearTranscription
+    clearTranscription,
+    sendTranscription,
+    hasCachedAudio
   } = useEnhancedVoiceRecording();
   
   const { 
@@ -135,17 +138,30 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     toast.success(`${urls.length} Datei(en) hochgeladen`);
   }, [getMediaType]);
 
-  // Handle voice recording
+  // Handle voice recording - start/stop only, no auto-send
   const handleVoiceToggle = useCallback(async () => {
     if (isRecording) {
-      const result = await stopRecording();
-      if (result) {
-        setInputText(inputText + (inputText ? ' ' : '') + result);
-      }
+      await stopRecording();
     } else {
       await startRecording();
     }
-  }, [isRecording, stopRecording, startRecording, setInputText, inputText]);
+  }, [isRecording, stopRecording, startRecording]);
+
+  // Handle voice cancel
+  const handleVoiceCancel = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    }
+    clearTranscription();
+  }, [isRecording, stopRecording, clearTranscription]);
+
+  // Handle voice send
+  const handleVoiceSend = useCallback(async () => {
+    const result = await sendTranscription();
+    if (result) {
+      setInputText(inputText + (inputText ? ' ' : '') + result);
+    }
+  }, [sendTranscription, setInputText, inputText]);
 
   // Handle tool selection
   const handleToolSelect = useCallback((toolId: string) => {
@@ -273,7 +289,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         </motion.div>
       )}
 
-
       {/* Media Upload Zone */}
       <AnimatePresence>
         {showMediaUpload && (
@@ -308,7 +323,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
       {/* Main Input Container */}
       <div className={`
-        bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm
+        bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
         ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}
         ${isRecording ? 'border-red-500 shadow-red-500/20' : ''}
       `}>
@@ -323,7 +338,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             placeholder={placeholder}
             disabled={isLoading}
             className={`
-              w-full bg-transparent border-0 outline-none resize-none
+              w-full bg-transparent resize-none outline-none
               text-base md:text-lg leading-normal px-4 py-3 pr-24
               placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
               text-zinc-800 dark:text-white font-medium
@@ -350,17 +365,20 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
         {/* Button Row */}
         <div className="flex items-center justify-between px-4 py-2 border-t border-border/50">
-          <div className="flex items-center gap-2">
-            {/* Tool Picker */}
+          <div className="flex items-center gap-3">
+            {/* Tool Picker - 44x44pt touch target */}
             <div className="relative">
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
                 onClick={() => setShowTools(!showTools)}
-                className={`transition-all duration-200 ${selectedTool ? selectedToolConfig?.textColor : 'text-muted-foreground hover:text-foreground'}`}
+                className={`
+                  w-11 h-11 p-0 transition-all duration-200 
+                  ${selectedTool ? selectedToolConfig?.textColor : 'text-muted-foreground hover:text-foreground'}
+                `}
+                aria-label="Werkzeuge auswählen"
               >
-                <Wrench className={`w-5 h-5 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
+                <Wrench className={`w-6 h-6 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
               </Button>
               
               {/* Tool Selection Dropdown */}
@@ -416,54 +434,31 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Additional Actions Button */}
+            {/* Plus Icon - Native iOS File Picker - 44x44pt touch target */}
             <Button
               type="button"
               variant="ghost"
-              size="icon"
               onClick={() => setShowMediaUpload(!showMediaUpload)}
-              className={`transition-all duration-200 ${showMediaUpload ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}`}
-              disabled={isLoading}
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
-
-            {/* Voice Recording Button */}
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={handleVoiceToggle}
-              disabled={isLoading}
               className={`
-                transition-all duration-200 flex-shrink-0
-                ${isRecording 
-                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse shadow-lg' 
-                  : isProcessing 
-                    ? 'bg-yellow-500 text-white animate-pulse' 
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                }
+                w-11 h-11 p-0 transition-all duration-200 
+                ${showMediaUpload ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}
               `}
+              disabled={isLoading}
+              aria-label="Medien hinzufügen"
             >
-              {isProcessing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isRecording ? (
-                <MicOff className="w-5 h-5" />
-              ) : (
-                <Mic className="w-5 h-5" />
-              )}
+              <Plus className="w-6 h-6" />
             </Button>
 
-            {/* Suggestions Button */}
+            {/* Suggestions Button - 44x44pt touch target */}
             <div className="relative">
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
                 onClick={() => setShowSuggestions(!showSuggestions)}
-                className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+                className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
+                aria-label="Gesprächsvorschläge anzeigen"
               >
-                <MessageSquare className="w-5 h-5" />
+                <MessageSquare className="w-6 h-6" />
               </Button>
 
               {/* Suggestions Dropdown */}
@@ -505,98 +500,110 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             </div>
           </div>
 
-          {/* Send Button */}
-          <Button
-            onClick={handleSend}
-            disabled={!hasContent || isLoading}
-            className={`
-              flex-shrink-0 transition-all duration-200 shadow-lg px-4 h-10 rounded-xl
-              ${hasContent && !isLoading 
-                ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
-                : 'opacity-50'
-              }
-            `}
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </Button>
-        </div>
-      </div>
+          {/* Right Side: Send Button + Voice Button */}
+          <div className="flex items-center gap-3">
+            {/* Send Button - 44x44pt touch target */}
+            <Button
+              onClick={handleSend}
+              disabled={!hasContent || isLoading}
+              className={`
+                w-11 h-11 p-0 transition-all duration-200 font-medium
+                ${hasContent && !isLoading
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg scale-100' 
+                  : 'bg-muted text-muted-foreground cursor-not-allowed scale-95'
+                }
+              `}
+              aria-label="Nachricht senden"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
 
-      {/* Voice Recording Overlay */}
-      <AnimatePresence>
-        {isRecording && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center"
-          >
-            <div className="text-center space-y-6">
-              {/* Animated Waveform */}
-              <div className="relative">
-                <AudioWaveform className="w-16 h-16 text-red-400 animate-pulse" />
-                {audioLevel > 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div 
-                      className="w-20 h-20 rounded-full border-2 border-red-400 animate-ping opacity-30"
-                      style={{ 
-                        transform: `scale(${1 + audioLevel / 100})`,
-                        transition: 'transform 0.1s ease-out' 
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-              
-              {/* Recording Time */}
-              <div className="text-white text-lg font-mono">
-                🎤 {formatTime(recordingTime)}
-              </div>
-              
-              {/* Audio Level Bars */}
-              <div className="flex items-center justify-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-2 h-8 bg-red-400 rounded-full transition-all duration-100 ${
-                      audioLevel > (i + 1) * 20 ? 'opacity-100' : 'opacity-30'
-                    }`}
-                    style={{
-                      height: audioLevel > (i + 1) * 20 ? `${20 + (audioLevel / 5)}px` : '20px'
-                    }}
+            {/* Voice Recording Button - iOS Alert Red #FF3B30 - 44x44pt touch target */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleVoiceToggle}
+              disabled={isLoading}
+              className={`
+                w-11 h-11 p-0 transition-all duration-200 flex-shrink-0
+                ${isRecording 
+                  ? 'bg-[#FF3B30] text-white hover:bg-[#FF3B30]/90 animate-pulse shadow-lg' 
+                  : 'text-[#FF3B30] hover:bg-[#FF3B30]/10'
+                }
+              `}
+              aria-label={isRecording ? "Spracheingabe beenden" : "Spracheingabe starten"}
+            >
+              {isRecording ? (
+                <MicOff className="w-6 h-6" />
+              ) : (
+                <Mic className="w-6 h-6" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Voice Recording Overlay - Only covers input field */}
+        <AnimatePresence>
+          {(isRecording || isProcessing || hasCachedAudio) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 backdrop-blur-sm rounded-2xl z-10"
+            >
+              <div className="flex flex-col items-center justify-center h-full p-6">
+                {/* Wave Animation */}
+                <div className="mb-6">
+                  <VoiceWaveAnimation 
+                    audioLevel={audioLevel} 
+                    isActive={isRecording || isProcessing} 
                   />
-                ))}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between w-full max-w-xs">
+                  {/* Cancel Button */}
+                  <Button
+                    variant="ghost"
+                    onClick={handleVoiceCancel}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                    aria-label="Spracheingabe abbrechen"
+                  >
+                    <X className="w-5 h-5" />
+                    <span className="font-medium">Abbrechen</span>
+                  </Button>
+
+                  {/* Send Button */}
+                  <Button
+                    variant="default"
+                    onClick={handleVoiceSend}
+                    disabled={!hasCachedAudio || isProcessing}
+                    className="flex items-center gap-2 bg-primary text-primary-foreground"
+                    aria-label="Spracheingabe senden"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="font-medium">Transkribiere...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        <span className="font-medium">Absenden</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-              
-              {/* Control Buttons */}
-              <div className="flex gap-6 mt-8">
-                <Button
-                  size="lg"
-                  variant="destructive"
-                  onClick={() => {
-                    stopRecording();
-                    clearTranscription();
-                  }}
-                  className="px-8 py-3 text-base font-medium"
-                >
-                  Abbrechen
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={handleVoiceToggle}
-                  className="px-8 py-3 text-base font-medium bg-primary hover:bg-primary/90"
-                >
-                  Absenden
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Voice Transcription Display */}
       <AnimatePresence>
