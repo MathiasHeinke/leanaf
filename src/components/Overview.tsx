@@ -40,9 +40,10 @@ interface OverviewProps {
     fats: number;
   };
   weightHistory: any[];
+  showNutritionData?: boolean;
 }
 
-export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: OverviewProps) => {
+export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory, showNutritionData = true }: OverviewProps) => {
   const [profileData, setProfileData] = useState<any>(null);
   const [fullDailyGoals, setFullDailyGoals] = useState<any>(null);
   const [averageCalorieIntake, setAverageCalorieIntake] = useState<number>(0);
@@ -243,11 +244,12 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Makros Heute */}
-        <div className="space-y-4">
-          <h4 className="font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" />
-            Makros heute
-          </h4>
+        {showNutritionData && (
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              Makros heute
+            </h4>
           <div className="grid grid-cols-2 gap-3">
             {/* Kalorien */}
             <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700/30">
@@ -329,14 +331,16 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Durchschnitte */}
-        <div className="space-y-4">
-          <h4 className="font-semibold flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            7-Tage Durchschnitt
-          </h4>
+        {showNutritionData && (
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              7-Tage Durchschnitt
+            </h4>
           <div className="grid grid-cols-4 gap-3">
             <div className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-xs text-muted-foreground mb-1">Kalorien</div>
@@ -359,7 +363,8 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
               <div className="text-xs text-muted-foreground">vs {formatNutritionalValue(todaysTotals.fats, 'macros')}g heute</div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Gewichtstrend */}
         {weightHistory && weightHistory.length > 0 && (

@@ -304,6 +304,7 @@ const Analysis = () => {
               dailyGoals={null} // Empty for more tab
               averages={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
               weightHistory={weightHistory}
+              showNutritionData={false}
             />
             
             {/* Body Measurements Charts */}
@@ -313,6 +314,7 @@ const Analysis = () => {
               bodyMeasurementsHistory={bodyMeasurementsHistory}
               timeRange="month"
               loading={loading}
+              showNutritionCharts={false}
             />
           </div>
         </TabsContent>

@@ -37,9 +37,10 @@ interface HistoryChartsProps {
   bodyMeasurementsHistory?: BodyMeasurementEntry[];
   timeRange: 'week' | 'month' | 'year';
   loading: boolean;
+  showNutritionCharts?: boolean;
 }
 
-export const HistoryCharts = ({ data, weightHistory, bodyMeasurementsHistory = [], timeRange, loading }: HistoryChartsProps) => {
+export const HistoryCharts = ({ data, weightHistory, bodyMeasurementsHistory = [], timeRange, loading, showNutritionCharts = true }: HistoryChartsProps) => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -184,8 +185,9 @@ export const HistoryCharts = ({ data, weightHistory, bodyMeasurementsHistory = [
     >
       <div className="space-y-6">
         {/* Calories Line Chart */}
-        <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Kalorien Verlauf</h3>
+        {showNutritionCharts && (
+          <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
+            <h3 className="text-lg font-semibold mb-4">Kalorien Verlauf</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
@@ -221,11 +223,13 @@ export const HistoryCharts = ({ data, weightHistory, bodyMeasurementsHistory = [
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Macros Bar Chart */}
-        <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Makros</h3>
+        {showNutritionCharts && (
+          <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
+            <h3 className="text-lg font-semibold mb-4">Makros</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -251,7 +255,8 @@ export const HistoryCharts = ({ data, weightHistory, bodyMeasurementsHistory = [
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Enhanced Weight Chart with Optimized 3-Line Overlap */}
         {weightChartData.length > 0 && (
