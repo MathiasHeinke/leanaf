@@ -1,66 +1,56 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { 
   Send, 
-  Mic, 
   Loader2, 
-  Wrench, 
-  MessageCircle, 
-  FileText,
-  X,
-  ArrowUp,
+  Paperclip, 
+  Mic, 
+  MicOff, 
+  X, 
+  Image as ImageIcon,
+  Video,
+  Wrench,
   Plus,
-  RotateCcw,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  AudioWaveform,
   Scale,
-  Utensils,
+  UtensilsCrossed,
+  BookOpen,
+  Pill,
   Dumbbell,
-  Pill
+  PenTool,
+  MessageSquare
 } from 'lucide-react';
+import { VoiceWaveAnimation } from '@/components/VoiceWaveAnimation';
 import { toast } from 'sonner';
-
+import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { useEnhancedVoiceRecording } from '@/hooks/useEnhancedVoiceRecording';
 import { usePendingTools } from '@/hooks/usePendingTools';
-import { VoiceWaveAnimation } from './VoiceWaveAnimation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-// Helper function to determine media type from URL
-const getMediaType = (url: string): 'image' | 'video' | 'unknown' => {
-  const videoExtensions = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'flv', 'mkv'];
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
-  
-  const extension = url.split('.').pop()?.toLowerCase();
-  
-  if (extension && imageExtensions.includes(extension)) {
-    return 'image';
-  } else if (extension && videoExtensions.includes(extension)) {
-    return 'video';
-  }
-  
-  return 'unknown';
-};
-
-// Tool definitions
+// Tool configuration with colors
 const TOOLS = [
-  { id: 'weight', name: 'Gewicht tracken', color: 'bg-blue-500', icon: Scale },
-  { id: 'meal', name: 'Mahlzeit loggen', color: 'bg-green-500', icon: Utensils },
-  { id: 'workout', name: 'Training erfassen', color: 'bg-purple-500', icon: Dumbbell },
-  { id: 'supplement', name: 'Supplement tracken', color: 'bg-yellow-500', icon: Pill },
-];
-
-// Suggestion examples
-const getSuggestions = () => [
-  "Wie viele Kalorien sollte ich heute essen?",
-  "Erstelle mir einen Trainingsplan",
-  "Analysiere meine letzten Mahlzeiten",
-  "Welche Supplements sind sinnvoll?"
+  { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500", textColor: "text-violet-500", icon: Scale },
+  { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400", textColor: "text-orange-400", icon: UtensilsCrossed },
+  { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400", textColor: "text-sky-400", icon: BookOpen },
+  { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400", textColor: "text-green-400", icon: Pill },
+  { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500", textColor: "text-purple-500", icon: Dumbbell },
+  { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400", textColor: "text-pink-400", icon: PenTool },
 ];
 
 interface EnhancedChatInputProps {
   inputText: string;
   setInputText: (text: string) => void;
-  onSendMessage: (text: string, mediaUrls?: string[], tool?: string) => void;
-  isLoading?: boolean;
+  onSendMessage: (message: string, mediaUrls?: string[], selectedTool?: string | null) => void;
+  isLoading: boolean;
   placeholder?: string;
   className?: string;
 }
@@ -69,46 +59,64 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   inputText,
   setInputText,
   onSendMessage,
-  isLoading = false,
-  placeholder = "Schreibe eine Nachricht...",
-  className
+  isLoading,
+  placeholder = "Nachricht eingeben...",
+  className = ""
 }) => {
-  // State for various UI components
-  const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video' | 'unknown'}>>([]);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
   const [showTools, setShowTools] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestions] = useState(getSuggestions());
-
-  // File input ref for native picker
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Hooks for functionality
-  const { uploadFiles, uploading, uploadProgress } = useMediaUpload();
-  const {
-    isRecording,
-    isProcessing,
-    transcribedText: voiceText,
-    audioLevel,
-    startRecording,
-    stopRecording,
-    sendTranscription,
-    retryTranscription,
+  
+  // Hooks
+  const { uploadFiles, uploading, uploadProgress, getMediaType } = useMediaUpload();
+  const { 
+    isRecording, 
+    isProcessing, 
+    audioLevel, 
+    startRecording, 
+    stopRecording, 
+    transcribedText,
     clearTranscription,
+    sendTranscription,
     hasCachedAudio
   } = useEnhancedVoiceRecording();
   
-  const { pendingTools, addPendingTool, removePendingTool, clearAllPendingTools } = usePendingTools();
+  const { 
+    pendingTools, 
+    addPendingTool, 
+    removePendingTool 
+  } = usePendingTools();
 
-  // Effect for managing transcribed text
+  const selectedTool = pendingTools[0]?.tool || null;
+  const selectedToolConfig = TOOLS.find(tool => tool.id === selectedTool);
+
+  // Get suggestions for current context
+  const getSuggestions = () => {
+    return [
+      "Wie kann ich meine Fitness verbessern?",
+      "Was ist eine ausgewogene Ernährung?", 
+      "Zeig mir einen Trainingsplan",
+      "Wie bleibe ich motiviert?"
+    ];
+  };
+
+  // Recording timer
   useEffect(() => {
-    if (voiceText) {
-      setInputText(inputText + (inputText ? ' ' : '') + voiceText);
-      clearTranscription();
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      setRecordingTime(0);
     }
-  }, [voiceText, clearTranscription, inputText]);
+    return () => clearInterval(interval);
+  }, [isRecording]);
 
-  // Effect for textarea auto-resizing
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -116,106 +124,89 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [inputText]);
 
-  // Handle native file selection
-  const handleFileSelection = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-
-    try {
-      const urls = await uploadFiles(files);
-      const mediaItems = urls.map(url => ({
+  // Handle media upload - simplified to match MediaUploadZone interface
+  const handleMediaUpload = useCallback((urls: string[]) => {
+    const newMedia = urls.map(url => {
+      const mediaType = getMediaType(url);
+      return {
         url,
-        type: getMediaType(url)
-      }));
-      setUploadedMedia(prev => [...prev, ...mediaItems]);
-      toast.success(`${files.length} Datei(en) erfolgreich hochgeladen`);
-    } catch (error) {
-      toast.error('Fehler beim Hochladen der Dateien');
-    }
+        type: mediaType === 'unknown' ? 'image' : mediaType as 'image' | 'video'
+      };
+    });
+    setUploadedMedia(prev => [...prev, ...newMedia]);
+    setShowMediaUpload(false);
+    toast.success(`${urls.length} Datei(en) hochgeladen`);
+  }, [getMediaType]);
 
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, [uploadFiles]);
-
-  // Handle plus button click (native file picker)
-  const handlePlusClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  // Voice recording handlers
+  // Handle voice recording - start/stop only, no auto-send
   const handleVoiceToggle = useCallback(async () => {
     if (isRecording) {
       await stopRecording();
     } else {
       await startRecording();
     }
-  }, [isRecording, startRecording, stopRecording]);
+  }, [isRecording, stopRecording, startRecording]);
 
-  const handleVoiceCancel = useCallback(async () => {
+  // Handle voice cancel
+  const handleVoiceCancel = useCallback(() => {
     if (isRecording) {
-      await stopRecording();
+      stopRecording();
     }
     clearTranscription();
   }, [isRecording, stopRecording, clearTranscription]);
 
+  // Handle voice send
   const handleVoiceSend = useCallback(async () => {
-    if (hasCachedAudio) {
-      const result = await sendTranscription();
-      if (result) {
-        setInputText(inputText + (inputText ? ' ' : '') + result);
-      }
-    }
-  }, [hasCachedAudio, sendTranscription, setInputText, inputText]);
-
-  const handleVoiceRetry = useCallback(async () => {
-    const result = await retryTranscription();
+    const result = await sendTranscription();
     if (result) {
       setInputText(inputText + (inputText ? ' ' : '') + result);
     }
-  }, [retryTranscription, setInputText, inputText]);
+  }, [sendTranscription, setInputText, inputText]);
 
-  // Tool selection logic
+  // Handle tool selection
   const handleToolSelect = useCallback((toolId: string) => {
-    if (pendingTools.some(tool => tool.tool === toolId)) {
+    if (selectedTool === toolId) {
+      // Deselect if already selected
       removePendingTool(toolId);
     } else {
-      addPendingTool({ tool: toolId, label: toolId, confidence: 1 });
+      // Remove current tool and select new one
+      if (selectedTool) {
+        removePendingTool(selectedTool);
+      }
+      addPendingTool({
+        tool: toolId,
+        label: toolId,
+        confidence: 1.0
+      });
     }
-  }, [pendingTools, addPendingTool, removePendingTool]);
+    setShowTools(false);
+  }, [addPendingTool, removePendingTool, selectedTool]);
 
-  // Format time helper
+  // Format recording time
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Handle suggestion selection
-  const handleSuggestionSelect = useCallback((suggestion: string) => {
-    setInputText(suggestion);
-    setShowSuggestions(false);
-  }, [setInputText]);
-
-  // Handle sending message
+  // Handle send message
   const handleSend = useCallback(() => {
     if (!inputText.trim() && uploadedMedia.length === 0) return;
     
     const mediaUrls = uploadedMedia.map(media => media.url);
-    const selectedTool = pendingTools.length > 0 ? pendingTools[0].tool : undefined;
-    
     onSendMessage(inputText, mediaUrls, selectedTool);
     
-    // Reset form
+    // Reset everything
     setInputText('');
     setUploadedMedia([]);
-    clearAllPendingTools();
-    setShowTools(false);
-    setShowSuggestions(false);
-  }, [inputText, uploadedMedia, pendingTools, onSendMessage, setInputText, clearAllPendingTools]);
+    if (selectedTool) {
+      removePendingTool(selectedTool);
+    }
+    clearTranscription();
+    setShowMediaUpload(false);
+  }, [inputText, uploadedMedia, selectedTool, onSendMessage, setInputText, removePendingTool, clearTranscription]);
 
-  // Handle key press for send on Enter
+  // Handle key press
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -223,83 +214,122 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [handleSend]);
 
-  // Remove media from preview
+  // Remove uploaded media
   const removeMedia = useCallback((index: number) => {
     setUploadedMedia(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const hasContent = inputText.trim() || uploadedMedia.length > 0;
+
   return (
-    <div className={cn("relative bg-background border border-border rounded-lg shadow-sm", className)}>
-      {/* Hidden file input for native picker */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*,video/*"
-        onChange={handleFileSelection}
-        className="hidden"
-      />
+    <div className={`w-full max-w-4xl mx-auto ${className}`}>
 
       {/* Upload Progress */}
-      {uploading && (
-        <div className="px-4 py-2 border-b border-border">
-          <div className="space-y-2">
-            {uploadProgress.map((progress, index) => (
-              <div key={index} className="flex items-center gap-2 text-xs">
-                <div className="flex-1 bg-secondary rounded-full h-1.5">
-                  <div 
-                    className="bg-primary h-1.5 rounded-full transition-all duration-300" 
-                    style={{ width: `${progress.progress}%` }}
-                  />
-                </div>
-                <span className="text-muted-foreground min-w-0 flex-shrink-0">
-                  {progress.progress}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Media Preview */}
-      {uploadedMedia.length > 0 && (
-        <div className="px-4 py-2 border-b border-border">
-          <div className="flex gap-2 flex-wrap">
-            {uploadedMedia.map((media, index) => (
-              <div key={index} className="relative group">
-                {media.type === 'image' ? (
-                  <img 
-                    src={media.url} 
-                    alt="" 
-                    className="w-16 h-16 object-cover rounded border"
-                  />
-                ) : media.type === 'video' ? (
-                  <video 
-                    src={media.url} 
-                    className="w-16 h-16 object-cover rounded border"
-                    muted
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-secondary rounded border flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-muted-foreground" />
+      {uploading && uploadProgress.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3"
+        >
+          <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
+            <div className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Upload läuft...
+            </div>
+            <div className="space-y-3">
+              {uploadProgress.map((progress, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="truncate flex-1 font-medium">{progress.fileName}</span>
+                    <span className="text-primary font-semibold">{progress.progress}%</span>
                   </div>
-                )}
-                <button
-                  onClick={() => removeMedia(index)}
-                  className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <Progress value={progress.progress} className="h-2" />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Main Input Area */}
-      <div className="relative">
-        {/* Text Input - ABOVE the icon bar */}
-        <div className="relative px-4 py-3">
+      {/* Uploaded Media Preview */}
+      {uploadedMedia.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3"
+        >
+          <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
+            <div className="text-sm font-medium mb-3">📎 Hochgeladene Medien ({uploadedMedia.length})</div>
+            <div className="flex flex-wrap gap-2">
+              {uploadedMedia.map((media, index) => (
+                <div key={index} className="relative group">
+                  <Badge 
+                    variant="secondary" 
+                    className="flex items-center gap-2 pr-1 py-1 bg-primary/10 text-primary border-primary/20"
+                  >
+                    {media.type === 'image' ? (
+                      <ImageIcon className="w-3 h-3" />
+                    ) : (
+                      <Video className="w-3 h-3" />
+                    )}
+                    <span className="text-xs font-medium">{media.type}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                      onClick={() => removeMedia(index)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Media Upload Zone */}
+      <AnimatePresence>
+        {showMediaUpload && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: "spring", duration: 0.3 }}
+            className="mb-3 overflow-hidden"
+          >
+            <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-medium">📁 Dateien hochladen</h3>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowMediaUpload(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <MediaUploadZone
+                onMediaUploaded={handleMediaUpload}
+                accept={['image/*', 'video/*']}
+                maxFiles={5}
+                className="min-h-[120px]"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Input Container */}
+      <div className={`
+        bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
+        ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}
+        ${isRecording ? 'border-red-500 shadow-red-500/20' : ''}
+      `}>
+
+        {/* Text Input Row - Full Width Above Buttons */}
+        <div className="px-4 py-3 relative">
           <textarea
             ref={textareaRef}
             value={inputText}
@@ -307,224 +337,292 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             onKeyDown={handleKeyPress}
             placeholder={placeholder}
             disabled={isLoading}
-            className={cn(
-              "w-full resize-none border-0 bg-transparent text-sm",
-              "placeholder:text-muted-foreground focus:outline-none",
-              "min-h-[44px] max-h-[200px]"
-            )}
-            rows={1}
+            className={`
+              w-full bg-transparent resize-none outline-none
+              text-base md:text-lg leading-normal px-4 py-3 pr-24
+              placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
+              text-zinc-800 dark:text-white font-medium
+              transition-all duration-200
+            `}
+            style={{ 
+              minHeight: 80, 
+              maxHeight: 200,
+              overflow: 'auto',
+              fontSize: '18px',
+              lineHeight: '1.6',
+              fontFamily: 'InterVariable, Inter, -apple-system, sans-serif'
+            }}
           />
+          {/* Tool Status in top-right of textarea */}
+          {selectedToolConfig && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 text-xs font-medium">
+              <div className={`w-2 h-2 ${selectedToolConfig.bgColor} rounded-full`}></div>
+              <Wrench className={`w-3 h-3 ${selectedToolConfig.textColor}`} />
+              <span className="text-muted-foreground">{selectedToolConfig.name}</span>
+            </div>
+          )}
         </div>
 
-        {/* Icon Bar - BELOW the text input */}
-        <div className="flex items-center gap-1 px-2 py-1">
-          {/* 1. Suggestions Button with Badge */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSuggestions(!showSuggestions)}
+        {/* Button Row */}
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border/50">
+          <div className="flex items-center gap-3">
+            {/* Tool Picker - 44x44pt touch target */}
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowTools(!showTools)}
+                className={`
+                  w-11 h-11 p-0 transition-all duration-200 
+                  ${selectedTool ? selectedToolConfig?.textColor : 'text-muted-foreground hover:text-foreground'}
+                `}
+                aria-label="Werkzeuge auswählen"
+              >
+                <Wrench className={`w-6 h-6 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
+              </Button>
+              
+              {/* Tool Selection Dropdown */}
+              <AnimatePresence>
+                {showTools && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ type: "spring", duration: 0.2 }}
+                    className="absolute bottom-full mb-2 left-0 z-50"
+                  >
+                    <div className="bg-background border border-border rounded-xl p-2 shadow-xl backdrop-blur-sm w-56">
+                      <div className="space-y-1">
+                        {TOOLS.map(tool => {
+                          const IconComponent = tool.icon;
+                          return (
+                            <Button
+                              key={tool.id}
+                              size="sm"
+                              variant={selectedTool === tool.id ? "default" : "ghost"}
+                              onClick={() => handleToolSelect(tool.id)}
+                              className={`
+                                w-full justify-between font-medium transition-all duration-200
+                                ${selectedTool === tool.id 
+                                  ? `${tool.bgColor} text-white shadow-lg hover:opacity-90` 
+                                  : 'hover:bg-accent hover:text-accent-foreground'
+                                }
+                              `}
+                            >
+                              <span>{tool.name}</span>
+                              <IconComponent className="w-4 h-4" />
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      {selectedTool && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removePendingTool(selectedTool)}
+                            className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <X className="w-3 h-3 mr-1" />
+                            Tool entfernen
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Plus Icon - Native iOS File Picker - 44x44pt touch target */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowMediaUpload(!showMediaUpload)}
+              className={`
+                w-11 h-11 p-0 transition-all duration-200 
+                ${showMediaUpload ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}
+              `}
               disabled={isLoading}
-              aria-label="Vorschläge"
-              className="w-11 h-11 flex items-center justify-center"
+              aria-label="Medien hinzufügen"
             >
-              <MessageCircle className="w-6 h-6" />
-            </button>
-            
-            {/* Suggestions Badge */}
-            {suggestions.length > 0 && (
-              <span className="absolute -top-0.5 -right-1.5 text-[10px] font-bold text-white bg-gray-500 rounded-full px-1">
-                {Math.min(suggestions.length, 4)}
-              </span>
-            )}
+              <Plus className="w-6 h-6" />
+            </Button>
+
+            {/* Suggestions Button - 44x44pt touch target */}
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+                className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
+                aria-label="Gesprächsvorschläge anzeigen"
+              >
+                <MessageSquare className="w-6 h-6" />
+              </Button>
+
+              {/* Suggestions Dropdown */}
+              <AnimatePresence>
+                {showSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ type: "spring", duration: 0.2 }}
+                    className="absolute bottom-full mb-2 left-0 z-50"
+                  >
+                    <div className="bg-background border border-border rounded-xl p-3 shadow-xl backdrop-blur-sm w-80">
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                          💡 Gesprächsvorschläge
+                        </h3>
+                        <div className="space-y-2">
+                          {getSuggestions().map((suggestion, index) => (
+                            <Button
+                              key={index}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setInputText(suggestion);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full justify-start text-left h-auto p-3 whitespace-normal hover:bg-accent hover:text-accent-foreground"
+                            >
+                              {suggestion}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
-          {/* 2. Tool Picker */}
-          <div className="relative">
-            <button
-              onClick={() => setShowTools(!showTools)}
-              disabled={isLoading}
-              aria-label="Tools"
-              className="w-11 h-11 flex items-center justify-center"
+          {/* Right Side: Send Button + Voice Button */}
+          <div className="flex items-center gap-3">
+            {/* Send Button - 44x44pt touch target */}
+            <Button
+              onClick={handleSend}
+              disabled={!hasContent || isLoading}
+              className={`
+                w-11 h-11 p-0 transition-all duration-200 font-medium
+                ${hasContent && !isLoading
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg scale-100' 
+                  : 'bg-muted text-muted-foreground cursor-not-allowed scale-95'
+                }
+              `}
+              aria-label="Nachricht senden"
             >
-              <Wrench className="w-6 h-6" />
-            </button>
-            
-            {/* Tool indicator */}
-            {pendingTools.length > 0 && (
-              <span className="absolute -top-0.5 -right-1.5 text-[10px] font-bold text-white bg-primary rounded-full px-1">
-                {pendingTools.length}
-              </span>
-            )}
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
+
+            {/* Voice Recording Button - iOS Alert Red #FF3B30 - 44x44pt touch target */}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleVoiceToggle}
+              disabled={isLoading}
+              className={`
+                w-11 h-11 p-0 transition-all duration-200 flex-shrink-0
+                ${isRecording 
+                  ? 'bg-[#FF3B30] text-white hover:bg-[#FF3B30]/90 animate-pulse shadow-lg' 
+                  : 'text-[#FF3B30] hover:bg-[#FF3B30]/10'
+                }
+              `}
+              aria-label={isRecording ? "Spracheingabe beenden" : "Spracheingabe starten"}
+            >
+              {isRecording ? (
+                <MicOff className="w-6 h-6" />
+              ) : (
+                <Mic className="w-6 h-6" />
+              )}
+            </Button>
           </div>
-
-          {/* 3. Plus Button (Native File Picker) */}
-          <button
-            onClick={handlePlusClick}
-            disabled={isLoading}
-            aria-label="Datei hinzufügen"
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
-
-
-          {/* 4. Microphone Button (Red) */}
-          <button
-            onClick={handleVoiceToggle}
-            disabled={isLoading}
-            aria-label="Spracheingabe"
-            className="w-11 h-11 flex items-center justify-center text-red-600"
-          >
-            <Mic className="w-6 h-6" />
-          </button>
-
-          {/* 5. Send Button */}
-          <button
-            onClick={handleSend}
-            disabled={isLoading || (!inputText.trim() && uploadedMedia.length === 0)}
-            aria-label="Senden"
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            {isLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <Send className="w-6 h-6" />
-            )}
-          </button>
         </div>
+
+        {/* Voice Recording Overlay - Only covers input field */}
+        <AnimatePresence>
+          {(isRecording || isProcessing || hasCachedAudio) && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 backdrop-blur-sm rounded-2xl z-10"
+            >
+              <div className="flex flex-col items-center justify-center h-full p-6">
+                {/* Wave Animation */}
+                <div className="mb-6">
+                  <VoiceWaveAnimation 
+                    audioLevel={audioLevel} 
+                    isActive={isRecording || isProcessing} 
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between w-full max-w-xs">
+                  {/* Cancel Button */}
+                  <Button
+                    variant="ghost"
+                    onClick={handleVoiceCancel}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                    aria-label="Spracheingabe abbrechen"
+                  >
+                    <X className="w-5 h-5" />
+                    <span className="font-medium">Abbrechen</span>
+                  </Button>
+
+                  {/* Send Button */}
+                  <Button
+                    variant="default"
+                    onClick={handleVoiceSend}
+                    disabled={!hasCachedAudio || isProcessing}
+                    className="flex items-center gap-2 bg-primary text-primary-foreground"
+                    aria-label="Spracheingabe senden"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="font-medium">Transkribiere...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        <span className="font-medium">Absenden</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Tools Selection Panel */}
+      {/* Voice Transcription Display */}
       <AnimatePresence>
-        {showTools && (
+        {transcribedText && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="border-t border-border p-4"
-          >
-            <div className="grid grid-cols-2 gap-2">
-              {TOOLS.map((tool) => (
-                <motion.button
-                  key={tool.id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleToolSelect(tool.id)}
-                  className={cn(
-                    "flex items-center gap-2 p-3 rounded-lg border transition-colors",
-                    pendingTools.some(pt => pt.tool === tool.id)
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary/30 hover:bg-secondary/50 border-border"
-                  )}
-                >
-                  <tool.icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{tool.name}</span>
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Suggestions Dropdown */}
-      <AnimatePresence>
-        {showSuggestions && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="absolute bottom-full left-0 right-0 mb-2 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto z-10"
+            exit={{ opacity: 0, y: 10 }}
+            className="mt-3"
           >
-            <div className="p-2">
-              <p className="text-xs text-muted-foreground mb-2 px-2">Vorschläge:</p>
-              {suggestions.slice(0, 4).map((suggestion, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSuggestionSelect(suggestion)}
-                  className="w-full text-left p-2 text-sm hover:bg-secondary rounded transition-colors"
-                >
-                  {suggestion}
-                </button>
-              ))}
+            <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-xl p-3 backdrop-blur-sm">
+              <div className="text-xs text-green-700 dark:text-green-300 mb-2 font-medium">
+                🎤 Transkribiert:
+              </div>
+              <div className="text-sm text-green-900 dark:text-green-100">{transcribedText}</div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Voice Recording Overlay 2.1 */}
-      <AnimatePresence>
-        {isRecording && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-x-0 bottom-0 top-16 bg-background/85 backdrop-blur-sm flex flex-col items-center z-50 dark:bg-background/85"
-          >
-            {/* Timer + Waveform */}
-            <div className="mt-12 flex flex-col items-center gap-2">
-              <span className="text-sm text-muted-foreground">Recording...</span>
-              <VoiceWaveAnimation isActive={isRecording} />
-            </div>
-
-            {/* Status Text */}
-            <p className="mt-4 text-muted-foreground text-sm">
-              {isRecording && 'Ich höre zu …'}
-              {isProcessing && 'Text wird transkribiert …'}
-            </p>
-
-            {/* Action Bar */}
-            <div className="mt-auto mb-8 flex gap-20">
-              {/* Cancel Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleVoiceCancel}
-                className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center"
-                aria-label="Aufnahme abbrechen"
-              >
-                <X className="w-8 h-8" />
-              </motion.button>
-
-              {/* Send Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleVoiceSend}
-                disabled={!hasCachedAudio && !isRecording}
-                className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
-                aria-label="Transkribieren"
-              >
-                <ArrowUp className="w-8 h-8" />
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Transcribed Text Display */}
-      {voiceText && !isRecording && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute top-0 left-0 right-0 bg-primary/10 border border-primary/20 rounded-t-lg p-3 -mt-1"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <p className="text-xs text-primary font-medium mb-1">Transkribiert:</p>
-              <p className="text-sm">{voiceText}</p>
-            </div>
-            <button
-              onClick={clearTranscription}
-              className="text-primary hover:text-primary/80 transition-colors"
-              aria-label="Transkription löschen"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 };
