@@ -302,9 +302,10 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           {/* Tool Status in top-right of textarea */}
           {selectedToolConfig && (
             <div className="absolute top-2 right-2 flex items-center gap-1 text-xs font-medium">
-              <div className={`w-2 h-2 ${selectedToolConfig.bgColor} rounded-full`}></div>
-              <Wrench className={`w-3 h-3 ${selectedToolConfig.textColor}`} />
-              <span className="text-muted-foreground">{selectedToolConfig.name}</span>
+              {React.createElement(selectedToolConfig.icon, {
+                className: `w-4 h-4 ${selectedToolConfig.textColor}`
+              })}
+              <span className={selectedToolConfig.textColor}>{selectedToolConfig.name}</span>
             </div>
           )}
         </div>
