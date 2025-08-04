@@ -192,13 +192,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
       theme="purple"
     >
       {hasWorkoutToday && !isEditing ? (
-        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-cyan-200 dark:border-cyan-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-cyan-100 dark:bg-cyan-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-cyan-600" />
             <div className="flex-1">
-              <h3 className="font-semibold text-cyan-800 dark:text-cyan-200">
+              <h3 className="font-semibold text-foreground">
                 {todaysWorkouts.length === 1 ? 'Workout erledigt! 💪' : `${todaysWorkouts.length} Workouts erledigt! 💪`}
               </h3>
             </div>
@@ -237,10 +235,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             />
           </div>
           
-          {/* Display all workouts */}
-          <div className="space-y-2 mb-3">
+          <div className="space-y-2">
             {todaysWorkouts.map((workout, index) => (
-              <div key={workout.id} className="flex items-center justify-between bg-white/50 dark:bg-cyan-900/20 rounded-lg p-2">
+              <div key={workout.id} className="flex items-center justify-between bg-card rounded-lg p-3 border">
                 <div className="flex-1">
                   <p className="text-sm text-cyan-600 dark:text-cyan-400">
                     <span className="font-medium">

@@ -332,13 +332,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
       theme="indigo"
     >
       {hasSleepToday && !isEditing ? (
-        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-indigo-600" />
             <div className="flex-1">
-              <h3 className="font-semibold text-indigo-800 dark:text-indigo-200">Schlaf eingetragen! 😴</h3>
+              <h3 className="font-semibold text-foreground">Schlaf eingetragen! 😴</h3>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -372,7 +370,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             />
           </div>
           
-          <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-3">
+          <p className="text-sm text-muted-foreground">
             {todaysSleep.bedtime && todaysSleep.wake_time 
               ? `${todaysSleep.bedtime} - ${todaysSleep.wake_time}` 
               : `${todaysSleep.sleep_hours || 0} Stunden`
@@ -381,9 +379,8 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             {todaysSleep.sleep_interruptions > 0 && ` • ${todaysSleep.sleep_interruptions}x unterbrochen`}
           </p>
           
-          {/* Erweiterte Infos wenn verfügbar */}
           {(todaysSleep.screen_time_evening || todaysSleep.morning_libido || todaysSleep.motivation_level) && (
-            <div className="text-xs text-indigo-600 dark:text-indigo-400 mb-3 space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1">
               {todaysSleep.screen_time_evening > 0 && (
                 <div className="flex items-center gap-1">
                   <Smartphone className="h-3 w-3" />
@@ -428,18 +425,17 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             />
           </div>
           
-          {/* Tips in matching indigo theme */}
-          <div className="bg-indigo-100/50 dark:bg-indigo-900/30 rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
-            <p className="text-xs text-indigo-700 dark:text-indigo-300 mb-2">
+          <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
+            <p className="text-xs text-indigo-700 mb-2">
               <strong>Tipp:</strong> Optimiere deinen Schlaf für bessere Regeneration!
             </p>
-            <p className="text-xs text-indigo-600 dark:text-indigo-400">
+            <p className="text-xs text-indigo-600">
               • 7-9 Stunden Schlaf für optimale Regeneration
               • Feste Schlafzeiten unterstützen den Biorhythmus
               • Bildschirme 1h vor dem Schlafen vermeiden
               • Kühles, dunkles Schlafzimmer für bessere Schlafqualität
             </p>
-            <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-2">
+            <p className="text-xs text-indigo-600 mt-2">
               <strong>Nächster Schlaf:</strong> Heute Abend 😴
             </p>
           </div>

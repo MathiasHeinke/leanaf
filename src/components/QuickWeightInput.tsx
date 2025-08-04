@@ -318,13 +318,11 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
       theme="violet"
     >
       {hasWeightToday && !isEditing ? (
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-blue-600" />
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-800 dark:text-blue-200">Gewicht erfasst! 📊</h3>
+              <h3 className="font-semibold text-foreground">Gewicht erfasst! 📊</h3>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -360,7 +358,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
             />
           </div>
           
-          <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
+          <p className="text-sm text-muted-foreground">
             {parseFloat(todaysWeight.weight).toFixed(1)} kg
             {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
             {todaysWeight.muscle_percentage && ` • ${parseFloat(todaysWeight.muscle_percentage).toFixed(1)}% Muskeln`}
