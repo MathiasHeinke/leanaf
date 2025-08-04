@@ -314,14 +314,14 @@ export const SupplementComplianceWidget = () => {
         </div>
 
         {/* Weekly Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-1">
             <div className="text-xs text-muted-foreground">7-Tage Ø</div>
             <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
               {Math.round(supplementData.weeklyCompliance)}%
             </div>
           </div>
-          <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+          <div className="space-y-1">
             <div className="text-xs text-muted-foreground">Trend</div>
             <div className={`text-lg font-bold flex items-center gap-1 ${getTrendColor()}`}>
               {getTrendIcon()}
@@ -331,34 +331,32 @@ export const SupplementComplianceWidget = () => {
         </div>
 
         {/* Compliance Status */}
-        <div className="p-3 rounded-lg bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-700/30">
-          <div className="text-sm text-purple-700 dark:text-purple-300">
-            {supplementData.complianceRate >= 100 
-              ? "🎉 Alle Supplements heute eingenommen!"
-              : supplementData.complianceRate >= 75
-              ? "💪 Fast vollständig! Nur noch wenige ausstehend."
-              : supplementData.complianceRate >= 50
-              ? "👍 Guter Start, denk an die restlichen!"
-              : "💊 Denk an deine Supplements!"}
-          </div>
+        <div className="text-sm text-purple-600 dark:text-purple-400 font-medium border-t pt-4">
+          {supplementData.complianceRate >= 100 
+            ? "🎉 Alle Supplements heute eingenommen!"
+            : supplementData.complianceRate >= 75
+            ? "💪 Fast vollständig! Nur noch wenige ausstehend."
+            : supplementData.complianceRate >= 50
+            ? "👍 Guter Start, denk an die restlichen!"
+            : "💊 Denk an deine Supplements!"}
         </div>
 
         {/* Coach Analysis */}
         {coachAnalysis && (
-          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700/30">
+          <div className="border-t pt-4">
             <div className="flex items-start gap-3">
               <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
                 <Brain className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">Coach Analyse</h4>
+                <h4 className="text-sm font-semibold text-foreground mb-2">Coach Analyse</h4>
                 {analysisLoading ? (
                   <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                    <span className="text-sm text-blue-700 dark:text-blue-300">Analyse wird erstellt...</span>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    <span className="text-sm text-muted-foreground">Analyse wird erstellt...</span>
                   </div>
                 ) : (
-                  <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     {coachAnalysis}
                   </p>
                 )}

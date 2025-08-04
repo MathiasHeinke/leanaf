@@ -178,14 +178,14 @@ export const HydrationWidget = () => {
         </div>
 
         {/* Weekly Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-1">
             <div className="text-xs text-muted-foreground">7-Tage Ø</div>
             <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
               {formatNutritionalValue(hydrationData.weeklyAverage, 'ml')} ml
             </div>
           </div>
-          <div className="space-y-1 p-3 bg-muted/50 rounded-lg">
+          <div className="space-y-1">
             <div className="text-xs text-muted-foreground">Trend</div>
             <div className={`text-lg font-bold flex items-center gap-1 ${getTrendColor()}`}>
               {getTrendIcon()}
@@ -195,16 +195,14 @@ export const HydrationWidget = () => {
         </div>
 
         {/* Progress Status */}
-        <div className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700/30">
-          <div className="text-sm text-blue-700 dark:text-blue-300">
-            {hydrationData.progress >= 100 
-              ? "🎉 Tagesziel erreicht! Weiter so!"
-              : hydrationData.progress >= 75
-              ? "💪 Fast geschafft! Noch ein paar Schlücke."
-              : hydrationData.progress >= 50
-              ? "👍 Guter Fortschritt, weiter trinken!"
-              : "💧 Denk daran zu trinken!"}
-          </div>
+        <div className="text-sm text-blue-600 dark:text-blue-400 font-medium border-t pt-4">
+          {hydrationData.progress >= 100 
+            ? "🎉 Tagesziel erreicht! Weiter so!"
+            : hydrationData.progress >= 75
+            ? "💪 Fast geschafft! Noch ein paar Schlücke."
+            : hydrationData.progress >= 50
+            ? "👍 Guter Fortschritt, weiter trinken!"
+            : "💧 Denk daran zu trinken!"}
         </div>
       </CardContent>
     </Card>
