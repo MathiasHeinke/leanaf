@@ -1035,6 +1035,48 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_activities: {
+        Row: {
+          activity_minutes: number | null
+          calories_burned: number | null
+          created_at: string
+          date: string
+          distance_km: number | null
+          floors_climbed: number | null
+          heart_rate_avg: number | null
+          id: string
+          steps: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_minutes?: number | null
+          calories_burned?: number | null
+          created_at?: string
+          date: string
+          distance_km?: number | null
+          floors_climbed?: number | null
+          heart_rate_avg?: number | null
+          id?: string
+          steps?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_minutes?: number | null
+          calories_burned?: number | null
+          created_at?: string
+          date?: string
+          distance_km?: number | null
+          floors_climbed?: number | null
+          heart_rate_avg?: number | null
+          id?: string
+          steps?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_goals: {
         Row: {
           bmr: number | null

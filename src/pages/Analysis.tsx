@@ -5,6 +5,7 @@ import { HistoryCharts } from "@/components/HistoryCharts";
 import { Overview } from "@/components/Overview";
 import { TrainingAnalysis } from "@/components/TrainingAnalysis";
 import { RPERecoveryWidget } from "@/components/RPERecoveryWidget";
+import StepsAnalysisWidget from "@/components/StepsAnalysisWidget";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, Utensils, Dumbbell, Heart } from "lucide-react";
 import { roundNutritionalValue } from "@/utils/numberFormatting";
@@ -278,6 +279,7 @@ const Analysis = () => {
           {/* Training & Activity Analysis */}
           <div className="space-y-6">
             <TrainingAnalysis timeRange="month" />
+            <StepsAnalysisWidget />
             <RPERecoveryWidget />
           </div>
         </TabsContent>
