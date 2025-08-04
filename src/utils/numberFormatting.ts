@@ -1,6 +1,6 @@
 // Nutritional value formatting and rounding utilities
 
-export type NutritionalValueType = 'calories' | 'macros' | 'percentage' | 'weight';
+export type NutritionalValueType = 'calories' | 'macros' | 'percentage' | 'weight' | 'ml';
 
 /**
  * Rounds a nutritional value based on its type
@@ -27,6 +27,9 @@ export const roundNutritionalValue = (value: number | string | null | undefined,
     case 'weight':
       // Weight values: round to 1 decimal place
       return Math.round(numValue * 10) / 10;
+    case 'ml':
+      // Milliliters: round to whole numbers
+      return Math.round(numValue);
     default:
       return Math.round(numValue * 10) / 10;
   }
@@ -50,6 +53,8 @@ export const formatNutritionalValue = (value: number | string | null | undefined
       return rounded === Math.floor(rounded) ? rounded.toString() : rounded.toFixed(1);
     case 'weight':
       return rounded === Math.floor(rounded) ? rounded.toString() : rounded.toFixed(1);
+    case 'ml':
+      return rounded.toString();
     default:
       return rounded === Math.floor(rounded) ? rounded.toString() : rounded.toFixed(1);
   }

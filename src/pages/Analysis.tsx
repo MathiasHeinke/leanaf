@@ -6,6 +6,9 @@ import { Overview } from "@/components/Overview";
 import { TrainingAnalysis } from "@/components/TrainingAnalysis";
 import { RPERecoveryWidget } from "@/components/RPERecoveryWidget";
 import StepsAnalysisWidget from "@/components/StepsAnalysisWidget";
+import { HydrationWidget } from "@/components/HydrationWidget";
+import { SupplementComplianceWidget } from "@/components/SupplementComplianceWidget";
+import { GoalsProgressWidget } from "@/components/GoalsProgressWidget";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, Utensils, Dumbbell, Heart } from "lucide-react";
 import { roundNutritionalValue } from "@/utils/numberFormatting";
@@ -264,6 +267,12 @@ const Analysis = () => {
               weightHistory={[]} // Empty for intake tab
             />
             
+            {/* Intake Widgets */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <HydrationWidget />
+              <SupplementComplianceWidget />
+            </div>
+            
             {/* Nutrition Charts */}
             <HistoryCharts 
               data={historyData}
@@ -287,6 +296,9 @@ const Analysis = () => {
         <TabsContent value="more" className="mt-6">
           {/* Body & Health Metrics */}
           <div className="space-y-6">
+            {/* Goals Progress Widget */}
+            <GoalsProgressWidget />
+            
             <Overview 
               todaysTotals={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
               dailyGoals={null} // Empty for more tab
