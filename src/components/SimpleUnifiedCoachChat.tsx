@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useSimpleChat } from '@/hooks/useSimpleChat';
+import { useEnhancedChat } from '@/hooks/useEnhancedChat';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 
@@ -60,10 +60,19 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
   const initializationRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // ============= SIMPLE CHAT INTEGRATION =============
-  const { sendMessage: sendChatMessage, isLoading: isChatLoading, error: chatError } = useSimpleChat({
+  // ============= ENHANCED CHAT INTEGRATION =============
+  const { 
+    sendMessage: sendChatMessage, 
+    isLoading: isChatLoading, 
+    error: chatError,
+    lastResponse,
+    lastMetadata
+  } = useEnhancedChat({
+    enableMemory: true,
+    enableRag: true,
+    enableProactive: true,
     onError: (error) => {
-      console.error('❌ Chat error:', error);
+      console.error('❌ Enhanced chat error:', error);
       
       // Show user-friendly error message
       const errorMessage: SimpleMessage = {
@@ -84,7 +93,9 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
       });
     },
     onSuccess: (response) => {
-      console.log('✅ Chat response received');
+      console.log('✅ Enhanced chat response received', {
+        responseLength: response.length
+      });
     }
   });
   
@@ -208,11 +219,11 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
     });
     
     try {
-      // Send to AI and get response
+      // Send to AI and get response with enhanced features
       const response = await sendChatMessage(messageText, coach?.id || 'lucy');
       
       if (response) {
-        // Create assistant message
+        // Create assistant message with metadata
         const assistantMessage: SimpleMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
@@ -228,18 +239,27 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
         // Add assistant message to UI
         setMessages(prev => [...prev, assistantMessage]);
         
-        // Save assistant message to database
+        // Save assistant message to database with metadata
         await supabase.from('coach_conversations').insert({
           user_id: user.id,
           message_role: 'assistant',
           message_content: response,
           coach_personality: coach?.id || 'lucy',
-          conversation_date: today
+          conversation_date: today,
+          context_data: lastMetadata || {}
+        });
+        
+        // Log successful enhanced chat interaction
+        console.log('💗 Lucy mit voller Persönlichkeit und Memory aktiv!', {
+          traceId: lastMetadata?.traceId,
+          memoryUsed: lastMetadata?.memoryUsed,
+          ragUsed: lastMetadata?.ragUsed,
+          coachPersonality: coach?.personality
         });
       }
       
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error sending enhanced message:', error);
     }
   }, [inputText, user?.id, coach, sendChatMessage, isChatLoading]);
 
