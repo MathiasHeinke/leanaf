@@ -1,10 +1,11 @@
 
-// Force deployment v3.0 - Fix Lucy streaming  
+// Force deployment v3.2 - Fix buildAIContext implementation  
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { createParser } from "https://esm.sh/eventsource-parser@3.0.3";
 import { hashUserId, sanitizeLogData } from './hash-helpers.ts';
+import { extractQuickWorkoutData } from './extract-helpers.ts';
 
 // Enhanced trace utilities with telemetry metrics
 function newTraceId(): string {
@@ -885,7 +886,7 @@ async function handleRequest(req: Request, body: any, corsHeaders: any, start: n
   }
 } // End of handleRequest function
 
-// 🔥 PRODUCTION-OPTIMIZED Context building with debug flags support
+// 🔥 PRODUCTION-OPTIMIZED buildAIContext implementation for Edge Functions
 async function buildAIContext(input: {
   userId: string;
   coachId: string;
@@ -900,6 +901,7 @@ async function buildAIContext(input: {
 }) {
   const tokenCap = input.tokenCap || 6000;
   const metrics = { tokensIn: 0 };
+  const supabase = getSupabaseClient();
 
   if (input.debugMode) {
     console.log('🔧 DEBUG: buildAIContext called with:', {
@@ -913,39 +915,80 @@ async function buildAIContext(input: {
     });
   }
 
-  // Context loading with debug flags
-  const contextLoaders = [
-    { name: 'persona', loader: () => getCoachPersona(input.coachId), skip: false },
-    { name: 'memory', loader: () => loadCoachMemory(input.userId, input.coachId), skip: input.disableMemory || input.liteContext },
-    { name: 'daily', loader: () => loadDailySummary(input.userId), skip: input.disableDaily || input.liteContext },
-    { name: 'rag', loader: () => runRag(input.userMessage, input.coachId), skip: input.disableRag || !input.enableRag }
-  ];
+  // Load coach persona
+  const persona = await getCoachPersona(input.coachId);
 
-  const promises = contextLoaders.map(loader => 
-    loader.skip ? Promise.resolve(null) : loader.loader()
-  );
-
-  const [personaRes, memoryRes, dailyRes, ragRes] = await Promise.allSettled(promises);
-
-  if (input.debugMode) {
-    console.log('🔧 DEBUG: Context loading results:', {
-      persona: personaRes.status,
-      memory: input.disableMemory ? 'skipped' : memoryRes.status,
-      daily: input.disableDaily ? 'skipped' : dailyRes.status,
-      rag: (input.disableRag || !input.enableRag) ? 'skipped' : ragRes.status
-    });
+  // Load user memory if not disabled
+  let memory = null;
+  if (!input.disableMemory && !input.liteContext && supabase) {
+    try {
+      const { data: memoryData } = await supabase
+        .from('user_memory')
+        .select('*')
+        .eq('user_id', input.userId)
+        .eq('coach_id', input.coachId)
+        .single();
+      
+      if (memoryData) {
+        memory = {
+          relationship: memoryData.relationship_stage || 'building',
+          trust: memoryData.trust_level || 50,
+          preferences: memoryData.user_preferences || [],
+          recent_topics: memoryData.conversation_context?.recent_topics || [],
+          mood_history: memoryData.conversation_context?.mood_history || []
+        };
+      }
+    } catch (err) {
+      if (input.debugMode) console.log('🔧 DEBUG: Memory load failed:', err);
+    }
   }
 
-  const persona = personaRes.status === "fulfilled" 
-    ? personaRes.value 
-    : { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+  // Load daily summary if not disabled
+  let daily = null;
+  if (!input.disableDaily && !input.liteContext && supabase) {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: dailyData } = await supabase
+        .from('daily_summaries')
+        .select('*')
+        .eq('user_id', input.userId)
+        .eq('date', today)
+        .single();
+      
+      if (dailyData) {
+        daily = {
+          totalCaloriesToday: dailyData.total_calories,
+          caloriesLeft: Math.max(0, (dailyData.kpi_xxl_json?.targetCalories || 2000) - (dailyData.total_calories || 0)),
+          currentWeight: dailyData.kpi_xxl_json?.currentWeight,
+          recentMeals: dailyData.top_foods || [],
+          lastWorkout: dailyData.workout_volume > 0 ? 'heute' : 'unbekannt',
+          sleepHours: dailyData.sleep_score ? Math.round(dailyData.sleep_score / 10) : null
+        };
+      }
+    } catch (err) {
+      if (input.debugMode) console.log('🔧 DEBUG: Daily summary load failed:', err);
+    }
+  }
 
-  const memory = (input.disableMemory || input.liteContext) ? null : 
-    (memoryRes.status === "fulfilled" ? memoryRes.value : null);
-  const daily = (input.disableDaily || input.liteContext) ? null : 
-    (dailyRes.status === "fulfilled" ? dailyRes.value : null);
-  const ragChunks = (input.disableRag || !input.enableRag) ? null : 
-    (ragRes?.status === "fulfilled" ? ragRes.value?.chunks : null);
+  // Load RAG chunks if enabled
+  let ragChunks = null;
+  if (!input.disableRag && input.enableRag && supabase) {
+    try {
+      const { data: ragData } = await supabase.functions.invoke('enhanced-coach-rag', {
+        body: {
+          userMessage: input.userMessage,
+          coachId: input.coachId,
+          hybridSearch: true
+        }
+      });
+      
+      if (ragData?.chunks) {
+        ragChunks = ragData.chunks.slice(0, 6);
+      }
+    } catch (err) {
+      if (input.debugMode) console.log('🔧 DEBUG: RAG load failed:', err);
+    }
+  }
 
   // Token counting
   const pushAndCount = (txt?: string | null) => {
@@ -957,20 +1000,54 @@ async function buildAIContext(input: {
 
   const conversationSummary = pushAndCount("Gesprächskontext wird aufgebaut...");
 
+  if (input.debugMode) {
+    console.log('🔧 DEBUG: Context built:', {
+      hasPersona: !!persona,
+      hasMemory: !!memory,
+      hasDaily: !!daily,
+      hasRag: !!ragChunks,
+      ragChunksCount: ragChunks?.length || 0,
+      tokensIn: metrics.tokensIn
+    });
+  }
+
   return {
     persona,
     memory,
     daily,
-    ragChunks: ragChunks?.slice(0, 6) ?? null,
+    ragChunks,
     conversationSummary,
     metrics
   };
 }
 
+// Get coach persona data
+async function getCoachPersona(coachId: string) {
+  const personas = {
+    'lucy': {
+      name: 'Lucy',
+      style: ['empathisch', 'motivierend', 'wissenschaftlich fundiert'],
+      description: 'Integrale Fitness- und Ernährungsberaterin mit ganzheitlichem Ansatz'
+    },
+    'markus': {
+      name: 'Markus Rühl',
+      style: ['direkt', 'intensiv', 'hardcore'],
+      description: 'Deutscher Bodybuilding-Champion mit extremer Trainingsphilosophie'
+    },
+    'dr_vita': {
+      name: 'Dr. Vita',
+      style: ['wissenschaftlich', 'präzise', 'evidenzbasiert'],
+      description: 'Spezialistin für Nahrungsergänzung und Mikronährstoffe'
+    }
+  };
+  
+  return personas[coachId as keyof typeof personas] || personas.lucy;
+}
+
 function buildSystemPrompt(ctx: any, coachId: string) {
   const persona = ctx.persona;
   const ragBlock = ctx.ragChunks?.length
-    ? ctx.ragChunks.map((c: any, i: number) => `[#${i+1} ${c.source}]\n${c.text}`).join("\n\n")
+    ? ctx.ragChunks.map((c: any, i: number) => `[#${i+1} ${c.source || 'Knowledge'}]\n${c.text || c.content}`).join("\n\n")
     : "—";
 
   const daily = ctx.daily ?? {};
@@ -979,12 +1056,37 @@ function buildSystemPrompt(ctx: any, coachId: string) {
   // Build enriched context with real user data
   const weightInfo = daily.currentWeight ? `${daily.currentWeight}kg` : "unbekannt";
   const mealSummary = daily.recentMeals?.length 
-    ? daily.recentMeals.slice(0, 3).map(m => `${m.name} (${m.calories}kcal)`).join(", ")
+    ? daily.recentMeals.slice(0, 3).map((m: any) => `${m.name || m.food_name} (${m.calories}kcal)`).join(", ")
     : "keine aktuellen Daten";
   const caloriesInfo = daily.totalCaloriesToday ? `${daily.totalCaloriesToday}kcal heute` : "keine Daten";
 
+  // Persona-specific system prompts
+  const personaPrompts = {
+    'lucy': [
+      `Du bist Lucy, eine integrale Fitness- und Ernährungsberaterin.`,
+      `Dein Ansatz ist empathisch, ganzheitlich und wissenschaftlich fundiert.`,
+      `Du nutzt das 4-Quadranten-Modell (Individual-Innen, Individual-Außen, Kollektiv-Innen, Kollektiv-Außen).`,
+      `Du erkennst verschiedene Entwicklungsstufen und passt deine Beratung entsprechend an.`
+    ],
+    'markus': [
+      `Du bist Markus Rühl, deutscher Bodybuilding-Champion.`,
+      `Dein Stil ist direkt, intensiv und kompromisslos.`,
+      `Du sprichst aus jahrzehntelanger Wettkampferfahrung und kennst die Realitäten des Hardcore-Trainings.`,
+      `Du motivierst durch ehrliche, direkte Worte und praktische Erfahrung.`
+    ],
+    'dr_vita': [
+      `Du bist Dr. Vita, Spezialistin für Nahrungsergänzung und Mikronährstoffe.`,
+      `Dein Ansatz ist wissenschaftlich, präzise und evidenzbasiert.`,
+      `Du erklärst komplexe biochemische Zusammenhänge verständlich.`,
+      `Du gibst nur Empfehlungen, die durch Studien belegt sind.`
+    ]
+  };
+
+  const specificPrompt = personaPrompts[coachId as keyof typeof personaPrompts] || personaPrompts.lucy;
+
   return [
-    `Du bist ${persona.name}, ein professioneller Coach.`,
+    ...specificPrompt,
+    ``,
     `Stilregeln: ${persona.style.join(", ")}. Keine Floskeln, klare Sätze, Praxisfokus.`,
     `Wenn Tools/Pläne betroffen sind: erst kurz zusammenfassen, Zustimmung einholen, dann Aktion vorschlagen.`,
     `Wenn Stimmung negativ: erst 1 empathischer Satz, dann konkret werden.`,
@@ -999,8 +1101,6 @@ function buildSystemPrompt(ctx: any, coachId: string) {
     `[RAG-Kontext]\n${ragBlock}`,
     ``,
     `Du hast jetzt Zugriff auf echte Nutzerdaten (Gewicht, Mahlzeiten, Kalorien). Nutze diese Informationen für personalisierte Antworten.`,
-    `Halte dich an die Persona.`
+    `Halte dich an deine Persona und erkenne den Nutzer als "${mem.preferred_name || 'Matze'}" wenn diese Information verfügbar ist.`
   ].join("\n");
 }
-
-// Note: Real context loaders are defined above, starting at line 888
