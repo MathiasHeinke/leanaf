@@ -298,74 +298,54 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
       {/* Main Input Area */}
       <div className="relative">
-        <div className="flex items-end gap-2 p-4">
+        <div className="flex items-center gap-1 px-2 py-1">
           {/* 1. Suggestions Button with Badge */}
           <div className="relative">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={() => setShowSuggestions(!showSuggestions)}
-              className="flex items-center justify-center w-11 h-11 rounded-full bg-secondary hover:bg-secondary/80 text-secondary-foreground transition-colors"
               disabled={isLoading}
-              aria-label="Vorschläge anzeigen"
+              aria-label="Vorschläge"
+              className="w-11 h-11 flex items-center justify-center"
             >
-              <MessageCircle className="w-5 h-5" />
-            </motion.button>
+              <MessageCircle className="w-6 h-6" />
+            </button>
             
             {/* Suggestions Badge */}
             {suggestions.length > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold"
-                style={{ fontSize: '10px' }}
-              >
+              <span className="absolute -top-0.5 -right-1.5 text-[10px] font-bold text-white bg-gray-500 rounded-full px-1">
                 {Math.min(suggestions.length, 4)}
-              </motion.div>
+              </span>
             )}
           </div>
 
           {/* 2. Tool Picker */}
           <div className="relative">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={() => setShowTools(!showTools)}
-              className={cn(
-                "flex items-center justify-center w-11 h-11 rounded-full transition-colors",
-                pendingTools.length > 0 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-              )}
               disabled={isLoading}
-              aria-label="Tools auswählen"
+              aria-label="Tools"
+              className="w-11 h-11 flex items-center justify-center"
             >
-              <Wrench className="w-5 h-5" />
-            </motion.button>
+              <Wrench className="w-6 h-6" />
+            </button>
             
             {/* Tool indicator */}
             {pendingTools.length > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center"
-              >
+              <span className="absolute -top-0.5 -right-1.5 text-[10px] font-bold text-white bg-primary rounded-full px-1">
                 {pendingTools.length}
-              </motion.div>
+              </span>
             )}
           </div>
 
           {/* 3. Plus Button (Native File Picker) */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={handlePlusClick}
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-secondary hover:bg-secondary/80 text-secondary-foreground transition-colors"
             disabled={isLoading}
-            aria-label="Datei auswählen"
+            aria-label="Datei hinzufügen"
+            className="w-11 h-11 flex items-center justify-center"
           >
-            <Plus className="w-5 h-5" />
-          </motion.button>
+            <Plus className="w-6 h-6" />
+          </button>
 
           {/* Input Field Container */}
           <div className="relative flex-1">
@@ -386,42 +366,28 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           </div>
 
           {/* 4. Microphone Button (Red) */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={handleVoiceToggle}
-            className={cn(
-              "flex items-center justify-center w-11 h-11 rounded-full transition-colors",
-              isRecording 
-                ? "bg-[#FF3B30] text-white" 
-                : "bg-secondary hover:bg-secondary/80 text-[#FF3B30]"
-            )}
             disabled={isLoading}
-            aria-label={isRecording ? "Aufnahme stoppen" : "Spracheingabe starten"}
+            aria-label="Spracheingabe"
+            className="w-11 h-11 flex items-center justify-center text-red-600"
           >
-            <Mic className="w-5 h-5" />
-          </motion.button>
+            <Mic className="w-6 h-6" />
+          </button>
 
           {/* 5. Send Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={handleSend}
             disabled={isLoading || (!inputText.trim() && uploadedMedia.length === 0)}
-            className={cn(
-              "flex items-center justify-center w-11 h-11 rounded-full transition-colors",
-              isLoading || (!inputText.trim() && uploadedMedia.length === 0)
-                ? "bg-secondary text-secondary-foreground cursor-not-allowed"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground"
-            )}
-            aria-label="Nachricht senden"
+            aria-label="Senden"
+            className="w-11 h-11 flex items-center justify-center"
           >
             {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-6 h-6 animate-spin" />
             ) : (
-              <Send className="w-5 h-5" />
+              <Send className="w-6 h-6" />
             )}
-          </motion.button>
+          </button>
         </div>
       </div>
 
