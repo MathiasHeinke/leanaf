@@ -113,7 +113,8 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
           user_supplements!inner(
             custom_name,
             dosage,
-            unit
+            unit,
+            supplement_database(name)
           )
         `)
         .eq('user_id', user.id)
@@ -200,7 +201,9 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
             timing: supplement.timing,
             notes: supplement.notes,
             taken_at: supplement.created_at,
-            supplement_name: supplement.user_supplements?.custom_name || 'Unbekanntes Supplement',
+            supplement_name: supplement.user_supplements?.custom_name || 
+                            supplement.user_supplements?.supplement_database?.name || 
+                            'Unbekanntes Supplement',
             dosage: supplement.user_supplements?.dosage ? Number(supplement.user_supplements.dosage) : undefined,
             unit: supplement.user_supplements?.unit
           });
