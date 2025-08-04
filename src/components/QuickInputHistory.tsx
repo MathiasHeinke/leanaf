@@ -28,6 +28,9 @@ interface QuickInputData {
     timing: string;
     notes?: string;
     taken_at: string;
+    supplement_name: string;
+    dosage?: number;
+    unit?: string;
   }[];
   bodyMeasurements: {
     id: string;
@@ -91,7 +94,14 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
       // Load supplement data
       const { data: supplementData, error: supplementError } = await supabase
         .from('supplement_intake_log')
-        .select('*')
+        .select(`
+          *,
+          user_supplements!inner(
+            custom_name,
+            dosage,
+            unit
+          )
+        `)
         .eq('user_id', user.id)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: false });
@@ -164,7 +174,10 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
             taken: supplement.taken,
             timing: supplement.timing,
             notes: supplement.notes,
-            taken_at: supplement.created_at
+            taken_at: supplement.created_at,
+            supplement_name: supplement.user_supplements?.custom_name || 'Unbekanntes Supplement',
+            dosage: supplement.user_supplements?.dosage ? Number(supplement.user_supplements.dosage) : undefined,
+            unit: supplement.user_supplements?.unit
           });
         }
       });
@@ -353,7 +366,10 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
                           {new Date(supplement.taken_at).toLocaleTimeString('de-DE', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
-                          })}: {supplement.taken ? 'Eingenommen' : 'Nicht eingenommen'} ({supplement.timing})
+                          })}: <strong>{supplement.supplement_name}</strong> - {supplement.taken ? 'Eingenommen' : 'Nicht eingenommen'} ({supplement.timing})
+                          {supplement.dosage && supplement.unit && (
+                            <span className="ml-2 text-xs">({supplement.dosage}{supplement.unit})</span>
+                          )}
                         </div>
                       ))}
                     </div>
