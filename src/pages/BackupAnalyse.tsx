@@ -4,12 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { HistoryCharts } from "@/components/HistoryCharts";
 import { Overview } from "@/components/Overview";
 import { TrainingAnalysis } from "@/components/TrainingAnalysis";
-import { RPERecoveryWidget } from "@/components/RPERecoveryWidget";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, Utensils, Dumbbell, Heart } from "lucide-react";
 import { roundNutritionalValue } from "@/utils/numberFormatting";
 
-const Analysis = () => {
+const BackupAnalysis = () => {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [dailyGoals, setDailyGoals] = useState<any>(null);
@@ -237,74 +234,27 @@ const Analysis = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <Tabs defaultValue="intake" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="intake" className="flex items-center gap-2">
-            <Utensils className="h-4 w-4" />
-            Intake
-          </TabsTrigger>
-          <TabsTrigger value="output" className="flex items-center gap-2">
-            <Dumbbell className="h-4 w-4" />
-            Output
-          </TabsTrigger>
-          <TabsTrigger value="more" className="flex items-center gap-2">
-            <Heart className="h-4 w-4" />
-            More
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="intake" className="mt-6">
-          {/* Nutrition Overview */}
-          <div className="space-y-6">
-            <Overview 
-              todaysTotals={todaysTotals}
-              dailyGoals={dailyGoals}
-              averages={averages}
-              weightHistory={[]} // Empty for intake tab
-            />
-            
-            {/* Nutrition Charts */}
-            <HistoryCharts 
-              data={historyData}
-              weightHistory={[]} // Empty for intake tab
-              bodyMeasurementsHistory={[]} // Empty for intake tab
-              timeRange="month"
-              loading={loading}
-            />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="output" className="mt-6">
-          {/* Training & Activity Analysis */}
-          <div className="space-y-6">
-            <TrainingAnalysis timeRange="month" />
-            <RPERecoveryWidget />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="more" className="mt-6">
-          {/* Body & Health Metrics */}
-          <div className="space-y-6">
-            <Overview 
-              todaysTotals={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
-              dailyGoals={null} // Empty for more tab
-              averages={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
-              weightHistory={weightHistory}
-            />
-            
-            {/* Body Measurements Charts */}
-            <HistoryCharts 
-              data={[]} // Empty for more tab
-              weightHistory={weightHistory}
-              bodyMeasurementsHistory={bodyMeasurementsHistory}
-              timeRange="month"
-              loading={loading}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
+      {/* Wichtige Überblick Card - sauber und übersichtlich */}
+      <Overview 
+        todaysTotals={todaysTotals}
+        dailyGoals={dailyGoals}
+        averages={averages}
+        weightHistory={weightHistory}
+      />
+
+      {/* Training & Kraft Analysis - neue Sektion */}
+      <TrainingAnalysis timeRange="month" />
+
+      {/* History Charts - nur die Charts behalten */}
+      <HistoryCharts 
+        data={historyData}
+        weightHistory={weightHistory}
+        bodyMeasurementsHistory={bodyMeasurementsHistory}
+        timeRange="month"
+        loading={loading}
+      />
     </div>
   );
 };
 
-export default Analysis;
+export default BackupAnalysis;

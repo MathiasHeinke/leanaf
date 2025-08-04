@@ -18,6 +18,7 @@ import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
 import HistoryPage from "./pages/History";
 import AnalysePage from "./pages/Analyse";
+import BackupAnalysePage from "./pages/BackupAnalysePage";
 import Achievements from "./pages/Achievements";
 import Science from "./pages/Science";
 import Features from "./pages/Features";
@@ -59,6 +60,7 @@ const App = () => (
                       <Route path="/training" element={<TrainingPlus />} />
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/analyse" element={<AnalysePage />} />
+                      <Route path="/backupanalyse" element={<BackupAnalysePage />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/science" element={<Science />} />
                       <Route path="/features" element={<Features />} />
