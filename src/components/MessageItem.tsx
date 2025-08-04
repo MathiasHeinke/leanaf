@@ -156,13 +156,13 @@ export const MessageItem = React.memo(({
       </div>
       
       {/* Footer with avatar and time - BELOW the bubble */}
-      <div className={`flex mt-1 text-xs items-center ${
+      <div className={`flex mt-2 text-xs items-center gap-2 ${
         isUser ? 'justify-end' : 'justify-start'
       }`}>
         {/* Coach side: Avatar left, time right */}
         {!isUser && (
           <>
-            <Avatar className="h-6 w-6 flex-shrink-0 mr-2">
+            <Avatar className="h-6 w-6 flex-shrink-0">
               <AvatarImage src={coach.avatar} alt={coach.name} />
               <AvatarFallback className="text-xs">
                 {coach.name.slice(0, 2).toUpperCase()}
@@ -175,7 +175,7 @@ export const MessageItem = React.memo(({
         {/* User side: Time left, avatar right */}
         {isUser && (
           <>
-            <span className="text-muted-foreground mr-2">{timeString}</span>
+            <span className="text-muted-foreground">{timeString}</span>
             <div className="h-6 w-6 flex-shrink-0">
               <BadgeSvg className="w-full h-full" />
             </div>
