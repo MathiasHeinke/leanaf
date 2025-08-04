@@ -2647,6 +2647,8 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
+          avatar_preset_id: string | null
+          avatar_type: string | null
           coach_personality: string | null
           created_at: string
           current_bmi: number | null
@@ -2667,6 +2669,7 @@ export type Database = {
           preferred_language: string | null
           preferred_name: string | null
           preferred_theme: string | null
+          profile_avatar_url: string | null
           start_bmi: number | null
           start_weight: number | null
           subscription_id: string | null
@@ -2681,6 +2684,8 @@ export type Database = {
         Insert: {
           activity_level?: string | null
           age?: number | null
+          avatar_preset_id?: string | null
+          avatar_type?: string | null
           coach_personality?: string | null
           created_at?: string
           current_bmi?: number | null
@@ -2701,6 +2706,7 @@ export type Database = {
           preferred_language?: string | null
           preferred_name?: string | null
           preferred_theme?: string | null
+          profile_avatar_url?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
@@ -2715,6 +2721,8 @@ export type Database = {
         Update: {
           activity_level?: string | null
           age?: number | null
+          avatar_preset_id?: string | null
+          avatar_type?: string | null
           coach_personality?: string | null
           created_at?: string
           current_bmi?: number | null
@@ -2735,6 +2743,7 @@ export type Database = {
           preferred_language?: string | null
           preferred_name?: string | null
           preferred_theme?: string | null
+          profile_avatar_url?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null

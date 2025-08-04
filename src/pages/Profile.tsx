@@ -23,6 +23,7 @@ import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { ProfileFieldIndicator } from '@/components/ProfileFieldIndicator';
 import { MedicalScreening } from '@/components/MedicalScreening';
+import { AvatarSelector } from '@/components/AvatarSelector';
 import { cn } from '@/lib/utils';
 
 
@@ -79,6 +80,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [proteinPercentage, setProteinPercentage] = useState(30);
   const [carbsPercentage, setCarbsPercentage] = useState(40);
   const [fatsPercentage, setFatsPercentage] = useState(30);
+
+  // Avatar state
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
+  const [avatarType, setAvatarType] = useState<'preset' | 'uploaded'>('preset');
+  const [avatarPresetId, setAvatarPresetId] = useState('');
 
   // Check if profile is complete for validation
   const isProfileComplete = weight && height && age && gender && activityLevel && goal;
@@ -142,7 +148,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     activityLevel, goal, targetWeight, targetDate, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
-    coachPersonality, muscleMaintenancePriority, macroStrategy
+    coachPersonality, muscleMaintenancePriority, macroStrategy,
+    profileAvatarUrl, avatarType, avatarPresetId
   ]);
 
   useEffect(() => {
@@ -188,6 +195,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
         setMacroStrategy(data.macro_strategy || 'high_protein');
+        setProfileAvatarUrl(data.profile_avatar_url || '');
+        setAvatarType((data.avatar_type as 'preset' | 'uploaded') || 'preset');
+        setAvatarPresetId(data.avatar_preset_id || '');
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
@@ -408,6 +418,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       coach_personality: coachPersonality,
       muscle_maintenance_priority: muscleMaintenancePriority,
       macro_strategy: macroStrategy,
+      profile_avatar_url: profileAvatarUrl || null,
+      avatar_type: avatarType,
+      avatar_preset_id: avatarPresetId || null,
     };
 
     if (profileExists) {
@@ -1160,6 +1173,46 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         
         {/* 8. Tracking Preferences */}
         <TrackingPreferences />
+
+        {/* 9. Avatar Selection */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center">
+              <User className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold">Profilbild & Coach-Ansprache</h2>
+          </div>
+
+          <AvatarSelector
+            currentAvatarUrl={profileAvatarUrl}
+            currentPresetId={avatarPresetId}
+            avatarType={avatarType}
+            onAvatarChange={(avatarUrl, type, presetId) => {
+              setProfileAvatarUrl(avatarUrl);
+              setAvatarType(type);
+              setAvatarPresetId(presetId || '');
+            }}
+          />
+
+          {/* Preferred Name Section */}
+          <Card>
+            <CardContent className="space-y-4 pt-5">
+              <div className="space-y-2">
+                <Label htmlFor="preferred-name">Wie sollen die Coaches dich ansprechen?</Label>
+                <Input
+                  id="preferred-name"
+                  value={preferredName}
+                  onChange={(e) => setPreferredName(e.target.value)}
+                  placeholder="Dein Vorname oder Spitzname"
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Die KI-Coaches verwenden diesen Namen in ihren Nachrichten an dich
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         </div>
 
         {/* Save Status */}
