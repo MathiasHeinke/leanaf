@@ -743,15 +743,45 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <Label className="text-sm">Ziel Körperfett (%)</Label>
-                    <NumericInput
-                      value={targetBodyFat}
-                      onChange={setTargetBodyFat}
-                      placeholder="15"
-                      step={0.1}
-                      min={5}
-                      max={50}
-                      className="mt-1"
-                    />
+                    <Select 
+                      value={targetBodyFat?.toString() || ''} 
+                      onValueChange={(value) => setTargetBodyFat(value)}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue 
+                          placeholder={`${gender === 'male' ? '5-35%' : '10-40%'} wählen`}
+                        />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[200px]">
+                        {(() => {
+                          const isMale = gender === 'male';
+                          const minValue = isMale ? 5 : 10;
+                          const maxValue = isMale ? 35 : 40;
+                          const options = [];
+                          
+                          for (let i = minValue; i <= maxValue; i += 0.5) {
+                            let category = '';
+                            if (isMale) {
+                              if (i <= 13) category = ' (Athletic)';
+                              else if (i <= 17) category = ' (Fit)';
+                              else if (i <= 24) category = ' (Average)';
+                              else category = ' (Above Average)';
+                            } else {
+                              if (i <= 20) category = ' (Athletic)';
+                              else if (i <= 24) category = ' (Fit)';
+                              else if (i <= 31) category = ' (Average)';
+                              else category = ' (Above Average)';
+                            }
+                            options.push(
+                              <SelectItem key={i} value={i.toString()}>
+                                {i.toFixed(1)}%{category}
+                              </SelectItem>
+                            );
+                          }
+                          return options;
+                        })()}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-sm">Zieldatum</Label>
