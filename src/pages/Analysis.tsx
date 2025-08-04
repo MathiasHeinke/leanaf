@@ -298,22 +298,6 @@ const Analysis = () => {
           <div className="space-y-6">
             {/* Goals Progress Widget */}
             <GoalsProgressWidget />
-            
-            <Overview 
-              todaysTotals={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
-              dailyGoals={null} // Empty for more tab
-              averages={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
-              weightHistory={weightHistory}
-            />
-            
-            {/* Body Measurements Charts */}
-            <HistoryCharts 
-              data={[]} // Empty for more tab
-              weightHistory={weightHistory}
-              bodyMeasurementsHistory={bodyMeasurementsHistory}
-              timeRange="month"
-              loading={loading}
-            />
           </div>
         </TabsContent>
       </Tabs>
