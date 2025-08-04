@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { BadgeSvg } from './BadgeSvg';
 
 interface ChatMessage {
   id: string;
@@ -65,26 +66,22 @@ export const MessageItem = React.memo(({
   }, []); // Only run on mount
 
   const isUser = message.role === 'user';
+  const timeString = message.timestamp.toLocaleTimeString('de-DE', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
 
   return (
     <div ref={ref} style={style} className="px-4 py-2">
+      {/* Main message bubble */}
       <div 
-        className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
+        className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
         role="group"
         aria-label={`Nachricht von ${isUser ? 'dir' : coach.name}`}
       >
-        {!isUser && (
-          <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarImage src={coach.avatar} alt={coach.name} />
-            <AvatarFallback className="text-xs">
-              {coach.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-        )}
-        
-        <Card className={`p-3 max-w-[80%] ${
+        <Card className={`p-3 max-w-[75%] ${
           isUser 
-            ? 'bg-primary text-primary-foreground ml-auto' 
+            ? 'bg-primary text-primary-foreground' 
             : 'bg-muted'
         }`}>
           <div className="text-sm whitespace-pre-wrap">
@@ -110,7 +107,7 @@ export const MessageItem = React.memo(({
             </ReactMarkdown>
           </div>
           
-          {/* NEU – Bild ist Teil der Bubble-Card */}
+          {/* Images inside bubble */}
           {message.images && message.images.length > 0 && (
             <div className="mt-2">
               {message.images.map((url, idx) => (
@@ -118,13 +115,7 @@ export const MessageItem = React.memo(({
                   key={url}
                   src={url}
                   alt={`Hochgeladenes Bild ${idx + 1}`}
-                  className="
-                    rounded-lg
-                    max-w-[220px]
-                    max-h-[280px]
-                    object-cover
-                    shadow
-                  "
+                  className="rounded-lg max-w-[220px] max-h-[280px] object-cover shadow"
                   onLoad={handleMediaLoad}
                   onError={handleMediaLoad}
                 />
@@ -132,16 +123,18 @@ export const MessageItem = React.memo(({
             </div>
           )}
 
+          {/* Video inside bubble */}
           {message.video_url && (
             <video 
               src={message.video_url} 
               controls 
               className="mt-2 rounded-lg max-w-full h-auto"
-              onLoadedMetadata={handleMediaLoad}  // Höhe nach Video-Metadaten messen
+              onLoadedMetadata={handleMediaLoad}
               controlsList="nodownload"
             />
           )}
 
+          {/* Action buttons inside bubble */}
           {message.actions && message.actions.length > 0 && (
             <div className={`mt-3 flex gap-2 ${
               message.actions.length > 3 ? 'flex-col' : 'flex-wrap'
@@ -160,11 +153,33 @@ export const MessageItem = React.memo(({
             </div>
           )}
         </Card>
-
+      </div>
+      
+      {/* Footer with avatar and time - BELOW the bubble */}
+      <div className={`flex mt-1 text-xs items-center ${
+        isUser ? 'justify-end' : 'justify-start'
+      }`}>
+        {/* Coach side: Avatar left, time right */}
+        {!isUser && (
+          <>
+            <Avatar className="h-6 w-6 flex-shrink-0 mr-2">
+              <AvatarImage src={coach.avatar} alt={coach.name} />
+              <AvatarFallback className="text-xs">
+                {coach.name.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-muted-foreground">{timeString}</span>
+          </>
+        )}
+        
+        {/* User side: Time left, avatar right */}
         {isUser && (
-          <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarFallback className="text-xs">Du</AvatarFallback>
-          </Avatar>
+          <>
+            <span className="text-muted-foreground mr-2">{timeString}</span>
+            <div className="h-6 w-6 flex-shrink-0">
+              <BadgeSvg className="w-full h-full" />
+            </div>
+          </>
         )}
       </div>
     </div>

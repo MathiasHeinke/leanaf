@@ -62,6 +62,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     error: chatError,
     lastMetadata,
     clearError,
+    clearHistory,
     getConversationStats,
     conversationHistory,
     memoryContext,
@@ -427,6 +428,10 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         <CollapsibleCoachHeader
           coach={coach}
           onCollapseChange={setBannerCollapsed}
+          onDailyReset={() => {
+            setMessages([]);
+            clearHistory();
+          }}
         />
 
         {/* Messages */}

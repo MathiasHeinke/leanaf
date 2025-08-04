@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft, History, Trash2 } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Clock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
+import { DailyResetDialog } from './DailyResetDialog';
+import { toast } from 'sonner';
 
 interface CollapsibleCoachHeaderProps {
   coach: {
@@ -13,21 +15,25 @@ interface CollapsibleCoachHeaderProps {
   onHistoryClick?: () => void;
   onDeleteChat?: () => void;
   onCollapseChange?: (collapsed: boolean) => void;
+  onDailyReset?: () => void;
 }
 
 export const CollapsibleCoachHeader = ({ 
   coach, 
   onHistoryClick, 
   onDeleteChat,
-  onCollapseChange 
+  onCollapseChange,
+  onDailyReset 
 }: CollapsibleCoachHeaderProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDailyResetDialog, setShowDailyResetDialog] = useState(false);
+  const [isDeletingToday, setIsDeletingToday] = useState(false);
   const navigate = useNavigate();
 
   // Get actual chat history from recent days
   const getChatHistory = () => {
-    // Mock chat history data - in real app, fetch from database
+    // Mock chat history data - in real app, fetch from database via Supabase
     return [
       {
         id: "1",
@@ -48,6 +54,23 @@ export const CollapsibleCoachHeader = ({
         timestamp: new Date(Date.now() - 172800000)
       }
     ];
+  };
+
+  const handleDailyReset = async () => {
+    setIsDeletingToday(true);
+    try {
+      // Simulate deletion delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      toast.success('Heutiger Chat wurde gelöscht');
+      onDailyReset?.();
+      setShowDailyResetDialog(false);
+    } catch (error) {
+      console.error('Error deleting today\'s chat:', error);
+      toast.error('Fehler beim Löschen des Chats');
+    } finally {
+      setIsDeletingToday(false);
+    }
   };
 
   const handleBack = () => {
@@ -112,7 +135,7 @@ export const CollapsibleCoachHeader = ({
                 className="p-2 h-10 w-10 hover-scale"
                 aria-label="Chat-Verlauf"
               >
-                <History className="w-5 h-5" />
+                <Clock className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-2" align="end">
@@ -144,17 +167,16 @@ export const CollapsibleCoachHeader = ({
             </PopoverContent>
           </Popover>
           
-          {onDeleteChat && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDeleteChat}
-              className="p-2 h-10 w-10 text-destructive hover:text-destructive hover-scale"
-              aria-label="Chat löschen"
-            >
-              <Trash2 className="w-5 h-5" />
-            </Button>
-          )}
+          {/* Daily Reset Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDailyResetDialog(true)}
+            className="p-2 h-10 w-10 text-destructive hover:text-destructive hover-scale"
+            aria-label="Heute löschen"
+          >
+            <Trash2 className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* Pfeil-Button klebt unten am Banner und wandert mit */}
@@ -174,6 +196,14 @@ export const CollapsibleCoachHeader = ({
           <ChevronDown size={14} className={`text-foreground transition-transform duration-300 ${collapsed ? 'rotate-0' : 'rotate-180'}`} />
         </button>
       </header>
+
+      {/* Daily Reset Confirmation Dialog */}
+      <DailyResetDialog
+        open={showDailyResetDialog}
+        onOpenChange={setShowDailyResetDialog}
+        onConfirm={handleDailyReset}
+        isLoading={isDeletingToday}
+      />
     </>
   );
 };
