@@ -44,6 +44,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [goal, setGoal] = useState('maintain');
   const [targetWeight, setTargetWeight] = useState('');
   const [targetDate, setTargetDate] = useState('');
+  const [goalType, setGoalType] = useState<'weight' | 'body_fat' | 'both'>('weight');
+  const [targetBodyFat, setTargetBodyFat] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [autoSaving, setAutoSaving] = useState(false);
@@ -145,7 +147,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     return () => clearTimeout(timeoutId);
   }, [
     preferredName, weight, startWeight, height, age, gender, 
-    activityLevel, goal, targetWeight, targetDate, language,
+    activityLevel, goal, targetWeight, targetDate, goalType, targetBodyFat, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
     coachPersonality, muscleMaintenancePriority, macroStrategy,
@@ -192,6 +194,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setGoal(data.goal || 'maintain');
         setTargetWeight(data.target_weight ? data.target_weight.toString() : '');
         setTargetDate(data.target_date || '');
+        setGoalType((data.goal_type as 'weight' | 'body_fat' | 'both') || 'weight');
+        setTargetBodyFat(data.target_body_fat_percentage ? data.target_body_fat_percentage.toString() : '');
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
         setMacroStrategy(data.macro_strategy || 'high_protein');
@@ -414,6 +418,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       goal: goal,
       target_weight: targetWeight ? parseFloat(targetWeight) : null,
       target_date: targetDate || null,
+      goal_type: goalType,
+      target_body_fat_percentage: targetBodyFat ? parseFloat(targetBodyFat) : null,
       preferred_language: language,
       coach_personality: coachPersonality,
       muscle_maintenance_priority: muscleMaintenancePriority,
@@ -677,45 +683,105 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 <ProfileFieldIndicator isComplete={completionStatus.goal} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="relative">
-                  <Label className="text-sm">Zielgewicht</Label>
-                  <NumericInput
-                    value={targetWeight}
-                    onChange={setTargetWeight}
-                    placeholder="70"
-                    className="mt-1"
-                  />
-                  <ProfileFieldIndicator isComplete={completionStatus.targetWeight} />
-                </div>
-                <div>
-                  <Label className="text-sm">Zieldatum</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal mt-1",
-                          !targetDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {targetDate ? format(new Date(targetDate), "dd.MM.yyyy") : <span>Datum wählen</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={targetDate ? new Date(targetDate) : undefined}
-                        onSelect={(date) => setTargetDate(date ? format(date, "yyyy-MM-dd") : "")}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+              <div className="relative">
+                <Label className="text-sm">Ziel-Typ</Label>
+                <Select value={goalType} onValueChange={(value: 'weight' | 'body_fat' | 'both') => setGoalType(value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Wählen..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weight">Gewichtsziel</SelectItem>
+                    <SelectItem value="body_fat">Körperfett-Ziel (%)</SelectItem>
+                    <SelectItem value="both">Beides</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {(goalType === 'weight' || goalType === 'both') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
+                    <Label className="text-sm">Zielgewicht</Label>
+                    <NumericInput
+                      value={targetWeight}
+                      onChange={setTargetWeight}
+                      placeholder="70"
+                      className="mt-1"
+                    />
+                    <ProfileFieldIndicator isComplete={completionStatus.targetWeight} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Zieldatum</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal mt-1",
+                            !targetDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {targetDate ? format(new Date(targetDate), "dd.MM.yyyy") : <span>Datum wählen</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={targetDate ? new Date(targetDate) : undefined}
+                          onSelect={(date) => setTargetDate(date ? format(date, "yyyy-MM-dd") : "")}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
+
+              {(goalType === 'body_fat' || goalType === 'both') && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
+                    <Label className="text-sm">Ziel Körperfett (%)</Label>
+                    <NumericInput
+                      value={targetBodyFat}
+                      onChange={setTargetBodyFat}
+                      placeholder="15"
+                      step={0.1}
+                      min={5}
+                      max={50}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Zieldatum</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal mt-1",
+                            !targetDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {targetDate ? format(new Date(targetDate), "dd.MM.yyyy") : <span>Datum wählen</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={targetDate ? new Date(targetDate) : undefined}
+                          onSelect={(date) => setTargetDate(date ? format(date, "yyyy-MM-dd") : "")}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

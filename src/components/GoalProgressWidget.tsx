@@ -19,12 +19,90 @@ export const GoalProgressWidget: React.FC = () => {
   const { user } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [goalType, setGoalType] = useState<'weight' | 'body_fat' | 'both'>('weight');
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
-      loadGoalProgress();
+      loadUserProfile();
     }
   }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('goal_type, target_body_fat_percentage, target_weight, target_date')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      setUserProfile(profile);
+      setGoalType((profile?.goal_type as 'weight' | 'body_fat' | 'both') || 'weight');
+      
+      // Load appropriate goals based on goal type
+      if (profile?.goal_type === 'body_fat') {
+        loadBodyFatProgress(profile);
+      } else if (profile?.goal_type === 'both') {
+        // For 'both', we'll show strength goals for now
+        loadGoalProgress();
+      } else {
+        loadGoalProgress();
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      loadGoalProgress(); // Fallback to strength goals
+    }
+  };
+
+  const loadBodyFatProgress = async (profile: any) => {
+    if (!user || !profile?.target_body_fat_percentage) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Get most recent body fat percentage from weight_history
+      const { data: recentWeight, error } = await supabase
+        .from('weight_history')
+        .select('body_fat_percentage, created_at')
+        .eq('user_id', user.id)
+        .not('body_fat_percentage', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const currentBodyFat = recentWeight?.body_fat_percentage || 0;
+      const targetBodyFat = profile.target_body_fat_percentage;
+      
+      // For body fat, lower is better, so progress calculation is inverted
+      const progress = currentBodyFat > targetBodyFat 
+        ? Math.max(0, Math.min(100, ((currentBodyFat - targetBodyFat) / (currentBodyFat * 0.3)) * 100))
+        : 100;
+
+      const bodyFatGoal: Goal = {
+        id: 'body_fat',
+        exercise: 'Körperfett-Reduktion',
+        targetWeight: targetBodyFat,
+        currentWeight: currentBodyFat,
+        targetDate: profile.target_date || new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        category: 'body_composition'
+      };
+
+      setGoals([bodyFatGoal]);
+    } catch (error) {
+      console.error('Error loading body fat progress:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadGoalProgress = async () => {
     if (!user) return;
@@ -187,8 +265,11 @@ export const GoalProgressWidget: React.FC = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {goals.map((goal) => {
-          const progress = calculateProgress(goal.currentWeight, goal.targetWeight);
+          const progress = goal.category === 'body_composition' 
+            ? (goal.currentWeight > goal.targetWeight ? Math.max(0, 100 - ((goal.currentWeight - goal.targetWeight) / goal.currentWeight * 100)) : 100)
+            : calculateProgress(goal.currentWeight, goal.targetWeight);
           const daysLeft = getDaysUntilTarget(goal.targetDate);
+          const isBodyFat = goal.category === 'body_composition';
           
           return (
             <div key={goal.id} className="bg-background/50 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
@@ -205,10 +286,10 @@ export const GoalProgressWidget: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">
-                    Aktuell: {goal.currentWeight}kg
+                    Aktuell: {goal.currentWeight}{isBodyFat ? '%' : 'kg'}
                   </span>
                   <span className={`font-medium ${getProgressColor(progress)}`}>
-                    Ziel: {goal.targetWeight}kg
+                    Ziel: {goal.targetWeight}{isBodyFat ? '%' : 'kg'}
                   </span>
                 </div>
                 
@@ -219,7 +300,10 @@ export const GoalProgressWidget: React.FC = () => {
                 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>
-                    Noch {goal.targetWeight - goal.currentWeight}kg
+                    {isBodyFat 
+                      ? `Noch ${Math.abs(goal.currentWeight - goal.targetWeight).toFixed(1)}% zu reduzieren`
+                      : `Noch ${goal.targetWeight - goal.currentWeight}kg`
+                    }
                   </span>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />

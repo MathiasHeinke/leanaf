@@ -2658,6 +2658,7 @@ export type Database = {
           first_name: string | null
           gender: string | null
           goal: string | null
+          goal_type: string | null
           height: number | null
           hide_premium_features: boolean | null
           id: string
@@ -2675,6 +2676,7 @@ export type Database = {
           subscription_id: string | null
           subscription_status: string | null
           target_bmi: number | null
+          target_body_fat_percentage: number | null
           target_date: string | null
           target_weight: number | null
           updated_at: string
@@ -2695,6 +2697,7 @@ export type Database = {
           first_name?: string | null
           gender?: string | null
           goal?: string | null
+          goal_type?: string | null
           height?: number | null
           hide_premium_features?: boolean | null
           id?: string
@@ -2712,6 +2715,7 @@ export type Database = {
           subscription_id?: string | null
           subscription_status?: string | null
           target_bmi?: number | null
+          target_body_fat_percentage?: number | null
           target_date?: string | null
           target_weight?: number | null
           updated_at?: string
@@ -2732,6 +2736,7 @@ export type Database = {
           first_name?: string | null
           gender?: string | null
           goal?: string | null
+          goal_type?: string | null
           height?: number | null
           hide_premium_features?: boolean | null
           id?: string
@@ -2749,6 +2754,7 @@ export type Database = {
           subscription_id?: string | null
           subscription_status?: string | null
           target_bmi?: number | null
+          target_body_fat_percentage?: number | null
           target_date?: string | null
           target_weight?: number | null
           updated_at?: string
