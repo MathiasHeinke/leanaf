@@ -152,7 +152,10 @@ export const SupplementComplianceWidget = () => {
   };
 
   const generateCoachAnalysis = async (supplements: any[]) => {
-    if (!user?.id || supplements.length === 0) return;
+    if (!user?.id) return;
+
+    console.log('🔄 Starting supplement analysis for user:', user.id);
+    console.log('📋 Supplements to analyze:', supplements);
 
     try {
       setAnalysisLoading(true);
@@ -164,6 +167,8 @@ export const SupplementComplianceWidget = () => {
         .eq('user_id', user.id)
         .single();
 
+      console.log('👤 User profile:', userProfile);
+
       const response = await supabase.functions.invoke('supplement-analysis', {
         body: {
           supplements,
@@ -171,11 +176,37 @@ export const SupplementComplianceWidget = () => {
         }
       });
 
+      console.log('📡 Edge function response:', response);
+
+      if (response.error) {
+        console.error('❌ Error from supplement-analysis:', response.error);
+        
+        // Fallback analysis when API fails
+        const fallbackAnalysis = supplements.length > 0 
+          ? `Hey du 👋 Dein Supplement-Stack sieht interessant aus! Ich arbeite gerade an einer detaillierten Analyse für dich. In der Zwischenzeit: Balance statt Perfektion ✨ 
+
+Kurz-Check deines Stacks:
+• ${supplements.map(s => s.name).join(', ')}
+
+Grundsätzlich super, dass du auf deine Gesundheit achtest! Denk daran: Supplements ergänzen eine gute Ernährung, ersetzen sie aber nicht.`
+          : 'Hey du 👋 Noch keine Supplements konfiguriert? Kein Problem! Füge deine Supplements hinzu und ich analysiere deinen Stack mit meiner Chrononutrition-Expertise ✨';
+        
+        setCoachAnalysis(fallbackAnalysis);
+        return;
+      }
+
       if (response.data?.analysis) {
+        console.log('✅ Analysis received:', response.data.analysis);
         setCoachAnalysis(response.data.analysis);
+      } else {
+        console.warn('⚠️ No analysis in response data');
+        setCoachAnalysis('Hey du 👋 Ich konnte gerade keine detaillierte Analyse erstellen, aber dein Interesse an Supplements ist schon mal ein guter Schritt! Balance statt Perfektion ✨');
       }
     } catch (error) {
-      console.error('Error generating coach analysis:', error);
+      console.error('💥 Error generating coach analysis:', error);
+      
+      // Fallback for unexpected errors
+      setCoachAnalysis('Hey du 👋 Kleine technische Pause bei mir! Aber keine Sorge - deine Supplement-Routine läuft weiter. Balance statt Perfektion ✨');
     } finally {
       setAnalysisLoading(false);
     }

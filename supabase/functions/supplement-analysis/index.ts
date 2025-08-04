@@ -36,8 +36,24 @@ serve(async (req) => {
 
   try {
     const { supplements, userProfile } = await req.json();
+    
+    console.log('🔄 Supplement analysis request:', {
+      supplementsCount: supplements?.length || 0,
+      userProfile: userProfile ? 'present' : 'missing',
+      supplements: supplements?.map((s: any) => s.name) || []
+    });
+
+    if (!openAIApiKey) {
+      console.error('❌ OpenAI API key not configured');
+      return new Response(JSON.stringify({ 
+        analysis: "Hey du 👋 Ich bin gerade nicht ganz verfügbar, aber dein Supplement-Stack sieht gut aus! Balance statt Perfektion ✨"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!supplements || supplements.length === 0) {
+      console.log('ℹ️ No supplements provided, returning default message');
       return new Response(JSON.stringify({ 
         analysis: "Hey du 👋 Noch keine Supplements konfiguriert? Kein Problem! Füge deine Supplements hinzu und ich analysiere deinen Stack mit meiner Chrononutrition-Expertise ✨" 
       }), {
@@ -47,6 +63,8 @@ serve(async (req) => {
 
     const supplementList = supplements.map((s: any) => s.name).join(', ');
     const safetyLevel = checkSupplementSafety(supplementList.split(', '));
+    
+    console.log('📋 Processing supplements:', { supplementList, safetyLevel });
     
     // Get Berlin tip (5% chance)
     const berlinTip = Math.random() < 0.05 ? ' Übrigens: Hast du schon den Tempeh-Döner an der Warschauer probiert? 🌯' : '';
@@ -72,6 +90,8 @@ ANALYSE-AUFGABE (maximal 4 kurze Sätze):
 
 Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
 
+    console.log('🤖 Calling OpenAI with model: gpt-4.1-2025-04-14');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -79,7 +99,7 @@ Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           { 
             role: 'system', 
@@ -87,20 +107,53 @@ Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
           },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 200,
+        max_tokens: 250,
         temperature: 0.7
       }),
     });
 
-    const data = await response.json();
-    const analysis = data.choices[0].message.content;
+    console.log('📡 OpenAI response status:', response.status);
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', response.status, errorText);
+      
+      return new Response(JSON.stringify({ 
+        analysis: `Hey du 👋 Ich bin kurz in der Analyse-Pause! Aber super, dass du ${supplementList} nimmst. Balance statt Perfektion ✨`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const data = await response.json();
+    console.log('✅ OpenAI response received:', {
+      hasChoices: !!data.choices,
+      choicesLength: data.choices?.length || 0,
+      messageLength: data.choices?.[0]?.message?.content?.length || 0
+    });
+
+    const analysis = data.choices?.[0]?.message?.content;
+
+    if (!analysis) {
+      console.warn('⚠️ No analysis content in OpenAI response');
+      return new Response(JSON.stringify({ 
+        analysis: `Hey du 👋 Prima Stack mit ${supplementList}! Timing ist key - Balance statt Perfektion ✨`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('🎉 Analysis generated successfully');
     return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
-    console.error('Error in supplement-analysis function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('💥 Error in supplement-analysis function:', error);
+    return new Response(JSON.stringify({ 
+      analysis: "Hey du 👋 Kleine Pause bei der Analyse! Supplements sind trotzdem ein guter Schritt. Balance statt Perfektion ✨",
+      error: error.message 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
