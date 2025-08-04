@@ -545,18 +545,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-lg md:text-xl font-bold">Persönliche Daten</h2>
           </div>
 
-            <div>
-              <Label className="text-sm">Anzeigename für Coaches</Label>
-              <Input
-                value={preferredName}
-                onChange={(e) => setPreferredName(e.target.value)}
-                placeholder="z.B. Max, Sarah..."
-                className="mt-1"
-              />
-              <div className="text-xs text-muted-foreground mt-1">
-                Wie sollen dich die Coaches ansprechen?
-              </div>
-            </div>
 
           <Card>
             <CardContent className="space-y-4 pt-5">
