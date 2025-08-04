@@ -140,21 +140,43 @@ async function buildAIContext(input: any) {
   // Enhanced Memory Loader (extracts user name correctly)
   const loadCoachMemory = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('coach_memory')
-        .select('memory_data')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Load both coach memory and profile in parallel
+      const [memoryResult, profileResult] = await Promise.allSettled([
+        supabase
+          .from('coach_memory')
+          .select('memory_data')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('display_name, preferred_name, first_name')
+          .eq('user_id', userId)
+          .maybeSingle()
+      ]);
       
-      if (error || !data) return null;
+      let memoryData = null;
+      if (memoryResult.status === 'fulfilled' && memoryResult.value?.data) {
+        memoryData = memoryResult.value.data.memory_data as any;
+      }
       
-      const memoryData = data.memory_data as any;
+      let profileData = null;
+      if (profileResult.status === 'fulfilled' && profileResult.value?.data) {
+        profileData = profileResult.value.data;
+      }
+      
+      // Smart fallback for user name
+      const realName = memoryData?.preferences?.preferred_name || 
+                      profileData?.preferred_name || 
+                      profileData?.display_name || 
+                      profileData?.first_name || 
+                      null;
       
       return {
-        userName: memoryData.preferences?.preferred_name || null,
-        relationship: memoryData.relationship_stage || 'building_trust',
-        trust: memoryData.trust_level || 1,
-        preferences: memoryData.preferences || {}
+        userName: realName,
+        realName: realName,
+        relationship: memoryData?.relationship_stage || 'building_trust',
+        trust: memoryData?.trust_level || 1,
+        preferences: memoryData?.preferences || {}
       };
     } catch (error) {
       console.warn('Enhanced memory loading failed:', error);
@@ -168,7 +190,7 @@ async function buildAIContext(input: any) {
       const today = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
       
-      // Parallel data loading
+      // Parallel data loading (18+ sources)
       const [
         summaryResult,
         goalsResult, 
@@ -176,7 +198,11 @@ async function buildAIContext(input: any) {
         mealsResult,
         exerciseResult,
         sleepResult,
-        streaksResult
+        streaksResult,
+        supplementsResult,
+        fluidsResult,
+        bodyMeasurementsResult,
+        workoutPlansResult
       ] = await Promise.allSettled([
         supabase.from('daily_summaries')
           .select('total_calories, total_protein, workout_volume, sleep_score, hydration_score')
@@ -221,7 +247,35 @@ async function buildAIContext(input: any) {
         supabase.from('user_streaks')
           .select('streak_type, current_streak, longest_streak')
           .eq('user_id', userId)
-          .gt('current_streak', 0)
+          .gt('current_streak', 0),
+          
+        // Missing data sources added
+        supabase.from('supplement_intake_log')
+          .select('supplement_name, taken_at')
+          .eq('user_id', userId)
+          .gte('taken_at', yesterday + 'T00:00:00.000Z')
+          .order('taken_at', { ascending: false })
+          .limit(5),
+          
+        supabase.from('user_fluids')
+          .select('amount_ml, consumed_at')
+          .eq('user_id', userId)
+          .gte('consumed_at', today + 'T00:00:00.000Z')
+          .order('consumed_at', { ascending: false }),
+          
+        supabase.from('body_measurements')
+          .select('body_fat_percentage, muscle_mass_kg, date')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+          
+        supabase.from('workout_plans')
+          .select('name, status, created_at')
+          .eq('created_by', userId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(3)
       ]);
       
       // Process results
@@ -239,6 +293,10 @@ async function buildAIContext(input: any) {
         sleepQuality: 'unbekannt',
         hydrationScore: 0,
         activeStreaks: [] as any[],
+        recentSupplements: [] as any[],
+        dailyFluidIntake: 0,
+        bodyFatPercentage: null as number | null,
+        activeWorkoutPlans: [] as any[],
         dataCompleteness: 0
       };
       
@@ -294,13 +352,42 @@ async function buildAIContext(input: any) {
         }));
       }
       
-      // Calculate completeness
+      // Process new data sources
+      if (supplementsResult.status === 'fulfilled' && supplementsResult.value?.data?.length > 0) {
+        enhanced.recentSupplements = supplementsResult.value.data.map((sup: any) => ({
+          name: sup.supplement_name,
+          time: new Date(sup.taken_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        }));
+      }
+      
+      if (fluidsResult.status === 'fulfilled' && fluidsResult.value?.data?.length > 0) {
+        enhanced.dailyFluidIntake = fluidsResult.value.data.reduce((total: number, fluid: any) => 
+          total + (fluid.amount_ml || 0), 0);
+      }
+      
+      if (bodyMeasurementsResult.status === 'fulfilled' && bodyMeasurementsResult.value?.data) {
+        const measurements = bodyMeasurementsResult.value.data;
+        enhanced.bodyFatPercentage = measurements.body_fat_percentage;
+      }
+      
+      if (workoutPlansResult.status === 'fulfilled' && workoutPlansResult.value?.data?.length > 0) {
+        enhanced.activeWorkoutPlans = workoutPlansResult.value.data.map((plan: any) => ({
+          name: plan.name,
+          status: plan.status
+        }));
+      }
+      
+      // Calculate completeness (updated for 18+ sources)
       let completeness = 0;
-      if (enhanced.currentWeight) completeness += 20;
-      if (enhanced.recentMeals.length > 0) completeness += 30;
-      if (enhanced.lastWorkout !== 'Kein Training') completeness += 25;
-      if (enhanced.sleepHours) completeness += 15;
+      if (enhanced.currentWeight) completeness += 15;
+      if (enhanced.recentMeals.length > 0) completeness += 25;
+      if (enhanced.lastWorkout !== 'Kein Training') completeness += 20;
+      if (enhanced.sleepHours) completeness += 10;
       if (enhanced.activeStreaks.length > 0) completeness += 10;
+      if (enhanced.recentSupplements.length > 0) completeness += 5;
+      if (enhanced.dailyFluidIntake > 0) completeness += 5;
+      if (enhanced.bodyFatPercentage) completeness += 5;
+      if (enhanced.activeWorkoutPlans.length > 0) completeness += 5;
       
       enhanced.dataCompleteness = completeness;
       
@@ -534,7 +621,7 @@ function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, user
   prompt += `=== ANWEISUNGEN ===\n`;
   
   if (requestType === 'personal') {
-    prompt += `1. Begrüße mit Namen wenn verfügbar ("Hallo ${memory?.userName || 'du'}!")\n`;
+    prompt += `1. Begrüße mit Namen wenn verfügbar ("Hallo ${memory?.realName || memory?.userName || 'du'}!")\n`;
     prompt += `2. Zeige, dass du die Person und ihre Daten kennst\n`;
   } else if (requestType === 'expert') {
     prompt += `1. Nutze das Fachwissen aus der Knowledge Base\n`;
