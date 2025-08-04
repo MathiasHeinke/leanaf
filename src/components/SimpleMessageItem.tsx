@@ -123,25 +123,25 @@ export const SimpleMessageItem = React.memo(({
         </div>
       )}
 
-      {/* Footer with Avatar & Timestamp - only for last message in cluster */}
+      {/* Footer with Avatar & Timestamp - unter der Bubble */}
       {showFooter && (
-        <div className={`footer-row ${isUser ? 'user' : ''}`}>
+        <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
           {!isUser && (
             <img 
               src={coach.avatar || coach.imageUrl || '/placeholder.svg'} 
               alt={coach.name}
-              className="avatar"
+              className="w-6 h-6 rounded-full object-cover"
               onError={(e) => {
                 console.log(`Failed to load coach avatar: ${coach.avatar || coach.imageUrl}`);
                 e.currentTarget.src = '/placeholder.svg';
               }}
             />
           )}
-          <span className="time">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {format(message.timestamp, 'HH:mm', { locale: de })}
           </span>
           {isUser && (
-            <div className="avatar bg-primary rounded-full flex items-center justify-center text-primary-foreground text-[8px] font-medium">
+            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
               U
             </div>
           )}

@@ -99,65 +99,76 @@ export const ModernChatInput: React.FC<ModernChatInputProps> = ({
   const activeToolConfig = TOOLS.find(tool => tool.id === activeTool);
 
   return (
-    <div className="relative flex items-center space-x-2">
-      {/* Tool-Picker Button */}
-      <button
-        onClick={() => setShowTools(!showTools)}
-        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-        disabled={isLoading}
-      >
-        <Plus className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-      </button>
+    <div className="space-y-3">
+      {/* Textarea - eigener Bereich mit voller Breite */}
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={handleKeyPress}
+          placeholder={placeholder}
+          disabled={isLoading}
+          className={`
+            w-full h-16 resize-none py-2 px-3 bg-transparent outline-none rounded-lg border transition-colors
+            ${activeToolConfig?.color === 'orange' 
+              ? 'border-orange-500 focus:border-orange-500' 
+              : 'border-gray-300 dark:border-gray-600 focus:border-blue-500'
+            }
+          `}
+        />
+      </div>
 
-      {/* Wrench Icon */}
-      <button
-        onClick={() => { setActiveTool('settings'); setShowTools(true); }}
-        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-        disabled={isLoading}
-      >
-        <Wrench className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-      </button>
+      {/* Button-Leiste unter dem Textarea */}
+      <div className="flex items-center justify-between">
+        {/* Linke Seite: Tool-Buttons */}
+        <div className="flex items-center space-x-2">
+          {/* Tool-Picker Button */}
+          <button
+            onClick={() => setShowTools(!showTools)}
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative"
+            disabled={isLoading}
+          >
+            <Plus className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          </button>
 
-      {/* Textarea */}
-      <textarea
-        ref={textareaRef}
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        onKeyDown={handleKeyPress}
-        placeholder={placeholder}
-        disabled={isLoading}
-        className={`
-          flex-1 mx-2 h-16 resize-none py-2 px-3 bg-transparent outline-none rounded-lg border transition-colors
-          ${activeToolConfig?.color === 'orange' 
-            ? 'border-orange-500 focus:border-orange-500' 
-            : 'border-gray-300 dark:border-gray-600 focus:border-blue-500'
-          }
-        `}
-      />
+          {/* Wrench Icon */}
+          <button
+            onClick={() => { setActiveTool('settings'); setShowTools(true); }}
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            disabled={isLoading}
+          >
+            <Wrench className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          </button>
+        </div>
 
-      {/* Mic Button */}
-      <button
-        onClick={handleVoiceToggle}
-        className={`p-2 rounded-full transition-colors ${
-          isRecording 
-            ? 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400' 
-            : 'hover:bg-gray-200 dark:hover:bg-gray-700'
-        }`}
-        disabled={isLoading}
-      >
-        <Mic className={`w-5 h-5 ${isRecording ? 'text-red-500' : 'text-red-500'}`} />
-      </button>
+        {/* Rechte Seite: Mic + Send */}
+        <div className="flex items-center space-x-2">
+          {/* Mic Button */}
+          <button
+            onClick={handleVoiceToggle}
+            className={`p-2 rounded-full transition-colors ${
+              isRecording 
+                ? 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400' 
+                : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+            disabled={isLoading}
+          >
+            <Mic className={`w-5 h-5 ${isRecording ? 'text-red-500' : 'text-red-500'}`} />
+          </button>
 
-      {/* Send Button */}
-      <button
-        onClick={handleSend}
-        disabled={!hasContent || isLoading}
-        className="p-3 bg-blue-600 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        <Send className="w-5 h-5 text-white" />
-      </button>
+          {/* Send Button */}
+          <button
+            onClick={handleSend}
+            disabled={!hasContent || isLoading}
+            className="p-3 bg-blue-600 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Send className="w-5 h-5 text-white" />
+          </button>
+        </div>
+      </div>
 
-      {/* Tool-Picker Popover */}
+      {/* Tool-Picker Popover - Position angepasst */}
       <AnimatePresence>
         {showTools && (
           <motion.div
@@ -165,7 +176,7 @@ export const ModernChatInput: React.FC<ModernChatInputProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ type: "spring", duration: 0.2 }}
-            className="absolute bottom-16 left-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg p-2 flex space-x-2 z-50"
+            className="absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg p-2 flex space-x-2 z-50"
           >
             {TOOLS.map(tool => (
               <button
@@ -183,7 +194,7 @@ export const ModernChatInput: React.FC<ModernChatInputProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Recording Overlay */}
+      {/* Recording Overlay - über den gesamten Bereich */}
       <AnimatePresence>
         {isRecording && (
           <motion.div
