@@ -11,6 +11,7 @@ import { Send, Loader2, Brain, Database, Clock, Zap, Users } from 'lucide-react'
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useEnhancedChat, EnhancedChatMessage } from '@/hooks/useEnhancedChat';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
@@ -283,9 +284,43 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     }
   };
 
+  // ============= USER AVATAR HELPER =============
+  const [userProfile, setUserProfile] = useState<any>(null);
+  
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('profile_avatar_url, avatar_type, avatar_preset_id')
+        .eq('user_id', user.id)
+        .single();
+      
+      setUserProfile(data);
+    };
+    
+    fetchUserProfile();
+  }, [user?.id]);
+  
+  const getUserAvatarUrl = () => {
+    if (!userProfile) return null;
+    
+    if (userProfile.avatar_type === 'uploaded' && userProfile.profile_avatar_url) {
+      return userProfile.profile_avatar_url;
+    }
+    
+    if (userProfile.avatar_type === 'preset' && userProfile.avatar_preset_id) {
+      return `/avatars/preset/avatar-${userProfile.avatar_preset_id}.png`;
+    }
+    
+    return null;
+  };
+
   // ============= RENDER MESSAGE =============
   const renderMessage = (message: EnhancedChatMessage) => {
     const isUser = message.role === 'user';
+    const userAvatarUrl = getUserAvatarUrl();
     
     return (
       <div key={message.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} mb-4`}>
@@ -390,6 +425,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
                 })}
               </span>
               <Avatar className="h-6 w-6 flex-shrink-0">
+                <AvatarImage src={userAvatarUrl || undefined} />
                 <AvatarFallback className="text-xs bg-muted">Du</AvatarFallback>
               </Avatar>
             </div>
