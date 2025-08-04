@@ -10,8 +10,9 @@ import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { HistoryTable } from "./HistoryTable";
 import { WeightHistory } from "./WeightHistory";
-import { Utensils, Scale, Dumbbell } from "lucide-react";
+import { Utensils, Scale, Dumbbell, Activity } from "lucide-react";
 import { WorkoutHistoryTab } from "./WorkoutHistoryTab";
+import { QuickInputHistory } from "./QuickInputHistory";
 
 interface DailyGoal {
   calories: number;
@@ -501,9 +502,9 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
             <Utensils className="h-4 w-4" />
             Ernährung
           </TabsTrigger>
-          <TabsTrigger value="workouts" className="flex items-center gap-2">
-            <Dumbbell className="h-4 w-4" />
-            Training
+          <TabsTrigger value="quick-input" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Quick Input
           </TabsTrigger>
           <TabsTrigger value="weight" className="flex items-center gap-2">
             <Scale className="h-4 w-4" />
@@ -524,8 +525,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           />
         </TabsContent>
 
-        <TabsContent value="workouts" className="space-y-3 mt-4">
-          <WorkoutHistoryTab timeRange={timeRange} />
+        <TabsContent value="quick-input" className="space-y-3 mt-4">
+          <QuickInputHistory timeRange={timeRange} />
         </TabsContent>
         
         <TabsContent value="weight" className="mt-4">

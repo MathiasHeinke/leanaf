@@ -42,15 +42,35 @@ export const calculateTrainingPrognosis = ({
     return hasQuickWorkout || hasAdvancedSession;
   }).length;
   
-  // Calculate actual weeks from data instead of using fixed values
-  const dates = workoutData.map(day => new Date(day.date)).sort((a, b) => a.getTime() - b.getTime());
-  const firstDate = dates[0];
-  const lastDate = dates[dates.length - 1];
-  const daysDifference = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
-  const actualWeeks = Math.max(1, daysDifference / 7);
+  // ISO Calendar Week based calculation (Monday-based)
+  const getCalendarWeekNumber = (date: Date): string => {
+    const tempDate = new Date(date.getTime());
+    tempDate.setHours(0, 0, 0, 0);
+    tempDate.setDate(tempDate.getDate() + 3 - (tempDate.getDay() + 6) % 7);
+    const week1 = new Date(tempDate.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((tempDate.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    return `${tempDate.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+  };
+
+  // Group workouts by ISO calendar weeks
+  const workoutsByWeek = new Map<string, any[]>();
+  workoutData.forEach(day => {
+    const hasQuickWorkout = day.quickWorkouts.some((w: any) => w.did_workout);
+    const hasAdvancedSession = day.advancedSessions.length > 0;
+    if (hasQuickWorkout || hasAdvancedSession) {
+      const weekKey = getCalendarWeekNumber(new Date(day.date));
+      if (!workoutsByWeek.has(weekKey)) {
+        workoutsByWeek.set(weekKey, []);
+      }
+      workoutsByWeek.get(weekKey)!.push(day);
+    }
+  });
+
+  // Calculate realistic weeks count (only weeks with workouts)
+  const totalWeeksWithWorkouts = Math.max(1, workoutsByWeek.size);
   
-  // Calculate realistic weekly workouts based on training days
-  const weeklyWorkouts = trainingDays / actualWeeks;
+  // Calculate realistic weekly workouts based on training days and calendar weeks
+  const weeklyWorkouts = trainingDays / totalWeeksWithWorkouts;
 
   // Calculate average RPE from advanced sessions - fix data structure
   const allSets = workoutData.flatMap((day) => 
