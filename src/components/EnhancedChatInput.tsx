@@ -298,6 +298,25 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
       {/* Main Input Area */}
       <div className="relative">
+        {/* Text Input - ABOVE the icon bar */}
+        <div className="relative px-4 py-3">
+          <textarea
+            ref={textareaRef}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder={placeholder}
+            disabled={isLoading}
+            className={cn(
+              "w-full resize-none border-0 bg-transparent text-sm",
+              "placeholder:text-muted-foreground focus:outline-none",
+              "min-h-[44px] max-h-[200px]"
+            )}
+            rows={1}
+          />
+        </div>
+
+        {/* Icon Bar - BELOW the text input */}
         <div className="flex items-center gap-1 px-2 py-1">
           {/* 1. Suggestions Button with Badge */}
           <div className="relative">
