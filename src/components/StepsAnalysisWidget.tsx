@@ -28,6 +28,7 @@ interface StepsData {
   activityLevel: string;
   goalProgress: number;
   recentDays: DailyActivity[];
+  last30Days: DailyActivity[];
 }
 
 const StepsAnalysisWidget = () => {
@@ -52,14 +53,14 @@ const StepsAnalysisWidget = () => {
     try {
       const today = new Date();
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-      const sevenDaysAgo = subDays(today, 7);
+      const thirtyDaysAgo = subDays(today, 30);
 
-      // Fetch last 7 days of workout data with steps
+      // Fetch last 30 days of workout data with steps
       const { data: activities, error } = await supabase
         .from('workouts')
         .select('id, date, steps, distance_km, workout_type, did_workout')
         .eq('user_id', user.id)
-        .gte('date', format(sevenDaysAgo, 'yyyy-MM-dd'))
+        .gte('date', format(thirtyDaysAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
 
       if (error) throw error;
@@ -108,7 +109,8 @@ const StepsAnalysisWidget = () => {
         trendPercentage,
         activityLevel,
         goalProgress: Math.min(goalProgress, 100),
-        recentDays: activities?.slice(0, 7) || []
+        recentDays: activities?.slice(0, 7) || [],
+        last30Days: activities?.slice(0, 30) || []
       });
     } catch (error) {
       console.error('Error loading steps data:', error);
@@ -321,6 +323,39 @@ const StepsAnalysisWidget = () => {
                       {format(new Date(day.date), 'dd')}
                     </div>
                     <div className="w-full bg-muted h-16 rounded-sm relative overflow-hidden">
+                      <div 
+                        className="absolute bottom-0 w-full bg-primary transition-all"
+                        style={{ height: `${Math.min(progress, 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-xs">
+                      {day.steps > 0 ? Math.round(day.steps / 1000) + 'k' : '0'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 30 Days Overview */}
+        {stepsData.last30Days.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-muted-foreground">Letzte 30 Tage</h4>
+            <div className="grid grid-cols-10 gap-1">
+              {stepsData.last30Days.map((day, index) => {
+                const progress = (day.steps / DAILY_GOAL) * 100;
+                const isToday = index === 0;
+                
+                return (
+                  <div 
+                    key={day.id || index} 
+                    className={`text-center space-y-1 p-1 rounded ${isToday ? 'bg-muted' : ''}`}
+                  >
+                    <div className="text-xs text-muted-foreground">
+                      {format(new Date(day.date), 'dd')}
+                    </div>
+                    <div className="w-full bg-muted h-12 rounded-sm relative overflow-hidden">
                       <div 
                         className="absolute bottom-0 w-full bg-primary transition-all"
                         style={{ height: `${Math.min(progress, 100)}%` }}
