@@ -32,6 +32,12 @@ export const useOnboardingState = () => {
     const storageKey = `onboarding_${user.id}`;
     const stored = localStorage.getItem(storageKey);
     
+    // Check if admin has globally disabled onboarding
+    const isOnboardingDisabledByAdmin = () => {
+      const adminSetting = localStorage.getItem('admin_onboarding_globally_disabled');
+      return adminSetting ? JSON.parse(adminSetting) : false;
+    };
+    
     if (stored) {
       try {
         setOnboardingState(JSON.parse(stored));
@@ -47,10 +53,12 @@ export const useOnboardingState = () => {
         });
       }
     } else {
-      // New user - navigate to new onboarding page
-      navigate('/onboarding');
+      // New user - only navigate to onboarding if not disabled by admin
+      if (!isOnboardingDisabledByAdmin()) {
+        navigate('/onboarding');
+      }
     }
-  }, [user]);
+  }, [user, navigate]);
 
   const updateOnboardingState = (updates: Partial<OnboardingState>) => {
     if (!user) return;
