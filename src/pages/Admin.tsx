@@ -15,7 +15,8 @@ import {
   MessageSquare,
   RefreshCw,
   Route,
-  Bug
+  Bug,
+  Settings
 } from 'lucide-react';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
@@ -31,10 +32,15 @@ import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashbo
 import { LiveTraceMonitor } from '@/components/LiveTraceMonitor';
 import LiteDebugChat from '@/components/LiteDebugChat';
 import { EmbeddingStatus } from '@/components/EmbeddingStatus';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
 
 export const AdminPage = () => {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading, error: adminError } = useSecureAdminAccess('admin_panel');
+  const { forceShowOnboarding, resetOnboarding } = useOnboardingState();
+  const [onboardingEnabled, setOnboardingEnabled] = useState(false);
   
   // Mock performance metrics for the dashboard
   const performanceMetrics = {
@@ -116,6 +122,58 @@ export const AdminPage = () => {
 
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
+        {/* 🎯 ONBOARDING ADMIN CONTROLS */}
+        <Card className="mb-6 bg-background border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center text-foreground">
+              <Settings className="w-5 h-5 mr-2" />
+              Onboarding Controls
+            </CardTitle>
+            <CardDescription>
+              Admin-Steuerung für das Onboarding-System
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="onboarding-toggle" className="text-sm font-medium">
+                  Onboarding für alle Nutzer aktivieren
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Zeigt das Onboarding für alle Nutzer an, unabhängig vom Status
+                </p>
+              </div>
+              <Switch
+                id="onboarding-toggle"
+                checked={onboardingEnabled}
+                onCheckedChange={(checked) => {
+                  setOnboardingEnabled(checked);
+                  if (checked) {
+                    forceShowOnboarding();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={forceShowOnboarding}
+                className="flex items-center gap-2"
+              >
+                🎯 Onboarding anzeigen
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetOnboarding}
+                className="flex items-center gap-2"
+              >
+                🔄 Onboarding zurücksetzen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         <Tabs defaultValue="production" className="w-full">
           {/* 🎛️ COMPACT TAB NAVIGATION - 5 tabs */}
           <div className="w-full mb-8">
