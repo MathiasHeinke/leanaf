@@ -35,12 +35,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Tool configuration with colors
 const TOOLS = [
-  { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500", icon: Scale },
-  { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400", icon: UtensilsCrossed },
-  { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400", icon: BookOpen },
-  { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400", icon: Pill },
-  { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500", icon: Dumbbell },
-  { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400", icon: PenTool },
+  { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500", textColor: "text-violet-500", icon: Scale },
+  { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400", textColor: "text-orange-400", icon: UtensilsCrossed },
+  { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400", textColor: "text-sky-400", icon: BookOpen },
+  { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400", textColor: "text-green-400", icon: Pill },
+  { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500", textColor: "text-purple-500", icon: Dumbbell },
+  { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400", textColor: "text-pink-400", icon: PenTool },
 ];
 
 interface EnhancedChatInputProps {
@@ -299,31 +299,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         </motion.div>
       )}
 
-      {/* Tool Selection Preview */}
-      {selectedToolConfig && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3"
-        >
-          <div className={`bg-background/95 border-2 ${selectedToolConfig.borderColor} rounded-xl p-3 shadow-lg backdrop-blur-sm`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 ${selectedToolConfig.bgColor} rounded-full`}></div>
-                <span className="text-sm font-medium">🔧 {selectedToolConfig.name} aktiv</span>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => removePendingTool(selectedTool!)}
-                className="hover:bg-destructive/10 hover:text-destructive"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Media Upload Zone */}
       <AnimatePresence>
@@ -363,24 +338,9 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-border hover:border-primary/50'}
         ${isRecording ? 'border-red-500 shadow-red-500/20' : ''}
       `}>
-        {/* Top Row - History Toggle and Controls */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/50">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowHistory(!showHistory)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            {showHistory ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
-            Verlauf
-          </Button>
-          <div className="text-xs text-muted-foreground">
-            {selectedToolConfig && `🔧 ${selectedToolConfig.name}`}
-          </div>
-        </div>
 
         {/* Text Input Row - Full Width Above Buttons */}
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 relative">
           <textarea
             ref={textareaRef}
             value={inputText}
@@ -390,7 +350,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             disabled={isLoading}
             className={`
               w-full bg-transparent border border-border rounded-lg outline-none resize-none
-              text-base md:text-lg leading-normal px-4 py-3
+              text-base md:text-lg leading-normal px-4 py-3 pr-24
               placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
               text-zinc-800 dark:text-white font-medium
               transition-all duration-200 focus:border-primary/50
@@ -404,6 +364,14 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               fontFamily: 'InterVariable, Inter, -apple-system, sans-serif'
             }}
           />
+          {/* Tool Status in top-right of textarea */}
+          {selectedToolConfig && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 text-xs font-medium">
+              <div className={`w-2 h-2 ${selectedToolConfig.bgColor} rounded-full`}></div>
+              <Wrench className={`w-3 h-3 ${selectedToolConfig.textColor}`} />
+              <span className="text-muted-foreground">{selectedToolConfig.name}</span>
+            </div>
+          )}
         </div>
 
         {/* Button Row */}
@@ -416,7 +384,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowTools(!showTools)}
-                className={`transition-all duration-200 ${selectedTool ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`transition-all duration-200 ${selectedTool ? selectedToolConfig?.textColor : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Wrench className={`w-5 h-5 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
               </Button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft, History, Trash2 } from 'lucide-react';
+import { ChevronDown, ArrowLeft, History, Trash2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
 
 interface CollapsibleCoachHeaderProps {
@@ -21,7 +22,36 @@ export const CollapsibleCoachHeader = ({
   onCollapseChange 
 }: CollapsibleCoachHeaderProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const navigate = useNavigate();
+
+  // Coach-specific suggestions based on specialization
+  const getCoachSuggestions = () => {
+    const coachName = coach.name?.toLowerCase();
+    
+    if (coachName?.includes('markus') || coach.specialization?.includes('Kraft')) {
+      return [
+        "Wie kann ich meine Bankdrück-Leistung verbessern?",
+        "Welche Supplements empfiehlst du für Muskelaufbau?",
+        "Zeig mir einen Trainingsplan für mehr Kraft",
+        "Wie tracke ich meine Fortschritte richtig?"
+      ];
+    } else if (coachName?.includes('lucy') || coach.specialization?.includes('Ganzheitlich')) {
+      return [
+        "Wie erstelle ich einen gesunden Ernährungsplan?",
+        "Was sind die besten Übungen für Anfänger?",
+        "Wie motiviere ich mich langfristig?",
+        "Welche Entspannungstechniken empfiehlst du?"
+      ];
+    } else {
+      return [
+        "Wie kann ich meine Ziele erreichen?",
+        "Was empfiehlst du für heute?",
+        "Zeig mir meinen Fortschritt",
+        "Welche Tipps hast du für mich?"
+      ];
+    }
+  };
 
   const handleBack = () => {
     navigate('/coach');
@@ -76,6 +106,42 @@ export const CollapsibleCoachHeader = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Suggestions Dropdown */}
+          <Popover open={showSuggestions} onOpenChange={setShowSuggestions}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 h-10 w-10 hover-scale"
+                aria-label="Vorschläge"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-2" align="end">
+              <div className="space-y-1">
+                <div className="text-sm font-medium px-2 py-1 text-muted-foreground">
+                  Vorschläge für {coach.name}
+                </div>
+                {getCoachSuggestions().map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-left p-2 h-auto whitespace-normal"
+                    onClick={() => {
+                      // Here you would trigger sending the suggestion
+                      setShowSuggestions(false);
+                      // onSendSuggestion?.(suggestion);
+                    }}
+                  >
+                    "{suggestion}"
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           {onHistoryClick && (
             <Button
               variant="ghost"
