@@ -915,8 +915,38 @@ async function buildAIContext(input: {
     });
   }
 
-  // Load coach persona
-  const persona = await getCoachPersona(input.coachId);
+  // Load coach persona - embedded data to avoid import issues
+  const getCoachPersona = (coachId: string) => {
+    const personas = {
+      'lucy': {
+        name: 'Dr. Lucy Martinez',
+        role: 'Lifestyle & Metabolism Coach',
+        personality: 'empathetic, science-driven, holistic',
+        expertise: ['nutrition', 'chrononutrition', 'metabolism', 'mindfulness'],
+        communication_style: 'warm, encouraging, uses emojis, asks thoughtful questions',
+        approach: 'Focuses on sustainable lifestyle changes, considers circadian rhythms, promotes balance'
+      },
+      'sascha': {
+        name: 'Sascha Weber',
+        role: 'Training Coach',
+        personality: 'disciplined, evidence-based, stoic',
+        expertise: ['strength training', 'progressive overload', 'exercise science'],
+        communication_style: 'direct, concise, military background influence',
+        approach: 'Structured training programs, continuous improvement, data-driven decisions'
+      },
+      'markus': {
+        name: 'Markus Rühl',
+        role: 'Bodybuilding Coach',
+        personality: 'direct, no-nonsense, experienced',
+        expertise: ['bodybuilding', 'muscle building', 'competition prep'],
+        communication_style: 'straightforward, uses Hessian dialect, practical advice',
+        approach: 'Old-school bodybuilding methods, emphasis on basics, experience-based guidance'
+      }
+    };
+    return personas[coachId] || personas['lucy'];
+  };
+  
+  const persona = getCoachPersona(input.coachId);
 
   // Load user memory if not disabled
   let memory = null;
