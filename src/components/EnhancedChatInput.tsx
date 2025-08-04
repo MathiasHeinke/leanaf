@@ -65,7 +65,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
   const [showTools, setShowTools] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -207,44 +207,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
   return (
     <div className={`w-full max-w-4xl mx-auto ${className}`}>
-      {/* History Banner */}
-      <AnimatePresence>
-        {showHistory && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 80, opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", duration: 0.3 }}
-            className="mb-3 overflow-hidden"
-          >
-            <div className="bg-zinc-100/90 dark:bg-zinc-800/90 rounded-xl px-4 py-3 backdrop-blur-sm border border-border/50 shadow-lg">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex-1 text-sm md:text-base text-muted-foreground leading-snug">
-                  <div className="font-semibold">Heute: "Hallo! Wie geht's dir heute?" 💪</div>
-                  <div className="text-xs opacity-75">Gestern: "Wie war dein Training?"</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    title="Heutigen Verlauf löschen"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setShowHistory(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Upload Progress */}
       {uploading && uploadProgress.length > 0 && (
@@ -346,8 +308,8 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
       {/* Main Input Container */}
       <div className={`
-        bg-background/95 border-2 transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm
-        ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-border hover:border-primary/50'}
+        bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm
+        ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}
         ${isRecording ? 'border-red-500 shadow-red-500/20' : ''}
       `}>
 
@@ -361,11 +323,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             placeholder={placeholder}
             disabled={isLoading}
             className={`
-              w-full bg-transparent border border-border rounded-lg outline-none resize-none
+              w-full bg-transparent border-0 outline-none resize-none
               text-base md:text-lg leading-normal px-4 py-3 pr-24
               placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
               text-zinc-800 dark:text-white font-medium
-              transition-all duration-200 focus:border-primary/50
+              transition-all duration-200
             `}
             style={{ 
               minHeight: 80, 
@@ -493,36 +455,54 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             </Button>
 
             {/* Suggestions Button */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="transition-all duration-200 text-muted-foreground hover:text-foreground"
-                >
-                  <MessageSquare className="w-5 h-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
-                <div className="p-4">
-                  <h4 className="font-medium mb-3">Gesprächsvorschläge</h4>
-                  <div className="space-y-2">
-                    {getSuggestions().map((suggestion, index) => (
-                      <button
-                        key={index}
-                        className="w-full text-left p-2 text-sm rounded-md hover:bg-muted transition-colors"
-                        onClick={() => {
-                          setInputText(suggestion);
-                        }}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+                className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </Button>
+
+              {/* Suggestions Dropdown */}
+              <AnimatePresence>
+                {showSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ type: "spring", duration: 0.2 }}
+                    className="absolute bottom-full mb-2 left-0 z-50"
+                  >
+                    <div className="bg-background border border-border rounded-xl p-3 shadow-xl backdrop-blur-sm w-80">
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                          💡 Gesprächsvorschläge
+                        </h3>
+                        <div className="space-y-2">
+                          {getSuggestions().map((suggestion, index) => (
+                            <Button
+                              key={index}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setInputText(suggestion);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full justify-start text-left h-auto p-3 whitespace-normal hover:bg-accent hover:text-accent-foreground"
+                            >
+                              {suggestion}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Send Button */}
