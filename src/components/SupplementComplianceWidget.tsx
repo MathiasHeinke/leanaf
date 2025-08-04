@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Pill, TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle } from "lucide-react";
+import { Pill, TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle, Brain } from "lucide-react";
 
 interface SupplementData {
   plannedSupplements: Array<{
@@ -22,6 +22,8 @@ export const SupplementComplianceWidget = () => {
   const { user } = useAuth();
   const [supplementData, setSupplementData] = useState<SupplementData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [coachAnalysis, setCoachAnalysis] = useState<string>('');
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -139,10 +141,76 @@ export const SupplementComplianceWidget = () => {
         trendPercentage: Math.abs(trendPercentage)
       });
 
+      // Generate coach analysis only if supplements changed
+      await generateCoachAnalysis(plannedSupplements);
+
     } catch (error) {
       console.error('Error loading supplement data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateCoachAnalysis = async (supplements: any[]) => {
+    if (!user?.id || supplements.length === 0) return;
+
+    try {
+      // Check if analysis already exists for this supplement combination
+      const supplementNames = supplements.map(s => s.name).sort().join(',');
+      
+      const { data: existingAnalysis } = await supabase
+        .from('supplement_analyses')
+        .select('analysis_text')
+        .eq('user_id', user.id)
+        .eq('supplement_combination_hash', btoa(supplementNames))
+        .single();
+
+      if (existingAnalysis) {
+        setCoachAnalysis(existingAnalysis.analysis_text);
+        return;
+      }
+
+      // Generate new analysis
+      setAnalysisLoading(true);
+      
+      // Get user profile for context
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('age, gender, fitness_goal')
+        .eq('user_id', user.id)
+        .single();
+
+      const response = await fetch('/functions/v1/supplement-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
+        },
+        body: JSON.stringify({
+          supplements,
+          userProfile: userProfile || null
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.analysis) {
+        setCoachAnalysis(data.analysis);
+        
+        // Store analysis for future use
+        await supabase
+          .from('supplement_analyses')
+          .upsert({
+            user_id: user.id,
+            supplement_combination_hash: btoa(supplementNames),
+            analysis_text: data.analysis,
+            created_at: new Date().toISOString()
+          });
+      }
+    } catch (error) {
+      console.error('Error generating coach analysis:', error);
+    } finally {
+      setAnalysisLoading(false);
     }
   };
 
@@ -307,6 +375,30 @@ export const SupplementComplianceWidget = () => {
               : "💊 Denk an deine Supplements!"}
           </div>
         </div>
+
+        {/* Coach Analysis */}
+        {coachAnalysis && (
+          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700/30">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                <Brain className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">Coach Analyse</h4>
+                {analysisLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    <span className="text-sm text-blue-700 dark:text-blue-300">Analyse wird erstellt...</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                    {coachAnalysis}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
