@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSimpleChat } from '@/hooks/useSimpleChat';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
-import { ModernChatInput } from '@/components/ModernChatInput';
 
 // ============= TYPES =============
 export interface SimpleMessage {
@@ -344,16 +343,28 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
 
           {/* Input */}
           <div className="border-t bg-background p-4">
-            <ModernChatInput
-              inputText={inputText}
-              setInputText={setInputText}
-              onSendMessage={(message, mediaUrls, selectedTool) => {
-                setInputText(message);
-                handleSendMessage();
-              }}
-              isLoading={isChatLoading}
-              placeholder="Nachricht eingeben …"
-            />
+            <div className="flex gap-2">
+              <Textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Nachricht eingeben..."
+                className="flex-1 min-h-[60px] resize-none"
+                disabled={isChatLoading}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputText.trim() || isChatLoading}
+                size="icon"
+                className="self-end mb-2"
+              >
+                {isChatLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -411,16 +422,28 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
 
         {/* Input */}
         <div className="border-t bg-background p-4">
-          <ModernChatInput
-            inputText={inputText}
-            setInputText={setInputText}
-            onSendMessage={(message, mediaUrls, selectedTool) => {
-              setInputText(message);
-              handleSendMessage();
-            }}
-            isLoading={isChatLoading}
-            placeholder="Nachricht eingeben …"
-          />
+          <div className="flex gap-2">
+            <Textarea
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Nachricht eingeben..."
+              className="flex-1 min-h-[60px] resize-none"
+              disabled={isChatLoading}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || isChatLoading}
+              size="icon"
+              className="self-end mb-2"
+            >
+              {isChatLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

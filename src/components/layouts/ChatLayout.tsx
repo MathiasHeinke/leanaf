@@ -9,23 +9,40 @@ interface ChatLayoutProps {
 
 export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: ChatLayoutProps) => {
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="fixed inset-0 flex flex-col bg-background text-foreground z-50">
       
-      {/* Header - fixed 56px height */}
+      {/* Header */}
       <GlobalHeader />
 
-      {/* Chat Area - flexible height with proper overflow */}
-      <main className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
-        {children}
-      </main>
-
-      {/* Input Area - fixed at bottom */}
-      {chatInput && (
-        <div className="flex-shrink-0 px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-          {chatInput}
+      {/* Scrollbarer Chat - dynamisches Padding basierend auf Banner-Status */}
+      <div 
+        className="flex-1 min-h-0 px-4 transition-all duration-300 ease-out"
+        style={{ 
+          paddingTop: bannerCollapsed ? '8px' : 'var(--coach-banner-height)',
+          pointerEvents: 'auto' 
+        }}
+      >
+        <div className="h-full overflow-y-auto space-y-2">
+          {children}
         </div>
-      )}
+      </div>
 
+      {/* Eingabemaske + Footer (gemeinsamer Block!) */}
+      <div className="flex-shrink-0">
+        
+        {/* Eingabefeld direkt auf Footer */}
+        {chatInput && (
+          <div className="px-3 py-1 bg-card border-t border-border">
+            {chatInput}
+          </div>
+        )}
+
+        {/* Footer: kein zusätzlicher Abstand */}
+        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-card m-0 p-0">
+          © 2025 GetleanAI. Made with ❤️ in Germany
+        </div>
+
+      </div>
     </div>
   );
 };

@@ -48,10 +48,10 @@ export const SimpleMessageItem = React.memo(({
   return (
     <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
       {/* Message bubble */}
-      <div className={`rounded-lg px-4 py-2 max-w-[75%] whitespace-pre-wrap ${
+      <div className={`rounded-xl px-4 py-3 max-w-[75%] whitespace-pre-wrap ${
         isUser 
           ? 'bg-blue-600 text-white' 
-          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+          : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
       }`}>
         <div className="prose prose-sm max-w-none dark:prose-invert">
           <ReactMarkdown 
@@ -123,25 +123,25 @@ export const SimpleMessageItem = React.memo(({
         </div>
       )}
 
-      {/* Footer with Avatar & Timestamp - unter der Bubble */}
+      {/* Footer with Avatar & Timestamp - only for last message in cluster */}
       {showFooter && (
-        <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
+        <div className={`footer-row ${isUser ? 'user' : ''}`}>
           {!isUser && (
             <img 
               src={coach.avatar || coach.imageUrl || '/placeholder.svg'} 
               alt={coach.name}
-              className="w-6 h-6 rounded-full object-cover"
+              className="avatar"
               onError={(e) => {
                 console.log(`Failed to load coach avatar: ${coach.avatar || coach.imageUrl}`);
                 e.currentTarget.src = '/placeholder.svg';
               }}
             />
           )}
-          <span className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="time">
             {format(message.timestamp, 'HH:mm', { locale: de })}
           </span>
           {isUser && (
-            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+            <div className="avatar bg-primary rounded-full flex items-center justify-center text-primary-foreground text-[8px] font-medium">
               U
             </div>
           )}
