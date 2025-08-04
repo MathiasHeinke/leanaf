@@ -288,101 +288,113 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     const isUser = message.role === 'user';
     
     return (
-      <div key={message.id} className={`flex gap-3 mb-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
-        {!isUser && (
-          <Avatar className="w-8 h-8 flex-shrink-0">
-            <AvatarImage src={message.coach_avatar} />
-            <AvatarFallback>{message.coach_name?.[0] || 'C'}</AvatarFallback>
-          </Avatar>
-        )}
-        
-        <div className={`max-w-[80%] ${isUser ? 'order-first' : ''}`}>
-          <div
-            className={`p-3 rounded-lg ${
-              isUser
-                ? 'bg-primary text-primary-foreground ml-auto'
-                : 'bg-muted'
-            }`}
-          >
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-          </div>
-          
-          {/* Enhanced metadata display */}
-          <div className="flex items-center gap-2 mt-1 px-1">
-            <p className="text-xs text-muted-foreground">
-              {new Date(message.created_at).toLocaleTimeString('de-DE', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
-            
-            {/* Advanced features indicators */}
-            {enableAdvancedFeatures && !isUser && message.metadata && (
-              <div className="flex items-center gap-1">
-                <TooltipProvider>
-                  {message.metadata.hasMemory && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Badge variant="secondary" className="h-4 px-1 text-xs">
-                          <Users className="w-3 h-3" />
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Mit persönlichem Gedächtnis</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  
-                  {message.metadata.hasRag && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Badge variant="secondary" className="h-4 px-1 text-xs">
-                          <Database className="w-3 h-3" />
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Mit Wissensdatenbank</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  
-                  {message.metadata.hasDaily && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Badge variant="secondary" className="h-4 px-1 text-xs">
-                          <Clock className="w-3 h-3" />
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Mit Tagesverlauf</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  
-                  {message.metadata.tokensUsed && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Badge variant="outline" className="h-4 px-1 text-xs">
-                          {message.metadata.tokensUsed}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Tokens verwendet: {message.metadata.tokensUsed}</p>
-                        <p>Dauer: {message.metadata.duration}ms</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </TooltipProvider>
-              </div>
-            )}
-          </div>
+      <div key={message.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} mb-4`}>
+        {/* Message Bubble */}
+        <div
+          className={`max-w-[75%] px-3 py-2 ${
+            isUser
+              ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
+              : 'bg-muted rounded-2xl rounded-bl-md'
+          }`}
+        >
+          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
-        
-        {isUser && (
-          <Avatar className="w-8 h-8 flex-shrink-0">
-            <AvatarFallback>Du</AvatarFallback>
-          </Avatar>
-        )}
+
+        {/* Footer unter der Bubble */}
+        <div className="mt-3">
+          {/* Coach layout: Avatar left, time right */}
+          {!isUser && (
+            <div className="flex items-center justify-start gap-2 text-xs">
+              <Avatar className="h-6 w-6 flex-shrink-0">
+                <AvatarImage src={message.coach_avatar} />
+                <AvatarFallback className="text-xs bg-muted">
+                  {message.coach_name?.[0] || 'C'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-muted-foreground">
+                {new Date(message.created_at).toLocaleTimeString('de-DE', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+              
+              {/* Advanced features indicators */}
+              {enableAdvancedFeatures && message.metadata && (
+                <div className="flex gap-1">
+                  <TooltipProvider>
+                    {message.metadata.hasMemory && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="secondary" className="h-4 px-1 text-xs">
+                            <Users className="w-3 h-3" />
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Mit persönlichem Gedächtnis</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    
+                    {message.metadata.hasRag && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="secondary" className="h-4 px-1 text-xs">
+                            <Database className="w-3 h-3" />
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Mit Wissensdatenbank</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    
+                    {message.metadata.hasDaily && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="secondary" className="h-4 px-1 text-xs">
+                            <Clock className="w-3 h-3" />
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Mit Tagesverlauf</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    
+                    {message.metadata.tokensUsed && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="outline" className="h-4 px-1 text-xs">
+                            {message.metadata.tokensUsed}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Tokens verwendet: {message.metadata.tokensUsed}</p>
+                          <p>Dauer: {message.metadata.duration}ms</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </TooltipProvider>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* User layout: Time left, avatar right */}
+          {isUser && (
+            <div className="flex items-center justify-end gap-2 text-xs">
+              <span className="text-muted-foreground">
+                {new Date(message.created_at).toLocaleTimeString('de-DE', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+              <Avatar className="h-6 w-6 flex-shrink-0">
+                <AvatarFallback className="text-xs bg-muted">Du</AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
