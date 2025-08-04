@@ -49,10 +49,21 @@ serve(async (req) => {
     const arrayBuffer = await audioData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Prepare form data for OpenAI
+    // Prepare form data for OpenAI with better format handling
     const formData = new FormData();
-    const blob = new Blob([uint8Array], { type: 'audio/webm' });
-    formData.append('file', blob, 'audio.webm');
+    
+    // Try different audio formats to avoid OpenAI format errors
+    const supportedFormats = [
+      { type: 'audio/webm', ext: 'webm' },
+      { type: 'audio/wav', ext: 'wav' },
+      { type: 'audio/mp3', ext: 'mp3' },
+      { type: 'audio/ogg', ext: 'ogg' }
+    ];
+    
+    // Use first format (webm) by default
+    const format = supportedFormats[0];
+    const blob = new Blob([uint8Array], { type: format.type });
+    formData.append('file', blob, `audio.${format.ext}`);
     formData.append('model', 'whisper-1');
     formData.append('language', 'de');
 

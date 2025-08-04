@@ -141,13 +141,26 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
   const handleStopAndTranscribe = () => {
     if (!mediaRecorderRef.current || phase !== 'recording') return;
 
-    cleanup();
+    // Stop timer immediately when user clicks stop
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
     setPhase('processing'); // Start processing immediately
 
     mediaRecorderRef.current.onstop = async () => {
       try {
-        // Start upload and transcription in parallel
-        const uploadedFileId = await uploadAudio();
+        // Clean up streams
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+
+        // Parallel upload and transcription
+        const uploadPromise = uploadAudio();
+        
+        const uploadedFileId = await uploadPromise;
         setFileId(uploadedFileId);
         
         const transcribedText = await transcribeAudio(uploadedFileId);
@@ -199,29 +212,29 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
       className="fixed inset-x-0 bottom-0 flex flex-col items-center justify-center bg-white/85 dark:bg-neutral-900/85 z-50 backdrop-blur-sm px-4"
       style={{ height: inputBarHeight, pointerEvents: 'none' }}
     >
-      {/* Cancel Button - Top Left */}
+      {/* Cancel Button - Center Left */}
       <button
         onClick={handleCancel}
-        className="pointer-events-auto absolute top-4 left-4 w-10 h-10 flex justify-center items-center text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+        className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex justify-center items-center text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
         aria-label="Aufnahme abbrechen"
       >
         <X className="w-6 h-6" />
       </button>
 
-      {/* Action Button - Top Right */}
+      {/* Action Button - Center Right */}
       {phase === 'error' ? (
         <button
           onClick={handleRetry}
-          className="pointer-events-auto absolute top-4 right-4 w-10 h-10 flex justify-center items-center text-orange-500 hover:text-orange-600 transition-colors"
+          className="pointer-events-auto absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex justify-center items-center text-orange-500 hover:text-orange-600 transition-colors"
           aria-label="Erneut versuchen"
         >
-          <RotateCcw className="w-6 h-6 animate-spin" />
+          <RotateCcw className="w-6 h-6" />
         </button>
       ) : (
         <button
           onClick={handleStopAndTranscribe}
           disabled={phase !== 'recording'}
-          className="pointer-events-auto absolute top-4 right-4 w-10 h-10 flex justify-center items-center text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-wait transition-colors"
+          className="pointer-events-auto absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex justify-center items-center text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-wait transition-colors"
           aria-label="Aufnahme stoppen & transkribieren"
         >
           <ArrowUpSquare className="w-6 h-6" />
