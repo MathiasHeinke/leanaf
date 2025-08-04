@@ -1195,7 +1195,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   className="w-full"
                 />
                 <p className="text-sm text-muted-foreground">
-                  Die KI-Coaches verwenden diesen Namen in ihren Nachrichten an dich
+                  Anzeigename für&apos;s Coaching
                 </p>
               </div>
             </CardContent>
