@@ -3284,6 +3284,30 @@ export type Database = {
         }
         Relationships: []
       }
+      supplement_analyses: {
+        Row: {
+          analysis_text: string
+          created_at: string
+          id: string
+          supplement_combination_hash: string
+          user_id: string
+        }
+        Insert: {
+          analysis_text: string
+          created_at?: string
+          id?: string
+          supplement_combination_hash: string
+          user_id: string
+        }
+        Update: {
+          analysis_text?: string
+          created_at?: string
+          id?: string
+          supplement_combination_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       supplement_database: {
         Row: {
           category: string

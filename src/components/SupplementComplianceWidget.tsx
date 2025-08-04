@@ -155,22 +155,6 @@ export const SupplementComplianceWidget = () => {
     if (!user?.id || supplements.length === 0) return;
 
     try {
-      // Check if analysis already exists for this supplement combination
-      const supplementNames = supplements.map(s => s.name).sort().join(',');
-      
-      const { data: existingAnalysis } = await supabase
-        .from('supplement_analyses')
-        .select('analysis_text')
-        .eq('user_id', user.id)
-        .eq('supplement_combination_hash', btoa(supplementNames))
-        .single();
-
-      if (existingAnalysis) {
-        setCoachAnalysis(existingAnalysis.analysis_text);
-        return;
-      }
-
-      // Generate new analysis
       setAnalysisLoading(true);
       
       // Get user profile for context
@@ -180,32 +164,15 @@ export const SupplementComplianceWidget = () => {
         .eq('user_id', user.id)
         .single();
 
-      const response = await fetch('/functions/v1/supplement-analysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await supabase.auth.getSession().then(s => s.data.session?.access_token)}`
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('supplement-analysis', {
+        body: {
           supplements,
           userProfile: userProfile || null
-        })
+        }
       });
 
-      const data = await response.json();
-      
-      if (data.analysis) {
-        setCoachAnalysis(data.analysis);
-        
-        // Store analysis for future use
-        await supabase
-          .from('supplement_analyses')
-          .upsert({
-            user_id: user.id,
-            supplement_combination_hash: btoa(supplementNames),
-            analysis_text: data.analysis,
-            created_at: new Date().toISOString()
-          });
+      if (response.data?.analysis) {
+        setCoachAnalysis(response.data.analysis);
       }
     } catch (error) {
       console.error('Error generating coach analysis:', error);
