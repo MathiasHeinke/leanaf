@@ -81,10 +81,10 @@ function hardTrim(str: string, tokenCap: number): string {
 // Trace logging
 async function traceEvent(traceId: string, step: string, status: string, data: any = {}, conversationId?: string, messageId?: string, duration?: number, error?: string): Promise<void> {
   try {
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
+    const supabaseTrace = getSupabaseClient();
+    if (!supabaseTrace) return;
     
-    await supabase.from('coach_trace_events').insert({
+    await supabaseTrace.from('coach_trace_events').insert({
       trace_id: traceId,
       conversation_id: conversationId,
       message_id: messageId,
@@ -108,8 +108,8 @@ async function buildAIContext(input: any) {
   // For edge functions, we need to replicate the enhanced context building inline
   // since we can't import from src/lib
   
-  const supabase = getSupabaseClient();
-  if (!supabase) {
+  const supabaseContext = getSupabaseClient();
+  if (!supabaseContext) {
     return { persona: null, memory: null, daily: null, ragChunks: null, metrics: { tokensIn: 0 } };
   }
   
@@ -178,12 +178,12 @@ async function buildAIContext(input: any) {
     try {
       // Load both coach memory and profile in parallel
       const [memoryResult, profileResult] = await Promise.allSettled([
-        supabase
+        supabaseContext
           .from('coach_memory')
           .select('memory_data')
           .eq('user_id', userId)
           .maybeSingle(),
-        supabase
+        supabaseContext
           .from('profiles')
           .select('display_name, preferred_name, first_name')
           .eq('user_id', userId)
@@ -240,7 +240,7 @@ async function buildAIContext(input: any) {
         bodyMeasurementsResult,
         workoutPlansResult
       ] = await Promise.allSettled([
-        supabase.from('daily_summaries')
+        supabaseContext.from('daily_summaries')
           .select('total_calories, total_protein, workout_volume, sleep_score, hydration_score')
           .eq('user_id', userId)
           .in('date', [today, yesterday])
@@ -248,65 +248,65 @@ async function buildAIContext(input: any) {
           .limit(1)
           .maybeSingle(),
           
-        supabase.from('daily_goals')
+        supabaseContext.from('daily_goals')
           .select('calories, protein')
           .eq('user_id', userId)
           .maybeSingle(),
           
-        supabase.from('weight_history')
+        supabaseContext.from('weight_history')
           .select('weight, date')
           .eq('user_id', userId)
           .order('date', { ascending: false })
           .limit(3),
           
-        supabase.from('meals')
+        supabaseContext.from('meals')
           .select('text, calories, protein, created_at')
           .eq('user_id', userId)
           .gte('created_at', yesterday + 'T00:00:00.000Z')
           .order('created_at', { ascending: false })
           .limit(5),
           
-        supabase.from('exercise_sessions')
+        supabaseContext.from('exercise_sessions')
           .select('session_name, workout_type, duration_minutes')
           .eq('user_id', userId)
           .gte('created_at', yesterday + 'T00:00:00.000Z')
           .order('created_at', { ascending: false })
           .limit(2),
           
-        supabase.from('sleep_tracking')
+        supabaseContext.from('sleep_tracking')
           .select('sleep_hours, sleep_quality, sleep_score')
           .eq('user_id', userId)
           .order('date', { ascending: false })
           .limit(1)
           .maybeSingle(),
           
-        supabase.from('user_streaks')
+        supabaseContext.from('user_streaks')
           .select('streak_type, current_streak, longest_streak')
           .eq('user_id', userId)
           .gt('current_streak', 0),
           
         // Missing data sources added
-        supabase.from('supplement_intake_log')
+        supabaseContext.from('supplement_intake_log')
           .select('supplement_name, taken_at')
           .eq('user_id', userId)
           .gte('taken_at', yesterday + 'T00:00:00.000Z')
           .order('taken_at', { ascending: false })
           .limit(5),
           
-        supabase.from('user_fluids')
+        supabaseContext.from('user_fluids')
           .select('amount_ml, consumed_at')
           .eq('user_id', userId)
           .gte('consumed_at', today + 'T00:00:00.000Z')
           .order('consumed_at', { ascending: false }),
           
-        supabase.from('body_measurements')
+        supabaseContext.from('body_measurements')
           .select('body_fat_percentage, muscle_mass_kg, date')
           .eq('user_id', userId)
           .order('date', { ascending: false })
           .limit(1)
           .maybeSingle(),
           
-        supabase.from('workout_plans')
+        supabaseContext.from('workout_plans')
           .select('name, status, created_at')
           .eq('created_by', userId)
           .eq('status', 'active')
@@ -439,7 +439,7 @@ async function buildAIContext(input: any) {
     if (!enableRag) return null;
     
     try {
-      const { data, error } = await supabase.functions.invoke('enhanced-coach-rag', {
+      const { data, error } = await supabaseContext.functions.invoke('enhanced-coach-rag', {
         body: {
           query,
           coachId,
@@ -781,10 +781,10 @@ serve(async (req) => {
     });
     
     // Get profile for enhanced system flags
-    const supabase = getSupabaseClient();
+    const supabaseMain = getSupabaseClient();
     let profile = null;
-    if (supabase) {
-      const { data } = await supabase
+    if (supabaseMain) {
+      const { data } = await supabaseMain
         .from('profiles')
         .select('weight, age, birth_year, location')
         .eq('user_id', userId)
@@ -869,12 +869,12 @@ serve(async (req) => {
     }, conversationId, messageId, Date.now() - openaiStart);
 
     // Save conversation to database
-    const supabase = getSupabaseClient();
-    if (supabase) {
+    const supabaseSave = getSupabaseClient();
+    if (supabaseSave) {
       const today = new Date().toISOString().split('T')[0];
       
       // Save user message
-      await supabase.from('coach_conversations').insert({
+      await supabaseSave.from('coach_conversations').insert({
         user_id: userId,
         message_role: 'user',
         message_content: message,
@@ -883,7 +883,7 @@ serve(async (req) => {
       });
       
       // Save assistant response
-      await supabase.from('coach_conversations').insert({
+      await supabaseSave.from('coach_conversations').insert({
         user_id: userId,
         message_role: 'assistant',
         message_content: aiResponse,
