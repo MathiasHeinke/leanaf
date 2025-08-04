@@ -152,13 +152,13 @@ export const DailyProgress = ({
   return (
     <div className="space-y-6">
       {/* Integrated Nutrient Card - Calories + Macros */}
-      <div className="p-4 bg-gradient-to-br from-blue-50/80 via-blue-50/60 to-primary-glow/20 dark:from-blue-950/20 dark:via-blue-950/15 dark:to-primary-glow/10 rounded-3xl border border-primary/10 backdrop-blur-sm hover-lift smooth-transition">
+      <div className="p-4 bg-muted/30 rounded-2xl border border-border/30 transition-all duration-200">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
-              <Target className="h-4 w-4 text-primary" />
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary rounded-xl">
+              <Target className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-semibold text-base">{t('app.dailyProgress')}</span>
+            <span className="font-semibold text-lg">{t('app.dailyProgress')}</span>
           </div>
           <div className="flex items-center gap-2">
             <InfoButton
@@ -180,8 +180,8 @@ export const DailyProgress = ({
         </div>
 
         {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-4 p-2 bg-white/60 dark:bg-gray-800/40 rounded-xl border border-gray-200/40 dark:border-gray-700/40">
-          <Button variant="ghost" size="sm" onClick={goToPreviousDay}>
+        <div className="flex items-center justify-between mb-4 p-2 bg-background/80 rounded-xl border border-border/40">
+          <Button variant="ghost" size="sm" onClick={goToPreviousDay} className="hover:bg-muted">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
@@ -192,7 +192,7 @@ export const DailyProgress = ({
             )}
           </div>
           
-          <Button variant="ghost" size="sm" onClick={goToNextDay}>
+          <Button variant="ghost" size="sm" onClick={goToNextDay} className="hover:bg-muted">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -210,7 +210,7 @@ export const DailyProgress = ({
           <div className="space-y-2">
             <Progress 
               value={Math.min(calorieProgress, 100)} 
-              className={`h-2 rounded-full ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
+              className={`h-2 ${caloriesExceeded ? '[&>div]:bg-red-500' : ''}`} 
             />
             
             <div className="flex items-center justify-center gap-1.5 text-xs font-medium">
@@ -247,12 +247,12 @@ export const DailyProgress = ({
         </div>
 
         {/* Subtle Separator */}
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-gray-700/60 to-transparent mb-4"></div>
+        <div className="w-full h-px bg-border/30 mb-4"></div>
 
         {/* Macros Section - Compact Grid */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-3">
           {/* Protein */}
-          <div className="p-2 rounded-lg bg-card/40 border border-border/30 hover:border-border/60 transition-colors backdrop-blur-sm">
+          <div className="p-3 rounded-xl bg-background/60 border border-border/40 hover:bg-background/80 transition-colors">
             <div className="text-sm font-semibold mb-1 text-slate-600 dark:text-slate-300">
               {t('macros.protein')}
             </div>
@@ -264,12 +264,12 @@ export const DailyProgress = ({
             </div>
             <Progress 
               value={Math.min(proteinProgress, 100)} 
-              className="h-1.5 [&>div:last-child]:bg-slate-500" 
+              className="h-2 [&>div:last-child]:bg-slate-500" 
             />
           </div>
 
           {/* Carbs */}
-          <div className="p-2 rounded-lg bg-card/40 border border-border/30 hover:border-border/60 transition-colors backdrop-blur-sm">
+          <div className="p-3 rounded-xl bg-background/60 border border-border/40 hover:bg-background/80 transition-colors">
             <div className="text-sm font-semibold mb-1 text-amber-600 dark:text-amber-400">
               {t('macros.carbs')}
             </div>
@@ -281,12 +281,12 @@ export const DailyProgress = ({
             </div>
             <Progress 
               value={Math.min(carbsProgress, 100)} 
-              className="h-1.5 [&>div:last-child]:bg-amber-500" 
+              className="h-2 [&>div:last-child]:bg-amber-500" 
             />
           </div>
 
           {/* Fats */}
-          <div className="p-2 rounded-lg bg-card/40 border border-border/30 hover:border-border/60 transition-colors backdrop-blur-sm">
+          <div className="p-3 rounded-xl bg-background/60 border border-border/40 hover:bg-background/80 transition-colors">
             <div className="text-sm font-semibold mb-1 text-emerald-600 dark:text-emerald-400">
               {t('macros.fats')}
             </div>
@@ -298,7 +298,7 @@ export const DailyProgress = ({
             </div>
             <Progress 
               value={Math.min(fatsProgress, 100)} 
-              className="h-1.5 [&>div:last-child]:bg-emerald-500" 
+              className="h-2 [&>div:last-child]:bg-emerald-500" 
             />
           </div>
         </div>
