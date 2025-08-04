@@ -73,7 +73,7 @@ export const MessageItem = React.memo(({
 
   return (
     <div ref={ref} style={style} className="px-4 py-2">
-      {/* Main message bubble */}
+      {/* Main message bubble container */}
       <div 
         className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
         role="group"
@@ -155,31 +155,29 @@ export const MessageItem = React.memo(({
         </div>
       </div>
       
-      {/* Footer with avatar and time - BELOW the bubble */}
-      <div className={`flex mt-2 text-xs items-center gap-2 ${
-        isUser ? 'justify-end' : 'justify-start'
-      }`}>
-        {/* Coach side: Avatar left, time right */}
+      {/* Avatar and timestamp footer - positioned below the bubble */}
+      <div className="mt-3">
+        {/* Coach layout: Avatar left, time right */}
         {!isUser && (
-          <>
+          <div className="flex items-center justify-start gap-2 text-xs">
             <Avatar className="h-6 w-6 flex-shrink-0">
               <AvatarImage src={coach.avatar} alt={coach.name} />
-              <AvatarFallback className="text-xs">
+              <AvatarFallback className="text-xs bg-muted">
                 {coach.name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <span className="text-muted-foreground">{timeString}</span>
-          </>
+          </div>
         )}
         
-        {/* User side: Time left, avatar right */}
+        {/* User layout: Time left, avatar right */}
         {isUser && (
-          <>
+          <div className="flex items-center justify-end gap-2 text-xs">
             <span className="text-muted-foreground">{timeString}</span>
             <div className="h-6 w-6 flex-shrink-0">
               <BadgeSvg className="w-full h-full" />
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
