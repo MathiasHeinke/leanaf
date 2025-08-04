@@ -27,12 +27,12 @@ import {
   PenTool,
   MessageSquare
 } from 'lucide-react';
-import { VoiceCanvasWaveform } from '@/components/VoiceCanvasWaveform';
 import { useInputBarHeight } from '@/hooks/useInputBarHeight';
 import { toast } from 'sonner';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
-import { useEnhancedVoiceRecording } from '@/hooks/useEnhancedVoiceRecording';
+import { useVoiceOverlay } from '@/hooks/useVoiceOverlay';
+import { VoiceOverlay } from '@/components/VoiceOverlay';
 import { usePendingTools } from '@/hooks/usePendingTools';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -67,26 +67,12 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
   const [showTools, setShowTools] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Get input bar height for overlay
-  const inputBarHeight = useInputBarHeight();
-  
   // Hooks
   const { uploadFiles, uploading, uploadProgress, getMediaType } = useMediaUpload();
-  const { 
-    isRecording, 
-    isProcessing, 
-    audioLevel, 
-    startRecording, 
-    stopRecording, 
-    transcribedText,
-    clearTranscription,
-    sendTranscription,
-    hasCachedAudio
-  } = useEnhancedVoiceRecording();
+  const { isVoiceOverlayOpen, openVoiceOverlay, closeVoiceOverlay } = useVoiceOverlay();
   
   const { 
     pendingTools, 
@@ -109,19 +95,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   };
 
   const suggestionCount = getSuggestions().length;
-
-  // Recording timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingTime(0);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -156,30 +129,16 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [uploadFiles, getMediaType]);
 
-  // Handle voice recording - start/stop only, no auto-send
-  const handleVoiceToggle = useCallback(async () => {
-    if (isRecording) {
-      await stopRecording();
-    } else {
-      await startRecording();
-    }
-  }, [isRecording, stopRecording, startRecording]);
+  // Handle voice recording
+  const handleVoiceStart = useCallback(() => {
+    openVoiceOverlay();
+  }, [openVoiceOverlay]);
 
-  // Handle voice cancel
-  const handleVoiceCancel = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    }
-    clearTranscription();
-  }, [isRecording, stopRecording, clearTranscription]);
-
-  // Handle voice send
-  const handleVoiceSend = useCallback(async () => {
-    const result = await sendTranscription();
-    if (result) {
-      setInputText(inputText + (inputText ? ' ' : '') + result);
-    }
-  }, [sendTranscription, setInputText, inputText]);
+  // Handle voice text generated
+  const handleVoiceTextGenerated = useCallback((text: string) => {
+    const currentText = inputText;
+    setInputText(currentText + (currentText ? ' ' : '') + text);
+  }, [setInputText, inputText]);
 
   // Handle tool selection
   const handleToolSelect = useCallback((toolId: string) => {
@@ -200,13 +159,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     setShowTools(false);
   }, [addPendingTool, removePendingTool, selectedTool]);
 
-  // Format recording time
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // Handle send message
   const handleSend = useCallback(() => {
     if (!inputText.trim() && uploadedMedia.length === 0) return;
@@ -220,8 +172,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     if (selectedTool) {
       removePendingTool(selectedTool);
     }
-    clearTranscription();
-  }, [inputText, uploadedMedia, selectedTool, onSendMessage, setInputText, removePendingTool, clearTranscription]);
+  }, [inputText, uploadedMedia, selectedTool, onSendMessage, setInputText, removePendingTool]);
 
   // Handle key press
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -321,7 +272,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
       <div className={`
         bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
         ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}
-        ${isRecording ? 'border-red-500 shadow-red-500/20' : ''}
       `}>
 
         {/* Text Input Row - Full Width Above Buttons */}
@@ -500,26 +450,15 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
           {/* Right Side: ④ Red Microphone + ⑤ Send Button */}
           <div className="flex items-center gap-1">
-            {/* ④ Red Microphone - 44x44pt touch target - iOS Alert Red #FF3B30 */}
+            {/* ④ Microphone Button - Red Color - 44x44pt touch target */}
             <Button
               type="button"
               variant="ghost"
-              onClick={handleVoiceToggle}
-              disabled={isLoading}
-              className={`
-                w-11 h-11 p-0 transition-all duration-200 flex-shrink-0
-                ${isRecording 
-                  ? 'bg-[#FF3B30] text-white hover:bg-[#FF3B30]/90 animate-pulse shadow-lg' 
-                  : 'text-[#FF3B30] hover:bg-[#FF3B30]/10'
-                }
-              `}
-              aria-label={isRecording ? "Spracheingabe beenden" : "Spracheingabe starten"}
+              onClick={handleVoiceStart}
+              className="w-11 h-11 p-0 transition-all duration-200 text-red-600 hover:text-red-700"
+              aria-label="Spracheingabe starten"
             >
-              {isRecording ? (
-                <MicOff className="w-6 h-6" />
-              ) : (
-                <Mic className="w-6 h-6" />
-              )}
+              <Mic className="w-6 h-6" />
             </Button>
 
             {/* ⑤ Send Button */}
@@ -544,100 +483,15 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           </div>
         </div>
 
-        {/* Voice Recording Overlay - Enhanced v2.1 - Only covers input bar area */}
-        <AnimatePresence>
-          {(isRecording || isProcessing || hasCachedAudio) && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-sm rounded-2xl z-50 pointer-events-none"
-              style={{ height: inputBarHeight }}
-            >
-              <div className="flex flex-col items-center justify-center h-full p-6 pointer-events-auto">
-                {/* Status Text */}
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-center">
-                    {isRecording ? "Ich höre zu..." : 
-                     isProcessing ? "Text wird transkribiert..." : 
-                     "Aufnahme bereit"}
-                  </p>
-                  {isRecording && (
-                    <div className="text-xs text-muted-foreground text-center mt-1">
-                      {formatTime(recordingTime)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Canvas Waveform Animation */}
-                <div className="mb-6">
-                  <VoiceCanvasWaveform 
-                    audioLevel={audioLevel} 
-                    isActive={isRecording || isProcessing}
-                    width={120}
-                    height={40}
-                  />
-                </div>
-
-                {/* Action Buttons - 64x64px touch targets */}
-                <div className="flex items-center justify-between w-full max-w-xs gap-4">
-                  {/* Cancel Button - 64x64px */}
-                  <Button
-                    variant="ghost"
-                    onClick={handleVoiceCancel}
-                    className="w-16 h-16 flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm border border-border/50"
-                    aria-label="Spracheingabe abbrechen"
-                  >
-                    <X className="w-6 h-6" />
-                    <span className="text-[10px] font-medium">Abbrechen</span>
-                  </Button>
-
-                  {/* Send/Transcribe Button - 64x64px */}
-                  <Button
-                    variant="default"
-                    onClick={handleVoiceSend}
-                    disabled={!hasCachedAudio || isProcessing}
-                    className="w-16 h-16 flex flex-col items-center gap-1 bg-[#FF3B30] text-white hover:bg-[#FF3B30]/90 shadow-lg"
-                    aria-label="Spracheingabe transkribieren"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className="text-[10px] font-medium">...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronUp className="w-6 h-6" />
-                        <span className="text-[10px] font-medium">Senden</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Voice Overlay */}
+        {isVoiceOverlayOpen && (
+          <VoiceOverlay 
+            onTextGenerated={handleVoiceTextGenerated}
+            onClose={closeVoiceOverlay}
+          />
+        )}
       </div>
 
-      {/* Voice Transcription Display */}
-      <AnimatePresence>
-        {transcribedText && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="mt-3"
-          >
-            <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-xl p-3 backdrop-blur-sm">
-              <div className="text-xs text-green-700 dark:text-green-300 mb-2 font-medium">
-                🎤 Transkribiert:
-              </div>
-              <div className="text-sm text-green-900 dark:text-green-100">{transcribedText}</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
