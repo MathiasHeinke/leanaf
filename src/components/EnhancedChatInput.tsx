@@ -18,7 +18,13 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
-  AudioWaveform
+  AudioWaveform,
+  Scale,
+  UtensilsCrossed,
+  BookOpen,
+  Pill,
+  Dumbbell,
+  PenTool
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -29,12 +35,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Tool configuration with colors
 const TOOLS = [
-  { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500" },
-  { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400" },
-  { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400" },
-  { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400" },
-  { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500" },
-  { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400" },
+  { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500", icon: Scale },
+  { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400", icon: UtensilsCrossed },
+  { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400", icon: BookOpen },
+  { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400", icon: Pill },
+  { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500", icon: Dumbbell },
+  { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400", icon: PenTool },
 ];
 
 interface EnhancedChatInputProps {
@@ -425,26 +431,29 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                     transition={{ type: "spring", duration: 0.2 }}
                     className="absolute bottom-full mb-2 left-0 z-50"
                   >
-                    <div className="bg-background border border-border rounded-xl p-2 shadow-xl backdrop-blur-sm min-w-[200px]">
-                      <div className="grid grid-cols-2 gap-2">
-                        {TOOLS.map(tool => (
-                          <Button
-                            key={tool.id}
-                            size="sm"
-                            variant={selectedTool === tool.id ? "default" : "ghost"}
-                            onClick={() => handleToolSelect(tool.id)}
-                            className={`
-                              justify-start font-medium transition-all duration-200
-                              ${selectedTool === tool.id 
-                                ? `${tool.bgColor} text-white shadow-lg hover:opacity-90` 
-                                : 'hover:bg-accent hover:text-accent-foreground'
-                              }
-                            `}
-                          >
-                            <div className={`w-2 h-2 ${tool.bgColor} rounded-full mr-2 ${selectedTool === tool.id ? 'bg-white/30' : ''}`}></div>
-                            {tool.name}
-                          </Button>
-                        ))}
+                    <div className="bg-background border border-border rounded-xl p-2 shadow-xl backdrop-blur-sm w-56">
+                      <div className="space-y-1">
+                        {TOOLS.map(tool => {
+                          const IconComponent = tool.icon;
+                          return (
+                            <Button
+                              key={tool.id}
+                              size="sm"
+                              variant={selectedTool === tool.id ? "default" : "ghost"}
+                              onClick={() => handleToolSelect(tool.id)}
+                              className={`
+                                w-full justify-between font-medium transition-all duration-200
+                                ${selectedTool === tool.id 
+                                  ? `${tool.bgColor} text-white shadow-lg hover:opacity-90` 
+                                  : 'hover:bg-accent hover:text-accent-foreground'
+                                }
+                              `}
+                            >
+                              <span>{tool.name}</span>
+                              <IconComponent className="w-4 h-4" />
+                            </Button>
+                          );
+                        })}
                       </div>
                       {selectedTool && (
                         <div className="mt-2 pt-2 border-t border-border">
