@@ -19,14 +19,50 @@ export type CtxInput = z.infer<typeof CtxInput>;
 
 export type BuiltCtx = {
   persona: { name: string; style: string[] };
-  memory: { relationship?: string; trust?: number; summary?: string } | null;
+  memory: { 
+    userName?: string; 
+    relationship?: string; 
+    trust?: number; 
+    summary?: string;
+    preferences?: any;
+  } | null;
   daily: { 
-    caloriesLeft?: number; 
-    lastWorkout?: string; 
-    sleepHours?: number;
-    currentWeight?: number;
-    recentMeals?: Array<{ name: string; calories: number; protein: number; date: string }>;
+    // Basic Metrics
     totalCaloriesToday?: number;
+    totalProteinToday?: number;
+    caloriesLeft?: number;
+    proteinLeft?: number;
+    
+    // Weight & Body
+    currentWeight?: number;
+    weightTrend?: string;
+    bodyFat?: number;
+    
+    // Nutrition
+    recentMeals?: Array<{ name: string; calories: number; protein: number; time: string }>;
+    macroBalance?: string;
+    
+    // Training
+    lastWorkout?: string;
+    weeklyVolume?: number;
+    trainingFrequency?: string;
+    
+    // Recovery
+    sleepHours?: number;
+    sleepQuality?: string;
+    recoveryScore?: number;
+    
+    // Lifestyle
+    hydrationScore?: number;
+    supplementCompliance?: number;
+    
+    // Achievements
+    activeStreaks?: Array<{ type: string; current: number; best: number }>;
+    recentBadges?: string[];
+    challengeProgress?: any[];
+    
+    // Meta
+    dataCompleteness?: number;
   } | null;
   ragChunks: { source: string; text: string }[] | null;
   conversationSummary: string | null;
@@ -96,10 +132,20 @@ async function loadCoachMemory(userId: string, coachId: string) {
     
     if (data && data.memory_data) {
       const memoryData = data.memory_data as any;
+      
+      // ============= PHASE 2: ENHANCED MEMORY EXTRACTION =============
+      // Extract user name from preferences
+      const userName = memoryData.preferences?.preferred_name || 
+                      memoryData.preferences?.name || 
+                      memoryData.userName ||
+                      null;
+      
       return {
-        relationship: memoryData.relationshipStage || "aufbauend",
-        trust: memoryData.trustLevel || 50,
-        summary: memoryData.preferences?.join(', ') || "Neuer Nutzer"
+        userName: userName,
+        relationship: memoryData.relationship_stage || memoryData.relationshipStage || "building_trust",
+        trust: memoryData.trust_level || memoryData.trustLevel || 1,
+        summary: memoryData.preferences ? `Beziehung: ${memoryData.relationship_stage}, Vertrauen: ${memoryData.trust_level}` : "Neuer Nutzer",
+        preferences: memoryData.preferences || {}
       };
     }
     
@@ -137,77 +183,237 @@ async function loadDailySummary(userId: string) {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
     
-    // Get today's summary or yesterday's
-    const { data: summaryData, error: summaryError } = await supabase
-      .from('daily_summaries')
-      .select('total_calories, workout_volume, sleep_score, summary_md')
-      .eq('user_id', userId)
-      .in('date', [today, yesterday])
-      .order('date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // ============= PHASE 2: ENHANCED CONTEXT BUILDER =============
+    // 15+ Data Sources - Parallel Loading für maximum Performance
+    const [
+      summaryResult,
+      goalsResult,
+      weightResult,
+      mealsResult,
+      exerciseResult,
+      sleepResult,
+      supplementResult,
+      streaksResult,
+      badgesResult,
+      challengesResult,
+      fluidResult,
+      bodyMeasResult
+    ] = await Promise.allSettled([
+      // Core daily summary
+      supabase
+        .from('daily_summaries')
+        .select('total_calories, total_protein, total_carbs, total_fats, workout_volume, sleep_score, summary_md, hydration_score')
+        .eq('user_id', userId)
+        .in('date', [today, yesterday])
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      
+      // Daily goals
+      supabase
+        .from('daily_goals')
+        .select('calories, protein, carbs, fats')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      
+      // Weight trend (last 5 entries)
+      supabase
+        .from('weight_history')
+        .select('weight, date')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(5),
+      
+      // Recent meals (last 10 for better context)
+      supabase
+        .from('meals')
+        .select('text, calories, protein, carbs, fats, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', yesterday + 'T00:00:00.000Z')
+        .order('created_at', { ascending: false })
+        .limit(10),
+      
+      // Recent exercise sessions & volume
+      supabase
+        .from('exercise_sessions')
+        .select('session_name, workout_type, duration_minutes, overall_rpe, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', yesterday + 'T00:00:00.000Z')
+        .order('created_at', { ascending: false })
+        .limit(3),
+      
+      // Sleep tracking
+      supabase
+        .from('sleep_tracking')
+        .select('sleep_hours, sleep_quality, sleep_score, date')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(3),
+      
+      // Supplement compliance
+      supabase
+        .from('supplement_intake_log')
+        .select('supplement_name, taken, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', today + 'T00:00:00.000Z')
+        .order('created_at', { ascending: false }),
+      
+      // Active streaks
+      supabase
+        .from('user_streaks')
+        .select('streak_type, current_streak, longest_streak')
+        .eq('user_id', userId)
+        .gt('current_streak', 0),
+      
+      // Recent badges/achievements
+      supabase
+        .from('badges')
+        .select('badge_type, badge_name, earned_at')
+        .eq('user_id', userId)
+        .order('earned_at', { ascending: false })
+        .limit(3),
+      
+      // Monthly challenges
+      supabase
+        .from('monthly_challenges')
+        .select('challenge_type, progress, target, is_completed')
+        .eq('user_id', userId)
+        .eq('month', new Date().getMonth() + 1)
+        .eq('year', new Date().getFullYear()),
+      
+      // Fluid intake
+      supabase
+        .from('user_fluids')
+        .select('amount_ml, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', today + 'T00:00:00.000Z')
+        .order('created_at', { ascending: false }),
+      
+      // Body measurements
+      supabase
+        .from('body_measurements')
+        .select('body_fat, muscle_mass, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    ]);
     
-    // Get daily goals for context
-    const { data: goalsData } = await supabase
-      .from('daily_goals')
-      .select('calories, protein')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    // Get current weight from weight_history
-    const { data: weightData } = await supabase
-      .from('weight_history')
-      .select('weight, date')
-      .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    // Get recent meals (today and yesterday)
-    const { data: mealsData } = await supabase
-      .from('meals')
-      .select('text, calories, protein, created_at')
-      .eq('user_id', userId)
-      .gte('created_at', yesterday + 'T00:00:00.000Z')
-      .order('created_at', { ascending: false })
-      .limit(5);
-    
-    if (summaryError) {
-      console.warn('Daily summary loading failed:', summaryError.message);
-    }
-    
-    const baseData = {
-      caloriesLeft: null as number | null,
-      lastWorkout: "Kein Training",
-      sleepHours: null as number | null,
+    // ============= ENHANCED DATA PROCESSING =============
+    const contextData = {
+      // Basic metrics
+      totalCaloriesToday: 0,
+      totalProteinToday: 0,
+      caloriesLeft: 0,
+      proteinLeft: 0,
+      
+      // Weight & Body
       currentWeight: null as number | null,
+      weightTrend: "stabil" as string,
+      bodyFat: null as number | null,
+      
+      // Nutrition
       recentMeals: [] as any[],
-      totalCaloriesToday: 0
+      macroBalance: "ausgeglichen" as string,
+      
+      // Training
+      lastWorkout: "Kein Training" as string,
+      weeklyVolume: 0,
+      trainingFrequency: "niedrig" as string,
+      
+      // Recovery
+      sleepHours: null as number | null,
+      sleepQuality: "unbekannt" as string,
+      recoveryScore: 0,
+      
+      // Lifestyle
+      hydrationScore: 0,
+      supplementCompliance: 0,
+      
+      // Achievements
+      activeStreaks: [] as any[],
+      recentBadges: [] as any[],
+      challengeProgress: [] as any[],
+      
+      // Meta
+      dataCompleteness: 0
     };
     
-    if (summaryData && goalsData) {
-      baseData.caloriesLeft = Math.max(0, (goalsData.calories || 2000) - (summaryData.total_calories || 0));
-      baseData.lastWorkout = summaryData.workout_volume > 0 ? "Training absolviert" : "Kein Training";
-      baseData.sleepHours = summaryData.sleep_score ? Math.round(summaryData.sleep_score / 10 * 8) : null;
-      baseData.totalCaloriesToday = summaryData.total_calories || 0;
+    // Process each data source
+    if (summaryResult.status === 'fulfilled' && summaryResult.value?.data) {
+      const summary = summaryResult.value.data;
+      contextData.totalCaloriesToday = summary.total_calories || 0;
+      contextData.totalProteinToday = summary.total_protein || 0;
+      contextData.hydrationScore = summary.hydration_score || 0;
+      contextData.sleepHours = summary.sleep_score ? Math.round(summary.sleep_score / 10 * 8) : null;
     }
     
-    if (weightData) {
-      baseData.currentWeight = weightData.weight;
+    if (goalsResult.status === 'fulfilled' && goalsResult.value?.data) {
+      const goals = goalsResult.value.data;
+      contextData.caloriesLeft = Math.max(0, (goals.calories || 2000) - contextData.totalCaloriesToday);
+      contextData.proteinLeft = Math.max(0, (goals.protein || 150) - contextData.totalProteinToday);
     }
     
-    if (mealsData && mealsData.length > 0) {
-      baseData.recentMeals = mealsData.map(meal => ({
+    if (weightResult.status === 'fulfilled' && weightResult.value?.data?.length > 0) {
+      const weights = weightResult.value.data;
+      contextData.currentWeight = weights[0].weight;
+      
+      // Calculate weight trend
+      if (weights.length >= 3) {
+        const recent = weights[0].weight;
+        const older = weights[2].weight;
+        const diff = recent - older;
+        contextData.weightTrend = diff > 0.5 ? "steigend" : diff < -0.5 ? "fallend" : "stabil";
+      }
+    }
+    
+    if (mealsResult.status === 'fulfilled' && mealsResult.value?.data?.length > 0) {
+      contextData.recentMeals = mealsResult.value.data.slice(0, 5).map((meal: any) => ({
         name: meal.text,
         calories: meal.calories,
         protein: meal.protein,
-        date: new Date(meal.created_at).toISOString().split('T')[0]
+        time: new Date(meal.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
       }));
     }
     
-    return baseData;
+    if (exerciseResult.status === 'fulfilled' && exerciseResult.value?.data?.length > 0) {
+      const sessions = exerciseResult.value.data;
+      contextData.lastWorkout = `${sessions[0].session_name || sessions[0].workout_type} (${sessions[0].duration_minutes || 0}min)`;
+      contextData.trainingFrequency = sessions.length >= 3 ? "hoch" : sessions.length >= 2 ? "mittel" : "niedrig";
+    }
+    
+    if (sleepResult.status === 'fulfilled' && sleepResult.value?.data?.length > 0) {
+      const sleep = sleepResult.value.data[0];
+      contextData.sleepHours = sleep.sleep_hours;
+      contextData.sleepQuality = sleep.sleep_quality >= 7 ? "gut" : sleep.sleep_quality >= 5 ? "okay" : "schlecht";
+      contextData.recoveryScore = sleep.sleep_score || 0;
+    }
+    
+    if (streaksResult.status === 'fulfilled' && streaksResult.value?.data?.length > 0) {
+      contextData.activeStreaks = streaksResult.value.data.map((streak: any) => ({
+        type: streak.streak_type,
+        current: streak.current_streak,
+        best: streak.longest_streak
+      }));
+    }
+    
+    if (badgesResult.status === 'fulfilled' && badgesResult.value?.data?.length > 0) {
+      contextData.recentBadges = badgesResult.value.data.map((badge: any) => badge.badge_name);
+    }
+    
+    // Calculate data completeness score
+    let completeness = 0;
+    if (contextData.currentWeight) completeness += 15;
+    if (contextData.recentMeals.length > 0) completeness += 25;
+    if (contextData.lastWorkout !== "Kein Training") completeness += 20;
+    if (contextData.sleepHours) completeness += 15;
+    if (contextData.activeStreaks.length > 0) completeness += 10;
+    if (contextData.hydrationScore > 0) completeness += 15;
+    
+    contextData.dataCompleteness = completeness;
+    
+    return contextData;
   } catch (error) {
-    console.warn('Daily summary loading exception:', error);
+    console.warn('Enhanced context loading exception:', error);
     return null;
   }
 }

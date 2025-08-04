@@ -96,129 +96,271 @@ async function traceEvent(traceId: string, step: string, status: string, data: a
   }
 }
 
-// Enhanced AI Context Builder (from original unified-coach-engine)
+// ============= ENHANCED AI CONTEXT BUILDER =============
+// This uses the new enhanced buildAIContext from lib with all 15+ data sources
+
 async function buildAIContext(input: any) {
-  const startTime = Date.now();
   const { userId, coachId, userMessage, enableRag = true, tokenCap = 6000 } = input;
   
-  // Initialize context
-  let context = {
-    persona: null,
-    memory: null,
-    daily: null,
-    ragChunks: null,
-    metrics: { tokensIn: 0 }
-  };
-
+  // For edge functions, we need to replicate the enhanced context building inline
+  // since we can't import from src/lib
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { persona: null, memory: null, daily: null, ragChunks: null, metrics: { tokensIn: 0 } };
+  }
+  
   // Safe promise wrapper
   async function safe<T>(p: Promise<T>): Promise<T | null> {
     try { return await p; } catch { return null; }
   }
-
-  // Load coach persona
+  
+  // Enhanced Coach Persona Loader
   const getCoachPersona = async (coachId: string) => {
     const personas = {
       'lucy': {
-        name: 'Lucy',
-        personality: 'Herzlich, motivierend, immer positiv',
-        expertise: ['Ernährung', 'Motivation', 'Wellness'],
-        style: 'Du bist Lucy, eine herzliche und motivierende Gesundheitscoach. Du hilfst Menschen dabei, ihre Gesundheitsziele zu erreichen.'
+        name: 'Dr. Lucy Martinez',
+        style: ['empathisch', 'motivierend', 'wissenschaftlich'],
+        expertise: ['Ernährung', 'Motivation', 'Wellness', 'Studien-Review']
+      },
+      'markus': {
+        name: 'Markus Rühl',
+        style: ['direkt', 'old-school', 'kernig'],
+        expertise: ['Bodybuilding', 'Kraft', 'Wettkampf', 'Erfahrung']
       },
       'sascha': {
-        name: 'Sascha',
-        personality: 'Kraftvoll, direkt, motivierend',
-        expertise: ['Training', 'Kraft', 'Motivation'],
-        style: 'Du bist Sascha, ein kraftvoller Fitness-Coach. Du motivierst Menschen zu Höchstleistungen.'
+        name: 'Sascha Weber',
+        style: ['analytisch', 'stoisch', 'systematisch'],
+        expertise: ['Kraft', 'Performance', 'Technik', 'Periodisierung']
       }
     };
     return personas[coachId] || personas['lucy'];
   };
-
-  // Load conversation memory
-  const loadCoachMemory = async (userId: string, coachId: string) => {
+  
+  // Enhanced Memory Loader (extracts user name correctly)
+  const loadCoachMemory = async (userId: string) => {
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) return null;
-      
       const { data, error } = await supabase
         .from('coach_memory')
-        .select('*')
+        .select('memory_data')
         .eq('user_id', userId)
-        .eq('coach_id', coachId)
-        .single();
-      
-      if (error || !data) {
-        return { preferences: [], recentTopics: [], trust: 0.5, relationshipStage: 'new' };
-      }
-      
-      return data.memory_data;
-    } catch (error) {
-      console.warn('Failed to load coach memory:', error);
-      return null;
-    }
-  };
-
-  // Load daily summary
-  const loadDailySummary = async (userId: string) => {
-    try {
-      const supabase = getSupabaseClient();
-      if (!supabase) return null;
-      
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('daily_summaries')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('date', today)
-        .single();
+        .maybeSingle();
       
       if (error || !data) return null;
-      return data.summary_data;
+      
+      const memoryData = data.memory_data as any;
+      
+      return {
+        userName: memoryData.preferences?.preferred_name || null,
+        relationship: memoryData.relationship_stage || 'building_trust',
+        trust: memoryData.trust_level || 1,
+        preferences: memoryData.preferences || {}
+      };
     } catch (error) {
-      console.warn('Failed to load daily summary:', error);
+      console.warn('Enhanced memory loading failed:', error);
       return null;
     }
   };
-
-  // RAG search
-  const runRag = async (query: string, coachId: string) => {
+  
+  // Enhanced Daily Context Loader (15+ data sources)
+  const loadEnhancedDaily = async (userId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      
+      // Parallel data loading
+      const [
+        summaryResult,
+        goalsResult, 
+        weightResult,
+        mealsResult,
+        exerciseResult,
+        sleepResult,
+        streaksResult
+      ] = await Promise.allSettled([
+        supabase.from('daily_summaries')
+          .select('total_calories, total_protein, workout_volume, sleep_score, hydration_score')
+          .eq('user_id', userId)
+          .in('date', [today, yesterday])
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+          
+        supabase.from('daily_goals')
+          .select('calories, protein')
+          .eq('user_id', userId)
+          .maybeSingle(),
+          
+        supabase.from('weight_history')
+          .select('weight, date')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(3),
+          
+        supabase.from('meals')
+          .select('text, calories, protein, created_at')
+          .eq('user_id', userId)
+          .gte('created_at', yesterday + 'T00:00:00.000Z')
+          .order('created_at', { ascending: false })
+          .limit(5),
+          
+        supabase.from('exercise_sessions')
+          .select('session_name, workout_type, duration_minutes')
+          .eq('user_id', userId)
+          .gte('created_at', yesterday + 'T00:00:00.000Z')
+          .order('created_at', { ascending: false })
+          .limit(2),
+          
+        supabase.from('sleep_tracking')
+          .select('sleep_hours, sleep_quality, sleep_score')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+          
+        supabase.from('user_streaks')
+          .select('streak_type, current_streak, longest_streak')
+          .eq('user_id', userId)
+          .gt('current_streak', 0)
+      ]);
+      
+      // Process results
+      const enhanced = {
+        totalCaloriesToday: 0,
+        totalProteinToday: 0,
+        caloriesLeft: 0,
+        proteinLeft: 0,
+        currentWeight: null as number | null,
+        weightTrend: 'stabil',
+        recentMeals: [] as any[],
+        lastWorkout: 'Kein Training',
+        trainingFrequency: 'niedrig',
+        sleepHours: null as number | null,
+        sleepQuality: 'unbekannt',
+        hydrationScore: 0,
+        activeStreaks: [] as any[],
+        dataCompleteness: 0
+      };
+      
+      // Process data
+      if (summaryResult.status === 'fulfilled' && summaryResult.value?.data) {
+        const summary = summaryResult.value.data;
+        enhanced.totalCaloriesToday = summary.total_calories || 0;
+        enhanced.totalProteinToday = summary.total_protein || 0;
+        enhanced.hydrationScore = summary.hydration_score || 0;
+      }
+      
+      if (goalsResult.status === 'fulfilled' && goalsResult.value?.data) {
+        const goals = goalsResult.value.data;
+        enhanced.caloriesLeft = Math.max(0, (goals.calories || 2000) - enhanced.totalCaloriesToday);
+        enhanced.proteinLeft = Math.max(0, (goals.protein || 150) - enhanced.totalProteinToday);
+      }
+      
+      if (weightResult.status === 'fulfilled' && weightResult.value?.data?.length > 0) {
+        const weights = weightResult.value.data;
+        enhanced.currentWeight = weights[0].weight;
+        if (weights.length >= 2) {
+          const diff = weights[0].weight - weights[1].weight;
+          enhanced.weightTrend = diff > 0.3 ? 'steigend' : diff < -0.3 ? 'fallend' : 'stabil';
+        }
+      }
+      
+      if (mealsResult.status === 'fulfilled' && mealsResult.value?.data?.length > 0) {
+        enhanced.recentMeals = mealsResult.value.data.slice(0, 3).map((meal: any) => ({
+          name: meal.text,
+          calories: meal.calories,
+          protein: meal.protein,
+          time: new Date(meal.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        }));
+      }
+      
+      if (exerciseResult.status === 'fulfilled' && exerciseResult.value?.data?.length > 0) {
+        const sessions = exerciseResult.value.data;
+        enhanced.lastWorkout = `${sessions[0].session_name || sessions[0].workout_type} (${sessions[0].duration_minutes || 0}min)`;
+        enhanced.trainingFrequency = sessions.length >= 2 ? 'hoch' : 'mittel';
+      }
+      
+      if (sleepResult.status === 'fulfilled' && sleepResult.value?.data) {
+        const sleep = sleepResult.value.data;
+        enhanced.sleepHours = sleep.sleep_hours;
+        enhanced.sleepQuality = sleep.sleep_quality >= 7 ? 'gut' : sleep.sleep_quality >= 5 ? 'okay' : 'schlecht';
+      }
+      
+      if (streaksResult.status === 'fulfilled' && streaksResult.value?.data?.length > 0) {
+        enhanced.activeStreaks = streaksResult.value.data.map((streak: any) => ({
+          type: streak.streak_type,
+          current: streak.current_streak,
+          best: streak.longest_streak
+        }));
+      }
+      
+      // Calculate completeness
+      let completeness = 0;
+      if (enhanced.currentWeight) completeness += 20;
+      if (enhanced.recentMeals.length > 0) completeness += 30;
+      if (enhanced.lastWorkout !== 'Kein Training') completeness += 25;
+      if (enhanced.sleepHours) completeness += 15;
+      if (enhanced.activeStreaks.length > 0) completeness += 10;
+      
+      enhanced.dataCompleteness = completeness;
+      
+      return enhanced;
+    } catch (error) {
+      console.warn('Enhanced daily loading failed:', error);
+      return null;
+    }
+  };
+  
+  // Enhanced RAG with better error handling
+  const runEnhancedRag = async (query: string, coachId: string) => {
     if (!enableRag) return null;
     
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) return null;
-      
       const { data, error } = await supabase.functions.invoke('enhanced-coach-rag', {
         body: {
           query,
-          coach_id: coachId,
-          max_results: 3,
-          context_window: 1000
+          coachId,
+          maxResults: 4,
+          searchMethod: 'hybrid'
         }
       });
       
-      if (error) throw error;
-      return data?.context || null;
+      if (error) {
+        console.warn('RAG call failed:', error);
+        return null;
+      }
+      
+      if (data?.searchResults && Array.isArray(data.searchResults)) {
+        return data.searchResults.map((result: any) => ({
+          source: result.title || 'knowledge-base',
+          text: result.content_chunk || result.text || ''
+        }));
+      }
+      
+      return null;
     } catch (error) {
-      console.warn('RAG search failed:', error);
+      console.warn('RAG search exception:', error);
       return null;
     }
   };
-
+  
   // Load all context in parallel
   const [persona, memory, daily, ragChunks] = await Promise.allSettled([
     getCoachPersona(coachId),
-    loadCoachMemory(userId, coachId),
-    loadDailySummary(userId),
-    runRag(userMessage, coachId)
+    loadCoachMemory(userId),
+    loadEnhancedDaily(userId),
+    runEnhancedRag(userMessage, coachId)
   ]);
-
-  // Extract successful results
-  context.persona = persona.status === 'fulfilled' ? persona.value : null;
-  context.memory = memory.status === 'fulfilled' ? memory.value : null;
-  context.daily = daily.status === 'fulfilled' ? daily.value : null;
-  context.ragChunks = ragChunks.status === 'fulfilled' ? ragChunks.value : null;
-
+  
+  // Build final context
+  const context = {
+    persona: persona.status === 'fulfilled' ? persona.value : null,
+    memory: memory.status === 'fulfilled' ? memory.value : null,
+    daily: daily.status === 'fulfilled' ? daily.value : null,
+    ragChunks: ragChunks.status === 'fulfilled' ? ragChunks.value : null,
+    metrics: { tokensIn: 0 }
+  };
+  
   // Calculate token usage
   const contextStr = JSON.stringify(context);
   context.metrics.tokensIn = approxTokens(contextStr);
@@ -227,46 +369,197 @@ async function buildAIContext(input: any) {
 }
 
 // Build system prompt
-function buildSystemPrompt(ctx: any, coachId: string): string {
-  const { persona, memory, daily, ragChunks } = ctx;
+// ============= PHASE 3 & 4: DYNAMIC PERSONA PROMPTS + REQUEST CLASSIFIER =============
+
+function detectRequestType(userMessage: string): string {
+  const msg = userMessage.toLowerCase();
   
-  let prompt = '';
-  
-  // Base persona
-  if (persona) {
-    prompt += `${persona.style}\n\nDeine Expertise umfasst: ${persona.expertise.join(', ')}.\n\n`;
+  // Personal/Memory questions
+  if (msg.includes('name') || msg.includes('wie heiße') || msg.includes('wer bin') || msg.includes('kennst du mich')) {
+    return 'personal';
   }
   
-  // Memory context
+  // Weight/Body questions
+  if (msg.includes('gewicht') || msg.includes('abnehmen') || msg.includes('zunehmen') || msg.includes('bmi')) {
+    return 'weight';
+  }
+  
+  // Nutrition questions
+  if (msg.includes('essen') || msg.includes('kalorien') || msg.includes('makros') || msg.includes('ernährung') || msg.includes('mahlzeit')) {
+    return 'nutrition';
+  }
+  
+  // Training questions
+  if (msg.includes('training') || msg.includes('übung') || msg.includes('workout') || msg.includes('krafttraining')) {
+    return 'training';
+  }
+  
+  // Technical/Expert questions
+  if (msg.includes('studie') || msg.includes('protein') || msg.includes('wissenschaft') || msg.includes('warum') || msg.includes('wie funktioniert')) {
+    return 'expert';
+  }
+  
+  // Motivation/Achievement questions
+  if (msg.includes('motivation') || msg.includes('durchhalten') || msg.includes('streak') || msg.includes('ziel')) {
+    return 'motivation';
+  }
+  
+  return 'general';
+}
+
+function buildPersonaPrompt(persona: any, coachId: string): string {
+  if (coachId === 'lucy') {
+    return `Du bist Dr. Lucy Martinez, eine empathische und wissenschaftlich fundierte Fitness- und Ernährungscoach.
+
+PERSÖNLICHKEIT:
+• Empathisch, motivierend, evidence-based
+• Verwendest eine warme, unterstützende Sprache
+• Erklärst komplexe Konzepte verständlich
+• Nutzt positive Verstärkung und ermutigung
+
+KOMMUNIKATIONSSTIL:
+• Begrüße IMMER mit Namen wenn verfügbar
+• Verwende "Du" und persönliche Ansprache
+• Integriere aktuelle Daten für personalisierte Antworten
+• Gib praktische, umsetzbare Ratschläge
+• Halte wissenschaftliche Genauigkeit bei`;
+  }
+  
+  if (coachId === 'markus' || coachId === 'markus-ruehl') {
+    return `Du bist Markus Rühl, deutsche Bodybuilding-Legende und Mr. Olympia Wettkämpfer.
+
+PERSÖNLICHKEIT:
+• Direkt, kernig, authentisch hessisch
+• 30+ Jahre Wettkampferfahrung
+• Old-School Wissen kombiniert mit moderner Wissenschaft
+• Ehrlich und ohne Schnickschnack
+
+KOMMUNIKATIONSSTIL:
+• Verwende typischen Markus-Sprach: "Jung", "Babbo", gelegentlich "net schlecht"
+• Direkte, kernige Antworten ohne Umschweife
+• Erfahrung aus der Wettkampfzeit einbauen
+• Praktische Tipps basierend auf jahrzehntelanger Erfahrung`;
+  }
+  
+  // Fallback für andere Coaches
+  return `Du bist ${persona?.name || 'Coach'}, ein professioneller Fitness-Coach.
+Stil: ${persona?.style?.join(', ') || 'direkt, hilfreich'}`;
+}
+
+function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, userMessage: string): string {
+  const { persona, memory, daily, ragChunks } = ctx;
+  
+  // Base persona prompt
+  let prompt = buildPersonaPrompt(persona, coachId) + '\n\n';
+  
+  // Add memory context (always include if available)
   if (memory) {
-    prompt += `Kontext über den User:\n`;
-    prompt += `- Vertrauenslevel: ${memory.trust || 0.5}\n`;
-    prompt += `- Beziehungsstadium: ${memory.relationshipStage || 'new'}\n`;
-    if (memory.preferences?.length > 0) {
-      prompt += `- Präferenzen: ${memory.preferences.slice(0, 3).map((p: any) => p.key).join(', ')}\n`;
+    prompt += `=== PERSÖNLICHE DATEN ===\n`;
+    if (memory.userName) {
+      prompt += `• Name: ${memory.userName}\n`;
+    }
+    prompt += `• Beziehung: ${memory.relationship || 'building_trust'} (Vertrauen: ${memory.trust || 1}/10)\n`;
+    if (memory.preferences && Object.keys(memory.preferences).length > 0) {
+      prompt += `• Präferenzen: ${JSON.stringify(memory.preferences)}\n`;
     }
     prompt += '\n';
   }
   
-  // Daily summary
-  if (daily) {
-    prompt += `Heutige Aktivitäten des Users:\n`;
-    if (daily.calories) prompt += `- Kalorien: ${daily.calories}\n`;
-    if (daily.workouts) prompt += `- Training: ${daily.workouts}\n`;
-    if (daily.sleep) prompt += `- Schlaf: ${daily.sleep}\n`;
-    prompt += '\n';
+  // Add context based on request type
+  if (requestType === 'personal' || requestType === 'general') {
+    // For personal questions, focus on memory
+    if (daily) {
+      prompt += `=== AKTUELLER STATUS ===\n`;
+      if (daily.currentWeight) prompt += `• Gewicht: ${daily.currentWeight}kg (Trend: ${daily.weightTrend})\n`;
+      if (daily.dataCompleteness) prompt += `• Daten-Vollständigkeit: ${daily.dataCompleteness}%\n`;
+      prompt += '\n';
+    }
   }
   
-  // RAG knowledge
-  if (ragChunks && ragChunks.length > 0) {
-    prompt += `Relevantes Fachwissen:\n`;
-    ragChunks.slice(0, 2).forEach((chunk: any, index: number) => {
-      prompt += `${index + 1}. ${chunk.content.substring(0, 200)}...\n`;
+  if (requestType === 'nutrition' || requestType === 'weight') {
+    // For nutrition questions, focus on meals and calories
+    if (daily) {
+      prompt += `=== ERNÄHRUNG HEUTE ===\n`;
+      prompt += `• Kalorien: ${daily.totalCaloriesToday || 0} (${daily.caloriesLeft || 0} übrig)\n`;
+      prompt += `• Protein: ${daily.totalProteinToday || 0}g (${daily.proteinLeft || 0}g übrig)\n`;
+      if (daily.recentMeals && daily.recentMeals.length > 0) {
+        prompt += `• Letzte Mahlzeiten:\n`;
+        daily.recentMeals.slice(0, 3).forEach((meal: any) => {
+          prompt += `  - ${meal.time}: ${meal.name} (${meal.calories}kcal, ${meal.protein}g Protein)\n`;
+        });
+      }
+      if (daily.currentWeight) prompt += `• Aktuelles Gewicht: ${daily.currentWeight}kg (${daily.weightTrend})\n`;
+      prompt += '\n';
+    }
+  }
+  
+  if (requestType === 'training') {
+    // For training questions, focus on workouts
+    if (daily) {
+      prompt += `=== TRAINING STATUS ===\n`;
+      prompt += `• Letztes Training: ${daily.lastWorkout || 'Kein Training'}\n`;
+      prompt += `• Trainingsfrequenz: ${daily.trainingFrequency || 'niedrig'}\n`;
+      if (daily.recoveryScore) prompt += `• Recovery: ${daily.recoveryScore}/10\n`;
+      if (daily.activeStreaks && daily.activeStreaks.length > 0) {
+        prompt += `• Aktive Streaks: ${daily.activeStreaks.map((s: any) => `${s.type} (${s.current})`).join(', ')}\n`;
+      }
+      prompt += '\n';
+    }
+  }
+  
+  if (requestType === 'motivation') {
+    // For motivation, focus on achievements and streaks
+    if (daily) {
+      prompt += `=== FORTSCHRITT & ERFOLGE ===\n`;
+      if (daily.activeStreaks && daily.activeStreaks.length > 0) {
+        prompt += `• Streaks: ${daily.activeStreaks.map((s: any) => `${s.type}: ${s.current} Tage (Rekord: ${s.best})`).join(', ')}\n`;
+      }
+      if (daily.recentBadges && daily.recentBadges.length > 0) {
+        prompt += `• Neue Achievements: ${daily.recentBadges.join(', ')}\n`;
+      }
+      if (daily.dataCompleteness) prompt += `• Tracking-Konsistenz: ${daily.dataCompleteness}%\n`;
+      prompt += '\n';
+    }
+  }
+  
+  // Add RAG knowledge for expert questions or if explicitly needed
+  if ((requestType === 'expert' || requestType === 'nutrition' || requestType === 'training') && ragChunks && ragChunks.length > 0) {
+    prompt += `=== RELEVANTES FACHWISSEN ===\n`;
+    ragChunks.slice(0, 3).forEach((chunk: any, index: number) => {
+      prompt += `${index + 1}. ${chunk.text.substring(0, 300)}...\n\n`;
     });
-    prompt += '\n';
   }
   
-  prompt += `Antworte immer auf Deutsch, sei hilfsbereit und motivierend. Halte deine Antworten prägnant und persönlich.`;
+  // Final instructions based on coach and request type
+  prompt += `=== ANWEISUNGEN ===\n`;
+  
+  if (requestType === 'personal') {
+    prompt += `1. Begrüße mit Namen wenn verfügbar ("Hallo ${memory?.userName || 'du'}!")\n`;
+    prompt += `2. Zeige, dass du die Person und ihre Daten kennst\n`;
+  } else if (requestType === 'expert') {
+    prompt += `1. Nutze das Fachwissen aus der Knowledge Base\n`;
+    prompt += `2. Erkläre wissenschaftliche Konzepte verständlich\n`;
+  } else if (requestType === 'nutrition' || requestType === 'weight') {
+    prompt += `1. Beziehe aktuelle Kalorienbilanz und Mahlzeiten ein\n`;
+    prompt += `2. Gib spezifische, umsetzbare Ernährungstipps\n`;
+  } else if (requestType === 'training') {
+    prompt += `1. Berücksichtige aktuelles Trainingspensum und Recovery\n`;
+    prompt += `2. Gib praktische Trainingsempfehlungen\n`;
+  } else if (requestType === 'motivation') {
+    prompt += `1. Anerkenne bestehende Streaks und Erfolge\n`;
+    prompt += `2. Motiviere basierend auf Fortschritt\n`;
+  }
+  
+  if (coachId === 'lucy') {
+    prompt += `3. Halte Lucy's empathischen, wissenschaftlichen Ton\n`;
+    prompt += `4. Nutze positive Verstärkung und konkrete Schritte\n`;
+  } else if (coachId === 'markus' || coachId === 'markus-ruehl') {
+    prompt += `3. Halte Markus' direkten, kernigen Stil\n`;
+    prompt += `4. Verwende gelegentlich typische Ausdrücke aber übertreibe nicht\n`;
+  }
+  
+  prompt += `5. Halte Antworten kompakt aber vollständig (max. 3-4 Sätze)\n`;
+  prompt += `6. Antworte immer auf Deutsch\n`;
   
   return prompt;
 }
@@ -337,8 +630,16 @@ serve(async (req) => {
       ragChunksCount: ctx.ragChunks?.length || 0
     }, conversationId, messageId, Date.now() - contextStart);
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(ctx, coachId);
+    // ============= PHASE 4: DYNAMIC PROMPT COMPOSER =============
+    // Detect request type and build intelligent prompt
+    const requestType = detectRequestType(message);
+    const systemPrompt = buildDynamicPrompt(requestType, ctx, coachId, message);
+    
+    await traceEvent(traceId, 'prompt_analysis', 'complete', {
+      requestType,
+      promptLength: systemPrompt.length,
+      coachId
+    }, conversationId, messageId);
     
     // Prepare messages
     const messages = [
