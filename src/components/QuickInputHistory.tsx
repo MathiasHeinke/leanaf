@@ -21,6 +21,9 @@ interface QuickInputData {
     id: string;
     amount_ml: number;
     consumed_at: string;
+    fluid_name?: string;
+    custom_name?: string;
+    notes?: string;
   }[];
   supplementData: {
     id: string;
@@ -84,7 +87,10 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
       // Load fluid data
       const { data: fluidData, error: fluidError } = await supabase
         .from('user_fluids')
-        .select('*')
+        .select(`
+          *,
+          fluid_database(name)
+        `)
         .eq('user_id', user.id)
         .gte('consumed_at', startDate.toISOString())
         .order('consumed_at', { ascending: false });
@@ -159,7 +165,10 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
           day.fluidData.push({
             id: fluid.id,
             amount_ml: fluid.amount_ml,
-            consumed_at: fluid.consumed_at
+            consumed_at: fluid.consumed_at,
+            fluid_name: fluid.fluid_database?.name,
+            custom_name: fluid.custom_name,
+            notes: fluid.notes
           });
         }
       });
@@ -340,10 +349,15 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
                     <div className="space-y-1">
                       {day.fluidData.map((fluid) => (
                         <div key={fluid.id} className="text-sm text-muted-foreground">
-                          {new Date(fluid.consumed_at).toLocaleTimeString('de-DE', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}: {fluid.amount_ml}ml
+                          <div>
+                            {new Date(fluid.consumed_at).toLocaleTimeString('de-DE', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}: <strong>{fluid.custom_name || fluid.fluid_name || 'Unbekanntes Getränk'}</strong> - {fluid.amount_ml}ml
+                          </div>
+                          {fluid.notes && (
+                            <div className="text-xs italic ml-4">Notiz: {fluid.notes}</div>
+                          )}
                         </div>
                       ))}
                       <div className="text-sm font-medium text-cyan-700 dark:text-cyan-300">
