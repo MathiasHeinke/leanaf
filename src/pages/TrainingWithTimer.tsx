@@ -7,6 +7,7 @@ import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
 import { TrainingFloatingCoach } from '@/components/TrainingFloatingCoach';
 import { UnifiedWorkoutCard } from '@/components/UnifiedWorkoutCard';
+import { EnhancedUnifiedWorkoutCard } from '@/components/EnhancedUnifiedWorkoutCard';
 import { useUnifiedWorkoutData } from '@/hooks/useUnifiedWorkoutData';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { Dumbbell, Plus, MessageSquare, Timer, TrendingUp } from 'lucide-react';
@@ -88,11 +89,12 @@ export const TrainingWithTimer: React.FC = () => {
             <TrendingUp className="h-5 w-5" />
             Heutiges Training
           </h2>
-          <UnifiedWorkoutCard
+          <EnhancedUnifiedWorkoutCard
             date={todaysWorkout.date}
             quickWorkouts={todaysWorkout.quickWorkouts}
             advancedSessions={todaysWorkout.advancedSessions}
             onWorkoutUpdated={refetch}
+            showGrouped={true}
           />
         </div>
       )}
@@ -177,12 +179,13 @@ export const TrainingWithTimer: React.FC = () => {
         ) : workoutData && workoutData.length > 0 ? (
           <div className="space-y-4">
             {workoutData.slice(0, 7).map((day) => (
-              <UnifiedWorkoutCard
+              <EnhancedUnifiedWorkoutCard
                 key={day.date}
                 date={day.date}
                 quickWorkouts={day.quickWorkouts}
                 advancedSessions={day.advancedSessions}
                 onWorkoutUpdated={refetch}
+                showGrouped={true}
               />
             ))}
           </div>

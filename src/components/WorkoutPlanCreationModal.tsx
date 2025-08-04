@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Minus, GripVertical, History } from 'lucide-react';
+import { Plus, Minus, GripVertical, History, Zap, Dumbbell } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,6 +39,19 @@ interface ExerciseSession {
   }[];
 }
 
+interface WorkoutPlanTemplate {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  difficulty_level: number;
+  estimated_duration_minutes: number;
+  exercises: any;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 interface WorkoutPlanCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -59,12 +72,14 @@ export const WorkoutPlanCreationModal: React.FC<WorkoutPlanCreationModalProps> =
   const [estimatedDuration, setEstimatedDuration] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
+  const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutPlanTemplate[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('manual');
+  const [activeTab, setActiveTab] = useState('templates');
 
   useEffect(() => {
     if (isOpen) {
       loadExercises();
+      loadWorkoutTemplates();
     }
   }, [isOpen]);
 
@@ -81,6 +96,23 @@ export const WorkoutPlanCreationModal: React.FC<WorkoutPlanCreationModalProps> =
     } catch (error) {
       console.error('Error loading exercises:', error);
       toast.error('Fehler beim Laden der Übungen');
+    }
+  };
+
+  const loadWorkoutTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('workout_plan_templates')
+        .select('*')
+        .eq('is_public', true)
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setWorkoutTemplates(data || []);
+    } catch (error) {
+      console.error('Error loading workout templates:', error);
+      toast.error('Fehler beim Laden der Vorlagen');
     }
   };
 
@@ -143,6 +175,28 @@ export const WorkoutPlanCreationModal: React.FC<WorkoutPlanCreationModalProps> =
     toast.success('Training in Plan übernommen');
   };
 
+  const createPlanFromTemplate = (template: WorkoutPlanTemplate) => {
+    const exerciseArray = Array.isArray(template.exercises) ? template.exercises : [];
+    const exercises = exerciseArray.map((exercise: any) => ({
+      id: `template-${Math.random()}`,
+      name: exercise.name,
+      category: template.category,
+      muscle_groups: exercise.muscle_groups || [],
+      sets: exercise.sets || 3,
+      reps: typeof exercise.reps === 'string' ? exercise.reps : exercise.reps || 10,
+      weight: exercise.weight_percentage || 0,
+      rpe: exercise.rpe || 7,
+      rest_seconds: exercise.rest_seconds || 90
+    }));
+
+    setSelectedExercises(exercises);
+    setPlanName(template.name);
+    setPlanCategory(template.category);
+    setEstimatedDuration(template.estimated_duration_minutes?.toString() || '');
+    setActiveTab('manual');
+    toast.success(`Template "${template.name}" übernommen`);
+  };
+
   const handleSavePlan = async () => {
     if (!user || !planName || !planCategory || selectedExercises.length === 0) {
       toast.error('Bitte fülle alle Pflichtfelder aus und füge mindestens eine Übung hinzu');
@@ -196,7 +250,7 @@ export const WorkoutPlanCreationModal: React.FC<WorkoutPlanCreationModalProps> =
     setPlanDescription('');
     setEstimatedDuration('');
     setSelectedExercises([]);
-    setActiveTab('manual');
+    setActiveTab('templates');
   };
 
   return (
@@ -207,10 +261,58 @@ export const WorkoutPlanCreationModal: React.FC<WorkoutPlanCreationModalProps> =
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="templates">Vorlagen</TabsTrigger>
             <TabsTrigger value="manual">Manuell erstellen</TabsTrigger>
             <TabsTrigger value="fromHistory">Aus Training erstellen</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="templates" className="space-y-4">
+            <div className="space-y-3">
+              <Label>Vorgefertigte Trainingsplan-Vorlagen</Label>
+              {workoutTemplates.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Zap className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">Keine Vorlagen verfügbar</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-3 max-h-96 overflow-y-auto">
+                  {workoutTemplates.map(template => (
+                    <Card key={template.id} className="hover:bg-muted/50 cursor-pointer transition-colors">
+                      <CardContent className="p-4" onClick={() => createPlanFromTemplate(template)}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium">{template.name}</h4>
+                              <Badge variant="outline" className="text-xs">
+                                {template.category}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                Level {template.difficulty_level}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {template.description}
+                            </p>
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <span>{Array.isArray(template.exercises) ? template.exercises.length : 0} Übungen</span>
+                              <span>~{template.estimated_duration_minutes} Min</span>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            <Dumbbell className="h-4 w-4 mr-2" />
+                            Verwenden
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
           <TabsContent value="fromHistory" className="space-y-4">
             <div className="space-y-3">
@@ -304,9 +406,9 @@ export const WorkoutPlanCreationModal: React.FC<WorkoutPlanCreationModalProps> =
                 <Badge variant="outline">{selectedExercises.length} Übungen</Badge>
               </div>
 
-              {/* Available Exercises */}
+              {/* Add Exercise Button */}
               <div className="space-y-2">
-                <Label className="text-sm">Verfügbare Übungen</Label>
+                <Label className="text-sm">Übung hinzufügen</Label>
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
                   {availableExercises.map(exercise => (
                     <Button

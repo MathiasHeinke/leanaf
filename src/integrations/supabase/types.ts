@@ -4374,6 +4374,45 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_plan_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          difficulty_level: number | null
+          estimated_duration_minutes: number | null
+          exercises: Json
+          id: string
+          is_public: boolean | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_duration_minutes?: number | null
+          exercises?: Json
+          id?: string
+          is_public?: boolean | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          difficulty_level?: number | null
+          estimated_duration_minutes?: number | null
+          exercises?: Json
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       workout_plans: {
         Row: {
           accepted_at: string | null
