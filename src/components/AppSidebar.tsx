@@ -49,7 +49,8 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
-  { title: "Analyse", url: "/history", icon: BarChart3 },
+  { title: "Verlauf", url: "/history", icon: BarChart3 },
+  { title: "Analyse", url: "/analysis", icon: BarChart3 },
   { title: "Erfolge", url: "/achievements", icon: Trophy },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
