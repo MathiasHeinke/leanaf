@@ -19,11 +19,8 @@ import { EmbeddedTrainingHistory } from '@/components/EmbeddedTrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
-import { DualCoachAccess } from '@/components/DualCoachAccess';
 import { QuickBodyDataWidget } from '@/components/QuickBodyDataWidget';
 import { GoalProgressWidget } from '@/components/GoalProgressWidget';
-import { RPERecoveryWidget } from '@/components/RPERecoveryWidget';
-import { TrainingStats } from '@/components/TrainingStats';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
 import { ActiveWorkoutPlan } from '@/components/ActiveWorkoutPlan';
@@ -550,20 +547,11 @@ export const TrainingDashboard: React.FC = () => {
               <GoalProgressWidget />
             </div>
 
-            {/* Training Stats with RPE Recovery */}
-            <div className="grid gap-4 grid-cols-1">
-              <TrainingStats stats={weeklyStats} />
-              <RPERecoveryWidget />
-            </div>
-
             {/* Custom Exercise Manager */}
             <CustomExerciseManager onExerciseAdded={loadSessions} />
 
             {/* Profile Events Timeline */}
             <ProfileEventsTimeline maxEvents={5} />
-
-            {/* Dual Coach Access */}
-            <DualCoachAccess />
 
             {/* Workout Tips */}
             {hasActiveTimer && currentDuration > 300000 && ( // Show after 5 minutes
@@ -598,9 +586,6 @@ export const TrainingDashboard: React.FC = () => {
               sessions={sessions}
               onSessionUpdated={loadSessions}
             />
-
-            {/* Dual Coach Access */}
-            <DualCoachAccess />
 
           </TabsContent>
         </Tabs>
