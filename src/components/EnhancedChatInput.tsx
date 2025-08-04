@@ -99,7 +99,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
     }
   }, [inputText]);
 
@@ -373,142 +373,143 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           </div>
         </div>
 
-        {/* Input Row */}
-        <div className="flex items-end gap-3 p-4">
-          {/* Tool Picker */}
-          <div className="relative">
+        {/* Text Input Row - Full Width Above Buttons */}
+        <div className="px-4 py-3">
+          <textarea
+            ref={textareaRef}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder={placeholder}
+            disabled={isLoading}
+            className={`
+              w-full bg-transparent border border-border rounded-lg outline-none resize-none
+              text-base md:text-lg leading-normal px-4 py-3
+              placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
+              text-zinc-800 dark:text-white font-medium
+              transition-all duration-200 focus:border-primary/50
+            `}
+            style={{ 
+              minHeight: 80, 
+              maxHeight: 200,
+              overflow: 'auto',
+              fontSize: '18px',
+              lineHeight: '1.6',
+              fontFamily: 'InterVariable, Inter, -apple-system, sans-serif'
+            }}
+          />
+        </div>
+
+        {/* Button Row */}
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            {/* Tool Picker */}
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowTools(!showTools)}
+                className={`transition-all duration-200 ${selectedTool ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Wrench className={`w-5 h-5 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
+              </Button>
+              
+              {/* Tool Selection Dropdown */}
+              <AnimatePresence>
+                {showTools && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ type: "spring", duration: 0.2 }}
+                    className="absolute bottom-full mb-2 left-0 z-50"
+                  >
+                    <div className="bg-background border border-border rounded-xl p-2 shadow-xl backdrop-blur-sm min-w-[200px]">
+                      <div className="grid grid-cols-2 gap-2">
+                        {TOOLS.map(tool => (
+                          <Button
+                            key={tool.id}
+                            size="sm"
+                            variant={selectedTool === tool.id ? "default" : "ghost"}
+                            onClick={() => handleToolSelect(tool.id)}
+                            className={`
+                              justify-start font-medium transition-all duration-200
+                              ${selectedTool === tool.id 
+                                ? `${tool.bgColor} text-white shadow-lg hover:opacity-90` 
+                                : 'hover:bg-accent hover:text-accent-foreground'
+                              }
+                            `}
+                          >
+                            <div className={`w-2 h-2 ${tool.bgColor} rounded-full mr-2 ${selectedTool === tool.id ? 'bg-white/30' : ''}`}></div>
+                            {tool.name}
+                          </Button>
+                        ))}
+                      </div>
+                      {selectedTool && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removePendingTool(selectedTool)}
+                            className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <X className="w-3 h-3 mr-1" />
+                            Tool entfernen
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Additional Actions Button */}
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => setShowTools(!showTools)}
-              className={`transition-all duration-200 ${selectedTool ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setShowMediaUpload(!showMediaUpload)}
+              className={`transition-all duration-200 ${showMediaUpload ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}`}
+              disabled={isLoading}
             >
-              <Wrench className={`w-5 h-5 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
+              <Plus className="w-5 h-5" />
             </Button>
-            
-            {/* Tool Selection Dropdown */}
-            <AnimatePresence>
-              {showTools && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ type: "spring", duration: 0.2 }}
-                  className="absolute bottom-full mb-2 left-0 z-50"
-                >
-                  <div className="bg-background border border-border rounded-xl p-2 shadow-xl backdrop-blur-sm min-w-[200px]">
-                    <div className="grid grid-cols-2 gap-2">
-                      {TOOLS.map(tool => (
-                        <Button
-                          key={tool.id}
-                          size="sm"
-                          variant={selectedTool === tool.id ? "default" : "ghost"}
-                          onClick={() => handleToolSelect(tool.id)}
-                          className={`
-                            justify-start font-medium transition-all duration-200
-                            ${selectedTool === tool.id 
-                              ? `${tool.bgColor} text-white shadow-lg hover:opacity-90` 
-                              : 'hover:bg-accent hover:text-accent-foreground'
-                            }
-                          `}
-                        >
-                          <div className={`w-2 h-2 ${tool.bgColor} rounded-full mr-2 ${selectedTool === tool.id ? 'bg-white/30' : ''}`}></div>
-                          {tool.name}
-                        </Button>
-                      ))}
-                    </div>
-                    {selectedTool && (
-                      <div className="mt-2 pt-2 border-t border-border">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removePendingTool(selectedTool)}
-                          className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <X className="w-3 h-3 mr-1" />
-                          Tool entfernen
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
-          {/* Additional Actions Button */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowMediaUpload(!showMediaUpload)}
-            className={`transition-all duration-200 ${showMediaUpload ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}`}
-            disabled={isLoading}
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
-
-          {/* Text Input */}
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder={placeholder}
+            {/* Voice Recording Button */}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={handleVoiceToggle}
               disabled={isLoading}
               className={`
-                w-full bg-transparent border-none outline-none resize-none
-                text-base md:text-lg leading-normal px-4 py-3
-                placeholder:text-zinc-400 dark:placeholder:text-zinc-500 
-                text-zinc-800 dark:text-white font-medium
-                transition-all duration-200
+                transition-all duration-200 flex-shrink-0
+                ${isRecording 
+                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse shadow-lg' 
+                  : isProcessing 
+                    ? 'bg-yellow-500 text-white animate-pulse' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }
               `}
-              style={{ 
-                minHeight: 48, 
-                maxHeight: 120,
-                overflow: 'auto',
-                fontSize: '18px',
-                lineHeight: '1.6',
-                fontFamily: 'InterVariable, Inter, -apple-system, sans-serif'
-              }}
-            />
+            >
+              {isProcessing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : isRecording ? (
+                <MicOff className="w-5 h-5" />
+              ) : (
+                <Mic className="w-5 h-5" />
+              )}
+            </Button>
           </div>
-
-          {/* Voice Recording Button */}
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            onClick={handleVoiceToggle}
-            disabled={isLoading}
-            className={`
-              transition-all duration-200 flex-shrink-0
-              ${isRecording 
-                ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse shadow-lg' 
-                : isProcessing 
-                  ? 'bg-yellow-500 text-white animate-pulse' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-              }
-            `}
-          >
-            {isProcessing ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : isRecording ? (
-              <MicOff className="w-5 h-5" />
-            ) : (
-              <Mic className="w-5 h-5" />
-            )}
-          </Button>
 
           {/* Send Button */}
           <Button
             onClick={handleSend}
             disabled={!hasContent || isLoading}
-            size="icon"
             className={`
-              flex-shrink-0 transition-all duration-200 shadow-lg
+              flex-shrink-0 transition-all duration-200 shadow-lg px-4 h-10 rounded-xl
               ${hasContent && !isLoading 
                 ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
                 : 'opacity-50'
