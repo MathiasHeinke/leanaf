@@ -325,6 +325,7 @@ async function buildAIContext(input: any) {
         recentMeals: [] as any[],
         lastWorkout: 'Kein Training',
         trainingFrequency: 'niedrig',
+        workoutVolume: 0,
         sleepHours: null as number | null,
         sleepQuality: 'unbekannt',
         hydrationScore: 0,
@@ -342,6 +343,7 @@ async function buildAIContext(input: any) {
         enhanced.totalCaloriesToday = summary.total_calories || 0;
         enhanced.totalProteinToday = summary.total_protein || 0;
         enhanced.hydrationScore = summary.hydration_score || 0;
+        enhanced.workoutVolume = summary.workout_volume || 0;
       }
       
       if (goalsResult.status === 'fulfilled' && goalsResult.value?.data) {
