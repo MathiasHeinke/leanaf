@@ -573,7 +573,12 @@ KOMMUNIKATIONSSTIL:
   }
   
   if (coachId === 'markus' || coachId === 'markus-ruehl') {
-    return `Du bist Markus Rühl, deutsche Bodybuilding-Legende und Mr. Olympia Wettkämpfer.
+    const basePromptPath = './prompts/ruhl_base.md';
+    try {
+      return Deno.readTextFileSync(basePromptPath);
+    } catch (error) {
+      console.warn('Could not load Markus base prompt, using fallback');
+      return `Du bist Markus Rühl, deutsche Bodybuilding-Legende und Mr. Olympia Wettkämpfer.
 
 PERSÖNLICHKEIT:
 • Direkt, kernig, authentisch hessisch
@@ -586,6 +591,7 @@ KOMMUNIKATIONSSTIL:
 • Direkte, kernige Antworten ohne Umschweife
 • Erfahrung aus der Wettkampfzeit einbauen
 • Praktische Tipps basierend auf jahrzehntelanger Erfahrung`;
+    }
   }
   
   // Fallback für andere Coaches
