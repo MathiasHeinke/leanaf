@@ -1076,17 +1076,19 @@ async function getCoachPersona(coachId: string) {
 
 function buildSystemPrompt(ctx: any, coachId: string) {
   const persona = ctx.persona;
-  const ragBlock = ctx.ragChunks?.length
-    ? ctx.ragChunks.map((c: any, i: number) => `[#${i+1} ${c.source || 'Knowledge'}]\n${c.text || c.content}`).join("\n\n")
+  
+  // Safe RAG block construction
+  const ragBlock = (ctx.ragChunks && Array.isArray(ctx.ragChunks) && ctx.ragChunks.length > 0)
+    ? ctx.ragChunks.map((c: any, i: number) => `[#${i+1} ${c.source || 'Knowledge'}]\n${c.text || c.content || ''}`).join("\n\n")
     : "—";
 
   const daily = ctx.daily ?? {};
   const mem = ctx.memory ?? {};
 
-  // Build enriched context with real user data
+  // Build enriched context with real user data - with safe null checks
   const weightInfo = daily.currentWeight ? `${daily.currentWeight}kg` : "unbekannt";
-  const mealSummary = daily.recentMeals?.length 
-    ? daily.recentMeals.slice(0, 3).map((m: any) => `${m.name || m.food_name} (${m.calories}kcal)`).join(", ")
+  const mealSummary = (daily.recentMeals && Array.isArray(daily.recentMeals) && daily.recentMeals.length > 0)
+    ? daily.recentMeals.slice(0, 3).map((m: any) => `${m.name || m.food_name || 'Mahlzeit'} (${m.calories || 0}kcal)`).join(", ")
     : "keine aktuellen Daten";
   const caloriesInfo = daily.totalCaloriesToday ? `${daily.totalCaloriesToday}kcal heute` : "keine Daten";
 
