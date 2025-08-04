@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +41,34 @@ export const AdminPage = () => {
   const { isAdmin, loading: adminLoading, error: adminError } = useSecureAdminAccess('admin_panel');
   const { forceShowOnboarding, resetOnboarding } = useOnboardingState();
   const [onboardingEnabled, setOnboardingEnabled] = useState(false);
+  const [onboardingGloballyDisabled, setOnboardingGloballyDisabled] = useState(false);
+
+  // Load admin settings from localStorage
+  useEffect(() => {
+    const savedOnboardingEnabled = localStorage.getItem('admin_onboarding_enabled');
+    const savedGloballyDisabled = localStorage.getItem('admin_onboarding_globally_disabled');
+    
+    if (savedOnboardingEnabled) {
+      setOnboardingEnabled(JSON.parse(savedOnboardingEnabled));
+    }
+    if (savedGloballyDisabled) {
+      setOnboardingGloballyDisabled(JSON.parse(savedGloballyDisabled));
+    }
+  }, []);
+
+  // Save admin settings to localStorage
+  const handleOnboardingEnabledChange = (checked: boolean) => {
+    setOnboardingEnabled(checked);
+    localStorage.setItem('admin_onboarding_enabled', JSON.stringify(checked));
+    if (checked) {
+      forceShowOnboarding();
+    }
+  };
+
+  const handleGloballyDisabledChange = (checked: boolean) => {
+    setOnboardingGloballyDisabled(checked);
+    localStorage.setItem('admin_onboarding_globally_disabled', JSON.stringify(checked));
+  };
   
   // Mock performance metrics for the dashboard
   const performanceMetrics = {
@@ -146,23 +174,27 @@ export const AdminPage = () => {
               <Switch
                 id="onboarding-toggle"
                 checked={onboardingEnabled}
-                onCheckedChange={(checked) => {
-                  setOnboardingEnabled(checked);
-                  if (checked) {
-                    forceShowOnboarding();
-                  }
-                }}
+                onCheckedChange={handleOnboardingEnabledChange}
               />
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={forceShowOnboarding}
-                className="flex items-center gap-2"
-              >
-                🎯 Onboarding anzeigen
-              </Button>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="onboarding-disable-toggle" className="text-sm font-medium">
+                  Onboarding deaktivieren/aktivieren
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Deaktiviert das Onboarding komplett für alle neuen Nutzer
+                </p>
+              </div>
+              <Switch
+                id="onboarding-disable-toggle"
+                checked={onboardingGloballyDisabled}
+                onCheckedChange={handleGloballyDisabledChange}
+              />
+            </div>
+            
+            <div className="flex justify-start">
               <Button
                 variant="outline"
                 size="sm"
