@@ -161,13 +161,10 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
       theme="cyan"
     >
       {hasMeasurementsThisWeek && !isEditing ? (
-        <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-sky-200 dark:border-sky-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-sky-100 dark:bg-sky-900 rounded-xl">
-              <CheckCircle className="h-5 w-5 text-sky-600 dark:text-sky-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-sky-800 dark:text-sky-200">Maße erfasst! 📏</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium text-foreground">Maße erfasst! 📏</h3>
             </div>
             <div className="flex items-center gap-2">
               <InfoButton
@@ -195,7 +192,6 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="text-sky-600 border-sky-300 hover:bg-sky-50"
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -214,26 +210,21 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     notes: ""
                   });
                   setIsEditing(true);
-                  // Toast entfernt - UI-Feedback ist selbsterklärend
                 }}
-                className="text-green-600 border-green-300 hover:bg-green-50"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
           
-          {/* Points badges directly under title */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <PointsBadge 
-              points={5} 
-              icon="📏"
-              animated={false}
-              variant="secondary"
-            />
-          </div>
+          <PointsBadge 
+            points={5} 
+            icon="📏"
+            animated={false}
+            variant="secondary"
+          />
           
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-sky-600 dark:text-sky-400 mb-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {todaysMeasurements?.neck && (
               <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
             )}
@@ -257,29 +248,25 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             )}
           </div>
           
-          {/* Coach Feedback First */}
-          <div className="mb-3">
-            <CoachFeedbackCard 
-              coachName="Lucy"
-              coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
-              measurementData={todaysMeasurements}
-              userId={user?.id}
-              type="measurement"
-            />
-          </div>
+          <CoachFeedbackCard 
+            coachName="Lucy"
+            coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+            measurementData={todaysMeasurements}
+            userId={user?.id}
+            type="measurement"
+          />
           
-          {/* Tips in matching sky theme */}
-          <div className="bg-sky-100/50 dark:bg-sky-900/30 rounded-lg p-3 border border-sky-200 dark:border-sky-700">
-            <p className="text-xs text-sky-700 dark:text-sky-300 mb-2">
+          <div className="bg-card rounded-lg p-3">
+            <p className="text-xs text-muted-foreground mb-2">
               <strong>Tipp:</strong> Miss zur gleichen Zeit für beste Vergleichbarkeit!
             </p>
-            <p className="text-xs text-sky-600 dark:text-sky-400">
+            <p className="text-xs text-muted-foreground">
               • Morgens vor dem Essen für konsistente Werte
               • Maßband parallel zum Boden halten
               • Immer an derselben Körperstelle messen
               • Wöchentlich messen für langfristige Trends
             </p>
-            <p className="text-xs text-sky-600 dark:text-sky-400 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               <strong>Nächste Messung:</strong> Nächste Woche 📏
             </p>
           </div>
@@ -290,16 +277,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           hideable={true}
           fallbackMessage="Körpermaße-Tracking ist ein Premium Feature. Upgrade für detaillierte Körpermaß-Aufzeichnung!"
         >
-          <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-sky-200 dark:border-sky-800">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-sky-100 dark:bg-sky-900 rounded-xl">
-                <Ruler className="h-5 w-5 text-sky-600 dark:text-sky-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-sky-800 dark:text-sky-200">
-                  {hasMeasurementsThisWeek ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
-                </h3>
-              </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-foreground">
+                {hasMeasurementsThisWeek ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
+              </h3>
               <InfoButton
                 title="Körpermaße - Messanleitung"
                 description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
@@ -326,7 +308,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-sky-700 dark:text-sky-300">Hals (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Hals (cm)</label>
                   <NumericInput
                     placeholder="32.0"
                     value={measurements.neck}
@@ -334,12 +316,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={100}
-                    className="bg-white dark:bg-sky-950/50 border-sky-200 dark:border-sky-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Brust (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Brust (cm)</label>
                   <NumericInput
                     placeholder="95.0"
                     value={measurements.chest}
@@ -347,12 +328,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Taille (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Taille (cm)</label>
                   <NumericInput
                     placeholder="85.0"
                     value={measurements.waist}
@@ -360,12 +340,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Bauch (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Bauch (cm)</label>
                   <NumericInput
                     placeholder="90.0"
                     value={measurements.belly}
@@ -373,12 +352,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
               
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Hüfte (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Hüfte (cm)</label>
                   <NumericInput
                     placeholder="95.0"
                     value={measurements.hips}
@@ -386,12 +364,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={200}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Arme (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Arme (cm)</label>
                   <NumericInput
                     placeholder="35.0"
                     value={measurements.arms}
@@ -399,12 +376,11 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={100}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Oberschenkel (cm)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Oberschenkel (cm)</label>
                   <NumericInput
                     placeholder="60.0"
                     value={measurements.thigh}
@@ -412,18 +388,17 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     allowDecimals={true}
                     min={0}
                     max={150}
-                    className="bg-white dark:bg-teal-950/50 border-teal-200 dark:border-teal-700"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-teal-700 dark:text-teal-300">Notizen</label>
+                <label className="text-sm font-medium text-muted-foreground">Notizen</label>
                 <textarea
                   value={measurements.notes}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   placeholder="Zusätzliche Notizen..."
-                  className="w-full p-2 rounded-lg border border-teal-200 dark:border-teal-700 bg-white dark:bg-teal-950/50 text-teal-900 dark:text-teal-100 placeholder-teal-400 dark:placeholder-teal-500 resize-none h-20"
+                  className="w-full p-2 rounded-lg border bg-background text-foreground placeholder-muted-foreground resize-none h-20"
                 />
               </div>
 
@@ -431,7 +406,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 <Button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                  className="flex-1"
                 >
                   {isSubmitting ? 'Speichere...' : (hasMeasurementsThisWeek ? 'Aktualisieren' : 'Maße hinzufügen')}
                 </Button>
@@ -441,7 +416,6 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     type="button"
                     variant="outline"
                     onClick={() => setIsEditing(false)}
-                    className="border-teal-300 text-teal-600"
                   >
                     Abbrechen
                   </Button>
