@@ -69,6 +69,8 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toolsContainerRef = useRef<HTMLDivElement>(null);
+  const suggestionsContainerRef = useRef<HTMLDivElement>(null);
   
   // Hooks
   const { uploadFiles, uploading, uploadProgress, getMediaType } = useMediaUpload();
@@ -95,6 +97,35 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   };
 
   const suggestionCount = getSuggestions().length;
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      
+      // Check if click is outside both containers
+      const clickedOutsideTools = toolsContainerRef.current && !toolsContainerRef.current.contains(target);
+      const clickedOutsideSuggestions = suggestionsContainerRef.current && !suggestionsContainerRef.current.contains(target);
+      
+      if (clickedOutsideTools && showTools) {
+        setShowTools(false);
+      }
+      
+      if (clickedOutsideSuggestions && showSuggestions) {
+        setShowSuggestions(false);
+      }
+    };
+
+    if (showTools || showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showTools, showSuggestions]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -314,11 +345,14 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         <div className="input-bar flex items-center justify-between px-4 py-2 border-t border-border/50">
           <div className="flex items-center gap-1">
             {/* ① Suggestions Button with Badge - 44x44pt touch target */}
-            <div className="relative">
+            <div className="relative" ref={suggestionsContainerRef}>
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setShowSuggestions(!showSuggestions)}
+                onClick={() => {
+                  setShowSuggestions(!showSuggestions);
+                  if (!showSuggestions) setShowTools(false);
+                }}
                 className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
                 aria-label="Gesprächsvorschläge anzeigen"
               >
@@ -369,11 +403,14 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             </div>
 
             {/* ② Tool Picker - 44x44pt touch target */}
-            <div className="relative">
+            <div className="relative" ref={toolsContainerRef}>
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setShowTools(!showTools)}
+                onClick={() => {
+                  setShowTools(!showTools);
+                  if (!showTools) setShowSuggestions(false);
+                }}
                 className={`
                   w-11 h-11 p-0 transition-all duration-200 
                   ${selectedTool ? selectedToolConfig?.textColor : 'text-muted-foreground hover:text-foreground'}
@@ -440,7 +477,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                fileInputRef.current?.click();
+                setShowTools(false);
+                setShowSuggestions(false);
+              }}
               className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
               disabled={isLoading}
               aria-label="Medien hinzufügen"
@@ -455,7 +496,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             <Button
               type="button"
               variant="ghost"
-              onClick={handleVoiceStart}
+              onClick={() => {
+                handleVoiceStart();
+                setShowTools(false);
+                setShowSuggestions(false);
+              }}
               className="w-11 h-11 p-0 transition-all duration-200 text-red-600 hover:text-red-700"
               aria-label="Spracheingabe starten"
             >
@@ -464,7 +509,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
             {/* ⑤ Send Button */}
             <Button
-              onClick={handleSend}
+              onClick={() => {
+                handleSend();
+                setShowTools(false);
+                setShowSuggestions(false);
+              }}
               disabled={!hasContent || isLoading}
               className={`
                 w-11 h-11 p-0 transition-all duration-200 font-medium
