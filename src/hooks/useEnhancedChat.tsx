@@ -113,8 +113,8 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
         enableMemory: options.enableMemory !== false
       });
 
-      // Call enhanced edge function
-      const { data, error: functionError } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
+      // Call unified coach engine
+      const { data, error: functionError } = await supabase.functions.invoke('unified-coach-engine', {
         body: requestBody
       });
 
