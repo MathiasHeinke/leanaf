@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useNavigate } from 'react-router-dom';
 import { DailyResetDialog } from './DailyResetDialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CollapsibleCoachHeaderProps {
   coach: {
@@ -29,39 +30,67 @@ export const CollapsibleCoachHeader = ({
   const [showHistory, setShowHistory] = useState(false);
   const [showDailyResetDialog, setShowDailyResetDialog] = useState(false);
   const [isDeletingToday, setIsDeletingToday] = useState(false);
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const navigate = useNavigate();
 
-  // Get actual chat history from recent days
-  const getChatHistory = () => {
-    // Mock chat history data - in real app, fetch from database via Supabase
-    return [
-      {
-        id: "1",
-        date: "Heute",
-        preview: "Trainingsplan für diese Woche besprochen",
-        timestamp: new Date()
-      },
-      {
-        id: "2", 
-        date: "Gestern",
-        preview: "Ernährungsberatung und Kalorienbedarf",
-        timestamp: new Date(Date.now() - 86400000)
-      },
-      {
-        id: "3",
-        date: "Vorgestern", 
-        preview: "Motivation und Zielsetzung diskutiert",
-        timestamp: new Date(Date.now() - 172800000)
-      }
-    ];
+  // Get actual chat history from Supabase
+  const getChatHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('coach_conversations')
+        .select('conversation_date, message_content, created_at')
+        .eq('coach_personality', coach.name.toLowerCase())
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      // Group by date and take first message as preview
+      const grouped = data?.reduce((acc, msg) => {
+        const date = msg.conversation_date;
+        if (!acc[date]) {
+          acc[date] = {
+            id: date,
+            date: formatHistoryDate(date),
+            preview: msg.message_content.slice(0, 50) + '...',
+            timestamp: new Date(msg.created_at)
+          };
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      return Object.values(grouped || {});
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      return [];
+    }
+  };
+
+  const formatHistoryDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Heute';
+    if (date.toDateString() === yesterday.toDateString()) return 'Gestern';
+    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
   };
 
   const handleDailyReset = async () => {
     setIsDeletingToday(true);
     try {
-      // Simulate deletion delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const today = new Date().toISOString().split('T')[0];
       
+      const { error } = await supabase
+        .from('coach_conversations')
+        .delete()
+        .eq('conversation_date', today)
+        .eq('coach_personality', coach.name.toLowerCase());
+
+      if (error) throw error;
+
       toast.success('Heutiger Chat wurde gelöscht');
       onDailyReset?.();
       setShowDailyResetDialog(false);
@@ -127,7 +156,15 @@ export const CollapsibleCoachHeader = ({
         
         <div className="flex items-center gap-2">
           {/* Chat History Dropdown */}
-          <Popover open={showHistory} onOpenChange={setShowHistory}>
+          <Popover open={showHistory} onOpenChange={async (open) => {
+            setShowHistory(open);
+            if (open && historyItems.length === 0) {
+              setLoadingHistory(true);
+              const history = await getChatHistory();
+              setHistoryItems(history);
+              setLoadingHistory(false);
+            }
+          }}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
@@ -143,26 +180,36 @@ export const CollapsibleCoachHeader = ({
                 <div className="text-sm font-medium px-2 py-1 text-muted-foreground">
                   Chat-Verlauf
                 </div>
-                {getChatHistory().map((chat) => (
-                  <Button
-                    key={chat.id}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-left p-2 h-auto whitespace-normal"
-                    onClick={() => {
-                      // Handle chat history click - would load conversation
-                      setShowHistory(false);
-                      console.log("Loading chat:", chat.id);
-                    }}
-                  >
-                    <div>
-                      <div className="font-medium text-sm">{chat.date}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {chat.preview}
+                {loadingHistory ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Lade Verlauf...
+                  </div>
+                ) : historyItems.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Keine früheren Chats
+                  </div>
+                ) : (
+                  historyItems.map((chat) => (
+                    <Button
+                      key={chat.id}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-left p-2 h-auto whitespace-normal"
+                      onClick={() => {
+                        setShowHistory(false);
+                        // Navigate to specific chat date
+                        navigate(`/coach/${coach.name.toLowerCase()}?date=${chat.id}`);
+                      }}
+                    >
+                      <div>
+                        <div className="font-medium text-sm">{chat.date}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {chat.preview}
+                        </div>
                       </div>
-                    </div>
-                  </Button>
-                ))}
+                    </Button>
+                  ))
+                )}
               </div>
             </PopoverContent>
           </Popover>

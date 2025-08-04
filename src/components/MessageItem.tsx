@@ -1,7 +1,7 @@
 import React, { useRef, useLayoutEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
+
 import { Button } from '@/components/ui/button';
 import { BadgeSvg } from './BadgeSvg';
 
@@ -79,10 +79,10 @@ export const MessageItem = React.memo(({
         role="group"
         aria-label={`Nachricht von ${isUser ? 'dir' : coach.name}`}
       >
-        <Card className={`p-3 max-w-[75%] ${
+        <div className={`p-3 max-w-[75%] rounded-2xl shadow-sm ${
           isUser 
-            ? 'bg-primary text-primary-foreground' 
-            : 'bg-muted'
+            ? 'bg-primary text-primary-foreground rounded-br-md' 
+            : 'bg-muted rounded-bl-md'
         }`}>
           <div className="text-sm whitespace-pre-wrap">
             <ReactMarkdown
@@ -152,7 +152,7 @@ export const MessageItem = React.memo(({
               ))}
             </div>
           )}
-        </Card>
+        </div>
       </div>
       
       {/* Footer with avatar and time - BELOW the bubble */}
