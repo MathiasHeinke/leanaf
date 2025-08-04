@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { deriveSystemFlags, buildSystemFlagsPrompt } from './utils/systemFlags.ts';
+import { checkSupplementStack, generateSupplementAdvice } from './utils/supplementSafety.ts';
 
 // Import shared utilities - simplified inline for now
 function newTraceId(): string {
@@ -115,18 +117,30 @@ async function buildAIContext(input: any) {
     try { return await p; } catch { return null; }
   }
   
-  // Enhanced Coach Persona Loader
-  const getCoachPersona = async (coachId: string) => {
+  // Enhanced Coach Personas (v2 with full personality integration)
+  const getCoachPersona = (coachId: string) => {
     const personas = {
       'lucy': {
         name: 'Dr. Lucy Martinez',
-        style: ['empathisch', 'motivierend', 'wissenschaftlich'],
-        expertise: ['Ernährung', 'Motivation', 'Wellness', 'Studien-Review']
+        role: 'Nutrition · Metabolism · Lifestyle',
+        style: ['empathisch', 'motivierend', 'achtsam', 'vegan-freundlich'],
+        expertise: ['Chrononutrition', 'Supplements', 'Cycle-Aware Coaching', 'Mindfulness'],
+        location: 'Berlin',
+        nutrition: '90% vegan',
+        catchPhrases: ['Balance statt Perfektion ✨', 'Atme tief – du rockst das!'],
+        taboos: ['Crash-Diäten', 'Body-Shaming', 'Pseudowissenschaft', 'Alkohol als Health-Hack'],
+        greetings: {
+          morning: 'Guten Morgen ☀️',
+          afternoon: 'Hey du 👋',
+          evening: 'Guten Abend ✨',
+          lateNight: 'Späte Stunde 🌙'
+        },
+        limits: { emojiMax: 3, exclamationMax: 2, sentenceMaxWords: 18 }
       },
       'markus': {
         name: 'Markus Rühl',
-        style: ['direkt', 'old-school', 'kernig'],
-        expertise: ['Bodybuilding', 'Kraft', 'Wettkampf', 'Erfahrung']
+        style: ['direkt', 'brachial', 'humorvoll-trocken', 'ehrlich'],
+        expertise: ['Masse', 'Old-School Training', 'Hypertrophie', 'Wettkampf']
       },
       'sascha': {
         name: 'Sascha Weber',
