@@ -270,7 +270,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
       {/* Main Input Container */}
       <div className={`
-        bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
+        enhanced-chat-input-container bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
         ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}
       `}>
 
@@ -282,7 +282,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder={placeholder}
-            disabled={isLoading}
+            disabled={isLoading || isVoiceOverlayOpen}
             className={`
               w-full bg-transparent resize-none outline-none
               text-base md:text-lg leading-normal px-4 py-3 pr-24

@@ -9,7 +9,7 @@ interface VoiceOverlayProps {
   onClose: () => void;
 }
 
-type Phase = 'recording' | 'uploading' | 'transcribing' | 'error';
+type Phase = 'recording' | 'processing' | 'error';
 
 export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
   const inputBarHeight = useInputBarHeight();
@@ -101,8 +101,6 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
   };
 
   const uploadAudio = async (): Promise<string> => {
-    setPhase('uploading');
-    
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
     const formData = new FormData();
     formData.append('file', audioBlob);
@@ -119,8 +117,6 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
   };
 
   const transcribeAudio = async (fileId: string): Promise<string> => {
-    setPhase('transcribing');
-    
     // Make direct HTTP call since invoke doesn't support query params easily
     const response = await fetch(
       `https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/transcribe-audio?fileId=${fileId}`,
@@ -146,9 +142,11 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
     if (!mediaRecorderRef.current || phase !== 'recording') return;
 
     cleanup();
+    setPhase('processing'); // Start processing immediately
 
     mediaRecorderRef.current.onstop = async () => {
       try {
+        // Start upload and transcription in parallel
         const uploadedFileId = await uploadAudio();
         setFileId(uploadedFileId);
         
@@ -190,8 +188,7 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
   const getStatusText = () => {
     switch (phase) {
       case 'recording': return 'Ich höre zu …';
-      case 'uploading': return 'Wird gespeichert …';
-      case 'transcribing': return 'Wird transkribiert …';
+      case 'processing': return 'Wird transkribiert …';
       case 'error': return 'Transkription fehlgeschlagen';
       default: return '';
     }
@@ -199,39 +196,23 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
 
   return (
     <div 
-      className="fixed inset-x-0 bottom-0 flex items-center justify-between px-4 bg-white/85 dark:bg-neutral-900/85 z-50 backdrop-blur-sm"
+      className="fixed inset-x-0 bottom-0 flex flex-col items-center justify-center bg-white/85 dark:bg-neutral-900/85 z-50 backdrop-blur-sm px-4"
       style={{ height: inputBarHeight, pointerEvents: 'none' }}
     >
-      {/* Cancel Button */}
+      {/* Cancel Button - Top Left */}
       <button
         onClick={handleCancel}
-        className="pointer-events-auto w-10 h-10 flex justify-center items-center text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+        className="pointer-events-auto absolute top-4 left-4 w-10 h-10 flex justify-center items-center text-neutral-600 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
         aria-label="Aufnahme abbrechen"
       >
         <X className="w-6 h-6" />
       </button>
 
-      {/* Center - Waveform + Info */}
-      <div className="flex-1 flex flex-col items-center pointer-events-none">
-        <VoiceCanvasWaveform 
-          audioLevel={audioLevel} 
-          isActive={phase === 'recording'} 
-          width={120} 
-          height={24} 
-        />
-        <span className="text-[10px] mt-1 text-neutral-600 dark:text-neutral-400">
-          {minutes}:{secs}
-        </span>
-        <p className="text-[11px] text-neutral-600 dark:text-neutral-400">
-          {getStatusText()}
-        </p>
-      </div>
-
-      {/* Action Button */}
+      {/* Action Button - Top Right */}
       {phase === 'error' ? (
         <button
           onClick={handleRetry}
-          className="pointer-events-auto w-10 h-10 flex justify-center items-center text-orange-500 hover:text-orange-600 transition-colors"
+          className="pointer-events-auto absolute top-4 right-4 w-10 h-10 flex justify-center items-center text-orange-500 hover:text-orange-600 transition-colors"
           aria-label="Erneut versuchen"
         >
           <RotateCcw className="w-6 h-6 animate-spin" />
@@ -240,12 +221,28 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
         <button
           onClick={handleStopAndTranscribe}
           disabled={phase !== 'recording'}
-          className="pointer-events-auto w-10 h-10 flex justify-center items-center text-blue-600 hover:text-blue-700 disabled:opacity-50 disabled:cursor-wait transition-colors"
+          className="pointer-events-auto absolute top-4 right-4 w-10 h-10 flex justify-center items-center text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-wait transition-colors"
           aria-label="Aufnahme stoppen & transkribieren"
         >
           <ArrowUpSquare className="w-6 h-6" />
         </button>
       )}
+
+      {/* Center - Waveform + Info - Centered both horizontally and vertically */}
+      <div className="flex flex-col items-center justify-center pointer-events-none">
+        <VoiceCanvasWaveform 
+          audioLevel={audioLevel} 
+          isActive={phase === 'recording'} 
+          width={160} 
+          height={32} 
+        />
+        <span className="text-sm mt-2 text-neutral-600 dark:text-neutral-400 font-mono">
+          {minutes}:{secs}
+        </span>
+        <p className="text-sm mt-1 text-neutral-600 dark:text-neutral-400">
+          {getStatusText()}
+        </p>
+      </div>
     </div>
   );
 }
