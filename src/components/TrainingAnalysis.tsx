@@ -63,8 +63,8 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
       const startDate = format(subDays(new Date(), daysAgo), 'yyyy-MM-dd');
 
       const { data, error } = await supabase
-        .from('daily_activities')
-        .select('*')
+        .from('workouts')
+        .select('id, date, steps, distance_km, workout_type')
         .eq('user_id', user.id)
         .gte('date', startDate)
         .order('date', { ascending: false });

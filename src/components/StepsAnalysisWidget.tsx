@@ -14,9 +14,9 @@ interface DailyActivity {
   id: string;
   date: string;
   steps: number;
-  distance_km: number;
-  calories_burned: number;
-  activity_minutes: number;
+  distance_km?: number;
+  workout_type?: string;
+  did_workout?: boolean;
 }
 
 interface StepsData {
@@ -54,10 +54,10 @@ const StepsAnalysisWidget = () => {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const sevenDaysAgo = subDays(today, 7);
 
-      // Fetch last 7 days of activity data
+      // Fetch last 7 days of workout data with steps
       const { data: activities, error } = await supabase
-        .from('daily_activities')
-        .select('*')
+        .from('workouts')
+        .select('id, date, steps, distance_km, workout_type, did_workout')
         .eq('user_id', user.id)
         .gte('date', format(sevenDaysAgo, 'yyyy-MM-dd'))
         .order('date', { ascending: false });
@@ -130,11 +130,13 @@ const StepsAnalysisWidget = () => {
       const steps = parseInt(newSteps);
 
       const { error } = await supabase
-        .from('daily_activities')
+        .from('workouts')
         .upsert({
           user_id: user.id,
           date: today,
           steps: steps,
+          did_workout: false,
+          workout_type: 'steps_only',
           updated_at: new Date().toISOString()
         });
 
