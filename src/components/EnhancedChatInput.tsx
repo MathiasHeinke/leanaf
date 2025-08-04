@@ -366,23 +366,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             <Plus className="w-6 h-6" />
           </button>
 
-          {/* Input Field Container */}
-          <div className="relative flex-1">
-            <textarea
-              ref={textareaRef}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder={placeholder}
-              disabled={isLoading}
-              className={cn(
-                "w-full resize-none border-0 bg-transparent p-3 text-sm",
-                "placeholder:text-muted-foreground focus:outline-none",
-                "min-h-[44px] max-h-[200px]"
-              )}
-              rows={1}
-            />
-          </div>
 
           {/* 4. Microphone Button (Red) */}
           <button
