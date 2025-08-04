@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 interface OnboardingState {
   showProfileOnboarding: boolean;
   showIndexOnboarding: boolean;
+  showInteractiveOnboarding: boolean;
   profileCompleted: boolean;
   mealInputHighlighted: boolean;
   showProfileIndicators: boolean;
@@ -15,6 +16,7 @@ export const useOnboardingState = () => {
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({
     showProfileOnboarding: false,
     showIndexOnboarding: false,
+    showInteractiveOnboarding: false,
     profileCompleted: false,
     mealInputHighlighted: false,
     showProfileIndicators: true,
@@ -34,16 +36,18 @@ export const useOnboardingState = () => {
         setOnboardingState({
           showProfileOnboarding: false,
           showIndexOnboarding: false,
+          showInteractiveOnboarding: false,
           profileCompleted: false,
           mealInputHighlighted: false,
           showProfileIndicators: true,
         });
       }
     } else {
-      // New user - show profile onboarding
+      // New user - show interactive onboarding instead of old profile onboarding
       setOnboardingState({
-        showProfileOnboarding: true,
+        showProfileOnboarding: false,
         showIndexOnboarding: false,
+        showInteractiveOnboarding: true,
         profileCompleted: false,
         mealInputHighlighted: false,
         showProfileIndicators: true,
@@ -88,14 +92,24 @@ export const useOnboardingState = () => {
     });
   };
 
+  const completeInteractiveOnboarding = () => {
+    updateOnboardingState({ 
+      showInteractiveOnboarding: false,
+      profileCompleted: true,
+      showIndexOnboarding: true,
+      profileCompletedAt: new Date().toISOString()
+    });
+  };
+
   const resetOnboarding = () => {
     if (!user) return;
     
     const storageKey = `onboarding_${user.id}`;
     localStorage.removeItem(storageKey);
     setOnboardingState({
-      showProfileOnboarding: true,
+      showProfileOnboarding: false,
       showIndexOnboarding: false,
+      showInteractiveOnboarding: true,
       profileCompleted: false,
       mealInputHighlighted: false,
       showProfileIndicators: true,
@@ -120,6 +134,7 @@ export const useOnboardingState = () => {
     ...onboardingState,
     completeProfileOnboarding,
     completeIndexOnboarding,
+    completeInteractiveOnboarding,
     highlightMealInput,
     clearMealInputHighlight,
     resetOnboarding,

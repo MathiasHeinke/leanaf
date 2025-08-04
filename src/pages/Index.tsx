@@ -33,6 +33,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { IndexOnboardingOverlay } from '@/components/IndexOnboardingOverlay';
+import { InteractiveOnboardingSlider } from '@/components/onboarding/InteractiveOnboardingSlider';
 import { cn } from '@/lib/utils';
 
 
@@ -537,6 +538,16 @@ const Index = () => {
 
   return (
     <>
+      {/* Interactive Onboarding Slider - Show for new users */}
+      {onboardingState.showInteractiveOnboarding && (
+        <InteractiveOnboardingSlider
+          isOpen={onboardingState.showInteractiveOnboarding}
+          onClose={() => onboardingState.updateOnboardingState({ showInteractiveOnboarding: false })}
+          onComplete={onboardingState.completeInteractiveOnboarding}
+        />
+      )}
+
+      {/* Index Onboarding - Show after profile completion */}
       {onboardingState.showIndexOnboarding && (
         <IndexOnboardingOverlay
           isOpen={onboardingState.showIndexOnboarding}
