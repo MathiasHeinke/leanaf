@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
+import { useSecureAdminAccess } from './useSecureAdminAccess';
 
 interface OnboardingState {
   showProfileOnboarding: boolean;
@@ -13,6 +15,8 @@ interface OnboardingState {
 
 export const useOnboardingState = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin } = useSecureAdminAccess();
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({
     showProfileOnboarding: false,
     showIndexOnboarding: false,
@@ -43,8 +47,8 @@ export const useOnboardingState = () => {
         });
       }
     } else {
-      // New user - redirect to new onboarding page
-      window.location.href = '/onboarding';
+      // New user - navigate to new onboarding page
+      navigate('/onboarding');
     }
   }, [user]);
 
@@ -123,6 +127,16 @@ export const useOnboardingState = () => {
     updateOnboardingState({ showProfileIndicators: false });
   };
 
+  const forceShowOnboarding = () => {
+    if (!isAdmin) {
+      console.log('Access denied: Admin privileges required');
+      return;
+    }
+    
+    console.log('Admin forcing onboarding display');
+    navigate('/onboarding?admin=true');
+  };
+
   return {
     ...onboardingState,
     completeProfileOnboarding,
@@ -134,5 +148,7 @@ export const useOnboardingState = () => {
     updateOnboardingState,
     shouldShowProfileIndicators,
     hideProfileIndicators,
+    forceShowOnboarding,
+    isAdmin,
   };
 };

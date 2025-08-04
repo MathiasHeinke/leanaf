@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WelcomeSlide } from '@/components/onboarding/WelcomeSlide';
 import { BenefitsSlide } from '@/components/onboarding/BenefitsSlide';
 import { PremiumSlide } from '@/components/onboarding/PremiumSlide';
@@ -10,8 +10,11 @@ export default function OnboardingPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { completeInteractiveOnboarding } = useOnboardingState();
+  const { completeInteractiveOnboarding, isAdmin } = useOnboardingState();
+  
+  const isAdminAccess = searchParams.get('admin') === 'true' && isAdmin;
 
   const slides = [
     { component: WelcomeSlide },
@@ -83,12 +86,18 @@ export default function OnboardingPage() {
     navigate('/profile');
   };
 
-  // Redirect if user not found or already completed onboarding
+  // Redirect if user not found
   useEffect(() => {
     if (!user) {
       navigate('/auth');
+      return;
     }
-  }, [user, navigate]);
+    
+    // Log admin access for debugging
+    if (isAdminAccess) {
+      console.log('Admin accessing onboarding with override');
+    }
+  }, [user, navigate, isAdminAccess]);
 
   if (!user) {
     return null;

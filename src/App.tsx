@@ -9,6 +9,7 @@ import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Layout } from "@/components/Layout";
+import { AdminOnboardingAccess } from "@/components/AdminOnboardingAccess";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
@@ -50,6 +51,7 @@ const App = () => (
               <BrowserRouter>
                 <SidebarProvider>
                   <Layout>
+                    <AdminOnboardingAccess />
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
