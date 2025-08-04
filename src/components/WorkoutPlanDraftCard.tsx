@@ -28,7 +28,7 @@ export const WorkoutPlanDraftCard: React.FC<WorkoutPlanDraftCardProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase.functions.invoke('unified-coach-engine', {
+      const { error } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           conversation: [
             {

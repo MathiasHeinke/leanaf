@@ -80,7 +80,7 @@ export const SmartInsights = ({
     
     setIsAnalyzing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
+      const { data, error } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           dailyTotals: todaysTotals,
           dailyGoal: dailyGoals.calories,

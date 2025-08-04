@@ -40,7 +40,7 @@ export const UnifiedEngineDebugger: React.FC = () => {
 
       console.log('🔧 Sending headers:', headers);
 
-      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
+      const { data, error } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: user.id,
           coachId: 'lucy',

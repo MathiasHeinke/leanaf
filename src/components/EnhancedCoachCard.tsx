@@ -42,7 +42,7 @@ export const EnhancedCoachCard = ({
     try {
       // Generating coaching insights
 
-      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
+      const { data, error } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: user.id,
           profile: userProfile,

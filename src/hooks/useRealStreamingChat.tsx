@@ -94,7 +94,7 @@ export const useRealStreamingChat = (options: UseRealStreamingChatOptions = {}) 
       const { data: { session } } = await supabase.auth.getSession();
       
       // Start SSE stream
-      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
+      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/enhanced-coach-non-streaming', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session?.access_token}`,

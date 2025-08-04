@@ -219,9 +219,9 @@ const EnhancedPipelineDebugger = () => {
         headers['x-disable-conversation-history'] = 'true';
       }
 
-      updatePipelineStatus('openai', 60, 'Sende an unified-coach-engine...');
+      updatePipelineStatus('openai', 60, 'Sende an enhanced-coach-non-streaming...');
 
-      console.log('🔧 DEBUGGER: Sending request to unified-coach-engine with headers:', headers);
+      console.log('🔧 DEBUGGER: Sending request to enhanced-coach-non-streaming with headers:', headers);
       console.log('🔧 DEBUGGER: Request body:', {
         userId: user.id,
         message,
@@ -231,7 +231,7 @@ const EnhancedPipelineDebugger = () => {
         messageId: `debug-msg-${Date.now()}`
       });
 
-      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
+      const { data, error } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: user.id,
           message,

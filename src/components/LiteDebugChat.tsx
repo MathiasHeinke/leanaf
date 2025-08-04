@@ -43,7 +43,7 @@ const LiteDebugChat = () => {
       setIsLoading(true);
       setResponse(null);
 
-      const { data, error } = await supabase.functions.invoke('unified-coach-engine', {
+      const { data, error } = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: user.id,
           message,
@@ -267,7 +267,7 @@ const LiteDebugChat = () => {
               Legacy: Lite vs Full Mode
             </CardTitle>
             <CardDescription>
-              Test unified-coach-engine pipeline (kann nicht funktionieren bis deployment)
+              Test enhanced-coach-non-streaming pipeline
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

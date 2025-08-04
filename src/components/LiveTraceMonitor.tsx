@@ -243,7 +243,7 @@ export const LiveTraceMonitor = () => {
       setExpandedTrace(traceId);
 
       // Call the unified coach engine
-      const response = await supabase.functions.invoke('unified-coach-engine', {
+      const response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: 'test-user-admin',
           coachId: selectedCoach,

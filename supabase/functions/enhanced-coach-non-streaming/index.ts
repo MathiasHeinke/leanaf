@@ -651,8 +651,8 @@ serve(async (req) => {
     // Call OpenAI (non-streaming)
     const openaiStart = Date.now();
     await traceEvent(traceId, 'openai_call', 'started', {
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
+      model: 'gpt-4.1-2025-04-14',
+      temperature: 0.8,
       messagesCount: messages.length,
       estimatedTokens: ctx.metrics.tokensIn
     }, conversationId, messageId);
@@ -664,9 +664,9 @@ serve(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages,
-        temperature: 0.7,
+        temperature: 0.8,
         max_tokens: 1500,
         stream: false
       })

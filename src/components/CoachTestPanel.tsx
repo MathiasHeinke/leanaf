@@ -19,7 +19,7 @@ export const CoachTestPanel: React.FC = () => {
     setEngineResult(null);
     
     try {
-      const response = await supabase.functions.invoke('unified-coach-engine', {
+      const response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: 'test-user',
           message: 'Hallo, wie geht es dir?',

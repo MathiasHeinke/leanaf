@@ -56,7 +56,7 @@ export const EdgeFunctionDebugger: React.FC = () => {
 
     // Test 2: Edge Function Reachability (with required params)
     await runTest(1, async () => {
-      const response = await supabase.functions.invoke('unified-coach-engine', {
+      const response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: { 
           userId: 'test-user-001',
           message: 'Test message',
@@ -74,7 +74,7 @@ export const EdgeFunctionDebugger: React.FC = () => {
 
     // Test 3: Direct HTTP Call (with required params)
     await runTest(2, async () => {
-      const url = 'https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine';
+      const url = 'https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/enhanced-coach-non-streaming';
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(url, {
@@ -124,7 +124,7 @@ export const EdgeFunctionDebugger: React.FC = () => {
 
     // Test 5: Full Pipeline Test
     await runTest(4, async () => {
-      const response = await supabase.functions.invoke('unified-coach-engine', {
+      const response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
         body: {
           userId: 'debug-user-pipeline',
           message: debugMessage,

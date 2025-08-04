@@ -62,7 +62,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
       
       let response;
       try {
-        response = await supabase.functions.invoke('unified-coach-engine', {
+        response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
           body: {
             userId,
             message,
@@ -86,7 +86,7 @@ export const useStreamingChat = (options: UseStreamingChatOptions = {}) => {
           console.log('🔄 Attempting direct HTTP fallback...');
           const { data: { session } } = await supabase.auth.getSession();
           
-          const fallbackResponse = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/unified-coach-engine', {
+          const fallbackResponse = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/enhanced-coach-non-streaming', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${session?.access_token}`,

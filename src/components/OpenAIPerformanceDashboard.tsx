@@ -71,7 +71,7 @@ const OpenAIPerformanceDashboard: React.FC = () => {
           last_call: new Date().toISOString()
         },
         {
-          function_name: 'unified-coach-engine',
+          function_name: 'enhanced-coach-non-streaming',
           model: 'gpt-4o-mini',
           avg_duration: 1200,
           total_calls: 2340,
