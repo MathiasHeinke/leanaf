@@ -263,7 +263,8 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
                 </div>
                 <Progress 
                   value={Math.min(100, calorieProgress)} 
-                  className="h-2 bg-blue-100 dark:bg-blue-800/50" 
+                  className="h-2 bg-blue-100 dark:bg-blue-800/50"
+                  indicatorClassName="bg-blue-500 dark:bg-blue-400"
                 />
               </div>
             </div>
@@ -282,7 +283,8 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
                 </div>
                 <Progress 
                   value={Math.min(100, proteinProgress)} 
-                  className="h-2 bg-green-100 dark:bg-green-800/50" 
+                  className="h-2 bg-green-100 dark:bg-green-800/50"
+                  indicatorClassName="bg-green-500 dark:bg-green-400"
                 />
               </div>
             </div>
@@ -301,7 +303,8 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
                 </div>
                 <Progress 
                   value={Math.min(100, carbsProgress)} 
-                  className="h-2 bg-orange-100 dark:bg-orange-800/50" 
+                  className="h-2 bg-orange-100 dark:bg-orange-800/50"
+                  indicatorClassName="bg-orange-500 dark:bg-orange-400"
                 />
               </div>
             </div>
@@ -320,7 +323,8 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory }: 
                 </div>
                 <Progress 
                   value={Math.min(100, fatsProgress)} 
-                  className="h-2 bg-purple-100 dark:bg-purple-800/50" 
+                  className="h-2 bg-purple-100 dark:bg-purple-800/50"
+                  indicatorClassName="bg-purple-500 dark:bg-purple-400"
                 />
               </div>
             </div>
