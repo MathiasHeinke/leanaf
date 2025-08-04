@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft, History, Trash2, MessageSquare } from 'lucide-react';
+import { ChevronDown, ArrowLeft, History, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
@@ -22,35 +22,32 @@ export const CollapsibleCoachHeader = ({
   onCollapseChange 
 }: CollapsibleCoachHeaderProps) => {
   const [collapsed, setCollapsed] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
 
-  // Coach-specific suggestions based on specialization
-  const getCoachSuggestions = () => {
-    const coachName = coach.name?.toLowerCase();
-    
-    if (coachName?.includes('markus') || coach.specialization?.includes('Kraft')) {
-      return [
-        "Wie kann ich meine Bankdrück-Leistung verbessern?",
-        "Welche Supplements empfiehlst du für Muskelaufbau?",
-        "Zeig mir einen Trainingsplan für mehr Kraft",
-        "Wie tracke ich meine Fortschritte richtig?"
-      ];
-    } else if (coachName?.includes('lucy') || coach.specialization?.includes('Ganzheitlich')) {
-      return [
-        "Wie erstelle ich einen gesunden Ernährungsplan?",
-        "Was sind die besten Übungen für Anfänger?",
-        "Wie motiviere ich mich langfristig?",
-        "Welche Entspannungstechniken empfiehlst du?"
-      ];
-    } else {
-      return [
-        "Wie kann ich meine Ziele erreichen?",
-        "Was empfiehlst du für heute?",
-        "Zeig mir meinen Fortschritt",
-        "Welche Tipps hast du für mich?"
-      ];
-    }
+  // Get actual chat history from recent days
+  const getChatHistory = () => {
+    // Mock chat history data - in real app, fetch from database
+    return [
+      {
+        id: "1",
+        date: "Heute",
+        preview: "Trainingsplan für diese Woche besprochen",
+        timestamp: new Date()
+      },
+      {
+        id: "2", 
+        date: "Gestern",
+        preview: "Ernährungsberatung und Kalorienbedarf",
+        timestamp: new Date(Date.now() - 86400000)
+      },
+      {
+        id: "3",
+        date: "Vorgestern", 
+        preview: "Motivation und Zielsetzung diskutiert",
+        timestamp: new Date(Date.now() - 172800000)
+      }
+    ];
   };
 
   const handleBack = () => {
@@ -106,53 +103,46 @@ export const CollapsibleCoachHeader = ({
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Suggestions Dropdown */}
-          <Popover open={showSuggestions} onOpenChange={setShowSuggestions}>
+          {/* Chat History Dropdown */}
+          <Popover open={showHistory} onOpenChange={setShowHistory}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="p-2 h-10 w-10 hover-scale"
-                aria-label="Vorschläge"
+                aria-label="Chat-Verlauf"
               >
-                <MessageSquare className="w-5 h-5" />
+                <History className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-2" align="end">
               <div className="space-y-1">
                 <div className="text-sm font-medium px-2 py-1 text-muted-foreground">
-                  Vorschläge für {coach.name}
+                  Chat-Verlauf
                 </div>
-                {getCoachSuggestions().map((suggestion, index) => (
+                {getChatHistory().map((chat) => (
                   <Button
-                    key={index}
+                    key={chat.id}
                     variant="ghost"
                     size="sm"
                     className="w-full justify-start text-left p-2 h-auto whitespace-normal"
                     onClick={() => {
-                      // Here you would trigger sending the suggestion
-                      setShowSuggestions(false);
-                      // onSendSuggestion?.(suggestion);
+                      // Handle chat history click - would load conversation
+                      setShowHistory(false);
+                      console.log("Loading chat:", chat.id);
                     }}
                   >
-                    "{suggestion}"
+                    <div>
+                      <div className="font-medium text-sm">{chat.date}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {chat.preview}
+                      </div>
+                    </div>
                   </Button>
                 ))}
               </div>
             </PopoverContent>
           </Popover>
-
-          {onHistoryClick && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onHistoryClick}
-              className="p-2 h-10 w-10 hover-scale"
-              aria-label="Chat-Verlauf"
-            >
-              <History className="w-5 h-5" />
-            </Button>
-          )}
           
           {onDeleteChat && (
             <Button

@@ -24,7 +24,8 @@ import {
   BookOpen,
   Pill,
   Dumbbell,
-  PenTool
+  PenTool,
+  MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
@@ -32,6 +33,7 @@ import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { useEnhancedVoiceRecording } from '@/hooks/useEnhancedVoiceRecording';
 import { usePendingTools } from '@/hooks/usePendingTools';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 // Tool configuration with colors
 const TOOLS = [
@@ -87,6 +89,16 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
   const selectedTool = pendingTools[0]?.tool || null;
   const selectedToolConfig = TOOLS.find(tool => tool.id === selectedTool);
+
+  // Get suggestions for current context
+  const getSuggestions = () => {
+    return [
+      "Wie kann ich meine Fitness verbessern?",
+      "Was ist eine ausgewogene Ernährung?", 
+      "Zeig mir einen Trainingsplan",
+      "Wie bleibe ich motiviert?"
+    ];
+  };
 
   // Recording timer
   useEffect(() => {
@@ -479,6 +491,38 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                 <Mic className="w-5 h-5" />
               )}
             </Button>
+
+            {/* Suggestions Button */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="transition-all duration-200 text-muted-foreground hover:text-foreground"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-4">
+                  <h4 className="font-medium mb-3">Gesprächsvorschläge</h4>
+                  <div className="space-y-2">
+                    {getSuggestions().map((suggestion, index) => (
+                      <button
+                        key={index}
+                        className="w-full text-left p-2 text-sm rounded-md hover:bg-muted transition-colors"
+                        onClick={() => {
+                          setInputText(suggestion);
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Send Button */}
