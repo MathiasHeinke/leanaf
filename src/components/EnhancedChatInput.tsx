@@ -103,10 +103,10 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   // Effect for managing transcribed text
   useEffect(() => {
     if (voiceText) {
-      setInputText(prev => prev + (prev ? ' ' : '') + voiceText);
+      setInputText(inputText + (inputText ? ' ' : '') + voiceText);
       clearTranscription();
     }
-  }, [voiceText, clearTranscription]);
+  }, [voiceText, clearTranscription, inputText]);
 
   // Effect for textarea auto-resizing
   useEffect(() => {
@@ -164,24 +164,24 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     if (hasCachedAudio) {
       const result = await sendTranscription();
       if (result) {
-        setInputText(prev => prev + (prev ? ' ' : '') + result);
+        setInputText(inputText + (inputText ? ' ' : '') + result);
       }
     }
-  }, [hasCachedAudio, sendTranscription, setInputText]);
+  }, [hasCachedAudio, sendTranscription, setInputText, inputText]);
 
   const handleVoiceRetry = useCallback(async () => {
     const result = await retryTranscription();
     if (result) {
-      setInputText(prev => prev + (prev ? ' ' : '') + result);
+      setInputText(inputText + (inputText ? ' ' : '') + result);
     }
-  }, [retryTranscription, setInputText]);
+  }, [retryTranscription, setInputText, inputText]);
 
   // Tool selection logic
   const handleToolSelect = useCallback((toolId: string) => {
-    if (pendingTools.includes(toolId)) {
+    if (pendingTools.some(tool => tool.tool === toolId)) {
       removePendingTool(toolId);
     } else {
-      addPendingTool(toolId);
+      addPendingTool({ tool: toolId, label: toolId, confidence: 1 });
     }
   }, [pendingTools, addPendingTool, removePendingTool]);
 
@@ -203,7 +203,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     if (!inputText.trim() && uploadedMedia.length === 0) return;
     
     const mediaUrls = uploadedMedia.map(media => media.url);
-    const selectedTool = pendingTools.length > 0 ? pendingTools[0] : undefined;
+    const selectedTool = pendingTools.length > 0 ? pendingTools[0].tool : undefined;
     
     onSendMessage(inputText, mediaUrls, selectedTool);
     
@@ -213,7 +213,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     clearAllPendingTools();
     setShowTools(false);
     setShowSuggestions(false);
-  }, [inputText, uploadedMedia, pendingTools, onSendMessage, setInputText, clearPendingTools]);
+  }, [inputText, uploadedMedia, pendingTools, onSendMessage, setInputText, clearAllPendingTools]);
 
   // Handle key press for send on Enter
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -444,7 +444,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                   onClick={() => handleToolSelect(tool.id)}
                   className={cn(
                     "flex items-center gap-2 p-3 rounded-lg border transition-colors",
-                    pendingTools.includes(tool.id)
+                    pendingTools.some(pt => pt.tool === tool.id)
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-secondary/30 hover:bg-secondary/50 border-border"
                   )}
