@@ -1,270 +1,305 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Scale, Ruler, TrendingUp, TrendingDown, Minus, Camera } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Scale, Target, Camera, Plus, Dumbbell, TrendingUp, Upload, Zap, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-
-interface BodyData {
-  weight: {
-    current: number;
-    change: number;
-    date: string;
-  } | null;
-  measurements: {
-    waist: number;
-    chest: number;
-    arms: number;
-    date: string;
-  } | null;
-  photos: {
-    count: number;
-    lastDate: string;
-  } | null;
-}
+import { useProgressPhotos } from '@/hooks/useProgressPhotos';
+import { useTargetImages } from '@/hooks/useTargetImages';
+import { useStrengthGoals } from '@/hooks/useStrengthGoals';
+import { toast } from 'sonner';
 
 export const QuickBodyDataWidget: React.FC = () => {
   const { user } = useAuth();
-  const [bodyData, setBodyData] = useState<BodyData>({
-    weight: null,
-    measurements: null,
-    photos: null
-  });
-  const [loading, setLoading] = useState(true);
+  const { photos, uploadProgressPhoto } = useProgressPhotos();
+  const { targetImages, uploadTargetImage, generateTargetImage } = useTargetImages();
+  const { goals, addStrengthGoal, deleteStrengthGoal } = useStrengthGoals();
+  
+  const [newGoal, setNewGoal] = useState({ exercise: '', current: '', target: '' });
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const targetInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadBodyData();
+  const handleAddGoal = async () => {
+    if (!newGoal.exercise || !newGoal.target) {
+      toast.error('Bitte Übung und Zielgewicht eingeben');
+      return;
     }
-  }, [user]);
 
-  const loadBodyData = async () => {
-    if (!user) return;
+    await addStrengthGoal({
+      exercise_name: newGoal.exercise,
+      current_1rm_kg: newGoal.current ? parseFloat(newGoal.current) : undefined,
+      target_1rm_kg: parseFloat(newGoal.target)
+    });
 
-    try {
-      setLoading(true);
-      
-      // Load weight data
-      const { data: weightData } = await supabase
-        .from('weight_history')
-        .select('weight, date')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(2);
+    setNewGoal({ exercise: '', current: '', target: '' });
+  };
 
-      // Load measurements data
-      const { data: measurementsData } = await supabase
-        .from('body_measurements')
-        .select('waist, chest, arms, date')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-        .limit(1);
-
-      // Load photos data
-      const { data: photosData } = await supabase
-        .from('weight_history')
-        .select('photo_urls, date')
-        .eq('user_id', user.id)
-        .not('photo_urls', 'is', null)
-        .order('date', { ascending: false })
-        .limit(5);
-
-      let weight = null;
-      if (weightData && weightData.length > 0) {
-        const current = weightData[0];
-        const previous = weightData[1];
-        weight = {
-          current: current.weight,
-          change: previous ? current.weight - previous.weight : 0,
-          date: current.date
-        };
-      }
-
-      let measurements = null;
-      if (measurementsData && measurementsData.length > 0) {
-        const latest = measurementsData[0];
-        measurements = {
-          waist: latest.waist || 0,
-          chest: latest.chest || 0,
-          arms: latest.arms || 0,
-          date: latest.date
-        };
-      }
-
-      let photos = null;
-      if (photosData && photosData.length > 0) {
-        const totalPhotos = photosData.reduce((sum, entry) => {
-          const urls = Array.isArray(entry.photo_urls) ? entry.photo_urls : 
-                      typeof entry.photo_urls === 'string' ? JSON.parse(entry.photo_urls || '[]') : [];
-          return sum + urls.length;
-        }, 0);
-        
-        photos = {
-          count: totalPhotos,
-          lastDate: photosData[0].date
-        };
-      }
-
-      setBodyData({ weight, measurements, photos });
-    } catch (error) {
-      console.error('Error loading body data:', error);
-    } finally {
-      setLoading(false);
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await uploadProgressPhoto(file);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const diffDays = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Heute';
-    if (diffDays === 1) return 'Gestern';
-    if (diffDays < 7) return `vor ${diffDays} Tagen`;
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  const handleTargetImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await uploadTargetImage(file);
+    }
   };
 
-  if (loading) {
-    return (
-      <Card className="border-blue-200 dark:border-blue-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-blue-700 dark:text-blue-400">
-            <Scale className="h-4 w-4" />
-            Körperdaten
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground">Lade Daten...</div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const commonExercises = [
+    'Bankdrücken', 'Kniebeugen', 'Kreuzheben', 'Schulterdrücken',
+    'Langhantelrudern', 'Klimmzüge', 'Dips', 'Bizep Curls'
+  ];
 
   return (
-    <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-background dark:from-blue-950/20">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2 text-blue-700 dark:text-blue-400">
+    <Card className="border-muted bg-muted/30 rounded-2xl">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base flex items-center gap-2 text-foreground">
           <Scale className="h-4 w-4" />
-          Körperdaten
+          Körper & Ziele
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Weight Section */}
-        {bodyData.weight ? (
-          <div className="bg-background/50 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <Scale className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">Gewicht</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {bodyData.weight.change > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-red-500" />
-                ) : bodyData.weight.change < 0 ? (
-                  <TrendingDown className="h-3 w-3 text-green-500" />
-                ) : (
-                  <Minus className="h-3 w-3 text-gray-500" />
-                )}
-                <span className={`text-xs ${
-                  bodyData.weight.change > 0 ? 'text-red-600' : 
-                  bodyData.weight.change < 0 ? 'text-green-600' : 'text-gray-600'
-                }`}>
-                  {bodyData.weight.change > 0 ? '+' : ''}{bodyData.weight.change.toFixed(1)}kg
-                </span>
-              </div>
+      <CardContent className="space-y-4">
+        
+        {/* Progress Photos Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Camera className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Fortschrittsfotos</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {bodyData.weight.current.toFixed(1)} kg
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {formatDate(bodyData.weight.date)}
-              </span>
-            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => photoInputRef.current?.click()}
+              className="h-8 px-3"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Foto
+            </Button>
           </div>
-        ) : (
-          <div className="bg-background/50 rounded-lg p-3 border border-dashed border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Scale className="h-4 w-4" />
-              <span className="text-sm">Noch kein Gewicht erfasst</span>
-            </div>
-          </div>
-        )}
-
-        {/* Measurements Section */}
-        {bodyData.measurements ? (
-          <div className="bg-background/50 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 mb-2">
-              <Ruler className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium">Körpermaße</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              {bodyData.measurements.waist > 0 && (
-                <div className="text-center">
-                  <div className="font-medium text-blue-600 dark:text-blue-400">
-                    {bodyData.measurements.waist}cm
-                  </div>
-                  <div className="text-muted-foreground">Taille</div>
+          
+          {photos.length > 0 ? (
+            <div className="grid grid-cols-4 gap-2">
+              {photos.slice(0, 4).map((photo) => (
+                <div
+                  key={photo.id}
+                  className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => setSelectedImage(photo.image_url)}
+                >
+                  <img
+                    src={photo.image_url}
+                    alt="Progress"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-              )}
-              {bodyData.measurements.chest > 0 && (
-                <div className="text-center">
-                  <div className="font-medium text-blue-600 dark:text-blue-400">
-                    {bodyData.measurements.chest}cm
-                  </div>
-                  <div className="text-muted-foreground">Brust</div>
-                </div>
-              )}
-              {bodyData.measurements.arms > 0 && (
-                <div className="text-center">
-                  <div className="font-medium text-blue-600 dark:text-blue-400">
-                    {bodyData.measurements.arms}cm
-                  </div>
-                  <div className="text-muted-foreground">Arme</div>
-                </div>
-              )}
+              ))}
             </div>
-            <div className="text-xs text-muted-foreground mt-1 text-center">
-              {formatDate(bodyData.measurements.date)}
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-6 border border-dashed border-border text-center">
+              <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Noch keine Fortschrittsfotos</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Dokumentiere deinen Fortschritt mit Fotos
+              </p>
             </div>
-          </div>
-        ) : (
-          <div className="bg-background/50 rounded-lg p-3 border border-dashed border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Ruler className="h-4 w-4" />
-              <span className="text-sm">Noch keine Maße erfasst</span>
-            </div>
-          </div>
-        )}
-
-        {/* Photos Section */}
-        {bodyData.photos ? (
-          <div className="bg-background/50 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Camera className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">Fortschrittsfotos</span>
-              </div>
-              <Badge variant="secondary" className="text-xs">
-                {bodyData.photos.count} Fotos
-              </Badge>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Letztes Foto: {formatDate(bodyData.photos.lastDate)}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-background/50 rounded-lg p-3 border border-dashed border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Camera className="h-4 w-4" />
-              <span className="text-sm">Noch keine Fotos erfasst</span>
-            </div>
-          </div>
-        )}
-
-        <div className="text-xs text-muted-foreground text-center">
-          💡 Erfasse deine Daten über die Index-Seite
+          )}
         </div>
+
+        {/* Target Image Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Zielbild</span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => targetInputRef.current?.click()}
+                className="h-8 px-3"
+              >
+                <Upload className="h-3 w-3 mr-1" />
+                Upload
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  toast.info('AI-Generierung kommt bald!');
+                }}
+                className="h-8 px-3"
+              >
+                <Zap className="h-3 w-3 mr-1" />
+                AI
+              </Button>
+            </div>
+          </div>
+          
+          {targetImages.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {targetImages.slice(0, 2).map((image) => (
+                <div
+                  key={image.id}
+                  className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative"
+                  onClick={() => setSelectedImage(image.image_url)}
+                >
+                  <img
+                    src={image.image_url}
+                    alt="Target"
+                    className="w-full h-full object-cover"
+                  />
+                  <Badge 
+                    variant="secondary" 
+                    className="absolute top-2 left-2 text-xs"
+                  >
+                    {image.image_type === 'ai_generated' ? 'AI' : 'Upload'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-6 border border-dashed border-border text-center">
+              <Target className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Kein Zielbild definiert</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Lade ein Foto hoch oder erstelle eins mit AI
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Strength Goals Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Dumbbell className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Kraftziele</span>
+          </div>
+          
+          {goals.length > 0 && (
+            <div className="space-y-2">
+              {goals.slice(0, 3).map((goal) => (
+                <div
+                  key={goal.id}
+                  className="bg-background/60 rounded-lg p-3 border border-border"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{goal.exercise_name}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteStrengthGoal(goal.id)}
+                          className="h-6 w-6 p-0 hover:bg-destructive/10"
+                        >
+                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {goal.current_1rm_kg && (
+                          <span>{goal.current_1rm_kg}kg</span>
+                        )}
+                        <TrendingUp className="h-3 w-3" />
+                        <span className="font-medium text-primary">
+                          {goal.target_1rm_kg}kg
+                        </span>
+                        {goal.estimated_weeks && (
+                          <span className="ml-auto">
+                            ~{goal.estimated_weeks}w
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add New Goal */}
+          <div className="bg-muted/50 rounded-lg p-3 border border-dashed border-border">
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <Input
+                placeholder="Übung"
+                value={newGoal.exercise}
+                onChange={(e) => setNewGoal(prev => ({ ...prev, exercise: e.target.value }))}
+                className="h-8 text-xs"
+                list="exercises"
+              />
+              <datalist id="exercises">
+                {commonExercises.map(exercise => (
+                  <option key={exercise} value={exercise} />
+                ))}
+              </datalist>
+              <Input
+                placeholder="Aktuell (kg)"
+                value={newGoal.current}
+                onChange={(e) => setNewGoal(prev => ({ ...prev, current: e.target.value }))}
+                className="h-8 text-xs"
+                type="number"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ziel (kg)"
+                value={newGoal.target}
+                onChange={(e) => setNewGoal(prev => ({ ...prev, target: e.target.value }))}
+                className="h-8 text-xs flex-1"
+                type="number"
+              />
+              <Button
+                size="sm"
+                onClick={handleAddGoal}
+                className="h-8 px-3"
+                disabled={!newGoal.exercise || !newGoal.target}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Ziel
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Hidden File Inputs */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoUpload}
+          className="hidden"
+        />
+        <input
+          ref={targetInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleTargetImageUpload}
+          className="hidden"
+        />
+
+        {/* Image Modal */}
+        {selectedImage && (
+          <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Bild ansehen</DialogTitle>
+              </DialogHeader>
+              <div className="aspect-square overflow-hidden rounded-lg">
+                <img
+                  src={selectedImage}
+                  alt="Full size view"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </CardContent>
     </Card>
   );

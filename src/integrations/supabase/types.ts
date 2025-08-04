@@ -3248,6 +3248,45 @@ export type Database = {
         }
         Relationships: []
       }
+      strength_goals: {
+        Row: {
+          created_at: string
+          current_1rm_kg: number | null
+          estimated_weeks: number | null
+          exercise_name: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          target_1rm_kg: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_1rm_kg?: number | null
+          estimated_weeks?: number | null
+          exercise_name: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          target_1rm_kg: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_1rm_kg?: number | null
+          estimated_weeks?: number | null
+          exercise_name?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          target_1rm_kg?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -3426,6 +3465,45 @@ export type Database = {
           image_url?: string
           recognized_supplements?: Json
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      target_images: {
+        Row: {
+          created_at: string
+          generation_prompt: string | null
+          id: string
+          image_type: string
+          image_url: string
+          is_active: boolean
+          target_body_fat_percentage: number | null
+          target_weight_kg: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generation_prompt?: string | null
+          id?: string
+          image_type: string
+          image_url: string
+          is_active?: boolean
+          target_body_fat_percentage?: number | null
+          target_weight_kg?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generation_prompt?: string | null
+          id?: string
+          image_type?: string
+          image_url?: string
+          is_active?: boolean
+          target_body_fat_percentage?: number | null
+          target_weight_kg?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
