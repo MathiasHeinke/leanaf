@@ -35,10 +35,12 @@ export const calculateTrainingPrognosis = ({
     return null;
   }
 
-  // Calculate weekly workouts
-  const totalWorkouts = workoutData.reduce((sum, day) => 
-    sum + day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length, 0
-  );
+  // Calculate weekly workouts - count only training days (not individual sessions)
+  const trainingDays = workoutData.filter(day => {
+    const hasQuickWorkout = day.quickWorkouts.some((w: any) => w.did_workout);
+    const hasAdvancedSession = day.advancedSessions.length > 0;
+    return hasQuickWorkout || hasAdvancedSession;
+  }).length;
   
   // Calculate actual weeks from data instead of using fixed values
   const dates = workoutData.map(day => new Date(day.date)).sort((a, b) => a.getTime() - b.getTime());
@@ -47,8 +49,8 @@ export const calculateTrainingPrognosis = ({
   const daysDifference = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)));
   const actualWeeks = Math.max(1, daysDifference / 7);
   
-  // Cap unrealistic values
-  const weeklyWorkouts = Math.min(10, totalWorkouts / actualWeeks);
+  // Calculate realistic weekly workouts based on training days
+  const weeklyWorkouts = trainingDays / actualWeeks;
 
   // Calculate average RPE from advanced sessions - fix data structure
   const allSets = workoutData.flatMap((day) => 
@@ -140,18 +142,7 @@ export const calculateTrainingPrognosis = ({
     });
   }
 
-  // Workout frequency insight
-  if (weeklyWorkouts > 0) {
-    const frequency = weeklyWorkouts >= 4 ? 'sehr aktiv' : weeklyWorkouts >= 2 ? 'aktiv' : 'wenig aktiv';
-    insights.push({
-      type: 'strength',
-      priority: weeklyWorkouts < 2 ? 'high' : 'medium',
-      title: 'Trainingsfrequenz',
-      description: `${weeklyWorkouts.toFixed(1)} Workouts pro Woche (${frequency})`,
-      value: weeklyWorkouts,
-      color: weeklyWorkouts >= 3 ? 'text-green-600' : weeklyWorkouts >= 2 ? 'text-orange-600' : 'text-red-600'
-    });
-  }
+  // Note: Removed redundant Trainingsfrequenz insight as it's already shown in overview cards
 
   // Discrepancy insight
   if (discrepancies.length > 0) {
@@ -233,8 +224,9 @@ const analyzeWorkoutHabits = (workoutData: any[]): StrengthInsight[] => {
   const dayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
   
   workoutData.forEach(day => {
-    const workoutCount = day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length;
-    if (workoutCount > 0) {
+    const hasQuickWorkout = day.quickWorkouts.some((w: any) => w.did_workout);
+    const hasAdvancedSession = day.advancedSessions.length > 0;
+    if (hasQuickWorkout || hasAdvancedSession) {
       const dayOfWeek = new Date(day.date).getDay();
       const dayName = dayNames[dayOfWeek];
       dayFrequency.set(dayName, (dayFrequency.get(dayName) || 0) + 1);
@@ -263,8 +255,9 @@ const analyzeWorkoutHabits = (workoutData: any[]): StrengthInsight[] => {
   let currentRestStreak = 0;
   
   workoutData.forEach(day => {
-    const workoutCount = day.quickWorkouts.filter((w: any) => w.did_workout).length + day.advancedSessions.length;
-    if (workoutCount === 0) {
+    const hasQuickWorkout = day.quickWorkouts.some((w: any) => w.did_workout);
+    const hasAdvancedSession = day.advancedSessions.length > 0;
+    if (!hasQuickWorkout && !hasAdvancedSession) {
       currentRestStreak++;
     } else {
       if (currentRestStreak > 0) {
