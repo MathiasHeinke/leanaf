@@ -12,12 +12,15 @@ import {
   Calendar,
   BarChart3,
   Trophy,
-  Activity
+  Activity,
+  Footprints,
+  Heart
 } from "lucide-react";
 import { useUnifiedWorkoutData } from "@/hooks/useUnifiedWorkoutData";
 import { calculateTrainingPrognosis, type TrainingPrognosisData } from "@/utils/trainingPrognosis";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { format, subDays } from "date-fns";
 
 interface TrainingAnalysisProps {
   timeRange?: 'week' | 'month' | 'year';
@@ -27,12 +30,15 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
   const { user } = useAuth();
   const { workoutData, loading } = useUnifiedWorkoutData(timeRange);
   const [profileData, setProfileData] = useState<any>(null);
+  const [stepsData, setStepsData] = useState<any[]>([]);
+  const [activityScore, setActivityScore] = useState<number>(0);
 
   useEffect(() => {
     if (user) {
       loadProfileData();
+      loadStepsData();
     }
-  }, [user]);
+  }, [user, timeRange]);
 
   const loadProfileData = async () => {
     try {
@@ -47,6 +53,39 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
     } catch (error) {
       console.error('Error loading profile data:', error);
     }
+  };
+
+  const loadStepsData = async () => {
+    if (!user) return;
+
+    try {
+      const daysAgo = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 365;
+      const startDate = format(subDays(new Date(), daysAgo), 'yyyy-MM-dd');
+
+      const { data, error } = await supabase
+        .from('daily_activities')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', startDate)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      setStepsData(data || []);
+    } catch (error) {
+      console.error('Error loading steps data:', error);
+      setStepsData([]);
+    }
+  };
+
+  const calculateActivityScore = () => {
+    if (!trainingPrognosis || stepsData.length === 0) return;
+
+    const avgSteps = stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length;
+    const workoutScore = (trainingPrognosis.weeklyWorkouts / 4) * 50; // Max 50 points for workouts
+    const stepsScore = Math.min((avgSteps / 10000) * 50, 50); // Max 50 points for steps
+    
+    const totalScore = Math.round(workoutScore + stepsScore);
+    setActivityScore(totalScore);
   };
 
   if (loading) {
@@ -68,6 +107,13 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
     timeRange,
     profileData
   });
+
+  // Calculate activity score when data is available
+  useEffect(() => {
+    if (trainingPrognosis && stepsData.length >= 0) {
+      calculateActivityScore();
+    }
+  }, [trainingPrognosis, stepsData]);
 
   if (!trainingPrognosis) {
     return (
@@ -215,6 +261,81 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
             </div>
           </div>
         </div>
+
+        {/* Activity Score - Integration von Training + Schritte */}
+        {activityScore > 0 && (
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Heart className="h-4 w-4 text-primary" />
+              Gesamtaktivität Score
+            </h4>
+            <div className="p-4 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{activityScore}/100</div>
+                    <div className="text-sm text-muted-foreground">
+                      {activityScore >= 80 ? '🏆 Hervorragend' : activityScore >= 60 ? '💪 Sehr gut' : activityScore >= 40 ? '👍 Gut' : '📈 Verbesserbar'}
+                    </div>
+                  </div>
+                </div>
+                <Badge variant="outline" className="border-emerald-500 text-emerald-600">
+                  {stepsData.length > 0 ? `Ø ${Math.round(stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length).toLocaleString()} Schritte` : 'Keine Schrittdaten'}
+                </Badge>
+              </div>
+              <Progress value={activityScore} className="h-3" />
+              <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Dumbbell className="h-4 w-4 text-orange-500" />
+                  <span>Training: {Math.round((trainingPrognosis.weeklyWorkouts / 4) * 50)}/50</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Footprints className="h-4 w-4 text-blue-500" />
+                  <span>Schritte: {Math.round(Math.min((stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length / 10000) * 50, 50))}/50</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Korrelations-Analyse zwischen Training und Schritten */}
+        {stepsData.length > 0 && trainingPrognosis.weeklyWorkouts > 0 && (
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Training & Schritte Korrelation
+            </h4>
+            <div className="p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-700/30">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Trainingstage</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {Math.round(trainingPrognosis.weeklyWorkouts * (timeRange === 'week' ? 1 : timeRange === 'month' ? 4 : 52))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">pro {timeRange === 'week' ? 'Woche' : timeRange === 'month' ? 'Monat' : 'Jahr'}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Ø Schritte an Trainingstagen</div>
+                  <div className="text-lg font-bold text-green-600">
+                    {stepsData.length > 0 ? Math.round(stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length).toLocaleString() : '0'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Schritte/Tag</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Aktivitätslevel</div>
+                  <div className="text-lg font-bold text-purple-600">
+                    {stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length >= 10000 ? 'Aktiv' : 
+                     stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length >= 7500 ? 'Moderat' : 'Niedrig'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">WHO Klassifikation</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Training Insights */}
         {trainingPrognosis.insights.length > 0 && (
