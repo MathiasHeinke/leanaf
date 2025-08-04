@@ -52,6 +52,51 @@ export function saschaGuard(reply: string, style: SpeechStyle): string {
   return result;
 }
 
+export function ruhlGuard(reply: string, style: SpeechStyle): string {
+  if (!reply || typeof reply !== 'string') return reply;
+  
+  // 1. Limit exclamation marks to 1 max
+  reply = reply.replace(/!{2,}/g, '!');
+  const exclamationCount = (reply.match(/!/g) || []).length;
+  if (exclamationCount > style.exclamationMax) {
+    let count = 0;
+    reply = reply.replace(/!/g, (match) => {
+      count++;
+      return count <= style.exclamationMax ? match : '.';
+    });
+  }
+  
+  // 2. Limit Hessian dialect words to max 2 per response
+  const hessianWords = /\b(net|ei|babbo|jung|mol|des)\b/gi;
+  const matches = reply.match(hessianWords) || [];
+  if (matches.length > 2) {
+    // Keep only first 2 occurrences
+    let hessianCount = 0;
+    reply = reply.replace(hessianWords, (match) => {
+      hessianCount++;
+      return hessianCount <= 2 ? match : match.replace(/net/gi, 'nicht').replace(/ei/gi, '').replace(/babbo/gi, 'Typ').replace(/jung/gi, '').replace(/mol/gi, 'mal').replace(/des/gi, 'das');
+    });
+  }
+  
+  // 3. Sentence length guard (≤12 words)
+  const sentences = reply.split(/[.!?]+/).filter(s => s.trim());
+  const processedSentences = sentences.map(sentence => {
+    const words = sentence.trim().split(/\s+/);
+    if (words.length > style.sentenceMaxWords) {
+      return words.slice(0, style.sentenceMaxWords - 1).join(' ') + '...';
+    }
+    return sentence.trim();
+  });
+  
+  // 4. Ensure proper sentence ending
+  let result = processedSentences.join('. ').trim();
+  if (result && !result.match(/[.!?]$/)) {
+    result += '.';
+  }
+  
+  return result;
+}
+
 export function applyTimeBasedGreeting(reply: string, style: SpeechStyle, currentHour: number): string {
   // Replace generic greetings with time-appropriate ones
   let greeting = style.greetings.afternoon; // default
@@ -95,10 +140,16 @@ export function validatePersonaResponse(reply: string, personaId: string): boole
       break;
       
     case 'markus':
-      // Check for Hessian dialect overuse
-      const hessianTerms = /babbo|ei|net/gi;
+    case 'persona_ruhl':
+      // Check for Hessian dialect overuse (max 2 per response)
+      const hessianTerms = /babbo|ei|net|jung|mol|des/gi;
       const hessianCount = (reply.match(hessianTerms) || []).length;
       if (hessianCount > 2) return false;
+      
+      // Check for catch phrases appropriateness
+      const catchPhrases = /des bedarfs|ballern.*babbeln|nur fleisch macht fleisch/gi;
+      const catchCount = (reply.match(catchPhrases) || []).length;
+      if (catchCount > 1) return false; // Max 1 catch phrase per response
       
       break;
   }
@@ -115,8 +166,18 @@ export function enhancedSpeechGuard(
 ): string {
   if (!reply) return reply;
   
-  // Apply speech style guards
-  let processed = saschaGuard(reply, style);
+  // Apply persona-specific speech guards
+  let processed: string;
+  switch (personaId) {
+    case 'markus':
+    case 'persona_ruhl':
+      processed = ruhlGuard(reply, style);
+      break;
+    case 'sascha':
+    default:
+      processed = saschaGuard(reply, style);
+      break;
+  }
   
   // Apply time-based greeting
   processed = applyTimeBasedGreeting(processed, style, currentHour);
