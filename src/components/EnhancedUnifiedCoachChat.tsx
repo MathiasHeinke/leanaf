@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Loader2, Brain, Database, Clock, Zap, Users } from 'lucide-react';
+import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useEnhancedChat, EnhancedChatMessage } from '@/hooks/useEnhancedChat';
 import { toast } from 'sonner';
@@ -389,28 +390,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const renderTypingIndicator = () => {
     if (!isChatLoading) return null;
     
-    return (
-      <div className="flex gap-3 mb-4 justify-start">
-        <Avatar className="w-8 h-8 flex-shrink-0">
-          <AvatarImage src={coach?.imageUrl} />
-          <AvatarFallback>{coach?.name?.[0] || 'C'}</AvatarFallback>
-        </Avatar>
-        <div className="bg-muted p-3 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">
-              {enableAdvancedFeatures ? 'Analysiert Kontext und antwortet...' : 'Tippt...'}
-            </span>
-            {enableAdvancedFeatures && (
-              <div className="flex gap-1">
-                <Brain className="w-3 h-3 text-primary animate-pulse" />
-                {isMemoryUpdating && <Users className="w-3 h-3 text-blue-500 animate-pulse" />}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    return <TypingIndicator name={coach?.name || 'Coach'} />;
   };
 
   // ============= ENHANCED SEND MESSAGE HANDLER =============
@@ -438,7 +418,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
             setInputText={setInputText}
             onSendMessage={handleEnhancedSendMessage}
             isLoading={isChatLoading}
-            placeholder={enableAdvancedFeatures ? "Nachricht eingeben... (mit vollem Kontext)" : "Nachricht eingeben..."}
+            placeholder="Nachricht eingeben..."
           />
         }
         bannerCollapsed={bannerCollapsed}
@@ -520,7 +500,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
             setInputText={setInputText}
             onSendMessage={handleEnhancedSendMessage}
             isLoading={isChatLoading}
-            placeholder={enableAdvancedFeatures ? "Nachricht eingeben... (mit vollem Kontext)" : "Nachricht eingeben..."}
+            placeholder="Nachricht eingeben..."
           />
         </div>
       </CardContent>
