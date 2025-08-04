@@ -77,16 +77,24 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
     }
   };
 
-  const calculateActivityScore = () => {
-    if (!trainingPrognosis || stepsData.length === 0) return;
+  // Calculate training prognosis first (before any hooks)
+  const trainingPrognosis = loading ? null : calculateTrainingPrognosis({
+    workoutData,
+    timeRange,
+    profileData
+  });
 
-    const avgSteps = stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length;
-    const workoutScore = (trainingPrognosis.weeklyWorkouts / 4) * 50; // Max 50 points for workouts
-    const stepsScore = Math.min((avgSteps / 10000) * 50, 50); // Max 50 points for steps
-    
-    const totalScore = Math.round(workoutScore + stepsScore);
-    setActivityScore(totalScore);
-  };
+  // Calculate activity score when data is available
+  useEffect(() => {
+    if (trainingPrognosis && stepsData.length >= 0) {
+      const avgSteps = stepsData.reduce((sum, day) => sum + (day.steps || 0), 0) / stepsData.length;
+      const workoutScore = (trainingPrognosis.weeklyWorkouts / 4) * 50; // Max 50 points for workouts
+      const stepsScore = Math.min((avgSteps / 10000) * 50, 50); // Max 50 points for steps
+      
+      const totalScore = Math.round(workoutScore + stepsScore);
+      setActivityScore(totalScore);
+    }
+  }, [trainingPrognosis, stepsData]);
 
   if (loading) {
     return (
@@ -101,19 +109,6 @@ export const TrainingAnalysis = ({ timeRange = 'month' }: TrainingAnalysisProps)
       </div>
     );
   }
-
-  const trainingPrognosis = calculateTrainingPrognosis({
-    workoutData,
-    timeRange,
-    profileData
-  });
-
-  // Calculate activity score when data is available
-  useEffect(() => {
-    if (trainingPrognosis && stepsData.length >= 0) {
-      calculateActivityScore();
-    }
-  }, [trainingPrognosis, stepsData]);
 
   if (!trainingPrognosis) {
     return (
