@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { deriveSystemFlags, buildSystemFlagsPrompt } from './utils/systemFlags.ts';
 import { checkSupplementStack, generateSupplementAdvice } from './utils/supplementSafety.ts';
+import { enhancedSpeechGuard, SpeechStyle } from './utils/speechGuards.ts';
 
 // Import shared utilities - simplified inline for now
 function newTraceId(): string {
@@ -144,8 +145,29 @@ async function buildAIContext(input: any) {
       },
       'sascha': {
         name: 'Sascha Weber',
-        style: ['analytisch', 'stoisch', 'systematisch'],
-        expertise: ['Kraft', 'Performance', 'Technik', 'Periodisierung']
+        role: 'Evidenzbasierter Performance-Coach',
+        style: ['stoisch', 'direkt', 'kameradschaftlich', 'pflichtbewusst', 'analytisch'],
+        expertise: ['Kraft', 'Performance', 'Technik', 'Periodisierung', 'Evidenzbasiertes Training'],
+        backstory: 'Ex-Feldwebel, 52 Jahre, norddeutsches Küstenland. 12 Jahre Bundeswehr, M.Sc. Sportwissenschaft.',
+        greetings: {
+          morning: 'Moin',
+          afternoon: 'Hey',
+          evening: 'Guten Abend',
+          lateNight: 'Später Abend'
+        },
+        speechStyle: {
+          dialect: 'norddeutsch_light',
+          greetings: {
+            morning: 'Moin',
+            afternoon: 'Hey', 
+            evening: 'Guten Abend',
+            lateNight: 'Später Abend'
+          },
+          fillerWords: ['jau', 'passt', 'sauber', 'alles klar'],
+          sentenceMaxWords: 15,
+          exclamationMax: 1,
+          regionCharacteristics: 'Niedersächsisches Küstenland - dezenter Nord-Slang'
+        }
       }
     };
     return personas[coachId] || personas['lucy'];
@@ -509,6 +531,30 @@ function detectRequestType(userMessage: string): string {
 }
 
 function buildPersonaPrompt(persona: any, coachId: string): string {
+  if (coachId === 'sascha') {
+    // Load base prompt from external file
+    const basePromptPath = './prompts/sascha_base.md';
+    try {
+      return Deno.readTextFileSync(basePromptPath);
+    } catch (error) {
+      console.warn('Could not load Sascha base prompt, using fallback');
+      return `Du bist Sascha Weber, evidenzbasierter Performance-Coach.
+
+PERSÖNLICHKEIT:
+• Ex-Feldwebel, 38, norddeutsches Küstenland
+• Stoisch, direkt, kameradschaftlich, analytisch
+• 12 Jahre Bundeswehr, M.Sc. Sportwissenschaft
+• Evidenz > Bro-Science, Disziplin > Ausreden
+
+KOMMUNIKATIONSSTIL:
+• Grußformel: "Moin" bis 11 Uhr, "Hey" nachmittags
+• Nord-Slang sparsam: "jau", "passt", "sauber", "alles klar"
+• Kurze Sätze (≤15 Wörter), max 1 Ausrufezeichen
+• Militär-Anekdoten nur für Erwachsene (≥30 Jahre)
+• Pragmatisch bei Ausreden: "Verstanden. Wieviel Zeit hast du heute?"`;
+    }
+  }
+  
   if (coachId === 'lucy') {
     return `Du bist Dr. Lucy Martinez, eine empathische und wissenschaftlich fundierte Fitness- und Ernährungscoach.
 
@@ -547,11 +593,16 @@ KOMMUNIKATIONSSTIL:
 Stil: ${persona?.style?.join(', ') || 'direkt, hilfreich'}`;
 }
 
-function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, userMessage: string): string {
+function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, userMessage: string, systemFlagsPrompt?: string): string {
   const { persona, memory, daily, ragChunks } = ctx;
   
   // Base persona prompt
   let prompt = buildPersonaPrompt(persona, coachId) + '\n\n';
+  
+  // Add system flags for enhanced coaching
+  if (systemFlagsPrompt) {
+    prompt += systemFlagsPrompt + '\n\n';
+  }
   
   // Add memory context (always include if available)
   if (memory) {
@@ -713,7 +764,7 @@ serve(async (req) => {
       hasHistory: conversationHistory.length > 0
     }, conversationId, messageId);
 
-    // Build AI context
+    // Build AI context with profile data for system flags
     const contextStart = Date.now();
     const ctx = await buildAIContext({
       userId,
@@ -722,6 +773,22 @@ serve(async (req) => {
       enableRag: true,
       tokenCap: 6000
     });
+    
+    // Get profile for enhanced system flags
+    const supabase = getSupabaseClient();
+    let profile = null;
+    if (supabase) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('weight, age, birth_year, location')
+        .eq('user_id', userId)
+        .maybeSingle();
+      profile = data;
+    }
+    
+    // Generate enhanced system flags
+    const systemFlags = deriveSystemFlags(message, profile || {}, ctx.daily || {});
+    const systemFlagsPrompt = buildSystemFlagsPrompt(systemFlags);
     
     await traceEvent(traceId, 'context_built', 'complete', {
       tokensIn: ctx.metrics.tokensIn,
@@ -734,7 +801,7 @@ serve(async (req) => {
     // ============= PHASE 4: DYNAMIC PROMPT COMPOSER =============
     // Detect request type and build intelligent prompt
     const requestType = detectRequestType(message);
-    const systemPrompt = buildDynamicPrompt(requestType, ctx, coachId, message);
+    const systemPrompt = buildDynamicPrompt(requestType, ctx, coachId, message, systemFlagsPrompt);
     
     await traceEvent(traceId, 'prompt_analysis', 'complete', {
       requestType,
@@ -779,8 +846,14 @@ serve(async (req) => {
     }
 
     const openaiData = await openaiResponse.json();
-    const aiResponse = openaiData.choices[0].message.content;
+    let aiResponse = openaiData.choices[0].message.content;
     const tokensUsed = openaiData.usage;
+
+    // Apply speech guards for Sascha
+    if (coachId === 'sascha' && ctx.persona?.speechStyle) {
+      const currentHour = new Date().getHours();
+      aiResponse = enhancedSpeechGuard(aiResponse, 'sascha', ctx.persona.speechStyle as SpeechStyle, currentHour);
+    }
 
     await traceEvent(traceId, 'openai_call', 'complete', {
       promptTokens: tokensUsed.prompt_tokens,

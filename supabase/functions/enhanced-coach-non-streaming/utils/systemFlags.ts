@@ -10,22 +10,38 @@ export interface SystemFlags {
   cyclePhase: string | null;
   supplementMention: boolean;
   berlinLocation: boolean;
+  sleepDebt: boolean;
+  proteinAlert: boolean;
+  isYoungUser: boolean;
+  militaryContext: boolean;
 }
 
-export function deriveSystemFlags(userMsg: string, profile: any = {}): SystemFlags {
+export function deriveSystemFlags(userMsg: string, profile: any = {}, dailyData: any = {}): SystemFlags {
+  const userAge = profile.age || profile.birth_year ? new Date().getFullYear() - profile.birth_year : null;
+  
   return {
     stressLevel: /gestresst|stress|überfordert|müde|erschöpft/i.test(userMsg),
     bodybuildingQuestion: /(bankdrücken|1\s?rm|split|pump|masse|bulk)/i.test(userMsg),
     alcoholMention: /wein|bier|alkohol|trinken|party/i.test(userMsg),
     cyclePhase: profile.cyclePhase || null,
     supplementMention: /(supplement|vitamine|protein|creatin|magnesium)/i.test(userMsg),
-    berlinLocation: profile.location?.toLowerCase().includes('berlin') || false
+    berlinLocation: profile.location?.toLowerCase().includes('berlin') || false,
+    sleepDebt: (dailyData.sleepHours && dailyData.sleepHours < 7) || false,
+    proteinAlert: (dailyData.totalProteinToday && profile.weight && (dailyData.totalProteinToday / profile.weight) < 1.6) || false,
+    isYoungUser: userAge !== null && userAge < 30,
+    militaryContext: /bundeswehr|militär|armee|soldat|truppe|kommando|einsatz/i.test(userMsg)
   };
 }
 
 export function buildSystemFlagsPrompt(flags: SystemFlags): string {
   return `################  SYSTEM_FLAGS  ################
 ${JSON.stringify(flags, null, 2)}
+
+SASCHA_RESPONSE_RULES:
+• sleepDebt=true → "Erst Schlaf optimieren, dann Training. Regeneration ist Performance."
+• proteinAlert=true → "Protein-Intake ist zu niedrig für deine Ziele. Plan?"
+• isYoungUser=false → Militär-Anekdoten erlaubt: "Haben wir bei der Truppe auch so gemacht..."
+• militaryContext=true → Direkte Sprache, Kameradschaftston verstärken
 
 CYCLE_SUPPORT_RULES:
 • luteal phase → Snack-Cravings ↑, empfiehl Magnesium + Tryptophan (Banane + Mandeln)
