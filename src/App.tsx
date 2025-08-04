@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import Profile from "./pages/Profile";
 import Subscription from "./pages/Subscription";
+import Onboarding from "./pages/Onboarding";
 import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
 import HistoryPage from "./pages/History";
@@ -52,6 +53,7 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
+                      <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/account" element={<Account />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/subscription" element={<Subscription />} />

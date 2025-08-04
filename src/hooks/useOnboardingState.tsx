@@ -43,15 +43,8 @@ export const useOnboardingState = () => {
         });
       }
     } else {
-      // New user - show interactive onboarding instead of old profile onboarding
-      setOnboardingState({
-        showProfileOnboarding: false,
-        showIndexOnboarding: false,
-        showInteractiveOnboarding: true,
-        profileCompleted: false,
-        mealInputHighlighted: false,
-        showProfileIndicators: true,
-      });
+      // New user - redirect to new onboarding page
+      window.location.href = '/onboarding';
     }
   }, [user]);
 

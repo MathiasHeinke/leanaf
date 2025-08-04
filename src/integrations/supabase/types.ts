@@ -2514,6 +2514,33 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_stats: {
+        Row: {
+          created_at: string
+          current_coupons_used: number
+          id: string
+          max_coupons: number
+          total_users: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_coupons_used?: number
+          id?: string
+          max_coupons?: number
+          total_users?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_coupons_used?: number
+          id?: string
+          max_coupons?: number
+          total_users?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pipeline_automation_config: {
         Row: {
           active_topics: Json | null
@@ -4884,6 +4911,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      increment_onboarding_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       is_admin_by_email: {
         Args: Record<PropertyKey, never>

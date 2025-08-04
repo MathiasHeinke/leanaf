@@ -7,122 +7,79 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper logging function for debugging
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CREATE-CHECKOUT-SESSION] ${step}${detailsStr}`);
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Create a Supabase client using the anon key for user authentication
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
-
   try {
-    logStep("Function started");
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2023-10-16" });
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
-
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
-
+    const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    if (!user?.email) throw new Error("User not authenticated");
 
-    // Get request body to determine plan
-    const { plan = 'premium' } = await req.json().catch(() => ({}));
-    logStep("Plan requested", { plan });
+    const { plan, coupon_code } = await req.json();
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Existing customer found", { customerId });
-    } else {
-      logStep("No existing customer, will be created during checkout");
-    }
-
-    // Plan pricing configuration with 6-month and yearly options
     const planPricing = {
-      pro: {
-        amount: 1290, // €12.90
-        name: "KI Coach Pro",
-        features: ["Unlimited AI mit GPT-4.1", "Advanced Coach Chat", "Coach Recipes", "Priority Support"],
-        interval: "month" as const
-      },
-      "pro-sixmonths": {
-        amount: 5165, // €51.65 (6 months with 33% discount from €77.40)
-        name: "KI Coach Pro (6 Monate)",
-        features: ["Unlimited AI mit GPT-4.1", "Advanced Coach Chat", "Coach Recipes", "Priority Support", "33% Rabatt"],
-        interval: "month" as const,
-        interval_count: 6
-      },
-      "pro-yearly": {
-        amount: 7740, // €77.40 (50% discount from €154.80)
-        name: "KI Coach Pro (Jährlich)",
-        features: ["Unlimited AI mit GPT-4.1", "Advanced Coach Chat", "Coach Recipes", "Priority Support", "50% Jahresrabatt"],
-        interval: "year" as const
-      }
+      monthly: { amount: 1999, name: "GetLean AI Premium - Monatlich", interval: "month" },
+      sixmonths: { amount: 8999, name: "GetLean AI Premium - 6 Monate", interval: "month", interval_count: 6 }
     };
 
-    const selectedPlan = planPricing[plan as keyof typeof planPricing] || planPricing.pro;
-    logStep("Selected plan configuration", selectedPlan);
+    const selectedPlan = planPricing[plan as keyof typeof planPricing];
+    if (!selectedPlan) throw new Error(`Invalid plan: ${plan}`);
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
-    const session = await stripe.checkout.sessions.create({
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
+
+    const sessionOptions: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
           price_data: {
             currency: "eur",
-            product_data: { 
-              name: selectedPlan.name,
-              description: selectedPlan.features.join(", ")
-            },
+            product_data: { name: selectedPlan.name },
             unit_amount: selectedPlan.amount,
-            recurring: { 
+            recurring: {
               interval: selectedPlan.interval,
               ...(selectedPlan.interval_count && { interval_count: selectedPlan.interval_count })
-            },
+            }
           },
           quantity: 1,
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/subscription?success=true`,
-      cancel_url: `${origin}/subscription?canceled=true`,
-      metadata: {
-        user_id: user.id,
-        plan: plan
+      success_url: `${req.headers.get("origin")}/profile?success=true`,
+      cancel_url: `${req.headers.get("origin")}/onboarding`,
+    };
+
+    if (coupon_code) {
+      try {
+        await stripe.coupons.create({
+          id: coupon_code,
+          percent_off: 100,
+          duration: "repeating",
+          duration_in_months: 12,
+        });
+      } catch (e) {
+        // Coupon might already exist
       }
-    });
+      sessionOptions.discounts = [{ coupon: coupon_code }];
+    }
 
-    logStep("Checkout session created successfully", { sessionId: session.id, url: session.url });
-
+    const session = await stripe.checkout.sessions.create(sessionOptions);
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in create-checkout-session", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
