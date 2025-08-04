@@ -17,7 +17,6 @@ import Subscription from "./pages/Subscription";
 import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
 import HistoryPage from "./pages/History";
-import AnalysisPage from "./pages/Analysis";
 import Achievements from "./pages/Achievements";
 import Science from "./pages/Science";
 import Features from "./pages/Features";
@@ -58,7 +57,6 @@ const App = () => (
                       <Route path="/coach/:coachId" element={<CoachPage />} />
                       <Route path="/training" element={<TrainingPlus />} />
                       <Route path="/history" element={<HistoryPage />} />
-                      <Route path="/analysis" element={<AnalysisPage />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/science" element={<Science />} />
                       <Route path="/features" element={<Features />} />
