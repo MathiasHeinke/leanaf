@@ -64,12 +64,12 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   placeholder = "Nachricht eingeben...",
   className = ""
 }) => {
-  const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
   const [showTools, setShowTools] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Get input bar height for overlay
   const inputBarHeight = useInputBarHeight();
@@ -131,19 +131,30 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [inputText]);
 
-  // Handle media upload - simplified to match MediaUploadZone interface
-  const handleMediaUpload = useCallback((urls: string[]) => {
-    const newMedia = urls.map(url => {
-      const mediaType = getMediaType(url);
-      return {
-        url,
-        type: mediaType === 'unknown' ? 'image' : mediaType as 'image' | 'video'
-      };
-    });
-    setUploadedMedia(prev => [...prev, ...newMedia]);
-    setShowMediaUpload(false);
-    toast.success(`${urls.length} Datei(en) hochgeladen`);
-  }, [getMediaType]);
+  // Handle direct file selection - native file picker
+  const handleFileSelection = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      const urls = await uploadFiles(files);
+      const newMedia = urls.map(url => {
+        const mediaType = getMediaType(url);
+        return {
+          url,
+          type: mediaType === 'unknown' ? 'image' : mediaType as 'image' | 'video'
+        };
+      });
+      setUploadedMedia(prev => [...prev, ...newMedia]);
+    } catch (error) {
+      console.error('File upload failed:', error);
+    }
+    
+    // Reset input value to allow selecting same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [uploadFiles, getMediaType]);
 
   // Handle voice recording - start/stop only, no auto-send
   const handleVoiceToggle = useCallback(async () => {
@@ -210,7 +221,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
       removePendingTool(selectedTool);
     }
     clearTranscription();
-    setShowMediaUpload(false);
   }, [inputText, uploadedMedia, selectedTool, onSendMessage, setInputText, removePendingTool, clearTranscription]);
 
   // Handle key press
@@ -296,37 +306,16 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         </motion.div>
       )}
 
-      {/* Media Upload Zone */}
-      <AnimatePresence>
-        {showMediaUpload && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ type: "spring", duration: 0.3 }}
-            className="mb-3 overflow-hidden"
-          >
-            <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-medium">📁 Dateien hochladen</h3>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowMediaUpload(false)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <MediaUploadZone
-                onMediaUploaded={handleMediaUpload}
-                accept={['image/*', 'video/*']}
-                maxFiles={5}
-                className="min-h-[120px]"
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Hidden File Input for Native Picker */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        className="hidden"
+        onChange={handleFileSelection}
+        aria-label="Dateien auswählen"
+      />
 
       {/* Main Input Container */}
       <div className={`
@@ -500,14 +489,17 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setShowMediaUpload(!showMediaUpload)}
+              onClick={() => fileInputRef.current?.click()}
               className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
               disabled={isLoading}
               aria-label="Medien hinzufügen"
             >
               <Plus className="w-6 h-6" />
             </Button>
+          </div>
 
+          {/* Right Side: ④ Red Microphone + ⑤ Send Button */}
+          <div className="flex items-center gap-1">
             {/* ④ Red Microphone - 44x44pt touch target - iOS Alert Red #FF3B30 */}
             <Button
               type="button"
@@ -529,10 +521,8 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                 <Mic className="w-6 h-6" />
               )}
             </Button>
-          </div>
 
-          {/* Right Side: ⑤ Send Button */}
-          <div className="flex items-center">
+            {/* ⑤ Send Button */}
             <Button
               onClick={handleSend}
               disabled={!hasContent || isLoading}
