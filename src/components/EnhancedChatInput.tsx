@@ -27,7 +27,8 @@ import {
   PenTool,
   MessageSquare
 } from 'lucide-react';
-import { VoiceWaveAnimation } from '@/components/VoiceWaveAnimation';
+import { VoiceCanvasWaveform } from '@/components/VoiceCanvasWaveform';
+import { useInputBarHeight } from '@/hooks/useInputBarHeight';
 import { toast } from 'sonner';
 import { MediaUploadZone } from '@/components/MediaUploadZone';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
@@ -70,6 +71,9 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
+  // Get input bar height for overlay
+  const inputBarHeight = useInputBarHeight();
+  
   // Hooks
   const { uploadFiles, uploading, uploadProgress, getMediaType } = useMediaUpload();
   const { 
@@ -93,15 +97,18 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const selectedTool = pendingTools[0]?.tool || null;
   const selectedToolConfig = TOOLS.find(tool => tool.id === selectedTool);
 
-  // Get suggestions for current context
+  // Get suggestions for current context - max 4 as per spec
   const getSuggestions = () => {
-    return [
+    const allSuggestions = [
       "Wie kann ich meine Fitness verbessern?",
       "Was ist eine ausgewogene Ernährung?", 
       "Zeig mir einen Trainingsplan",
       "Wie bleibe ich motiviert?"
     ];
+    return allSuggestions.slice(0, 4); // Max 4 as per specification
   };
+
+  const suggestionCount = getSuggestions().length;
 
   // Recording timer
   useEffect(() => {
@@ -363,10 +370,65 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           )}
         </div>
 
-        {/* Button Row */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-border/50">
-          <div className="flex items-center gap-3">
-            {/* Tool Picker - 44x44pt touch target */}
+        {/* Button Row - Input Bar with exact icon order: ① Suggestions ② Tool-Picker ③ Plus ④ Red Microphone ⑤ Send */}
+        <div className="input-bar flex items-center justify-between px-4 py-2 border-t border-border/50">
+          <div className="flex items-center gap-1">
+            {/* ① Suggestions Button with Badge - 44x44pt touch target */}
+            <div className="relative">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+                className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
+                aria-label="Gesprächsvorschläge anzeigen"
+              >
+                <MessageSquare className="w-6 h-6" />
+                {suggestionCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
+                    {suggestionCount}
+                  </span>
+                )}
+              </Button>
+
+              {/* Suggestions Dropdown */}
+              <AnimatePresence>
+                {showSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ type: "spring", duration: 0.2 }}
+                    className="absolute bottom-full mb-2 left-0 z-50"
+                  >
+                    <div className="bg-background border border-border rounded-xl p-3 shadow-xl backdrop-blur-sm w-80">
+                      <div className="space-y-3">
+                        <h3 className="font-semibold text-sm flex items-center gap-2">
+                          💡 Gesprächsvorschläge
+                        </h3>
+                        <div className="space-y-2">
+                          {getSuggestions().map((suggestion, index) => (
+                            <Button
+                              key={index}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setInputText(suggestion);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full justify-start text-left h-auto p-3 whitespace-normal hover:bg-accent hover:text-accent-foreground"
+                            >
+                              {suggestion}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* ② Tool Picker - 44x44pt touch target */}
             <div className="relative">
               <Button
                 type="button"
@@ -434,95 +496,19 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Plus Icon - Native iOS File Picker - 44x44pt touch target */}
+            {/* ③ Plus Icon - Native File Picker - 44x44pt touch target */}
             <Button
               type="button"
               variant="ghost"
               onClick={() => setShowMediaUpload(!showMediaUpload)}
-              className={`
-                w-11 h-11 p-0 transition-all duration-200 
-                ${showMediaUpload ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground'}
-              `}
+              className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
               disabled={isLoading}
               aria-label="Medien hinzufügen"
             >
               <Plus className="w-6 h-6" />
             </Button>
 
-            {/* Suggestions Button - 44x44pt touch target */}
-            <div className="relative">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowSuggestions(!showSuggestions)}
-                className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
-                aria-label="Gesprächsvorschläge anzeigen"
-              >
-                <MessageSquare className="w-6 h-6" />
-              </Button>
-
-              {/* Suggestions Dropdown */}
-              <AnimatePresence>
-                {showSuggestions && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ type: "spring", duration: 0.2 }}
-                    className="absolute bottom-full mb-2 left-0 z-50"
-                  >
-                    <div className="bg-background border border-border rounded-xl p-3 shadow-xl backdrop-blur-sm w-80">
-                      <div className="space-y-3">
-                        <h3 className="font-semibold text-sm flex items-center gap-2">
-                          💡 Gesprächsvorschläge
-                        </h3>
-                        <div className="space-y-2">
-                          {getSuggestions().map((suggestion, index) => (
-                            <Button
-                              key={index}
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setInputText(suggestion);
-                                setShowSuggestions(false);
-                              }}
-                              className="w-full justify-start text-left h-auto p-3 whitespace-normal hover:bg-accent hover:text-accent-foreground"
-                            >
-                              {suggestion}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Right Side: Send Button + Voice Button */}
-          <div className="flex items-center gap-3">
-            {/* Send Button - 44x44pt touch target */}
-            <Button
-              onClick={handleSend}
-              disabled={!hasContent || isLoading}
-              className={`
-                w-11 h-11 p-0 transition-all duration-200 font-medium
-                ${hasContent && !isLoading
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg scale-100' 
-                  : 'bg-muted text-muted-foreground cursor-not-allowed scale-95'
-                }
-              `}
-              aria-label="Nachricht senden"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </Button>
-
-            {/* Voice Recording Button - iOS Alert Red #FF3B30 - 44x44pt touch target */}
+            {/* ④ Red Microphone - 44x44pt touch target - iOS Alert Red #FF3B30 */}
             <Button
               type="button"
               variant="ghost"
@@ -544,9 +530,31 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               )}
             </Button>
           </div>
+
+          {/* Right Side: ⑤ Send Button */}
+          <div className="flex items-center">
+            <Button
+              onClick={handleSend}
+              disabled={!hasContent || isLoading}
+              className={`
+                w-11 h-11 p-0 transition-all duration-200 font-medium
+                ${hasContent && !isLoading
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg scale-100' 
+                  : 'bg-muted text-muted-foreground cursor-not-allowed scale-95'
+                }
+              `}
+              aria-label="Nachricht senden"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Voice Recording Overlay - Only covers input field */}
+        {/* Voice Recording Overlay - Enhanced v2.1 - Only covers input bar area */}
         <AnimatePresence>
           {(isRecording || isProcessing || hasCachedAudio) && (
             <motion.div
@@ -554,47 +562,64 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="absolute inset-0 bg-white/85 dark:bg-gray-900/85 backdrop-blur-sm rounded-2xl z-10"
+              className="absolute inset-0 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-sm rounded-2xl z-50 pointer-events-none"
+              style={{ height: inputBarHeight }}
             >
-              <div className="flex flex-col items-center justify-center h-full p-6">
-                {/* Wave Animation */}
+              <div className="flex flex-col items-center justify-center h-full p-6 pointer-events-auto">
+                {/* Status Text */}
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-center">
+                    {isRecording ? "Ich höre zu..." : 
+                     isProcessing ? "Text wird transkribiert..." : 
+                     "Aufnahme bereit"}
+                  </p>
+                  {isRecording && (
+                    <div className="text-xs text-muted-foreground text-center mt-1">
+                      {formatTime(recordingTime)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Canvas Waveform Animation */}
                 <div className="mb-6">
-                  <VoiceWaveAnimation 
+                  <VoiceCanvasWaveform 
                     audioLevel={audioLevel} 
-                    isActive={isRecording || isProcessing} 
+                    isActive={isRecording || isProcessing}
+                    width={120}
+                    height={40}
                   />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between w-full max-w-xs">
-                  {/* Cancel Button */}
+                {/* Action Buttons - 64x64px touch targets */}
+                <div className="flex items-center justify-between w-full max-w-xs gap-4">
+                  {/* Cancel Button - 64x64px */}
                   <Button
                     variant="ghost"
                     onClick={handleVoiceCancel}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                    className="w-16 h-16 flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm border border-border/50"
                     aria-label="Spracheingabe abbrechen"
                   >
-                    <X className="w-5 h-5" />
-                    <span className="font-medium">Abbrechen</span>
+                    <X className="w-6 h-6" />
+                    <span className="text-[10px] font-medium">Abbrechen</span>
                   </Button>
 
-                  {/* Send Button */}
+                  {/* Send/Transcribe Button - 64x64px */}
                   <Button
                     variant="default"
                     onClick={handleVoiceSend}
                     disabled={!hasCachedAudio || isProcessing}
-                    className="flex items-center gap-2 bg-primary text-primary-foreground"
-                    aria-label="Spracheingabe senden"
+                    className="w-16 h-16 flex flex-col items-center gap-1 bg-[#FF3B30] text-white hover:bg-[#FF3B30]/90 shadow-lg"
+                    aria-label="Spracheingabe transkribieren"
                   >
                     {isProcessing ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="font-medium">Transkribiere...</span>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        <span className="text-[10px] font-medium">...</span>
                       </>
                     ) : (
                       <>
-                        <Send className="w-5 h-5" />
-                        <span className="font-medium">Absenden</span>
+                        <ChevronUp className="w-6 h-6" />
+                        <span className="text-[10px] font-medium">Senden</span>
                       </>
                     )}
                   </Button>
