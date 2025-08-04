@@ -16,6 +16,14 @@ interface QuickInputData {
     sleep_hours: number;
     sleep_quality: number;
     notes?: string;
+    bedtime?: string;
+    wake_time?: string;
+    sleep_interruptions?: number;
+    screen_time_evening?: number;
+    morning_libido?: number;
+    motivation_level?: number;
+    last_meal_time?: string;
+    sleep_score?: number;
   };
   fluidData: {
     id: string;
@@ -152,7 +160,15 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
             id: sleep.id,
             sleep_hours: sleep.sleep_hours,
             sleep_quality: sleep.sleep_quality,
-            notes: sleep.notes
+            notes: sleep.notes,
+            bedtime: sleep.bedtime,
+            wake_time: sleep.wake_time,
+            sleep_interruptions: sleep.sleep_interruptions,
+            screen_time_evening: sleep.screen_time_evening,
+            morning_libido: sleep.morning_libido,
+            motivation_level: sleep.motivation_level,
+            last_meal_time: sleep.last_meal_time,
+            sleep_score: sleep.sleep_score
           };
         }
       });
@@ -331,10 +347,32 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
                       <Moon className="h-4 w-4 text-blue-600" />
                       <span className="font-medium text-sm">Schlaf</span>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      <p>Dauer: {day.sleepData.sleep_hours} Stunden</p>
-                      <p>Qualität: {day.sleepData.sleep_quality}/10</p>
-                      {day.sleepData.notes && <p>Notizen: {day.sleepData.notes}</p>}
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <p>Dauer: {day.sleepData.sleep_hours} Stunden</p>
+                        <p>Qualität: {day.sleepData.sleep_quality}/10</p>
+                        {day.sleepData.bedtime && <p>Zu Bett: {day.sleepData.bedtime.slice(0, 5)}</p>}
+                        {day.sleepData.wake_time && <p>Aufgestanden: {day.sleepData.wake_time.slice(0, 5)}</p>}
+                        {day.sleepData.sleep_interruptions !== undefined && (
+                          <p>Aufgewacht: {day.sleepData.sleep_interruptions}x</p>
+                        )}
+                        {day.sleepData.screen_time_evening !== undefined && (
+                          <p>Bildschirmzeit: {day.sleepData.screen_time_evening} Min</p>
+                        )}
+                        {day.sleepData.morning_libido !== undefined && (
+                          <p>Morgenlibido: {day.sleepData.morning_libido}/10</p>
+                        )}
+                        {day.sleepData.motivation_level !== undefined && (
+                          <p>Motivation: {day.sleepData.motivation_level}/10</p>
+                        )}
+                        {day.sleepData.last_meal_time && (
+                          <p>Letzte Mahlzeit: {day.sleepData.last_meal_time.slice(0, 5)}</p>
+                        )}
+                        {day.sleepData.sleep_score !== undefined && (
+                          <p>Sleep Score: {day.sleepData.sleep_score}/10</p>
+                        )}
+                      </div>
+                      {day.sleepData.notes && <p className="mt-2">Notizen: {day.sleepData.notes}</p>}
                     </div>
                   </div>
                 )}
