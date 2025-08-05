@@ -348,7 +348,7 @@ export const LiveTraceMonitor = () => {
             </div>
             <div>
               <div className="text-xs font-medium text-muted-foreground">Event ID</div>
-              <div className="text-xs font-mono">{event.id.substring(0, 8)}...</div>
+              <div className="text-xs font-mono">{String(event.id).substring(0, 8)}...</div>
             </div>
           </div>
 
