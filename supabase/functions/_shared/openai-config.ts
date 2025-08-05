@@ -170,19 +170,22 @@ export const WHISPER_CONFIG = {
   // Chunk-Größe 30s, Overlap 3s im Frontend
 };
 
-// Token cost calculation (per 1K tokens)
+// Token cost calculation (per 1M tokens, updated pricing)
 const TOKEN_COSTS = {
-  'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
-  'gpt-4o': { input: 0.0025, output: 0.01 },
-  'gpt-4.1-2025-04-14': { input: 0.0025, output: 0.01 },
-  'text-embedding-3-small': { input: 0.00002, output: 0 }
+  'gpt-4o-mini': { input: 0.00000015, output: 0.0000006 },
+  'gpt-4o': { input: 0.005, output: 0.015 },
+  'gpt-4.1-2025-04-14': { input: 0.000003, output: 0.000012 },
+  'text-embedding-3-small': { input: 0.00002, output: 0 },
+  'text-embedding-3-large': { input: 0.00013, output: 0 },
+  'whisper-1': { input: 0.006, output: 0 } // per minute
 };
 
 export function calculateCost(model: string, inputTokens: number, outputTokens: number = 0): number {
   const costs = TOKEN_COSTS[model as keyof typeof TOKEN_COSTS];
   if (!costs) return 0;
   
-  return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output);
+  const cost = (inputTokens * costs.input) + (outputTokens * costs.output);
+  return Math.round(cost * 100000) / 100000; // Round to 5 decimal places
 }
 
 // Enhanced telemetry logging
@@ -245,33 +248,64 @@ export function detectPII(text: string): boolean {
   return piiPatterns.some(pattern => pattern.test(text));
 }
 
-// Circuit breaker simulation (in production, use Redis)
-let circuitBreakerState = { open: false, halfOpen: false, errorCount: 0, lastErrorTime: 0 };
+// Enhanced Circuit Breaker with detailed tracking
+let circuitBreakerState = { 
+  open: false, 
+  halfOpen: false, 
+  errorCount: 0, 
+  successCount: 0,
+  totalRequests: 0,
+  lastErrorTime: 0,
+  lastResetTime: Date.now()
+};
 
 export function getCircuitBreakerStatus() {
   const now = Date.now();
+  const RESET_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+  const ERROR_THRESHOLD = 5;
+  const HALF_OPEN_THRESHOLD = 3;
   
-  // Reset after 5 minutes
-  if (now - circuitBreakerState.lastErrorTime > 5 * 60 * 1000) {
-    circuitBreakerState = { open: false, halfOpen: false, errorCount: 0, lastErrorTime: 0 };
+  // Reset after timeout
+  if (now - circuitBreakerState.lastErrorTime > RESET_TIMEOUT) {
+    circuitBreakerState.errorCount = Math.max(0, circuitBreakerState.errorCount - 1); // Gradual recovery
   }
   
-  // Open circuit if too many errors
-  if (circuitBreakerState.errorCount >= 5) {
-    circuitBreakerState.open = true;
-    circuitBreakerState.halfOpen = false;
-  }
+  // Calculate error rate
+  const errorRate = circuitBreakerState.totalRequests > 0 ? 
+    circuitBreakerState.errorCount / circuitBreakerState.totalRequests : 0;
+  
+  // State transitions
+  const isOpen = circuitBreakerState.errorCount >= ERROR_THRESHOLD;
+  const isHalfOpen = circuitBreakerState.errorCount >= HALF_OPEN_THRESHOLD && !isOpen;
+  
+  circuitBreakerState.open = isOpen;
+  circuitBreakerState.halfOpen = isHalfOpen;
   
   return {
-    breaker_open: circuitBreakerState.open,
-    breaker_halfOpen: circuitBreakerState.halfOpen,
-    breaker_closed: !circuitBreakerState.open && !circuitBreakerState.halfOpen
+    breaker_open: isOpen,
+    breaker_halfOpen: isHalfOpen,
+    breaker_closed: !isOpen && !isHalfOpen,
+    error_count: circuitBreakerState.errorCount,
+    success_count: circuitBreakerState.successCount,
+    total_requests: circuitBreakerState.totalRequests,
+    error_rate: errorRate,
+    last_error_time: circuitBreakerState.lastErrorTime
   };
 }
 
 export function recordError() {
   circuitBreakerState.errorCount++;
+  circuitBreakerState.totalRequests++;
   circuitBreakerState.lastErrorTime = Date.now();
+}
+
+export function recordSuccess() {
+  circuitBreakerState.successCount++;
+  circuitBreakerState.totalRequests++;
+  // Gradual error count reduction on success
+  if (circuitBreakerState.errorCount > 0) {
+    circuitBreakerState.errorCount = Math.max(0, circuitBreakerState.errorCount - 0.1);
+  }
 }
 
 // Performance-Monitoring

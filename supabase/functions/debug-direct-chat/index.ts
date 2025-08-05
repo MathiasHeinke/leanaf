@@ -6,7 +6,9 @@ import {
   calculateCost, 
   analyzeSentiment, 
   detectPII, 
-  getCircuitBreakerStatus 
+  getCircuitBreakerStatus,
+  recordError,
+  recordSuccess
 } from '../_shared/openai-config.ts';
 
 // Debug Direct Chat v2.1 - Force Deployment
@@ -88,6 +90,7 @@ serve(async req => {
         ...getCircuitBreakerStatus()
       });
       
+      recordError(); // Track error for circuit breaker
       throw new Error(`OpenAI-Error ${res.status}: ${errorText}`);
     }
 
@@ -104,6 +107,8 @@ serve(async req => {
     const cost = calculateCost(model, inputTokens, outputTokens);
     const sentiment = analyzeSentiment(answer);
     const hasPII = detectPII(answer + message);
+    const tokensPerSecond = outputTokens > 0 ? (outputTokens / (fullStreamTime / 1000)) : 0;
+    const breaker = getCircuitBreakerStatus();
 
     // Log completion telemetry
     await logTelemetryData(supa, traceId, 'T_completion', {
@@ -116,8 +121,16 @@ serve(async req => {
       sentiment_score: sentiment,
       pii_detected: hasPII,
       response_length: answer.length,
-      ...getCircuitBreakerStatus()
+      tokens_per_second: tokensPerSecond,
+      model: model,
+      coach_id: coachId,
+      user_id: userId,
+      performance_grade: firstTokenTime < 1000 ? 'A' : firstTokenTime < 2000 ? 'B' : 'C',
+      debug_mode: true,
+      ...breaker
     });
+
+    recordSuccess(); // Track successful completion
 
     // Legacy debug log
     try {
@@ -148,6 +161,7 @@ serve(async req => {
     });
   } catch (e) {
     console.error("🔧 DBG-Direct-Chat ❌", e);
+    recordError(); // Track error for circuit breaker
     return json(500, { error: e.message ?? e });
   }
 });

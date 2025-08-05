@@ -8,7 +8,8 @@ import {
   analyzeSentiment, 
   detectPII, 
   getCircuitBreakerStatus, 
-  recordError 
+  recordError,
+  recordSuccess
 } from '../_shared/openai-config.ts';
 
 const corsHeaders = {
@@ -129,19 +130,29 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                       const cost = calculateCost('gpt-4.1-2025-04-14', inputTokens, outputTokens);
                       const sentiment = analyzeSentiment(fullResponseText);
                       const hasPII = detectPII(fullResponseText + message);
+                      const tokensPerSecond = outputTokens > 0 ? (outputTokens / (fullStreamTime / 1000)) : 0;
+                      const breaker = getCircuitBreakerStatus();
 
                       await logTelemetryData(supabase, traceId, 'T_stream_complete', {
                         fullStream_ms: fullStreamTime,
                         firstToken_ms: firstTokenTime,
-                        input_tokens: inputTokens,
-                        output_tokens: outputTokens,
+                        prompt_tokens: inputTokens,
+                        completion_tokens: outputTokens,
+                        total_tokens: inputTokens + outputTokens,
                         cost_usd: cost,
                         sentiment_score: sentiment,
                         pii_detected: hasPII,
                         response_length: fullResponseText.length,
-                        ...getCircuitBreakerStatus()
+                        tokens_per_second: tokensPerSecond,
+                        model: 'gpt-4.1-2025-04-14',
+                        coach_id: coachId,
+                        user_id: userId,
+                        conversation_length: conversationHistory?.length || 0,
+                        performance_grade: firstTokenTime < 1000 ? 'A' : firstTokenTime < 2000 ? 'B' : 'C',
+                        ...breaker
                       });
 
+                      recordSuccess(); // Track successful completion
                       controller.enqueue(`data: {"type":"stream_done"}\n\n`);
                       controller.close();
                       return;
@@ -157,6 +168,9 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                           firstTokenTime = Date.now() - requestStartTime;
                           await logTelemetryData(supabase, traceId, 'T_first_token', {
                             firstToken_ms: firstTokenTime,
+                            model: 'gpt-4.1-2025-04-14',
+                            coach_id: coachId,
+                            user_id: userId,
                             ...getCircuitBreakerStatus()
                           });
                         }

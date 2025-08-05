@@ -105,17 +105,26 @@ serve(async (req) => {
 
     // Enhanced RAG telemetry in coach_traces table
     try {
+      const cacheHit = searchResults.some(r => (r.similarity || 0) > 0.95); // High similarity = likely cache hit
+      const knowledgeGaps = searchResults.length === 0 ? [query.substring(0, 50)] : [];
+      const topSearchTerms = query.toLowerCase().split(' ').filter(w => w.length > 2).slice(0, 5);
+      
       const telemetryData = {
         query_text: query.substring(0, 100), // First 100 chars for privacy
         search_method,
         response_time_ms: responseTime,
         relevance_score,
-        cache_hit: false, // TODO: Implement cache checking
+        cache_hit: cacheHit,
         embedding_tokens: embeddingTokens,
         results_count: searchResults.length,
         context_length: contextChunks.reduce((sum, chunk) => sum + chunk.content.length, 0),
         coach_id,
-        search_terms: query.toLowerCase().split(' ').filter(w => w.length > 2).slice(0, 5) // Top 5 search terms
+        search_terms: topSearchTerms,
+        knowledge_gaps: knowledgeGaps,
+        rag_hit_rate: searchResults.length > 0 ? 1.0 : 0.0, // Binary: found results or not
+        query_complexity: query.split(' ').length, // Simple complexity metric
+        embedding_cost_usd: embeddingTokens * 0.00001, // text-embedding-3-small pricing
+        performance_grade: responseTime < 1000 ? 'A' : responseTime < 2000 ? 'B' : responseTime < 3000 ? 'C' : 'D'
       };
 
       // Save to coach_traces for real-time dashboard
@@ -124,7 +133,7 @@ serve(async (req) => {
         .insert({
           trace_id: `rag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           ts: new Date().toISOString(),
-          stage: 'rag_query_completed',
+          stage: 'E_rag_search',
           data: telemetryData
         });
 
