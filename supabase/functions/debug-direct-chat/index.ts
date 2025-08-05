@@ -39,13 +39,15 @@ serve(async req => {
 
     const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } });
     
-    // Log request start
+    // Log request start with detailed context
     await logTelemetryData(supa, traceId, 'T_request_start', {
       user_id: userId,
       coach_id: coachId,
       model: model,
+      user_message: message.substring(0, 200), // First 200 chars
       message_length: message.length,
       function_name: 'debug-direct-chat',
+      debug_mode: true,
       ...getCircuitBreakerStatus()
     });
     
@@ -59,23 +61,42 @@ serve(async req => {
 
     const systemPrompt = coachPersonas[coachId] ?? coachPersonas.lucy;
 
+    // Log prompt analysis
+    await logTelemetryData(supa, traceId, 'T_prompt_analysis', {
+      coach_persona: systemPrompt,
+      system_prompt: systemPrompt.substring(0, 150),
+      user_message_preview: message.substring(0, 100),
+      full_prompt_structure: JSON.stringify([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ]).substring(0, 500)
+    });
+
     // OpenAI API call with timing
     const apiStartTime = Date.now();
+    const requestBody = {
+      model: model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message },
+      ],
+      max_tokens: 600,
+      temperature: 0.7,
+    };
+
+    // Log OpenAI request details
+    await logTelemetryData(supa, traceId, 'T_openai_request', {
+      openai_request: JSON.stringify(requestBody).substring(0, 800),
+      api_call_timestamp: new Date().toISOString()
+    });
+
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { 
         Authorization: `Bearer ${openKey}`, 
         "Content-Type": "application/json" 
       },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message },
-        ],
-        max_tokens: 600,
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!res.ok) {
@@ -110,7 +131,7 @@ serve(async req => {
     const tokensPerSecond = outputTokens > 0 ? (outputTokens / (fullStreamTime / 1000)) : 0;
     const breaker = getCircuitBreakerStatus();
 
-    // Log completion telemetry
+    // Log completion telemetry with response content
     await logTelemetryData(supa, traceId, 'T_completion', {
       firstToken_ms: firstTokenTime,
       fullStream_ms: fullStreamTime,
@@ -127,6 +148,9 @@ serve(async req => {
       user_id: userId,
       performance_grade: firstTokenTime < 1000 ? 'A' : firstTokenTime < 2000 ? 'B' : 'C',
       debug_mode: true,
+      coach_response: answer.substring(0, 300), // First 300 chars of response
+      response_preview: answer.length > 100 ? answer.substring(0, 100) + '...' : answer,
+      completion_timestamp: new Date().toISOString(),
       ...breaker
     });
 

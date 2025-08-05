@@ -42,12 +42,16 @@ serve(async (req) => {
     const traceId = `coach_${userId}_${Date.now()}`;
     const requestStartTime = Date.now();
     
-    // Log request start
+    // Log request start with user message
     await logTelemetryData(supabase, traceId, 'T_request_start', {
       user_id: userId,
       coach_id: coachId,
+      user_message: message.substring(0, 200), // First 200 chars for privacy
       message_length: message.length,
       has_conversation_history: !!conversationHistory?.length,
+      conversation_length: conversationHistory?.length || 0,
+      conversation_history: conversationHistory ? JSON.stringify(conversationHistory.slice(-2)) : null, // Last 2 messages
+      timestamp: new Date().toISOString(),
       ...getCircuitBreakerStatus()
     });
 
@@ -69,6 +73,17 @@ serve(async (req) => {
             .eq('id', coachId || 'lucy')
             .single();
 
+          // Log coach context retrieval
+          await logTelemetryData(supabase, traceId, 'T_context_built', {
+            coach_data: coach ? {
+              name: coach.name,
+              personality: coach.personality,
+              expertise: coach.expertise
+            } : null,
+            context_source: 'coaches_table',
+            context_size: JSON.stringify(coach || {}).length
+          });
+
           // Build context
           const systemMessage = `Du bist ${coach?.name || 'Lucy'}, ein persönlicher Coach.
           
@@ -83,10 +98,31 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
             { role: 'user', content: message }
           ];
 
+          // Log complete prompt analysis
+          await logTelemetryData(supabase, traceId, 'T_prompt_analysis', {
+            system_message: systemMessage.substring(0, 300), // First 300 chars
+            messages_count: messages.length,
+            full_prompt_preview: JSON.stringify(messages).substring(0, 500),
+            estimated_prompt_tokens: messages.reduce((sum, msg) => sum + (msg.content.length / 4), 0)
+          });
+
           // Estimate input tokens
           inputTokens = messages.reduce((sum, msg) => sum + (msg.content.length / 4), 0);
 
           const config = TASK_CONFIGS['coach_analysis'];
+          
+          // Log OpenAI request details
+          await logTelemetryData(supabase, traceId, 'T_openai_request', {
+            model: 'gpt-4.1-2025-04-14',
+            config: config,
+            openai_request_body: JSON.stringify({
+              model: 'gpt-4.1-2025-04-14',
+              messages,
+              ...config,
+              stream: true
+            }).substring(0, 1000), // First 1000 chars of request
+            request_timestamp: new Date().toISOString()
+          });
           
           // Make streaming request to OpenAI
           const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -125,7 +161,7 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                     const data = line.slice(6);
                     
                     if (data === '[DONE]') {
-                      // Stream complete - log final metrics
+                      // Stream complete - log final metrics and response content
                       const fullStreamTime = Date.now() - requestStartTime;
                       const cost = calculateCost('gpt-4.1-2025-04-14', inputTokens, outputTokens);
                       const sentiment = analyzeSentiment(fullResponseText);
@@ -149,6 +185,9 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                         user_id: userId,
                         conversation_length: conversationHistory?.length || 0,
                         performance_grade: firstTokenTime < 1000 ? 'A' : firstTokenTime < 2000 ? 'B' : 'C',
+                        coach_response: fullResponseText.substring(0, 300), // First 300 chars of response
+                        response_preview: fullResponseText.length > 100 ? fullResponseText.substring(0, 100) + '...' : fullResponseText,
+                        session_complete: true,
                         ...breaker
                       });
 
