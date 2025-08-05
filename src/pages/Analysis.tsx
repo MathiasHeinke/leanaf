@@ -9,6 +9,7 @@ import StepsAnalysisWidget from "@/components/StepsAnalysisWidget";
 import { HydrationWidget } from "@/components/HydrationWidget";
 import { SupplementComplianceWidget } from "@/components/SupplementComplianceWidget";
 import { GoalsProgressWidget } from "@/components/GoalsProgressWidget";
+import { AdvancedAnalyticsSection } from "@/components/analytics/AdvancedAnalyticsSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, Utensils, Dumbbell, Heart } from "lucide-react";
 import { roundNutritionalValue } from "@/utils/numberFormatting";
@@ -294,28 +295,9 @@ const Analysis = () => {
         </TabsContent>
         
         <TabsContent value="more" className="mt-6">
-          {/* Body & Health Metrics */}
+          {/* Advanced Analytics & Correlations */}
           <div className="space-y-6">
-            {/* Goals Progress Widget */}
-            <GoalsProgressWidget />
-            
-            <Overview 
-              todaysTotals={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
-              dailyGoals={null} // Empty for more tab
-              averages={{ calories: 0, protein: 0, carbs: 0, fats: 0 }} // Empty for more tab
-              weightHistory={weightHistory}
-              showNutritionData={false}
-            />
-            
-            {/* Body Measurements Charts */}
-            <HistoryCharts 
-              data={[]} // Empty for more tab
-              weightHistory={weightHistory}
-              bodyMeasurementsHistory={bodyMeasurementsHistory}
-              timeRange="month"
-              loading={loading}
-              showNutritionCharts={false}
-            />
+            <AdvancedAnalyticsSection />
           </div>
         </TabsContent>
       </Tabs>
