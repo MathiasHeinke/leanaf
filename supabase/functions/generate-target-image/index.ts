@@ -132,39 +132,93 @@ Realistic fitness goals, not extreme transformations.`;
 
     console.log('Generated simplified prompt:', detailedPrompt);
 
-    // Generate 4 high-quality images using gpt-image-1
-    console.log('Generating 4 target images with gpt-image-1...');
+    // Helper function to generate images with fallback models
+    const generateImageWithFallback = async (prompt: string, index: number, maxRetries = 2) => {
+      const models = ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
+      
+      for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
+        const model = models[modelIndex];
+        console.log(`Trying image generation ${index + 1} with model: ${model}`);
+        
+        for (let retry = 0; retry <= maxRetries; retry++) {
+          try {
+            const requestBody: any = {
+              model,
+              prompt,
+              n: 1
+            };
+
+            // Configure based on model capabilities
+            if (model === 'gpt-image-1') {
+              requestBody.size = '1024x1024';
+              requestBody.quality = 'high';
+            } else if (model === 'dall-e-3') {
+              requestBody.size = '1024x1024';
+              requestBody.quality = 'hd';
+              requestBody.style = 'vivid';
+            } else {
+              requestBody.size = '1024x1024';
+            }
+
+            const response = await fetch('https://api.openai.com/v1/images/generations', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openAIApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody),
+            });
+
+            const result = await response.json();
+            
+            if (!response.ok) {
+              const errorMsg = result.error?.message || 'Unknown error';
+              console.error(`Image generation ${index + 1} failed with ${model} (attempt ${retry + 1}):`, errorMsg);
+              
+              // If organization not verified, skip to next model immediately
+              if (errorMsg.includes('organization must be verified') || errorMsg.includes('not available')) {
+                console.log(`Model ${model} not available, trying next model...`);
+                break;
+              }
+              
+              // Rate limit error - wait and retry
+              if (errorMsg.includes('rate limit') && retry < maxRetries) {
+                const waitTime = Math.pow(2, retry) * 1000; // Exponential backoff
+                console.log(`Rate limited, waiting ${waitTime}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+              }
+              
+              // If last retry with this model failed, try next model
+              if (retry === maxRetries) {
+                break;
+              }
+            } else {
+              console.log(`Successfully generated image ${index + 1} with model: ${model}`);
+              return result;
+            }
+          } catch (error) {
+            console.error(`Network error for image ${index + 1} with ${model} (attempt ${retry + 1}):`, error);
+            if (retry === maxRetries) {
+              break;
+            }
+          }
+        }
+      }
+      
+      console.error(`Failed to generate image ${index + 1} with all available models`);
+      return null;
+    };
+
+    // Generate 4 images with fallback models
+    console.log('Generating 4 target images with model fallback...');
     
-    // Generate 4 images in parallel for better user experience
     const imagePromises = Array.from({ length: 4 }, (_, index) => {
       // Add subtle variation to each image
       const variations = ['front pose', 'confident stance', 'athletic pose', 'profile view'];
       const promptVariation = `${detailedPrompt} ${variations[index]}.`;
       
-      return fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-image-1',
-          prompt: promptVariation,
-          size: '1024x1024',
-          quality: 'high',
-          n: 1
-        }),
-      }).then(async res => {
-        const result = await res.json();
-        if (!res.ok) {
-          console.error(`Image generation ${index + 1} failed:`, result);
-          return null;
-        }
-        return result;
-      }).catch(error => {
-        console.error(`Image generation ${index + 1} error:`, error);
-        return null;
-      });
+      return generateImageWithFallback(promptVariation, index);
     });
 
     const imageResults = await Promise.all(imagePromises);
@@ -177,7 +231,7 @@ Realistic fitness goals, not extreme transformations.`;
     }).filter(Boolean);
 
     if (imageUrls.length === 0) {
-      throw new Error('Failed to generate any images');
+      throw new Error('Failed to generate any images with all available models. Please check your OpenAI organization verification status.');
     }
 
     console.log(`Successfully generated ${imageUrls.length} target images`);
