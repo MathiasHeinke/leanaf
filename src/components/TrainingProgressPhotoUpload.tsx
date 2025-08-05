@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, Upload, X, Plus } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Camera, Upload, X, Plus, Target, Zap, Image as ImageIcon } from 'lucide-react';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
+import { useTargetImages } from '@/hooks/useTargetImages';
 import { toast } from 'sonner';
 
 export const TrainingProgressPhotoUpload: React.FC = () => {
   const { uploadProgressPhoto } = useProgressPhotos();
+  const { targetImages, generateTargetImage, loading: targetLoading } = useTargetImages();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
@@ -205,6 +208,79 @@ export const TrainingProgressPhotoUpload: React.FC = () => {
             </>
           )}
         </Button>
+
+        <Separator className="my-6" />
+
+        {/* AI Target Image Generation Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">AI-Zielbild erstellen</h3>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
+            Lass die AI ein realistisches Zielbild basierend auf deinem aktuellen Fortschritt und deinen Zielen erstellen.
+          </p>
+
+          <Button
+            onClick={async () => {
+              toast.info('Dein AI-Zielbild wird erstellt...', {
+                description: 'Dies kann einen Moment dauern'
+              });
+              await generateTargetImage();
+            }}
+            disabled={targetLoading}
+            className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg"
+          >
+            {targetLoading ? (
+              <>
+                <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                AI erstellt dein Zielbild...
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4 mr-2" />
+                🎯 AI-Zielbild erstellen
+              </>
+            )}
+          </Button>
+
+          {/* Display Generated Target Images */}
+          {targetImages.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Deine Zielbilder</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {targetImages.slice(0, 4).map((image) => (
+                  <div
+                    key={image.id}
+                    className="aspect-square rounded-lg overflow-hidden border border-border hover:opacity-80 transition-opacity cursor-pointer relative"
+                  >
+                    <img
+                      src={image.image_url}
+                      alt="AI Generated Target"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-2 left-2">
+                      <div className="bg-primary/90 text-primary-foreground text-xs px-2 py-1 rounded-md flex items-center gap-1">
+                        {image.image_type === 'ai_generated' ? (
+                          <>
+                            <Zap className="h-3 w-3" />
+                            AI
+                          </>
+                        ) : (
+                          'Upload'
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

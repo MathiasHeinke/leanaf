@@ -128,13 +128,14 @@ export const QuickBodyDataWidget: React.FC = () => {
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  toast.info('AI-Bild wird generiert...');
+                  toast.info('Dein AI-Zielbild wird erstellt...');
                   await generateTargetImage();
                 }}
-                className="h-8 px-3"
+                className="h-8 px-2 bg-gradient-to-r from-primary/10 to-accent/10 hover:from-primary/20 hover:to-accent/20 border-primary/20"
+                title="Erstellt ein realistisches Zielbild basierend auf deinem Profil und Fortschritt"
               >
                 <Zap className="h-3 w-3 mr-1" />
-                AI
+                AI-Zielbild
               </Button>
             </div>
           </div>
