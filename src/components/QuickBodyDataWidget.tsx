@@ -31,6 +31,7 @@ export const QuickBodyDataWidget: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedProgressPhoto, setSelectedProgressPhoto] = useState<{ url: string; entryId: string } | null>(null);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [showImageSelectorOverlay, setShowImageSelectorOverlay] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -243,12 +244,31 @@ export const QuickBodyDataWidget: React.FC = () => {
                       {Array.from({ length: 3 }).map((_, imgIndex) => (
                         <div key={imgIndex} className="w-16 h-16 flex-shrink-0">
                           {photoUrls[imgIndex] ? (
-                            <img
-                              src={photoUrls[imgIndex]}
-                              alt={`Progress ${index + 1}-${imgIndex + 1}`}
-                              className="w-full h-full object-cover rounded-md cursor-pointer hover:scale-105 transition-transform duration-200 border border-border/20"
-                              onClick={() => setSelectedImage(photoUrls[imgIndex])}
-                            />
+                            <div className="relative">
+                              <img
+                                src={photoUrls[imgIndex]}
+                                alt={`Progress ${index + 1}-${imgIndex + 1}`}
+                                className={`w-full h-full object-cover rounded-md cursor-pointer hover:scale-105 transition-all duration-200 border-2 ${
+                                  selectedProgressPhoto?.url === photoUrls[imgIndex] 
+                                    ? 'border-green-500 ring-2 ring-green-200' 
+                                    : 'border-border/20 hover:border-primary/30'
+                                }`}
+                                onClick={() => {
+                                  setSelectedImage(photoUrls[imgIndex]);
+                                  setSelectedProgressPhoto({ 
+                                    url: photoUrls[imgIndex], 
+                                    entryId: photo.id 
+                                  });
+                                }}
+                              />
+                              {selectedProgressPhoto?.url === photoUrls[imgIndex] && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div className="w-full h-full bg-muted/20 rounded-md border border-dashed border-muted/40 flex items-center justify-center">
                               <Camera className="h-3 w-3 text-muted-foreground/40" />
@@ -434,11 +454,21 @@ export const QuickBodyDataWidget: React.FC = () => {
           </div>
           
           <p className="text-xs text-muted-foreground">
-            Erstelle 4 realistische Zielbilder basierend auf deinen Progress-Fotos und Zielen.
+            Wähle ein Fortschrittsfoto aus und erstelle 4 realistische Zielbilder basierend darauf.
+            {selectedProgressPhoto && (
+              <span className="text-green-600 font-medium block mt-1">
+                ✓ Foto ausgewählt - bereit für Generierung
+              </span>
+            )}
           </p>
 
           <Button
             onClick={async () => {
+              if (!selectedProgressPhoto) {
+                toast.error('Wähle erst ein Fortschrittsfoto aus für bessere AI-Ergebnisse');
+                return;
+              }
+              
               setIsGenerating(true);
               startPerformanceTracking();
               
@@ -452,7 +482,12 @@ export const QuickBodyDataWidget: React.FC = () => {
                   trackStreamingProgress(Math.random() * 20 + 10);
                 }, 2000);
 
-                const result = await generateTargetImage();
+                const result = await generateTargetImage(
+                  userProfile?.target_weight,
+                  userProfile?.target_body_fat_percentage,
+                  undefined,
+                  selectedProgressPhoto.url
+                );
                 
                 clearInterval(progressInterval);
                 trackStreamingComplete();
@@ -482,10 +517,15 @@ export const QuickBodyDataWidget: React.FC = () => {
                 <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Erstelle 4 Bilder...
               </>
+            ) : selectedProgressPhoto ? (
+              <>
+                <Zap className="h-4 w-4 mr-2" />
+                Jetzt mit ausgewähltem Bild generieren
+              </>
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />
-                4 Bilder erstellen
+                Wähle zuerst ein Fortschrittsfoto aus
               </>
             )}
           </Button>
@@ -502,9 +542,13 @@ export const QuickBodyDataWidget: React.FC = () => {
             </div>
           )}
 
-          {photos.length === 0 && (
+          {photos.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">
               ⚠️ Lade erst Progress-Fotos hoch, damit die AI realistische Zielbilder erstellen kann
+            </p>
+          ) : !selectedProgressPhoto && (
+            <p className="text-xs text-muted-foreground text-center bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+              👆 Klicke auf ein Fortschrittsfoto, um es für die AI-Generierung auszuwählen
             </p>
           )}
         </div>

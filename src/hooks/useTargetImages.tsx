@@ -86,7 +86,8 @@ export const useTargetImages = () => {
   const generateTargetImage = async (
     targetWeight?: number,
     targetBodyFat?: number,
-    onProgress?: (stage: string, progress?: number) => void
+    onProgress?: (stage: string, progress?: number) => void,
+    progressPhotoUrl?: string
   ) => {
     if (!user) return;
 
@@ -108,7 +109,8 @@ export const useTargetImages = () => {
         gender: profileData?.gender || 'unspecified',
         height: profileData?.height || 175,
         currentWeight: profileData?.weight || 80,
-        fitnessGoal: profileData?.goal || 'fitness'
+        fitnessGoal: profileData?.goal || 'fitness',
+        progressPhotoUrl: progressPhotoUrl
       };
 
       console.log('Calling generate-target-image with:', requestData);

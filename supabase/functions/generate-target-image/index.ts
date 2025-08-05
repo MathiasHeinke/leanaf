@@ -51,7 +51,7 @@ serve(async (req) => {
     }
 
     const userId = user.id;
-    const { targetWeight, targetBodyFat } = await req.json();
+    const { targetWeight, targetBodyFat, progressPhotoUrl } = await req.json();
 
     // Get user profile data for better prompting
     const { data: profile } = await supabase
@@ -60,33 +60,41 @@ serve(async (req) => {
       .eq('user_id', userId)
       .single();
 
-    // Get latest progress photo from weight_history
-    const { data: latestWeightEntry } = await supabase
-      .from('weight_history')
-      .select('photo_urls, weight, body_fat_percentage, muscle_percentage, date')
-      .eq('user_id', userId)
-      .not('photo_urls', 'is', null)
-      .order('date', { ascending: false })
-      .limit(1)
-      .single();
+    // Use provided progress photo or get latest from weight_history
+    let frontPhotoUrl = progressPhotoUrl;
+    let latestWeightEntry = null;
+    
+    if (!frontPhotoUrl) {
+      const { data: weightEntry } = await supabase
+        .from('weight_history')
+        .select('photo_urls, weight, body_fat_percentage, muscle_percentage, date')
+        .eq('user_id', userId)
+        .not('photo_urls', 'is', null)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single();
 
-    // Get the middle photo (front view) from the photo_urls array
-    let frontPhotoUrl = null;
-    if (latestWeightEntry?.photo_urls) {
-      let photoUrls = latestWeightEntry.photo_urls;
-      if (typeof photoUrls === 'string') {
-        try {
-          photoUrls = JSON.parse(photoUrls);
-        } catch (e) {
-          console.error('Failed to parse photo_urls:', e);
+      latestWeightEntry = weightEntry;
+
+      // Get the middle photo (front view) from the photo_urls array
+      if (latestWeightEntry?.photo_urls) {
+        let photoUrls = latestWeightEntry.photo_urls;
+        if (typeof photoUrls === 'string') {
+          try {
+            photoUrls = JSON.parse(photoUrls);
+          } catch (e) {
+            console.error('Failed to parse photo_urls:', e);
+          }
+        }
+        if (Array.isArray(photoUrls) && photoUrls.length > 0) {
+          // Take middle photo as front view (index 1 if 3 photos, index 0 if 1 photo)
+          const middleIndex = Math.floor(photoUrls.length / 2);
+          frontPhotoUrl = photoUrls[middleIndex];
+          console.log(`Selected photo ${middleIndex + 1} of ${photoUrls.length} as front view:`, frontPhotoUrl);
         }
       }
-      if (Array.isArray(photoUrls) && photoUrls.length > 0) {
-        // Take middle photo as front view (index 1 if 3 photos, index 0 if 1 photo)
-        const middleIndex = Math.floor(photoUrls.length / 2);
-        frontPhotoUrl = photoUrls[middleIndex];
-        console.log(`Selected photo ${middleIndex + 1} of ${photoUrls.length} as front view:`, frontPhotoUrl);
-      }
+    } else {
+      console.log('Using provided progress photo:', frontPhotoUrl);
     }
 
     if (!frontPhotoUrl) {

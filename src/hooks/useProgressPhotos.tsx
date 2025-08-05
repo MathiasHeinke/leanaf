@@ -30,12 +30,12 @@ export const useProgressPhotos = () => {
         .from('weight_history')
         .select('*')
         .eq('user_id', user.id)
-        .not('photo_urls', 'is', null)
         .order('date', { ascending: false });
 
       if (error) throw error;
       
       console.log('Raw data from Supabase:', data);
+      console.log('Total entries found:', data?.length || 0);
       
       // Filter only entries that have actual photos
       const entriesWithPhotos = (data || []).filter(entry => {
