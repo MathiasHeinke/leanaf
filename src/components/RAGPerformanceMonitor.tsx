@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRAGMetrics } from "@/hooks/useRAGMetrics";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ interface EmbeddingHealth {
 
 const RAGPerformanceMonitor = () => {
   const { toast } = useToast();
-  const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
+  const { metrics: ragMetrics, loading: ragLoading, refetch: refetchRAG } = useRAGMetrics();
   const [embeddingHealth, setEmbeddingHealth] = useState<EmbeddingHealth | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -46,6 +47,8 @@ const RAGPerformanceMonitor = () => {
   const loadMetrics = async () => {
     setIsLoading(true);
     try {
+      // Refresh RAG metrics from hook
+      refetchRAG();
       // Get embedding health
       const { data: knowledgeEntries } = await supabase
         .from('coach_knowledge_base')
@@ -73,32 +76,8 @@ const RAGPerformanceMonitor = () => {
         });
       }
 
-      // Simulate performance metrics (in real app, these would come from actual usage analytics)
-      const coachUsage = [
-        { coach_id: 'sascha', queries: 245, avgRelevance: 0.82 },
-        { coach_id: 'lucy', queries: 89, avgRelevance: 0.76 },
-        { coach_id: 'kai', queries: 67, avgRelevance: 0.71 },
-        { coach_id: 'vita', queries: 12, avgRelevance: 0.68 }
-      ];
-
-      setMetrics({
-        totalQueries: 413,
-        avgResponseTime: 1.24,
-        cacheHitRate: 0.67,
-        embeddingCoverage: embeddingHealth?.coveragePercentage || 0,
-        topSearchTerms: [
-          { term: 'training plan', count: 67 },
-          { term: 'nutrition', count: 45 },
-          { term: 'recovery', count: 32 },
-          { term: 'supplements', count: 28 }
-        ],
-        coachUsage,
-        knowledgeGaps: [
-          { area: 'Advanced Recovery Techniques', missingQueries: 23 },
-          { area: 'Female Hormone Cycling', missingQueries: 18 },
-          { area: 'Mental Health Support', missingQueries: 15 }
-        ]
-      });
+      // Real metrics are now provided by useRAGMetrics hook
+      // No need to set simulated data anymore
 
     } catch (error) {
       console.error('Error loading metrics:', error);
@@ -159,11 +138,11 @@ const RAGPerformanceMonitor = () => {
         <div className="flex gap-2">
           <Button
             onClick={loadMetrics}
-            disabled={isLoading}
+            disabled={isLoading || ragLoading}
             size="sm"
             variant="outline"
           >
-            {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            {(isLoading || ragLoading) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Aktualisieren
           </Button>
           <Button
@@ -250,7 +229,7 @@ const RAGPerformanceMonitor = () => {
       </Card>
 
       {/* Performance Metrics */}
-      {metrics && (
+      {ragMetrics && (
         <>
           <div className="grid grid-cols-1 gap-6">
             <Card>
@@ -263,15 +242,15 @@ const RAGPerformanceMonitor = () => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm">Gesamt Anfragen</span>
-                  <span className="font-semibold">{metrics.totalQueries}</span>
+                  <span className="font-semibold">{ragMetrics.totalQueries}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Ø Antwortzeit</span>
-                  <span className="font-semibold">{metrics.avgResponseTime}s</span>
+                  <span className="font-semibold">{ragMetrics.avgResponseTime.toFixed(2)}s</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Cache Hit Rate</span>
-                  <span className="font-semibold">{(metrics.cacheHitRate * 100).toFixed(0)}%</span>
+                  <span className="font-semibold">{(ragMetrics.cacheHitRate * 100).toFixed(0)}%</span>
                 </div>
               </CardContent>
             </Card>
@@ -284,7 +263,7 @@ const RAGPerformanceMonitor = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {metrics.coachUsage.map((coach) => (
+                {ragMetrics.coachUsage.length > 0 ? ragMetrics.coachUsage.map((coach) => (
                   <div key={coach.coach_id} className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">{coach.coach_id}</Badge>
@@ -294,7 +273,11 @@ const RAGPerformanceMonitor = () => {
                       {(coach.avgRelevance * 100).toFixed(0)}% rel.
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-sm text-muted-foreground py-4">
+                    Keine RAG-Aktivitäten gefunden
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -306,12 +289,16 @@ const RAGPerformanceMonitor = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {metrics.topSearchTerms.map((term, index) => (
+                {ragMetrics.topSearchTerms.length > 0 ? ragMetrics.topSearchTerms.map((term, index) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm">{term.term}</span>
                     <Badge variant="outline">{term.count}</Badge>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-sm text-muted-foreground py-4">
+                    Keine Suchbegriffe verfügbar
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -329,7 +316,7 @@ const RAGPerformanceMonitor = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {metrics.knowledgeGaps.map((gap, index) => (
+                {ragMetrics.knowledgeGaps.length > 0 ? ragMetrics.knowledgeGaps.map((gap, index) => (
                   <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">{gap.area}</div>
@@ -339,7 +326,11 @@ const RAGPerformanceMonitor = () => {
                     </div>
                     <Badge variant="destructive">{gap.missingQueries}</Badge>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center text-sm text-muted-foreground py-4">
+                    Keine Wissenslücken erkannt
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

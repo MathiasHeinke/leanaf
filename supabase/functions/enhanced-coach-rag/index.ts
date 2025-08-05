@@ -103,8 +103,32 @@ serve(async (req) => {
     const responseTime = Date.now() - startTime;
     const relevance_score = calculateRelevanceScore(searchResults);
 
-    // Metrics in Background Task speichern (non-blocking)
+    // Enhanced RAG telemetry in coach_traces table
     try {
+      const telemetryData = {
+        query_text: query.substring(0, 100), // First 100 chars for privacy
+        search_method,
+        response_time_ms: responseTime,
+        relevance_score,
+        cache_hit: false, // TODO: Implement cache checking
+        embedding_tokens: embeddingTokens,
+        results_count: searchResults.length,
+        context_length: contextChunks.reduce((sum, chunk) => sum + chunk.content.length, 0),
+        coach_id,
+        search_terms: query.toLowerCase().split(' ').filter(w => w.length > 2).slice(0, 5) // Top 5 search terms
+      };
+
+      // Save to coach_traces for real-time dashboard
+      await supabaseClient
+        .from('coach_traces')
+        .insert({
+          trace_id: `rag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          ts: new Date().toISOString(),
+          stage: 'rag_query_completed',
+          data: telemetryData
+        });
+
+      // Also save to legacy rag_performance_metrics table
       await savePerformanceMetrics(supabaseClient, {
         user_id,
         coach_id,
@@ -112,11 +136,11 @@ serve(async (req) => {
         search_method,
         response_time_ms: responseTime,
         relevance_score,
-        cache_hit: false, // TODO: Implement cache checking
+        cache_hit: false,
         embedding_tokens: embeddingTokens
       });
     } catch (metricsError) {
-      console.error('Failed to save metrics:', metricsError);
+      console.error('Failed to save RAG telemetry:', metricsError);
     }
 
     // Schritt 5: Intelligentes Context Ranking
