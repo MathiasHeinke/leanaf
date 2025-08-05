@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,13 +19,18 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Checking OpenAI API key...');
+    console.log('Checking API keys...');
+    const huggingFaceToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      console.error('OpenAI API key not found in environment');
-      throw new Error('OpenAI API key not configured');
+    
+    if (!huggingFaceToken && !openAIApiKey) {
+      throw new Error('No AI API keys configured. Please add HUGGING_FACE_ACCESS_TOKEN or OPENAI_API_KEY');
     }
-    console.log('OpenAI API key found ✓');
+    
+    console.log('API keys available:', { 
+      huggingFace: !!huggingFaceToken, 
+      openAI: !!openAIApiKey 
+    });
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -132,13 +138,63 @@ Realistic fitness goals, not extreme transformations.`;
 
     console.log('Generated simplified prompt:', detailedPrompt);
 
-    // Helper function to generate images with fallback models
+    // Helper function to generate images with FLUX first, then OpenAI fallback
     const generateImageWithFallback = async (prompt: string, index: number, maxRetries = 2) => {
-      const models = ['gpt-image-1', 'dall-e-3', 'dall-e-2'];
+      // Try FLUX.1-schnell first if HuggingFace token is available
+      if (huggingFaceToken) {
+        console.log(`Trying image generation ${index + 1} with FLUX.1-schnell`);
+        
+        for (let retry = 0; retry <= maxRetries; retry++) {
+          try {
+            const hf = new HfInference(huggingFaceToken);
+            
+            // Optimize prompt for FLUX - more natural, less technical
+            const fluxPrompt = prompt
+              .replace('Professional fitness photo', 'A realistic photograph')
+              .replace('Show:', '')
+              .replace(/- /g, '')
+              .replace('Realistic fitness goals, not extreme transformations.', 'Natural looking, achievable fitness transformation.');
+            
+            const image = await hf.textToImage({
+              inputs: fluxPrompt,
+              model: 'black-forest-labs/FLUX.1-schnell',
+            });
+            
+            // Convert blob to base64
+            const arrayBuffer = await image.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            const imageUrl = `data:image/png;base64,${base64}`;
+            
+            console.log(`Successfully generated image ${index + 1} with FLUX.1-schnell`);
+            return { 
+              data: [{ url: imageUrl }], 
+              model: 'flux-1-schnell',
+              provider: 'huggingface'
+            };
+            
+          } catch (error) {
+            console.error(`FLUX generation ${index + 1} failed (attempt ${retry + 1}):`, error);
+            if (retry < maxRetries) {
+              const waitTime = Math.pow(2, retry) * 1000;
+              console.log(`Waiting ${waitTime}ms before FLUX retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+          }
+        }
+        console.log(`FLUX failed for image ${index + 1}, falling back to OpenAI...`);
+      }
       
-      for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
-        const model = models[modelIndex];
-        console.log(`Trying image generation ${index + 1} with model: ${model}`);
+      // Fallback to OpenAI models if FLUX fails or no HuggingFace token
+      if (!openAIApiKey) {
+        console.error(`No OpenAI API key available for fallback`);
+        return null;
+      }
+      
+      const openAIModels = ['dall-e-3', 'dall-e-2'];
+      
+      for (let modelIndex = 0; modelIndex < openAIModels.length; modelIndex++) {
+        const model = openAIModels[modelIndex];
+        console.log(`Trying image generation ${index + 1} with OpenAI ${model}`);
         
         for (let retry = 0; retry <= maxRetries; retry++) {
           try {
@@ -149,10 +205,7 @@ Realistic fitness goals, not extreme transformations.`;
             };
 
             // Configure based on model capabilities
-            if (model === 'gpt-image-1') {
-              requestBody.size = '1024x1024';
-              requestBody.quality = 'high';
-            } else if (model === 'dall-e-3') {
+            if (model === 'dall-e-3') {
               requestBody.size = '1024x1024';
               requestBody.quality = 'hd';
               requestBody.style = 'vivid';
@@ -194,8 +247,8 @@ Realistic fitness goals, not extreme transformations.`;
                 break;
               }
             } else {
-              console.log(`Successfully generated image ${index + 1} with model: ${model}`);
-              return result;
+              console.log(`Successfully generated image ${index + 1} with OpenAI ${model}`);
+              return { ...result, model, provider: 'openai' };
             }
           } catch (error) {
             console.error(`Network error for image ${index + 1} with ${model} (attempt ${retry + 1}):`, error);
