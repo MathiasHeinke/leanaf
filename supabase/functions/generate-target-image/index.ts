@@ -226,9 +226,10 @@ serve(async (req) => {
               prompt: prompt,
               input_image: inputImageBase64,
               aspect_ratio: "3:4",
-              safety_tolerance: 3,
-              prompt_upsampling: false,
-              seed: Math.floor(Math.random() * 1000000)
+              safety_tolerance: 2, // Lower tolerance to avoid comic/cartoon style
+              prompt_upsampling: true, // Enable prompt upsampling for better interpretation
+              seed: Math.floor(Math.random() * 1000000),
+              strength: 0.7 // Add strength parameter for more controlled transformation
             };
             
             console.log(`Sending request to FLUX Kontext Pro API...`);
@@ -359,12 +360,10 @@ serve(async (req) => {
           try {
             const hf = new HfInference(huggingFaceToken);
             
-            // Clean prompt for FLUX - remove technical language
-            const fluxPrompt = prompt
-              .replace('Show this same person after achieving', 'A person who has achieved')
-              .replace('Same person, same face, same body type, but now', 'Now')
-              .replace('Natural progress photo showing', 'Photo showing')
-              .replace('No extreme changes, just a healthier version of the same person.', 'Subtle, natural improvement.');
+            // Enhanced photorealistic prompt for FLUX.1-schnell
+            const fluxPrompt = `Photorealistic fitness photography, professional studio lighting, ${prompt}. Ultra-realistic human anatomy, detailed muscle definition, natural skin texture, professional bodybuilding photography style. Shot with Canon EOS R5, 85mm lens, perfect lighting. NOT cartoon, NOT anime, NOT illustration - photorealistic only.`;
+            
+            console.log('HuggingFace FLUX prompt:', fluxPrompt);
             
             const image = await hf.textToImage({
               inputs: fluxPrompt,
