@@ -101,31 +101,57 @@ serve(async (req) => {
         }, timeoutMs);
         
         try {
-          // Get coach data
-          const { data: coach } = await supabase
-            .from('coaches')
-            .select('*')
-            .eq('id', coachId || 'lucy')
-            .single();
+          // Import coach registry
+          const { resolveCoach } = await import('../_shared/coachRegistry.ts');
+          
+          // Resolve coach using registry (no database dependency)
+          const coach = resolveCoach(coachId || 'lucy');
 
           // Log coach context retrieval
           await logTelemetryData(supabase, traceId, 'T_context_built', {
-            coach_data: coach ? {
+            input_coach_id: coachId,
+            resolved_coach: {
+              id: coach.id,
               name: coach.name,
+              displayName: coach.displayName,
               personality: coach.personality,
-              expertise: coach.expertise
-            } : null,
-            context_source: 'coaches_table',
-            context_size: JSON.stringify(coach || {}).length
+              role: coach.role
+            },
+            context_source: 'coach_registry',
+            context_size: JSON.stringify(coach).length,
+            fallback_used: coachId !== coach.id
           });
 
-          // Build context
-          const systemMessage = `Du bist ${coach?.name || 'Lucy'}, ein persönlicher Coach.
-          
-Persönlichkeit: ${coach?.personality || 'empathisch und motivierend'}
-Expertise: ${coach?.expertise?.join(', ') || 'Allgemeine Gesundheit'}
+          // Build enhanced context with persona data
+          let personaContext = '';
+          try {
+            // Try to load persona from JSON file
+            const personaResponse = await fetch('https://raw.githubusercontent.com/lovable-dev/gzczjscctgyxjyodhnhk/main/src/data/coach-personas.json');
+            if (personaResponse.ok) {
+              const personas = await personaResponse.json();
+              const persona = personas.find((p: any) => p.id === coach.prompt_template_id);
+              if (persona) {
+                personaContext = `
+Persönlichkeits-Details:
+- Kernmerkmale: ${persona.personality?.coreTraits?.join(', ') || 'N/A'}
+- Hintergrund: ${persona.personality?.backStory || 'N/A'}
+- Spezialgebiete: ${persona.specialty?.join(', ') || coach.expertise.join(', ')}
+- Catchphrases: ${persona.catchPhrases?.join(' | ') || 'N/A'}
+- Gesprächsstil: ${persona.conversationalStyle?.approachPattern || 'Empathisch und hilfreich'}
+`;
+              }
+            }
+          } catch (error) {
+            console.warn('Could not load persona context:', error.message);
+          }
 
-Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
+          // Build system message
+          const systemMessage = `Du bist ${coach.displayName}, ein ${coach.role}.
+
+Persönlichkeit: ${coach.personality}
+Expertise: ${coach.expertise.join(', ')}
+${personaContext}
+Antworte authentisch in deinem Stil und nutze dein Fachwissen, um dem Nutzer zu helfen.`;
 
           const messages = [
             { role: 'system', content: systemMessage },

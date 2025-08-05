@@ -158,7 +158,7 @@ const coachProfiles = [
     }
   },
   {
-    id: 'dr-vita',
+    id: 'vita',
     name: 'Dr. Vita Femina',
     age: 38,
     role: 'Female Health & Hormone Coach',
@@ -179,7 +179,7 @@ const coachProfiles = [
       { text: 'Frauen-spezifische Ernährung', prompt: 'Welche Nährstoffe brauche ich als Frau besonders und wann in meinem Zyklus?' }
     ],
     coachInfo: {
-      id: 'dr-vita',
+      id: 'vita',
       name: 'Dr. Vita Femina',
       role: 'Hormon-Expertin',
       imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
