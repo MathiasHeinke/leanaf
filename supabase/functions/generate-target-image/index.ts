@@ -101,54 +101,73 @@ serve(async (req) => {
       console.log('No progress photo found, falling back to text-only generation');
     }
 
-    // Calculate target improvements
+    // Get user's workout frequency for activity level calculation
+    const { data: recentWorkouts } = await supabase
+      .from('workouts')
+      .select('date, did_workout')
+      .eq('user_id', userId)
+      .gte('date', new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) // Last 4 weeks
+      .eq('did_workout', true);
+    
+    const workoutsPerWeek = Math.round((recentWorkouts?.length || 0) / 4);
+    
+    // Calculate target values
     const currentWeight = latestWeightEntry?.weight || profile?.weight || 70;
-    const currentBodyFat = latestWeightEntry?.body_fat_percentage || 20;
-    const currentMuscle = latestWeightEntry?.muscle_percentage || 35;
-    
     const targetWeightNum = targetWeight || profile?.target_weight || currentWeight;
-    const targetBodyFatNum = targetBodyFat || profile?.target_body_fat_percentage || Math.max(currentBodyFat - 5, 8);
+    const targetBodyFatNum = targetBodyFat || profile?.target_body_fat_percentage || 15;
     
-    const weightChange = targetWeightNum - currentWeight;
-    const bodyFatChange = targetBodyFatNum - currentBodyFat;
+    // Determine activity level based on workout frequency
+    let activityLevel = 'sedentary';
+    let workoutFrequency = '';
     
-    // Create natural, realistic prompts focused on achievable transformations
+    if (workoutsPerWeek >= 6) {
+      activityLevel = 'very active';
+      workoutFrequency = `${workoutsPerWeek}x week workout`;
+    } else if (workoutsPerWeek >= 4) {
+      activityLevel = 'active';
+      workoutFrequency = `${workoutsPerWeek}x week workout`;
+    } else if (workoutsPerWeek >= 2) {
+      activityLevel = 'moderate active';
+      workoutFrequency = `${workoutsPerWeek}x week workout`;
+    }
+    
+    // Create simplified, direct prompt based on user's successful example
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Natural transformation prompt with progress photo
-      const weightDirection = weightChange > 5 ? 'gaining healthy weight' : weightChange < -5 ? 'losing excess weight' : 'improving body composition';
-      const bodyDescription = targetBodyFatNum <= 12 ? 'lean and athletic' : targetBodyFatNum <= 18 ? 'fit and toned' : 'healthy and strong';
-      
-      detailedPrompt = `Show this same person after achieving their fitness goal through ${weightDirection}. Same person, same face, same body type, but now ${bodyDescription} at ${targetBodyFatNum}% body fat. Natural progress photo showing realistic, healthy transformation. Good lighting, normal gym clothes or casual wear, confident but natural expression. No extreme changes, just a healthier version of the same person.`;
-
+      // Simple, direct prompt for image editing
+      detailedPrompt = `Let's see this character with ${targetBodyFatNum}% body fat and ${targetWeightNum}kg (${activityLevel}${workoutFrequency ? ', ' + workoutFrequency : ''})`;
     } else {
-      // Natural person generation for text-only
+      // Fallback for text-only generation
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
-      const ageDesc = profile?.age ? `${profile.age} years old` : 'young adult';
-      const bodyDescription = targetBodyFatNum <= 12 ? 'lean and athletic' : targetBodyFatNum <= 18 ? 'fit and toned' : 'healthy and strong';
+      const ageDesc = profile?.age ? `${profile.age}-year-old` : 'young adult';
       
-      detailedPrompt = `Natural photo of a ${bodyDescription} ${ageDesc} ${genderDesc} at ${targetBodyFatNum}% body fat. Realistic body proportions, normal gym clothes or athletic wear, natural lighting, confident smile. Not a model or extreme fitness transformation - just a regular person who is ${bodyDescription} and healthy.`;
+      detailedPrompt = `Fit ${ageDesc} ${genderDesc} with ${targetBodyFatNum}% body fat and ${targetWeightNum}kg (${activityLevel}${workoutFrequency ? ', ' + workoutFrequency : ''})`;
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);
 
-    // Helper function to generate images with BFL Direct API first, then fallbacks
-    const generateImageWithFallback = async (prompt: string, index: number, maxRetries = 2) => {
-      // Try BFL Direct API first if BFL API key is available
-      if (bflApiKey) {
-        console.log(`Trying image generation ${index + 1} with BFL Direct API`);
+    // Helper function to generate images with FLUX Kontext Pro for image editing
+    const generateImageWithFallback = async (prompt: string, inputImageUrl: string | null, index: number, maxRetries = 2) => {
+      // Try FLUX Kontext Pro if BFL API key is available and we have an input image
+      if (bflApiKey && inputImageUrl) {
+        console.log(`Trying image generation ${index + 1} with FLUX Kontext Pro (image editing)`);
         
         for (let retry = 0; retry <= maxRetries; retry++) {
           try {
-            // Clean prompt for FLUX - remove technical language
-            const fluxPrompt = prompt
-              .replace('Show this same person after achieving', 'A person who has achieved')
-              .replace('Same person, same face, same body type, but now', 'Now')
-              .replace('Natural progress photo showing', 'Photo showing')
-              .replace('No extreme changes, just a healthier version of the same person.', 'Subtle, natural improvement.');
+            // Convert image URL to base64
+            let inputImageBase64 = '';
+            try {
+              const imageResponse = await fetch(inputImageUrl);
+              const imageBuffer = await imageResponse.arrayBuffer();
+              const base64String = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+              inputImageBase64 = `data:image/jpeg;base64,${base64String}`;
+            } catch (imageError) {
+              console.error('Failed to fetch and convert input image:', imageError);
+              throw new Error('Failed to process input image');
+            }
             
-            // Submit generation request to BFL API
+            // Submit generation request to FLUX Kontext Pro
             const generateResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
               method: 'POST',
               headers: {
@@ -156,27 +175,28 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                prompt: fluxPrompt,
-                width: 1024,
-                height: 1024,
-                safety_tolerance: 2,
+                prompt: prompt,
+                input_image: inputImageBase64,
+                aspect_ratio: "3:4",
+                safety_tolerance: 3,
+                prompt_upsampling: false,
                 seed: Math.floor(Math.random() * 1000000)
               }),
             });
             
             if (!generateResponse.ok) {
               const errorData = await generateResponse.json();
-              throw new Error(`BFL API Error: ${errorData.message || 'Unknown error'}`);
+              throw new Error(`FLUX Kontext Pro API Error: ${errorData.message || 'Unknown error'}`);
             }
             
             const generateResult = await generateResponse.json();
             const taskId = generateResult.id;
             
             if (!taskId) {
-              throw new Error('No task ID received from BFL API');
+              throw new Error('No task ID received from FLUX Kontext Pro API');
             }
             
-            console.log(`BFL task submitted: ${taskId}, waiting for completion...`);
+            console.log(`FLUX Kontext Pro task submitted: ${taskId}, waiting for completion...`);
             
             // Poll for result (BFL API is async)
             let attempts = 0;
@@ -195,17 +215,17 @@ serve(async (req) => {
                 const resultData = await resultResponse.json();
                 
                 if (resultData.status === 'Ready') {
-                  console.log(`Successfully generated image ${index + 1} with BFL Direct API`);
+                  console.log(`Successfully generated image ${index + 1} with FLUX Kontext Pro`);
                   return { 
                     data: [{ url: resultData.result.sample }], 
                     model: 'flux-kontext-pro',
-                    provider: 'bfl-direct'
+                    provider: 'bfl-kontext'
                   };
                 } else if (resultData.status === 'Error' || resultData.status === 'Request Moderated' || resultData.status === 'Content Moderated') {
-                  throw new Error(`BFL generation failed: ${resultData.status} - ${JSON.stringify(resultData.details)}`);
+                  throw new Error(`FLUX Kontext Pro failed: ${resultData.status} - ${JSON.stringify(resultData.details)}`);
                 } else if (resultData.status === 'Pending') {
                   attempts++;
-                  console.log(`BFL task ${taskId} still pending (${attempts}/${maxAttempts})...`);
+                  console.log(`FLUX Kontext Pro task ${taskId} still pending (${attempts}/${maxAttempts})...`);
                   continue;
                 }
               }
@@ -213,18 +233,18 @@ serve(async (req) => {
               attempts++;
             }
             
-            throw new Error(`BFL generation timeout after ${maxAttempts} seconds`);
+            throw new Error(`FLUX Kontext Pro timeout after ${maxAttempts} seconds`);
             
           } catch (error) {
-            console.error(`BFL generation ${index + 1} failed (attempt ${retry + 1}):`, error);
+            console.error(`FLUX Kontext Pro generation ${index + 1} failed (attempt ${retry + 1}):`, error);
             if (retry < maxRetries) {
               const waitTime = Math.pow(2, retry) * 1000;
-              console.log(`Waiting ${waitTime}ms before BFL retry...`);
+              console.log(`Waiting ${waitTime}ms before FLUX Kontext Pro retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
             }
           }
         }
-        console.log(`BFL failed for image ${index + 1}, falling back to HuggingFace...`);
+        console.log(`FLUX Kontext Pro failed for image ${index + 1}, falling back to HuggingFace...`);
       }
       
       // Try FLUX.1-schnell via HuggingFace if BFL failed or not available
@@ -350,15 +370,13 @@ serve(async (req) => {
       return null;
     };
 
-    // Generate 4 images with fallback models
-    console.log('Generating 4 target images with model fallback...');
+    // Generate 4 images using FLUX Kontext Pro or fallback models
+    console.log('Generating 4 target images with FLUX Kontext Pro...');
     
     const imagePromises = Array.from({ length: 4 }, (_, index) => {
-      // Add subtle variation to each image - natural poses
-      const variations = ['standing naturally', 'casual pose', 'relaxed stance', 'confident posture'];
-      const promptVariation = `${detailedPrompt} ${variations[index]}.`;
-      
-      return generateImageWithFallback(promptVariation, index);
+      // Use the same simplified prompt for all images when using Kontext Pro
+      // The variation will come from different seeds
+      return generateImageWithFallback(detailedPrompt, frontPhotoUrl, index);
     });
 
     const imageResults = await Promise.all(imagePromises);
@@ -384,8 +402,9 @@ serve(async (req) => {
         hasProgressPhoto: !!frontPhotoUrl,
         currentWeight,
         targetWeight: targetWeightNum,
-        currentBodyFat,
-        targetBodyFat: targetBodyFatNum
+        targetBodyFat: targetBodyFatNum,
+        activityLevel,
+        workoutFrequency
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
