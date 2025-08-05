@@ -154,8 +154,19 @@ Style: High-quality fitness photography, natural lighting, motivational but real
 
   } catch (error) {
     console.error('Error in generate-target-image function:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      cause: error.cause
+    });
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Check function logs for more information',
+        timestamp: new Date().toISOString()
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
