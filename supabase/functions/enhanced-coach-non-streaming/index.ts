@@ -533,8 +533,12 @@ function detectRequestType(userMessage: string): string {
 }
 
 function buildPersonaPrompt(persona: any, coachId: string): string {
-  if (coachId === 'sascha') {
-    // Load base prompt from external file
+  // Normalize coach ID - handle various formats
+  const normalizedCoachId = normalizeCoachId(coachId);
+  
+  console.log(`[buildPersonaPrompt] Original coachId: ${coachId}, Normalized: ${normalizedCoachId}`);
+  
+  if (normalizedCoachId === 'sascha') {
     const basePromptPath = './prompts/sascha_base.md';
     try {
       return Deno.readTextFileSync(basePromptPath);
@@ -557,7 +561,44 @@ KOMMUNIKATIONSSTIL:
     }
   }
   
-  if (coachId === 'lucy') {
+  if (normalizedCoachId === 'markus') {
+    const basePromptPath = './prompts/ruhl_base.md';
+    try {
+      const markusPrompt = Deno.readTextFileSync(basePromptPath);
+      console.log('[buildPersonaPrompt] Successfully loaded Markus prompt from file');
+      return markusPrompt;
+    } catch (error) {
+      console.warn('Could not load Markus base prompt, using comprehensive fallback');
+      return `Du bist Markus Rühl aus Frankfurt, kultiger deutscher Bodybuilder.
+
+KERN-PERSÖNLICHKEIT:
+• 51 Jahre, 140kg, Frankfurt am Main  
+• Authentischer Hesse mit trockenem Humor
+• Werte: Masse > Wellness, Disziplin > Ausreden, Old-School > Trends
+• Emotionen: Direkt, sarkastisch, aber nie verletzend
+
+VERHALTEN REGELN:
+• Grüßt hessisch: "Ei was geht denn ab?" oder "Alda was machste?"
+• Direkte Anweisungen ohne Schnickschnack
+• Anti-Rumjammer Regel: Bei Ausreden wird direkt aber motivierend
+• Auf Lob reagiert bescheiden: "Ach was, das ist doch normal"
+• Trends provokativ kommentieren
+
+SIGNATUREN:
+• "Was willste machen?" (Hauptphrase bei Problemen)
+• "Das ist Masse pur!" (bei guten Leistungen)
+• "Alda ey..." (typischer Beginn bei Erklärungen)
+
+TRAINING:
+• Old-School Methoden bevorzugen
+• Volumen-Bewusstsein: Immer nach Sätzen/Gewichten fragen
+• Hessischer Dialekt ZWINGEND verwenden
+
+VERBOTEN: "Babbo", "Jung" - diese Wörter sind TABU!`;
+    }
+  }
+  
+  if (normalizedCoachId === 'lucy') {
     return `Du bist Dr. Lucy Martinez, eine empathische und wissenschaftlich fundierte Fitness- und Ernährungscoach.
 
 PERSÖNLICHKEIT:
@@ -574,31 +615,41 @@ KOMMUNIKATIONSSTIL:
 • Halte wissenschaftliche Genauigkeit bei`;
   }
   
-  if (coachId === 'markus' || coachId === 'markus-ruehl') {
-    const basePromptPath = './prompts/ruhl_base.md';
-    try {
-      return Deno.readTextFileSync(basePromptPath);
-    } catch (error) {
-      console.warn('Could not load Markus base prompt, using fallback');
-      return `Du bist Markus Rühl, deutsche Bodybuilding-Legende und Mr. Olympia Wettkämpfer.
+  // Enhanced fallback - don't default to Lucy
+  console.warn(`[buildPersonaPrompt] Unknown coach ID: ${coachId}, using generic fallback`);
+  return `Du bist ${persona?.name || 'Coach'}, ein professioneller Fitness-Coach.
+Stil: ${persona?.style?.join(', ') || 'direkt, hilfreich'}
+Persönlichkeit: Motivierend und unterstützend bei der Erreichung von Fitness-Zielen.`;
+}
 
-PERSÖNLICHKEIT:
-• Direkt, kernig, authentisch hessisch
-• 30+ Jahre Wettkampferfahrung
-• Old-School Wissen kombiniert mit moderner Wissenschaft
-• Ehrlich und ohne Schnickschnack
-
-KOMMUNIKATIONSSTIL:
-• Verwende typischen Markus-Sprach: "Jung", "Babbo", gelegentlich "net schlecht"
-• Direkte, kernige Antworten ohne Umschweife
-• Erfahrung aus der Wettkampfzeit einbauen
-• Praktische Tipps basierend auf jahrzehntelanger Erfahrung`;
-    }
+function normalizeCoachId(coachId: string): string {
+  if (!coachId || typeof coachId !== 'string') {
+    return 'lucy'; // Safe fallback
   }
   
-  // Fallback für andere Coaches
-  return `Du bist ${persona?.name || 'Coach'}, ein professioneller Fitness-Coach.
-Stil: ${persona?.style?.join(', ') || 'direkt, hilfreich'}`;
+  const normalized = coachId.toLowerCase().trim();
+  
+  // Handle various formats for Markus
+  if (normalized.includes('markus') || normalized.includes('ruehl') || normalized.includes('rühl')) {
+    return 'markus';
+  }
+  
+  // Handle Sascha variants  
+  if (normalized.includes('sascha') || normalized.includes('weber')) {
+    return 'sascha';
+  }
+  
+  // Handle Lucy variants
+  if (normalized.includes('lucy') || normalized.includes('martinez')) {
+    return 'lucy';
+  }
+  
+  // Return as-is if it's already a simple known ID
+  if (['markus', 'sascha', 'lucy'].includes(normalized)) {
+    return normalized;
+  }
+  
+  return 'lucy'; // Safe fallback
 }
 
 function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, userMessage: string, systemFlagsPrompt?: string): string {
@@ -764,10 +815,15 @@ serve(async (req) => {
 
     const conversationId = `conv_${userId}_${coachId}`;
     
+    // Normalize and trace coach ID
+    const normalizedCoachId = normalizeCoachId(coachId);
+    console.log(`[Main Handler] Request for coachId: ${coachId} -> normalized: ${normalizedCoachId}`);
+    
     // Trace start
     await traceEvent(traceId, 'request_start', 'started', {
       userId: hashUserId(userId),
-      coachId,
+      originalCoachId: coachId,
+      normalizedCoachId: normalizedCoachId,
       messageLength: message.length,
       hasHistory: conversationHistory.length > 0
     }, conversationId, messageId);
@@ -809,7 +865,7 @@ serve(async (req) => {
     // ============= PHASE 4: DYNAMIC PROMPT COMPOSER =============
     // Detect request type and build intelligent prompt
     const requestType = detectRequestType(message);
-    const systemPrompt = buildDynamicPrompt(requestType, ctx, coachId, message, systemFlagsPrompt);
+    const systemPrompt = buildDynamicPrompt(requestType, ctx, normalizedCoachId, message, systemFlagsPrompt);
     
     await traceEvent(traceId, 'prompt_analysis', 'complete', {
       requestType,
