@@ -188,7 +188,7 @@ export function calculateCost(model: string, inputTokens: number, outputTokens: 
   return Math.round(cost * 100000) / 100000; // Round to 5 decimal places
 }
 
-// Enhanced telemetry logging
+// Enhanced telemetry logging with detailed debug info
 export async function logTelemetryData(
   supabase: any,
   traceId: string,
@@ -208,15 +208,29 @@ export async function logTelemetryData(
       ts: new Date().toISOString()
     };
 
+    console.log(`🔧 Telemetry: ${stage} for trace ${traceId}`, {
+      stage,
+      dataKeys: Object.keys(data),
+      hasUserMessage: !!data.user_message,
+      hasSystemMessage: !!data.system_message,
+      hasFullPrompt: !!data.full_prompt_preview,
+      hasCoachResponse: !!data.coach_response
+    });
+
     const { error } = await supabase
       .from('coach_traces')
       .insert(payload);
 
     if (error) {
-      console.error('Failed to log telemetry data:', error);
+      console.error(`❌ Failed to log telemetry data for ${stage}:`, error);
+      console.error('Payload that failed:', JSON.stringify(payload, null, 2));
+    } else {
+      console.log(`✅ Successfully logged telemetry for ${stage}`);
     }
   } catch (error) {
-    console.error('Error logging telemetry data:', error);
+    console.error(`❌ Error logging telemetry data for ${stage}:`, error);
+    console.error('Trace ID:', traceId);
+    console.error('Data keys:', Object.keys(data));
   }
 }
 

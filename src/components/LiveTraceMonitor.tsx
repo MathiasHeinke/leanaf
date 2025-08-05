@@ -76,6 +76,7 @@ const STEP_ICONS: Record<string, React.ComponentType<any>> = {
 };
 
 const STEP_NAMES: Record<string, string> = {
+  // Enhanced telemetry stages
   'T_request_start': 'Anfrage Start',
   'T_context_built': 'Kontext aufgebaut',
   'T_prompt_analysis': 'Prompt Analyse',
@@ -84,7 +85,17 @@ const STEP_NAMES: Record<string, string> = {
   'T_stream_complete': 'Stream abgeschlossen',
   'T_completion': 'Vervollständigung',
   'E_error': 'Fehler aufgetreten',
-  'E_rag_search': 'RAG Suche'
+  'E_rag_search': 'RAG Suche',
+  // Legacy stages
+  'A_received': 'Anfrage erhalten',
+  'B_context_ready': 'Kontext bereit',
+  'C_openai_call': 'OpenAI Aufruf',
+  'D_delta': 'Streaming',
+  'F_response_ready': 'Antwort bereit',
+  'F_streaming_done': 'Streaming beendet',
+  'G_complete': 'Abgeschlossen',
+  'token_budget_check': 'Token Budget Check',
+  'test_write': 'Test Schreibvorgang'
 };
 
 const STATUS_COLORS = {
@@ -94,7 +105,12 @@ const STATUS_COLORS = {
   error: 'text-red-500'
 };
 
-const PRIORITY_STEPS = ['openai_call', 'buildAIContext', 'stream', 'error'];
+const PRIORITY_STEPS = [
+  'T_request_start', 'T_context_built', 'T_prompt_analysis',
+  'T_openai_request', 'T_first_token', 'T_stream_complete', 'T_completion',
+  'A_received', 'B_context_ready', 'C_openai_call', 
+  'D_delta', 'F_response_ready', 'G_complete', 'E_error'
+];
 
 export const LiveTraceMonitor = () => {
   const [traces, setTraces] = useState<GroupedTrace[]>([]);
@@ -145,11 +161,29 @@ export const LiveTraceMonitor = () => {
           traceStatus = 'completed';
         }
         
-        // Extract content for easy viewing
-        const requestEvent = events.find(e => e.stage === 'T_request_start');
-        const promptEvent = events.find(e => e.stage === 'T_prompt_analysis');
-        const completionEvent = events.find(e => e.stage === 'T_completion' || e.stage === 'T_stream_complete');
+        // Extract content for easy viewing from both naming conventions
+        const requestEvent = events.find(e => e.stage === 'T_request_start' || e.stage === 'A_received');
+        const promptEvent = events.find(e => e.stage === 'T_prompt_analysis' || e.stage === 'B_context_ready');
+        const completionEvent = events.find(e => e.stage === 'T_completion' || e.stage === 'T_stream_complete' || e.stage === 'G_complete');
         const ragEvent = events.find(e => e.stage === 'E_rag_search');
+
+        // Extract user message from various possible locations
+        const userMessage = requestEvent?.data?.user_message || 
+                          requestEvent?.data?.message ||
+                          promptEvent?.data?.user_message ||
+                          events.find(e => e.data?.user_message)?.data?.user_message;
+
+        // Extract coach response from various possible locations
+        const coachResponse = completionEvent?.data?.coach_response || 
+                            completionEvent?.data?.response_preview ||
+                            completionEvent?.data?.content ||
+                            events.find(e => e.data?.coach_response)?.data?.coach_response;
+
+        // Extract full prompt from various possible locations
+        const fullPrompt = promptEvent?.data?.full_prompt_preview || 
+                         promptEvent?.data?.openai_request_body ||
+                         promptEvent?.data?.system_message ||
+                         events.find(e => e.data?.full_prompt_preview)?.data?.full_prompt_preview;
 
         groupedTraces.set(traceId, {
           traceId,
@@ -159,9 +193,9 @@ export const LiveTraceMonitor = () => {
           totalSteps: events.length,
           completedSteps: completedSteps,
           errorSteps: errorSteps,
-          userMessage: requestEvent?.data?.user_message || requestEvent?.data?.message,
-          coachResponse: completionEvent?.data?.coach_response || completionEvent?.data?.response_preview,
-          fullPrompt: promptEvent?.data?.full_prompt_preview || promptEvent?.data?.openai_request_body,
+          userMessage,
+          coachResponse,
+          fullPrompt,
           ragContext: ragEvent?.data?.context_length ? `${ragEvent.data.results_count} results, ${ragEvent.data.context_length} chars` : undefined
         });
       });
