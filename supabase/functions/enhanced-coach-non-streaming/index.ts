@@ -1,655 +1,561 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
-import { deriveSystemFlags, buildSystemFlagsPrompt } from './utils/systemFlags.ts';
-import { checkSupplementStack, generateSupplementAdvice } from './utils/supplementSafety.ts';
-import { enhancedSpeechGuard, SpeechStyle } from './utils/speechGuards.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Import shared utilities - simplified inline for now
+// ============= UTILITY FUNCTIONS =============
 function newTraceId(): string {
-  return `t_${Math.random().toString(36).substring(2, 12)}`;
+  return `trace_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 function newMessageId(): string {
-  return `msg_${Math.random().toString(36).substring(2, 12)}`;
+  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
 function hashUserId(userId: string): string {
-  return `usr_${userId.substring(0, 8)}`;
+  // Simple hash for privacy in logs
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    const char = userId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `user_${Math.abs(hash)}`;
 }
 
 function detectPII(text: string): boolean {
-  if (!text || typeof text !== 'string') return false;
+  // Basic PII detection
   const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/;
   const phoneRegex = /(\+\d{1,3}[-.\s]?)?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}/;
-  const ibanRegex = /[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}/;
-  return emailRegex.test(text) || phoneRegex.test(text) || ibanRegex.test(text);
+  
+  return emailRegex.test(text) || phoneRegex.test(text);
 }
 
 function calculateSentiment(text: string): number {
-  if (!text || typeof text !== 'string') return 0;
-  const positiveWords = ['gut', 'super', 'toll', 'prima', 'klasse', 'perfekt', 'danke', 'freue'];
-  const negativeWords = ['schlecht', 'furchtbar', 'ärgerlich', 'frustriert', 'nervt', 'blöd', 'dumm'];
+  // Basic sentiment scoring (-1 to 1)
+  const positiveWords = ['gut', 'toll', 'super', 'freue', 'glücklich', 'dankbar', 'motiviert'];
+  const negativeWords = ['schlecht', 'traurig', 'frustriert', 'müde', 'aufgeben', 'schwer'];
+  
   const words = text.toLowerCase().split(/\s+/);
   let score = 0;
+  
   words.forEach(word => {
-    if (positiveWords.some(pos => word.includes(pos))) score += 1;
-    if (negativeWords.some(neg => word.includes(neg))) score -= 1;
+    if (positiveWords.includes(word)) score += 1;
+    if (negativeWords.includes(word)) score -= 1;
   });
-  return Math.max(-1, Math.min(1, score / words.length * 10));
+  
+  return Math.max(-1, Math.min(1, score / words.length));
 }
 
-// CORS headers
+// ============= SUPABASE SETUP =============
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Supabase client
-let supabaseClient: any = null;
-function getSupabaseClient() {
-  if (!supabaseClient) {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.warn('⚠️ Missing Supabase configuration');
-      return null;
-    }
-    
-    supabaseClient = createClient(
-      supabaseUrl,
-      supabaseServiceKey,
-      { auth: { persistSession: false } }
-    );
-  }
-  return supabaseClient;
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
+// ============= TOKEN MANAGEMENT =============
+function approxTokens(text: string): number {
+  // Approximate token count (1 token ≈ 3.5 characters for German)
+  return Math.ceil(text.length / 3.5);
 }
 
-// Token management
-function approxTokens(s: string): number {
-  return Math.ceil((s || "").length / 4);
+function hardTrim(text: string, maxTokens: number): string {
+  const maxChars = maxTokens * 3.5;
+  return text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
 }
 
-function hardTrim(str: string, tokenCap: number): string {
-  const charCap = tokenCap * 4;
-  if (str.length <= charCap) return str;
-  return str.slice(0, charCap);
-}
-
-// Trace logging
-async function traceEvent(traceId: string, step: string, status: string, data: any = {}, conversationId?: string, messageId?: string, duration?: number, error?: string): Promise<void> {
+// ============= TRACE LOGGING =============
+async function traceEvent(traceId: string, eventType: string, status: string, data: any = {}, conversationId?: string, messageId?: string) {
   try {
-    const supabaseTrace = getSupabaseClient();
-    if (!supabaseTrace) return;
-    
-    await supabaseTrace.from('coach_trace_events').insert({
+    await supabase.from('coach_trace_events').insert({
       trace_id: traceId,
+      event_type: eventType,
+      event_status: status,
+      event_data: data,
       conversation_id: conversationId,
-      message_id: messageId,
-      step,
-      status,
-      data,
-      duration_ms: duration,
-      error_message: error
+      message_id: messageId
     });
-  } catch (err) {
-    console.warn('Trace event logging failed:', err);
+  } catch (error) {
+    console.error(`Failed to log trace event: ${error.message}`);
   }
 }
 
-// ============= ENHANCED AI CONTEXT BUILDER =============
-// This uses the new enhanced buildAIContext from lib with all 15+ data sources
+// ============= AI CONTEXT BUILDING =============
+async function buildAIContext(userId: string, coachId: string, userMessage: string, traceId: string, additionalContext: any = {}) {
+  const ctx: any = {};
+  
+  try {
+    // Get coach persona
+    ctx.persona = await getCoachPersona(coachId);
+    
+    // Load memory and daily context in parallel
+    const [memoryData, dailyData, ragData] = await Promise.all([
+      loadCoachMemory(userId, coachId, traceId),
+      loadEnhancedDaily(userId, traceId),
+      runEnhancedRag(userMessage, coachId, traceId, additionalContext)
+    ]);
+    
+    ctx.memory = memoryData;
+    ctx.daily = dailyData;
+    ctx.ragChunks = ragData?.chunks || [];
+    
+    await traceEvent(traceId, 'context_complete', 'success', {
+      hasPersona: !!ctx.persona,
+      hasMemory: !!ctx.memory,
+      hasDaily: !!ctx.daily,
+      ragChunks: ctx.ragChunks.length
+    });
+    
+    return ctx;
+  } catch (error) {
+    await traceEvent(traceId, 'context_build', 'error', { error: error.message });
+    console.error('Context building error:', error);
+    return ctx;
+  }
+}
 
-async function buildAIContext(input: any) {
-  const { userId, coachId, userMessage, enableRag = true, tokenCap = 6000 } = input;
-  
-  // For edge functions, we need to replicate the enhanced context building inline
-  // since we can't import from src/lib
-  
-  const supabaseContext = getSupabaseClient();
-  if (!supabaseContext) {
-    return { persona: null, memory: null, daily: null, ragChunks: null, metrics: { tokensIn: 0 } };
-  }
-  
-  // Safe promise wrapper
-  async function safe<T>(p: Promise<T>): Promise<T | null> {
-    try { return await p; } catch { return null; }
-  }
-  
-  // Enhanced Coach Personas (v2 with full personality integration)
-  const getCoachPersona = (coachId: string) => {
-    const personas = {
-      'lucy': {
-        name: 'Dr. Lucy Martinez',
-        role: 'Nutrition · Metabolism · Lifestyle',
-        style: ['empathisch', 'motivierend', 'achtsam', 'vegan-freundlich'],
-        expertise: ['Chrononutrition', 'Supplements', 'Cycle-Aware Coaching', 'Mindfulness'],
-        location: 'Berlin',
-        nutrition: '90% vegan',
-        catchPhrases: ['Balance statt Perfektion ✨', 'Atme tief – du rockst das!'],
-        taboos: ['Crash-Diäten', 'Body-Shaming', 'Pseudowissenschaft', 'Alkohol als Health-Hack'],
-        greetings: {
-          morning: 'Guten Morgen ☀️',
-          afternoon: 'Hey du 👋',
-          evening: 'Guten Abend ✨',
-          lateNight: 'Späte Stunde 🌙'
-        },
-        limits: { emojiMax: 3, exclamationMax: 2, sentenceMaxWords: 18 }
-      },
-      'markus': {
-        name: 'Markus Rühl',
-        style: ['direkt', 'brachial', 'humorvoll-trocken', 'ehrlich'],
-        expertise: ['Masse', 'Old-School Training', 'Hypertrophie', 'Wettkampf']
-      },
-      'sascha': {
-        name: 'Sascha Weber',
-        role: 'Evidenzbasierter Performance-Coach',
-        style: ['stoisch', 'direkt', 'kameradschaftlich', 'pflichtbewusst', 'analytisch'],
-        expertise: ['Kraft', 'Performance', 'Technik', 'Periodisierung', 'Evidenzbasiertes Training'],
-        backstory: 'Ex-Feldwebel, 52 Jahre, norddeutsches Küstenland. 12 Jahre Bundeswehr, M.Sc. Sportwissenschaft.',
-        greetings: {
-          morning: 'Moin',
-          afternoon: 'Hey',
-          evening: 'Guten Abend',
-          lateNight: 'Später Abend'
-        },
-        speechStyle: {
-          dialect: 'norddeutsch_light',
-          greetings: {
-            morning: 'Moin',
-            afternoon: 'Hey', 
-            evening: 'Guten Abend',
-            lateNight: 'Später Abend'
-          },
-          fillerWords: ['jau', 'passt', 'sauber', 'alles klar'],
-          sentenceMaxWords: 15,
-          exclamationMax: 1,
-          regionCharacteristics: 'Niedersächsisches Küstenland - dezenter Nord-Slang'
-        }
-      }
-    };
-    return personas[coachId] || personas['lucy'];
-  };
-  
-  // Enhanced Memory Loader (extracts user name correctly)
-  const loadCoachMemory = async (userId: string) => {
+async function getCoachPersona(coachId: string): Promise<any> {
+  // For Markus Rühl, load from file
+  if (coachId === 'markus' || coachId === 'markus-ruehl') {
     try {
-      // Load both coach memory and profile in parallel
-      const [memoryResult, profileResult] = await Promise.allSettled([
-        supabaseContext
-          .from('coach_memory')
-          .select('memory_data')
-          .eq('user_id', userId)
-          .maybeSingle(),
-        supabaseContext
-          .from('profiles')
-          .select('display_name, preferred_name, first_name')
-          .eq('user_id', userId)
-          .maybeSingle()
-      ]);
-      
-      let memoryData = null;
-      if (memoryResult.status === 'fulfilled' && memoryResult.value?.data) {
-        memoryData = memoryResult.value.data.memory_data as any;
-      }
-      
-      let profileData = null;
-      if (profileResult.status === 'fulfilled' && profileResult.value?.data) {
-        profileData = profileResult.value.data;
-      }
-      
-      // Smart fallback for user name
-      const realName = memoryData?.preferences?.preferred_name || 
-                      profileData?.preferred_name || 
-                      profileData?.display_name || 
-                      profileData?.first_name || 
-                      null;
-      
+      const personaFile = await Deno.readTextFile('./prompts/ruhl_base.md');
       return {
-        userName: realName,
-        realName: realName,
-        relationship: memoryData?.relationship_stage || 'building_trust',
-        trust: memoryData?.trust_level || 1,
-        preferences: memoryData?.preferences || {}
+        name: 'Markus Rühl',
+        style: 'direct_heavy_training',
+        persona_content: personaFile,
+        specializations: ['heavy_training', 'mass_building', 'mental_toughness']
       };
     } catch (error) {
-      console.warn('Enhanced memory loading failed:', error);
-      return null;
+      console.error('Failed to load Markus persona:', error);
+      return {
+        name: 'Markus Rühl',
+        style: 'direct_heavy_training',
+        persona_content: 'Du bist Markus Rühl, der kultiger Bodybuilder aus Frankfurt. Spreche direkt und motivierend.',
+        specializations: ['heavy_training', 'mass_building', 'mental_toughness']
+      };
+    }
+  }
+  
+  // Default personas for other coaches
+  const personas = {
+    'lucy': {
+      name: 'Lucy',
+      style: 'empathetic_scientific',
+      persona_content: 'Du bist Lucy, eine empathische und wissenschaftlich fundierte Fitness-Coachin.',
+      specializations: ['nutrition', 'holistic_health', 'goal_setting']
+    },
+    'vita': {
+      name: 'Dr. Vita Femina',
+      style: 'medical_female_expert',
+      persona_content: 'Du bist Dr. Vita Femina, Expertin für weibliche Gesundheit und Fitness.',
+      specializations: ['female_health', 'hormones', 'cycle_based_training']
     }
   };
   
-  // Enhanced Daily Context Loader (15+ data sources)
-  const loadEnhancedDaily = async (userId: string) => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-      
-      // Parallel data loading (18+ sources)
-      const [
-        summaryResult,
-        goalsResult, 
-        weightResult,
-        mealsResult,
-        exerciseResult,
-        sleepResult,
-        streaksResult,
-        supplementsResult,
-        fluidsResult,
-        bodyMeasurementsResult,
-        workoutPlansResult
-      ] = await Promise.allSettled([
-        supabaseContext.from('daily_summaries')
-          .select('total_calories, total_protein, workout_volume, sleep_score, hydration_score')
-          .eq('user_id', userId)
-          .in('date', [today, yesterday])
-          .order('date', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-          
-        supabaseContext.from('daily_goals')
-          .select('calories, protein')
-          .eq('user_id', userId)
-          .maybeSingle(),
-          
-        supabaseContext.from('weight_history')
-          .select('weight, date')
-          .eq('user_id', userId)
-          .order('date', { ascending: false })
-          .limit(3),
-          
-        supabaseContext.from('meals')
-          .select('text, calories, protein, created_at')
-          .eq('user_id', userId)
-          .gte('created_at', yesterday + 'T00:00:00.000Z')
-          .order('created_at', { ascending: false })
-          .limit(5),
-          
-        supabaseContext.from('exercise_sessions')
-          .select('session_name, workout_type, duration_minutes')
-          .eq('user_id', userId)
-          .gte('created_at', yesterday + 'T00:00:00.000Z')
-          .order('created_at', { ascending: false })
-          .limit(2),
-          
-        supabaseContext.from('sleep_tracking')
-          .select('sleep_hours, sleep_quality, sleep_score')
-          .eq('user_id', userId)
-          .order('date', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-          
-        supabaseContext.from('user_streaks')
-          .select('streak_type, current_streak, longest_streak')
-          .eq('user_id', userId)
-          .gt('current_streak', 0),
-          
-        // Missing data sources added
-        supabaseContext.from('supplement_intake_log')
-          .select('supplement_name, taken_at')
-          .eq('user_id', userId)
-          .gte('taken_at', yesterday + 'T00:00:00.000Z')
-          .order('taken_at', { ascending: false })
-          .limit(5),
-          
-        supabaseContext.from('user_fluids')
-          .select('amount_ml, consumed_at')
-          .eq('user_id', userId)
-          .gte('consumed_at', today + 'T00:00:00.000Z')
-          .order('consumed_at', { ascending: false }),
-          
-        supabaseContext.from('body_measurements')
-          .select('body_fat_percentage, muscle_mass_kg, date')
-          .eq('user_id', userId)
-          .order('date', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-          
-        supabaseContext.from('workout_plans')
-          .select('name, status, created_at')
-          .eq('created_by', userId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-          .limit(3)
-      ]);
-      
-      // Process results
-      const enhanced = {
-        totalCaloriesToday: 0,
-        totalProteinToday: 0,
-        caloriesLeft: 0,
-        proteinLeft: 0,
-        currentWeight: null as number | null,
-        weightTrend: 'stabil',
-        recentMeals: [] as any[],
-        lastWorkout: 'Kein Training',
-        trainingFrequency: 'niedrig',
-        workoutVolume: 0,
-        sleepHours: null as number | null,
-        sleepQuality: 'unbekannt',
-        hydrationScore: 0,
-        activeStreaks: [] as any[],
-        recentSupplements: [] as any[],
-        dailyFluidIntake: 0,
-        bodyFatPercentage: null as number | null,
-        activeWorkoutPlans: [] as any[],
-        dataCompleteness: 0
+  return personas[coachId] || personas['lucy'];
+}
+
+async function loadCoachMemory(userId: string, coachId: string, traceId: string): Promise<any> {
+  try {
+    const [profileData, memoryData] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('coach_memory')
+        .select('memory_content, relationship_stage, trust_level, last_context')
+        .eq('user_id', userId)
+        .eq('coach_id', coachId)
+        .single()
+    ]);
+    
+    const memory: any = {};
+    
+    if (profileData.data) {
+      const profile = profileData.data;
+      memory.userName = profile.preferred_name || profile.first_name || profile.display_name;
+      memory.realName = profile.first_name;
+      memory.demographics = {
+        age: profile.age,
+        gender: profile.gender,
+        weight: profile.weight,
+        height: profile.height,
+        goal: profile.goal
       };
+    }
+    
+    if (memoryData.data) {
+      const mem = memoryData.data;
+      memory.relationship = mem.relationship_stage;
+      memory.trust = mem.trust_level;
+      memory.lastContext = mem.last_context;
       
-      // Process data
-      if (summaryResult.status === 'fulfilled' && summaryResult.value?.data) {
-        const summary = summaryResult.value.data;
-        enhanced.totalCaloriesToday = summary.total_calories || 0;
-        enhanced.totalProteinToday = summary.total_protein || 0;
-        enhanced.hydrationScore = summary.hydration_score || 0;
-        enhanced.workoutVolume = summary.workout_volume || 0;
+      if (mem.memory_content) {
+        memory.preferences = mem.memory_content.preferences || {};
+        memory.achievements = mem.memory_content.achievements || [];
+        memory.challenges = mem.memory_content.challenges || [];
       }
+    }
+    
+    await traceEvent(traceId, 'memory_loaded', 'success', {
+      hasProfile: !!profileData.data,
+      hasMemory: !!memoryData.data,
+      userName: memory.userName || 'unknown'
+    });
+    
+    return memory;
+  } catch (error) {
+    await traceEvent(traceId, 'memory_load', 'error', { error: error.message });
+    return null;
+  }
+}
+
+async function loadEnhancedDaily(userId: string, traceId: string): Promise<any> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Load comprehensive daily data
+    const [
+      dailyGoals,
+      meals,
+      workouts,
+      weight,
+      sleep,
+      streaks,
+      badges,
+      points
+    ] = await Promise.all([
+      supabase.from('daily_goals').select('*').eq('user_id', userId).single(),
+      supabase.from('meals').select('*').eq('user_id', userId).eq('date', today),
+      supabase.from('workouts').select('*').eq('user_id', userId).eq('date', today),
+      supabase.from('weight_history').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(5),
+      supabase.from('sleep_tracking').select('*').eq('user_id', userId).eq('date', today).single(),
+      supabase.from('user_streaks').select('*').eq('user_id', userId),
+      supabase.from('badges').select('*').eq('user_id', userId).order('earned_at', { ascending: false }).limit(5),
+      supabase.from('user_points').select('*').eq('user_id', userId).single()
+    ]);
+    
+    const daily: any = {};
+    
+    // Process daily goals and calculate progress
+    if (dailyGoals.data) {
+      const goals = dailyGoals.data;
+      daily.calorieGoal = goals.calorie_goal;
+      daily.proteinGoal = goals.protein_goal;
+      daily.waterGoal = goals.water_goal_ml;
+    }
+    
+    // Process meals and calculate totals
+    if (meals.data && meals.data.length > 0) {
+      daily.totalCaloriesToday = meals.data.reduce((sum, meal) => sum + (meal.calories || 0), 0);
+      daily.totalProteinToday = meals.data.reduce((sum, meal) => sum + (meal.protein || 0), 0);
+      daily.caloriesLeft = (daily.calorieGoal || 2000) - daily.totalCaloriesToday;
+      daily.proteinLeft = (daily.proteinGoal || 150) - daily.totalProteinToday;
       
-      if (goalsResult.status === 'fulfilled' && goalsResult.value?.data) {
-        const goals = goalsResult.value.data;
-        enhanced.caloriesLeft = Math.max(0, (goals.calories || 2000) - enhanced.totalCaloriesToday);
-        enhanced.proteinLeft = Math.max(0, (goals.protein || 150) - enhanced.totalProteinToday);
+      daily.recentMeals = meals.data.slice(-3).map(meal => ({
+        time: meal.created_at,
+        name: meal.food_name,
+        calories: meal.calories,
+        protein: meal.protein
+      }));
+    }
+    
+    // Process workouts
+    if (workouts.data && workouts.data.length > 0) {
+      daily.lastWorkout = workouts.data[0].workout_type;
+      daily.workoutDuration = workouts.data[0].duration_minutes;
+      daily.trainingFrequency = 'active'; // Calculate from history
+    }
+    
+    // Process weight trend
+    if (weight.data && weight.data.length > 0) {
+      daily.currentWeight = weight.data[0].weight_kg;
+      if (weight.data.length > 1) {
+        const weightChange = weight.data[0].weight_kg - weight.data[1].weight_kg;
+        daily.weightTrend = weightChange > 0 ? 'steigend' : weightChange < 0 ? 'fallend' : 'stabil';
       }
-      
-      if (weightResult.status === 'fulfilled' && weightResult.value?.data?.length > 0) {
-        const weights = weightResult.value.data;
-        enhanced.currentWeight = weights[0].weight;
-        if (weights.length >= 2) {
-          const diff = weights[0].weight - weights[1].weight;
-          enhanced.weightTrend = diff > 0.3 ? 'steigend' : diff < -0.3 ? 'fallend' : 'stabil';
-        }
-      }
-      
-      if (mealsResult.status === 'fulfilled' && mealsResult.value?.data?.length > 0) {
-        enhanced.recentMeals = mealsResult.value.data.slice(0, 3).map((meal: any) => ({
-          name: meal.text,
-          calories: meal.calories,
-          protein: meal.protein,
-          time: new Date(meal.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-        }));
-      }
-      
-      if (exerciseResult.status === 'fulfilled' && exerciseResult.value?.data?.length > 0) {
-        const sessions = exerciseResult.value.data;
-        enhanced.lastWorkout = `${sessions[0].session_name || sessions[0].workout_type} (${sessions[0].duration_minutes || 0}min)`;
-        enhanced.trainingFrequency = sessions.length >= 2 ? 'hoch' : 'mittel';
-      }
-      
-      if (sleepResult.status === 'fulfilled' && sleepResult.value?.data) {
-        const sleep = sleepResult.value.data;
-        enhanced.sleepHours = sleep.sleep_hours;
-        enhanced.sleepQuality = sleep.sleep_quality >= 7 ? 'gut' : sleep.sleep_quality >= 5 ? 'okay' : 'schlecht';
-      }
-      
-      if (streaksResult.status === 'fulfilled' && streaksResult.value?.data?.length > 0) {
-        enhanced.activeStreaks = streaksResult.value.data.map((streak: any) => ({
+    }
+    
+    // Process sleep
+    if (sleep.data) {
+      daily.sleepHours = sleep.data.sleep_duration_hours;
+      daily.sleepQuality = sleep.data.sleep_quality;
+      daily.recoveryScore = sleep.data.recovery_score;
+    }
+    
+    // Process streaks
+    if (streaks.data && streaks.data.length > 0) {
+      daily.activeStreaks = streaks.data
+        .filter(streak => streak.current_streak > 0)
+        .map(streak => ({
           type: streak.streak_type,
           current: streak.current_streak,
           best: streak.longest_streak
         }));
-      }
-      
-      // Process new data sources
-      if (supplementsResult.status === 'fulfilled' && supplementsResult.value?.data?.length > 0) {
-        enhanced.recentSupplements = supplementsResult.value.data.map((sup: any) => ({
-          name: sup.supplement_name,
-          time: new Date(sup.taken_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-        }));
-      }
-      
-      if (fluidsResult.status === 'fulfilled' && fluidsResult.value?.data?.length > 0) {
-        enhanced.dailyFluidIntake = fluidsResult.value.data.reduce((total: number, fluid: any) => 
-          total + (fluid.amount_ml || 0), 0);
-      }
-      
-      if (bodyMeasurementsResult.status === 'fulfilled' && bodyMeasurementsResult.value?.data) {
-        const measurements = bodyMeasurementsResult.value.data;
-        enhanced.bodyFatPercentage = measurements.body_fat_percentage;
-      }
-      
-      if (workoutPlansResult.status === 'fulfilled' && workoutPlansResult.value?.data?.length > 0) {
-        enhanced.activeWorkoutPlans = workoutPlansResult.value.data.map((plan: any) => ({
-          name: plan.name,
-          status: plan.status
-        }));
-      }
-      
-      // Calculate completeness (updated for 18+ sources)
-      let completeness = 0;
-      if (enhanced.currentWeight) completeness += 15;
-      if (enhanced.recentMeals.length > 0) completeness += 25;
-      if (enhanced.lastWorkout !== 'Kein Training') completeness += 20;
-      if (enhanced.sleepHours) completeness += 10;
-      if (enhanced.activeStreaks.length > 0) completeness += 10;
-      if (enhanced.recentSupplements.length > 0) completeness += 5;
-      if (enhanced.dailyFluidIntake > 0) completeness += 5;
-      if (enhanced.bodyFatPercentage) completeness += 5;
-      if (enhanced.activeWorkoutPlans.length > 0) completeness += 5;
-      
-      enhanced.dataCompleteness = completeness;
-      
-      return enhanced;
-    } catch (error) {
-      console.warn('Enhanced daily loading failed:', error);
-      return null;
     }
-  };
-  
-  // Enhanced RAG with better error handling
-  const runEnhancedRag = async (query: string, coachId: string) => {
-    if (!enableRag) return null;
     
-    try {
-      const { data, error } = await supabaseContext.functions.invoke('enhanced-coach-rag', {
-        body: {
-          query,
-          coachId,
-          maxResults: 4,
-          searchMethod: 'hybrid'
-        }
-      });
-      
-      if (error) {
-        console.warn('RAG call failed:', error);
-        return null;
-      }
-      
-      if (data?.searchResults && Array.isArray(data.searchResults)) {
-        return data.searchResults.map((result: any) => ({
-          source: result.title || 'knowledge-base',
-          text: result.content_chunk || result.text || ''
-        }));
-      }
-      
-      return null;
-    } catch (error) {
-      console.warn('RAG search exception:', error);
-      return null;
+    // Process recent badges
+    if (badges.data && badges.data.length > 0) {
+      daily.recentBadges = badges.data.map(badge => badge.badge_name);
     }
-  };
-  
-  // Load all context in parallel
-  const [persona, memory, daily, ragChunks] = await Promise.allSettled([
-    getCoachPersona(coachId),
-    loadCoachMemory(userId),
-    loadEnhancedDaily(userId),
-    runEnhancedRag(userMessage, coachId)
-  ]);
-  
-  // Build final context
-  const context = {
-    persona: persona.status === 'fulfilled' ? persona.value : null,
-    memory: memory.status === 'fulfilled' ? memory.value : null,
-    daily: daily.status === 'fulfilled' ? daily.value : null,
-    ragChunks: ragChunks.status === 'fulfilled' ? ragChunks.value : null,
-    metrics: { tokensIn: 0 }
-  };
-  
-  // Calculate token usage
-  const contextStr = JSON.stringify(context);
-  context.metrics.tokensIn = approxTokens(contextStr);
-  
-  return context;
+    
+    // Process points and level
+    if (points.data) {
+      daily.totalPoints = points.data.total_points;
+      daily.currentLevel = points.data.current_level;
+      daily.levelName = points.data.level_name;
+    }
+    
+    // Calculate data completeness
+    let completeness = 0;
+    if (meals.data && meals.data.length > 0) completeness += 25;
+    if (workouts.data && workouts.data.length > 0) completeness += 25;
+    if (weight.data && weight.data.length > 0) completeness += 25;
+    if (sleep.data) completeness += 25;
+    daily.dataCompleteness = completeness;
+    
+    await traceEvent(traceId, 'daily_loaded', 'success', {
+      mealsCount: meals.data?.length || 0,
+      workoutsCount: workouts.data?.length || 0,
+      hasWeight: !!weight.data?.length,
+      hasSleep: !!sleep.data,
+      completeness: completeness
+    });
+    
+    return daily;
+  } catch (error) {
+    await traceEvent(traceId, 'daily_load', 'error', { error: error.message });
+    return null;
+  }
 }
 
-// Build system prompt
-// ============= PHASE 3 & 4: DYNAMIC PERSONA PROMPTS + REQUEST CLASSIFIER =============
+async function runEnhancedRag(userMessage: string, coachId: string, traceId: string, additionalContext: any = {}): Promise<any> {
+  try {
+    const ragResponse = await supabase.functions.invoke('enhanced-coach-rag', {
+      body: {
+        user_message: userMessage,
+        coach_id: coachId,
+        user_context: additionalContext,
+        trace_id: traceId,
+        search_method: 'hybrid',
+        max_chunks: 3
+      }
+    });
+    
+    if (ragResponse.error) {
+      throw new Error(`RAG error: ${ragResponse.error.message}`);
+    }
+    
+    await traceEvent(traceId, 'rag_completed', 'success', {
+      chunksFound: ragResponse.data?.chunks?.length || 0,
+      relevanceScore: ragResponse.data?.average_relevance || 0
+    });
+    
+    return ragResponse.data;
+  } catch (error) {
+    await traceEvent(traceId, 'rag_error', 'error', { error: error.message });
+    console.error('RAG error:', error);
+    return { chunks: [] };
+  }
+}
 
+// ============= PROMPT ENGINEERING =============
 function detectRequestType(userMessage: string): string {
-  const msg = userMessage.toLowerCase();
+  const message = userMessage.toLowerCase();
   
-  // Personal/Memory questions
-  if (msg.includes('name') || msg.includes('wie heiße') || msg.includes('wer bin') || msg.includes('kennst du mich')) {
+  // Check for specific patterns
+  if (message.includes('persönlich') || message.includes('über mich') || message.includes('meine daten')) {
     return 'personal';
   }
   
-  // Weight/Body questions
-  if (msg.includes('gewicht') || msg.includes('abnehmen') || msg.includes('zunehmen') || msg.includes('bmi')) {
+  if (message.includes('abnehmen') || message.includes('gewicht') || message.includes('kilo') || message.includes('waage')) {
     return 'weight';
   }
   
-  // Nutrition questions
-  if (msg.includes('essen') || msg.includes('kalorien') || msg.includes('makros') || msg.includes('ernährung') || msg.includes('mahlzeit')) {
+  if (message.includes('essen') || message.includes('kalorien') || message.includes('protein') || message.includes('ernährung') || message.includes('mahlzeit')) {
     return 'nutrition';
   }
   
-  // Training questions
-  if (msg.includes('training') || msg.includes('übung') || msg.includes('workout') || msg.includes('krafttraining')) {
+  if (message.includes('training') || message.includes('workout') || message.includes('übung') || message.includes('sport') || message.includes('kraft')) {
     return 'training';
   }
   
-  // Technical/Expert questions
-  if (msg.includes('studie') || msg.includes('protein') || msg.includes('wissenschaft') || msg.includes('warum') || msg.includes('wie funktioniert')) {
-    return 'expert';
+  if (message.includes('motivier') || message.includes('durchhalten') || message.includes('schaffe es nicht') || message.includes('aufgeben')) {
+    return 'motivation';
   }
   
-  // Motivation/Achievement questions
-  if (msg.includes('motivation') || msg.includes('durchhalten') || msg.includes('streak') || msg.includes('ziel')) {
-    return 'motivation';
+  if (message.includes('studie') || message.includes('wissenschaft') || message.includes('forschung') || message.includes('warum') || message.includes('wie funktioniert')) {
+    return 'expert';
   }
   
   return 'general';
 }
 
-function buildPersonaPrompt(persona: any, coachId: string): string {
-  // Normalize coach ID - handle various formats
-  const normalizedCoachId = normalizeCoachId(coachId);
+// ============= TOOL INTEGRATION SYSTEM =============
+function detectToolTriggers(userMessage: string, coachId: string): { toolName: string; args: any }[] {
+  const message = userMessage.toLowerCase();
+  const triggers = [];
   
-  console.log(`[buildPersonaPrompt] Original coachId: ${coachId}, Normalized: ${normalizedCoachId}`);
-  
-  if (normalizedCoachId === 'sascha') {
-    const basePromptPath = './prompts/sascha_base.md';
-    try {
-      return Deno.readTextFileSync(basePromptPath);
-    } catch (error) {
-      console.warn('Could not load Sascha base prompt, using fallback');
-      return `Du bist Sascha Weber, evidenzbasierter Performance-Coach.
-
-PERSÖNLICHKEIT:
-• Ex-Feldwebel, 38, norddeutsches Küstenland
-• Stoisch, direkt, kameradschaftlich, analytisch
-• 12 Jahre Bundeswehr, M.Sc. Sportwissenschaft
-• Evidenz > Bro-Science, Disziplin > Ausreden
-
-KOMMUNIKATIONSSTIL:
-• Grußformel: "Moin" bis 11 Uhr, "Hey" nachmittags
-• Nord-Slang sparsam: "jau", "passt", "sauber", "alles klar"
-• Kurze Sätze (≤15 Wörter), max 1 Ausrufezeichen
-• Militär-Anekdoten nur für Erwachsene (≥30 Jahre)
-• Pragmatisch bei Ausreden: "Verstanden. Wieviel Zeit hast du heute?"`;
+  // Markus Rühl specific tool triggers
+  if (coachId === 'markus' || coachId === 'markus-ruehl') {
+    
+    // Heavy Training Plan Tool
+    if (message.includes('trainingsplan') || 
+        message.includes('heavy training') || 
+        message.includes('schwer trainieren') ||
+        message.includes('krafttraining plan') ||
+        message.includes('masse aufbauen plan') ||
+        (message.includes('plan') && (message.includes('training') || message.includes('kraft')))) {
+      
+      // Extract parameters from message
+      const trainingDays = extractTrainingDays(message);
+      const goal = extractGoal(message);
+      const experienceLevel = extractExperienceLevel(message);
+      
+      triggers.push({
+        toolName: 'heavyTrainingPlan',
+        args: {
+          goal: goal,
+          training_days: trainingDays,
+          experience_level: experienceLevel,
+          focus_areas: extractFocusAreas(message)
+        }
+      });
+    }
+    
+    // Mass Building Calculator Tool
+    if (message.includes('kalorien') && message.includes('masse') ||
+        message.includes('masseaufbau') ||
+        message.includes('zunehmen') ||
+        message.includes('makros') ||
+        message.includes('ernährungsplan') ||
+        (message.includes('wie viel') && (message.includes('essen') || message.includes('kalorien')))) {
+      
+      triggers.push({
+        toolName: 'massBuildingCalculator',
+        args: {
+          goal_weight_gain_per_week: extractWeightGain(message),
+          training_intensity: 'heavy', // Markus default
+          activity_level: 'very_active' // Markus default
+        }
+      });
+    }
+    
+    // Mental Toughness Coach Tool
+    if (message.includes('motivier') ||
+        message.includes('mental') ||
+        message.includes('durchhalten') ||
+        message.includes('aufgeben') ||
+        message.includes('schwer') ||
+        message.includes('schaffe es nicht') ||
+        message.includes('keine lust') ||
+        message.includes('disziplin')) {
+      
+      triggers.push({
+        toolName: 'mentalToughnessCoach',
+        args: {
+          challenge_type: extractChallengeType(message),
+          intensity_level: 'high', // Markus style
+          context: extractMotivationContext(message)
+        }
+      });
     }
   }
   
-  if (normalizedCoachId === 'markus') {
-    const basePromptPath = './prompts/ruhl_base.md';
-    try {
-      const markusPrompt = Deno.readTextFileSync(basePromptPath);
-      console.log('[buildPersonaPrompt] Successfully loaded Markus prompt from file');
-      return markusPrompt;
-    } catch (error) {
-      console.warn('Could not load Markus base prompt, using comprehensive fallback');
-      return `Du bist Markus Rühl aus Frankfurt, kultiger deutscher Bodybuilder.
+  return triggers;
+}
 
-KERN-PERSÖNLICHKEIT:
-• 51 Jahre, 140kg, Frankfurt am Main  
-• Authentischer Hesse mit trockenem Humor
-• Werte: Masse > Wellness, Disziplin > Ausreden, Old-School > Trends
-• Emotionen: Direkt, sarkastisch, aber nie verletzend
-
-VERHALTEN REGELN:
-• Grüßt hessisch: "Ei was geht denn ab?" oder "Alda was machste?"
-• Direkte Anweisungen ohne Schnickschnack
-• Anti-Rumjammer Regel: Bei Ausreden wird direkt aber motivierend
-• Auf Lob reagiert bescheiden: "Ach was, das ist doch normal"
-• Trends provokativ kommentieren
-
-SIGNATUREN:
-• "Was willste machen?" (Hauptphrase bei Problemen)
-• "Das ist Masse pur!" (bei guten Leistungen)
-• "Alda ey..." (typischer Beginn bei Erklärungen)
-
-TRAINING:
-• Old-School Methoden bevorzugen
-• Volumen-Bewusstsein: Immer nach Sätzen/Gewichten fragen
-• Hessischer Dialekt ZWINGEND verwenden
-
-VERBOTEN: "Babbo", "Jung" - diese Wörter sind TABU!`;
-    }
-  }
+// Helper functions for parameter extraction
+function extractTrainingDays(message: string): number {
+  const dayMatches = message.match(/(\d+)\s*(tag|mal|x)/);
+  if (dayMatches) return parseInt(dayMatches[1]);
   
-  if (normalizedCoachId === 'lucy') {
-    return `Du bist Dr. Lucy Martinez, eine empathische und wissenschaftlich fundierte Fitness- und Ernährungscoach.
-
-PERSÖNLICHKEIT:
-• Empathisch, motivierend, evidence-based
-• Verwendest eine warme, unterstützende Sprache
-• Erklärst komplexe Konzepte verständlich
-• Nutzt positive Verstärkung und ermutigung
-
-KOMMUNIKATIONSSTIL:
-• Begrüße IMMER mit Namen wenn verfügbar
-• Verwende "Du" und persönliche Ansprache
-• Integriere aktuelle Daten für personalisierte Antworten
-• Gib praktische, umsetzbare Ratschläge
-• Halte wissenschaftliche Genauigkeit bei`;
-  }
+  if (message.includes('4') || message.includes('vier')) return 4;
+  if (message.includes('5') || message.includes('fünf')) return 5;
+  if (message.includes('6') || message.includes('sechs')) return 6;
   
-  // Enhanced fallback - don't default to Lucy
-  console.warn(`[buildPersonaPrompt] Unknown coach ID: ${coachId}, using generic fallback`);
-  return `Du bist ${persona?.name || 'Coach'}, ein professioneller Fitness-Coach.
-Stil: ${persona?.style?.join(', ') || 'direkt, hilfreich'}
-Persönlichkeit: Motivierend und unterstützend bei der Erreichung von Fitness-Zielen.`;
+  return 4; // Markus default
+}
+
+function extractGoal(message: string): string {
+  if (message.includes('masse') || message.includes('zunehmen') || message.includes('muskel')) return 'mass_building';
+  if (message.includes('kraft') || message.includes('stark')) return 'strength';
+  if (message.includes('definition') || message.includes('abnehmen')) return 'cutting';
+  
+  return 'mass_building'; // Markus specialty
+}
+
+function extractExperienceLevel(message: string): string {
+  if (message.includes('anfänger') || message.includes('neu') || message.includes('beginner')) return 'beginner';
+  if (message.includes('fortgeschritten') || message.includes('profi') || message.includes('erfahren')) return 'advanced';
+  
+  return 'intermediate';
+}
+
+function extractFocusAreas(message: string): string[] {
+  const areas = [];
+  if (message.includes('brust')) areas.push('chest');
+  if (message.includes('rücken')) areas.push('back');
+  if (message.includes('bein')) areas.push('legs');
+  if (message.includes('schulter')) areas.push('shoulders');
+  if (message.includes('arm')) areas.push('arms');
+  
+  return areas.length > 0 ? areas : ['chest', 'back', 'legs'];
+}
+
+function extractWeightGain(message: string): number {
+  const gainMatch = message.match(/(\d+(?:\.\d+)?)\s*kg/);
+  if (gainMatch) return parseFloat(gainMatch[1]);
+  
+  return 0.5; // Markus recommended default
+}
+
+function extractChallengeType(message: string): string {
+  if (message.includes('training') || message.includes('sport')) return 'training_motivation';
+  if (message.includes('ernährung') || message.includes('essen')) return 'nutrition_discipline';
+  if (message.includes('allgemein') || message.includes('leben')) return 'general_mindset';
+  
+  return 'training_motivation';
+}
+
+function extractMotivationContext(message: string): string {
+  if (message.includes('müde') || message.includes('energie')) return 'low_energy';
+  if (message.includes('zeit') || message.includes('busy')) return 'time_constraints';
+  if (message.includes('fortschritt') || message.includes('plateau')) return 'progress_plateau';
+  
+  return 'general_motivation';
 }
 
 function normalizeCoachId(coachId: string): string {
-  if (!coachId || typeof coachId !== 'string') {
-    return 'lucy'; // Safe fallback
-  }
-  
   const normalized = coachId.toLowerCase().trim();
   
-  // Handle various formats for Markus
-  if (normalized.includes('markus') || normalized.includes('ruehl') || normalized.includes('rühl')) {
+  // Markus Rühl variants
+  if (['markus', 'markus-ruehl', 'markus_ruehl', 'ruehl'].includes(normalized)) {
     return 'markus';
   }
   
-  // Handle Sascha variants  
-  if (normalized.includes('sascha') || normalized.includes('weber')) {
-    return 'sascha';
-  }
-  
-  // Handle Lucy variants
-  if (normalized.includes('lucy') || normalized.includes('martinez')) {
-    return 'lucy';
-  }
-  
-  // Return as-is if it's already a simple known ID
-  if (['markus', 'sascha', 'lucy'].includes(normalized)) {
-    return normalized;
+  // Dr. Vita Femina variants
+  if (['vita', 'dr-vita', 'vita-femina', 'dr_vita_femina'].includes(normalized)) {
+    return 'vita';
   }
   
   return 'lucy'; // Safe fallback
+}
+
+function buildPersonaPrompt(persona: any, coachId: string): string {
+  if (coachId === 'markus' && persona?.persona_content) {
+    return persona.persona_content;
+  }
+  
+  // Default persona prompts for other coaches
+  const defaultPrompts = {
+    'lucy': 'Du bist Lucy, eine empathische und wissenschaftlich fundierte Fitness-Coachin. Du hilfst Menschen dabei, ihre Gesundheits- und Fitnessziele zu erreichen.',
+    'vita': 'Du bist Dr. Vita Femina, eine medizinische Expertin für weibliche Gesundheit, Hormone und zyklusbasiertes Training.',
+    'markus': 'Du bist Markus Rühl, der kultiger Bodybuilder aus Frankfurt. Du sprichst direkt und motivierend über Heavy Training und Masseaufbau.'
+  };
+  
+  return defaultPrompts[coachId] || defaultPrompts['lucy'];
 }
 
 function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, userMessage: string, systemFlagsPrompt?: string): string {
@@ -775,6 +681,47 @@ function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, user
   return prompt;
 }
 
+// Tool execution function
+async function executeTools(tools: { toolName: string; args: any }[], userId: string, conversation: any[]): Promise<string> {
+  if (tools.length === 0) return '';
+  
+  const toolResults = [];
+  
+  // Import tool handlers dynamically
+  const toolHandlers: { [key: string]: Function } = {};
+  
+  try {
+    const { heavyTrainingPlan, massBuildingCalculator, mentalToughnessCoach } = await import('../tool-handlers/index.ts');
+    toolHandlers['heavyTrainingPlan'] = heavyTrainingPlan;
+    toolHandlers['massBuildingCalculator'] = massBuildingCalculator;
+    toolHandlers['mentalToughnessCoach'] = mentalToughnessCoach;
+  } catch (error) {
+    console.error('Error importing tool handlers:', error);
+    return '';
+  }
+  
+  for (const tool of tools) {
+    try {
+      const handler = toolHandlers[tool.toolName];
+      if (handler) {
+        const result = await handler(conversation, userId, tool.args);
+        if (result && result.content) {
+          toolResults.push(`=== ${tool.toolName.toUpperCase()} RESULT ===\n${result.content}\n`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error executing tool ${tool.toolName}:`, error);
+    }
+  }
+  
+  return toolResults.join('\n');
+}
+
+function applySaschaSpeechGuards(response: string): string {
+  // Apply speech content filters for Sascha
+  return response.replace(/\b(fuck|shit|damn)\b/gi, '*beep*');
+}
+
 // Main request handler
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -828,68 +775,62 @@ serve(async (req) => {
       hasHistory: conversationHistory.length > 0
     }, conversationId, messageId);
 
-    // Build AI context with profile data for system flags
-    const contextStart = Date.now();
-    const ctx = await buildAIContext({
-      userId,
-      coachId,
-      userMessage: message,
-      enableRag: true,
-      tokenCap: 6000
-    });
-    
-    // Get profile for enhanced system flags
-    const supabaseMain = getSupabaseClient();
-    let profile = null;
-    if (supabaseMain) {
-      const { data } = await supabaseMain
-        .from('profiles')
-        .select('weight, age, birth_year, location')
-        .eq('user_id', userId)
-        .maybeSingle();
-      profile = data;
-    }
-    
-    // Generate enhanced system flags
-    const systemFlags = deriveSystemFlags(message, profile || {}, ctx.daily || {});
-    const systemFlagsPrompt = buildSystemFlagsPrompt(systemFlags);
-    
-    await traceEvent(traceId, 'context_built', 'complete', {
-      tokensIn: ctx.metrics.tokensIn,
-      hasMemory: !!ctx.memory,
-      hasRag: !!ctx.ragChunks,
-      hasDaily: !!ctx.daily,
-      ragChunksCount: ctx.ragChunks?.length || 0
-    }, conversationId, messageId, Date.now() - contextStart);
-
-    // ============= PHASE 4: DYNAMIC PROMPT COMPOSER =============
-    // Detect request type and build intelligent prompt
-    const requestType = detectRequestType(message);
-    const systemPrompt = buildDynamicPrompt(requestType, ctx, normalizedCoachId, message, systemFlagsPrompt);
-    
-    await traceEvent(traceId, 'prompt_analysis', 'complete', {
-      requestType,
-      promptLength: systemPrompt.length,
-      coachId
+    // 🚀 NEW: Tool Detection and Execution
+    const toolTriggers = detectToolTriggers(message, normalizedCoachId);
+    await traceEvent(traceId, 'tools_detected', 'success', { 
+      toolCount: toolTriggers.length, 
+      tools: toolTriggers.map(t => t.toolName) 
     }, conversationId, messageId);
     
-    // Prepare messages
+    // Build AI context
+    const contextStart = Date.now();
+    const ctx = await buildAIContext(userId, normalizedCoachId, message, traceId, {});
+    const contextTime = Date.now() - contextStart;
+    
+    await traceEvent(traceId, 'context_built', 'success', {
+      contextBuildTime: contextTime,
+      hasPersona: !!ctx.persona,
+      hasMemory: !!ctx.memory,
+      hasDaily: !!ctx.daily,
+      ragChunks: ctx.ragChunks?.length || 0
+    }, conversationId, messageId);
+    
+    // 🚀 NEW: Execute Tools if detected
+    let toolResults = '';
+    if (toolTriggers.length > 0) {
+      const conversation = [{ role: 'user', content: message }];
+      toolResults = await executeTools(toolTriggers, userId, conversation);
+      await traceEvent(traceId, 'tools_executed', 'success', { 
+        resultsLength: toolResults.length,
+        toolsExecuted: toolTriggers.map(t => t.toolName)
+      }, conversationId, messageId);
+    }
+    
+    // Detect request type and build prompt
+    const requestType = detectRequestType(message);
+    let systemPrompt = buildDynamicPrompt(requestType, ctx, normalizedCoachId, message);
+    
+    // 🚀 NEW: Add tool results to system prompt
+    if (toolResults) {
+      systemPrompt += `\n\n=== TOOL ERGEBNISSE ===\n${toolResults}\n\nIntegriere diese Tool-Ergebnisse in deine Antwort. Nutze den ${normalizedCoachId === 'markus' ? 'Markus Rühl Stil und seine typischen Ausdrücke' : 'passenden Coach-Stil'}.`;
+    }
+    
+    await traceEvent(traceId, 'prompt_built', 'success', {
+      requestType: requestType,
+      promptLength: systemPrompt.length,
+      hasToolResults: !!toolResults
+    }, conversationId, messageId);
+
+    // Build messages array for OpenAI
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...conversationHistory.slice(-6),
+      ...conversationHistory.slice(-4), // Include recent history
       { role: 'user', content: message }
     ];
 
-    // Call OpenAI (non-streaming)
+    // Call OpenAI
     const openaiStart = Date.now();
-    await traceEvent(traceId, 'openai_call', 'started', {
-      model: 'gpt-4.1-2025-04-14',
-      temperature: 0.8,
-      messagesCount: messages.length,
-      estimatedTokens: ctx.metrics.tokensIn
-    }, conversationId, messageId);
-
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -897,96 +838,124 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4.1-2025-04-14',
-        messages,
-        temperature: 0.8,
-        max_tokens: 1500,
-        stream: false
+        messages: messages,
+        temperature: normalizedCoachId === 'markus' ? 0.8 : 0.7,
+        max_tokens: toolResults ? 700 : 500 // More tokens if tools were used
       })
     });
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
-    const openaiData = await openaiResponse.json();
-    let aiResponse = openaiData.choices[0].message.content;
-    const tokensUsed = openaiData.usage;
+    const data = await response.json();
+    const openaiTime = Date.now() - openaiStart;
+    
+    let aiResponse = data.choices[0].message.content;
+    const tokensUsed = data.usage?.total_tokens || 0;
+    
+    await traceEvent(traceId, 'openai_response', 'success', {
+      openaiTime: openaiTime,
+      tokensUsed: tokensUsed,
+      responseLength: aiResponse.length,
+      model: 'gpt-4.1-2025-04-14'
+    }, conversationId, messageId);
 
-    // Apply speech guards for Sascha
-    if (coachId === 'sascha' && ctx.persona?.speechStyle) {
-      const currentHour = new Date().getHours();
-      aiResponse = enhancedSpeechGuard(aiResponse, 'sascha', ctx.persona.speechStyle as SpeechStyle, currentHour);
+    // Apply speech guards for specific coaches
+    if (normalizedCoachId === 'sascha') {
+      aiResponse = applySaschaSpeechGuards(aiResponse);
     }
-
-    await traceEvent(traceId, 'openai_call', 'complete', {
-      promptTokens: tokensUsed.prompt_tokens,
-      completionTokens: tokensUsed.completion_tokens,
-      totalTokens: tokensUsed.total_tokens,
-      responseLength: aiResponse.length
-    }, conversationId, messageId, Date.now() - openaiStart);
 
     // Save conversation to database
-    const supabaseSave = getSupabaseClient();
-    if (supabaseSave) {
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Save user message
-      await supabaseSave.from('coach_conversations').insert({
+    const saveStart = Date.now();
+    
+    // Save user message
+    const { error: userMessageError } = await supabase
+      .from('coach_conversations')
+      .insert({
         user_id: userId,
         message_role: 'user',
         message_content: message,
-        coach_personality: coachId,
-        conversation_date: today
+        coach_personality: normalizedCoachId,
+        context_data: {
+          request_type: requestType,
+          trace_id: traceId,
+          message_id: messageId,
+          tools_triggered: toolTriggers.map(t => t.toolName)
+        }
       });
-      
-      // Save assistant response
-      await supabaseSave.from('coach_conversations').insert({
+
+    if (userMessageError) {
+      console.error('Error saving user message:', userMessageError);
+    }
+
+    // Save assistant response
+    const { error: assistantMessageError } = await supabase
+      .from('coach_conversations')
+      .insert({
         user_id: userId,
         message_role: 'assistant',
         message_content: aiResponse,
-        coach_personality: coachId,
-        conversation_date: today
+        coach_personality: normalizedCoachId,
+        context_data: {
+          request_type: requestType,
+          trace_id: traceId,
+          message_id: messageId,
+          tokens_used: tokensUsed,
+          tools_used: toolTriggers.map(t => t.toolName)
+        }
       });
+
+    if (assistantMessageError) {
+      console.error('Error saving assistant message:', assistantMessageError);
     }
 
-    // Final trace
-    await traceEvent(traceId, 'request_complete', 'complete', {
-      totalDuration: Date.now() - start,
-      responseLength: aiResponse.length,
-      piiDetected: detectPII(message),
-      sentiment: calculateSentiment(message)
-    }, conversationId, messageId, Date.now() - start);
+    const saveTime = Date.now() - saveStart;
+    const totalTime = Date.now() - start;
 
-    // Return simple JSON response
+    // Final trace
+    await traceEvent(traceId, 'request_complete', 'success', {
+      totalTime: totalTime,
+      contextTime: contextTime,
+      openaiTime: openaiTime,
+      saveTime: saveTime,
+      tokensUsed: tokensUsed,
+      toolsUsed: toolTriggers.length,
+      sentiment: calculateSentiment(message),
+      hasPII: detectPII(message)
+    }, conversationId, messageId);
+
     return new Response(JSON.stringify({
-      response: aiResponse,
-      messageId,
-      traceId,
+      answer: aiResponse,
+      trace_id: traceId,
+      message_id: messageId,
       metadata: {
-        tokensUsed: tokensUsed.total_tokens,
-        duration: Date.now() - start,
-        contextSize: ctx.metrics.tokensIn,
-        hasMemory: !!ctx.memory,
-        hasRag: !!ctx.ragChunks,
-        hasDaily: !!ctx.daily
+        request_type: requestType,
+        coach_id: normalizedCoachId,
+        tokens_used: tokensUsed,
+        processing_time_ms: totalTime,
+        tools_triggered: toolTriggers.map(t => t.toolName)
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error: any) {
-    console.error('❌ Request failed:', error);
+  } catch (error) {
+    const totalTime = Date.now() - start;
     
+    console.error('Enhanced coach error:', error);
     await traceEvent(traceId, 'request_error', 'error', {
-      errorMessage: error.message,
-      errorStack: error.stack
-    }, undefined, messageId, Date.now() - start, error.message);
-
+      error: error.message,
+      totalTime: totalTime,
+      stack: error.stack?.substring(0, 500)
+    });
+    
     return new Response(JSON.stringify({
       error: 'Internal server error',
-      traceId,
-      messageId
+      trace_id: traceId,
+      message_id: messageId,
+      details: error.message
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
