@@ -112,38 +112,23 @@ serve(async (req) => {
     const weightChange = targetWeightNum - currentWeight;
     const bodyFatChange = targetBodyFatNum - currentBodyFat;
     
-    // Create simplified, focused prompts for high-quality generation
+    // Create natural, realistic prompts focused on achievable transformations
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Simple, focused prompt for gpt-image-1 with progress photo
-      const transformationType = weightChange > 0 ? 'muscle building' : weightChange < 0 ? 'fat loss' : 'body recomposition';
-      const bodyFatDescription = targetBodyFatNum <= 12 ? 'very lean and defined' : targetBodyFatNum <= 18 ? 'athletic and toned' : 'fit and healthy';
+      // Natural transformation prompt with progress photo
+      const weightDirection = weightChange > 5 ? 'gaining healthy weight' : weightChange < -5 ? 'losing excess weight' : 'improving body composition';
+      const bodyDescription = targetBodyFatNum <= 12 ? 'lean and athletic' : targetBodyFatNum <= 18 ? 'fit and toned' : 'healthy and strong';
       
-      detailedPrompt = `Transform this person to show their fitness goal: ${transformationType} to ${targetBodyFatNum}% body fat (${bodyFatDescription}). 
-      
-Show the same person with:
-- ${bodyFatDescription} physique
-- Natural muscle definition for ${targetBodyFatNum}% body fat
-- Confident, healthy appearance
-- Good lighting and professional photo quality
-
-Keep the same facial features, skin tone, and body structure. Make it realistic and achievable, not extreme.`;
+      detailedPrompt = `Show this same person after achieving their fitness goal through ${weightDirection}. Same person, same face, same body type, but now ${bodyDescription} at ${targetBodyFatNum}% body fat. Natural progress photo showing realistic, healthy transformation. Good lighting, normal gym clothes or casual wear, confident but natural expression. No extreme changes, just a healthier version of the same person.`;
 
     } else {
-      // Simple, focused prompt for text-only generation
-      const genderDesc = profile?.gender === 'female' ? 'athletic woman' : profile?.gender === 'male' ? 'fit man' : 'athletic person';
-      const bodyFatDescription = targetBodyFatNum <= 12 ? 'very lean and defined' : targetBodyFatNum <= 18 ? 'athletic and toned' : 'fit and healthy';
+      // Natural person generation for text-only
+      const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
+      const ageDesc = profile?.age ? `${profile.age} years old` : 'young adult';
+      const bodyDescription = targetBodyFatNum <= 12 ? 'lean and athletic' : targetBodyFatNum <= 18 ? 'fit and toned' : 'healthy and strong';
       
-      detailedPrompt = `Professional fitness photo of a ${bodyFatDescription} ${genderDesc}, age ${profile?.age || 30}. 
-      
-Show:
-- ${bodyFatDescription} physique at ${targetBodyFatNum}% body fat
-- Natural muscle definition and healthy appearance
-- Confident posture in good lighting
-- Clean background, high-quality photography
-
-Realistic fitness goals, not extreme transformations.`;
+      detailedPrompt = `Natural photo of a ${bodyDescription} ${ageDesc} ${genderDesc} at ${targetBodyFatNum}% body fat. Realistic body proportions, normal gym clothes or athletic wear, natural lighting, confident smile. Not a model or extreme fitness transformation - just a regular person who is ${bodyDescription} and healthy.`;
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);
@@ -156,12 +141,12 @@ Realistic fitness goals, not extreme transformations.`;
         
         for (let retry = 0; retry <= maxRetries; retry++) {
           try {
-            // Optimize prompt for FLUX - more natural, less technical
+            // Clean prompt for FLUX - remove technical language
             const fluxPrompt = prompt
-              .replace('Professional fitness photo', 'A realistic photograph')
-              .replace('Show:', '')
-              .replace(/- /g, '')
-              .replace('Realistic fitness goals, not extreme transformations.', 'Natural looking, achievable fitness transformation.');
+              .replace('Show this same person after achieving', 'A person who has achieved')
+              .replace('Same person, same face, same body type, but now', 'Now')
+              .replace('Natural progress photo showing', 'Photo showing')
+              .replace('No extreme changes, just a healthier version of the same person.', 'Subtle, natural improvement.');
             
             // Submit generation request to BFL API
             const generateResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
@@ -250,12 +235,12 @@ Realistic fitness goals, not extreme transformations.`;
           try {
             const hf = new HfInference(huggingFaceToken);
             
-            // Optimize prompt for FLUX - more natural, less technical
+            // Clean prompt for FLUX - remove technical language
             const fluxPrompt = prompt
-              .replace('Professional fitness photo', 'A realistic photograph')
-              .replace('Show:', '')
-              .replace(/- /g, '')
-              .replace('Realistic fitness goals, not extreme transformations.', 'Natural looking, achievable fitness transformation.');
+              .replace('Show this same person after achieving', 'A person who has achieved')
+              .replace('Same person, same face, same body type, but now', 'Now')
+              .replace('Natural progress photo showing', 'Photo showing')
+              .replace('No extreme changes, just a healthier version of the same person.', 'Subtle, natural improvement.');
             
             const image = await hf.textToImage({
               inputs: fluxPrompt,
@@ -369,8 +354,8 @@ Realistic fitness goals, not extreme transformations.`;
     console.log('Generating 4 target images with model fallback...');
     
     const imagePromises = Array.from({ length: 4 }, (_, index) => {
-      // Add subtle variation to each image
-      const variations = ['front pose', 'confident stance', 'athletic pose', 'profile view'];
+      // Add subtle variation to each image - natural poses
+      const variations = ['standing naturally', 'casual pose', 'relaxed stance', 'confident posture'];
       const promptVariation = `${detailedPrompt} ${variations[index]}.`;
       
       return generateImageWithFallback(promptVariation, index);
