@@ -31,7 +31,7 @@ import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard'
 import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
 import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashboard';
-import { LiveTraceMonitor } from '@/components/LiveTraceMonitor';
+
 import LiteDebugChat from '@/components/LiteDebugChat';
 import { EmbeddingStatus } from '@/components/EmbeddingStatus';
 import { Switch } from '@/components/ui/switch';
@@ -47,6 +47,7 @@ export const AdminPage = () => {
   const [adminPersonalOnboarding, setAdminPersonalOnboarding] = useState(true);
   const [autoSaving, setAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [manualSaving, setManualSaving] = useState(false);
 
   // Load admin settings from localStorage
   useEffect(() => {
@@ -79,6 +80,23 @@ export const AdminPage = () => {
       console.error('Auto-save failed:', error);
     } finally {
       setAutoSaving(false);
+    }
+  };
+
+  // Manual save function
+  const handleManualSave = async () => {
+    if (!user || manualSaving || autoSaving) return;
+    
+    setManualSaving(true);
+    try {
+      localStorage.setItem('admin_onboarding_enabled', JSON.stringify(onboardingEnabled));
+      localStorage.setItem('admin_onboarding_globally_disabled', JSON.stringify(onboardingGloballyDisabled));
+      localStorage.setItem(`admin_personal_onboarding_${user.id}`, JSON.stringify(adminPersonalOnboarding));
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Manual save failed:', error);
+    } finally {
+      setManualSaving(false);
     }
   };
 
@@ -172,14 +190,10 @@ export const AdminPage = () => {
         <Tabs defaultValue="production" className="w-full">
           {/* 🎛️ COMPACT TAB NAVIGATION - 4 tabs */}
           <div className="w-full mb-8">
-            <TabsList className="grid w-full grid-cols-4 h-auto bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm">
+            <TabsList className="grid w-full grid-cols-3 h-auto bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm">
               <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 <Monitor className="w-4 h-4" />
                 <span>Production</span>
-              </TabsTrigger>
-              <TabsTrigger value="trace" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                <Route className="w-4 h-4" />
-                <span>Live Trace</span>
               </TabsTrigger>
               <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 <Activity className="w-4 h-4" />
@@ -197,10 +211,6 @@ export const AdminPage = () => {
             <ProductionMonitoringDashboard />
           </TabsContent>
 
-          {/* 🔍 LIVE TRACE MONITORING */}
-          <TabsContent value="trace" className="space-y-6 mt-6 safe-area-pb-6">
-            <LiveTraceMonitor />
-          </TabsContent>
 
 
           {/* 📊 PERFORMANCE MONITORING */}
@@ -271,13 +281,15 @@ export const AdminPage = () => {
                     />
                   </div>
 
-                  {/* Auto-save status */}
+                  {/* Save status and actions */}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2 text-sm">
-                      {autoSaving ? (
+                      {(autoSaving || manualSaving) ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="text-muted-foreground">Speichere automatisch...</span>
+                          <span className="text-muted-foreground">
+                            {manualSaving ? 'Speichere...' : 'Speichere automatisch...'}
+                          </span>
                         </>
                       ) : lastSaved ? (
                         <>
@@ -290,14 +302,30 @@ export const AdminPage = () => {
                         <span className="text-muted-foreground">Änderungen werden automatisch gespeichert</span>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={resetOnboarding}
-                      className="flex items-center gap-2"
-                    >
-                      🔄 Onboarding zurücksetzen
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleManualSave}
+                        disabled={manualSaving || autoSaving}
+                        className="flex items-center gap-2"
+                      >
+                        {manualSaving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Speichern
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resetOnboarding}
+                        className="flex items-center gap-2"
+                      >
+                        🔄 Onboarding zurücksetzen
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
