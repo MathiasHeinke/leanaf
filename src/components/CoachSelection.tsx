@@ -51,15 +51,9 @@ const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
   }
 }));
 
-interface CoachSelectionProps {
-  selectedCoach: string;
-  onCoachChange: (coachId: string) => void;
-}
+interface CoachSelectionProps {}
 
-export const CoachSelection: React.FC<CoachSelectionProps> = ({ 
-  selectedCoach, 
-  onCoachChange 
-}) => {
+export const CoachSelection: React.FC<CoachSelectionProps> = () => {
   const { isPremium } = useSubscription();
   const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
   const navigate = useNavigate();
@@ -73,17 +67,6 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold mb-2">Wähle deinen Coach</h3>
-        <p className="text-sm text-muted-foreground">
-          {hasFullAccess 
-          ? (!adminLoading && isSuperAdmin) 
-            ? 'Als Super Admin stehen dir alle Experten-Coaches zur Verfügung!' 
-            : 'Alle Experten-Coaches stehen dir zur Verfügung!'
-            : 'Lucy ist dein kostenloser Coach - oder upgrade für alle Experten!'
-          }
-        </p>
-      </div>
 
       {/* Premium Upgrade Banner for Free Users */}
       {!hasFullAccess && (
@@ -120,7 +103,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = ({
             <CoachCard
               key={coach.id}
               coach={coach}
-              isSelected={selectedCoach === coach.id}
+              isSelected={false}
               onSelect={() => navigate(`/coach/${coach.id}`)}
               disabled={isDisabled}
               requiresPremium={coach.isPremium}

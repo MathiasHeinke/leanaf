@@ -51,7 +51,7 @@ const CoachPage = () => {
   // Default view: Coach selection only
   return (
     <div className="container mx-auto p-4">
-      <CoachSelection selectedCoach="lucy" onCoachChange={() => {}} />
+      <CoachSelection />
     </div>
   );
 };
