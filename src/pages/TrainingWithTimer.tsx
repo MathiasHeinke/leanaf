@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { TrainingQuickAdd } from '@/components/TrainingQuickAdd';
-import { TrainingFloatingCoach } from '@/components/TrainingFloatingCoach';
+import EnhancedUnifiedCoachChat from '@/components/EnhancedUnifiedCoachChat';
 import { UnifiedWorkoutCard } from '@/components/UnifiedWorkoutCard';
 import { EnhancedUnifiedWorkoutCard } from '@/components/EnhancedUnifiedWorkoutCard';
 import { useUnifiedWorkoutData } from '@/hooks/useUnifiedWorkoutData';
@@ -229,12 +229,19 @@ export const TrainingWithTimer: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Coach */}
-      <TrainingFloatingCoach
-        isOpen={showCoach}
-        onToggle={() => setShowCoach(!showCoach)}
-        onExerciseLogged={refetch}
-      />
+      {/* Coach Dialog */}
+      {showCoach && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-background rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <EnhancedUnifiedCoachChat mode="training" />
+            <div className="p-4 border-t">
+              <Button variant="outline" onClick={() => setShowCoach(false)} className="w-full">
+                Schließen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
