@@ -8,6 +8,18 @@ async function generateMarkusEmbeddings() {
   console.log('Starting embedding generation for Markus Rühl knowledge base...');
   
   try {
+    // First check how many Markus entries exist
+    const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/coach_knowledge_base?coach_id=eq.markus&select=count`, {
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const checkData = await checkResponse.json();
+    console.log(`Found ${checkData.length} Markus knowledge entries`);
+    
     const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-embeddings`, {
       method: 'POST',
       headers: {
