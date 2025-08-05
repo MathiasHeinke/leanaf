@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.205.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import "https://deno.land/x/xhr@0.1.0/mod.ts"; // fetch-polyfill
+import { 
+  logTelemetryData, 
+  calculateCost, 
+  analyzeSentiment, 
+  detectPII, 
+  getCircuitBreakerStatus 
+} from '../_shared/openai-config.ts';
 
 // Debug Direct Chat v2.1 - Force Deployment
 const supaUrl = Deno.env.get("SUPABASE_URL")!;
@@ -22,11 +29,23 @@ serve(async req => {
       return json(400, { error: "`userId` und `message` sind Pflicht." });
     }
 
-    console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Model ${model}, Message: ${message.substring(0, 50)}...`);
-    console.log(`🔧 Deployment timestamp: ${new Date().toISOString()}`);
+    // Generate trace ID and start timer
+    const traceId = `debug_${userId}_${Date.now()}`;
+    const startTime = Date.now();
 
-    /* ---------- 1. minimales System-Prompt (Coach-Persona) ---------- */
+    console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Model ${model}, Message: ${message.substring(0, 50)}...`);
+
     const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } });
+    
+    // Log request start
+    await logTelemetryData(supa, traceId, 'T_request_start', {
+      user_id: userId,
+      coach_id: coachId,
+      model: model,
+      message_length: message.length,
+      function_name: 'debug-direct-chat',
+      ...getCircuitBreakerStatus()
+    });
     
     // Simplified coach personas for debugging
     const coachPersonas: Record<string, string> = {
@@ -38,9 +57,8 @@ serve(async req => {
 
     const systemPrompt = coachPersonas[coachId] ?? coachPersonas.lucy;
 
-    /* ---------- 2. OpenAI-Call ohne Schnickschnack ---------- */
-    console.log(`🔧 Sending to OpenAI with model: ${model}`);
-    
+    // OpenAI API call with timing
+    const apiStartTime = Date.now();
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { 
@@ -61,15 +79,47 @@ serve(async req => {
     if (!res.ok) {
       const errorText = await res.text();
       console.error(`🔧 OpenAI-Error ${res.status}:`, errorText);
+      
+      // Log error
+      await logTelemetryData(supa, traceId, 'E_error', {
+        error_message: errorText,
+        error_status: res.status,
+        duration_ms: Date.now() - startTime,
+        ...getCircuitBreakerStatus()
+      });
+      
       throw new Error(`OpenAI-Error ${res.status}: ${errorText}`);
     }
 
     const data = await res.json();
     const answer = data.choices?.[0]?.message?.content ?? "";
+    const firstTokenTime = Date.now() - apiStartTime;
+    const fullStreamTime = Date.now() - startTime;
 
     console.log(`🔧 OpenAI Response: ${answer.substring(0, 100)}... (${data.usage?.total_tokens} tokens)`);
 
-    /* ---------- 3. (optional) Roh loggen für spätere Analyse ---------- */
+    // Calculate telemetry metrics
+    const inputTokens = data.usage?.prompt_tokens || 0;
+    const outputTokens = data.usage?.completion_tokens || 0;
+    const cost = calculateCost(model, inputTokens, outputTokens);
+    const sentiment = analyzeSentiment(answer);
+    const hasPII = detectPII(answer + message);
+
+    // Log completion telemetry
+    await logTelemetryData(supa, traceId, 'T_completion', {
+      firstToken_ms: firstTokenTime,
+      fullStream_ms: fullStreamTime,
+      prompt_tokens: inputTokens,
+      completion_tokens: outputTokens,
+      total_tokens: data.usage?.total_tokens || 0,
+      cost_usd: cost,
+      sentiment_score: sentiment,
+      pii_detected: hasPII,
+      response_length: answer.length,
+      ...getCircuitBreakerStatus()
+    });
+
+    // Legacy debug log
     try {
       await supa.from("debug_logs").insert({
         user_id: userId,
@@ -81,7 +131,6 @@ serve(async req => {
       });
     } catch (logError) {
       console.warn("🔧 Debug log insert failed:", logError);
-      // Continue anyway - logging failure shouldn't break the debug flow
     }
 
     return json(200, {
@@ -90,6 +139,10 @@ serve(async req => {
       debug: { 
         tokens: data.usage?.total_tokens,
         model: model,
+        firstToken_ms: firstTokenTime,
+        fullStream_ms: fullStreamTime,
+        cost_usd: cost,
+        sentiment: sentiment,
         timestamp: new Date().toISOString()
       },
     });

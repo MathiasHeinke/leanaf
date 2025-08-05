@@ -170,6 +170,110 @@ export const WHISPER_CONFIG = {
   // Chunk-Größe 30s, Overlap 3s im Frontend
 };
 
+// Token cost calculation (per 1K tokens)
+const TOKEN_COSTS = {
+  'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+  'gpt-4o': { input: 0.0025, output: 0.01 },
+  'gpt-4.1-2025-04-14': { input: 0.0025, output: 0.01 },
+  'text-embedding-3-small': { input: 0.00002, output: 0 }
+};
+
+export function calculateCost(model: string, inputTokens: number, outputTokens: number = 0): number {
+  const costs = TOKEN_COSTS[model as keyof typeof TOKEN_COSTS];
+  if (!costs) return 0;
+  
+  return (inputTokens / 1000 * costs.input) + (outputTokens / 1000 * costs.output);
+}
+
+// Enhanced telemetry logging
+export async function logTelemetryData(
+  supabase: any,
+  traceId: string,
+  stage: string,
+  data: Record<string, any>,
+  startTime?: number
+) {
+  try {
+    const payload = {
+      trace_id: traceId,
+      stage,
+      data: {
+        ...data,
+        timestamp: new Date().toISOString(),
+        ...(startTime ? { duration_ms: Date.now() - startTime } : {})
+      },
+      ts: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('coach_traces')
+      .insert(payload);
+
+    if (error) {
+      console.error('Failed to log telemetry data:', error);
+    }
+  } catch (error) {
+    console.error('Error logging telemetry data:', error);
+  }
+}
+
+// Sentiment analysis helper
+export function analyzeSentiment(text: string): number {
+  const positiveWords = ['gut', 'toll', 'super', 'fantastisch', 'perfekt', 'liebe', 'freue', 'glücklich', 'danke', 'hilft'];
+  const negativeWords = ['schlecht', 'schrecklich', 'hasse', 'furchtbar', 'traurig', 'müde', 'stress', 'problem', 'schwer'];
+  
+  const words = text.toLowerCase().split(/\s+/);
+  let score = 0;
+  
+  words.forEach(word => {
+    if (positiveWords.some(pos => word.includes(pos))) score += 0.1;
+    if (negativeWords.some(neg => word.includes(neg))) score -= 0.1;
+  });
+  
+  return Math.max(-1, Math.min(1, score));
+}
+
+// PII detection helper
+export function detectPII(text: string): boolean {
+  const piiPatterns = [
+    /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/, // Credit card
+    /\b\d{3}[-.]?\d{2}[-.]?\d{4}\b/, // SSN
+    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/, // Email
+    /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/, // Phone
+  ];
+  
+  return piiPatterns.some(pattern => pattern.test(text));
+}
+
+// Circuit breaker simulation (in production, use Redis)
+let circuitBreakerState = { open: false, halfOpen: false, errorCount: 0, lastErrorTime: 0 };
+
+export function getCircuitBreakerStatus() {
+  const now = Date.now();
+  
+  // Reset after 5 minutes
+  if (now - circuitBreakerState.lastErrorTime > 5 * 60 * 1000) {
+    circuitBreakerState = { open: false, halfOpen: false, errorCount: 0, lastErrorTime: 0 };
+  }
+  
+  // Open circuit if too many errors
+  if (circuitBreakerState.errorCount >= 5) {
+    circuitBreakerState.open = true;
+    circuitBreakerState.halfOpen = false;
+  }
+  
+  return {
+    breaker_open: circuitBreakerState.open,
+    breaker_halfOpen: circuitBreakerState.halfOpen,
+    breaker_closed: !circuitBreakerState.open && !circuitBreakerState.halfOpen
+  };
+}
+
+export function recordError() {
+  circuitBreakerState.errorCount++;
+  circuitBreakerState.lastErrorTime = Date.now();
+}
+
 // Performance-Monitoring
 export function logPerformanceMetrics(
   functionName: string,

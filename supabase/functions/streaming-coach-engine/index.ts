@@ -1,7 +1,15 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
-import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
+import { 
+  TASK_CONFIGS, 
+  logTelemetryData, 
+  calculateCost, 
+  analyzeSentiment, 
+  detectPII, 
+  getCircuitBreakerStatus, 
+  recordError 
+} from '../_shared/openai-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +22,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
   try {
     const { userId, message, coachId, conversationHistory } = await req.json();
 
@@ -24,16 +37,28 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    // Generate trace ID for telemetry
+    const traceId = `coach_${userId}_${Date.now()}`;
+    const requestStartTime = Date.now();
+    
+    // Log request start
+    await logTelemetryData(supabase, traceId, 'T_request_start', {
+      user_id: userId,
+      coach_id: coachId,
+      message_length: message.length,
+      has_conversation_history: !!conversationHistory?.length,
+      ...getCircuitBreakerStatus()
+    });
 
-    // Create response stream
+    // Create response stream with telemetry
     const stream = new ReadableStream({
       async start(controller) {
-        // Send initial open event
         controller.enqueue(`event: open\ndata: {"ok":true}\n\n`);
+        
+        let fullResponseText = '';
+        let firstTokenTime: number | null = null;
+        let inputTokens = 0;
+        let outputTokens = 0;
         
         try {
           // Get coach data
@@ -43,7 +68,7 @@ serve(async (req) => {
             .eq('id', coachId || 'lucy')
             .single();
 
-          // Build context (simplified for streaming)
+          // Build context
           const systemMessage = `Du bist ${coach?.name || 'Lucy'}, ein persönlicher Coach.
           
 Persönlichkeit: ${coach?.personality || 'empathisch und motivierend'}
@@ -51,19 +76,35 @@ Expertise: ${coach?.expertise?.join(', ') || 'Allgemeine Gesundheit'}
 
 Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
 
+          const messages = [
+            { role: 'system', content: systemMessage },
+            ...conversationHistory?.slice(-4) || [],
+            { role: 'user', content: message }
+          ];
+
+          // Estimate input tokens
+          inputTokens = messages.reduce((sum, msg) => sum + (msg.content.length / 4), 0);
+
           const config = TASK_CONFIGS['coach_analysis'];
           
-          // Stream response
-          const response = await callOpenAIWithRetry({
-            model: 'gpt-4.1-2025-04-14',
-            messages: [
-              { role: 'system', content: systemMessage },
-              ...conversationHistory?.slice(-4) || [], // Last 4 messages for context
-              { role: 'user', content: message }
-            ],
-            ...config,
-            stream: true
+          // Make streaming request to OpenAI
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openAIApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4.1-2025-04-14',
+              messages,
+              ...config,
+              stream: true
+            }),
           });
+
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.status}`);
+          }
 
           if (response.body) {
             const reader = response.body.getReader();
@@ -83,6 +124,24 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                     const data = line.slice(6);
                     
                     if (data === '[DONE]') {
+                      // Stream complete - log final metrics
+                      const fullStreamTime = Date.now() - requestStartTime;
+                      const cost = calculateCost('gpt-4.1-2025-04-14', inputTokens, outputTokens);
+                      const sentiment = analyzeSentiment(fullResponseText);
+                      const hasPII = detectPII(fullResponseText + message);
+
+                      await logTelemetryData(supabase, traceId, 'T_stream_complete', {
+                        fullStream_ms: fullStreamTime,
+                        firstToken_ms: firstTokenTime,
+                        input_tokens: inputTokens,
+                        output_tokens: outputTokens,
+                        cost_usd: cost,
+                        sentiment_score: sentiment,
+                        pii_detected: hasPII,
+                        response_length: fullResponseText.length,
+                        ...getCircuitBreakerStatus()
+                      });
+
                       controller.enqueue(`data: {"type":"stream_done"}\n\n`);
                       controller.close();
                       return;
@@ -93,6 +152,18 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                       const content = parsed.choices?.[0]?.delta?.content;
                       
                       if (content) {
+                        // Track first token timing
+                        if (firstTokenTime === null) {
+                          firstTokenTime = Date.now() - requestStartTime;
+                          await logTelemetryData(supabase, traceId, 'T_first_token', {
+                            firstToken_ms: firstTokenTime,
+                            ...getCircuitBreakerStatus()
+                          });
+                        }
+                        
+                        fullResponseText += content;
+                        outputTokens += content.length / 4; // Rough token estimation
+                        
                         controller.enqueue(`data: {"type":"content","content":${JSON.stringify(content)}}\n\n`);
                       }
                     } catch (e) {
@@ -107,6 +178,16 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
           }
         } catch (error) {
           console.error('Streaming error:', error);
+          recordError();
+          
+          // Log error
+          await logTelemetryData(supabase, traceId, 'E_error', {
+            error_message: error.message,
+            error_type: 'streaming_error',
+            duration_ms: Date.now() - requestStartTime,
+            ...getCircuitBreakerStatus()
+          });
+          
           controller.enqueue(`data: {"type":"error","error":"${error.message}"}\n\n`);
           controller.close();
         }
@@ -124,6 +205,8 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
 
   } catch (error) {
     console.error('Request error:', error);
+    recordError();
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
