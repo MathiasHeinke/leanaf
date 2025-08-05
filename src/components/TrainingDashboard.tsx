@@ -21,7 +21,7 @@ import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
 import { QuickBodyDataWidget } from '@/components/QuickBodyDataWidget';
 import { StrengthGoalsWidget } from '@/components/StrengthGoalsWidget';
-import { TrainingProgressPhotoUpload } from '@/components/TrainingProgressPhotoUpload';
+
 import { GoalProgressWidget } from '@/components/GoalProgressWidget';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
@@ -547,7 +547,6 @@ export const TrainingDashboard: React.FC = () => {
             <div className="grid gap-4 grid-cols-1">
               <QuickBodyDataWidget />
               <StrengthGoalsWidget />
-              <TrainingProgressPhotoUpload />
               <GoalProgressWidget />
             </div>
 
