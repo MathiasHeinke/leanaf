@@ -60,10 +60,16 @@ export const useOnboardingState = () => {
         });
       }
     } else {
-      // New user - only navigate to onboarding if not disabled by admin
-      if (!isOnboardingDisabledByAdmin()) {
-        navigate('/onboarding');
-      }
+      // Default to completed state for users without stored onboarding data
+      // Only navigate to onboarding when explicitly triggered (e.g., new registration)
+      setOnboardingState({
+        showProfileOnboarding: false,
+        showIndexOnboarding: false,
+        showInteractiveOnboarding: false,
+        profileCompleted: true,
+        mealInputHighlighted: false,
+        showProfileIndicators: false,
+      });
     }
   }, [user, navigate]);
 
