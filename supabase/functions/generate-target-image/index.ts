@@ -20,14 +20,16 @@ serve(async (req) => {
 
   try {
     console.log('Checking API keys...');
+    const bflApiKey = Deno.env.get('BFL_API_KEY');
     const huggingFaceToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     
-    if (!huggingFaceToken && !openAIApiKey) {
-      throw new Error('No AI API keys configured. Please add HUGGING_FACE_ACCESS_TOKEN or OPENAI_API_KEY');
+    if (!bflApiKey && !huggingFaceToken && !openAIApiKey) {
+      throw new Error('No AI API keys configured. Please add BFL_API_KEY, HUGGING_FACE_ACCESS_TOKEN, or OPENAI_API_KEY');
     }
     
     console.log('API keys available:', { 
+      bfl: !!bflApiKey,
       huggingFace: !!huggingFaceToken, 
       openAI: !!openAIApiKey 
     });
@@ -138,11 +140,103 @@ Realistic fitness goals, not extreme transformations.`;
 
     console.log('Generated simplified prompt:', detailedPrompt);
 
-    // Helper function to generate images with FLUX first, then OpenAI fallback
+    // Helper function to generate images with BFL Direct API first, then fallbacks
     const generateImageWithFallback = async (prompt: string, index: number, maxRetries = 2) => {
-      // Try FLUX.1-schnell first if HuggingFace token is available
+      // Try BFL Direct API first if BFL API key is available
+      if (bflApiKey) {
+        console.log(`Trying image generation ${index + 1} with BFL Direct API`);
+        
+        for (let retry = 0; retry <= maxRetries; retry++) {
+          try {
+            // Optimize prompt for FLUX - more natural, less technical
+            const fluxPrompt = prompt
+              .replace('Professional fitness photo', 'A realistic photograph')
+              .replace('Show:', '')
+              .replace(/- /g, '')
+              .replace('Realistic fitness goals, not extreme transformations.', 'Natural looking, achievable fitness transformation.');
+            
+            // Submit generation request to BFL API
+            const generateResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${bflApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                prompt: fluxPrompt,
+                width: 1024,
+                height: 1024,
+                safety_tolerance: 2,
+                seed: Math.floor(Math.random() * 1000000)
+              }),
+            });
+            
+            if (!generateResponse.ok) {
+              const errorData = await generateResponse.json();
+              throw new Error(`BFL API Error: ${errorData.message || 'Unknown error'}`);
+            }
+            
+            const generateResult = await generateResponse.json();
+            const taskId = generateResult.id;
+            
+            if (!taskId) {
+              throw new Error('No task ID received from BFL API');
+            }
+            
+            console.log(`BFL task submitted: ${taskId}, waiting for completion...`);
+            
+            // Poll for result (BFL API is async)
+            let attempts = 0;
+            const maxAttempts = 60; // 60 seconds max wait
+            
+            while (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+              
+              const resultResponse = await fetch(`https://api.bfl.ai/v1/get_result?id=${taskId}`, {
+                headers: {
+                  'Authorization': `Bearer ${bflApiKey}`,
+                },
+              });
+              
+              if (resultResponse.ok) {
+                const resultData = await resultResponse.json();
+                
+                if (resultData.status === 'Ready') {
+                  console.log(`Successfully generated image ${index + 1} with BFL Direct API`);
+                  return { 
+                    data: [{ url: resultData.result.sample }], 
+                    model: 'flux-kontext-pro',
+                    provider: 'bfl-direct'
+                  };
+                } else if (resultData.status === 'Error' || resultData.status === 'Request Moderated' || resultData.status === 'Content Moderated') {
+                  throw new Error(`BFL generation failed: ${resultData.status} - ${JSON.stringify(resultData.details)}`);
+                } else if (resultData.status === 'Pending') {
+                  attempts++;
+                  console.log(`BFL task ${taskId} still pending (${attempts}/${maxAttempts})...`);
+                  continue;
+                }
+              }
+              
+              attempts++;
+            }
+            
+            throw new Error(`BFL generation timeout after ${maxAttempts} seconds`);
+            
+          } catch (error) {
+            console.error(`BFL generation ${index + 1} failed (attempt ${retry + 1}):`, error);
+            if (retry < maxRetries) {
+              const waitTime = Math.pow(2, retry) * 1000;
+              console.log(`Waiting ${waitTime}ms before BFL retry...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+          }
+        }
+        console.log(`BFL failed for image ${index + 1}, falling back to HuggingFace...`);
+      }
+      
+      // Try FLUX.1-schnell via HuggingFace if BFL failed or not available
       if (huggingFaceToken) {
-        console.log(`Trying image generation ${index + 1} with FLUX.1-schnell`);
+        console.log(`Trying image generation ${index + 1} with FLUX.1-schnell (HuggingFace)`);
         
         for (let retry = 0; retry <= maxRetries; retry++) {
           try {
@@ -165,7 +259,7 @@ Realistic fitness goals, not extreme transformations.`;
             const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
             const imageUrl = `data:image/png;base64,${base64}`;
             
-            console.log(`Successfully generated image ${index + 1} with FLUX.1-schnell`);
+            console.log(`Successfully generated image ${index + 1} with FLUX.1-schnell (HuggingFace)`);
             return { 
               data: [{ url: imageUrl }], 
               model: 'flux-1-schnell',
@@ -173,18 +267,18 @@ Realistic fitness goals, not extreme transformations.`;
             };
             
           } catch (error) {
-            console.error(`FLUX generation ${index + 1} failed (attempt ${retry + 1}):`, error);
+            console.error(`HuggingFace FLUX generation ${index + 1} failed (attempt ${retry + 1}):`, error);
             if (retry < maxRetries) {
               const waitTime = Math.pow(2, retry) * 1000;
-              console.log(`Waiting ${waitTime}ms before FLUX retry...`);
+              console.log(`Waiting ${waitTime}ms before HuggingFace retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
             }
           }
         }
-        console.log(`FLUX failed for image ${index + 1}, falling back to OpenAI...`);
+        console.log(`HuggingFace FLUX failed for image ${index + 1}, falling back to OpenAI...`);
       }
       
-      // Fallback to OpenAI models if FLUX fails or no HuggingFace token
+      // Fallback to OpenAI models if all FLUX options fail
       if (!openAIApiKey) {
         console.error(`No OpenAI API key available for fallback`);
         return null;
