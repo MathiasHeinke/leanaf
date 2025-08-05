@@ -1051,7 +1051,7 @@ serve(async (req) => {
     }, conversationId, messageId);
 
     return new Response(JSON.stringify({
-      answer: aiResponse,
+      response: aiResponse,
       trace_id: traceId,
       message_id: messageId,
       metadata: {
