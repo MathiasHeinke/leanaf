@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ExerciseQuickAdd } from '@/components/ExerciseQuickAdd';
 import { ExerciseProgressCharts } from '@/components/ExerciseProgressCharts';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
-import SimpleUnifiedCoachChat from '@/components/SimpleUnifiedCoachChat';
+import EnhancedUnifiedCoachChat from '@/components/EnhancedUnifiedCoachChat';
 import { DayCard } from '@/components/DayCard';
 import { MonthCard } from '@/components/MonthCard';
 import { useAuth } from '@/hooks/useAuth';
@@ -237,7 +237,7 @@ export const AdvancedWorkoutSection: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="coach" className="space-y-4">
-          <SimpleUnifiedCoachChat 
+          <EnhancedUnifiedCoachChat 
             mode="training"
           />
         </TabsContent>

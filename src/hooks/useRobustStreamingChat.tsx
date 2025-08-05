@@ -186,28 +186,23 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
       transitionToState('loading-context');
       setupDynamicTimeout();
 
-      // SUPER SIMPLE: Direct GPT call without streaming/complexity
-      console.log('🚀 Sending POST to simple-gpt (no streaming!):', {
+      // Use enhanced-coach-chat function instead of deprecated simple-gpt
+      console.log('🚀 Sending POST to enhanced-coach-chat (modern API):', {
         message: message.substring(0, 20) + '...'
       });
       
-      const response = await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/simple-gpt', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I'
-        },
-        body: JSON.stringify({
-          message
-        }),
-        signal: abortControllerRef.current.signal
+      const response = await supabase.functions.invoke('enhanced-coach-chat', {
+        body: {
+          message,
+          userId,
+          coachPersonality,
+          conversationHistory
+        }
       });
 
       console.log('📥 Response received:', {
-        status: response.status,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
+        data: response.data,
+        error: response.error
       });
 
       // Check for abort before processing response
@@ -215,21 +210,20 @@ export const useRobustStreamingChat = (options: UseRobustStreamingChatOptions = 
         throw new Error('Anfrage abgebrochen');
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server Fehler ${response.status}: ${errorText}`);
+      if (response.error) {
+        throw new Error(`Server Fehler: ${response.error.message || response.error}`);
       }
 
-      if (!response.body) {
+      if (!response.data) {
         throw new Error('Keine Antwort vom Server erhalten');
       }
 
       trackContextLoaded();
       
-      console.log('✅ Context loaded, processing non-streaming response...');
+      console.log('✅ Context loaded, processing enhanced chat response...');
 
-      // Handle non-streaming JSON response
-      const jsonResponse = await response.json();
+      // Handle Supabase function response - data is already parsed JSON
+      const jsonResponse = response.data;
       
       console.log('🔍 DEBUG: Response format received:', jsonResponse);
       
