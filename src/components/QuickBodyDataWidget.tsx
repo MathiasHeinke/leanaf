@@ -13,6 +13,8 @@ import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { TargetImageSelector } from '@/components/TargetImageSelector';
 import { SmartCardOverlay } from '@/components/SmartCardOverlay';
+import { EnhancedStreamingIndicator } from '@/components/EnhancedStreamingIndicator';
+import { useEnhancedStreamingChat } from '@/hooks/useEnhancedStreamingChat';
 import { supabase } from '@/integrations/supabase/client';
 
 import { toast } from 'sonner';
@@ -28,12 +30,25 @@ export const QuickBodyDataWidget: React.FC = () => {
   const [muscleMass, setMuscleMass] = useState('');
   const [notes, setNotes] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [showImageSelectorOverlay, setShowImageSelectorOverlay] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const targetInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Enhanced streaming for AI generation progress
+  const { 
+    streamingStage, 
+    startPerformanceTracking, 
+    trackContextLoaded, 
+    trackFirstToken, 
+    trackStreamingProgress, 
+    trackStreamingComplete, 
+    trackError, 
+    resetPerformanceTracking 
+  } = useEnhancedStreamingChat();
 
 
   // Load user profile on mount
@@ -424,36 +439,68 @@ export const QuickBodyDataWidget: React.FC = () => {
 
           <Button
             onClick={async () => {
+              setIsGenerating(true);
+              startPerformanceTracking();
+              
               try {
-                toast.info('4 AI-Zielbilder werden erstellt...', {
-                  description: 'Dies kann einen Moment dauern'
-                });
+                // Track different phases of AI generation
+                setTimeout(() => trackContextLoaded(), 500);
+                setTimeout(() => trackFirstToken(), 1000);
+                
+                // Progress tracking simulation
+                const progressInterval = setInterval(() => {
+                  trackStreamingProgress(Math.random() * 20 + 10);
+                }, 2000);
+
                 const result = await generateTargetImage();
+                
+                clearInterval(progressInterval);
+                trackStreamingComplete();
+                
                 if (result && result.imageUrls && result.imageUrls.length > 0) {
                   setGeneratedImages(result);
                   setShowImageSelectorOverlay(true);
+                  toast.success('4 AI-Zielbilder erfolgreich erstellt!');
                 } else {
                   toast.error('Keine Bilder generiert');
+                  trackError('Keine Bilder generiert');
                 }
               } catch (error) {
                 console.error('Error generating images:', error);
+                trackError(error instanceof Error ? error.message : 'Unbekannter Fehler');
+                toast.error('Fehler beim Erstellen der Zielbilder');
+              } finally {
+                setIsGenerating(false);
+                setTimeout(() => resetPerformanceTracking(), 3000);
               }
             }}
-            disabled={targetLoading || photos.length === 0}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            disabled={isGenerating || photos.length === 0}
+            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
           >
-            {targetLoading ? (
+            {isGenerating ? (
               <>
-                <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                AI erstellt 4 Zielbilder...
+                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Erstelle 4 Bilder...
               </>
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />
-                🎯 4 AI-Zielbilder erstellen
+                4 Bilder erstellen
               </>
             )}
           </Button>
+          
+          {/* Progress Indicator during AI Generation */}
+          {isGenerating && (
+            <div className="mt-4">
+              <EnhancedStreamingIndicator
+                isConnected={true}
+                isStreaming={isGenerating}
+                stage={streamingStage.stage}
+                progress={streamingStage.progress}
+              />
+            </div>
+          )}
 
           {photos.length === 0 && (
             <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">

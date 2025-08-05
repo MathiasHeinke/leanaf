@@ -85,17 +85,22 @@ export const useTargetImages = () => {
 
   const generateTargetImage = async (
     targetWeight?: number,
-    targetBodyFat?: number
+    targetBodyFat?: number,
+    onProgress?: (stage: string, progress?: number) => void
   ) => {
     if (!user) return;
 
     try {
+      onProgress?.('connecting', 0);
+      
       // Get user profile data for better AI generation
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .single();
+
+      onProgress?.('context', 25);
 
       const requestData = {
         targetWeight: targetWeight || profileData?.target_weight || 70,
@@ -107,6 +112,7 @@ export const useTargetImages = () => {
       };
 
       console.log('Calling generate-target-image with:', requestData);
+      onProgress?.('streaming', 50);
 
       const { data: generationResult, error: generationError } = await supabase.functions
         .invoke('generate-target-image', {
@@ -115,6 +121,8 @@ export const useTargetImages = () => {
 
       if (generationError) throw generationError;
 
+      onProgress?.('complete', 100);
+
       // Return the generation result with multiple images for selection
       return {
         ...generationResult,
@@ -122,6 +130,7 @@ export const useTargetImages = () => {
       };
     } catch (error) {
       console.error('Error generating target image:', error);
+      onProgress?.('error', 0);
       toast.error('Fehler beim Generieren des Zielbilds');
       throw error;
     }
