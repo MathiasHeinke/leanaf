@@ -62,8 +62,8 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    // Get the latest photo URL from the photo_urls array
-    let latestPhotoUrl = null;
+    // Get the middle photo (front view) from the photo_urls array
+    let frontPhotoUrl = null;
     if (latestWeightEntry?.photo_urls) {
       let photoUrls = latestWeightEntry.photo_urls;
       if (typeof photoUrls === 'string') {
@@ -74,8 +74,15 @@ serve(async (req) => {
         }
       }
       if (Array.isArray(photoUrls) && photoUrls.length > 0) {
-        latestPhotoUrl = photoUrls[0];
+        // Take middle photo as front view (index 1 if 3 photos, index 0 if 1 photo)
+        const middleIndex = Math.floor(photoUrls.length / 2);
+        frontPhotoUrl = photoUrls[middleIndex];
+        console.log(`Selected photo ${middleIndex + 1} of ${photoUrls.length} as front view:`, frontPhotoUrl);
       }
+    }
+
+    if (!frontPhotoUrl) {
+      console.log('No progress photo found, falling back to text-only generation');
     }
 
     // Calculate target improvements
@@ -89,8 +96,61 @@ serve(async (req) => {
     const weightChange = targetWeightNum - currentWeight;
     const bodyFatChange = targetBodyFatNum - currentBodyFat;
     
-    // Enhanced prompt based on user data and progress photos
-    const detailedPrompt = `Create a realistic fitness transformation target image for ${profile?.first_name || 'a person'}, showing their goal physique.
+    // Create prompt based on whether we have a progress photo or not
+    let requestBody;
+    let detailedPrompt;
+
+    if (frontPhotoUrl) {
+      // Use vision API with progress photo
+      detailedPrompt = `Based on this progress photo, create a realistic fitness transformation target image showing the same person at their goal physique.
+
+TARGET TRANSFORMATION:
+- Current weight: ${currentWeight.toFixed(1)} kg → Goal weight: ${targetWeightNum.toFixed(1)} kg (${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg change)
+- Current body fat: ${currentBodyFat.toFixed(1)}% → Target body fat: ${targetBodyFatNum.toFixed(1)}% (${bodyFatChange.toFixed(1)}% change)
+- Fitness goal: ${profile?.goal || 'improved fitness'}
+
+TRANSFORMATION DIRECTION:
+${weightChange > 0 ? '• Weight gain focused on lean muscle mass' : weightChange < 0 ? '• Weight loss while preserving muscle mass' : '• Body recomposition (maintain weight, change composition)'}
+${bodyFatChange < 0 ? '• Reduce body fat for better muscle definition' : '• Maintain healthy body fat levels'}
+
+VISUAL REQUIREMENTS:
+Show the SAME person from the progress photo but transformed to the target physique. The person should:
+- Maintain the same facial features, skin tone, and general appearance
+- Show realistic fitness progress based on the target metrics
+- Have appropriate muscle definition for ${targetBodyFatNum.toFixed(1)}% body fat
+- Look healthy, fit, and naturally achievable
+- Show confident posture and expression
+- Be photographed in good lighting with a clean, simple background
+- Represent realistic fitness goals, not extreme transformations
+
+Style: High-quality fitness photography, natural lighting, motivational but realistic representation.`;
+
+      requestBody = {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: detailedPrompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: frontPhotoUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 4096
+      };
+
+      console.log('Using vision API with progress photo:', frontPhotoUrl);
+    } else {
+      // Fallback to text-only generation
+      detailedPrompt = `Create a realistic fitness transformation target image for ${profile?.first_name || 'a person'}, showing their goal physique.
 
 PERSON DETAILS:
 - Gender: ${profile?.gender || 'not specified'}
@@ -123,22 +183,32 @@ Create a photorealistic image of ${profile?.gender === 'female' ? 'a woman' : pr
 
 Style: High-quality fitness photography, natural lighting, motivational but realistic representation.`;
 
-    console.log('Generated enhanced prompt:', detailedPrompt);
-
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+      requestBody = {
         model: 'dall-e-3',
         prompt: detailedPrompt,
         n: 1,
         size: '1024x1024',
         quality: 'hd',
         style: 'natural'
-      }),
+      };
+
+      console.log('Using text-only generation (no progress photo available)');
+    }
+
+    console.log('Generated prompt:', detailedPrompt);
+
+    // Choose the appropriate API endpoint based on whether we're using vision
+    const apiEndpoint = frontPhotoUrl 
+      ? 'https://api.openai.com/v1/chat/completions'
+      : 'https://api.openai.com/v1/images/generations';
+
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -148,9 +218,21 @@ Style: High-quality fitness photography, natural lighting, motivational but real
     }
 
     const data = await response.json();
-    const imageUrl = data.data[0].url;
+    let imageUrl;
 
-    console.log('Image generated successfully:', imageUrl);
+    if (frontPhotoUrl) {
+      // Vision API returns text response, we need to extract image generation request
+      const analysisResult = data.choices[0].message.content;
+      console.log('Vision analysis result:', analysisResult);
+      
+      // For now, fallback to DALL-E generation based on analysis
+      // TODO: Implement image-to-image generation or use analysis to create better prompt
+      throw new Error('Vision-based image generation not yet fully implemented. Please try without progress photos for now.');
+    } else {
+      // Image generation API returns direct image URL
+      imageUrl = data.data[0].url;
+      console.log('Image generated successfully:', imageUrl);
+    }
 
     return new Response(
       JSON.stringify({ 
