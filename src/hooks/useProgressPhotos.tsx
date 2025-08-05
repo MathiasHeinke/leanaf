@@ -34,18 +34,34 @@ export const useProgressPhotos = () => {
         .order('date', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Raw data from Supabase:', data);
+      
       // Filter only entries that have actual photos
       const entriesWithPhotos = (data || []).filter(entry => {
+        console.log('Processing entry:', entry.id, 'photo_urls:', entry.photo_urls, 'type:', typeof entry.photo_urls);
+        
         let photoUrls = entry.photo_urls;
+        
+        // Handle different photo_urls formats
         if (typeof photoUrls === 'string') {
           try {
             photoUrls = JSON.parse(photoUrls);
+            console.log('Parsed photo_urls:', photoUrls);
           } catch (e) {
+            console.log('Failed to parse photo_urls string:', e);
             return false;
           }
         }
-        return photoUrls && Array.isArray(photoUrls) && photoUrls.length > 0;
+        
+        // Check if photoUrls is valid and has content
+        const hasPhotos = photoUrls && Array.isArray(photoUrls) && photoUrls.length > 0 && photoUrls.some(url => url && typeof url === 'string' && url.trim() !== '');
+        console.log('Entry has photos:', hasPhotos, 'photoUrls:', photoUrls);
+        
+        return hasPhotos;
       });
+      
+      console.log('Filtered entries with photos:', entriesWithPhotos.length);
       setPhotos(entriesWithPhotos as WeightEntry[]);
     } catch (error) {
       console.error('Error loading progress photos:', error);
