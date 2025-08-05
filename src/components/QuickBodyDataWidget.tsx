@@ -239,16 +239,16 @@ export const QuickBodyDataWidget: React.FC = () => {
                       </span>
                     </div>
                     
-                    {/* 3 Photos horizontally */}
+                    {/* 3 Photos horizontally with improved aspect ratio */}
                     <div className="flex gap-2 mb-2">
                       {Array.from({ length: 3 }).map((_, imgIndex) => (
-                        <div key={imgIndex} className="w-16 h-16 flex-shrink-0">
+                        <div key={imgIndex} className="w-20 aspect-[3/4] flex-shrink-0">
                           {photoUrls[imgIndex] ? (
                             <div className="relative">
                               <img
                                 src={photoUrls[imgIndex]}
                                 alt={`Progress ${index + 1}-${imgIndex + 1}`}
-                                className={`w-full h-full object-cover rounded-md cursor-pointer hover:scale-105 transition-all duration-200 border-2 ${
+                                className={`w-full h-full object-cover object-center rounded-md cursor-pointer hover:scale-105 transition-all duration-200 border-2 ${
                                   selectedProgressPhoto?.url === photoUrls[imgIndex] 
                                     ? 'border-green-500 ring-2 ring-green-200' 
                                     : 'border-border/20 hover:border-primary/30'
