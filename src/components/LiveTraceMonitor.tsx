@@ -54,6 +54,16 @@ interface GroupedTrace {
   coachResponse?: string;
   fullPrompt?: string;
   ragContext?: string;
+  contextData?: {
+    sources: string[];
+    size: number;
+    coach_data?: any;
+    profile_accessed?: boolean;
+    meal_data_accessed?: boolean;
+  };
+  performanceGrade?: 'A' | 'B' | 'C' | 'D' | 'F';
+  responsePreview?: string;
+  ragHitRate?: number;
 }
 
 const COACHES = [
@@ -163,7 +173,8 @@ export const LiveTraceMonitor = () => {
         
         // Extract content for easy viewing from both naming conventions
         const requestEvent = events.find(e => e.stage === 'T_request_start' || e.stage === 'A_received');
-        const promptEvent = events.find(e => e.stage === 'T_prompt_analysis' || e.stage === 'B_context_ready');
+        const contextEvent = events.find(e => e.stage === 'T_context_built' || e.stage === 'B_context_ready');
+        const promptEvent = events.find(e => e.stage === 'T_prompt_analysis');
         const completionEvent = events.find(e => e.stage === 'T_completion' || e.stage === 'T_stream_complete' || e.stage === 'G_complete');
         const ragEvent = events.find(e => e.stage === 'E_rag_search');
 
@@ -181,9 +192,34 @@ export const LiveTraceMonitor = () => {
 
         // Extract full prompt from various possible locations
         const fullPrompt = promptEvent?.data?.full_prompt_preview || 
-                         promptEvent?.data?.openai_request_body ||
-                         promptEvent?.data?.system_message ||
+                         contextEvent?.data?.openai_request_body ||
+                         contextEvent?.data?.system_message ||
                          events.find(e => e.data?.full_prompt_preview)?.data?.full_prompt_preview;
+
+        // Extract context data
+        const contextData = contextEvent?.data ? {
+          sources: contextEvent.data.context_source ? [contextEvent.data.context_source] : [],
+          size: contextEvent.data.context_size || 0,
+          coach_data: contextEvent.data.coach_data,
+          profile_accessed: !!contextEvent.data.user_profile,
+          meal_data_accessed: !!contextEvent.data.meal_data || !!contextEvent.data.nutrition_data
+        } : undefined;
+
+        // Calculate performance grade
+        const firstTokenTime = events.find(e => e.stage === 'T_first_token')?.data?.firstToken_ms;
+        const totalTime = completionEvent?.data?.fullStream_ms || completionEvent?.data?.duration_ms;
+        let performanceGrade: 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
+        if (firstTokenTime && totalTime) {
+          if (firstTokenTime < 1000 && totalTime < 5000) performanceGrade = 'A';
+          else if (firstTokenTime < 2000 && totalTime < 10000) performanceGrade = 'B';
+          else if (firstTokenTime < 3000 && totalTime < 15000) performanceGrade = 'C';
+          else if (firstTokenTime < 5000 && totalTime < 20000) performanceGrade = 'D';
+        }
+
+        // Create response preview
+        const responsePreview = coachResponse ? 
+          coachResponse.length > 100 ? coachResponse.substring(0, 100) + '...' : coachResponse 
+          : undefined;
 
         groupedTraces.set(traceId, {
           traceId,
@@ -196,7 +232,11 @@ export const LiveTraceMonitor = () => {
           userMessage,
           coachResponse,
           fullPrompt,
-          ragContext: ragEvent?.data?.context_length ? `${ragEvent.data.results_count} results, ${ragEvent.data.context_length} chars` : undefined
+          ragContext: ragEvent?.data?.context_length ? `${ragEvent.data.results_count} results, ${ragEvent.data.context_length} chars` : undefined,
+          contextData,
+          performanceGrade,
+          responsePreview,
+          ragHitRate: ragEvent?.data?.rag_hit_rate
         });
       });
 
@@ -353,13 +393,16 @@ export const LiveTraceMonitor = () => {
     const hasRequestPayload = event.data?.openai_request_body || event.data?.request_payload;
     const hasError = event.stage.startsWith('E_') || event.data?.error_message;
     const hasGeneralData = Object.keys(event.data || {}).length > 0;
+    const hasContextData = event.stage === 'T_context_built' && event.data;
+    const hasCoachResponse = event.stage === 'T_stream_complete' && event.data?.coach_response;
 
     return (
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Übersicht</TabsTrigger>
+          <TabsTrigger value="response" disabled={!hasCoachResponse}>Antwort</TabsTrigger>
+          <TabsTrigger value="context" disabled={!hasContextData}>Kontext</TabsTrigger>
           <TabsTrigger value="data" disabled={!hasGeneralData}>Daten</TabsTrigger>
-          <TabsTrigger value="payload" disabled={!hasRequestPayload}>Request</TabsTrigger>
           <TabsTrigger value="raw">Raw JSON</TabsTrigger>
         </TabsList>
         
@@ -429,27 +472,113 @@ export const LiveTraceMonitor = () => {
           )}
         </TabsContent>
 
+        <TabsContent value="response" className="space-y-3">
+          {hasCoachResponse ? (
+            <div className="space-y-3">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Coach Antwort
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => copyToClipboard(event.data.coach_response, 'Coach Antwort')}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border">
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {event.data.coach_response}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="font-medium">Tokens:</span> {event.data.completion_tokens || '—'}
+                </div>
+                <div>
+                  <span className="font-medium">Kosten:</span> ${(event.data.cost_usd || 0).toFixed(4)}
+                </div>
+                <div>
+                  <span className="font-medium">Dauer:</span> {formatDuration(event.data.fullStream_ms)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Keine Coach-Antwort verfügbar</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="context" className="space-y-3">
+          {hasContextData ? (
+            <div className="space-y-3">
+              <div className="text-sm font-medium flex items-center gap-2">
+                <Brain className="w-4 h-4" />
+                Kontext & Datenquellen
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                  <div className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">Datenquellen</div>
+                  <div className="space-y-1">
+                    {event.data.user_profile && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Database className="w-3 h-3 mr-1" />
+                        User Profile
+                      </Badge>
+                    )}
+                    {event.data.meal_data && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Database className="w-3 h-3 mr-1" />
+                        Meal Data
+                      </Badge>
+                    )}
+                    {event.data.coach_data && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Database className="w-3 h-3 mr-1" />
+                        Coach Data
+                      </Badge>
+                    )}
+                    {event.data.context_source && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Brain className="w-3 h-3 mr-1" />
+                        {event.data.context_source}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                  <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Kontext Stats</div>
+                  <div className="space-y-1 text-xs">
+                    <div>Größe: {event.data.context_size || '—'} Zeichen</div>
+                    <div>Coach: {event.data.coach_id || '—'}</div>
+                    <div>User ID: {event.data.user_id || '—'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {event.data.context_preview && (
+                <div>
+                  <div className="text-xs font-medium mb-2">Kontext Vorschau</div>
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <pre className="text-xs overflow-auto max-h-32">
+                      {event.data.context_preview}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Keine Kontext-Daten verfügbar</div>
+          )}
+        </TabsContent>
+
         <TabsContent value="data" className="space-y-3">
           <div className="p-3 bg-muted/30 rounded-lg">
             <pre className="text-xs overflow-auto max-h-64">
               {JSON.stringify(event.data, null, 2)}
             </pre>
           </div>
-        </TabsContent>
-
-        <TabsContent value="payload" className="space-y-3">
-          {hasRequestPayload ? (
-            <div className="space-y-3">
-              <div className="text-sm font-medium">OpenAI Request Payload</div>
-              <div className="p-3 bg-muted/30 rounded-lg">
-                <pre className="text-xs overflow-auto max-h-64">
-                  {JSON.stringify(event.data.request_payload, null, 2)}
-                </pre>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">Keine Request-Daten verfügbar</div>
-          )}
         </TabsContent>
 
         <TabsContent value="raw" className="space-y-3">
@@ -580,33 +709,93 @@ export const LiveTraceMonitor = () => {
               }`}
             >
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm font-mono">
-                      {trace.traceId === currentTraceId && '🎯 '}
-                      {trace.traceId}
-                    </CardTitle>
-                    {getTraceStatusBadge(trace)}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="text-lg font-semibold">
+                        {trace.traceId === currentTraceId && '🎯 '}
+                        {trace.traceId.substring(0, 12)}...
+                      </div>
+                      {getTraceStatusBadge(trace)}
+                      {trace.performanceGrade && (
+                        <Badge variant={trace.performanceGrade === 'A' ? 'default' : trace.performanceGrade === 'B' ? 'secondary' : 'destructive'} className="text-xs">
+                          Grade {trace.performanceGrade}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {format(new Date(trace.startTime), 'HH:mm:ss')}
+                    </div>
                   </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span>{format(new Date(trace.startTime), 'HH:mm:ss')}</span>
-          </div>
+
+                  {/* Enhanced Key Insights Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Request Summary</div>
+                      <div className="text-xs font-mono truncate">
+                        {trace.userMessage || 'Nicht verfügbar'}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Response Preview</div>
+                      <div className="text-xs truncate">
+                        {trace.responsePreview || 'Noch nicht verfügbar'}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Datenquellen</div>
+                      <div className="flex gap-1 flex-wrap">
+                        {trace.contextData?.profile_accessed && (
+                          <Badge variant="outline" className="text-xs h-5">
+                            Profile
+                          </Badge>
+                        )}
+                        {trace.contextData?.meal_data_accessed && (
+                          <Badge variant="outline" className="text-xs h-5">
+                            Meals
+                          </Badge>
+                        )}
+                        {trace.ragContext && (
+                          <Badge variant="outline" className="text-xs h-5">
+                            RAG
+                          </Badge>
+                        )}
+                        {!trace.contextData?.profile_accessed && !trace.contextData?.meal_data_accessed && !trace.ragContext && (
+                          <span className="text-xs text-muted-foreground">Keine</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Pipeline Progress</div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          {PRIORITY_STEPS.slice(0, 8).map(step => {
+                            const hasStep = trace.events.some(e => e.stage === step);
+                            return (
+                              <div
+                                key={step}
+                                className={`w-2 h-2 rounded-full ${
+                                  hasStep 
+                                    ? step.startsWith('E_') 
+                                      ? 'bg-red-500' 
+                                      : 'bg-green-500'
+                                    : 'bg-gray-300 dark:bg-gray-600'
+                                }`}
+                                title={STEP_NAMES[step] || step}
+                              />
+                            );
+                          })}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {trace.completedSteps}/{trace.totalSteps}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                {trace.userMessage && (
-                  <div className="text-xs text-muted-foreground truncate">
-                    Message: {trace.userMessage}
-                  </div>
-                )}
-                {trace.coachResponse && (
-                  <div className="text-xs text-green-600 truncate">
-                    Response: {trace.coachResponse}
-                  </div>
-                )}
-                {trace.ragContext && (
-                  <div className="text-xs text-blue-600">
-                    RAG: {trace.ragContext}
-                  </div>
-                )}
               </CardHeader>
               <CardContent>
                 <Accordion 
