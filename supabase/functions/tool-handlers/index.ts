@@ -13,3 +13,7 @@ export { default as cycleAssessment } from './cycleAssessment.ts';
 export { default as hormoneTracker } from './hormoneTracker.ts';
 export { default as femalePeriodization } from './femalePeriodization.ts';
 export { default as menopauseNavigator } from './menopauseNavigator.ts';
+// Markus Rühl specialized tools
+export { default as heavyTrainingPlan } from './heavyTrainingPlan.ts';
+export { default as massBuildingCalculator } from './massBuildingCalculator.ts';
+export { default as mentalToughnessCoach } from './mentalToughnessCoach.ts';
