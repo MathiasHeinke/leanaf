@@ -79,13 +79,13 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
     isPremium: true,
-    expertise: ['Neuroplastizität', 'HRV-Training', 'Schlafoptimierung', 'Vier-Quadranten-Analyse', 'Consciousness Coaching', 'Bewusstseins-Erweiterung', 'Glaubenssatz-Transformation', 'Transformational Breakthrough'],
+    expertise: ['Neuroplastizität', 'HRV-Training', 'Schlafoptimierung', 'Vier-Quadranten-Analyse', 'Conscious Coaching', 'Bewusstseins-Erweiterung', 'Glaubenssatz-Transformation', 'Transformational Breakthrough'],
     access: {
-      tools: ['mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'consciousness_assessment', 'values_alignment_check', 'belief_system_analysis', 'breakthrough_planning'],
+      tools: ['mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'conscious_assessment', 'values_alignment_check', 'belief_system_analysis', 'breakthrough_planning'],
       datasets: ['sleep_data', 'hrv_data', 'stress_levels', 'mindset_progress'],
       rag: ['rag_psychology', 'rag_recovery', 'rag_mindset', 'rag_transformation']
     },
-    aliases: ['kai', 'dr kai', 'dr. kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach', 'consciousness coach', 'breakthrough coach', 'bewusstseins coach']
+    aliases: ['kai', 'dr kai', 'dr. kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach', 'conscious coach', 'breakthrough coach', 'bewusstseins coach']
   },
   
   markus: {
