@@ -66,13 +66,14 @@ interface GroupedTrace {
   ragHitRate?: number;
 }
 
-const COACHES = [
-  { id: 'lucy', name: 'Lucy - Ernährungscoach' },
-  { id: 'sascha', name: 'Sascha - Fitness & Krafttraining' },
-  { id: 'kai', name: 'Kai - KI-Coach' },
-  { id: 'markus', name: 'Markus Rühl - Bodybuilding' },
-  { id: 'dr-vita', name: 'Dr. Vita Femina - Frauengesundheit' }
-];
+// Import coach registry for consistent coach data
+import { COACH_REGISTRY } from '@/lib/coachRegistry';
+
+// Generate coaches array from registry
+const COACHES = Object.values(COACH_REGISTRY).map(coach => ({
+  id: coach.id,
+  name: `${coach.displayName} - ${coach.role}`
+}));
 
 const STEP_ICONS: Record<string, React.ComponentType<any>> = {
   'message_received': MessageSquare,
