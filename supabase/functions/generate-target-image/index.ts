@@ -172,7 +172,7 @@ serve(async (req) => {
       try {
         const testResponse = await fetch('https://api.bfl.ai/v1/get_balance', {
           headers: {
-            'Authorization': `Bearer ${bflApiKey}`,
+            'x-key': bflApiKey,
           },
         });
         
@@ -201,7 +201,7 @@ serve(async (req) => {
         
         for (let retry = 0; retry <= maxRetries; retry++) {
           try {
-            // Convert image URL to base64
+            // Convert image URL to base64 (without data URL prefix for BFL API)
             let inputImageBase64 = '';
             try {
               console.log(`Fetching input image from: ${inputImageUrl}`);
@@ -214,8 +214,8 @@ serve(async (req) => {
               const imageBuffer = await imageResponse.arrayBuffer();
               console.log(`Image fetched successfully, size: ${imageBuffer.byteLength} bytes`);
               
-              const base64String = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
-              inputImageBase64 = `data:image/jpeg;base64,${base64String}`;
+              // BFL API expects raw base64 string without data URL prefix
+              inputImageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
               console.log(`Base64 conversion successful, length: ${inputImageBase64.length}`);
             } catch (imageError) {
               console.error('❌ Failed to fetch and convert input image:', imageError);
@@ -245,7 +245,7 @@ serve(async (req) => {
             const generateResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${bflApiKey}`,
+                'x-key': bflApiKey,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify(requestBody),
@@ -303,7 +303,7 @@ serve(async (req) => {
               
               const resultResponse = await fetch(`https://api.bfl.ai/v1/get_result?id=${taskId}`, {
                 headers: {
-                  'Authorization': `Bearer ${bflApiKey}`,
+                  'x-key': bflApiKey,
                 },
               });
               
