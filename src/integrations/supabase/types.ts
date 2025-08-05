@@ -1035,6 +1035,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cycle_assessments: {
+        Row: {
+          created_at: string
+          current_phase: string
+          cycle_length: number
+          date: string
+          energy_level: number
+          id: string
+          last_period_date: string | null
+          mood_assessment: string
+          phase_day: number
+          symptoms: string[]
+          training_readiness: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_phase?: string
+          cycle_length?: number
+          date?: string
+          energy_level?: number
+          id?: string
+          last_period_date?: string | null
+          mood_assessment?: string
+          phase_day?: number
+          symptoms?: string[]
+          training_readiness?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_phase?: string
+          cycle_length?: number
+          date?: string
+          energy_level?: number
+          id?: string
+          last_period_date?: string | null
+          mood_assessment?: string
+          phase_day?: number
+          symptoms?: string[]
+          training_readiness?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_activities: {
         Row: {
           activity_minutes: number | null
@@ -1905,6 +1953,36 @@ export type Database = {
           },
         ]
       }
+      female_periodization_plans: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          plan_data: Json
+          updated_at: string
+          user_id: string
+          user_preferences: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          plan_data?: Json
+          updated_at?: string
+          user_id: string
+          user_preferences?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          plan_data?: Json
+          updated_at?: string
+          user_id?: string
+          user_preferences?: Json
+        }
+        Relationships: []
+      }
       fluid_database: {
         Row: {
           alcohol_percentage: number | null
@@ -2127,6 +2205,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hormone_tracking: {
+        Row: {
+          cravings: string[]
+          created_at: string
+          date: string
+          energy_level: number
+          id: string
+          libido_level: number
+          notes: string | null
+          pain_level: number
+          skin_condition: string
+          sleep_quality: number
+          stress_level: number
+          symptoms: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cravings?: string[]
+          created_at?: string
+          date?: string
+          energy_level?: number
+          id?: string
+          libido_level?: number
+          notes?: string | null
+          pain_level?: number
+          skin_condition?: string
+          sleep_quality?: number
+          stress_level?: number
+          symptoms?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cravings?: string[]
+          created_at?: string
+          date?: string
+          energy_level?: number
+          id?: string
+          libido_level?: number
+          notes?: string | null
+          pain_level?: number
+          skin_condition?: string
+          sleep_quality?: number
+          stress_level?: number
+          symptoms?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       journal_entries: {
         Row: {
@@ -2436,6 +2565,36 @@ export type Database = {
           language?: string | null
           quote_text?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      menopause_profiles: {
+        Row: {
+          created_at: string
+          guidance_plan: Json
+          id: string
+          last_assessment_date: string | null
+          profile_data: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          guidance_plan?: Json
+          id?: string
+          last_assessment_date?: string | null
+          profile_data?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          guidance_plan?: Json
+          id?: string
+          last_assessment_date?: string | null
+          profile_data?: Json
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
