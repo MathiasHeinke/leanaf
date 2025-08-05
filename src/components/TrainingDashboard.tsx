@@ -20,6 +20,7 @@ import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
 import { QuickBodyDataWidget } from '@/components/QuickBodyDataWidget';
+import { StrengthGoalsWidget } from '@/components/StrengthGoalsWidget';
 import { GoalProgressWidget } from '@/components/GoalProgressWidget';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
@@ -541,9 +542,10 @@ export const TrainingDashboard: React.FC = () => {
               onDuplicateSession={handleDuplicateSession}
             />
 
-            {/* Quick Body Data & Goal Progress */}
+            {/* Quick Body Data & Goals */}
             <div className="grid gap-4 grid-cols-1">
               <QuickBodyDataWidget />
+              <StrengthGoalsWidget />
               <GoalProgressWidget />
             </div>
 

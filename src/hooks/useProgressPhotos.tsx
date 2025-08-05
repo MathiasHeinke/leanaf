@@ -23,18 +23,14 @@ export const useProgressPhotos = () => {
     if (!user) return;
 
     try {
-      // For now, we'll get from existing profiles or body data
-      // This is a simplified implementation - in real app we'd have a dedicated progress_photos table
-      const { data: profileData } = await supabase
-        .from('profiles')
+      const { data, error } = await supabase
+        .from('progress_photos')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .order('taken_at', { ascending: false });
 
-      // Placeholder data - in real implementation would come from actual progress photos table
-      const mockPhotos: ProgressPhoto[] = [];
-      
-      setPhotos(mockPhotos);
+      if (error) throw error;
+      setPhotos(data || []);
     } catch (error) {
       console.error('Error loading progress photos:', error);
       toast.error('Fehler beim Laden der Fortschrittsfotos');
@@ -61,18 +57,21 @@ export const useProgressPhotos = () => {
         .from('coach-media')
         .getPublicUrl(fileName);
 
-      // For now, we'll just store the URL in memory
-      // In real implementation, we'd save to a progress_photos table
-      const newPhoto: ProgressPhoto = {
-        id: Date.now().toString(),
-        user_id: user.id,
-        image_url: publicUrl,
-        taken_at: new Date().toISOString(),
-        weight_kg: weight,
-        body_fat_percentage: bodyFat,
-        notes,
-        created_at: new Date().toISOString()
-      };
+      // Save to database
+      const { data: newPhoto, error: dbError } = await supabase
+        .from('progress_photos')
+        .insert({
+          user_id: user.id,
+          image_url: publicUrl,
+          taken_at: new Date().toISOString(),
+          weight_kg: weight,
+          body_fat_percentage: bodyFat,
+          notes
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
       
       setPhotos(prev => [newPhoto, ...prev]);
       toast.success('Fortschrittsfoto hochgeladen');

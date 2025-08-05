@@ -3190,6 +3190,42 @@ export type Database = {
         }
         Relationships: []
       }
+      progress_photos: {
+        Row: {
+          body_fat_percentage: number | null
+          created_at: string
+          id: string
+          image_url: string
+          notes: string | null
+          taken_at: string
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          body_fat_percentage?: number | null
+          created_at?: string
+          id?: string
+          image_url: string
+          notes?: string | null
+          taken_at?: string
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          body_fat_percentage?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          notes?: string | null
+          taken_at?: string
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       quick_workouts: {
         Row: {
           created_at: string | null

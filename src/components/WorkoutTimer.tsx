@@ -65,9 +65,7 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
           className="px-4 py-2 text-base font-mono"
         >
           <Timer className="h-4 w-4 mr-2" />
-          {formattedTime}
-          {isRunning && <div className="ml-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
-          {!isRunning && <div className="ml-2 w-2 h-2 bg-yellow-500 rounded-full" />}
+          ⏱️ {formattedTime}
         </Badge>
       </div>
     );
@@ -81,9 +79,7 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
           className="font-mono"
         >
           <Timer className="h-3 w-3 mr-1" />
-          {formattedTime}
-          {isRunning && <div className="ml-1 w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />}
-          {hasActiveTimer && !isRunning && <div className="ml-1 w-1.5 h-1.5 bg-yellow-500 rounded-full" />}
+          ⏱️ {formattedTime}
         </Badge>
         
         {showControls && (
@@ -172,15 +168,13 @@ export const WorkoutTimer: React.FC<WorkoutTimerProps> = ({
               )}
               <div className="flex items-center justify-center gap-2 mt-2">
                 {isRunning && (
-                  <div className="flex items-center gap-1 text-sm text-green-600">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    Läuft
+                  <div className="text-sm text-green-600">
+                    ⏱️ Läuft
                   </div>
                 )}
                 {isPaused && (
-                  <div className="flex items-center gap-1 text-sm text-yellow-600">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full" />
-                    Pausiert
+                  <div className="text-sm text-yellow-600">
+                    ⏸️ Pausiert
                   </div>
                 )}
               </div>

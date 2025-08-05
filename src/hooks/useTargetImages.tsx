@@ -84,29 +84,47 @@ export const useTargetImages = () => {
   };
 
   const generateTargetImage = async (
-    prompt: string,
     targetWeight?: number,
     targetBodyFat?: number
   ) => {
     if (!user) return;
 
     try {
-      // TODO: Implement AI image generation
-      // This would call an edge function that uses OpenAI DALL-E or similar
-      toast.info('AI-Bildgenerierung wird bald verfügbar sein');
-      
-      // Placeholder for now
-      const placeholderUrl = `https://via.placeholder.com/400x600/10b981/ffffff?text=Target+Goal`;
-      
+      // Get user profile data for better AI generation
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      const requestData = {
+        targetWeight: targetWeight || profileData?.target_weight || 70,
+        targetBodyFat: targetBodyFat || profileData?.target_body_fat_percentage || 15,
+        gender: profileData?.gender || 'unspecified',
+        height: profileData?.height || 175,
+        currentWeight: profileData?.weight || 80,
+        fitnessGoal: profileData?.goal || 'fitness'
+      };
+
+      console.log('Calling generate-target-image with:', requestData);
+
+      const { data: generationResult, error: generationError } = await supabase.functions
+        .invoke('generate-target-image', {
+          body: requestData
+        });
+
+      if (generationError) throw generationError;
+
+      // Save to database
       const { data, error } = await supabase
         .from('target_images')
         .insert([{
           user_id: user.id,
-          image_url: placeholderUrl,
+          image_url: generationResult.imageUrl,
           image_type: 'ai_generated' as const,
-          target_weight_kg: targetWeight,
-          target_body_fat_percentage: targetBodyFat,
-          generation_prompt: prompt
+          target_weight_kg: requestData.targetWeight,
+          target_body_fat_percentage: requestData.targetBodyFat,
+          generation_prompt: generationResult.prompt
         }])
         .select()
         .single();
@@ -114,6 +132,7 @@ export const useTargetImages = () => {
       if (error) throw error;
       
       setTargetImages(prev => [data as TargetImage, ...prev]);
+      toast.success('AI-Zielbild generiert!');
       return data;
     } catch (error) {
       console.error('Error generating target image:', error);
