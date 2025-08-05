@@ -2341,6 +2341,13 @@ export type Database = {
             referencedRelation: "coach_knowledge_base"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "knowledge_base_embeddings_knowledge_id_fkey"
+            columns: ["knowledge_id"]
+            isOneToOne: false
+            referencedRelation: "v_vita_knowledge_analytics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       kpi_catalog: {
@@ -4944,6 +4951,57 @@ export type Database = {
         }
         Relationships: []
       }
+      v_vita_knowledge_analytics: {
+        Row: {
+          content_length: number | null
+          covers_endometriosis: boolean | null
+          covers_menopause: boolean | null
+          covers_menstrual_health: boolean | null
+          covers_pcos: boolean | null
+          covers_pregnancy: boolean | null
+          created_at: string | null
+          evidence_level: string | null
+          expertise_area: string | null
+          has_embeddings: boolean | null
+          id: string | null
+          search_hits_last_30_days: number | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_length?: never
+          covers_endometriosis?: never
+          covers_menopause?: never
+          covers_menstrual_health?: never
+          covers_pcos?: never
+          covers_pregnancy?: never
+          created_at?: string | null
+          evidence_level?: never
+          expertise_area?: string | null
+          has_embeddings?: never
+          id?: string | null
+          search_hits_last_30_days?: never
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_length?: never
+          covers_endometriosis?: never
+          covers_menopause?: never
+          covers_menstrual_health?: never
+          covers_pcos?: never
+          covers_pregnancy?: never
+          created_at?: string | null
+          evidence_level?: never
+          expertise_area?: string | null
+          has_embeddings?: never
+          id?: string | null
+          search_hits_last_30_days?: never
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       v_workout_totals: {
         Row: {
           d: string | null
@@ -5217,6 +5275,49 @@ export type Database = {
           protein: number
           carbs: number
           fats: number
+        }[]
+      }
+      search_vita_knowledge_hybrid: {
+        Args: {
+          query_text: string
+          query_embedding: string
+          user_context?: Json
+          semantic_weight?: number
+          text_weight?: number
+          match_count?: number
+        }
+        Returns: {
+          knowledge_id: string
+          content_chunk: string
+          combined_score: number
+          semantic_score: number
+          text_score: number
+          title: string
+          expertise_area: string
+          coach_id: string
+          vita_specialization_score: number
+        }[]
+      }
+      search_vita_knowledge_semantic: {
+        Args: {
+          query_embedding: string
+          user_age?: number
+          menopause_stage?: string
+          cycle_phase?: string
+          health_conditions?: string[]
+          similarity_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          knowledge_id: string
+          content_chunk: string
+          similarity: number
+          title: string
+          expertise_area: string
+          coach_id: string
+          chunk_index: number
+          life_stage_boost: number
+          evidence_quality_score: number
         }[]
       }
       update_user_points_and_level: {
