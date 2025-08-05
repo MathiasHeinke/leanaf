@@ -37,28 +37,23 @@ import { useToast } from '@/hooks/use-toast';
 interface TraceEvent {
   id: string;
   trace_id: string;
-  conversation_id?: string;
-  message_id?: string;
-  step: string;
-  status: 'started' | 'progress' | 'complete' | 'error';
+  stage: string;
   data: Record<string, any>;
-  duration_ms?: number;
-  error_message?: string;
-  created_at: string;
-  updated_at: string;
+  ts: string;
 }
 
 interface GroupedTrace {
   traceId: string;
-  conversationId?: string;
-  messageId?: string;
   events: TraceEvent[];
   startTime: string;
-  totalDuration?: number;
   status: 'running' | 'completed' | 'error';
   totalSteps: number;
   completedSteps: number;
   errorSteps: number;
+  userMessage?: string;
+  coachResponse?: string;
+  fullPrompt?: string;
+  ragContext?: string;
 }
 
 const COACHES = [
@@ -81,14 +76,15 @@ const STEP_ICONS: Record<string, React.ComponentType<any>> = {
 };
 
 const STEP_NAMES: Record<string, string> = {
-  'message_received': 'Nachricht empfangen',
-  'config_check': 'Konfiguration prüfen',
-  'validation': 'Parameter validiert',
-  'buildAIContext': 'KI-Kontext aufbauen',
-  'openai_call': 'OpenAI Anfrage',
-  'stream': 'Antwort streamen',
-  'complete': 'Verarbeitung abgeschlossen',
-  'error': 'Fehler aufgetreten'
+  'T_request_start': 'Anfrage Start',
+  'T_context_built': 'Kontext aufgebaut',
+  'T_prompt_analysis': 'Prompt Analyse',
+  'T_openai_request': 'OpenAI Anfrage',
+  'T_first_token': 'Erstes Token',
+  'T_stream_complete': 'Stream abgeschlossen',
+  'T_completion': 'Vervollständigung',
+  'E_error': 'Fehler aufgetreten',
+  'E_rag_search': 'RAG Suche'
 };
 
 const STATUS_COLORS = {
@@ -113,49 +109,33 @@ export const LiveTraceMonitor = () => {
   const fetchTraces = async () => {
     try {
       const { data, error } = await supabase
-        .from('coach_trace_events')
+        .from('coach_traces')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('ts', { ascending: false })
         .limit(300);
 
       if (error) throw error;
 
-      // Step 1: Group events by trace_id AND step to get latest status per step
-      const traceStepMap = new Map<string, Map<string, TraceEvent>>();
+      // Group events by trace_id
+      const traceMap = new Map<string, TraceEvent[]>();
       
       data?.forEach((event: any) => {
-        const traceKey = event.trace_id;
-        
-        if (!traceStepMap.has(traceKey)) {
-          traceStepMap.set(traceKey, new Map());
+        if (!traceMap.has(event.trace_id)) {
+          traceMap.set(event.trace_id, []);
         }
-        
-        const stepMap = traceStepMap.get(traceKey)!;
-        const existingEvent = stepMap.get(event.step);
-        
-        // Keep the event with highest priority status (complete > error > progress > started)
-        const statusPriority = { complete: 4, error: 3, progress: 2, started: 1 };
-        const currentPriority = statusPriority[event.status as keyof typeof statusPriority] || 0;
-        const existingPriority = existingEvent ? statusPriority[existingEvent.status as keyof typeof statusPriority] || 0 : 0;
-        
-        if (!existingEvent || currentPriority > existingPriority || 
-            (currentPriority === existingPriority && new Date(event.created_at) > new Date(existingEvent.created_at))) {
-          stepMap.set(event.step, event);
-        }
+        traceMap.get(event.trace_id)!.push(event);
       });
 
-      // Step 2: Convert to GroupedTrace with correct status per step
+      // Convert to GroupedTrace
       const groupedTraces = new Map<string, GroupedTrace>();
       
-      traceStepMap.forEach((stepMap, traceId) => {
-        const events = Array.from(stepMap.values()).sort((a, b) => 
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
+      traceMap.forEach((events, traceId) => {
+        events.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
         
         const firstEvent = events[0];
-        const errorSteps = events.filter(e => e.status === 'error').length;
-        const completeSteps = events.filter(e => e.status === 'complete').length;
-        const hasCompleteStep = events.some(e => e.step === 'complete' && e.status === 'complete');
+        const errorSteps = events.filter(e => e.stage.startsWith('E_')).length;
+        const completedSteps = events.filter(e => e.stage === 'T_completion' || e.stage === 'T_stream_complete').length;
+        const hasCompleteStep = events.some(e => e.stage === 'T_completion' || e.stage === 'T_stream_complete');
         
         // Determine overall trace status
         let traceStatus: 'running' | 'completed' | 'error' = 'running';
@@ -165,21 +145,24 @@ export const LiveTraceMonitor = () => {
           traceStatus = 'completed';
         }
         
-        const totalDuration = events
-          .filter(e => e.duration_ms)
-          .reduce((sum, e) => sum + (e.duration_ms || 0), 0);
+        // Extract content for easy viewing
+        const requestEvent = events.find(e => e.stage === 'T_request_start');
+        const promptEvent = events.find(e => e.stage === 'T_prompt_analysis');
+        const completionEvent = events.find(e => e.stage === 'T_completion' || e.stage === 'T_stream_complete');
+        const ragEvent = events.find(e => e.stage === 'E_rag_search');
 
         groupedTraces.set(traceId, {
           traceId,
-          conversationId: firstEvent.conversation_id,
-          messageId: firstEvent.message_id,
           events,
-          startTime: firstEvent.created_at,
+          startTime: firstEvent.ts,
           status: traceStatus,
           totalSteps: events.length,
-          completedSteps: completeSteps,
+          completedSteps: completedSteps,
           errorSteps: errorSteps,
-          totalDuration: totalDuration || undefined
+          userMessage: requestEvent?.data?.user_message || requestEvent?.data?.message,
+          coachResponse: completionEvent?.data?.coach_response || completionEvent?.data?.response_preview,
+          fullPrompt: promptEvent?.data?.full_prompt_preview || promptEvent?.data?.openai_request_body,
+          ragContext: ragEvent?.data?.context_length ? `${ragEvent.data.results_count} results, ${ragEvent.data.context_length} chars` : undefined
         });
       });
 
@@ -205,13 +188,13 @@ export const LiveTraceMonitor = () => {
     fetchTraces();
 
     const channel = supabase
-      .channel('coach_trace_events_changes')
+      .channel('coach_traces_changes')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'coach_trace_events'
+          table: 'coach_traces'
         },
         (payload) => {
           console.log('New trace event received:', payload);
@@ -242,16 +225,13 @@ export const LiveTraceMonitor = () => {
       setCurrentTraceId(traceId);
       setExpandedTrace(traceId);
 
-      // Call the unified coach engine
-      const response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
+      // Call the streaming coach engine for live telemetry
+      const response = await supabase.functions.invoke('streaming-coach-engine', {
         body: {
           userId: 'test-user-admin',
           coachId: selectedCoach,
           message: testMessage,
-          messageId,
-          traceId,
-          enableStreaming: true,
-          enableRag: false
+          conversationHistory: []
         }
       });
 
@@ -298,21 +278,17 @@ export const LiveTraceMonitor = () => {
     return <IconComponent className="w-4 h-4" />;
   };
 
-  const getStatusIcon = (status: string, isRunning?: boolean) => {
-    switch (status) {
-      case 'complete': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'error': return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'progress': 
-      case 'started': return isRunning ? <Loader2 className="w-4 h-4 text-blue-500 animate-spin" /> : <Clock className="w-4 h-4 text-blue-500" />;
-      default: return <AlertCircle className="w-4 h-4 text-gray-500" />;
-    }
+  const getStatusIcon = (stage: string, isRunning?: boolean) => {
+    if (stage.startsWith('E_')) return <XCircle className="w-4 h-4 text-red-500" />;
+    if (stage === 'T_completion' || stage === 'T_stream_complete') return <CheckCircle className="w-4 h-4 text-green-500" />;
+    return isRunning ? <Loader2 className="w-4 h-4 text-blue-500 animate-spin" /> : <Clock className="w-4 h-4 text-blue-500" />;
   };
 
   const getTraceStatusBadge = (trace: GroupedTrace) => {
     const isRunning = trace.status === 'running';
     const hasLongRunningSteps = trace.events.some(e => 
-      e.status === 'started' && 
-      Date.now() - new Date(e.created_at).getTime() > 10000
+      !e.stage.startsWith('E_') && !(e.stage === 'T_completion' || e.stage === 'T_stream_complete') && 
+      Date.now() - new Date(e.ts).getTime() > 10000
     );
 
     switch (trace.status) {
@@ -340,8 +316,8 @@ export const LiveTraceMonitor = () => {
   const renderEventDetails = (event: TraceEvent) => {
     const hasInput = event.data?.input;
     const hasOutput = event.data?.output;
-    const hasRequestPayload = event.data?.request_payload;
-    const hasError = event.error_message;
+    const hasRequestPayload = event.data?.openai_request_body || event.data?.request_payload;
+    const hasError = event.stage.startsWith('E_') || event.data?.error_message;
     const hasGeneralData = Object.keys(event.data || {}).length > 0;
 
     return (
@@ -358,17 +334,17 @@ export const LiveTraceMonitor = () => {
             <div>
               <div className="text-xs font-medium text-muted-foreground">Status</div>
               <div className="flex items-center gap-2">
-                {getStatusIcon(event.status)}
-                <span className="capitalize">{event.status}</span>
+                {getStatusIcon(event.stage)}
+                <span className="capitalize">{event.stage.startsWith('E_') ? 'Error' : event.stage.startsWith('T_') ? 'Complete' : 'Running'}</span>
               </div>
             </div>
             <div>
               <div className="text-xs font-medium text-muted-foreground">Dauer</div>
-              <div>{formatDuration(event.duration_ms)}</div>
+              <div>{formatDuration(event.data?.duration_ms || event.data?.firstToken_ms || event.data?.fullStream_ms)}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-muted-foreground">Zeitstempel</div>
-              <div className="text-xs font-mono">{format(new Date(event.created_at), 'HH:mm:ss.SSS')}</div>
+              <div className="text-xs font-mono">{format(new Date(event.ts), 'HH:mm:ss.SSS')}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-muted-foreground">Event ID</div>
@@ -412,7 +388,7 @@ export const LiveTraceMonitor = () => {
               </div>
               <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <div className="text-sm text-red-800 dark:text-red-300">
-                  {event.error_message}
+                  {event.data?.error_message || event.data?.error || 'Error stage detected'}
                 </div>
               </div>
             </div>
@@ -578,19 +554,23 @@ export const LiveTraceMonitor = () => {
                     </CardTitle>
                     {getTraceStatusBadge(trace)}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {trace.totalDuration && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDuration(trace.totalDuration)}
-                      </span>
-                    )}
-                    <span>{format(new Date(trace.startTime), 'HH:mm:ss')}</span>
-                  </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>{format(new Date(trace.startTime), 'HH:mm:ss')}</span>
+          </div>
                 </div>
-                {trace.messageId && (
-                  <div className="text-xs text-muted-foreground">
-                    Message: {trace.messageId}
+                {trace.userMessage && (
+                  <div className="text-xs text-muted-foreground truncate">
+                    Message: {trace.userMessage}
+                  </div>
+                )}
+                {trace.coachResponse && (
+                  <div className="text-xs text-green-600 truncate">
+                    Response: {trace.coachResponse}
+                  </div>
+                )}
+                {trace.ragContext && (
+                  <div className="text-xs text-blue-600">
+                    RAG: {trace.ragContext}
                   </div>
                 )}
               </CardHeader>
@@ -608,28 +588,28 @@ export const LiveTraceMonitor = () => {
                     <AccordionContent>
                       <div className="space-y-3">
                         {trace.events
-                          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                          .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime())
                           .map((event) => (
                           <Accordion key={event.id} type="single" collapsible>
                             <AccordionItem value={event.id}>
                               <AccordionTrigger className="py-2">
                                 <div className="flex items-center gap-3 w-full">
                                   <div className="flex items-center gap-2">
-                                    {getStepIcon(event.step)}
+                                    {getStepIcon(event.stage)}
                                     <span className="text-sm font-medium">
-                                      {STEP_NAMES[event.step] || event.step}
+                                      {STEP_NAMES[event.stage] || event.stage}
                                     </span>
-                                    {getStatusIcon(event.status, trace.status === 'running')}
+                                    {getStatusIcon(event.stage, trace.status === 'running')}
                                   </div>
                                   
                                   <div className="flex items-center gap-3 text-xs text-muted-foreground ml-auto">
-                                    {event.duration_ms && (
+                                    {(event.data?.duration_ms || event.data?.firstToken_ms || event.data?.fullStream_ms) && (
                                       <span className="flex items-center gap-1">
                                         <Clock className="w-3 h-3" />
-                                        {formatDuration(event.duration_ms)}
+                                        {formatDuration(event.data?.duration_ms || event.data?.firstToken_ms || event.data?.fullStream_ms)}
                                       </span>
                                     )}
-                                    <span>{format(new Date(event.created_at), 'HH:mm:ss.SSS')}</span>
+                                    <span>{format(new Date(event.ts), 'HH:mm:ss.SSS')}</span>
                                   </div>
                                 </div>
                               </AccordionTrigger>
@@ -653,9 +633,9 @@ export const LiveTraceMonitor = () => {
                       key={event.id} 
                       className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-muted/50"
                     >
-                      {getStepIcon(event.step)}
-                      <span>{STEP_NAMES[event.step] || event.step}</span>
-                      {getStatusIcon(event.status, trace.status === 'running')}
+                      {getStepIcon(event.stage)}
+                      <span>{STEP_NAMES[event.stage] || event.stage}</span>
+                      {getStatusIcon(event.stage, trace.status === 'running')}
                     </div>
                   ))}
                   {trace.events.length > 6 && (
