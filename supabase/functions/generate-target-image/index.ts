@@ -8,15 +8,23 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('=== Generate Target Image Function Started ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    console.log('Checking OpenAI API key...');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('OpenAI API key not found in environment');
       throw new Error('OpenAI API key not configured');
     }
+    console.log('OpenAI API key found ✓');
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
