@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Route,
   Bug,
-  Settings
+  Settings,
+  Check,
+  Loader2
 } from 'lucide-react';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
@@ -43,6 +45,8 @@ export const AdminPage = () => {
   const [onboardingEnabled, setOnboardingEnabled] = useState(false);
   const [onboardingGloballyDisabled, setOnboardingGloballyDisabled] = useState(false);
   const [adminPersonalOnboarding, setAdminPersonalOnboarding] = useState(true);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Load admin settings from localStorage
   useEffect(() => {
@@ -61,10 +65,37 @@ export const AdminPage = () => {
     }
   }, [user?.id]);
 
-  // Save admin settings to localStorage
+  // Auto-save function
+  const autoSave = async () => {
+    if (!user || autoSaving) return;
+    
+    setAutoSaving(true);
+    try {
+      localStorage.setItem('admin_onboarding_enabled', JSON.stringify(onboardingEnabled));
+      localStorage.setItem('admin_onboarding_globally_disabled', JSON.stringify(onboardingGloballyDisabled));
+      localStorage.setItem(`admin_personal_onboarding_${user.id}`, JSON.stringify(adminPersonalOnboarding));
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setAutoSaving(false);
+    }
+  };
+
+  // Auto-save when onboarding settings change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (user) {
+        autoSave();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [onboardingEnabled, onboardingGloballyDisabled, adminPersonalOnboarding, user]);
+
+  // Save admin settings handlers (auto-save will handle persistence)
   const handleOnboardingEnabledChange = (checked: boolean) => {
     setOnboardingEnabled(checked);
-    localStorage.setItem('admin_onboarding_enabled', JSON.stringify(checked));
     if (checked) {
       forceShowOnboarding();
     }
@@ -72,12 +103,10 @@ export const AdminPage = () => {
 
   const handleGloballyDisabledChange = (checked: boolean) => {
     setOnboardingGloballyDisabled(checked);
-    localStorage.setItem('admin_onboarding_globally_disabled', JSON.stringify(checked));
   };
 
   const handlePersonalOnboardingChange = (checked: boolean) => {
     setAdminPersonalOnboarding(checked);
-    localStorage.setItem(`admin_personal_onboarding_${user?.id}`, JSON.stringify(checked));
   };
   
   // Mock performance metrics for the dashboard
@@ -160,78 +189,6 @@ export const AdminPage = () => {
 
       {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
       <div className="container mx-auto px-4 py-6">
-        {/* 🎯 ONBOARDING ADMIN CONTROLS */}
-        <Card className="mb-6 bg-background border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
-              <Settings className="w-5 h-5 mr-2" />
-              Onboarding Controls
-            </CardTitle>
-            <CardDescription>
-              Admin-Steuerung für das Onboarding-System
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="onboarding-toggle" className="text-sm font-medium">
-                  Onboarding für alle Nutzer aktivieren
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Zeigt das Onboarding für alle Nutzer an, unabhängig vom Status
-                </p>
-              </div>
-              <Switch
-                id="onboarding-toggle"
-                checked={onboardingEnabled}
-                onCheckedChange={handleOnboardingEnabledChange}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="onboarding-disable-toggle" className="text-sm font-medium">
-                  Onboarding deaktivieren/aktivieren
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Deaktiviert das Onboarding komplett für alle neuen Nutzer
-                </p>
-              </div>
-              <Switch
-                id="onboarding-disable-toggle"
-                checked={onboardingGloballyDisabled}
-                onCheckedChange={handleGloballyDisabledChange}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="admin-personal-onboarding-toggle" className="text-sm font-medium">
-                  Admin Onboarding persönlich ein/aus
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Zeigt/versteckt das Onboarding nur für Ihren Admin-Account
-                </p>
-              </div>
-              <Switch
-                id="admin-personal-onboarding-toggle"
-                checked={adminPersonalOnboarding}
-                onCheckedChange={handlePersonalOnboardingChange}
-              />
-            </div>
-            
-            <div className="flex justify-start">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetOnboarding}
-                className="flex items-center gap-2"
-              >
-                🔄 Onboarding zurücksetzen
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
         <Tabs defaultValue="production" className="w-full">
           {/* 🎛️ COMPACT TAB NAVIGATION - 5 tabs */}
           <div className="w-full mb-8">
@@ -295,6 +252,97 @@ export const AdminPage = () => {
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
           <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
             <div className="grid grid-cols-1 gap-6">
+              {/* 🎯 ONBOARDING ADMIN CONTROLS */}
+              <Card className="bg-background border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground">
+                    <Settings className="w-5 h-5 mr-2" />
+                    Onboarding Controls
+                  </CardTitle>
+                  <CardDescription>
+                    Admin-Steuerung für das Onboarding-System
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="onboarding-toggle" className="text-sm font-medium">
+                        Onboarding für alle Nutzer aktivieren
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Zeigt das Onboarding für alle Nutzer an, unabhängig vom Status
+                      </p>
+                    </div>
+                    <Switch
+                      id="onboarding-toggle"
+                      checked={onboardingEnabled}
+                      onCheckedChange={handleOnboardingEnabledChange}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="onboarding-disable-toggle" className="text-sm font-medium">
+                        Onboarding deaktivieren/aktivieren
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Deaktiviert das Onboarding komplett für alle neuen Nutzer
+                      </p>
+                    </div>
+                    <Switch
+                      id="onboarding-disable-toggle"
+                      checked={onboardingGloballyDisabled}
+                      onCheckedChange={handleGloballyDisabledChange}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="admin-personal-onboarding-toggle" className="text-sm font-medium">
+                        Admin Onboarding persönlich ein/aus
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Zeigt/versteckt das Onboarding nur für Ihren Admin-Account
+                      </p>
+                    </div>
+                    <Switch
+                      id="admin-personal-onboarding-toggle"
+                      checked={adminPersonalOnboarding}
+                      onCheckedChange={handlePersonalOnboardingChange}
+                    />
+                  </div>
+
+                  {/* Auto-save status */}
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center gap-2 text-sm">
+                      {autoSaving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="text-muted-foreground">Speichere automatisch...</span>
+                        </>
+                      ) : lastSaved ? (
+                        <>
+                          <Check className="h-4 w-4 text-green-500" />
+                          <span className="text-muted-foreground">
+                            Gespeichert um {lastSaved.toLocaleTimeString()}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Änderungen werden automatisch gespeichert</span>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetOnboarding}
+                      className="flex items-center gap-2"
+                    >
+                      🔄 Onboarding zurücksetzen
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Embedding Status & RAG System */}
               <EmbeddingStatus />
               
