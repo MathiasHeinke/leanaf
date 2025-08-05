@@ -42,11 +42,13 @@ export const AdminPage = () => {
   const { forceShowOnboarding, resetOnboarding } = useOnboardingState();
   const [onboardingEnabled, setOnboardingEnabled] = useState(false);
   const [onboardingGloballyDisabled, setOnboardingGloballyDisabled] = useState(false);
+  const [adminPersonalOnboarding, setAdminPersonalOnboarding] = useState(true);
 
   // Load admin settings from localStorage
   useEffect(() => {
     const savedOnboardingEnabled = localStorage.getItem('admin_onboarding_enabled');
     const savedGloballyDisabled = localStorage.getItem('admin_onboarding_globally_disabled');
+    const savedPersonalOnboarding = localStorage.getItem(`admin_personal_onboarding_${user?.id}`);
     
     if (savedOnboardingEnabled) {
       setOnboardingEnabled(JSON.parse(savedOnboardingEnabled));
@@ -54,7 +56,10 @@ export const AdminPage = () => {
     if (savedGloballyDisabled) {
       setOnboardingGloballyDisabled(JSON.parse(savedGloballyDisabled));
     }
-  }, []);
+    if (savedPersonalOnboarding) {
+      setAdminPersonalOnboarding(JSON.parse(savedPersonalOnboarding));
+    }
+  }, [user?.id]);
 
   // Save admin settings to localStorage
   const handleOnboardingEnabledChange = (checked: boolean) => {
@@ -68,6 +73,11 @@ export const AdminPage = () => {
   const handleGloballyDisabledChange = (checked: boolean) => {
     setOnboardingGloballyDisabled(checked);
     localStorage.setItem('admin_onboarding_globally_disabled', JSON.stringify(checked));
+  };
+
+  const handlePersonalOnboardingChange = (checked: boolean) => {
+    setAdminPersonalOnboarding(checked);
+    localStorage.setItem(`admin_personal_onboarding_${user?.id}`, JSON.stringify(checked));
   };
   
   // Mock performance metrics for the dashboard
@@ -191,6 +201,22 @@ export const AdminPage = () => {
                 id="onboarding-disable-toggle"
                 checked={onboardingGloballyDisabled}
                 onCheckedChange={handleGloballyDisabledChange}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="admin-personal-onboarding-toggle" className="text-sm font-medium">
+                  Admin Onboarding persönlich ein/aus
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Zeigt/versteckt das Onboarding nur für Ihren Admin-Account
+                </p>
+              </div>
+              <Switch
+                id="admin-personal-onboarding-toggle"
+                checked={adminPersonalOnboarding}
+                onCheckedChange={handlePersonalOnboardingChange}
               />
             </div>
             

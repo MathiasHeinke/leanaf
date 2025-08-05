@@ -32,10 +32,11 @@ export const useOnboardingState = () => {
     const storageKey = `onboarding_${user.id}`;
     const stored = localStorage.getItem(storageKey);
     
-    // Check if admin has globally disabled onboarding
+    // Check if admin has globally disabled onboarding or personally disabled it
     const isOnboardingDisabledByAdmin = () => {
       const adminSetting = localStorage.getItem('admin_onboarding_globally_disabled');
-      return adminSetting ? JSON.parse(adminSetting) : false;
+      const personalSetting = localStorage.getItem(`admin_personal_onboarding_${user.id}`);
+      return (adminSetting ? JSON.parse(adminSetting) : false) || (personalSetting === 'false');
     };
     
     if (stored) {
