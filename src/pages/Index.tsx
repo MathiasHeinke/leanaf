@@ -615,8 +615,7 @@ const Index = () => {
           </SortableContext>
         </DndContext>
 
-        {/* Smart Coach Insights with real data correlations */}
-        <SmartCoachInsights />
+        {/* Smart Coach Insights removed per user request */}
 
         <div>
           <div className="mb-4">
