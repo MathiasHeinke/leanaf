@@ -2380,6 +2380,198 @@ export type Database = {
         }
         Relationships: []
       }
+      markus_competition_prep: {
+        Row: {
+          body_fat_percentage: number | null
+          cardio_minutes_per_day: number | null
+          coach_notes: string | null
+          competition_date: string
+          competition_name: string
+          condition_rating: number | null
+          created_at: string
+          current_weight_kg: number | null
+          daily_calories: number | null
+          daily_carbs_grams: number | null
+          daily_fats_grams: number | null
+          daily_protein_grams: number | null
+          energy_level: number | null
+          hunger_level: number | null
+          id: string
+          markus_feedback: string | null
+          peak_week_protocol: Json | null
+          prep_phase: string
+          supplements: Json | null
+          target_weight_kg: number | null
+          training_frequency_per_week: number | null
+          updated_at: string
+          user_id: string
+          weeks_out: number
+        }
+        Insert: {
+          body_fat_percentage?: number | null
+          cardio_minutes_per_day?: number | null
+          coach_notes?: string | null
+          competition_date: string
+          competition_name: string
+          condition_rating?: number | null
+          created_at?: string
+          current_weight_kg?: number | null
+          daily_calories?: number | null
+          daily_carbs_grams?: number | null
+          daily_fats_grams?: number | null
+          daily_protein_grams?: number | null
+          energy_level?: number | null
+          hunger_level?: number | null
+          id?: string
+          markus_feedback?: string | null
+          peak_week_protocol?: Json | null
+          prep_phase: string
+          supplements?: Json | null
+          target_weight_kg?: number | null
+          training_frequency_per_week?: number | null
+          updated_at?: string
+          user_id: string
+          weeks_out: number
+        }
+        Update: {
+          body_fat_percentage?: number | null
+          cardio_minutes_per_day?: number | null
+          coach_notes?: string | null
+          competition_date?: string
+          competition_name?: string
+          condition_rating?: number | null
+          created_at?: string
+          current_weight_kg?: number | null
+          daily_calories?: number | null
+          daily_carbs_grams?: number | null
+          daily_fats_grams?: number | null
+          daily_protein_grams?: number | null
+          energy_level?: number | null
+          hunger_level?: number | null
+          id?: string
+          markus_feedback?: string | null
+          peak_week_protocol?: Json | null
+          prep_phase?: string
+          supplements?: Json | null
+          target_weight_kg?: number | null
+          training_frequency_per_week?: number | null
+          updated_at?: string
+          user_id?: string
+          weeks_out?: number
+        }
+        Relationships: []
+      }
+      markus_heavy_training_sessions: {
+        Row: {
+          created_at: string
+          date: string
+          exercise_type: string
+          id: string
+          is_personal_record: boolean | null
+          notes: string | null
+          reps: number
+          rest_between_sets_seconds: number | null
+          rpe: number | null
+          sets: number
+          training_intensity: string
+          updated_at: string
+          user_id: string
+          warmup_sets: Json | null
+          weight_kg: number
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          exercise_type: string
+          id?: string
+          is_personal_record?: boolean | null
+          notes?: string | null
+          reps: number
+          rest_between_sets_seconds?: number | null
+          rpe?: number | null
+          sets: number
+          training_intensity?: string
+          updated_at?: string
+          user_id: string
+          warmup_sets?: Json | null
+          weight_kg: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          exercise_type?: string
+          id?: string
+          is_personal_record?: boolean | null
+          notes?: string | null
+          reps?: number
+          rest_between_sets_seconds?: number | null
+          rpe?: number | null
+          sets?: number
+          training_intensity?: string
+          updated_at?: string
+          user_id?: string
+          warmup_sets?: Json | null
+          weight_kg?: number
+        }
+        Relationships: []
+      }
+      markus_mass_progress: {
+        Row: {
+          body_fat_percentage: number | null
+          body_weight_kg: number | null
+          created_at: string
+          daily_calories: number | null
+          daily_protein_grams: number | null
+          date: string
+          id: string
+          markus_rating: number | null
+          measurements: Json | null
+          muscle_mass_kg: number | null
+          notes: string | null
+          progress_photos: string[] | null
+          strength_indicators: Json | null
+          training_volume_kg: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_fat_percentage?: number | null
+          body_weight_kg?: number | null
+          created_at?: string
+          daily_calories?: number | null
+          daily_protein_grams?: number | null
+          date?: string
+          id?: string
+          markus_rating?: number | null
+          measurements?: Json | null
+          muscle_mass_kg?: number | null
+          notes?: string | null
+          progress_photos?: string[] | null
+          strength_indicators?: Json | null
+          training_volume_kg?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_fat_percentage?: number | null
+          body_weight_kg?: number | null
+          created_at?: string
+          daily_calories?: number | null
+          daily_protein_grams?: number | null
+          date?: string
+          id?: string
+          markus_rating?: number | null
+          measurements?: Json | null
+          muscle_mass_kg?: number | null
+          notes?: string | null
+          progress_photos?: string[] | null
+          strength_indicators?: Json | null
+          training_volume_kg?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_images: {
         Row: {
           created_at: string
