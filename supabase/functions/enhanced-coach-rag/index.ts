@@ -204,9 +204,12 @@ async function performSemanticSearch(
   maxResults: number
 ): Promise<SearchResult[]> {
   
+  // Lucy can access all coaches' knowledge, others are restricted to their own
+  const coachFilter = coachId === 'lucy' ? null : coachId;
+  
   const { data, error } = await supabaseClient.rpc('search_knowledge_semantic', {
     query_embedding: queryEmbedding,
-    coach_filter: coachId,
+    coach_filter: coachFilter,
     similarity_threshold: 0.6,
     match_count: maxResults
   });
@@ -223,10 +226,13 @@ async function performHybridSearch(
   maxResults: number
 ): Promise<SearchResult[]> {
   
+  // Lucy can access all coaches' knowledge, others are restricted to their own
+  const coachFilter = coachId === 'lucy' ? null : coachId;
+  
   const { data, error } = await supabaseClient.rpc('search_knowledge_hybrid', {
     query_text: queryText,
     query_embedding: queryEmbedding,
-    coach_filter: coachId,
+    coach_filter: coachFilter,
     semantic_weight: 0.7,
     text_weight: 0.3,
     match_count: maxResults
@@ -243,7 +249,8 @@ async function performKeywordSearch(
   maxResults: number
 ): Promise<SearchResult[]> {
   
-  const { data, error } = await supabaseClient
+  // Lucy can access all coaches' knowledge, others are restricted to their own
+  let queryBuilder = supabaseClient
     .from('coach_knowledge_base')
     .select(`
       id,
@@ -251,8 +258,14 @@ async function performKeywordSearch(
       content,
       expertise_area,
       coach_id
-    `)
-    .eq('coach_id', coachId)
+    `);
+
+  // Only filter by coach if not Lucy
+  if (coachId !== 'lucy') {
+    queryBuilder = queryBuilder.eq('coach_id', coachId);
+  }
+
+  const { data, error } = await queryBuilder
     .textSearch('content', query)
     .limit(maxResults);
 
