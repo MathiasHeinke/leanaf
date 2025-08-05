@@ -191,8 +191,8 @@ export const QuickBodyDataWidget: React.FC = () => {
           </div>
           
           {photos.length > 0 ? (
-            <div className="space-y-3">
-              {photos.slice(0, 3).map((photo) => {
+            <div className="space-y-4">
+              {photos.slice(0, 5).map((photo, index) => {
                 // Handle photo_urls which can be array or JSON string
                 let photoUrls: string[] = [];
                 if (typeof photo.photo_urls === 'string') {
@@ -208,49 +208,89 @@ export const QuickBodyDataWidget: React.FC = () => {
                 if (photoUrls.length === 0) return null;
                 
                 return (
-                  <div key={photo.id} className="bg-card rounded-lg border p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex gap-2">
-                        {photoUrls.slice(0, 3).map((url, idx) => (
-                          <img
-                            key={idx}
-                            src={url}
-                            alt={`Progress ${idx + 1}`}
-                            className="w-16 h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setSelectedImage(url)}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(photo.date).toLocaleDateString('de-DE')}
+                  <Card key={photo.id} className="overflow-hidden">
+                    <div className="p-5">
+                      <div className="flex flex-col lg:flex-row gap-5">
+                        {/* Photo Grid - 3x3 Layout */}
+                        <div className="flex-shrink-0">
+                          <div className="grid grid-cols-3 gap-2 w-52">
+                            {photoUrls.slice(0, 9).map((url, imgIndex) => (
+                              <div key={imgIndex} className="aspect-square">
+                                <img
+                                  src={url}
+                                  alt={`Progress ${index + 1}-${imgIndex + 1}`}
+                                  className="w-full h-full object-cover rounded-lg cursor-pointer hover:scale-105 transition-transform duration-200 shadow-sm border border-border/20"
+                                  onClick={() => setSelectedImage(url)}
+                                />
+                              </div>
+                            ))}
+                            {/* Fill empty slots if less than 9 photos */}
+                            {Array.from({ length: Math.max(0, 9 - photoUrls.length) }).map((_, emptyIndex) => (
+                              <div key={`empty-${emptyIndex}`} className="aspect-square bg-muted/10 rounded-lg border-2 border-dashed border-muted/30 flex items-center justify-center">
+                                <Camera className="h-4 w-4 text-muted-foreground/40" />
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          {photo.weight && (
-                            <div className="flex items-center gap-1">
-                              <Scale className="h-3 w-3" />
-                              <span>{photo.weight}kg</span>
+
+                        {/* Values and Info */}
+                        <div className="flex-1 flex flex-col justify-between min-h-[170px]">
+                          {/* Date Header */}
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="text-base font-semibold text-foreground">
+                              Fortschritt #{photos.length - index}
                             </div>
-                          )}
-                          {photo.body_fat_percentage && (
-                            <div className="flex items-center gap-1">
-                              <Activity className="h-3 w-3" />
-                              <span>{photo.body_fat_percentage}% KFA</span>
+                            <div className="text-sm font-medium text-muted-foreground bg-muted/20 px-3 py-1 rounded-full">
+                              {new Date(photo.date).toLocaleDateString('de-DE', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
                             </div>
-                          )}
-                          {photo.muscle_percentage && (
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              <span>{photo.muscle_percentage}% MM</span>
+                          </div>
+
+                          {/* Key Metrics - Large Display */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            {photo.weight && (
+                              <div className="text-center md:text-left">
+                                <div className="text-2xl md:text-3xl font-bold text-foreground">
+                                  {photo.weight}
+                                  <span className="text-lg text-muted-foreground ml-1">kg</span>
+                                </div>
+                                <div className="text-sm text-muted-foreground font-medium">Gewicht</div>
+                              </div>
+                            )}
+                            {photo.body_fat_percentage && (
+                              <div className="text-center md:text-left">
+                                <div className="text-2xl md:text-3xl font-bold text-foreground">
+                                  {photo.body_fat_percentage}
+                                  <span className="text-lg text-muted-foreground ml-1">%</span>
+                                </div>
+                                <div className="text-sm text-muted-foreground font-medium">Körperfett</div>
+                              </div>
+                            )}
+                            {photo.muscle_percentage && (
+                              <div className="text-center md:text-left">
+                                <div className="text-2xl md:text-3xl font-bold text-foreground">
+                                  {photo.muscle_percentage}
+                                  <span className="text-lg text-muted-foreground ml-1">%</span>
+                                </div>
+                                <div className="text-sm text-muted-foreground font-medium">Muskelmasse</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Notes */}
+                          {photo.notes && (
+                            <div className="mt-auto p-3 bg-muted/10 rounded-lg">
+                              <div className="text-sm text-muted-foreground font-medium mb-1">Notizen:</div>
+                              <div className="text-sm text-foreground">{photo.notes}</div>
                             </div>
                           )}
                         </div>
-                        {photo.notes && (
-                          <p className="text-xs text-muted-foreground italic">{photo.notes}</p>
-                        )}
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 );
               }).filter(Boolean)}
             </div>
