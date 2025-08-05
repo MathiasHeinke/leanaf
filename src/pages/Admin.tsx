@@ -32,7 +32,6 @@ import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
 import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
 import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashboard';
 
-import LiteDebugChat from '@/components/LiteDebugChat';
 import { EmbeddingStatus } from '@/components/EmbeddingStatus';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
