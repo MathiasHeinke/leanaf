@@ -21,9 +21,9 @@ export const QuickBodyDataWidget: React.FC = () => {
 
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      await uploadProgressPhoto(file);
+    const files = Array.from(event.target.files || []);
+    if (files.length > 0) {
+      await uploadProgressPhoto(files);
     }
   };
 
@@ -65,19 +65,36 @@ export const QuickBodyDataWidget: React.FC = () => {
           
           {photos.length > 0 ? (
             <div className="grid grid-cols-4 gap-2">
-              {photos.slice(0, 4).map((photo) => (
-                <div
-                  key={photo.id}
-                  className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => setSelectedImage(photo.image_url)}
-                >
-                  <img
-                    src={photo.image_url}
-                    alt="Progress"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
+              {photos.slice(0, 4).map((photo) => {
+                // Handle photo_urls which can be array or JSON string
+                let photoUrls: string[] = [];
+                if (typeof photo.photo_urls === 'string') {
+                  try {
+                    photoUrls = JSON.parse(photo.photo_urls);
+                  } catch (e) {
+                    photoUrls = [];
+                  }
+                } else if (Array.isArray(photo.photo_urls)) {
+                  photoUrls = photo.photo_urls.filter((url): url is string => typeof url === 'string');
+                }
+                
+                const firstImageUrl = photoUrls[0];
+                if (!firstImageUrl) return null;
+                
+                return (
+                  <div
+                    key={photo.id}
+                    className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setSelectedImage(firstImageUrl)}
+                  >
+                    <img
+                      src={firstImageUrl}
+                      alt="Progress"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                );
+              }).filter(Boolean)}
             </div>
           ) : (
             <div className="bg-muted/50 rounded-lg p-6 border border-dashed border-border text-center">

@@ -2,21 +2,24 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
 
-interface ProgressPhoto {
+interface WeightEntry {
   id: string;
   user_id: string;
-  image_url: string;
-  taken_at: string;
-  weight_kg?: number;
+  weight: number;
+  date: string;
   body_fat_percentage?: number;
+  muscle_percentage?: number;
+  photo_urls?: any; // Changed to any to handle Json type from Supabase
   notes?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export const useProgressPhotos = () => {
   const { user } = useAuth();
-  const [photos, setPhotos] = useState<ProgressPhoto[]>([]);
+  const [photos, setPhotos] = useState<WeightEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadProgressPhotos = async () => {
@@ -24,13 +27,26 @@ export const useProgressPhotos = () => {
 
     try {
       const { data, error } = await supabase
-        .from('progress_photos')
+        .from('weight_history')
         .select('*')
         .eq('user_id', user.id)
-        .order('taken_at', { ascending: false });
+        .not('photo_urls', 'is', null)
+        .order('date', { ascending: false });
 
       if (error) throw error;
-      setPhotos(data || []);
+      // Filter only entries that have actual photos
+      const entriesWithPhotos = (data || []).filter(entry => {
+        let photoUrls = entry.photo_urls;
+        if (typeof photoUrls === 'string') {
+          try {
+            photoUrls = JSON.parse(photoUrls);
+          } catch (e) {
+            return false;
+          }
+        }
+        return photoUrls && Array.isArray(photoUrls) && photoUrls.length > 0;
+      });
+      setPhotos(entriesWithPhotos as WeightEntry[]);
     } catch (error) {
       console.error('Error loading progress photos:', error);
       toast.error('Fehler beim Laden der Fortschrittsfotos');
@@ -39,46 +55,91 @@ export const useProgressPhotos = () => {
     }
   };
 
-  const uploadProgressPhoto = async (file: File, weight?: number, bodyFat?: number, notes?: string) => {
-    if (!user) return;
+  const uploadProgressPhoto = async (files: File[], weight?: number, bodyFat?: number, muscleMass?: number, notes?: string) => {
+    if (!user || files.length === 0) return;
 
     try {
-      // Upload to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `progress/${user.id}/${Date.now()}.${fileExt}`;
+      // Upload files using the same system as QuickWeightInput
+      const uploadResult = await uploadFilesWithProgress(files, user.id);
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('coach-media')
-        .upload(fileName, file);
+      if (!uploadResult.success) {
+        toast.error('Fehler beim Hochladen der Bilder');
+        return;
+      }
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('coach-media')
-        .getPublicUrl(fileName);
-
-      // Save to database
-      const { data: newPhoto, error: dbError } = await supabase
-        .from('progress_photos')
-        .insert({
-          user_id: user.id,
-          image_url: publicUrl,
-          taken_at: new Date().toISOString(),
-          weight_kg: weight,
-          body_fat_percentage: bodyFat,
-          notes
-        })
-        .select()
-        .single();
-
-      if (dbError) throw dbError;
+      const today = new Date().toISOString().split('T')[0];
       
-      setPhotos(prev => [newPhoto, ...prev]);
-      toast.success('Fortschrittsfoto hochgeladen');
-      return newPhoto;
+      // Check if weight entry exists for today
+      const { data: existingEntry, error: checkError } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      let updatedEntry;
+      
+      if (existingEntry) {
+        // Update existing entry with new photos
+        let existingPhotos: string[] = [];
+        if (existingEntry.photo_urls) {
+          if (typeof existingEntry.photo_urls === 'string') {
+            try {
+              existingPhotos = JSON.parse(existingEntry.photo_urls);
+            } catch (e) {
+              existingPhotos = [];
+            }
+          } else if (Array.isArray(existingEntry.photo_urls)) {
+            existingPhotos = existingEntry.photo_urls.filter((url): url is string => typeof url === 'string');
+          }
+        }
+        const allPhotos = [...existingPhotos, ...uploadResult.urls];
+        
+        const { data, error: updateError } = await supabase
+          .from('weight_history')
+          .update({
+            photo_urls: allPhotos,
+            weight: weight || existingEntry.weight,
+            body_fat_percentage: bodyFat || existingEntry.body_fat_percentage,
+            muscle_percentage: muscleMass || existingEntry.muscle_percentage,
+            notes: notes || existingEntry.notes,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingEntry.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        updatedEntry = data;
+      } else {
+        // Create new entry
+        const { data, error: insertError } = await supabase
+          .from('weight_history')
+          .insert({
+            user_id: user.id,
+            date: today,
+            weight: weight || 0, // Default weight if not provided
+            body_fat_percentage: bodyFat,
+            muscle_percentage: muscleMass,
+            photo_urls: uploadResult.urls,
+            notes
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        updatedEntry = data;
+      }
+      
+      // Refresh photos list
+      await loadProgressPhotos();
+      toast.success('Fortschrittsfotos hochgeladen');
+      return updatedEntry;
     } catch (error) {
       console.error('Error uploading progress photo:', error);
-      toast.error('Fehler beim Hochladen des Fortschrittsfotos');
+      toast.error('Fehler beim Hochladen der Fortschrittsfotos');
     }
   };
 
