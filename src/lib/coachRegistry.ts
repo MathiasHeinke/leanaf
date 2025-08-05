@@ -75,7 +75,7 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     prompt_template_id: 'persona_kai',
     memory_id: 'kai_md',
     avatar: '💪',
-    imageUrl: '/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png',
+    imageUrl: '/lovable-uploads/eb684927-b546-4179-9b7f-aec4dfbd227f.png',
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
     isPremium: true,
