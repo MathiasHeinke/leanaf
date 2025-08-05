@@ -144,18 +144,18 @@ serve(async (req) => {
       workoutFrequency = `${workoutsPerWeek}x week workout`;
     }
     
-    // Create simplified, direct prompt based on user's successful example
+    // Create photorealistic prompt for fitness transformation
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Simple, direct prompt for image editing
-      detailedPrompt = `Let's see this character with ${targetBodyFatNum}% body fat and ${targetWeightNum}kg (${activityLevel}${workoutFrequency ? ', ' + workoutFrequency : ''})`;
+      // Photorealistic image editing prompt with explicit realism keywords
+      detailedPrompt = `Professional fitness photography, photorealistic, high-quality photo. Transform this person to show their fitness goal: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg body weight, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. Realistic human proportions, natural lighting, detailed muscle definition, professional gym photography style. No cartoon, no anime, no illustration, photorealistic only.`;
     } else {
-      // Fallback for text-only generation
+      // Fallback for text-only generation with photorealistic emphasis
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
       const ageDesc = profile?.age ? `${profile.age}-year-old` : 'young adult';
       
-      detailedPrompt = `Fit ${ageDesc} ${genderDesc} with ${targetBodyFatNum}% body fat and ${targetWeightNum}kg (${activityLevel}${workoutFrequency ? ', ' + workoutFrequency : ''})`;
+      detailedPrompt = `Professional fitness photography, photorealistic portrait of a fit ${ageDesc} ${genderDesc}. Body composition: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. High-quality photo, realistic human proportions, natural lighting, detailed muscle definition, professional gym photography. No cartoon, no anime, no illustration, photorealistic only.`;
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);
