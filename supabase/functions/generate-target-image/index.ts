@@ -18,29 +18,104 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    const { 
-      targetWeight, 
-      targetBodyFat, 
-      gender, 
-      height, 
-      currentWeight,
-      fitnessGoal 
-    } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
 
-    // Create a personalized prompt based on user data
-    const prompt = `Create a realistic, inspiring fitness transformation image showing a ${gender} person who has achieved their fitness goals. 
-    Physical characteristics:
-    - Height: ${height}cm
-    - Target weight: ${targetWeight}kg
-    - Target body fat: ${targetBodyFat}%
-    - Fitness goal: ${fitnessGoal}
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get user ID from JWT
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    if (authError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    const userId = user.id;
+    const { targetWeight, targetBodyFat } = await req.json();
+
+    // Get user profile data for better prompting
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('gender, height, age, goal, target_weight, target_body_fat_percentage, weight, first_name')
+      .eq('user_id', userId)
+      .single();
+
+    // Get latest progress photo from weight_history
+    const { data: latestWeightEntry } = await supabase
+      .from('weight_history')
+      .select('photo_urls, weight, body_fat_percentage, muscle_percentage, date')
+      .eq('user_id', userId)
+      .not('photo_urls', 'is', null)
+      .order('date', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Get the latest photo URL from the photo_urls array
+    let latestPhotoUrl = null;
+    if (latestWeightEntry?.photo_urls) {
+      let photoUrls = latestWeightEntry.photo_urls;
+      if (typeof photoUrls === 'string') {
+        try {
+          photoUrls = JSON.parse(photoUrls);
+        } catch (e) {
+          console.error('Failed to parse photo_urls:', e);
+        }
+      }
+      if (Array.isArray(photoUrls) && photoUrls.length > 0) {
+        latestPhotoUrl = photoUrls[0];
+      }
+    }
+
+    // Calculate target improvements
+    const currentWeight = latestWeightEntry?.weight || profile?.weight || 70;
+    const currentBodyFat = latestWeightEntry?.body_fat_percentage || 20;
+    const currentMuscle = latestWeightEntry?.muscle_percentage || 35;
     
-    Style: Professional fitness photography, well-lit, motivational, showing a healthy and fit physique. 
-    The person should look confident and strong, representing achievable fitness goals. 
-    No face visible, focus on body composition and fitness level.
-    High quality, realistic, inspiring fitness transformation result.`;
+    const targetWeightNum = targetWeight || profile?.target_weight || currentWeight;
+    const targetBodyFatNum = targetBodyFat || profile?.target_body_fat_percentage || Math.max(currentBodyFat - 5, 8);
+    
+    const weightChange = targetWeightNum - currentWeight;
+    const bodyFatChange = targetBodyFatNum - currentBodyFat;
+    
+    // Enhanced prompt based on user data and progress photos
+    const detailedPrompt = `Create a realistic fitness transformation target image for ${profile?.first_name || 'a person'}, showing their goal physique.
 
-    console.log('Generating image with prompt:', prompt);
+PERSON DETAILS:
+- Gender: ${profile?.gender || 'not specified'}
+- Age: ${profile?.age || 'adult'} years old
+- Height: ${profile?.height || 'average'} cm
+- Current weight: ${currentWeight.toFixed(1)} kg
+- Goal weight: ${targetWeightNum.toFixed(1)} kg (${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg change)
+
+CURRENT BODY COMPOSITION:
+- Body fat: ${currentBodyFat.toFixed(1)}%
+- Muscle mass: ${currentMuscle.toFixed(1)}%
+
+TARGET BODY COMPOSITION:
+- Target body fat: ${targetBodyFatNum.toFixed(1)}% (${bodyFatChange.toFixed(1)}% change)
+- Fitness goal: ${profile?.goal || 'improved fitness'}
+
+TRANSFORMATION DIRECTION:
+${weightChange > 0 ? '• Weight gain focused on lean muscle mass' : weightChange < 0 ? '• Weight loss while preserving muscle mass' : '• Body recomposition (maintain weight, change composition)'}
+${bodyFatChange < 0 ? '• Reduce body fat for better muscle definition' : '• Maintain healthy body fat levels'}
+
+VISUAL REQUIREMENTS:
+Create a photorealistic image of ${profile?.gender === 'female' ? 'a woman' : profile?.gender === 'male' ? 'a man' : 'a person'} aged ${profile?.age || '30'}, showing the target physique described above. The person should:
+- Look healthy, fit, and naturally achievable
+- Have appropriate muscle definition for the target body fat percentage
+- Show confident posture and expression
+- Be photographed in good lighting with a clean, simple background
+- Represent realistic fitness goals, not extreme transformations
+- Match the physical characteristics described (age, height proportions)
+- Embody the specific fitness goal: ${profile?.goal || 'general fitness improvement'}
+
+Style: High-quality fitness photography, natural lighting, motivational but realistic representation.`;
+
+    console.log('Generated enhanced prompt:', detailedPrompt);
 
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
@@ -50,10 +125,10 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'dall-e-3',
-        prompt: prompt,
+        prompt: detailedPrompt,
         n: 1,
         size: '1024x1024',
-        quality: 'standard',
+        quality: 'hd',
         style: 'natural'
       }),
     });
@@ -72,7 +147,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         imageUrl,
-        prompt: prompt 
+        prompt: detailedPrompt 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
