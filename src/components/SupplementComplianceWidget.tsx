@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Pill, TrendingUp, TrendingDown, Minus, CheckCircle, AlertCircle, Brain } from "lucide-react";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface SupplementData {
   plannedSupplements: Array<{
@@ -62,7 +63,7 @@ export const SupplementComplianceWidget = () => {
       }
 
       // Get today's supplement intake
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       const { data: todayIntake } = await supabase
         .from('supplement_intake_log')
         .select('user_supplement_id')

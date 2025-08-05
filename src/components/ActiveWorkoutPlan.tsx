@@ -8,6 +8,7 @@ import { Check, ChevronUp, ChevronDown, Timer, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface Exercise {
   id: string;
@@ -97,7 +98,7 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
         user_id: user?.id,
         session_name: workoutPlan.name,
         workout_plan_id: workoutPlan.id,
-        date: new Date().toISOString().split('T')[0],
+        date: getCurrentDateString(),
         start_time: isTimerRunning ? new Date(Date.now() - (timerDuration || 0) * 1000).toISOString() : new Date().toISOString(),
         end_time: new Date().toISOString(),
         duration_minutes: timerDuration ? Math.floor(timerDuration / 60) : null,

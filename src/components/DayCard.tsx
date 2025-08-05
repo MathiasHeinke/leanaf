@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface ExerciseSet {
   id: string;
@@ -156,7 +157,7 @@ export const DayCard: React.FC<DayCardProps> = ({
       const newSessionData = {
         user_id: userId,
         session_name: `${session.session_name} (Kopie)`,
-        date: new Date().toISOString().split('T')[0], // Today's date
+        date: getCurrentDateString(), // Today's date
         start_time: null,
         end_time: null,
         notes: session.notes,

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface WeightEntry {
   id: string;
@@ -83,7 +84,7 @@ export const useProgressPhotos = () => {
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       
       // Check if weight entry exists for today
       const { data: existingEntry, error: checkError } = await supabase

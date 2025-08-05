@@ -8,8 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 import { PremiumGate } from "@/components/PremiumGate";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
@@ -97,7 +99,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
     try {
       const measurementData = {
         user_id: user.id,
-        date: new Date().toISOString().split('T')[0],
+        date: getCurrentDateString(),
         neck: measurements.neck ? parseLocaleFloat(measurements.neck) : null,
         chest: measurements.chest ? parseLocaleFloat(measurements.chest) : null,
         waist: measurements.waist ? parseLocaleFloat(measurements.waist) : null,
@@ -120,16 +122,20 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         // Update successful
         toast.success('Körpermaße aktualisiert!');
       } else {
-        // Create new measurements using UPSERT to prevent duplicates
-        // Creating new measurements
+        // CRITICAL FIX: Use INSERT instead of UPSERT to prevent data overwriting
+        // Creating new measurements with safe INSERT
         const { error } = await supabase
           .from('body_measurements')
-          .upsert(measurementData, { 
-            onConflict: 'user_id,date',
-            ignoreDuplicates: false 
-          });
+          .insert(measurementData);
 
-        if (error) throw error;
+        if (error) {
+          // If duplicate key error, show specific message
+          if (error.code === '23505' || error.message?.includes('duplicate')) {
+            toast.error('Körpermaße für heute bereits vorhanden. Bitte lade die Seite neu.');
+            return;
+          }
+          throw error;
+        }
         // Creation successful
 
         // Award points for body measurements

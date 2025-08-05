@@ -10,6 +10,7 @@ import { Trash2, Plus, Copy, Check, X, Edit2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface ExerciseSet {
   id: string;
@@ -127,7 +128,7 @@ export const ExerciseSessionEditModal: React.FC<ExerciseSessionEditModalProps> =
       const newSessionData = {
         user_id: user.id,
         session_name: `${sessionName} (Kopie)`,
-        date: new Date().toISOString().split('T')[0], // Today's date
+        date: getCurrentDateString(), // Today's date
         start_time: null,
         end_time: null,
         notes: notes,

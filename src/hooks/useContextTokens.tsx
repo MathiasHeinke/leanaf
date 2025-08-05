@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface ContextTokens {
   userName?: string;
@@ -39,7 +40,7 @@ export const useContextTokens = (userId?: string) => {
             .single();
 
           // Try to get today's meals
-          const today = new Date().toISOString().split('T')[0];
+          const today = getCurrentDateString();
           const { data: meals } = await supabase
             .from('meals')
             .select('calories')

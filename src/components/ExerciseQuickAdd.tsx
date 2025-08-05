@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CustomExerciseManager } from './CustomExerciseManager';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 
 interface Exercise {
@@ -139,7 +140,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
           user_id: user.id,
           session_name: sessionName || 'Quick Training',
           workout_type: workoutType,
-          date: new Date().toISOString().split('T')[0],
+          date: getCurrentDateString(),
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString()
         })

@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Download, Upload, FileText, Database, CheckCircle, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface KnowledgeEntry {
   title: string;
@@ -98,7 +99,7 @@ export const KnowledgeBaseExportImport = () => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        downloadCSV(data, `sascha_knowledge_export_${new Date().toISOString().split('T')[0]}.csv`);
+        downloadCSV(data, `sascha_knowledge_export_${getCurrentDateString()}.csv`);
         toast.success(`${data.length} Sascha Wissensbasis-Einträge erfolgreich exportiert`);
       } else {
         toast.error('Keine Sascha Wissensbasis-Einträge gefunden');
@@ -123,7 +124,7 @@ export const KnowledgeBaseExportImport = () => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        downloadCSV(data, `complete_knowledge_export_${new Date().toISOString().split('T')[0]}.csv`);
+        downloadCSV(data, `complete_knowledge_export_${getCurrentDateString()}.csv`);
         toast.success(`${data.length} Wissensbasis-Einträge erfolgreich exportiert`);
       } else {
         toast.error('Keine Wissensbasis-Einträge gefunden');
@@ -218,7 +219,7 @@ export const KnowledgeBaseExportImport = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `knowledge_backup_${coachId || 'all'}_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `knowledge_backup_${coachId || 'all'}_${getCurrentDateString()}.json`;
         a.click();
         URL.revokeObjectURL(url);
         

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useSubscription } from './useSubscription';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface AIUsageStatus {
   can_use: boolean;
@@ -83,8 +84,8 @@ export const useAIUsageLimits = () => {
       }
 
       // Reset counts if needed
-      const today = new Date().toISOString().split('T')[0];
-      const currentMonth = new Date().toISOString().split('T')[0].substring(0, 7);
+      const today = getCurrentDateString();
+      const currentMonth = getCurrentDateString().substring(0, 7);
       
       return {
         daily_count: data.last_reset_date === today ? data.daily_count : 0,

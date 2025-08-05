@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Calendar, Play, Database, BarChart3, FileText, Activity, Code } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 export const SingleDaySummaryGenerator = () => {
   const { user } = useAuth();
@@ -152,7 +153,7 @@ export const SingleDaySummaryGenerator = () => {
                   loadExistingSummary(e.target.value);
                 }
               }}
-              max={new Date().toISOString().split('T')[0]}
+              max={getCurrentDateString()}
             />
           </div>
           <Button 

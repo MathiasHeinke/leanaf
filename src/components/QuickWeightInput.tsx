@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
@@ -139,7 +140,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       
       // Saving weight entry
 

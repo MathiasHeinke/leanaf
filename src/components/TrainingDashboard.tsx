@@ -49,6 +49,7 @@ import {
   Edit,
   Copy
 } from 'lucide-react';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 
 interface ExerciseSession {
@@ -281,7 +282,7 @@ export const TrainingDashboard: React.FC = () => {
           user_id: user.id,
           session_name: `${originalSession.session_name} (Kopie)`,
           workout_type: originalSession.workout_type,
-          date: new Date().toISOString().split('T')[0],
+          date: getCurrentDateString(),
           notes: originalSession.notes
         })
         .select()
@@ -400,7 +401,7 @@ export const TrainingDashboard: React.FC = () => {
   };
 
   const getTodaysSessions = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getCurrentDateString();
     return sessions.filter(session => session.date === today);
   };
 

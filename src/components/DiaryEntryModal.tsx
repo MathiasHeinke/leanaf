@@ -9,6 +9,7 @@ import { BookOpen, Heart, TrendingUp, Lightbulb, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface DiaryEntryModalProps {
   isOpen: boolean;
@@ -83,7 +84,7 @@ export const DiaryEntryModal = ({ isOpen, onClose, contextData }: DiaryEntryModa
     setIsSubmitting(true);
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       
       const diaryData = {
         user_id: user.id,

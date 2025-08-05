@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface WeightEntryModalProps {
   isOpen: boolean;
@@ -74,7 +75,7 @@ export const WeightEntryModal = ({ isOpen, onClose, contextData }: WeightEntryMo
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       
       // Upload photos if any
       let photoUrls: string[] = [];

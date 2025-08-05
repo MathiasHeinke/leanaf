@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Droplets, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatNutritionalValue } from "@/utils/numberFormatting";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface HydrationData {
   todayIntake: number;
@@ -37,7 +38,7 @@ export const HydrationWidget = () => {
       const dailyGoal = 2000; // Default 2L
 
       // Get today's fluid intake
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       const { data: todayFluids } = await supabase
         .from('user_fluids')
         .select('amount_ml')

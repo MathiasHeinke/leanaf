@@ -15,6 +15,7 @@ import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, Chec
 import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 import { de } from 'date-fns/locale';
 
@@ -126,7 +127,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const loadTodaysFluids = async () => {
     if (!user) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getCurrentDateString();
     
     const { data, error } = await supabase
       .from('user_fluids')

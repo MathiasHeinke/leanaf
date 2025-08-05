@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CoachFeedbackCard } from "./CoachFeedbackCard";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface WeightEntry {
   id: string;
@@ -97,7 +98,7 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
         .insert({
           user_id: user.id,
           weight: weightValue,
-          date: new Date().toISOString().split('T')[0],
+          date: getCurrentDateString(),
           body_fat_percentage: bodyFatValue,
           muscle_percentage: muscleMassValue,
           photo_urls: photoUrls,

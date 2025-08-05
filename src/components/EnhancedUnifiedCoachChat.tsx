@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { EnhancedChatInput } from '@/components/EnhancedChatInput';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 export interface CoachProfile {
   id: string;
@@ -117,7 +118,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         setIsLoading(true);
         
         // Load existing chat history for today
-        const today = new Date().toISOString().split('T')[0];
+        const today = getCurrentDateString();
         const { data: existingMessages, error: historyError } = await supabase
           .from('coach_conversations')
           .select('*')

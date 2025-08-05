@@ -14,6 +14,7 @@ import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 import { CoachFeedbackCard } from "./CoachFeedbackCard";
 
@@ -254,7 +255,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         morning_libido: trackLibido ? morningLibido[0] : null,
         motivation_level: trackMotivation ? motivationLevel[0] : null,
         last_meal_time: trackLastMeal ? formatTime(lastMealTime[0]) : null,
-        date: new Date().toISOString().split('T')[0]
+        date: getCurrentDateString()
       };
 
       // Sleep data prepared for save

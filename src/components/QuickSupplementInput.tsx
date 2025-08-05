@@ -13,6 +13,7 @@ import { Pill, Plus, Check, X, Clock, Edit, Trash2, Save, Sun, Utensils, Dumbbel
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface SupplementOption {
   id: string;
@@ -254,7 +255,7 @@ export const QuickSupplementInput = () => {
   const loadTodayIntake = async () => {
     if (!user) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getCurrentDateString();
     
     try {
       const { data, error } = await supabase
@@ -343,7 +344,7 @@ export const QuickSupplementInput = () => {
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getCurrentDateString();
 
     // Optimistic update
     setTodayIntake(prev => ({

@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { toast } from "sonner";
 import { uploadFilesWithProgress, UploadProgress } from "@/utils/uploadHelpers";
+import { getCurrentDateString } from "@/utils/dateHelpers";
 
 interface WeightEntry {
   id?: string;
@@ -316,7 +317,7 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
       }
 
       const selectedDateStr = selectedDate.toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       
       // Validate date - no future entries allowed
       if (selectedDateStr > today) {

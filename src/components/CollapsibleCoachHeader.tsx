@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { DailyResetDialog } from './DailyResetDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface CollapsibleCoachHeaderProps {
   coach: {
@@ -81,7 +82,7 @@ export const CollapsibleCoachHeader = ({
   const handleDailyReset = async () => {
     setIsDeletingToday(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateString();
       
       const { error } = await supabase
         .from('coach_conversations')
