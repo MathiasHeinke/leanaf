@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { COACH_REGISTRY } from '@/lib/coachRegistry';
 import { 
   Users, 
   Brain, 
@@ -54,11 +55,11 @@ interface CoachPipelineStatus {
   pipeline_health_score: number;
 }
 
-const AVAILABLE_COACHES = [
-  { id: 'sascha', name: 'Sascha', description: 'Krafttraining & Periodisierung' },
-  { id: 'lucy', name: 'Lucy', description: 'Nutrition & Lifestyle' },
-  { id: 'kai', name: 'Kai', description: 'Mindset & Habits' }
-];
+const AVAILABLE_COACHES = Object.values(COACH_REGISTRY).map(coach => ({
+  id: coach.id,
+  name: coach.displayName,
+  description: coach.role
+}));
 
 const KNOWLEDGE_DEPTHS = {
   'standard': { label: 'Standard', color: 'bg-blue-100 text-blue-800' },

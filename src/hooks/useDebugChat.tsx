@@ -8,7 +8,7 @@ export const useDebugChat = () => {
 
   const sendDebug = async ({ 
     message, 
-    coachId = "lucy",
+    coachId = "lucy", // Keep Lucy as default free coach
     model = "gpt-4.1-2025-04-14"
   }: {
     message: string; 

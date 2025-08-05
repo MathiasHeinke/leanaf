@@ -4,29 +4,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, Zap, Target, Flame, Dumbbell, Brain } from 'lucide-react';
+import { COACH_REGISTRY } from '@/lib/coachRegistry';
 
 export const DualCoachAccess: React.FC = () => {
   const navigate = useNavigate();
 
+  // Use Coach Registry for dynamic coach data
   const coaches = [
     {
       id: 'sascha',
-      name: 'Sascha Weber',
-      title: 'Performance- & Trainingsexperte',
-      avatar: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-      gradientColors: 'from-red-500 to-red-600',
-      badges: ['Intelligente Planung', 'Progressive Overload', 'Kraftaufbau'],
+      name: COACH_REGISTRY.sascha.displayName,
+      title: COACH_REGISTRY.sascha.role,
+      avatar: COACH_REGISTRY.sascha.imageUrl,
+      gradientColors: COACH_REGISTRY.sascha.accentColor,
+      badges: COACH_REGISTRY.sascha.expertise.slice(0, 3),
       buttonText: 'Training mit Sascha starten',
       route: '/coach/sascha',
       icon: Target
     },
     {
       id: 'markus',
-      name: 'Markus Rühl',
-      title: 'The German Beast',
-      avatar: '/coach-images/markus-ruehl.jpg',
-      gradientColors: 'from-orange-500 to-orange-600',
-      badges: ['Heavy+Volume', 'Extreme Hypertrophie', 'Mentale Härte'],
+      name: COACH_REGISTRY.markus.displayName,
+      title: COACH_REGISTRY.markus.role,
+      avatar: COACH_REGISTRY.markus.imageUrl,
+      gradientColors: COACH_REGISTRY.markus.accentColor,
+      badges: COACH_REGISTRY.markus.expertise.slice(0, 3),
       buttonText: 'Beast Mode mit Markus',
       route: '/coach/markus',
       icon: Flame

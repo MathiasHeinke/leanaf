@@ -10,18 +10,17 @@ import { CalendarIcon, Filter, X } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { COACH_REGISTRY } from '@/lib/coachRegistry';
 
 interface FilterBarProps {
   value: DashboardFilters;
   onChange: (filters: DashboardFilters) => void;
 }
 
-const COACH_OPTIONS = [
-  { value: 'lucy', label: 'Lucy' },
-  { value: 'markus', label: 'Markus' },
-  { value: 'vita', label: 'Dr. Vita' },
-  { value: 'sophia', label: 'Dr. Sophia' },
-];
+const COACH_OPTIONS = Object.values(COACH_REGISTRY).map(coach => ({
+  value: coach.id,
+  label: coach.displayName
+}));
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Offen' },
