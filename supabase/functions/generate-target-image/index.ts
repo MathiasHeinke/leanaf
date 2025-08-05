@@ -166,6 +166,28 @@ serve(async (req) => {
     console.log('workoutFrequency:', workoutFrequency);
     console.log('workoutsPerWeek:', workoutsPerWeek);
 
+    // Test BFL API Key first
+    if (bflApiKey) {
+      console.log('=== TESTING BFL API KEY ===');
+      try {
+        const testResponse = await fetch('https://api.bfl.ai/v1/get_balance', {
+          headers: {
+            'Authorization': `Bearer ${bflApiKey}`,
+          },
+        });
+        
+        if (testResponse.ok) {
+          const balanceData = await testResponse.json();
+          console.log('✅ BFL API Key is valid. Balance:', balanceData);
+        } else {
+          const errorData = await testResponse.text();
+          console.error('❌ BFL API Key test failed:', testResponse.status, errorData);
+        }
+      } catch (testError) {
+        console.error('❌ BFL API Key test error:', testError);
+      }
+    }
+
     // Helper function to generate images with FLUX Kontext Pro for image editing
     const generateImageWithFallback = async (prompt: string, inputImageUrl: string | null, index: number, maxRetries = 2) => {
       console.log(`=== DEBUG: Starting generation ${index + 1} ===`);
@@ -182,14 +204,42 @@ serve(async (req) => {
             // Convert image URL to base64
             let inputImageBase64 = '';
             try {
+              console.log(`Fetching input image from: ${inputImageUrl}`);
               const imageResponse = await fetch(inputImageUrl);
+              
+              if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+              }
+              
               const imageBuffer = await imageResponse.arrayBuffer();
+              console.log(`Image fetched successfully, size: ${imageBuffer.byteLength} bytes`);
+              
               const base64String = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
               inputImageBase64 = `data:image/jpeg;base64,${base64String}`;
+              console.log(`Base64 conversion successful, length: ${inputImageBase64.length}`);
             } catch (imageError) {
-              console.error('Failed to fetch and convert input image:', imageError);
-              throw new Error('Failed to process input image');
+              console.error('❌ Failed to fetch and convert input image:', imageError);
+              throw new Error(`Failed to process input image: ${imageError.message}`);
             }
+            
+            const requestBody = {
+              prompt: prompt,
+              input_image: inputImageBase64,
+              aspect_ratio: "3:4",
+              safety_tolerance: 3,
+              prompt_upsampling: false,
+              seed: Math.floor(Math.random() * 1000000)
+            };
+            
+            console.log(`Sending request to FLUX Kontext Pro API...`);
+            console.log('Request details:', {
+              prompt: prompt,
+              aspect_ratio: requestBody.aspect_ratio,
+              safety_tolerance: requestBody.safety_tolerance,
+              prompt_upsampling: requestBody.prompt_upsampling,
+              seed: requestBody.seed,
+              input_image_length: inputImageBase64.length
+            });
             
             // Submit generation request to FLUX Kontext Pro
             const generateResponse = await fetch('https://api.bfl.ai/v1/flux-kontext-pro', {
@@ -198,29 +248,51 @@ serve(async (req) => {
                 'Authorization': `Bearer ${bflApiKey}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                prompt: prompt,
-                input_image: inputImageBase64,
-                aspect_ratio: "3:4",
-                safety_tolerance: 3,
-                prompt_upsampling: false,
-                seed: Math.floor(Math.random() * 1000000)
-              }),
+              body: JSON.stringify(requestBody),
             });
             
-            if (!generateResponse.ok) {
-              const errorData = await generateResponse.json();
-              throw new Error(`FLUX Kontext Pro API Error: ${errorData.message || 'Unknown error'}`);
+            console.log(`FLUX Kontext Pro response status: ${generateResponse.status}`);
+            
+            let responseText = '';
+            try {
+              responseText = await generateResponse.text();
+              console.log('Raw response:', responseText);
+            } catch (textError) {
+              console.error('Failed to read response text:', textError);
             }
             
-            const generateResult = await generateResponse.json();
+            if (!generateResponse.ok) {
+              let errorMessage = `HTTP ${generateResponse.status}: ${generateResponse.statusText}`;
+              
+              try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.message || errorData.error || errorMessage;
+                console.error('Parsed error data:', errorData);
+              } catch (parseError) {
+                console.error('Failed to parse error response as JSON');
+                errorMessage = responseText || errorMessage;
+              }
+              
+              throw new Error(`FLUX Kontext Pro API Error: ${errorMessage}`);
+            }
+            
+            let generateResult;
+            try {
+              generateResult = JSON.parse(responseText);
+              console.log('Parsed generation result:', generateResult);
+            } catch (parseError) {
+              console.error('Failed to parse success response as JSON:', parseError);
+              throw new Error('Invalid JSON response from FLUX Kontext Pro API');
+            }
+            
             const taskId = generateResult.id;
             
             if (!taskId) {
+              console.error('No task ID in response:', generateResult);
               throw new Error('No task ID received from FLUX Kontext Pro API');
             }
             
-            console.log(`FLUX Kontext Pro task submitted: ${taskId}, waiting for completion...`);
+            console.log(`✅ FLUX Kontext Pro task submitted: ${taskId}, waiting for completion...`);
             
             // Poll for result (BFL API is async)
             let attempts = 0;
@@ -239,19 +311,27 @@ serve(async (req) => {
                 const resultData = await resultResponse.json();
                 
                 if (resultData.status === 'Ready') {
-                  console.log(`Successfully generated image ${index + 1} with FLUX Kontext Pro`);
+                  console.log(`✅ Successfully generated image ${index + 1} with FLUX Kontext Pro`);
                   return { 
                     data: [{ url: resultData.result.sample }], 
                     model: 'flux-kontext-pro',
                     provider: 'bfl-kontext'
                   };
                 } else if (resultData.status === 'Error' || resultData.status === 'Request Moderated' || resultData.status === 'Content Moderated') {
-                  throw new Error(`FLUX Kontext Pro failed: ${resultData.status} - ${JSON.stringify(resultData.details)}`);
+                  console.error('FLUX Kontext Pro failed with status:', resultData.status);
+                  console.error('Error details:', resultData);
+                  throw new Error(`FLUX Kontext Pro failed: ${resultData.status} - ${JSON.stringify(resultData.details || resultData)}`);
                 } else if (resultData.status === 'Pending') {
                   attempts++;
-                  console.log(`FLUX Kontext Pro task ${taskId} still pending (${attempts}/${maxAttempts})...`);
+                  console.log(`⏳ FLUX Kontext Pro task ${taskId} still pending (${attempts}/${maxAttempts})...`);
                   continue;
+                } else {
+                  console.log('Unknown status:', resultData.status, resultData);
                 }
+              } else {
+                console.error(`Failed to check result status: ${resultResponse.status}`);
+                const errorText = await resultResponse.text();
+                console.error('Result check error:', errorText);
               }
               
               attempts++;
@@ -260,15 +340,15 @@ serve(async (req) => {
             throw new Error(`FLUX Kontext Pro timeout after ${maxAttempts} seconds`);
             
           } catch (error) {
-            console.error(`FLUX Kontext Pro generation ${index + 1} failed (attempt ${retry + 1}):`, error);
+            console.error(`❌ FLUX Kontext Pro generation ${index + 1} failed (attempt ${retry + 1}):`, error);
             if (retry < maxRetries) {
               const waitTime = Math.pow(2, retry) * 1000;
-              console.log(`Waiting ${waitTime}ms before FLUX Kontext Pro retry...`);
+              console.log(`⏳ Waiting ${waitTime}ms before FLUX Kontext Pro retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime));
             }
           }
         }
-        console.log(`FLUX Kontext Pro failed for image ${index + 1}, falling back to HuggingFace...`);
+        console.log(`❌ FLUX Kontext Pro failed for image ${index + 1}, falling back to HuggingFace...`);
       }
       
       // Try FLUX.1-schnell via HuggingFace if BFL failed or not available
