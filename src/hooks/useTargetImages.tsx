@@ -115,28 +115,49 @@ export const useTargetImages = () => {
 
       if (generationError) throw generationError;
 
-      // Save to database
-      const { data, error } = await supabase
-        .from('target_images')
-        .insert([{
-          user_id: user.id,
-          image_url: generationResult.imageUrl,
-          image_type: 'ai_generated' as const,
-          target_weight_kg: requestData.targetWeight,
-          target_body_fat_percentage: requestData.targetBodyFat,
-          generation_prompt: generationResult.prompt
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      setTargetImages(prev => [data as TargetImage, ...prev]);
-      toast.success('AI-Zielbild generiert!');
-      return data;
+      // Return the generation result with multiple images for selection
+      return {
+        ...generationResult,
+        requestData
+      };
     } catch (error) {
       console.error('Error generating target image:', error);
       toast.error('Fehler beim Generieren des Zielbilds');
+      throw error;
+    }
+  };
+
+  const saveSelectedTargetImage = async (selectedImageUrl: string, imageData: any) => {
+    if (!user) return;
+
+    try {
+      console.log('Saving selected target image...', { selectedImageUrl });
+      
+      const { data, error } = await supabase.functions.invoke('save-target-image', {
+        body: {
+          selectedImageUrl,
+          targetWeight: imageData.targetWeight,
+          targetBodyFat: imageData.targetBodyFat,
+          generationPrompt: imageData.prompt,
+          hasProgressPhoto: imageData.hasProgressPhoto,
+          currentWeight: imageData.currentWeight,
+          currentBodyFat: imageData.currentBodyFat
+        }
+      });
+
+      if (error) throw error;
+
+      console.log('Target image saved successfully:', data);
+      
+      // Refresh the target images list
+      await loadTargetImages();
+      
+      toast.success('Zielbild gespeichert!');
+      return data;
+    } catch (error) {
+      console.error('Error saving target image:', error);
+      toast.error('Fehler beim Speichern des Zielbilds');
+      throw error;
     }
   };
 
@@ -169,6 +190,7 @@ export const useTargetImages = () => {
     loading,
     uploadTargetImage,
     generateTargetImage,
+    saveSelectedTargetImage,
     deleteTargetImage,
     refreshTargetImages: loadTargetImages
   };

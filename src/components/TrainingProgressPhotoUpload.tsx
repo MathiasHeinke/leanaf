@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Camera, Upload, X, Plus, Target, Zap, Image as ImageIcon } from 'lucide-react';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { useTargetImages } from '@/hooks/useTargetImages';
+import { TargetImageSelector } from '@/components/TargetImageSelector';
 import { toast } from 'sonner';
 
 export const TrainingProgressPhotoUpload: React.FC = () => {
@@ -19,6 +20,8 @@ export const TrainingProgressPhotoUpload: React.FC = () => {
   const [muscleMass, setMuscleMass] = useState('');
   const [notes, setNotes] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<any>(null);
+  const [showImageSelector, setShowImageSelector] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,10 +227,20 @@ export const TrainingProgressPhotoUpload: React.FC = () => {
 
           <Button
             onClick={async () => {
-              toast.info('Dein AI-Zielbild wird erstellt...', {
-                description: 'Dies kann einen Moment dauern'
-              });
-              await generateTargetImage();
+              try {
+                toast.info('4 AI-Zielbilder werden erstellt...', {
+                  description: 'Dies kann einen Moment dauern'
+                });
+                const result = await generateTargetImage();
+                if (result && result.imageUrls && result.imageUrls.length > 0) {
+                  setGeneratedImages(result);
+                  setShowImageSelector(true);
+                } else {
+                  toast.error('Keine Bilder generiert');
+                }
+              } catch (error) {
+                console.error('Error generating images:', error);
+              }
             }}
             disabled={targetLoading}
             className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg"
@@ -235,12 +248,12 @@ export const TrainingProgressPhotoUpload: React.FC = () => {
             {targetLoading ? (
               <>
                 <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                AI erstellt dein Zielbild...
+                AI erstellt 4 Zielbilder...
               </>
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />
-                🎯 AI-Zielbild erstellen
+                🎯 4 AI-Zielbilder erstellen
               </>
             )}
           </Button>
@@ -281,6 +294,20 @@ export const TrainingProgressPhotoUpload: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Image Selector Modal */}
+        {showImageSelector && generatedImages && (
+          <div className="mt-6">
+            <TargetImageSelector
+              generatedImages={generatedImages}
+              onImageSelected={() => {
+                setShowImageSelector(false);
+                setGeneratedImages(null);
+                toast.success('Zielbild wurde gespeichert!');
+              }}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

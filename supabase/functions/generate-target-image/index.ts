@@ -218,26 +218,101 @@ Style: High-quality fitness photography, natural lighting, motivational but real
     }
 
     const data = await response.json();
-    let imageUrl;
+    let imageUrls = [];
 
     if (frontPhotoUrl) {
-      // Vision API returns text response, we need to extract image generation request
+      // Vision API returns analysis - now generate 4 images based on this
       const analysisResult = data.choices[0].message.content;
       console.log('Vision analysis result:', analysisResult);
       
-      // For now, fallback to DALL-E generation based on analysis
-      // TODO: Implement image-to-image generation or use analysis to create better prompt
-      throw new Error('Vision-based image generation not yet fully implemented. Please try without progress photos for now.');
+      // Generate 4 target images using DALL-E based on the analysis
+      const enhancedPrompt = `${detailedPrompt}
+
+ANALYSIS FROM PROGRESS PHOTO:
+${analysisResult}
+
+Create a realistic fitness transformation target image showing the SAME person from the analysis above, but at their goal physique. Maintain exact facial features, skin tone, body structure, and personal characteristics while showing the target transformation.`;
+
+      console.log('Generating 4 target images...');
+      
+      // Generate 4 images in parallel for better user experience
+      const imagePromises = Array.from({ length: 4 }, (_, index) => 
+        fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: enhancedPrompt + ` (Variation ${index + 1})`,
+            n: 1,
+            size: '1024x1024',
+            quality: 'hd',
+            style: 'natural'
+          }),
+        }).then(res => res.json())
+      );
+
+      const imageResults = await Promise.all(imagePromises);
+      imageUrls = imageResults.map((result, index) => {
+        if (result.data && result.data[0]) {
+          console.log(`Generated image ${index + 1}:`, result.data[0].url);
+          return result.data[0].url;
+        }
+        console.error(`Failed to generate image ${index + 1}:`, result);
+        return null;
+      }).filter(Boolean);
+
     } else {
-      // Image generation API returns direct image URL
-      imageUrl = data.data[0].url;
-      console.log('Image generated successfully:', imageUrl);
+      // Fallback: Generate 4 images without progress photos
+      console.log('Generating 4 target images (text-only mode)...');
+      
+      const imagePromises = Array.from({ length: 4 }, (_, index) => 
+        fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: detailedPrompt + ` (Style variation ${index + 1})`,
+            n: 1,
+            size: '1024x1024',
+            quality: 'hd',
+            style: 'natural'
+          }),
+        }).then(res => res.json())
+      );
+
+      const imageResults = await Promise.all(imagePromises);
+      imageUrls = imageResults.map((result, index) => {
+        if (result.data && result.data[0]) {
+          console.log(`Generated image ${index + 1}:`, result.data[0].url);
+          return result.data[0].url;
+        }
+        console.error(`Failed to generate image ${index + 1}:`, result);
+        return null;
+      }).filter(Boolean);
     }
+
+    if (imageUrls.length === 0) {
+      throw new Error('Failed to generate any images');
+    }
+
+    console.log(`Successfully generated ${imageUrls.length} target images`);
 
     return new Response(
       JSON.stringify({ 
-        imageUrl,
-        prompt: detailedPrompt 
+        imageUrls,
+        count: imageUrls.length,
+        prompt: detailedPrompt,
+        hasProgressPhoto: !!frontPhotoUrl,
+        currentWeight,
+        targetWeight: targetWeightNum,
+        currentBodyFat,
+        targetBodyFat: targetBodyFatNum
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
