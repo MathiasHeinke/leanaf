@@ -176,14 +176,14 @@ export const CoachCard: React.FC<CoachCardProps> = ({
                 onError={handleImageError}
                 onLoad={handleImageLoad}
               />
-              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center shadow-lg`}>
+              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center shadow-lg z-10`}>
                 <CoachIcon className="h-4 w-4 text-white" />
               </div>
             </div>
           ) : (
             <div className={`w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center text-white text-2xl font-bold shadow-lg relative`}>
               {coach.avatar}
-              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center`}>
+              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center z-10`}>
                 <CoachIcon className="h-4 w-4 text-white" />
               </div>
             </div>
