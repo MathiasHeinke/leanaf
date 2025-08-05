@@ -119,25 +119,40 @@ async function buildAIContext(userId: string, coachId: string, userMessage: stri
 }
 
 async function getCoachPersona(coachId: string): Promise<any> {
-  // For Markus Rühl, load from file
+  // For Markus Rühl, use the enhanced persona content directly
   if (coachId === 'markus' || coachId === 'markus-ruehl') {
-    try {
-      const personaFile = await Deno.readTextFile('./prompts/ruhl_base.md');
-      return {
-        name: 'Markus Rühl',
-        style: 'direct_heavy_training',
-        persona_content: personaFile,
-        specializations: ['heavy_training', 'mass_building', 'mental_toughness']
-      };
-    } catch (error) {
-      console.error('Failed to load Markus persona:', error);
-      return {
-        name: 'Markus Rühl',
-        style: 'direct_heavy_training',
-        persona_content: 'Du bist Markus Rühl, der kultiger Bodybuilder aus Frankfurt. Spreche direkt und motivierend.',
-        specializations: ['heavy_training', 'mass_building', 'mental_toughness']
-      };
-    }
+    return {
+      name: 'Markus Rühl',
+      style: 'direct_heavy_training',
+      persona_content: `## Markus Rühl - Authentic Hessian Bodybuilder
+
+**Persona:** Markus Rühl, 52, 140kg, aus Frankfurt. Authentischer Hesse mit trockenem, sarkastischem Humor. 
+**Kernwerte:** Masse > Wellness, Disziplin > Ausreden, Old-School > Trends.
+**Emotionsbereich:** Warm-herzlich bis provokant-direkt. 
+**Verbotene Wörter:** "Babbo", "Jung" (nutzt stattdessen "Kerl", "Typ").
+
+**Verhaltensregeln:**
+- Hessische Begrüßung: "Ei, gude wie?"
+- Direkte Anweisungen ohne Umschweife
+- Anti-Gejammer-Regel: Bei Beschwerden -> direkte Lösung
+- Bescheidene Reaktion auf Lob
+- Provokante Antworten auf Trends
+- Old-School Trainingsprinzipien
+- Bewusstsein für Trainingsvolumen
+- Mandatory Hessisch-Dialekt
+
+**Signature Phrases:** 
+- "Ei, gude wie?"
+- "Mach hin!"
+- "Des is Babbelkram"
+- "Trainiere wie'n Tier"
+- "Masse kommt von Klasse"
+
+**Beispiele:**
+User: "Wie oft soll ich trainieren?"
+Markus: "Ei, gude wie? Hör ma zu, Kerl: 4-5 mal die Woch, schwere Gewichte, keine Spielereien. Push/Pull/Legs oder Upper/Lower - such dir was aus und zieh's durch. Mach hin!"`,
+      specializations: ['heavy_training', 'mass_building', 'mental_toughness', 'old_school_methods']
+    };
   }
   
   // Default personas for other coaches
@@ -332,18 +347,32 @@ async function loadEnhancedDaily(userId: string, traceId: string): Promise<any> 
 
 async function runEnhancedRag(userMessage: string, coachId: string, traceId: string, additionalContext: any = {}): Promise<any> {
   try {
+    // Validate input parameters
+    if (!userMessage || userMessage.trim() === '') {
+      console.warn('RAG called with empty user message, skipping');
+      return { results: [], context: '' };
+    }
+    
+    if (!coachId) {
+      console.warn('RAG called without coach ID, using default');
+      coachId = 'lucy';
+    }
+    
+    console.log(`RAG request for coach ${coachId} with message: "${userMessage.substring(0, 100)}..."`);
+    
     const ragResponse = await supabase.functions.invoke('enhanced-coach-rag', {
       body: {
-        user_message: userMessage,
+        query: userMessage, // Use 'query' instead of 'user_message' to match RAG function
         coach_id: coachId,
         user_context: additionalContext,
         trace_id: traceId,
         search_method: 'hybrid',
-        max_chunks: 3
+        max_results: 3
       }
     });
     
     if (ragResponse.error) {
+      console.error('RAG function error:', ragResponse.error);
       throw new Error(`RAG error: ${ragResponse.error.message}`);
     }
     
