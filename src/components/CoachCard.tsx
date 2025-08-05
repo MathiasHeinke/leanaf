@@ -166,13 +166,13 @@ export const CoachCard: React.FC<CoachCardProps> = ({
       
       <CardContent className="p-6 text-center">
         {/* Avatar with Coach Icon */}
-        <div className="relative mb-4">
+        <div className="relative mb-4 p-1">
           {coach.imageUrl && !imageError ? (
-            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden shadow-lg relative">
+            <div className="w-24 h-24 mx-auto rounded-full shadow-lg relative">
               <img 
                 src={coach.imageUrl} 
                 alt={coach.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover rounded-full"
                 onError={handleImageError}
                 onLoad={handleImageLoad}
               />
