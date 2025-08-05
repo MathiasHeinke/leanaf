@@ -196,13 +196,17 @@ export const LiveTraceMonitor = () => {
                          contextEvent?.data?.system_message ||
                          events.find(e => e.data?.full_prompt_preview)?.data?.full_prompt_preview;
 
-        // Extract context data
+         // Extract context data - map to actual DB fields
         const contextData = contextEvent?.data ? {
-          sources: contextEvent.data.context_source ? [contextEvent.data.context_source] : [],
-          size: contextEvent.data.context_size || 0,
-          coach_data: contextEvent.data.coach_data,
-          profile_accessed: !!contextEvent.data.user_profile,
-          meal_data_accessed: !!contextEvent.data.meal_data || !!contextEvent.data.nutrition_data
+          sources: [
+            contextEvent.data.hasDaily && 'Daily Data',
+            contextEvent.data.hasMemory && 'Memory', 
+            contextEvent.data.hasRag && 'RAG'
+          ].filter(Boolean),
+          size: contextEvent.data.tokensIn || 0,
+          ragChunksCount: contextEvent.data.ragChunksCount || 0,
+          profile_accessed: contextEvent.data.hasDaily || false,
+          meal_data_accessed: contextEvent.data.hasDaily || false
         } : undefined;
 
         // Calculate performance grade
