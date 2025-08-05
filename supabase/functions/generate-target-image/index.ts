@@ -96,206 +96,85 @@ serve(async (req) => {
     const weightChange = targetWeightNum - currentWeight;
     const bodyFatChange = targetBodyFatNum - currentBodyFat;
     
-    // Create prompt based on whether we have a progress photo or not
-    let requestBody;
+    // Create simplified, focused prompts for high-quality generation
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Use vision API with progress photo
-      detailedPrompt = `Based on this progress photo, create a realistic fitness transformation target image showing the same person at their goal physique.
+      // Simple, focused prompt for gpt-image-1 with progress photo
+      const transformationType = weightChange > 0 ? 'muscle building' : weightChange < 0 ? 'fat loss' : 'body recomposition';
+      const bodyFatDescription = targetBodyFatNum <= 12 ? 'very lean and defined' : targetBodyFatNum <= 18 ? 'athletic and toned' : 'fit and healthy';
+      
+      detailedPrompt = `Transform this person to show their fitness goal: ${transformationType} to ${targetBodyFatNum}% body fat (${bodyFatDescription}). 
+      
+Show the same person with:
+- ${bodyFatDescription} physique
+- Natural muscle definition for ${targetBodyFatNum}% body fat
+- Confident, healthy appearance
+- Good lighting and professional photo quality
 
-TARGET TRANSFORMATION:
-- Current weight: ${currentWeight.toFixed(1)} kg → Goal weight: ${targetWeightNum.toFixed(1)} kg (${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg change)
-- Current body fat: ${currentBodyFat.toFixed(1)}% → Target body fat: ${targetBodyFatNum.toFixed(1)}% (${bodyFatChange.toFixed(1)}% change)
-- Fitness goal: ${profile?.goal || 'improved fitness'}
+Keep the same facial features, skin tone, and body structure. Make it realistic and achievable, not extreme.`;
 
-TRANSFORMATION DIRECTION:
-${weightChange > 0 ? '• Weight gain focused on lean muscle mass' : weightChange < 0 ? '• Weight loss while preserving muscle mass' : '• Body recomposition (maintain weight, change composition)'}
-${bodyFatChange < 0 ? '• Reduce body fat for better muscle definition' : '• Maintain healthy body fat levels'}
-
-VISUAL REQUIREMENTS:
-Show the SAME person from the progress photo but transformed to the target physique. The person should:
-- Maintain the same facial features, skin tone, and general appearance
-- Show realistic fitness progress based on the target metrics
-- Have appropriate muscle definition for ${targetBodyFatNum.toFixed(1)}% body fat
-- Look healthy, fit, and naturally achievable
-- Show confident posture and expression
-- Be photographed in good lighting with a clean, simple background
-- Represent realistic fitness goals, not extreme transformations
-
-Style: High-quality fitness photography, natural lighting, motivational but realistic representation.`;
-
-      requestBody = {
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: detailedPrompt
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: frontPhotoUrl
-                }
-              }
-            ]
-          }
-        ],
-        max_tokens: 4096
-      };
-
-      console.log('Using vision API with progress photo:', frontPhotoUrl);
     } else {
-      // Fallback to text-only generation
-      detailedPrompt = `Create a realistic fitness transformation target image for ${profile?.first_name || 'a person'}, showing their goal physique.
+      // Simple, focused prompt for text-only generation
+      const genderDesc = profile?.gender === 'female' ? 'athletic woman' : profile?.gender === 'male' ? 'fit man' : 'athletic person';
+      const bodyFatDescription = targetBodyFatNum <= 12 ? 'very lean and defined' : targetBodyFatNum <= 18 ? 'athletic and toned' : 'fit and healthy';
+      
+      detailedPrompt = `Professional fitness photo of a ${bodyFatDescription} ${genderDesc}, age ${profile?.age || 30}. 
+      
+Show:
+- ${bodyFatDescription} physique at ${targetBodyFatNum}% body fat
+- Natural muscle definition and healthy appearance
+- Confident posture in good lighting
+- Clean background, high-quality photography
 
-PERSON DETAILS:
-- Gender: ${profile?.gender || 'not specified'}
-- Age: ${profile?.age || 'adult'} years old
-- Height: ${profile?.height || 'average'} cm
-- Current weight: ${currentWeight.toFixed(1)} kg
-- Goal weight: ${targetWeightNum.toFixed(1)} kg (${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg change)
-
-CURRENT BODY COMPOSITION:
-- Body fat: ${currentBodyFat.toFixed(1)}%
-- Muscle mass: ${currentMuscle.toFixed(1)}%
-
-TARGET BODY COMPOSITION:
-- Target body fat: ${targetBodyFatNum.toFixed(1)}% (${bodyFatChange.toFixed(1)}% change)
-- Fitness goal: ${profile?.goal || 'improved fitness'}
-
-TRANSFORMATION DIRECTION:
-${weightChange > 0 ? '• Weight gain focused on lean muscle mass' : weightChange < 0 ? '• Weight loss while preserving muscle mass' : '• Body recomposition (maintain weight, change composition)'}
-${bodyFatChange < 0 ? '• Reduce body fat for better muscle definition' : '• Maintain healthy body fat levels'}
-
-VISUAL REQUIREMENTS:
-Create a photorealistic image of ${profile?.gender === 'female' ? 'a woman' : profile?.gender === 'male' ? 'a man' : 'a person'} aged ${profile?.age || '30'}, showing the target physique described above. The person should:
-- Look healthy, fit, and naturally achievable
-- Have appropriate muscle definition for the target body fat percentage
-- Show confident posture and expression
-- Be photographed in good lighting with a clean, simple background
-- Represent realistic fitness goals, not extreme transformations
-- Match the physical characteristics described (age, height proportions)
-- Embody the specific fitness goal: ${profile?.goal || 'general fitness improvement'}
-
-Style: High-quality fitness photography, natural lighting, motivational but realistic representation.`;
-
-      requestBody = {
-        model: 'dall-e-3',
-        prompt: detailedPrompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'hd',
-        style: 'natural'
-      };
-
-      console.log('Using text-only generation (no progress photo available)');
+Realistic fitness goals, not extreme transformations.`;
     }
 
-    console.log('Generated prompt:', detailedPrompt);
+    console.log('Generated simplified prompt:', detailedPrompt);
 
-    // Choose the appropriate API endpoint based on whether we're using vision
-    const apiEndpoint = frontPhotoUrl 
-      ? 'https://api.openai.com/v1/chat/completions'
-      : 'https://api.openai.com/v1/images/generations';
-
-    const response = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
+    // Generate 4 high-quality images using gpt-image-1
+    console.log('Generating 4 target images with gpt-image-1...');
+    
+    // Generate 4 images in parallel for better user experience
+    const imagePromises = Array.from({ length: 4 }, (_, index) => {
+      // Add subtle variation to each image
+      const variations = ['front pose', 'confident stance', 'athletic pose', 'profile view'];
+      const promptVariation = `${detailedPrompt} ${variations[index]}.`;
+      
+      return fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-image-1',
+          prompt: promptVariation,
+          size: '1024x1024',
+          quality: 'high',
+          n: 1
+        }),
+      }).then(async res => {
+        const result = await res.json();
+        if (!res.ok) {
+          console.error(`Image generation ${index + 1} failed:`, result);
+          return null;
+        }
+        return result;
+      }).catch(error => {
+        console.error(`Image generation ${index + 1} error:`, error);
+        return null;
+      });
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    let imageUrls = [];
-
-    if (frontPhotoUrl) {
-      // Vision API returns analysis - now generate 4 images based on this
-      const analysisResult = data.choices[0].message.content;
-      console.log('Vision analysis result:', analysisResult);
-      
-      // Generate 4 target images using DALL-E based on the analysis
-      const enhancedPrompt = `${detailedPrompt}
-
-ANALYSIS FROM PROGRESS PHOTO:
-${analysisResult}
-
-Create a realistic fitness transformation target image showing the SAME person from the analysis above, but at their goal physique. Maintain exact facial features, skin tone, body structure, and personal characteristics while showing the target transformation.`;
-
-      console.log('Generating 4 target images...');
-      
-      // Generate 4 images in parallel for better user experience
-      const imagePromises = Array.from({ length: 4 }, (_, index) => 
-        fetch('https://api.openai.com/v1/images/generations', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt: enhancedPrompt + ` (Variation ${index + 1})`,
-            n: 1,
-            size: '1024x1024',
-            quality: 'hd',
-            style: 'natural'
-          }),
-        }).then(res => res.json())
-      );
-
-      const imageResults = await Promise.all(imagePromises);
-      imageUrls = imageResults.map((result, index) => {
-        if (result.data && result.data[0]) {
-          console.log(`Generated image ${index + 1}:`, result.data[0].url);
-          return result.data[0].url;
-        }
-        console.error(`Failed to generate image ${index + 1}:`, result);
-        return null;
-      }).filter(Boolean);
-
-    } else {
-      // Fallback: Generate 4 images without progress photos
-      console.log('Generating 4 target images (text-only mode)...');
-      
-      const imagePromises = Array.from({ length: 4 }, (_, index) => 
-        fetch('https://api.openai.com/v1/images/generations', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt: detailedPrompt + ` (Style variation ${index + 1})`,
-            n: 1,
-            size: '1024x1024',
-            quality: 'hd',
-            style: 'natural'
-          }),
-        }).then(res => res.json())
-      );
-
-      const imageResults = await Promise.all(imagePromises);
-      imageUrls = imageResults.map((result, index) => {
-        if (result.data && result.data[0]) {
-          console.log(`Generated image ${index + 1}:`, result.data[0].url);
-          return result.data[0].url;
-        }
-        console.error(`Failed to generate image ${index + 1}:`, result);
-        return null;
-      }).filter(Boolean);
-    }
+    const imageResults = await Promise.all(imagePromises);
+    const imageUrls = imageResults.map((result, index) => {
+      if (result?.data?.[0]?.url) {
+        console.log(`Generated image ${index + 1}:`, result.data[0].url);
+        return result.data[0].url;
+      }
+      return null;
+    }).filter(Boolean);
 
     if (imageUrls.length === 0) {
       throw new Error('Failed to generate any images');
