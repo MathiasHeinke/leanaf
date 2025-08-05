@@ -1,7 +1,7 @@
 // 🔥 PRODUCTION-READY Circuit breaker with exponential backoff
 let failureCount = 0;
 let lastFailureTime = 0;
-const FAILURE_THRESHOLD = 5;
+const FAILURE_THRESHOLD = 3; // Reduced threshold for faster recovery
 const RECOVERY_TIMEOUT = 90000; // 90s for OpenAI rate limits (60s) + buffer
 const MAX_BACKOFF_TIME = 300000; // 5 min max backoff
 const BACKOFF_MULTIPLIER = 2;

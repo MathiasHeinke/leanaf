@@ -58,12 +58,47 @@ serve(async (req) => {
     // Create response stream with telemetry
     const stream = new ReadableStream({
       async start(controller) {
-        controller.enqueue(`event: open\ndata: {"ok":true}\n\n`);
+        let streamClosed = false;
+        const safeEnqueue = (data: string) => {
+          if (!streamClosed) {
+            try {
+              controller.enqueue(data);
+            } catch (error) {
+              console.warn('Stream enqueue failed (stream may be closed):', error.message);
+              streamClosed = true;
+            }
+          }
+        };
+        
+        const safeClose = () => {
+          if (!streamClosed) {
+            try {
+              controller.close();
+              streamClosed = true;
+            } catch (error) {
+              console.warn('Stream close failed (already closed):', error.message);
+              streamClosed = true;
+            }
+          }
+        };
+        
+        safeEnqueue(`event: open\ndata: {"ok":true}\n\n`);
         
         let fullResponseText = '';
         let firstTokenTime: number | null = null;
         let inputTokens = 0;
         let outputTokens = 0;
+        
+        // Set timeout for the entire stream (dynamic based on estimated response length)
+        const estimatedTokens = Math.max(200, inputTokens * 2); // Estimate response tokens
+        const timeoutMs = Math.min(120000, Math.max(30000, estimatedTokens * 100)); // 30s-120s range
+        const streamTimeout = setTimeout(() => {
+          if (!streamClosed) {
+            console.warn(`🕐 Stream timeout after ${timeoutMs}ms`);
+            safeEnqueue(`data: {"type":"timeout","message":"Stream timeout"}\n\n`);
+            safeClose();
+          }
+        }, timeoutMs);
         
         try {
           // Get coach data
@@ -192,8 +227,9 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                       });
 
                       recordSuccess(); // Track successful completion
-                      controller.enqueue(`data: {"type":"stream_done"}\n\n`);
-                      controller.close();
+                      clearTimeout(streamTimeout);
+                      safeEnqueue(`data: {"type":"stream_done"}\n\n`);
+                      safeClose();
                       return;
                     }
                     
@@ -217,7 +253,7 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
                         fullResponseText += content;
                         outputTokens += content.length / 4; // Rough token estimation
                         
-                        controller.enqueue(`data: {"type":"content","content":${JSON.stringify(content)}}\n\n`);
+                        safeEnqueue(`data: {"type":"content","content":${JSON.stringify(content)}}\n\n`);
                       }
                     } catch (e) {
                       // Skip invalid JSON
@@ -230,19 +266,30 @@ Antworte hilfreich und persönlich auf die Nachricht des Nutzers.`;
             }
           }
         } catch (error) {
-          console.error('Streaming error:', error);
+          console.error('🚨 Streaming error:', error);
           recordError();
+          clearTimeout(streamTimeout);
           
-          // Log error
+          // Enhanced error classification
+          const errorType = error.message.includes('controller') ? 'stream_controller_error' :
+                           error.message.includes('timeout') ? 'stream_timeout_error' :
+                           error.message.includes('fetch') ? 'openai_fetch_error' : 'streaming_error';
+          
+          // Log error with enhanced context
           await logTelemetryData(supabase, traceId, 'E_error', {
             error_message: error.message,
-            error_type: 'streaming_error',
+            error_type: errorType,
+            error_stack: error.stack?.substring(0, 500),
             duration_ms: Date.now() - requestStartTime,
+            stream_closed_already: streamClosed,
+            tokens_processed: outputTokens,
+            first_token_received: firstTokenTime !== null,
             ...getCircuitBreakerStatus()
           });
           
-          controller.enqueue(`data: {"type":"error","error":"${error.message}"}\n\n`);
-          controller.close();
+          // Try to send error message if stream is still open
+          safeEnqueue(`data: {"type":"error","error":"${error.message}","errorType":"${errorType}"}\n\n`);
+          safeClose();
         }
       }
     });
