@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { TargetImageSelector } from '@/components/TargetImageSelector';
+import { SmartCardOverlay } from '@/components/SmartCardOverlay';
 import { supabase } from '@/integrations/supabase/client';
 
 import { toast } from 'sonner';
@@ -28,7 +29,7 @@ export const QuickBodyDataWidget: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
-  const [showImageSelector, setShowImageSelector] = useState(false);
+  const [showImageSelectorOverlay, setShowImageSelectorOverlay] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const targetInputRef = useRef<HTMLInputElement>(null);
@@ -414,7 +415,7 @@ export const QuickBodyDataWidget: React.FC = () => {
                 const result = await generateTargetImage();
                 if (result && result.imageUrls && result.imageUrls.length > 0) {
                   setGeneratedImages(result);
-                  setShowImageSelector(true);
+                  setShowImageSelectorOverlay(true);
                 } else {
                   toast.error('Keine Bilder generiert');
                 }
@@ -514,19 +515,24 @@ export const QuickBodyDataWidget: React.FC = () => {
         </div>
 
 
-        {/* Image Selector Modal */}
-        {showImageSelector && generatedImages && (
-          <div className="mt-6">
+        {/* Smart Card Overlay for Image Selection */}
+        <SmartCardOverlay
+          isOpen={showImageSelectorOverlay}
+          onClose={() => setShowImageSelectorOverlay(false)}
+          title="AI-Zielbilder auswählen"
+          icon="🎯"
+        >
+          {generatedImages && (
             <TargetImageSelector
               generatedImages={generatedImages}
               onImageSelected={() => {
-                setShowImageSelector(false);
+                setShowImageSelectorOverlay(false);
                 setGeneratedImages(null);
                 toast.success('Zielbild wurde gespeichert!');
               }}
             />
-          </div>
-        )}
+          )}
+        </SmartCardOverlay>
 
         {/* Hidden File Inputs */}
         <input
