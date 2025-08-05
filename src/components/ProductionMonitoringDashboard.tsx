@@ -213,13 +213,16 @@ export function ProductionMonitoringDashboard() {
         avg_failure_recovery_time: 30000, // Estimate
         last_failure: errorCount > 0 ? traces.find(t => t.stage === 'E_error')?.ts : null
       },
-      tokenBudgetData: [{
-        prompt_tokens: tokenUsage,
-        budget_limit: 100000,
-        utilization_percent: tokenUsage > 0 ? Math.min(100, (tokenUsage / 100000) * 100) : 0,
-        timestamp: new Date().toISOString(),
-        user_hash: 'system'
-      }],
+      tokenBudgetData: traces
+        .filter(t => t.data?.prompt_tokens || t.data?.actualTokens)
+        .slice(-1000) // Last 1,000 prompts
+        .map(t => ({
+          prompt_tokens: t.data?.prompt_tokens || t.data?.actualTokens || 0,
+          budget_limit: t.data?.budgetLimit || 6000, // Correct limit
+          utilization_percent: t.data?.utilization_percent || t.data?.utilizationPercent || 0,
+          timestamp: t.ts,
+          user_hash: 'anonymized'
+        })),
       systemHealth: {
         first_token_p95: avgFirstToken * 1.2,
         total_latency_p95: avgFullStream * 1.2,
@@ -561,12 +564,19 @@ export function ProductionMonitoringDashboard() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Avg Utilization:</span>
                 <span className="font-bold">
-                  {(tokenBudgetData.reduce((sum, item) => sum + item.utilization_percent, 0) / tokenBudgetData.length).toFixed(1)}%
+                  {tokenBudgetData.length > 0 
+                    ? (tokenBudgetData.reduce((sum, item) => sum + (item.utilization_percent || 0), 0) / tokenBudgetData.length).toFixed(1)
+                    : '0.0'
+                  }%
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Budget Limit:</span>
                 <span className="font-bold">6,000 tokens</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Sample Size:</span>
+                <span className="font-bold">{tokenBudgetData.length} prompts</span>
               </div>
             </div>
           </CardContent>

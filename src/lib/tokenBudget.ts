@@ -17,16 +17,32 @@ export function validateTokenBudget(content: string, maxTokens: number = MAX_TOK
   return approxTokens(content) <= maxTokens;
 }
 
-export function trimToTokenBudget(content: string, maxTokens: number = MAX_TOKENS): string {
+export async function trimToTokenBudget(content: string, maxTokens: number = MAX_TOKENS): Promise<string> {
   const currentTokens = approxTokens(content);
+  const utilizationPercent = Math.round((currentTokens / maxTokens) * 100);
   
   // 📊 LOG ACTUAL PROMPT SIZES for optimization
   console.log(`📊 Token Budget Check:`, {
     actualTokens: currentTokens,
     budgetLimit: maxTokens,
-    utilizationPercent: Math.round((currentTokens / maxTokens) * 100),
+    utilizationPercent,
     needsTrimming: currentTokens > maxTokens
   });
+  
+  // 🔥 TELEMETRY: Log to coach_traces for dashboard metrics
+  try {
+    const { mark } = await import('../lib/metrics');
+    await mark('token_budget_check', {
+      actualTokens: currentTokens,
+      budgetLimit: maxTokens,
+      utilizationPercent,
+      needsTrimming: currentTokens > maxTokens,
+      prompt_tokens: currentTokens,
+      utilization_percent: utilizationPercent
+    });
+  } catch (error) {
+    console.warn('Failed to log token budget telemetry:', error);
+  }
   
   if (validateTokenBudget(content, maxTokens)) {
     return content;
