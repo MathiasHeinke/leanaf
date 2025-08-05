@@ -21,7 +21,8 @@ import {
   Shield,
   Info,
   Mail,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Brain
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -64,6 +65,7 @@ const settingsItems = [
   { title: "Roadmap", url: "/roadmap", icon: MapPin },
   { title: "Email", url: "/marketing", icon: Mail },
   { title: "Admin", url: "/admin", icon: Shield, adminOnly: true },
+  { title: "Gehirn", url: "/gehirn", icon: Brain, adminOnly: true },
 ];
 
 const legalItems = [
