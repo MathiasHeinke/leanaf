@@ -8,3 +8,8 @@ export { default as foto } from './foto.ts';
 export { default as diary } from './diary.ts';
 export { default as mealCapture } from './mealCapture.ts';
 export { default as goalCheckin } from './goalCheckin.ts';
+// Dr. Vita Femina specialized tools
+export { default as cycleAssessment } from './cycleAssessment.ts';
+export { default as hormoneTracker } from './hormoneTracker.ts';
+export { default as femalePeriodization } from './femalePeriodization.ts';
+export { default as menopauseNavigator } from './menopauseNavigator.ts';
