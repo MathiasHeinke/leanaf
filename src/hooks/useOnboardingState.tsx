@@ -38,6 +38,12 @@ export const useOnboardingState = () => {
       const personalSetting = localStorage.getItem(`admin_personal_onboarding_${user.id}`);
       return (adminSetting ? JSON.parse(adminSetting) : false) || (personalSetting === 'false');
     };
+
+    // Auto-disable onboarding globally for this admin user
+    if (isAdmin && !localStorage.getItem('admin_onboarding_globally_disabled')) {
+      localStorage.setItem('admin_onboarding_globally_disabled', 'true');
+      console.log('Admin: Onboarding globally disabled');
+    }
     
     if (stored) {
       try {
