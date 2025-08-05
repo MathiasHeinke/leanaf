@@ -19,10 +19,14 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Checking API keys...');
+    console.log('=== DEBUG: API Keys Check ===');
     const bflApiKey = Deno.env.get('BFL_API_KEY');
     const huggingFaceToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    
+    console.log('BFL_API_KEY present:', !!bflApiKey);
+    console.log('HUGGING_FACE_ACCESS_TOKEN present:', !!huggingFaceToken);
+    console.log('OPENAI_API_KEY present:', !!openAIApiKey);
     
     if (!bflApiKey && !huggingFaceToken && !openAIApiKey) {
       throw new Error('No AI API keys configured. Please add BFL_API_KEY, HUGGING_FACE_ACCESS_TOKEN, or OPENAI_API_KEY');
@@ -52,6 +56,11 @@ serve(async (req) => {
 
     const userId = user.id;
     const { targetWeight, targetBodyFat, progressPhotoUrl } = await req.json();
+    
+    console.log('=== DEBUG: Request payload ===');
+    console.log('targetWeight:', targetWeight);
+    console.log('targetBodyFat:', targetBodyFat);
+    console.log('progressPhotoUrl:', progressPhotoUrl);
 
     // Get user profile data for better prompting
     const { data: profile } = await supabase
@@ -100,6 +109,10 @@ serve(async (req) => {
     if (!frontPhotoUrl) {
       console.log('No progress photo found, falling back to text-only generation');
     }
+    
+    console.log('=== DEBUG: Photo Selection ===');
+    console.log('frontPhotoUrl selected:', frontPhotoUrl);
+    console.log('latestWeightEntry photo_urls:', latestWeightEntry?.photo_urls);
 
     // Get user's workout frequency for activity level calculation
     const { data: recentWorkouts } = await supabase
@@ -146,9 +159,20 @@ serve(async (req) => {
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);
+    console.log('=== DEBUG: Prompt Generation ===');
+    console.log('targetBodyFatNum:', targetBodyFatNum);
+    console.log('targetWeightNum:', targetWeightNum);
+    console.log('activityLevel:', activityLevel);
+    console.log('workoutFrequency:', workoutFrequency);
+    console.log('workoutsPerWeek:', workoutsPerWeek);
 
     // Helper function to generate images with FLUX Kontext Pro for image editing
     const generateImageWithFallback = async (prompt: string, inputImageUrl: string | null, index: number, maxRetries = 2) => {
+      console.log(`=== DEBUG: Starting generation ${index + 1} ===`);
+      console.log('Using prompt:', prompt);
+      console.log('Input image URL:', inputImageUrl);
+      console.log('BFL API key available:', !!bflApiKey);
+      
       // Try FLUX Kontext Pro if BFL API key is available and we have an input image
       if (bflApiKey && inputImageUrl) {
         console.log(`Trying image generation ${index + 1} with FLUX Kontext Pro (image editing)`);
