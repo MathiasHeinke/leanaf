@@ -484,11 +484,9 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 
         {/* Messages */}
         {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span className="ml-2">
-              {enableAdvancedFeatures ? 'Erweiterte Coach-Funktionen werden geladen...' : 'Chat wird geladen...'}
-            </span>
+          <div className="space-y-4 py-4">
+            <TypingIndicator name={coach?.name || 'Coach'} />
+            <div ref={messagesEndRef} />
           </div>
         ) : (
           <div className="space-y-4 py-4">
@@ -531,11 +529,9 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         {/* Messages */}
         <ScrollArea className="flex-1 px-4">
           {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span className="ml-2">
-                {enableAdvancedFeatures ? 'Erweiterte Coach-Funktionen werden geladen...' : 'Chat wird geladen...'}
-              </span>
+            <div className="space-y-4 py-4">
+              <TypingIndicator name={coach?.name || 'Coach'} />
+              <div ref={messagesEndRef} />
             </div>
           ) : (
             <div className="space-y-4 py-4">
