@@ -134,10 +134,31 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
           
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           
-          // Cache audio blob for sending
+          // Cache audio blob and automatically start transcription
           setCachedAudioBlob(audioBlob);
           
-          console.log('✅ Audio recorded and cached');
+          console.log('✅ Audio recorded and cached, starting automatic transcription...');
+          
+          // Automatically start transcription after recording
+          setIsProcessing(true);
+          
+          try {
+            const transcriptionResult = await transcribeWithRetry(audioBlob);
+            
+            if (transcriptionResult) {
+              setTranscribedText(transcriptionResult);
+              setTranscript(transcriptionResult);
+              toast.success(`Sprache erkannt: "${transcriptionResult.substring(0, 50)}${transcriptionResult.length > 50 ? '...' : ''}"`);
+              setCachedAudioBlob(null); // Clear cache after successful transcription
+            } else {
+              toast.error('Transkription fehlgeschlagen');
+            }
+          } catch (transcriptionError) {
+            console.error('❌ Auto-transcription failed:', transcriptionError);
+            toast.error('Transkription fehlgeschlagen');
+          } finally {
+            setIsProcessing(false);
+          }
           
           resolve();
           
