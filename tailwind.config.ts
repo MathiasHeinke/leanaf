@@ -68,6 +68,7 @@ export default {
 					DEFAULT: 'hsl(var(--fats))',
 					light: 'hsl(var(--fats-light))'
 				},
+				mindset: 'hsl(var(--mindset))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

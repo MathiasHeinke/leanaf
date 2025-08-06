@@ -3,7 +3,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import EnhancedUnifiedCoachChat from "@/components/EnhancedUnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
-import { FloatingMindsetJournal } from "@/components/FloatingMindsetJournal";
+
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 
 // Convert registry to frontend coach profiles
@@ -46,15 +46,6 @@ const CoachPage = () => {
           enableAdvancedFeatures={true}
         />
         
-        {/* Mindset Journal Widget nur für Kai anzeigen */}
-        {coachId === 'kai' && (
-          <FloatingMindsetJournal 
-            onKaiTransfer={(text) => {
-              // TODO: Text direkt in den Chat weiterleiten
-              console.log('Transfer to Kai chat:', text);
-            }}
-          />
-        )}
       </div>
     );
   }

@@ -36,14 +36,18 @@ import { VoiceOverlay } from '@/components/VoiceOverlay';
 import { usePendingTools } from '@/hooks/usePendingTools';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { MindsetJournalWidget } from '@/components/mindset-journal';
 
 // Tool configuration with colors
+import { Brain } from 'lucide-react';
+
 const TOOLS = [
   { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500", textColor: "text-violet-500", icon: Scale },
   { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400", textColor: "text-orange-400", icon: UtensilsCrossed },
   { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400", textColor: "text-sky-400", icon: BookOpen },
   { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400", textColor: "text-green-400", icon: Pill },
   { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500", textColor: "text-purple-500", icon: Dumbbell },
+  { id: "mindset-journal", name: "Mindset Journal", color: "mindset", borderColor: "border-mindset", bgColor: "bg-mindset", textColor: "text-mindset", icon: Brain },
   { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400", textColor: "text-pink-400", icon: PenTool },
 ];
 
@@ -54,6 +58,11 @@ interface EnhancedChatInputProps {
   isLoading: boolean;
   placeholder?: string;
   className?: string;
+}
+
+interface ToolWidgetProps {
+  selectedTool: string | null;
+  onKaiTransfer?: (text: string) => void;
 }
 
 export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
@@ -532,6 +541,18 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             </Button>
           </div>
         </div>
+
+        {/* Tool Widget Area */}
+        {selectedTool === 'mindset-journal' && (
+          <div className="border-t border-border/50 p-4">
+            <MindsetJournalWidget 
+              onKaiTransfer={(text) => {
+                setInputText(text);
+                removePendingTool(selectedTool);
+              }}
+            />
+          </div>
+        )}
 
         {/* Voice Overlay */}
         {isVoiceOverlayOpen && (
