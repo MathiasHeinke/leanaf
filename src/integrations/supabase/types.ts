@@ -5441,6 +5441,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_trace_event: {
+        Args: { p_trace_id: string; p_stage: string; p_data?: Json }
+        Returns: undefined
+      }
       perform_medical_risk_assessment: {
         Args: {
           p_user_id: string

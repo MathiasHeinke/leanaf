@@ -29,62 +29,55 @@ export const useSecureAdminAccess = (resource?: string): AdminAccessResult => {
         setLoading(true);
         setError(null);
 
-        // First try direct admin check by user ID and email
-        const { data: directCheck, error: directError } = await supabase.rpc('is_super_admin', {
+        // SECURITY FIX: Use improved admin access validation
+        const { data: isAdmin, error: adminError } = await supabase.rpc('has_admin_access', {
           user_uuid: user.id
         });
 
-        if (!directError && directCheck) {
+        if (!adminError && isAdmin) {
           setIsAdmin(true);
-          secureLogger.info('Admin access granted via direct check', {
+          secureLogger.info('Admin access granted', {
             userId: user.id,
-            resource
+            resource,
+            timestamp: new Date().toISOString()
           });
+          
+          // Log admin access attempt for security monitoring
+          await supabase.rpc('log_security_event_enhanced', {
+            p_user_id: user.id,
+            p_event_type: 'admin_access_granted',
+            p_event_category: 'authorization',
+            p_severity: 'info',
+            p_metadata: {
+              resource,
+              access_method: 'role_based'
+            }
+          });
+          
           return;
         }
 
-        // Fallback to email-based admin check
-        const { data: emailAdmins, error: emailError } = await supabase
-          .from('admin_emails')
-          .select('*')
-          .eq('email', user.email)
-          .eq('is_active', true)
-          .single();
-
-        if (!emailError && emailAdmins) {
-          setIsAdmin(true);
-          secureLogger.info('Admin access granted via email check', {
-            userId: user.id,
-            email: user.email,
-            resource
-          });
-          return;
-        }
-
-        // Final fallback to validate_admin_access RPC
-        const { data, error: rpcError } = await supabase.rpc('validate_admin_access', {
-          p_resource: resource || 'admin_panel'
+        // If no admin access found, deny and log attempt
+        setIsAdmin(false);
+        
+        // Log failed admin access attempt for security monitoring
+        await supabase.rpc('log_security_event_enhanced', {
+          p_user_id: user.id,
+          p_event_type: 'admin_access_denied',
+          p_event_category: 'authorization',
+          p_severity: 'warning',
+          p_metadata: {
+            resource,
+            reason: 'insufficient_privileges',
+            attempted_at: new Date().toISOString()
+          }
         });
 
-        if (rpcError) {
-          secureLogger.error('Admin access validation failed', {
-            error: rpcError,
-            userId: user.id,
-            resource
-          });
-          setError('Failed to verify admin access');
-          setIsAdmin(false);
-        } else {
-          setIsAdmin(data || false);
-          
-          // Log successful verification
-          if (data) {
-            secureLogger.info('Admin access granted', {
-              userId: user.id,
-              resource
-            });
-          }
-        }
+        secureLogger.security('Admin access denied', {
+          userId: user.id,
+          resource,
+          reason: 'insufficient_privileges'
+        });
       } catch (err) {
         secureLogger.error('Admin access check error', {
           error: err,

@@ -82,21 +82,12 @@ export async function trace(
   // Log locally first
   await mark('trace', { traceId, stage, ...enrichedPayload });
   
-  // Fire-and-forget to Supabase - use full URL since this runs in edge functions
+  // SECURITY FIX: Use secure database function instead of hardcoded service role token
   try {
-    await fetch('https://gzczjscctgyxjyodhnhk.supabase.co/rest/v1/coach_traces', {
-      method: 'POST',
-      headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mjc0Nzk4MiwiZXhwIjoyMDY4MzIzOTgyfQ.c1pPZNMFb9TK8x8sfzcnCMgpJaKcVYRBsrBYGHqfvMU',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mjc0Nzk4MiwiZXhwIjoyMDY4MzIzOTgyfQ.c1pPZNMFb9TK8x8sfzcnCMgpJaKcVYRBsrBYGHqfvMU',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        trace_id: traceId,
-        ts: new Date().toISOString(),
-        stage,
-        data: enrichedPayload
-      })
+    await supabase.rpc('log_trace_event', {
+      p_trace_id: traceId,
+      p_stage: stage,
+      p_data: enrichedPayload
     });
   } catch (error) {
     // Silent fail - tracing should never break the main flow
