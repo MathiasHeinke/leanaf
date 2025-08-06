@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, Filter, Tag } from 'lucide-react';
 import { toast } from 'sonner';
+import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 
 interface GridPhotoViewProps {
   photos: Array<{
+    id: string;
     date: string;
     weight: number;
     body_fat_percentage?: number;
@@ -18,9 +20,11 @@ interface GridPhotoViewProps {
 }
 
 export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
+  const { updatePhotoMetadata } = useProgressPhotos();
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [updatingPhoto, setUpdatingPhoto] = useState<string | null>(null);
 
   // Get all photo URLs with metadata
   const getPhotoEntries = () => {
@@ -32,6 +36,8 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
       body_fat_percentage?: number;
       confidence?: number;
       photo: any;
+      entryId: string;
+      originalCategory: string;
     }> = [];
 
     photos.forEach((photo) => {
@@ -45,7 +51,9 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
             weight: photo.weight,
             body_fat_percentage: photo.body_fat_percentage,
             confidence: photo.photo_metadata?.front?.confidence || 0,
-            photo
+            photo,
+            entryId: photo.id,
+            originalCategory: 'front'
           });
         }
         // Back photo
@@ -57,7 +65,9 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
             weight: photo.weight,
             body_fat_percentage: photo.body_fat_percentage,
             confidence: photo.photo_metadata?.back?.confidence || 0,
-            photo
+            photo,
+            entryId: photo.id,
+            originalCategory: 'back'
           });
         }
         // Side photo
@@ -69,7 +79,9 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
             weight: photo.weight,
             body_fat_percentage: photo.body_fat_percentage,
             confidence: photo.photo_metadata?.side?.confidence || 0,
-            photo
+            photo,
+            entryId: photo.id,
+            originalCategory: 'side'
           });
         }
       }
@@ -118,9 +130,24 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
   };
 
   const updatePhotoCategory = async (entry: any, newCategory: string) => {
-    // This would call a backend function to update the photo metadata
-    // For now, we'll just show a toast
-    toast.success(`Foto als ${getCategoryLabel(newCategory)} markiert`);
+    if (entry.originalCategory === newCategory) return;
+    
+    setUpdatingPhoto(`${entry.entryId}-${entry.originalCategory}`);
+    
+    try {
+      const success = await updatePhotoMetadata(entry.entryId, entry.originalCategory as 'front' | 'back' | 'side', newCategory as 'front' | 'back' | 'side');
+      
+      if (success) {
+        toast.success(`Foto als ${getCategoryLabel(newCategory)} markiert`);
+      } else {
+        toast.error('Fehler beim Aktualisieren der Kategorie');
+      }
+    } catch (error) {
+      console.error('Error updating photo category:', error);
+      toast.error('Fehler beim Aktualisieren der Kategorie');
+    } finally {
+      setUpdatingPhoto(null);
+    }
   };
 
   const getConfidenceBadge = (confidence: number) => {
@@ -160,7 +187,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background border border-border shadow-lg z-50">
               <SelectItem value="all">Alle Fotos ({categoryCounts.all})</SelectItem>
               <SelectItem value="front">Front ({categoryCounts.front})</SelectItem>
               <SelectItem value="back">Rücken ({categoryCounts.back})</SelectItem>
@@ -232,15 +259,16 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
               <Select
                 value={entry.category}
                 onValueChange={(newCategory) => updatePhotoCategory(entry, newCategory)}
+                disabled={updatingPhoto === `${entry.entryId}-${entry.originalCategory}`}
               >
                 <SelectTrigger className="w-full h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="front">Front</SelectItem>
-                  <SelectItem value="back">Rücken</SelectItem>
-                  <SelectItem value="side">Seite</SelectItem>
-                </SelectContent>
+            <SelectContent className="bg-background border border-border shadow-lg z-50">
+              <SelectItem value="front">Front</SelectItem>
+              <SelectItem value="back">Rücken</SelectItem>
+              <SelectItem value="side">Seite</SelectItem>
+            </SelectContent>
               </Select>
             </CardContent>
           </Card>

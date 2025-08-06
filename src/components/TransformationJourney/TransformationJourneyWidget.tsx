@@ -316,7 +316,7 @@ export const TransformationJourneyWidget: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="selector" className="space-y-6">
-          {generatedImages && (
+          {generatedImages ? (
             <div className="space-y-6">
               {showSlider && lastGeneratedImage && (
                 <div className="space-y-4">
@@ -355,6 +355,16 @@ export const TransformationJourneyWidget: React.FC = () => {
                   Vergleich anzeigen
                 </Button>
               )}
+            </div>
+          ) : (
+            <div className="text-center py-12 space-y-4">
+              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+                <SparklesIcon className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-lg font-medium text-muted-foreground">Keine KI-Bilder generiert</p>
+                <p className="text-sm text-muted-foreground mt-1">Generiere KI-Zielbilder im "KI Zielbild" Tab</p>
+              </div>
             </div>
           )}
         </TabsContent>

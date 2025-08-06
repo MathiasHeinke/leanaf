@@ -13,6 +13,7 @@ interface WeightEntry {
   body_fat_percentage?: number;
   muscle_percentage?: number;
   photo_urls?: any; // Changed to any to handle Json type from Supabase
+  photo_metadata?: any; // Added photo_metadata field
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -254,10 +255,60 @@ export const useProgressPhotos = () => {
     loadProgressPhotos();
   }, [user]);
 
+  const updatePhotoMetadata = async (photoId: string, category: 'front' | 'back' | 'side', newCategory: 'front' | 'back' | 'side') => {
+    if (!user) return false;
+
+    try {
+      // Find the weight history entry
+      const entry = photos.find(p => p.id === photoId);
+      if (!entry) return false;
+
+      // Update photo_metadata to reflect the new category
+      let updatedMetadata = entry.photo_metadata || {};
+      
+      // If this photo was categorized differently, move the metadata
+      if (updatedMetadata[category] && category !== newCategory) {
+        updatedMetadata[newCategory] = updatedMetadata[category];
+        delete updatedMetadata[category];
+      } else if (!updatedMetadata[newCategory]) {
+        updatedMetadata[newCategory] = {
+          view: newCategory,
+          confidence: 1.0,
+          updated_manually: true
+        };
+      }
+
+      const { error } = await supabase
+        .from('weight_history')
+        .update({ 
+          photo_metadata: updatedMetadata,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      // Update local state
+      setPhotos(currentPhotos => 
+        currentPhotos.map(photo => 
+          photo.id === photoId 
+            ? { ...photo, photo_metadata: updatedMetadata }
+            : photo
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error updating photo metadata:', error);
+      return false;
+    }
+  };
+
   return {
     photos,
     loading,
     uploadProgressPhoto,
-    refreshPhotos: loadProgressPhotos
+    refreshPhotos: loadProgressPhotos,
+    updatePhotoMetadata
   };
 };
