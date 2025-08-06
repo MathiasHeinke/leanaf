@@ -47,25 +47,37 @@ export const CardDiary = ({ payload }: CardDiaryProps) => {
 
   const handleSaveDiary = async () => {
     try {
-      const action = payload.actions?.find(a => a.type === 'save_diary');
+      const action = payload.actions?.find(a => a.type === 'save_diary' || a.type === 'save_enhanced_diary');
       if (!action) return;
+
+      const entryData = {
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        date: action.data.date,
+        raw_text: action.data.raw_text,
+        mood_score: action.data.mood_score,
+        sentiment_tag: action.data.sentiment_tag,
+        gratitude_items: action.data.gratitude_items || [],
+        // Enhanced fields
+        energy_level: action.data.energy_level,
+        stress_indicators: action.data.stress_indicators || [],
+        manifestation_items: action.data.manifestation_items || [],
+        kai_insight: action.data.kai_insight,
+        transformation_themes: action.data.transformation_themes || [],
+        quadrant_analysis: action.data.quadrant_analysis || {},
+        prompt_used: action.data.prompt_used
+      };
 
       const { error } = await supabase
         .from('journal_entries')
-        .upsert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          date: action.data.date,
-          raw_text: action.data.raw_text,
-          mood_score: action.data.mood_score,
-          sentiment_tag: action.data.sentiment_tag,
-          gratitude_items: action.data.gratitude_items || []
-        });
+        .upsert(entryData);
 
       if (error) throw error;
 
       toast({
-        title: "Tagebuch gespeichert",
-        description: "Dein Eintrag wurde erfolgreich gespeichert ✨"
+        title: "Tagebuch gespeichert ✨",
+        description: action.data.kai_insight 
+          ? "Dein Eintrag wurde mit Kai's Analyse gespeichert"
+          : "Dein Eintrag wurde erfolgreich gespeichert"
       });
     } catch (error) {
       console.error('Error saving diary:', error);

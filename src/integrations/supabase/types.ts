@@ -2294,12 +2294,19 @@ export type Database = {
           challenge: string | null
           created_at: string
           date: string
+          energy_level: number | null
           gratitude_items: string[] | null
           highlight: string | null
           id: string
+          kai_insight: string | null
+          manifestation_items: string[] | null
           mood_score: number | null
+          prompt_used: string | null
+          quadrant_analysis: Json | null
           raw_text: string | null
           sentiment_tag: string | null
+          stress_indicators: string[] | null
+          transformation_themes: string[] | null
           updated_at: string
           user_id: string
         }
@@ -2309,12 +2316,19 @@ export type Database = {
           challenge?: string | null
           created_at?: string
           date: string
+          energy_level?: number | null
           gratitude_items?: string[] | null
           highlight?: string | null
           id?: string
+          kai_insight?: string | null
+          manifestation_items?: string[] | null
           mood_score?: number | null
+          prompt_used?: string | null
+          quadrant_analysis?: Json | null
           raw_text?: string | null
           sentiment_tag?: string | null
+          stress_indicators?: string[] | null
+          transformation_themes?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -2324,12 +2338,19 @@ export type Database = {
           challenge?: string | null
           created_at?: string
           date?: string
+          energy_level?: number | null
           gratitude_items?: string[] | null
           highlight?: string | null
           id?: string
+          kai_insight?: string | null
+          manifestation_items?: string[] | null
           mood_score?: number | null
+          prompt_used?: string | null
+          quadrant_analysis?: Json | null
           raw_text?: string | null
           sentiment_tag?: string | null
+          stress_indicators?: string[] | null
+          transformation_themes?: string[] | null
           updated_at?: string
           user_id?: string
         }
