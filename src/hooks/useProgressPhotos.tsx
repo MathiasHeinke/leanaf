@@ -76,7 +76,7 @@ export const useProgressPhotos = () => {
           const transformedUrls: any = {};
           photoUrls.forEach((url, index) => {
             if (url && typeof url === 'string' && url.trim() !== '') {
-              // Smart categorization: first = front, second = side, third = back, rest = front
+              // Smart categorization: first = front, second = side, third = back, rest = additional fronts
               if (index === 0) transformedUrls.front = url;
               else if (index === 1) transformedUrls.side = url;
               else if (index === 2) transformedUrls.back = url;
@@ -84,12 +84,15 @@ export const useProgressPhotos = () => {
             }
           });
           
+          console.log(`Entry ${entry.date}: Array with ${photoUrls.length} URLs transformed to:`, transformedUrls);
+          
           return {
             ...entry,
             photo_urls: transformedUrls
           };
         }
         
+        console.log(`Entry ${entry.date}: Already object format:`, photoUrls);
         return entry;
       });
       

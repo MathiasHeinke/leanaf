@@ -52,8 +52,9 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
     }
   });
 
-  const getProgressPhotoUrl = (photo: any) => {
-    switch (selectedCategory) {
+  const getProgressPhotoUrl = (photo: any, category?: string) => {
+    const cat = category || selectedCategory;
+    switch (cat) {
       case 'front': return photo.photo_front_url;
       case 'back': return photo.photo_back_url;
       case 'side_left':
