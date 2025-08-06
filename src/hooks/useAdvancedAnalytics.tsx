@@ -1,6 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useDailySummaryData } from './useDailySummaryData';
-import { useUnifiedWorkoutData } from './useUnifiedWorkoutData';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -52,63 +50,159 @@ export interface MetabolicProfile {
 
 export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
   const { user } = useAuth();
-  const { data: summaryData } = useDailySummaryData(timeRange);
-  const { workoutData } = useUnifiedWorkoutData(timeRange === 7 ? 'week' : 'month');
   
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [bodyMeasurements, setBodyMeasurements] = useState<any[]>([]);
   const [sleepData, setSleepData] = useState<any[]>([]);
+  const [mealData, setMealData] = useState<any[]>([]);
+  const [workoutData, setWorkoutData] = useState<any[]>([]);
+  const [fluidData, setFluidData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch additional data
+  // Fetch real user data directly from tables
   useEffect(() => {
-    const fetchAdditionalData = async () => {
+    const fetchRealData = async () => {
       if (!user?.id) return;
 
       try {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - timeRange);
+        const startDateStr = startDate.toISOString().split('T')[0];
 
-        // Fetch weight history
-        const { data: weights } = await supabase
-          .from('weight_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('date', startDate.toISOString().split('T')[0])
-          .order('date', { ascending: true });
+        console.log('🔍 Fetching data for timeRange:', timeRange, 'from date:', startDateStr);
 
-        // Fetch body measurements
-        const { data: measurements } = await supabase
-          .from('body_measurements')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('date', startDate.toISOString().split('T')[0])
-          .order('date', { ascending: true });
+        // Fetch all real data in parallel
+        const [weightsResult, measurementsResult, sleepResult, mealsResult, workoutsResult, fluidsResult] = await Promise.all([
+          supabase
+            .from('weight_history')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('date', startDateStr)
+            .order('date', { ascending: true }),
+          
+          supabase
+            .from('body_measurements')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('date', startDateStr)
+            .order('date', { ascending: true }),
+          
+          supabase
+            .from('sleep_tracking')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('date', startDateStr)
+            .order('date', { ascending: true }),
+          
+          supabase
+            .from('meals')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('date', startDateStr)
+            .order('date', { ascending: true }),
+          
+          supabase
+            .from('exercise_sets')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('created_at', startDate.toISOString())
+            .order('created_at', { ascending: true }),
+          
+          supabase
+            .from('user_fluids')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('date', startDateStr)
+            .order('date', { ascending: true })
+        ]);
 
-        // Fetch sleep data
-        const { data: sleep } = await supabase
-          .from('sleep_tracking')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('date', startDate.toISOString().split('T')[0])
-          .order('date', { ascending: true });
+        const weights = weightsResult.data || [];
+        const measurements = measurementsResult.data || [];
+        const sleep = sleepResult.data || [];
+        const meals = mealsResult.data || [];
+        const workouts = workoutsResult.data || [];
+        const fluids = fluidsResult.data || [];
 
-        setWeightHistory(weights || []);
-        setBodyMeasurements(measurements || []);
-        setSleepData(sleep || []);
+        console.log('📊 Data fetched:', {
+          weights: weights.length,
+          measurements: measurements.length,
+          sleep: sleep.length,
+          meals: meals.length,
+          workouts: workouts.length,
+          fluids: fluids.length
+        });
+
+        console.log('🍽️ Sample meal data:', meals.slice(0, 3));
+
+        setWeightHistory(weights);
+        setBodyMeasurements(measurements);
+        setSleepData(sleep);
+        setMealData(meals);
+        setWorkoutData(workouts);
+        setFluidData(fluids);
       } catch (error) {
-        console.error('Error fetching additional analytics data:', error);
+        console.error('Error fetching real analytics data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAdditionalData();
+    fetchRealData();
   }, [user?.id, timeRange]);
 
-  // Calculate correlations
+  // Calculate daily totals from real data
+  const dailyTotals = useMemo(() => {
+    const totals = new Map<string, {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+      workoutVolume: number;
+      fluids: number;
+      date: string;
+    }>();
+
+    // Group meals by date and sum nutrients
+    mealData.forEach(meal => {
+      const date = meal.date || meal.created_at?.split('T')[0];
+      if (!date) return;
+      
+      const existing = totals.get(date) || { calories: 0, protein: 0, carbs: 0, fats: 0, workoutVolume: 0, fluids: 0, date };
+      existing.calories += meal.calories || 0;
+      existing.protein += meal.protein || 0;
+      existing.carbs += meal.carbs || 0;
+      existing.fats += meal.fats || 0;
+      totals.set(date, existing);
+    });
+
+    // Add workout volumes
+    workoutData.forEach(set => {
+      const date = set.created_at?.split('T')[0];
+      if (!date) return;
+      
+      const existing = totals.get(date) || { calories: 0, protein: 0, carbs: 0, fats: 0, workoutVolume: 0, fluids: 0, date };
+      existing.workoutVolume += (set.weight_kg || 0) * (set.reps || 0);
+      totals.set(date, existing);
+    });
+
+    // Add fluid intake
+    fluidData.forEach(fluid => {
+      const date = fluid.date || fluid.consumed_at?.split('T')[0];
+      if (!date) return;
+      
+      const existing = totals.get(date) || { calories: 0, protein: 0, carbs: 0, fats: 0, workoutVolume: 0, fluids: 0, date };
+      existing.fluids += fluid.amount_ml || 0;
+      totals.set(date, existing);
+    });
+
+    const result = Array.from(totals.values()).sort((a, b) => a.date.localeCompare(b.date));
+    console.log('📈 Daily totals calculated:', result);
+    return result;
+  }, [mealData, workoutData, fluidData]);
+
+  // Calculate correlations using real data
   const correlations = useMemo((): CorrelationData[] => {
-    if (summaryData.length < 7) return [];
+    if (dailyTotals.length < 7) return [];
 
     const correlationResults: CorrelationData[] = [];
 
@@ -129,15 +223,14 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       return denominator === 0 ? 0 : numerator / denominator;
     };
 
-    // Weight correlations with weight history
+    // Weight vs Calories correlation
     if (weightHistory.length > 0) {
       const weightDates = weightHistory.map(w => w.date);
       const weights = weightHistory.map(w => w.weight);
       
-      // Correlate with calories
       const caloriesForWeightDates = weightDates.map(date => {
-        const summary = summaryData.find(s => s.date === date);
-        return summary?.totalCalories || 0;
+        const dayData = dailyTotals.find(d => d.date === date);
+        return dayData?.calories || 0;
       }).filter(c => c > 0);
       
       if (caloriesForWeightDates.length > 0) {
@@ -152,14 +245,12 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       }
     }
 
-    // Sleep vs Training Performance
+    // Sleep vs Training correlation
     if (sleepData.length > 0) {
-      const sleepScores = sleepData.map(s => s.quality_score || 0);
+      const sleepScores = sleepData.map(s => s.quality_score || s.hours || 0);
       const trainingVolumes = sleepData.map(sleep => {
-        const workoutDay = workoutData.find(w => w.date === sleep.date);
-        return workoutDay?.advancedSessions.reduce((sum, session) => 
-          sum + (session.exercise_sets.reduce((setSum, set) => 
-            setSum + (set.weight_kg * set.reps), 0)), 0) || 0;
+        const dayData = dailyTotals.find(d => d.date === sleep.date);
+        return dayData?.workoutVolume || 0;
       });
 
       const sleepTrainingCorr = calculateCorrelation(sleepScores, trainingVolumes);
@@ -172,38 +263,12 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       });
     }
 
-    // Hydration vs Energy
-    const hydrationScores = summaryData.map(s => s.hydrationScore);
-    const energyLevels = summaryData.map(s => s.sleepScore); // Using sleep score as proxy for energy
-    
-    const hydrationEnergyCorr = calculateCorrelation(hydrationScores, energyLevels);
-    correlationResults.push({
-      metric1: 'Hydration',
-      metric2: 'Energie Level',
-      correlation: hydrationEnergyCorr,
-      significance: Math.abs(hydrationEnergyCorr) > 0.6 ? 'strong' : Math.abs(hydrationEnergyCorr) > 0.3 ? 'moderate' : 'weak',
-      trend: hydrationEnergyCorr > 0 ? 'positive' : hydrationEnergyCorr < 0 ? 'negative' : 'neutral'
-    });
-
-    // Protein vs Muscle retention (using workout volume as proxy)
-    const proteinIntakes = summaryData.map(s => s.totalProtein);
-    const workoutVolumes = summaryData.map(s => s.workoutVolume);
-    
-    const proteinMuscleCorr = calculateCorrelation(proteinIntakes, workoutVolumes);
-    correlationResults.push({
-      metric1: 'Protein',
-      metric2: 'Trainingsvolumen',
-      correlation: proteinMuscleCorr,
-      significance: Math.abs(proteinMuscleCorr) > 0.5 ? 'strong' : Math.abs(proteinMuscleCorr) > 0.3 ? 'moderate' : 'weak',
-      trend: proteinMuscleCorr > 0 ? 'positive' : proteinMuscleCorr < 0 ? 'negative' : 'neutral'
-    });
-
     return correlationResults;
-  }, [summaryData, weightHistory, sleepData, workoutData]);
+  }, [dailyTotals, weightHistory, sleepData]);
 
-  // Calculate Health Score - Realistic implementation
+  // Calculate Health Score from REAL data
   const healthScore = useMemo((): HealthScore => {
-    if (summaryData.length === 0) {
+    if (dailyTotals.length === 0) {
       return {
         overall: 0,
         nutrition: 0,
@@ -215,51 +280,71 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       };
     }
 
-    const recentData = summaryData.slice(-7); // Last 7 days
-    const olderData = summaryData.slice(-14, -7); // Previous 7 days
+    const recentData = dailyTotals.slice(-7); // Last 7 days
+    const olderData = dailyTotals.slice(-14, -7); // Previous 7 days
 
-    // Nutrition score (0-100) - More realistic thresholds
-    const avgCalories = recentData.reduce((sum, d) => sum + (d.totalCalories || 0), 0) / recentData.length;
-    const avgProtein = recentData.reduce((sum, d) => sum + (d.totalProtein || 0), 0) / recentData.length;
+    console.log('🎯 Calculating health scores from real data:');
+    console.log('Recent data:', recentData);
+
+    // Nutrition score (0-100) based on actual meal data
+    const avgCalories = recentData.reduce((sum, d) => sum + d.calories, 0) / recentData.length;
+    const avgProtein = recentData.reduce((sum, d) => sum + d.protein, 0) / recentData.length;
     
-    // Score based on meeting basic nutritional needs (1200-2500 kcal range)
-    const calorieScore = avgCalories > 0 ? Math.min(100, Math.max(0, (avgCalories - 1200) / 1300 * 100)) : 0;
-    const proteinScore = avgProtein > 0 ? Math.min(100, (avgProtein / 100) * 100) : 0; // 100g protein = 100%
-    const nutritionScore = Math.min(100, (calorieScore + proteinScore) / 2);
+    console.log('🍎 Nutrition stats:', { avgCalories, avgProtein });
+    
+    // Realistic scoring: 1800-2200 kcal = optimal zone
+    const calorieScore = avgCalories > 0 ? Math.min(100, Math.max(0, 
+      avgCalories < 1500 ? (avgCalories / 1500) * 60 :  // Below 1500 = max 60%
+      avgCalories <= 2200 ? 60 + ((avgCalories - 1500) / 700) * 40 :  // 1500-2200 = 60-100%
+      100 - ((avgCalories - 2200) / 800) * 30  // Above 2200 = decrease score
+    )) : 0;
+    
+    const proteinScore = avgProtein > 0 ? Math.min(100, (avgProtein / 120) * 100) : 0; // 120g protein = 100%
+    const nutritionScore = (calorieScore + proteinScore) / 2;
 
-    // Training score (0-100) - More realistic volume expectations
-    const avgTrainingVolume = recentData.reduce((sum, d) => sum + (d.workoutVolume || 0), 0) / recentData.length;
-    const trainingScore = avgTrainingVolume > 0 ? Math.min(100, (avgTrainingVolume / 2000) * 100) : 0; // 2000kg volume = 100%
+    // Training score (0-100) based on actual workout volume
+    const avgTrainingVolume = recentData.reduce((sum, d) => sum + d.workoutVolume, 0) / recentData.length;
+    const trainingScore = avgTrainingVolume > 0 ? Math.min(100, (avgTrainingVolume / 3000) * 100) : 0; // 3000kg volume = 100%
 
-    // Recovery score (0-100) - Sleep score should already be 0-10
-    const avgSleepScore = recentData.reduce((sum, d) => sum + (d.sleepScore || 0), 0) / recentData.length;
-    const recoveryScore = Math.min(100, avgSleepScore * 10); // Convert 0-10 to 0-100
+    console.log('🏋️ Training stats:', { avgTrainingVolume, trainingScore });
 
-    // Hydration score (0-100) - Fix the multiplier issue
-    const avgHydrationScore = recentData.reduce((sum, d) => sum + (d.hydrationScore || 0), 0) / recentData.length;
-    const hydrationScore = Math.min(100, avgHydrationScore <= 10 ? avgHydrationScore * 10 : avgHydrationScore); // Handle both scales
+    // Recovery score based on sleep data
+    const avgSleepHours = sleepData.length > 0 ? 
+      sleepData.slice(-7).reduce((sum, s) => sum + (s.hours || 0), 0) / Math.min(7, sleepData.length) : 0;
+    const recoveryScore = avgSleepHours > 0 ? Math.min(100, (avgSleepHours / 8) * 100) : 0; // 8h sleep = 100%
 
-    // Consistency score (0-100) - Days with meaningful data
-    const daysWithData = recentData.filter(d => (d.totalCalories || 0) > 500).length; // At least 500 kcal = meaningful data
-    const consistencyScore = (daysWithData / Math.min(7, recentData.length)) * 100;
+    // Hydration score based on actual fluid intake
+    const avgFluids = recentData.reduce((sum, d) => sum + d.fluids, 0) / recentData.length;
+    const hydrationScore = avgFluids > 0 ? Math.min(100, (avgFluids / 2500) * 100) : 0; // 2500ml = 100%
 
-    // Overall score - weighted average with realistic caps
+    console.log('💧 Hydration stats:', { avgFluids, hydrationScore });
+
+    // Consistency score - days with meaningful data entry
+    const daysWithMeals = recentData.filter(d => d.calories > 500).length;
+    const daysWithWorkouts = recentData.filter(d => d.workoutVolume > 0).length;
+    const consistencyScore = ((daysWithMeals + daysWithWorkouts) / (recentData.length * 2)) * 100;
+
+    console.log('📊 Consistency stats:', { daysWithMeals, daysWithWorkouts, consistencyScore });
+
+    // Overall score - weighted average
     const scores = [nutritionScore, trainingScore, recoveryScore, hydrationScore, consistencyScore];
     const validScores = scores.filter(score => score > 0);
     const overall = validScores.length > 0 ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length : 0;
 
-    // Determine trend - compare with older data if available
+    // Determine trend
     let trend: 'improving' | 'stable' | 'declining' = 'stable';
     if (olderData.length > 0) {
-      const olderNutritionScore = Math.min(100, (olderData.reduce((sum, d) => sum + (d.totalCalories || 0), 0) / olderData.length - 1200) / 1300 * 100);
-      const olderTrainingScore = Math.min(100, (olderData.reduce((sum, d) => sum + (d.workoutVolume || 0), 0) / olderData.length / 2000) * 100);
+      const olderNutritionScore = olderData.reduce((sum, d) => sum + d.calories, 0) / olderData.length;
+      const olderTrainingScore = olderData.reduce((sum, d) => sum + d.workoutVolume, 0) / olderData.length;
+      
+      const recentOverall = (avgCalories + avgTrainingVolume) / 2;
       const olderOverall = (olderNutritionScore + olderTrainingScore) / 2;
       
-      if (overall > olderOverall + 10) trend = 'improving';
-      else if (overall < olderOverall - 10) trend = 'declining';
+      if (recentOverall > olderOverall * 1.1) trend = 'improving';
+      else if (recentOverall < olderOverall * 0.9) trend = 'declining';
     }
 
-    return {
+    const finalScores = {
       overall: Math.min(100, Math.max(0, Math.round(overall))),
       nutrition: Math.min(100, Math.max(0, Math.round(nutritionScore))),
       training: Math.min(100, Math.max(0, Math.round(trainingScore))),
@@ -268,13 +353,16 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       consistency: Math.min(100, Math.max(0, Math.round(consistencyScore))),
       trend
     };
-  }, [summaryData]);
 
-  // Generate predictive insights
+    console.log('🎯 Final health scores:', finalScores);
+    return finalScores;
+  }, [dailyTotals, sleepData]);
+
+  // Generate predictive insights based on real data
   const insights = useMemo((): PredictiveInsight[] => {
     const results: PredictiveInsight[] = [];
 
-    if (summaryData.length < 7) return results;
+    if (dailyTotals.length < 7) return results;
 
     // Goal prediction based on weight trend
     if (weightHistory.length > 5) {
@@ -328,24 +416,26 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
     }
 
     return results;
-  }, [summaryData, weightHistory, correlations, healthScore]);
+  }, [dailyTotals, weightHistory, correlations, healthScore]);
 
-  // Performance patterns
+  // Performance patterns based on real workout data
   const performancePatterns = useMemo((): PerformancePattern => {
-    const workoutsByDay = workoutData.reduce((acc, day) => {
-      const dayOfWeek = new Date(day.date).toLocaleDateString('de-DE', { weekday: 'long' });
-      const totalVolume = day.advancedSessions.reduce((sum, session) => 
-        sum + session.exercise_sets.reduce((setSum, set) => setSum + (set.weight_kg * set.reps), 0), 0);
+    const workoutsByDay = workoutData.reduce((acc, set) => {
+      const date = set.created_at?.split('T')[0];
+      if (!date) return acc;
+      
+      const dayOfWeek = new Date(date).toLocaleDateString('de-DE', { weekday: 'long' });
+      const volume = (set.weight_kg || 0) * (set.reps || 0);
       
       if (!acc[dayOfWeek]) acc[dayOfWeek] = [];
-      acc[dayOfWeek].push(totalVolume);
+      acc[dayOfWeek].push(volume);
       return acc;
     }, {} as Record<string, number[]>);
 
     const bestDays = Object.entries(workoutsByDay)
       .map(([day, volumes]) => ({
         day,
-        avgVolume: volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length
+        avgVolume: (volumes as number[]).reduce((sum, vol) => sum + vol, 0) / (volumes as number[]).length
       }))
       .sort((a, b) => b.avgVolume - a.avgVolume)
       .slice(0, 3)
@@ -361,15 +451,15 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       recoveryPattern: {
         avgSleepForGoodWorkout: sleepData.length > 0 ? 
           sleepData.reduce((sum, s) => sum + (s.hours || 7), 0) / sleepData.length : 7.5,
-        trainingFrequency: workoutData.filter(d => d.advancedSessions.length > 0).length / timeRange * 7,
+        trainingFrequency: dailyTotals.filter(d => d.workoutVolume > 0).length / timeRange * 7,
         optimalRestDays: 1
       }
     };
-  }, [workoutData, sleepData, timeRange]);
+  }, [workoutData, sleepData, timeRange, dailyTotals]);
 
-  // Metabolic profile
+  // Metabolic profile from real data
   const metabolicProfile = useMemo((): MetabolicProfile => {
-    if (summaryData.length === 0 || weightHistory.length === 0) {
+    if (dailyTotals.length === 0 || weightHistory.length === 0) {
       return {
         efficiency: 0,
         macroSensitivity: { protein: 0, carbs: 0, fats: 0 },
@@ -378,7 +468,7 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
     }
 
     // Calculate metabolic efficiency (calories per kg weight change)
-    const totalCalories = summaryData.reduce((sum, d) => sum + d.totalCalories, 0);
+    const totalCalories = dailyTotals.reduce((sum, d) => sum + d.calories, 0);
     const weightChange = weightHistory.length > 1 ? 
       weightHistory[weightHistory.length - 1].weight - weightHistory[0].weight : 0;
     
@@ -393,7 +483,7 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
       },
       hydrationImpact: healthScore.hydration / 100
     };
-  }, [summaryData, weightHistory, healthScore]);
+  }, [dailyTotals, weightHistory, healthScore]);
 
   return {
     correlations,
@@ -401,7 +491,7 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
     insights,
     performancePatterns,
     metabolicProfile,
-    loading: loading || summaryData.length === 0,
-    hasData: summaryData.length > 0
+    loading: loading || dailyTotals.length === 0,
+    hasData: dailyTotals.length > 0
   };
 };
