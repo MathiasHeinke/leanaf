@@ -17,6 +17,7 @@ import { EnhancedStreamingIndicator } from '@/components/EnhancedStreamingIndica
 import { useEnhancedStreamingChat } from '@/hooks/useEnhancedStreamingChat';
 import { supabase } from '@/integrations/supabase/client';
 import { ImageSelectionModal } from '@/components/ImageSelectionModal';
+import { AiTargetImageGeneration } from '@/components/TransformationJourney/AiTargetImageGeneration';
 
 import { toast } from 'sonner';
 
@@ -448,62 +449,20 @@ export const QuickBodyDataWidget: React.FC = () => {
 
         <Separator />
 
-        {/* AI Target Image Generation */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">AI-Zielbild erstellen</span>
-          </div>
-          
-          <p className="text-xs text-muted-foreground">
-            Wähle ein Fortschrittsfoto aus und erstelle 4 realistische Zielbilder basierend darauf.
-            {selectedProgressPhoto && (
-              <span className="text-green-600 font-medium block mt-1">
-                ✓ Foto ausgewählt - bereit für Generierung
-              </span>
-            )}
-          </p>
-
-          <Button
-            onClick={() => setShowImageSelectionModal(true)}
-            disabled={isGenerating}
-            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-          >
-            {isGenerating ? (
-              <>
-                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Erstelle 4 Bilder...
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 mr-2" />
-                AI Bilder erstellen
-              </>
-            )}
-          </Button>
-          
-          {/* Progress Indicator during AI Generation */}
-          {isGenerating && (
-            <div className="mt-4">
-              <EnhancedStreamingIndicator
-                isConnected={true}
-                isStreaming={isGenerating}
-                stage={streamingStage.stage}
-                progress={streamingStage.progress}
-              />
-            </div>
-          )}
-
-          {photos.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">
-              ⚠️ Lade erst Progress-Fotos hoch, damit die AI realistische Zielbilder erstellen kann
-            </p>
-          ) : !selectedProgressPhoto && (
-            <p className="text-xs text-muted-foreground text-center bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-              👆 Klicke auf ein Fortschrittsfoto, um es für die AI-Generierung auszuwählen
-            </p>
-          )}
-        </div>
+        {/* Enhanced AI Target Image Generation */}
+        <AiTargetImageGeneration
+          selectedProgressPhoto={selectedProgressPhoto ? {
+            url: selectedProgressPhoto.url,
+            id: selectedProgressPhoto.entryId,
+            weight: undefined, // We don't have weight info in selectedProgressPhoto
+            bodyFat: undefined, // We don't have bodyFat info in selectedProgressPhoto
+            date: new Date() // Use current date as fallback
+          } : undefined}
+          onGenerationComplete={(result) => {
+            setGeneratedImages(result);
+            setShowImageSelectorOverlay(true);
+          }}
+        />
 
         {/* Target Images Display */}
         <div className="space-y-3">

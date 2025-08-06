@@ -136,6 +136,11 @@ serve(async (req) => {
     const targetWeightNum = targetWeight || profile?.target_weight || currentWeight;
     const targetBodyFatNum = targetBodyFat || profile?.target_body_fat_percentage || 15;
     
+    // Calculate timeframe to target
+    const targetDate = profile?.target_date ? new Date(profile.target_date) : null;
+    const monthsToTarget = targetDate ? 
+      Math.ceil((targetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)) : 6;
+    
     // Determine lifestyle level (simplified, no workout references)
     let lifestyleLevel = 'balanced';
     
@@ -149,8 +154,12 @@ serve(async (req) => {
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Image-to-image transformation prompt (shortened for API limits)
-      detailedPrompt = `Transform this person into their target physique: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Show the transformation to a leaner, fitter version. Photorealistic transformation, natural lighting.`;
+      // Enhanced image-to-image transformation prompt with realistic parameters
+      const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
+      const ageDesc = profile?.age ? `${profile.age}-year-old` : '';
+      const timeframeDesc = monthsToTarget > 0 ? `over ${monthsToTarget} months` : 'gradually';
+      
+      detailedPrompt = `Transform this ${genderDesc} realistically ${timeframeDesc}: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Show realistic, achievable transformation. ${ageDesc ? `Age-appropriate fitness level for ${ageDesc}.` : ''} Natural lighting, photorealistic, not overly muscular.`;
     } else {
       // Text-to-image transformation prompt
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
