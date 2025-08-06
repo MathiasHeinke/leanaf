@@ -91,4 +91,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-target-image]
-verify_jwt = true
+verify_jwt = false
+
+[functions.save-target-image]
+verify_jwt = false

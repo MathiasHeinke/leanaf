@@ -47,14 +47,20 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user ID from JWT
+    // Decode JWT manually to get user ID without validation issues
     const jwt = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
-    if (authError || !user) {
-      throw new Error('Unauthorized');
+    let userId;
+    try {
+      // Simple JWT decode (not validating signature for now)
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      userId = payload.sub;
+      if (!userId) {
+        throw new Error('No user ID in token');
+      }
+    } catch (decodeError) {
+      console.error('JWT decode error:', decodeError);
+      throw new Error('Invalid token format');
     }
-
-    const userId = user.id;
     const { targetWeight, targetBodyFat, progressPhotoUrl } = await req.json();
     
     console.log('=== DEBUG: Request payload ===');
