@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Loader2, Brain, Database, Clock, Zap, Users } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/hooks/useAuth';
 import { useEnhancedChat, EnhancedChatMessage } from '@/hooks/useEnhancedChat';
@@ -346,7 +347,28 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
               : 'bg-muted rounded-2xl rounded-bl-md'
           }`}
         >
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <div className="text-sm whitespace-pre-wrap">
+            <ReactMarkdown
+              skipHtml={true}
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                li: ({ children }) => <li>{children}</li>,
+                code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-sm">{children}</code>,
+                blockquote: ({ children }) => <blockquote className="border-l-4 border-muted pl-4 italic mb-2">{children}</blockquote>,
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    {children}
+                  </a>
+                )
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
         </div>
 
         {/* Footer unter der Bubble */}
