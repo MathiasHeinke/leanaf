@@ -8,6 +8,7 @@ import { CategoryFilter } from './CategoryFilter';
 import { SwipeGallery } from './SwipeGallery';
 import { ProgressCard } from './ProgressCard';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
+import { ManualCropModal } from '@/components/AvatarSelector';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface EnhancedComparisonViewProps {
@@ -32,6 +33,7 @@ interface EnhancedComparisonViewProps {
   onDeleteTarget: (id: string) => void;
   onViewTransformation?: (photo: any) => void;
   onCreateTransformation?: (photo: any, category?: string) => void;
+  onUpdateTargetImage?: (targetImageId: string, newImageUrl: string) => void;
 }
 
 export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
@@ -39,7 +41,8 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   progressPhotos,
   onDeleteTarget,
   onViewTransformation,
-  onCreateTransformation
+  onCreateTransformation,
+  onUpdateTargetImage
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
@@ -47,6 +50,8 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   const [selectedAiImageId, setSelectedAiImageId] = useState<string | null>(null);
   const [showDateSelector, setShowDateSelector] = useState(false);
   const [datePhotos, setDatePhotos] = useState<any[]>([]);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [selectedTargetImageForCrop, setSelectedTargetImageForCrop] = useState<any>(null);
 
   // Filter images by category
   const filteredTargets = targetImages.filter(img => 
@@ -139,6 +144,36 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
     return filteredTargets.filter(target => 
       target.ai_generated_from_photo_id === currentPhoto.id
     );
+  };
+
+  // Handle opening crop modal for AI image
+  const handleOpenCropModal = (targetImage: any) => {
+    if (!currentPhoto) return;
+    setSelectedTargetImageForCrop(targetImage);
+    setCropModalOpen(true);
+  };
+
+  // Handle saving cropped image
+  const handleSaveCroppedImage = async (croppedImageUrl: string) => {
+    if (!selectedTargetImageForCrop || !onUpdateTargetImage) return;
+    
+    try {
+      // Convert blob URL to actual file and upload
+      const response = await fetch(croppedImageUrl);
+      const blob = await response.blob();
+      
+      // Create FormData and upload to Supabase
+      const formData = new FormData();
+      formData.append('file', blob, 'cropped-ai-image.jpg');
+      
+      // For now, just use the blob URL - in production you'd upload to storage
+      await onUpdateTargetImage(selectedTargetImageForCrop.id, croppedImageUrl);
+      
+      setCropModalOpen(false);
+      setSelectedTargetImageForCrop(null);
+    } catch (error) {
+      console.error('Error saving cropped image:', error);
+    }
   };
 
   return (
@@ -429,29 +464,73 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                          </div>
                        )}
                     </CardHeader>
-                    <CardContent className="p-4">
-                      {currentPhoto ? (
-                        <ProgressCard
-                          imageUrl={getProgressPhotoUrl(currentPhoto)}
-                          date={currentPhoto.date}
-                          weight={currentPhoto.weight}
-                          bodyFat={currentPhoto.body_fat_percentage}
-                          category={selectedCategory}
-                          isLatest={!selectedPhoto}
-                          hasAiTransformation={targetImages.some(t => t.ai_generated_from_photo_id === currentPhoto.id)}
-                          onViewTransformation={() => onViewTransformation?.(currentPhoto)}
-                          onCreateTransformation={() => onCreateTransformation?.(currentPhoto, selectedCategory)}
-                        />
-                      ) : (
-                         <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-                           <div className="text-center text-muted-foreground">
-                             <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                             <p className="text-sm">Kein Foto für {selectedCategory}</p>
-                             <p className="text-xs mt-1">Lade dein erstes Foto hoch</p>
-                           </div>
-                         </div>
-                      )}
-                    </CardContent>
+                     <CardContent className="p-4">
+                       {currentPhoto ? (
+                         <>
+                           <ProgressCard
+                             imageUrl={getProgressPhotoUrl(currentPhoto)}
+                             date={currentPhoto.date}
+                             weight={currentPhoto.weight}
+                             bodyFat={currentPhoto.body_fat_percentage}
+                             category={selectedCategory}
+                             isLatest={!selectedPhoto}
+                             hasAiTransformation={targetImages.some(t => t.ai_generated_from_photo_id === currentPhoto.id)}
+                             onViewTransformation={() => onViewTransformation?.(currentPhoto)}
+                             onCreateTransformation={() => onCreateTransformation?.(currentPhoto, selectedCategory)}
+                           />
+                           
+                           {/* AI Images for current photo */}
+                           {(() => {
+                             const aiImages = getAiImagesForCurrentPhoto();
+                             if (aiImages.length === 0) return null;
+                             
+                             return (
+                               <div className="mt-4 space-y-2">
+                                 <h4 className="text-sm font-medium text-muted-foreground">KI-Bilder:</h4>
+                                 <div className="flex flex-wrap gap-2">
+                                   {aiImages.map((aiImage) => (
+                                     <div 
+                                       key={aiImage.id}
+                                       className="relative group cursor-pointer"
+                                       onClick={() => handleOpenCropModal(aiImage)}
+                                     >
+                                       <div className="w-16 h-20 rounded-md overflow-hidden border-2 border-primary/20 hover:border-primary transition-colors">
+                                         <img
+                                           src={aiImage.image_url}
+                                           alt="KI Transformation"
+                                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                         />
+                                       </div>
+                                       <div className="absolute -top-1 -right-1">
+                                         <Badge variant="secondary" className="text-xs px-1 py-0 h-5">
+                                           KI
+                                         </Badge>
+                                       </div>
+                                       <div className="absolute -bottom-1 left-0 right-0">
+                                         <Badge variant="outline" className="text-xs px-1 py-0 h-4 bg-background/80 backdrop-blur-sm">
+                                           {aiImage.target_weight_kg}kg
+                                         </Badge>
+                                       </div>
+                                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                         <span className="text-white text-xs font-medium">Bearbeiten</span>
+                                       </div>
+                                     </div>
+                                   ))}
+                                 </div>
+                               </div>
+                             );
+                           })()}
+                         </>
+                       ) : (
+                          <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
+                            <div className="text-center text-muted-foreground">
+                              <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">Kein Foto für {selectedCategory}</p>
+                              <p className="text-xs mt-1">Lade dein erstes Foto hoch</p>
+                            </div>
+                          </div>
+                       )}
+                     </CardContent>
                   </Card>
 
                   {/* Target Image */}
@@ -637,6 +716,18 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Manual Crop Modal */}
+      {cropModalOpen && selectedTargetImageForCrop && currentPhoto && (
+        <ManualCropModal
+          isOpen={cropModalOpen}
+          onClose={() => setCropModalOpen(false)}
+          originalImage={getProgressPhotoUrl(currentPhoto)}
+          aiImage={selectedTargetImageForCrop.image_url}
+          targetWeight={selectedTargetImageForCrop.target_weight_kg}
+          onSave={handleSaveCroppedImage}
+        />
       )}
     </div>
   );

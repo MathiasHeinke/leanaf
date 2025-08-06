@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 
 export const TransformationJourneyWidget: React.FC = () => {
-  const { targetImages, deleteTargetImage, generateTargetImage, refreshTargetImages, getLinkedPhotoPairs } = useTargetImages();
+  const { targetImages, deleteTargetImage, generateTargetImage, updateTargetImageUrl, refreshTargetImages, getLinkedPhotoPairs } = useTargetImages();
   const { photos: rawProgressPhotos, loading, refreshPhotos } = useProgressPhotos();
   const [activeTab, setActiveTab] = useState("timeline");
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
@@ -190,6 +190,7 @@ export const TransformationJourneyWidget: React.FC = () => {
               onDeleteTarget={handleDeleteTarget}
               onViewTransformation={handleViewTransformation}
               onCreateTransformation={handleCreateTransformation}
+              onUpdateTargetImage={updateTargetImageUrl}
             />
           ) : (
             <Card className="gradient-card">

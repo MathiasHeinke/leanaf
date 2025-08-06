@@ -239,6 +239,36 @@ export const useTargetImages = () => {
       .filter(pair => pair !== null);
   };
 
+  const updateTargetImageUrl = async (targetImageId: string, newImageUrl: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('target_images')
+        .update({ image_url: newImageUrl })
+        .eq('id', targetImageId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setTargetImages(prev => 
+        prev.map(img => 
+          img.id === targetImageId 
+            ? { ...img, image_url: newImageUrl }
+            : img
+        )
+      );
+
+      toast.success('Bildausrichtung aktualisiert');
+      return true;
+    } catch (error) {
+      console.error('Error updating target image URL:', error);
+      toast.error('Fehler beim Aktualisieren der Bildausrichtung');
+      return false;
+    }
+  };
+
   return {
     targetImages,
     loading,
@@ -246,6 +276,7 @@ export const useTargetImages = () => {
     generateTargetImage,
     saveSelectedTargetImage,
     deleteTargetImage,
+    updateTargetImageUrl,
     refreshTargetImages: loadTargetImages,
     getLinkedPhotoPairs
   };
