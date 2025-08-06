@@ -15,6 +15,10 @@ interface TargetImage {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  is_cropped?: boolean;
+  original_ai_url?: string;
+  supabase_storage_path?: string;
+  progress_photo_mapping?: any;
 }
 
 export const useTargetImages = () => {
@@ -151,7 +155,8 @@ export const useTargetImages = () => {
     try {
       console.log('Saving selected target image...', { selectedImageUrl, imageData });
       
-      const { data, error } = await supabase.functions.invoke('save-target-image', {
+      // First save the target image with original URL
+      const { data: saveResponse, error: saveError } = await supabase.functions.invoke('save-target-image', {
         body: {
           selectedImageUrl,
           targetWeight: imageData.targetWeight,
@@ -166,23 +171,49 @@ export const useTargetImages = () => {
         }
       });
 
-      if (error) throw error;
+      if (saveError) throw saveError;
 
-      console.log('Target image saved successfully:', data);
+      console.log('Target image saved successfully:', saveResponse);
+      
+      // Download and store the AI image permanently if it's an external URL
+      if (selectedImageUrl.includes('delivery-eu4.bfl.ai') || selectedImageUrl.includes('replicate.delivery')) {
+        try {
+          console.log('Downloading AI image for permanent storage...');
+          const { error: downloadError } = await supabase.functions.invoke('download-ai-image', {
+            body: {
+              imageUrl: selectedImageUrl,
+              targetImageId: saveResponse.id,
+              progressPhotoMapping: saveResponse.targetImage?.progress_photo_mapping
+            }
+          });
+
+          if (downloadError) {
+            console.warn('Failed to download AI image for permanent storage:', downloadError);
+            // Don't throw here, as the main save operation was successful
+          } else {
+            console.log('AI image downloaded and stored permanently');
+          }
+        } catch (downloadError) {
+          console.warn('Error downloading AI image:', downloadError);
+          // Continue without failing the entire operation
+        }
+      }
       
       // Create new target image object to add to state immediately
       const newTargetImage: TargetImage = {
-        id: data.id,
+        id: saveResponse.id,
         image_url: selectedImageUrl,
         image_type: 'ai_generated',
         target_weight_kg: imageData.targetWeight,
         target_body_fat_percentage: imageData.targetBodyFat,
         generation_prompt: imageData.prompt,
         image_category: imageCategory || imageData.selectedCategory || 'unspecified',
-        ai_generated_from_photo_id: data.ai_generated_from_photo_id || imageData.selectedPhotoId || null,
+        ai_generated_from_photo_id: saveResponse.ai_generated_from_photo_id || imageData.selectedPhotoId || null,
         is_active: true,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        is_cropped: false,
+        original_ai_url: selectedImageUrl
       };
 
       // Update state immediately for instant UI feedback
@@ -191,10 +222,10 @@ export const useTargetImages = () => {
       console.log('Target images state updated, refreshing from database...');
       
       // Also refresh from database to ensure consistency
-      setTimeout(() => loadTargetImages(), 500);
+      setTimeout(() => loadTargetImages(), 1000);
       
       toast.success('Zielbild gespeichert!');
-      return data;
+      return saveResponse;
     } catch (error) {
       console.error('Error saving target image:', error);
       toast.error('Fehler beim Speichern des Zielbilds');

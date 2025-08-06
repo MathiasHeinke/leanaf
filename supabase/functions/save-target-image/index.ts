@@ -162,6 +162,15 @@ serve(async (req) => {
       progressPhotoUrl: progressPhotoUrl?.substring(0, 50) + '...' 
     });
 
+    // Create progress photo mapping for better assignment tracking
+    const progressPhotoMapping = {
+      progress_photo_id: finalProgressPhotoId,
+      progress_photo_url: progressPhotoUrl,
+      image_category: imageCategory,
+      assignment_timestamp: new Date().toISOString(),
+      assignment_method: finalProgressPhotoId ? 'id_based' : 'category_fallback'
+    };
+
     // Save the selected target image
     const { data: targetImage, error: insertError } = await supabase
       .from('target_images')
@@ -174,6 +183,9 @@ serve(async (req) => {
         generation_prompt: generationPrompt,
         image_category: imageCategory,
         ai_generated_from_photo_id: finalProgressPhotoId,
+        original_ai_url: selectedImageUrl,
+        progress_photo_mapping: progressPhotoMapping,
+        is_cropped: false,
         is_active: true
       })
       .select()

@@ -3894,6 +3894,10 @@ export type Database = {
           image_type: string
           image_url: string
           is_active: boolean
+          is_cropped: boolean | null
+          original_ai_url: string | null
+          progress_photo_mapping: Json | null
+          supabase_storage_path: string | null
           target_body_fat_percentage: number | null
           target_weight_kg: number | null
           updated_at: string
@@ -3908,6 +3912,10 @@ export type Database = {
           image_type: string
           image_url: string
           is_active?: boolean
+          is_cropped?: boolean | null
+          original_ai_url?: string | null
+          progress_photo_mapping?: Json | null
+          supabase_storage_path?: string | null
           target_body_fat_percentage?: number | null
           target_weight_kg?: number | null
           updated_at?: string
@@ -3922,6 +3930,10 @@ export type Database = {
           image_type?: string
           image_url?: string
           is_active?: boolean
+          is_cropped?: boolean | null
+          original_ai_url?: string | null
+          progress_photo_mapping?: Json | null
+          supabase_storage_path?: string | null
           target_body_fat_percentage?: number | null
           target_weight_kg?: number | null
           updated_at?: string
