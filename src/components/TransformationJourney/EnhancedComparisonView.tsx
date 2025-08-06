@@ -416,12 +416,41 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
               </div>
             )}
 
-            {/* Progress to Goal */}
+            {/* Interactive Before/After Slider */}
             {currentPhoto && targetImage && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.2 }}
+              >
+                <Card className="gradient-card">
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <h3 className="text-lg font-semibold">Vorher/Nachher Vergleich</h3>
+                        <p className="text-sm text-muted-foreground">Ziehe den Slider um zwischen Original und Zielbild zu wechseln</p>
+                      </div>
+                      <div className="w-full max-w-2xl mx-auto">
+                        <BeforeAfterSlider
+                          beforeImage={getProgressPhotoUrl(currentPhoto)}
+                          afterImage={targetImage.image_url}
+                          beforeLabel="Dein Foto"
+                          afterLabel="KI Zielbild"
+                          className="aspect-[3/4] rounded-lg overflow-hidden"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Progress to Goal */}
+            {currentPhoto && targetImage && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
               >
                 <Card className="gradient-card">
                   <CardContent className="p-6">
