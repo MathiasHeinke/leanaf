@@ -19,10 +19,6 @@ import { EmbeddedTrainingHistory } from '@/components/EmbeddedTrainingHistory';
 import { CustomExerciseManager } from '@/components/CustomExerciseManager';
 import { TodaysTrainingStatus } from '@/components/TodaysTrainingStatus';
 import { ExerciseSessionEditModal } from '@/components/ExerciseSessionEditModal';
-import { QuickBodyDataWidget } from '@/components/QuickBodyDataWidget';
-import { StrengthGoalsWidget } from '@/components/StrengthGoalsWidget';
-
-import { GoalProgressWidget } from '@/components/GoalProgressWidget';
 import { WorkoutTimer } from '@/components/WorkoutTimer';
 import { WorkoutPlanManager } from '@/components/WorkoutPlanManager';
 import { ActiveWorkoutPlan } from '@/components/ActiveWorkoutPlan';
@@ -37,7 +33,6 @@ import {
   Dumbbell, 
   TrendingUp, 
   Calendar, 
-  Target, 
   Plus,
   BarChart3,
   MessageCircle,
@@ -544,12 +539,6 @@ export const TrainingDashboard: React.FC = () => {
               onDuplicateSession={handleDuplicateSession}
             />
 
-            {/* Quick Body Data & Goals */}
-            <div className="grid gap-4 grid-cols-1">
-              <QuickBodyDataWidget />
-              <StrengthGoalsWidget />
-              <GoalProgressWidget />
-            </div>
 
             {/* Custom Exercise Manager */}
             <CustomExerciseManager onExerciseAdded={loadSessions} />
@@ -563,7 +552,7 @@ export const TrainingDashboard: React.FC = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-primary/20 rounded-full">
-                      <Target className="h-5 w-5 text-primary" />
+                      <Clock className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <h4 className="font-medium">Tipp für dein Workout</h4>
