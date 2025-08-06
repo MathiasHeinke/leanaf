@@ -680,8 +680,10 @@ export const QuickBodyDataWidget: React.FC = () => {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Progress Photo Crop Modal */}
+        <ProgressPhotoCropModal />
       </CardContent>
     </Card>
-    </>
   );
 };
