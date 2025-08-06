@@ -119,11 +119,14 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   if (loading) {
     return (
-      <Card className="w-full">
+      <Card className="w-full border-0 shadow-lg">
         <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-32 bg-muted rounded"></div>
+          <div className="animate-pulse space-y-6">
+            <div className="space-y-3">
+              <div className="h-6 bg-muted rounded-full w-3/4"></div>
+              <div className="h-4 bg-muted rounded-full w-1/2"></div>
+            </div>
+            <div className="h-80 bg-muted rounded-2xl"></div>
           </div>
         </CardContent>
       </Card>
@@ -132,29 +135,38 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header */}
-      <Card className="gradient-card">
-        <CardHeader>
+      {/* Header - Apple-style */}
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
+        <CardHeader className="pb-6">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUpIcon className="h-6 w-6 text-primary" />
-                Transformations-Reise
+              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent flex items-center gap-3">
+                <TrendingUpIcon className="h-7 w-7 text-primary" />
+                Transformation Journey
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Verfolge deinen Fortschritt und vergleiche ihn mit deinen Zielbildern
+              <p className="text-muted-foreground mt-2">
+                Verfolge deinen Fortschritt mit Apple-like Swipe Navigation
               </p>
             </div>
             
-            <div className="flex gap-2">
-              <Badge variant="outline" className="text-xs">
-                {targetImages.length} Zielbilder
-              </Badge>
-              <Badge variant="secondary" className="text-xs">
-                {progressPhotos.length} Fortschrittsfotos
-              </Badge>
+            <div className="flex gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-primary rounded-full"></div>
+                <span className="font-medium">{progressPhotos.length} Fortschrittsfotos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-secondary rounded-full"></div>
+                <span className="font-medium">{targetImages.length} Zielbilder</span>
+              </div>
             </div>
           </div>
+          {progressPhotos.length > 0 && (
+            <div className="mt-4 text-right">
+              <p className="text-sm font-medium text-primary">
+                🎯 Deine Transformation läuft großartig!
+              </p>
+            </div>
+          )}
         </CardHeader>
       </Card>
 
