@@ -33,6 +33,7 @@ import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
 import { GehirnPage } from "./pages/Gehirn";
 import TraceDebug from "./pages/TraceDebug";
+import TransformationJourneyPage from "./pages/TransformationJourney";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
                       <Route path="/coach" element={<CoachPage />} />
                       <Route path="/coach/:coachId" element={<CoachPage />} />
                       <Route path="/training" element={<TrainingPlus />} />
+                      <Route path="/transformation" element={<TransformationJourneyPage />} />
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/analyse" element={<AnalysePage />} />
                       <Route path="/backupanalyse" element={<BackupAnalysePage />} />
