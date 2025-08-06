@@ -95,28 +95,6 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
       .filter(pair => pair !== null);
   };
 
-  // Get AI images for current photo
-  const getAiImagesForCurrentPhoto = () => {
-    if (!currentPhoto) return [];
-    
-    return filteredTargets.filter(target => 
-      target.ai_generated_from_photo_id === currentPhoto.id
-    );
-  };
-
-  const linkedPairs = getLinkedPhotoPairs();
-  const currentPair = linkedPairs[0]; // Use first linked pair for now
-  const targetImage = filteredTargets[0];
-  const latestPhoto = filteredProgress[0]; // SwipeGallery sorts newest first
-
-  // Auto-select latest photo on category change
-  useEffect(() => {
-    if (filteredProgress.length > 0) {
-      setSelectedPhoto(filteredProgress[0]);
-    }
-  }, [selectedCategory, filteredProgress]);
-
-  const currentPhoto = selectedPhoto || latestPhoto;
 
   // Helper function to find photos from the same date
   const getPhotosFromSameDate = (photo: any) => {
@@ -138,6 +116,29 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   const handlePhotoSelection = (photo: any) => {
     setSelectedPhoto(photo);
     setShowDateSelector(false);
+  };
+
+  const linkedPairs = getLinkedPhotoPairs();
+  const currentPair = linkedPairs[0]; // Use first linked pair for now
+  const targetImage = filteredTargets[0];
+  const latestPhoto = filteredProgress[0]; // SwipeGallery sorts newest first
+
+  // Auto-select latest photo on category change
+  useEffect(() => {
+    if (filteredProgress.length > 0) {
+      setSelectedPhoto(filteredProgress[0]);
+    }
+  }, [selectedCategory, filteredProgress]);
+
+  const currentPhoto = selectedPhoto || latestPhoto;
+
+  // Get AI images for current photo - must be after currentPhoto is defined
+  const getAiImagesForCurrentPhoto = () => {
+    if (!currentPhoto) return [];
+    
+    return filteredTargets.filter(target => 
+      target.ai_generated_from_photo_id === currentPhoto.id
+    );
   };
 
   return (
