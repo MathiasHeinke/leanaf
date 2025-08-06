@@ -96,7 +96,10 @@ export const useTargetImages = () => {
     onProgress?: (stage: string, progress?: number) => void,
     progressPhotoUrl?: string,
     imageCategory?: string,
-    progressPhotoId?: string
+    progressPhotoId?: string,
+    musclePriority?: number,
+    realismFactor?: number,
+    definitionVsMass?: number
   ) => {
     if (!user) return;
 
@@ -121,7 +124,10 @@ export const useTargetImages = () => {
         fitnessGoal: profileData?.goal || 'fitness',
         progressPhotoUrl: progressPhotoUrl,
         imageCategory: imageCategory || 'unspecified',
-        progressPhotoId: progressPhotoId
+        progressPhotoId: progressPhotoId,
+        musclePriority: musclePriority,
+        realismFactor: realismFactor,
+        definitionVsMass: definitionVsMass
       };
 
       console.log('Calling generate-target-image with:', requestData);

@@ -145,7 +145,10 @@ export const AiTargetImageGeneration = ({
         },
         selectedProgressPhoto.url,
         'enhanced_generation',
-        selectedProgressPhoto.id
+        selectedProgressPhoto.id,
+        musclePriority[0],
+        realismFactor[0],
+        definitionVsMass[0]
       );
       
       if (result) {

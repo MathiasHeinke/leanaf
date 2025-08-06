@@ -9,6 +9,7 @@ import { EnhancedComparisonView } from './EnhancedComparisonView';
 import { GridPhotoView } from './GridPhotoView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
+import { AiTargetImageGeneration } from './AiTargetImageGeneration';
 import { 
   ImageIcon, 
   SparklesIcon, 
@@ -234,19 +235,21 @@ export const TransformationJourneyWidget: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="generate" className="space-y-6">
-          <Card className="gradient-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <SparklesIcon className="h-5 w-5" />
-                KI Zielbild generieren
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Erstelle mit KI ein realistisches Bild deines Transformation-Ziels
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {rawProgressPhotos.length > 0 ? (
-                <div className="space-y-4">
+          {/* Progress photo selection and AI generation UI */}
+          {rawProgressPhotos.length > 0 ? (
+            <div className="space-y-6">
+              {/* Photo Selection Card */}
+              <Card className="gradient-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Fortschrittsfoto auswählen
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Wähle ein Foto und eine Kategorie für die KI-Generation
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   {/* Category Selector */}
                   <div className="space-y-3">
                     <label className="text-sm font-medium">Kategorie auswählen:</label>
@@ -315,109 +318,71 @@ export const TransformationJourneyWidget: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <img
-                      src={selectedPhoto ? getProgressPhotoUrl(selectedPhoto, selectedCategory as 'front' | 'side' | 'back') : getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], selectedCategory as 'front' | 'side' | 'back')}
-                      alt="Ausgewähltes Foto"
-                      className="w-12 h-12 object-cover rounded-md"
+                </CardContent>
+              </Card>
+
+              {/* AI Generation Component */}
+              <AiTargetImageGeneration 
+                selectedProgressPhoto={{
+                  url: selectedPhoto ? getProgressPhotoUrl(selectedPhoto, selectedCategory as 'front' | 'side' | 'back') : getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], selectedCategory as 'front' | 'side' | 'back'),
+                  id: (selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.id,
+                  weight: (selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.weight,
+                  bodyFat: (selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.body_fat_percentage,
+                  date: new Date((selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.date)
+                }}
+                onGenerationComplete={(result) => {
+                  if (result) {
+                    // Store category and photo ID for saving later
+                    result.selectedCategory = selectedCategory;
+                    result.selectedPhotoId = (selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.id;
+                    setGeneratedImages(result);
+                    
+                    // Set up for slider view if we have both images
+                    const originalPhotoUrl = selectedPhoto ? getProgressPhotoUrl(selectedPhoto, selectedCategory as 'front' | 'side' | 'back') : getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], selectedCategory as 'front' | 'side' | 'back');
+                    if (originalPhotoUrl) {
+                      setLastGeneratedImage({
+                        originalPhoto: originalPhotoUrl,
+                        generatedImage: result.images?.[0]?.imageURL || ""
+                      });
+                      setShowSlider(true);
+                    }
+                  }
+                }}
+              />
+
+              {/* Show generated images directly here for selection */}
+              {generatedImages && (
+                <Card className="gradient-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <SparklesIcon className="h-5 w-5" />
+                      Generierte Bilder zur Auswahl
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <EnhancedTargetImageSelector
+                      generatedImages={generatedImages}
+                      onImageSelected={handleImageSelected}
                     />
-                    <div>
-                      <p className="text-sm font-medium">Ausgewähltes Foto für KI-Generation ({selectedCategory === 'front' ? 'Frontansicht' : selectedCategory === 'back' ? 'Rückansicht' : 'Seitenansicht'})</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.date} • {(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.weight}kg
-                        {(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.body_fat_percentage && ` • ${(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex]).body_fat_percentage}% KFA`}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {generatingTarget && (
-                    <div className="space-y-3 p-4 bg-primary/5 rounded-lg border">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{generationStage}</span>
-                        <span className="text-sm text-muted-foreground">{generationProgress}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
-                          style={{ width: `${generationProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                   
-                  <Button 
-                    onClick={handleGenerateTarget}
-                    disabled={generatingTarget}
-                    className="w-full"
-                  >
-                    {generatingTarget ? (
-                      <>
-                        <SparklesIcon className="h-4 w-4 mr-2 animate-pulse" />
-                        Generiere Zielbild...
-                      </>
-                    ) : (
-                      <>
-                        <SparklesIcon className="h-4 w-4 mr-2" />
-                        Zielbild mit aktuellem Foto erstellen
-                      </>
-                    )}
-                  </Button>
-                  
-                  {/* Show generated images directly here for selection */}
-                  {generatedImages && (
-                    <div className="mt-6 space-y-4">
-                      <h3 className="text-lg font-semibold">Generierte Bilder zur Auswahl</h3>
-                      <EnhancedTargetImageSelector
-                        generatedImages={generatedImages}
-                        onImageSelected={handleImageSelected}
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center p-6 border-2 border-dashed border-border rounded-lg space-y-4">
-                  <ImageIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Lade zuerst ein Fortschrittsfoto hoch, um ein personalisiertes Zielbild zu erstellen
-                  </p>
-                  
-                  {generatingTarget && (
-                    <div className="space-y-3 p-4 bg-primary/5 rounded-lg border">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{generationStage}</span>
-                        <span className="text-sm text-muted-foreground">{generationProgress}%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
-                          style={{ width: `${generationProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <Button 
-                    onClick={handleGenerateTarget}
-                    disabled={generatingTarget}
-                    variant="outline"
-                  >
-                    {generatingTarget ? (
-                      <>
-                        <SparklesIcon className="h-4 w-4 mr-2 animate-pulse" />
-                        Generiere...
-                      </>
-                    ) : (
-                      <>
-                        <SparklesIcon className="h-4 w-4 mr-2" />
-                        Allgemeines Zielbild erstellen
-                      </>
-                    )}
-                  </Button>
-                </div>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <Card className="gradient-card">
+              <CardContent className="p-8 text-center">
+                <ImageIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Kein Fortschrittsfoto verfügbar</h3>
+                <p className="text-muted-foreground mb-6">
+                  Lade zuerst ein Fortschrittsfoto hoch, um personalisierte KI-Zielbilder zu erstellen
+                </p>
+                <Button onClick={() => setActiveTab('photos')} variant="outline">
+                  <UploadIcon className="h-4 w-4 mr-2" />
+                  Zu Foto-Upload gehen
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
       </Tabs>

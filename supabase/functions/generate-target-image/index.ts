@@ -61,7 +61,14 @@ serve(async (req) => {
       console.error('JWT decode error:', decodeError);
       throw new Error('Invalid token format');
     }
-    const { targetWeight, targetBodyFat, progressPhotoUrl } = await req.json();
+    const { 
+      targetWeight, 
+      targetBodyFat, 
+      progressPhotoUrl,
+      musclePriority = 3,
+      realismFactor = 0.7,
+      definitionVsMass = 0.5
+    } = await req.json();
     
     console.log('=== DEBUG: Request payload ===');
     console.log('targetWeight:', targetWeight);
@@ -159,7 +166,31 @@ serve(async (req) => {
       const ageDesc = profile?.age ? `${profile.age}-year-old` : '';
       const timeframeDesc = monthsToTarget > 0 ? `over ${monthsToTarget} months` : 'gradually';
       
-      detailedPrompt = `Transform this ${genderDesc} realistically ${timeframeDesc}: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Show realistic, achievable transformation. ${ageDesc ? `Age-appropriate fitness level for ${ageDesc}.` : ''} Natural lighting, photorealistic, not overly muscular.`;
+      // Enhanced prompt engineering based on profile data and user preferences
+      const getMuscleDescription = (priority: number) => {
+        const descriptions = [
+          'minimal muscle definition, toned but not muscular',
+          'light muscle definition, athletically toned', 
+          'moderate muscle development, well-trained appearance',
+          'strong muscle development, very fit and muscular',
+          'high muscle development, bodybuilder-like physique'
+        ];
+        return descriptions[priority - 1] || descriptions[2];
+      };
+
+      const getRealismDescription = (factor: number) => {
+        if (factor < 0.3) return 'very conservative and realistic changes';
+        if (factor < 0.7) return 'optimistic but achievable transformation';
+        return 'ambitious maximum transformation potential';
+      };
+
+      const getDefinitionStyle = (factor: number) => {
+        if (factor < 0.3) return 'lean and cut with visible muscle definition';
+        if (factor > 0.7) return 'muscular mass with some bulk';
+        return 'balanced muscle definition and size';
+      };
+
+      detailedPrompt = `Transform this ${genderDesc} realistically ${timeframeDesc}: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Muscle priority: ${getMuscleDescription(musclePriority)}. Transformation style: ${getDefinitionStyle(definitionVsMass)}. Realistic timeline approach: ${getRealismDescription(realismFactor)}. ${ageDesc ? `Age-appropriate fitness level for ${ageDesc}.` : ''} Natural lighting, photorealistic, achievable physique proportions, realistic body composition changes.`;
     } else {
       // Text-to-image transformation prompt
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
