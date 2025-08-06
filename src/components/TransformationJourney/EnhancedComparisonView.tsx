@@ -6,6 +6,7 @@ import { CalendarIcon, TargetIcon, TrendingUpIcon, ImageIcon, SplitIcon } from '
 import { CategoryFilter } from './CategoryFilter';
 import { SwipeGallery } from './SwipeGallery';
 import { ProgressCard } from './ProgressCard';
+import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface EnhancedComparisonViewProps {
@@ -15,9 +16,11 @@ interface EnhancedComparisonViewProps {
     image_category: string;
     target_weight_kg: number;
     target_body_fat_percentage: number;
+    ai_generated_from_photo_id?: string;
     created_at: string;
   }>;
   progressPhotos: Array<{
+    id: string;
     date: string;
     photo_front_url?: string;
     photo_back_url?: string;
@@ -35,7 +38,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
-  const [comparisonMode, setComparisonMode] = useState<'timeline' | 'split'>('timeline');
+  const [comparisonMode, setComparisonMode] = useState<'vergleich' | 'timeline' | 'split'>('vergleich');
 
   // Filter images by category
   const filteredTargets = targetImages.filter(img => 
@@ -63,6 +66,29 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
     }
   };
 
+  // Create linked photo pairs for Before/After slider
+  const getLinkedPhotoPairs = () => {
+    return filteredTargets
+      .filter(target => target.ai_generated_from_photo_id)
+      .map(target => {
+        const originalPhoto = progressPhotos.find(photo => 
+          photo.id === target.ai_generated_from_photo_id
+        );
+        if (originalPhoto) {
+          return {
+            originalPhoto,
+            targetImage: target,
+            originalUrl: getProgressPhotoUrl(originalPhoto),
+            targetUrl: target.image_url
+          };
+        }
+        return null;
+      })
+      .filter(pair => pair !== null);
+  };
+
+  const linkedPairs = getLinkedPhotoPairs();
+  const currentPair = linkedPairs[0]; // Use first linked pair for now
   const targetImage = filteredTargets[0];
   const latestPhoto = filteredProgress[0]; // SwipeGallery sorts newest first
 
@@ -93,6 +119,17 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
       {/* View Mode Toggle */}
       <div className="flex justify-center">
         <div className="flex bg-muted/50 rounded-lg p-1">
+          {linkedPairs.length > 0 && (
+            <Button
+              variant={comparisonMode === 'vergleich' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setComparisonMode('vergleich')}
+              className="rounded-md"
+            >
+              <SplitIcon className="h-4 w-4 mr-2" />
+              Vergleich
+            </Button>
+          )}
           <Button
             variant={comparisonMode === 'timeline' ? 'default' : 'ghost'}
             size="sm"
@@ -109,13 +146,88 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
             className="rounded-md"
           >
             <SplitIcon className="h-4 w-4 mr-2" />
-            Vergleich
+            Split View
           </Button>
         </div>
       </div>
 
       <AnimatePresence mode="wait">
-        {comparisonMode === 'timeline' ? (
+        {comparisonMode === 'vergleich' && linkedPairs.length > 0 ? (
+          <motion.div
+            key="vergleich"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-6"
+          >
+            {/* Before/After Slider */}
+            <Card className="gradient-card">
+              <CardHeader className="text-center">
+                <CardTitle className="flex items-center justify-center gap-2">
+                  <SplitIcon className="h-5 w-5 text-primary" />
+                  Original vs. KI-Transformiert
+                </CardTitle>
+                <div className="flex gap-2 justify-center">
+                  <Badge variant="outline" className="text-xs">
+                    {new Date(currentPair.originalPhoto.date).toLocaleDateString('de-DE')}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {currentPair.originalPhoto.weight}kg
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <BeforeAfterSlider
+                  beforeImage={currentPair.originalUrl}
+                  afterImage={currentPair.targetUrl}
+                  beforeLabel="Original"
+                  afterLabel="KI-Generiert"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Progress Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <Card className="gradient-card">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {currentPair.originalPhoto.weight}kg
+                      </p>
+                      <p className="text-sm text-muted-foreground">Original Gewicht</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {currentPair.targetImage.target_weight_kg}kg
+                      </p>
+                      <p className="text-sm text-muted-foreground">Zielgewicht</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {Math.abs(currentPair.targetImage.target_weight_kg - currentPair.originalPhoto.weight).toFixed(1)}kg
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {currentPair.targetImage.target_weight_kg > currentPair.originalPhoto.weight ? 'zunehmen' : 'abnehmen'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-primary">
+                        {currentPair.originalPhoto.body_fat_percentage?.toFixed(1) || '-'}%
+                      </p>
+                      <p className="text-sm text-muted-foreground">Körperfett</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+        ) : comparisonMode === 'timeline' ? (
           <motion.div
             key="timeline"
             initial={{ opacity: 0, x: -20 }}

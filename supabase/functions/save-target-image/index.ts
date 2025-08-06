@@ -39,16 +39,17 @@ serve(async (req) => {
       throw new Error('Invalid token format');
     }
 
-    const { 
-      selectedImageUrl, 
-      targetWeight, 
-      targetBodyFat, 
-      generationPrompt,
-      hasProgressPhoto,
-      currentWeight,
-      currentBodyFat,
-      imageCategory = 'unspecified'
-    } = await req.json();
+  const { 
+    selectedImageUrl, 
+    targetWeight, 
+    targetBodyFat, 
+    generationPrompt,
+    hasProgressPhoto,
+    currentWeight,
+    currentBodyFat,
+    imageCategory = 'unspecified',
+    progressPhotoUrl
+  } = await req.json();
 
     if (!selectedImageUrl) {
       throw new Error('Selected image URL is required');
@@ -59,6 +60,32 @@ serve(async (req) => {
       .from('target_images')
       .update({ is_active: false })
       .eq('user_id', userId);
+
+    // Find the progress photo ID if progressPhotoUrl is provided
+    let progressPhotoId = null;
+    if (progressPhotoUrl) {
+      const { data: progressPhotoData } = await supabase
+        .from('weight_history')
+        .select('id, photo_urls')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      
+      // Find the progress photo that contains this URL
+      if (progressPhotoData) {
+        for (const photo of progressPhotoData) {
+          if (photo.photo_urls) {
+            const urls = typeof photo.photo_urls === 'string' 
+              ? [photo.photo_urls] 
+              : Object.values(photo.photo_urls);
+            
+            if (urls.some(url => url === progressPhotoUrl)) {
+              progressPhotoId = photo.id;
+              break;
+            }
+          }
+        }
+      }
+    }
 
     // Save the selected target image
     const { data: targetImage, error: insertError } = await supabase
@@ -71,6 +98,7 @@ serve(async (req) => {
         target_body_fat_percentage: targetBodyFat,
         generation_prompt: generationPrompt,
         image_category: imageCategory,
+        ai_generated_from_photo_id: progressPhotoId,
         is_active: true
       })
       .select()

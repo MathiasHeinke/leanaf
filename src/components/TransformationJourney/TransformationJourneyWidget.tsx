@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 
 export const TransformationJourneyWidget: React.FC = () => {
-  const { targetImages, deleteTargetImage, generateTargetImage, refreshTargetImages } = useTargetImages();
+  const { targetImages, deleteTargetImage, generateTargetImage, refreshTargetImages, getLinkedPhotoPairs } = useTargetImages();
   const { photos: rawProgressPhotos, loading, refreshPhotos } = useProgressPhotos();
   
   // Transform progress photos to expected format for EnhancedComparisonView
@@ -87,7 +87,8 @@ export const TransformationJourneyWidget: React.FC = () => {
           setShowSlider(true);
         }
         
-        setActiveTab('selector');
+        // Stay on generate tab to show the selection
+        // setActiveTab('selector');
       }
     } catch (error) {
       console.error('Error generating target image:', error);
@@ -136,11 +137,10 @@ export const TransformationJourneyWidget: React.FC = () => {
     <div className="w-full space-y-6">
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="journey">Timeline</TabsTrigger>
           <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
           <TabsTrigger value="photos">Alle Fotos</TabsTrigger>
-          <TabsTrigger value="selector" disabled={!generatedImages}>Auswahl</TabsTrigger>
         </TabsList>
 
         <TabsContent value="journey" className="space-y-6">
@@ -254,7 +254,7 @@ export const TransformationJourneyWidget: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+                   
                   <Button 
                     onClick={handleGenerateTarget}
                     disabled={generatingTarget}
@@ -272,6 +272,17 @@ export const TransformationJourneyWidget: React.FC = () => {
                       </>
                     )}
                   </Button>
+                  
+                  {/* Show generated images directly here for selection */}
+                  {generatedImages && (
+                    <div className="mt-6 space-y-4">
+                      <h3 className="text-lg font-semibold">Generierte Bilder zur Auswahl</h3>
+                      <EnhancedTargetImageSelector
+                        generatedImages={generatedImages}
+                        onImageSelected={handleImageSelected}
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center p-6 border-2 border-dashed border-border rounded-lg space-y-4">
@@ -318,59 +329,6 @@ export const TransformationJourneyWidget: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="selector" className="space-y-6">
-          {generatedImages ? (
-            <div className="space-y-6">
-              {showSlider && lastGeneratedImage && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Vergleich: Original vs. Generiert</h3>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowSlider(false)}
-                    >
-                      Einzelbilder anzeigen
-                    </Button>
-                  </div>
-                  <BeforeAfterSlider
-                    beforeImage={lastGeneratedImage.originalPhoto}
-                    afterImage={lastGeneratedImage.generatedImage}
-                    beforeLabel="Original"
-                    afterLabel="KI-Generiert"
-                  />
-                </div>
-              )}
-              
-              {!showSlider && (
-                <EnhancedTargetImageSelector
-                  generatedImages={generatedImages}
-                  onImageSelected={handleImageSelected}
-                />
-              )}
-              
-              {!showSlider && lastGeneratedImage && (
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => setShowSlider(true)}
-                >
-                  Vergleich anzeigen
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-12 space-y-4">
-              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
-                <SparklesIcon className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-lg font-medium text-muted-foreground">Keine KI-Bilder generiert</p>
-                <p className="text-sm text-muted-foreground mt-1">Generiere KI-Zielbilder im "KI Zielbild" Tab</p>
-              </div>
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   );

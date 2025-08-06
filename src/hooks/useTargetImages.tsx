@@ -11,6 +11,7 @@ interface TargetImage {
   target_body_fat_percentage: number | null;
   generation_prompt: string | null;
   image_category: string;
+  ai_generated_from_photo_id: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -155,7 +156,8 @@ export const useTargetImages = () => {
           hasProgressPhoto: imageData.hasProgressPhoto,
           currentWeight: imageData.currentWeight,
           currentBodyFat: imageData.currentBodyFat,
-          imageCategory: imageCategory
+          imageCategory: imageCategory,
+          progressPhotoUrl: imageData.progressPhotoUrl
         }
       });
 
@@ -172,6 +174,7 @@ export const useTargetImages = () => {
         target_body_fat_percentage: imageData.targetBodyFat,
         generation_prompt: imageData.prompt,
         image_category: imageCategory,
+        ai_generated_from_photo_id: data.ai_generated_from_photo_id || null,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -218,6 +221,19 @@ export const useTargetImages = () => {
     loadTargetImages();
   }, [user]);
 
+  // Helper function to get linked photo pairs for Before/After comparison
+  const getLinkedPhotoPairs = (progressPhotos: any[]) => {
+    return targetImages
+      .filter(target => target.ai_generated_from_photo_id)
+      .map(target => {
+        const originalPhoto = progressPhotos.find(photo => 
+          photo.id === target.ai_generated_from_photo_id
+        );
+        return originalPhoto ? { originalPhoto, generatedImage: target } : null;
+      })
+      .filter(pair => pair !== null);
+  };
+
   return {
     targetImages,
     loading,
@@ -225,6 +241,7 @@ export const useTargetImages = () => {
     generateTargetImage,
     saveSelectedTargetImage,
     deleteTargetImage,
-    refreshTargetImages: loadTargetImages
+    refreshTargetImages: loadTargetImages,
+    getLinkedPhotoPairs
   };
 };

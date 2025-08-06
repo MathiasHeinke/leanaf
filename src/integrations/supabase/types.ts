@@ -3886,6 +3886,7 @@ export type Database = {
       }
       target_images: {
         Row: {
+          ai_generated_from_photo_id: string | null
           created_at: string
           generation_prompt: string | null
           id: string
@@ -3899,6 +3900,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_generated_from_photo_id?: string | null
           created_at?: string
           generation_prompt?: string | null
           id?: string
@@ -3912,6 +3914,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_generated_from_photo_id?: string | null
           created_at?: string
           generation_prompt?: string | null
           id?: string
