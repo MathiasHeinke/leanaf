@@ -4,4 +4,5 @@ export { CategoryFilter } from './CategoryFilter';
 export { ImageTimeline } from './ImageTimeline';
 export { SwipeGallery } from './SwipeGallery';
 export { ProgressCard } from './ProgressCard';
+export { GridPhotoView } from './GridPhotoView';
 export { TransformationJourneyWidget } from './TransformationJourneyWidget';

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { EnhancedComparisonView } from './EnhancedComparisonView';
+import { GridPhotoView } from './GridPhotoView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { 
@@ -135,19 +136,11 @@ export const TransformationJourneyWidget: React.FC = () => {
     <div className="w-full space-y-6">
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="journey">
-            <TrendingUpIcon className="h-4 w-4 mr-2" />
-            Fortschritt
-          </TabsTrigger>
-          <TabsTrigger value="generate">
-            <SparklesIcon className="h-4 w-4 mr-2" />
-            KI Zielbild
-          </TabsTrigger>
-          <TabsTrigger value="selector" disabled={!generatedImages}>
-            <ImageIcon className="h-4 w-4 mr-2" />
-            Auswahl
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="journey">Timeline</TabsTrigger>
+          <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
+          <TabsTrigger value="photos">Alle Fotos</TabsTrigger>
+          <TabsTrigger value="selector" disabled={!generatedImages}>Auswahl</TabsTrigger>
         </TabsList>
 
         <TabsContent value="journey" className="space-y-6">
@@ -178,6 +171,10 @@ export const TransformationJourneyWidget: React.FC = () => {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="photos" className="space-y-6">
+          <GridPhotoView photos={rawProgressPhotos} />
         </TabsContent>
 
         <TabsContent value="generate" className="space-y-6">

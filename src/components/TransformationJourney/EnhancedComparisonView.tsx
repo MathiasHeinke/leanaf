@@ -124,19 +124,8 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
             transition={{ duration: 0.3 }}
             className="space-y-6"
           >
-            {/* Apple-like Swipe Gallery */}
+            {/* Simplified Swipe Gallery */}
             <Card className="gradient-card">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <TrendingUpIcon className="h-5 w-5 text-primary" />
-                    Transformations-Timeline
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {filteredProgress.length} Fotos
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
               <CardContent className="p-6">
                 <SwipeGallery
                   photos={filteredProgress}

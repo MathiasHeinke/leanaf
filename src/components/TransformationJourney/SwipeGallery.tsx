@@ -84,21 +84,7 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header with current photo info */}
-      {currentPhoto && (
-        <div className="text-center space-y-3">
-          <h3 className="text-xl font-bold">{formatDate(currentPhoto.date)}</h3>
-          <p className="text-muted-foreground">{getDaysAgo(currentPhoto.date)}</p>
-          <div className="flex items-center justify-center gap-4 text-sm">
-            {currentPhoto.weight && (
-              <span className="font-medium">{currentPhoto.weight} kg</span>
-            )}
-            {currentPhoto.body_fat_percentage && (
-              <span className="text-muted-foreground">{currentPhoto.body_fat_percentage}% KFA</span>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Removed redundant header - info is in photo overlays */}
 
       {/* Apple-style carousel */}
       <Carousel 
