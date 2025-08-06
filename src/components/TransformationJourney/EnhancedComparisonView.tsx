@@ -369,85 +369,114 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                 </CardContent>
               </Card>
             ) : (
-              /* Side-by-Side Comparison as fallback */
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Current/Selected Photo */}
-              <Card className="gradient-card">
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center gap-2 text-lg">
-                    <CalendarIcon className="h-5 w-5 text-primary" />
-                    {selectedPhoto ? 'Ausgewählt' : 'Aktuell'}
-                  </CardTitle>
-                   {currentPhoto && (
-                     <div className="flex gap-2 justify-center">
-                       <Badge 
-                         variant="outline" 
-                         className={`text-xs transition-colors ${
-                           getPhotosFromSameDate(currentPhoto).length > 1 
-                             ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/50' 
-                             : ''
-                         }`}
-                         onClick={() => handleDateClick(currentPhoto)}
-                       >
-                         {new Date(currentPhoto.date).toLocaleDateString('de-DE')}
-                         {getPhotosFromSameDate(currentPhoto).length > 1 && (
-                           <span className="ml-1 text-primary font-medium">({getPhotosFromSameDate(currentPhoto).length})</span>
-                         )}
-                       </Badge>
-                       <Badge variant="outline" className="text-xs">
-                         {currentPhoto.weight}kg
-                       </Badge>
-                     </div>
-                   )}
-                </CardHeader>
-                <CardContent className="p-4">
-                  {currentPhoto ? (
-                    <ProgressCard
-                      imageUrl={getProgressPhotoUrl(currentPhoto)}
-                      date={currentPhoto.date}
-                      weight={currentPhoto.weight}
-                      bodyFat={currentPhoto.body_fat_percentage}
-                      category={selectedCategory}
-                      isLatest={!selectedPhoto}
-                      hasAiTransformation={targetImages.some(t => t.ai_generated_from_photo_id === currentPhoto.id)}
-                      onViewTransformation={() => onViewTransformation?.(currentPhoto)}
-                      onCreateTransformation={() => onCreateTransformation?.(currentPhoto, selectedCategory)}
-                    />
-                  ) : (
-                     <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-                       <div className="text-center text-muted-foreground">
-                         <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                         <p className="text-sm">Kein Foto für {selectedCategory}</p>
-                         <p className="text-xs mt-1">Lade dein erstes Foto hoch</p>
-                       </div>
-                     </div>
-                  )}
-                </CardContent>
-              </Card>
+              /* Progress Photo Comparison with BeforeAfterSlider */
+              <>
+                {filteredProgress.length >= 2 && (
+                  <Card className="gradient-card mb-6">
+                    <CardHeader className="text-center">
+                      <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                        <SplitIcon className="h-5 w-5 text-primary" />
+                        Progress Vergleich
+                      </CardTitle>
+                      <div className="flex gap-2 justify-center">
+                        <Badge variant="outline" className="text-xs">
+                          {new Date(filteredProgress[filteredProgress.length - 1].date).toLocaleDateString('de-DE')} vs {new Date(filteredProgress[0].date).toLocaleDateString('de-DE')}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {filteredProgress[filteredProgress.length - 1].weight}kg vs {filteredProgress[0].weight}kg
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <BeforeAfterSlider
+                        beforeImage={getProgressPhotoUrl(filteredProgress[0])}
+                        afterImage={getProgressPhotoUrl(filteredProgress[filteredProgress.length - 1])}
+                        beforeLabel={`Start (${new Date(filteredProgress[0].date).toLocaleDateString('de-DE')})`}
+                        afterLabel={`Aktuell (${new Date(filteredProgress[filteredProgress.length - 1].date).toLocaleDateString('de-DE')})`}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Target Image */}
-              <Card className="gradient-card">
-                <CardHeader className="text-center">
-                  <CardTitle className="flex items-center justify-center gap-2 text-lg">
-                    <TargetIcon className="h-5 w-5 text-primary" />
-                    Ziel
-                  </CardTitle>
-                  {targetImage && (
-                    <div className="flex gap-2 justify-center">
-                      <Badge variant="outline" className="text-xs">
-                        {targetImage.target_weight_kg}kg
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {targetImage.target_body_fat_percentage}%
-                      </Badge>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent className="p-4">
-                  {targetImage ? (
-                    <ProgressCard
-                      imageUrl={targetImage.image_url}
-                      date={targetImage.created_at}
+                {/* Side-by-Side Comparison */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Current/Selected Photo */}
+                  <Card className="gradient-card">
+                    <CardHeader className="text-center">
+                      <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                        <CalendarIcon className="h-5 w-5 text-primary" />
+                        {selectedPhoto ? 'Ausgewählt' : 'Aktuell'}
+                      </CardTitle>
+                       {currentPhoto && (
+                         <div className="flex gap-2 justify-center">
+                           <Badge 
+                             variant="outline" 
+                             className={`text-xs transition-colors ${
+                               getPhotosFromSameDate(currentPhoto).length > 1 
+                                 ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/50' 
+                                 : ''
+                             }`}
+                             onClick={() => handleDateClick(currentPhoto)}
+                           >
+                             {new Date(currentPhoto.date).toLocaleDateString('de-DE')}
+                             {getPhotosFromSameDate(currentPhoto).length > 1 && (
+                               <span className="ml-1 text-primary font-medium">({getPhotosFromSameDate(currentPhoto).length})</span>
+                             )}
+                           </Badge>
+                           <Badge variant="outline" className="text-xs">
+                             {currentPhoto.weight}kg
+                           </Badge>
+                         </div>
+                       )}
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      {currentPhoto ? (
+                        <ProgressCard
+                          imageUrl={getProgressPhotoUrl(currentPhoto)}
+                          date={currentPhoto.date}
+                          weight={currentPhoto.weight}
+                          bodyFat={currentPhoto.body_fat_percentage}
+                          category={selectedCategory}
+                          isLatest={!selectedPhoto}
+                          hasAiTransformation={targetImages.some(t => t.ai_generated_from_photo_id === currentPhoto.id)}
+                          onViewTransformation={() => onViewTransformation?.(currentPhoto)}
+                          onCreateTransformation={() => onCreateTransformation?.(currentPhoto, selectedCategory)}
+                        />
+                      ) : (
+                         <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
+                           <div className="text-center text-muted-foreground">
+                             <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                             <p className="text-sm">Kein Foto für {selectedCategory}</p>
+                             <p className="text-xs mt-1">Lade dein erstes Foto hoch</p>
+                           </div>
+                         </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Target Image */}
+                  <Card className="gradient-card">
+                    <CardHeader className="text-center">
+                      <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                        <TargetIcon className="h-5 w-5 text-primary" />
+                        Ziel
+                      </CardTitle>
+                      {targetImage && (
+                        <div className="flex gap-2 justify-center">
+                          <Badge variant="outline" className="text-xs">
+                            {targetImage.target_weight_kg}kg
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {targetImage.target_body_fat_percentage}%
+                          </Badge>
+                        </div>
+                      )}
+                    </CardHeader>
+                    <CardContent className="p-4">
+                      {targetImage ? (
+                        <ProgressCard
+                          imageUrl={targetImage.image_url}
+                          date={targetImage.created_at}
                       weight={targetImage.target_weight_kg}
                       bodyFat={targetImage.target_body_fat_percentage}
                       category={targetImage.image_category}
@@ -466,6 +495,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                 </CardContent>
               </Card>
               </div>
+              </>
             )}
 
             {/* Interactive Before/After Slider */}
