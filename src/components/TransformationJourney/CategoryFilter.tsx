@@ -39,18 +39,6 @@ const categories = [
     label: 'Links',
     icon: ArrowLeftIcon,
     description: 'Seitlich links'
-  },
-  {
-    id: 'side_right',
-    label: 'Rechts',
-    icon: ArrowRightIcon,
-    description: 'Seitlich rechts'
-  },
-  {
-    id: 'unspecified',
-    label: 'Sonstige',
-    icon: HelpCircleIcon,
-    description: 'Nicht kategorisiert'
   }
 ];
 

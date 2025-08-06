@@ -378,18 +378,27 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                     <CalendarIcon className="h-5 w-5 text-primary" />
                     {selectedPhoto ? 'Ausgewählt' : 'Aktuell'}
                   </CardTitle>
-                  {currentPhoto && (
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${getPhotosFromSameDate(currentPhoto).length > 1 ? 'cursor-pointer hover:bg-primary/10' : ''}`}
-                      onClick={() => handleDateClick(currentPhoto)}
-                    >
-                      {new Date(currentPhoto.date).toLocaleDateString('de-DE')}
-                      {getPhotosFromSameDate(currentPhoto).length > 1 && (
-                        <span className="ml-1 text-primary">({getPhotosFromSameDate(currentPhoto).length})</span>
-                      )}
-                    </Badge>
-                  )}
+                   {currentPhoto && (
+                     <div className="flex gap-2 justify-center">
+                       <Badge 
+                         variant="outline" 
+                         className={`text-xs transition-colors ${
+                           getPhotosFromSameDate(currentPhoto).length > 1 
+                             ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/50' 
+                             : ''
+                         }`}
+                         onClick={() => handleDateClick(currentPhoto)}
+                       >
+                         {new Date(currentPhoto.date).toLocaleDateString('de-DE')}
+                         {getPhotosFromSameDate(currentPhoto).length > 1 && (
+                           <span className="ml-1 text-primary font-medium">({getPhotosFromSameDate(currentPhoto).length})</span>
+                         )}
+                       </Badge>
+                       <Badge variant="outline" className="text-xs">
+                         {currentPhoto.weight}kg
+                       </Badge>
+                     </div>
+                   )}
                 </CardHeader>
                 <CardContent className="p-4">
                   {currentPhoto ? (
