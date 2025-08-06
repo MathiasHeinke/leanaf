@@ -22,6 +22,7 @@ export const TransformationJourneyWidget: React.FC = () => {
   const { photos: rawProgressPhotos, loading, refreshPhotos } = useProgressPhotos();
   const [activeTab, setActiveTab] = useState("timeline");
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('front');
   
   // Transform progress photos to expected format for EnhancedComparisonView
   const progressPhotos = rawProgressPhotos.map(photo => ({
@@ -66,7 +67,8 @@ export const TransformationJourneyWidget: React.FC = () => {
     
     // Use selectedPhoto if available (from transformation button), otherwise use index
     const photoToUse = selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex];
-    const originalPhotoUrl = getProgressPhotoUrl(photoToUse, 'front');
+    const categoryToUse = selectedPhoto?.selectedCategory || selectedCategory;
+    const originalPhotoUrl = getProgressPhotoUrl(photoToUse, categoryToUse as 'front' | 'side' | 'back');
     
     try {
       const result = await generateTargetImage(
@@ -131,13 +133,16 @@ export const TransformationJourneyWidget: React.FC = () => {
     // The Split View will automatically show the transformation
   };
 
-  const handleCreateTransformation = (photo: any) => {
+  const handleCreateTransformation = (photo: any, category?: string) => {
     // Find the photo index in raw progress photos
     const photoIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
     if (photoIndex !== -1) {
       setSelectedProgressPhotoIndex(photoIndex);
     }
     setSelectedPhoto(photo);
+    if (category) {
+      setSelectedCategory(category);
+    }
     setActiveTab("generate");
   };
 
@@ -223,6 +228,39 @@ export const TransformationJourneyWidget: React.FC = () => {
             <CardContent className="space-y-4">
               {rawProgressPhotos.length > 0 ? (
                 <div className="space-y-4">
+                  {/* Category Selector */}
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Kategorie auswählen:</label>
+                    <Select 
+                      value={selectedCategory} 
+                      onValueChange={setSelectedCategory}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="front">
+                          <div className="flex items-center gap-2">
+                            <span>📷</span>
+                            <span>Frontansicht</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="side">
+                          <div className="flex items-center gap-2">
+                            <span>📸</span>
+                            <span>Seitenansicht</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="back">
+                          <div className="flex items-center gap-2">
+                            <span>🔄</span>
+                            <span>Rückansicht</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="space-y-3">
                     <label className="text-sm font-medium">Fortschrittsfoto für KI-Generation auswählen:</label>
                     <Select 
@@ -233,11 +271,15 @@ export const TransformationJourneyWidget: React.FC = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {rawProgressPhotos.map((photo, index) => (
-                          <SelectItem key={index} value={index.toString()}>
+                        {rawProgressPhotos
+                          .filter(photo => getProgressPhotoUrl(photo, selectedCategory as 'front' | 'side' | 'back'))
+                          .map((photo, filterIndex) => {
+                            const originalIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
+                            return (
+                          <SelectItem key={filterIndex} value={originalIndex.toString()}>
                             <div className="flex items-center gap-3">
                               <img
-                                src={getProgressPhotoUrl(photo, 'front')}
+                                src={getProgressPhotoUrl(photo, selectedCategory as 'front' | 'side' | 'back')}
                                 alt={`Foto vom ${photo.date}`}
                                 className="w-8 h-8 object-cover rounded"
                               />
@@ -249,22 +291,23 @@ export const TransformationJourneyWidget: React.FC = () => {
                               </div>
                             </div>
                           </SelectItem>
-                        ))}
+                            );
+                          })}
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <img
-                      src={getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], 'front')}
+                      src={selectedPhoto ? getProgressPhotoUrl(selectedPhoto, selectedCategory as 'front' | 'side' | 'back') : getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], selectedCategory as 'front' | 'side' | 'back')}
                       alt="Ausgewähltes Foto"
                       className="w-12 h-12 object-cover rounded-md"
                     />
                     <div>
-                      <p className="text-sm font-medium">Ausgewähltes Foto für KI-Generation</p>
+                      <p className="text-sm font-medium">Ausgewähltes Foto für KI-Generation ({selectedCategory === 'front' ? 'Frontansicht' : selectedCategory === 'back' ? 'Rückansicht' : 'Seitenansicht'})</p>
                       <p className="text-xs text-muted-foreground">
-                        {rawProgressPhotos[selectedProgressPhotoIndex]?.date} • {rawProgressPhotos[selectedProgressPhotoIndex]?.weight}kg
-                        {rawProgressPhotos[selectedProgressPhotoIndex]?.body_fat_percentage && ` • ${rawProgressPhotos[selectedProgressPhotoIndex].body_fat_percentage}% KFA`}
+                        {(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.date} • {(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.weight}kg
+                        {(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex])?.body_fat_percentage && ` • ${(selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex]).body_fat_percentage}% KFA`}
                       </p>
                     </div>
                   </div>

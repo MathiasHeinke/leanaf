@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CalendarIcon, TargetIcon, TrendingUpIcon, ImageIcon, SplitIcon } from 'lucide-react';
 import { CategoryFilter } from './CategoryFilter';
 import { SwipeGallery } from './SwipeGallery';
@@ -30,7 +31,7 @@ interface EnhancedComparisonViewProps {
   }>;
   onDeleteTarget: (id: string) => void;
   onViewTransformation?: (photo: any) => void;
-  onCreateTransformation?: (photo: any) => void;
+  onCreateTransformation?: (photo: any, category?: string) => void;
 }
 
 export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
@@ -44,6 +45,8 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [comparisonMode, setComparisonMode] = useState<'vergleich' | 'timeline' | 'split'>('split');
   const [selectedAiImageId, setSelectedAiImageId] = useState<string | null>(null);
+  const [showDateSelector, setShowDateSelector] = useState(false);
+  const [datePhotos, setDatePhotos] = useState<any[]>([]);
 
   // Filter images by category
   const filteredTargets = targetImages.filter(img => 
@@ -114,6 +117,28 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   }, [selectedCategory, filteredProgress]);
 
   const currentPhoto = selectedPhoto || latestPhoto;
+
+  // Helper function to find photos from the same date
+  const getPhotosFromSameDate = (photo: any) => {
+    if (!photo) return [];
+    const photoDate = photo.date;
+    return progressPhotos.filter(p => p.date === photoDate && getProgressPhotoUrl(p));
+  };
+
+  // Handle date click in Split View
+  const handleDateClick = (photo: any) => {
+    const sameDatePhotos = getPhotosFromSameDate(photo);
+    if (sameDatePhotos.length > 1) {
+      setDatePhotos(sameDatePhotos);
+      setShowDateSelector(true);
+    }
+  };
+
+  // Handle photo selection from date dialog
+  const handlePhotoSelection = (photo: any) => {
+    setSelectedPhoto(photo);
+    setShowDateSelector(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -353,8 +378,15 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                     {selectedPhoto ? 'Ausgewählt' : 'Aktuell'}
                   </CardTitle>
                   {currentPhoto && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${getPhotosFromSameDate(currentPhoto).length > 1 ? 'cursor-pointer hover:bg-primary/10' : ''}`}
+                      onClick={() => handleDateClick(currentPhoto)}
+                    >
                       {new Date(currentPhoto.date).toLocaleDateString('de-DE')}
+                      {getPhotosFromSameDate(currentPhoto).length > 1 && (
+                        <span className="ml-1 text-primary">({getPhotosFromSameDate(currentPhoto).length})</span>
+                      )}
                     </Badge>
                   )}
                 </CardHeader>
@@ -369,7 +401,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                       isLatest={!selectedPhoto}
                       hasAiTransformation={targetImages.some(t => t.ai_generated_from_photo_id === currentPhoto.id)}
                       onViewTransformation={() => onViewTransformation?.(currentPhoto)}
-                      onCreateTransformation={() => onCreateTransformation?.(currentPhoto)}
+                      onCreateTransformation={() => onCreateTransformation?.(currentPhoto, selectedCategory)}
                     />
                   ) : (
                      <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
@@ -525,6 +557,47 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Date Photo Selector Dialog */}
+      {showDateSelector && (
+        <Dialog open={showDateSelector} onOpenChange={setShowDateSelector}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Foto vom {datePhotos[0]?.date ? new Date(datePhotos[0].date).toLocaleDateString('de-DE') : ''} auswählen
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4">
+              {datePhotos.map((photo, index) => (
+                <div 
+                  key={index}
+                  className="cursor-pointer group"
+                  onClick={() => handlePhotoSelection(photo)}
+                >
+                  <div className="aspect-[3/4] overflow-hidden rounded-lg border-2 border-transparent group-hover:border-primary transition-colors">
+                    <img
+                      src={getProgressPhotoUrl(photo)}
+                      alt={`Foto ${index + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    />
+                  </div>
+                  <div className="mt-2 text-center">
+                    <p className="text-sm font-medium">{photo.weight}kg</p>
+                    {photo.body_fat_percentage && (
+                      <p className="text-xs text-muted-foreground">{photo.body_fat_percentage}% KFA</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {selectedCategory === 'front' && 'Frontansicht'}
+                      {selectedCategory === 'back' && 'Rückansicht'}
+                      {(selectedCategory === 'side_left' || selectedCategory === 'side_right') && 'Seitenansicht'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
