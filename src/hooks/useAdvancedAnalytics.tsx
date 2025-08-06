@@ -201,7 +201,7 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
     return correlationResults;
   }, [summaryData, weightHistory, sleepData, workoutData]);
 
-  // Calculate Health Score
+  // Calculate Health Score - Realistic implementation
   const healthScore = useMemo((): HealthScore => {
     if (summaryData.length === 0) {
       return {
@@ -218,48 +218,54 @@ export const useAdvancedAnalytics = (timeRange: 7 | 14 | 30 = 30) => {
     const recentData = summaryData.slice(-7); // Last 7 days
     const olderData = summaryData.slice(-14, -7); // Previous 7 days
 
-    // Nutrition score (0-100)
-    const avgCalories = recentData.reduce((sum, d) => sum + d.totalCalories, 0) / recentData.length;
-    const avgProtein = recentData.reduce((sum, d) => sum + d.totalProtein, 0) / recentData.length;
-    const nutritionScore = Math.min(100, (avgCalories / 2000) * 50 + (avgProtein / 150) * 50);
+    // Nutrition score (0-100) - More realistic thresholds
+    const avgCalories = recentData.reduce((sum, d) => sum + (d.totalCalories || 0), 0) / recentData.length;
+    const avgProtein = recentData.reduce((sum, d) => sum + (d.totalProtein || 0), 0) / recentData.length;
+    
+    // Score based on meeting basic nutritional needs (1200-2500 kcal range)
+    const calorieScore = avgCalories > 0 ? Math.min(100, Math.max(0, (avgCalories - 1200) / 1300 * 100)) : 0;
+    const proteinScore = avgProtein > 0 ? Math.min(100, (avgProtein / 100) * 100) : 0; // 100g protein = 100%
+    const nutritionScore = Math.min(100, (calorieScore + proteinScore) / 2);
 
-    // Training score
-    const avgTrainingVolume = recentData.reduce((sum, d) => sum + d.workoutVolume, 0) / recentData.length;
-    const trainingScore = Math.min(100, (avgTrainingVolume / 5000) * 100);
+    // Training score (0-100) - More realistic volume expectations
+    const avgTrainingVolume = recentData.reduce((sum, d) => sum + (d.workoutVolume || 0), 0) / recentData.length;
+    const trainingScore = avgTrainingVolume > 0 ? Math.min(100, (avgTrainingVolume / 2000) * 100) : 0; // 2000kg volume = 100%
 
-    // Recovery score (sleep)
-    const avgSleepScore = recentData.reduce((sum, d) => sum + d.sleepScore, 0) / recentData.length;
-    const recoveryScore = avgSleepScore * 10; // Convert to 0-100 scale
+    // Recovery score (0-100) - Sleep score should already be 0-10
+    const avgSleepScore = recentData.reduce((sum, d) => sum + (d.sleepScore || 0), 0) / recentData.length;
+    const recoveryScore = Math.min(100, avgSleepScore * 10); // Convert 0-10 to 0-100
 
-    // Hydration score
-    const avgHydrationScore = recentData.reduce((sum, d) => sum + d.hydrationScore, 0) / recentData.length;
-    const hydrationScore = avgHydrationScore * 10;
+    // Hydration score (0-100) - Fix the multiplier issue
+    const avgHydrationScore = recentData.reduce((sum, d) => sum + (d.hydrationScore || 0), 0) / recentData.length;
+    const hydrationScore = Math.min(100, avgHydrationScore <= 10 ? avgHydrationScore * 10 : avgHydrationScore); // Handle both scales
 
-    // Consistency score (how many days have data)
-    const daysWithData = recentData.filter(d => d.totalCalories > 0).length;
-    const consistencyScore = (daysWithData / 7) * 100;
+    // Consistency score (0-100) - Days with meaningful data
+    const daysWithData = recentData.filter(d => (d.totalCalories || 0) > 500).length; // At least 500 kcal = meaningful data
+    const consistencyScore = (daysWithData / Math.min(7, recentData.length)) * 100;
 
-    const overall = (nutritionScore + trainingScore + recoveryScore + hydrationScore + consistencyScore) / 5;
+    // Overall score - weighted average with realistic caps
+    const scores = [nutritionScore, trainingScore, recoveryScore, hydrationScore, consistencyScore];
+    const validScores = scores.filter(score => score > 0);
+    const overall = validScores.length > 0 ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length : 0;
 
-    // Determine trend
-    const recentAvg = overall;
-    const olderAvg = olderData.length > 0 ? 
-      ((olderData.reduce((sum, d) => sum + d.totalCalories, 0) / olderData.length / 2000) * 50 +
-       (olderData.reduce((sum, d) => sum + d.workoutVolume, 0) / olderData.length / 5000) * 100 +
-       (olderData.reduce((sum, d) => sum + d.sleepScore, 0) / olderData.length) * 10 +
-       (olderData.reduce((sum, d) => sum + d.hydrationScore, 0) / olderData.length) * 10 +
-       (olderData.filter(d => d.totalCalories > 0).length / 7) * 100) / 5 : overall;
-
-    const trend = recentAvg > olderAvg + 5 ? 'improving' : 
-                  recentAvg < olderAvg - 5 ? 'declining' : 'stable';
+    // Determine trend - compare with older data if available
+    let trend: 'improving' | 'stable' | 'declining' = 'stable';
+    if (olderData.length > 0) {
+      const olderNutritionScore = Math.min(100, (olderData.reduce((sum, d) => sum + (d.totalCalories || 0), 0) / olderData.length - 1200) / 1300 * 100);
+      const olderTrainingScore = Math.min(100, (olderData.reduce((sum, d) => sum + (d.workoutVolume || 0), 0) / olderData.length / 2000) * 100);
+      const olderOverall = (olderNutritionScore + olderTrainingScore) / 2;
+      
+      if (overall > olderOverall + 10) trend = 'improving';
+      else if (overall < olderOverall - 10) trend = 'declining';
+    }
 
     return {
-      overall: Math.round(overall),
-      nutrition: Math.round(nutritionScore),
-      training: Math.round(trainingScore),
-      recovery: Math.round(recoveryScore),
-      hydration: Math.round(hydrationScore),
-      consistency: Math.round(consistencyScore),
+      overall: Math.min(100, Math.max(0, Math.round(overall))),
+      nutrition: Math.min(100, Math.max(0, Math.round(nutritionScore))),
+      training: Math.min(100, Math.max(0, Math.round(trainingScore))),
+      recovery: Math.min(100, Math.max(0, Math.round(recoveryScore))),
+      hydration: Math.min(100, Math.max(0, Math.round(hydrationScore))),
+      consistency: Math.min(100, Math.max(0, Math.round(consistencyScore))),
       trend
     };
   }, [summaryData]);
