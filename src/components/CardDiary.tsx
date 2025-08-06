@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, BookOpen } from 'lucide-react';
+import { Heart, BookOpen, Target, Brain, Zap, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,6 +11,11 @@ interface CardDiaryProps {
     mood_score: number;
     sentiment_tag: string;
     gratitude_items?: string[];
+    manifestation_items?: string[];
+    energy_level?: number;
+    stress_indicators?: string[];
+    kai_insight?: string;
+    transformation_themes?: string[];
     excerpt: string;
     date: string;
     actions?: Array<{
@@ -86,18 +91,62 @@ export const CardDiary = ({ payload }: CardDiaryProps) => {
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">{payload.excerpt}</p>
         
-        {payload.gratitude_items && payload.gratitude_items.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Heart className="h-4 w-4 text-accent" />
-            <div className="flex flex-wrap gap-1">
-              {payload.gratitude_items.map((item, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {item}
-                </Badge>
-              ))}
+        {/* Enhanced Content Sections */}
+        <div className="space-y-3">
+          {/* Gratitude Items */}
+          {payload.gratitude_items && payload.gratitude_items.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Heart className="h-4 w-4 text-accent" />
+              <div className="flex flex-wrap gap-1">
+                {payload.gratitude_items.map((item, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {item}
+                  </Badge>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* Manifestation Items */}
+          {payload.manifestation_items && payload.manifestation_items.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <div className="flex flex-wrap gap-1">
+                {payload.manifestation_items.map((item, index) => (
+                  <Badge key={index} variant="outline" className="text-xs border-primary/30">
+                    {item}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Energy & Stress Indicators */}
+          <div className="flex items-center gap-4 text-xs">
+            {payload.energy_level && (
+              <div className="flex items-center gap-1">
+                <Zap className="h-3 w-3 text-warning" />
+                <span className="text-muted-foreground">Energie: {payload.energy_level}/10</span>
+              </div>
+            )}
+            {payload.stress_indicators && payload.stress_indicators.length > 0 && (
+              <div className="flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-destructive" />
+                <span className="text-muted-foreground">{payload.stress_indicators.length} Stress-Signale</span>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Kai's Insight */}
+          {payload.kai_insight && (
+            <div className="p-2 rounded-md bg-primary/10 border border-primary/20">
+              <div className="flex items-start gap-2">
+                <Brain className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-foreground">{payload.kai_insight}</p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {payload.actions && (
           <div className="flex gap-2 pt-2">
