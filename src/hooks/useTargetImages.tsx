@@ -10,6 +10,7 @@ interface TargetImage {
   target_weight_kg: number | null;
   target_body_fat_percentage: number | null;
   generation_prompt: string | null;
+  image_category: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -41,7 +42,7 @@ export const useTargetImages = () => {
     }
   };
 
-  const uploadTargetImage = async (file: File, targetWeight?: number, targetBodyFat?: number) => {
+  const uploadTargetImage = async (file: File, targetWeight?: number, targetBodyFat?: number, imageCategory: string = 'unspecified') => {
     if (!user) return;
 
     try {
@@ -67,7 +68,8 @@ export const useTargetImages = () => {
           image_url: publicUrl,
           image_type: 'uploaded' as const,
           target_weight_kg: targetWeight,
-          target_body_fat_percentage: targetBodyFat
+          target_body_fat_percentage: targetBodyFat,
+          image_category: imageCategory
         }])
         .select()
         .single();
@@ -138,7 +140,7 @@ export const useTargetImages = () => {
     }
   };
 
-  const saveSelectedTargetImage = async (selectedImageUrl: string, imageData: any) => {
+  const saveSelectedTargetImage = async (selectedImageUrl: string, imageData: any, imageCategory: string = 'unspecified') => {
     if (!user) return;
 
     try {
@@ -152,7 +154,8 @@ export const useTargetImages = () => {
           generationPrompt: imageData.prompt,
           hasProgressPhoto: imageData.hasProgressPhoto,
           currentWeight: imageData.currentWeight,
-          currentBodyFat: imageData.currentBodyFat
+          currentBodyFat: imageData.currentBodyFat,
+          imageCategory: imageCategory
         }
       });
 
@@ -168,6 +171,7 @@ export const useTargetImages = () => {
         target_weight_kg: imageData.targetWeight,
         target_body_fat_percentage: imageData.targetBodyFat,
         generation_prompt: imageData.prompt,
+        image_category: imageCategory,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

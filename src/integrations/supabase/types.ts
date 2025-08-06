@@ -3859,6 +3859,7 @@ export type Database = {
           created_at: string
           generation_prompt: string | null
           id: string
+          image_category: string | null
           image_type: string
           image_url: string
           is_active: boolean
@@ -3871,6 +3872,7 @@ export type Database = {
           created_at?: string
           generation_prompt?: string | null
           id?: string
+          image_category?: string | null
           image_type: string
           image_url: string
           is_active?: boolean
@@ -3883,6 +3885,7 @@ export type Database = {
           created_at?: string
           generation_prompt?: string | null
           id?: string
+          image_category?: string | null
           image_type?: string
           image_url?: string
           is_active?: boolean
@@ -4802,6 +4805,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          image_category: string | null
           muscle_percentage: number | null
           notes: string | null
           photo_urls: Json | null
@@ -4816,6 +4820,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          image_category?: string | null
           muscle_percentage?: number | null
           notes?: string | null
           photo_urls?: Json | null
@@ -4830,6 +4835,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          image_category?: string | null
           muscle_percentage?: number | null
           notes?: string | null
           photo_urls?: Json | null

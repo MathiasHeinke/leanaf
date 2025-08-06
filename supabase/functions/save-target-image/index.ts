@@ -46,7 +46,8 @@ serve(async (req) => {
       generationPrompt,
       hasProgressPhoto,
       currentWeight,
-      currentBodyFat 
+      currentBodyFat,
+      imageCategory = 'unspecified'
     } = await req.json();
 
     if (!selectedImageUrl) {
@@ -69,6 +70,7 @@ serve(async (req) => {
         target_weight_kg: targetWeight,
         target_body_fat_percentage: targetBodyFat,
         generation_prompt: generationPrompt,
+        image_category: imageCategory,
         is_active: true
       })
       .select()
