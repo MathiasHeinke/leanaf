@@ -149,14 +149,14 @@ serve(async (req) => {
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Shortened prompt for API limits
-      detailedPrompt = `Transform person: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, healthy physique. Photorealistic, natural lighting.`;
+      // Image-to-image transformation prompt (shortened for API limits)
+      detailedPrompt = `Transform this person into their target physique: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Show the transformation to a leaner, fitter version. Photorealistic transformation, natural lighting.`;
     } else {
-      // Fallback for text-only generation with natural emphasis
+      // Text-to-image transformation prompt
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
       const ageDesc = profile?.age ? `${profile.age}-year-old` : 'young adult';
       
-      detailedPrompt = `Professional lifestyle photography, photorealistic portrait of a naturally fit ${ageDesc} ${genderDesc}. Body composition: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, ${lifestyleLevel} healthy lifestyle. Naturally balanced physique, healthy appearance with realistic proportions. Soft natural lighting, professional portrait photography. Focus on natural health and balanced lifestyle. No cartoon, no anime, no illustration, photorealistic only.`;
+      detailedPrompt = `Show a person's fitness transformation result: ${ageDesc} ${genderDesc} who achieved ${targetBodyFatNum}% body fat at ${targetWeightNum}kg through ${lifestyleLevel} lifestyle. Focus on the transformed, healthier version of the person. Photorealistic portrait, natural lighting. No cartoon, no anime, no illustration, photorealistic only.`;
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);
