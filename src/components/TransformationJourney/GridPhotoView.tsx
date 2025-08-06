@@ -4,9 +4,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, Filter, Tag, WandIcon, EyeIcon } from 'lucide-react';
+import { ZoomIn, Filter, Tag, WandIcon, EyeIcon, CropIcon, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
+import { UniversalCropModal } from './UniversalCropModal';
+import { useImageCropping } from '@/hooks/useImageCropping';
 
 interface GridPhotoViewProps {
   photos: Array<{
@@ -18,7 +20,14 @@ interface GridPhotoViewProps {
     photo_metadata?: any;
   }>;
   targetImages?: Array<{
+    id: string;
     ai_generated_from_photo_id?: string | null;
+    image_url: string;
+    image_type: string;
+    generation_prompt?: string;
+    image_category?: string;
+    target_weight_kg?: number;
+    target_body_fat_percentage?: number;
   }>;
   onPhotosUpdated?: () => void;
   onViewTransformation?: (photo: any) => void;
@@ -28,6 +37,7 @@ interface GridPhotoViewProps {
 
 export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImages = [], onPhotosUpdated, onViewTransformation, onCreateTransformation, startCropWorkflow }) => {
   const { updatePhotoMetadata } = useProgressPhotos();
+  const { croppingState, openCropModal, closeCropModal, handleCropComplete, handleRegenerateAI } = useImageCropping();
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
@@ -39,7 +49,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
     setLocalPhotos(photos);
   }, [photos]);
 
-  // Get all photo URLs with metadata
+  // Get all photo URLs with metadata, including AI images
   const getPhotoEntries = () => {
     const entries: Array<{
       url: string;
@@ -51,8 +61,14 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
       photo: any;
       entryId: string;
       originalCategory: string;
+      isAI?: boolean;
+      aiImageId?: string;
+      originalPrompt?: string;
+      targetWeight?: number;
+      targetBodyFat?: number;
     }> = [];
 
+    // Add progress photos
     localPhotos.forEach((photo) => {
       if (photo.photo_urls) {
         // Front photo
@@ -100,6 +116,26 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
       }
     });
 
+    // Add AI-generated target images
+    targetImages.forEach((aiImage) => {
+      entries.push({
+        url: aiImage.image_url,
+        category: aiImage.image_category || 'unspecified',
+        date: new Date().toISOString().split('T')[0], // Use current date for AI images
+        weight: 0, // AI images don't have weight
+        body_fat_percentage: aiImage.target_body_fat_percentage || undefined,
+        confidence: 1, // AI images have full confidence
+        photo: null, // No associated photo object
+        entryId: aiImage.id,
+        originalCategory: aiImage.image_category || 'unspecified',
+        isAI: true,
+        aiImageId: aiImage.id,
+        originalPrompt: aiImage.generation_prompt || undefined,
+        targetWeight: aiImage.target_weight_kg || undefined,
+        targetBodyFat: aiImage.target_body_fat_percentage || undefined
+      });
+    });
+
     return entries;
   };
 
@@ -108,7 +144,9 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
   // Filter photos by category
   const filteredEntries = filterCategory === 'all' 
     ? photoEntries 
-    : photoEntries.filter(entry => entry.category === filterCategory);
+    : filterCategory === 'ai'
+    ? photoEntries.filter(entry => entry.isAI)
+    : photoEntries.filter(entry => entry.category === filterCategory && !entry.isAI);
 
   // Sort by date (newest first)
   const sortedEntries = [...filteredEntries].sort((a, b) => 
@@ -133,7 +171,10 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
     }
   };
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = (category: string, isAI?: boolean) => {
+    if (isAI) {
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+    }
     switch (category) {
       case 'front': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'back': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -143,7 +184,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
   };
 
   const updatePhotoCategory = async (entry: any, newCategory: string) => {
-    if (entry.originalCategory === newCategory) return;
+    if (entry.originalCategory === newCategory || entry.isAI) return; // Don't allow category changes for AI images
     
     const uniqueKey = `${entry.entryId}-${entry.originalCategory}`;
     setUpdatingPhoto(uniqueKey);
@@ -206,9 +247,10 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
 
   const categoryCounts = {
     all: photoEntries.length,
-    front: photoEntries.filter(e => e.category === 'front').length,
-    back: photoEntries.filter(e => e.category === 'back').length,
-    side: photoEntries.filter(e => e.category === 'side').length,
+    front: photoEntries.filter(e => e.category === 'front' && !e.isAI).length,
+    back: photoEntries.filter(e => e.category === 'back' && !e.isAI).length,
+    side: photoEntries.filter(e => e.category === 'side' && !e.isAI).length,
+    ai: photoEntries.filter(e => e.isAI).length,
   };
 
   if (photoEntries.length === 0) {
@@ -240,6 +282,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
               <SelectItem value="front">Front ({categoryCounts.front})</SelectItem>
               <SelectItem value="back">Rücken ({categoryCounts.back})</SelectItem>
               <SelectItem value="side">Seite ({categoryCounts.side})</SelectItem>
+              <SelectItem value="ai">KI-Bilder ({categoryCounts.ai})</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -266,10 +309,10 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
               
               {/* Category Badge */}
               <div className="absolute top-2 left-2 flex flex-col gap-1">
-                <Badge className={`text-xs ${getCategoryColor(entry.category)}`}>
-                  {getCategoryLabel(entry.category)}
+                <Badge className={`text-xs ${getCategoryColor(entry.category, entry.isAI)}`}>
+                  {entry.isAI ? 'KI-Generiert' : getCategoryLabel(entry.category)}
                 </Badge>
-                {hasAiTransformation(entry.entryId) && (
+                {!entry.isAI && hasAiTransformation(entry.entryId) && (
                   <Badge className="bg-purple-500/90 hover:bg-purple-600 text-white text-xs">
                     <WandIcon className="h-3 w-3 mr-1" />
                     KI-Transformiert
@@ -286,28 +329,69 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
                 </div>
               )}
 
-              {/* Zoom Button */}
-              <button
-                onClick={() => setSelectedPhoto(entry)}
-                className="absolute bottom-2 right-2 w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-white/30"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
+              {/* Action Buttons */}
+              <div className="absolute bottom-2 right-2 flex gap-2">
+                <button
+                  onClick={() => setSelectedPhoto(entry)}
+                  className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-white/30"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                
+                <button
+                  onClick={() => openCropModal(
+                    entry.url, 
+                    entry.isAI ? 'ai' : 'progress',
+                    {
+                      imageId: entry.aiImageId,
+                      originalPrompt: entry.originalPrompt,
+                      imageCategory: entry.category,
+                      targetWeight: entry.targetWeight,
+                      targetBodyFat: entry.targetBodyFat
+                    }
+                  )}
+                  className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-white/30"
+                  title="Bild zuschneiden"
+                >
+                  <CropIcon className="w-4 h-4" />
+                </button>
+              </div>
 
               {/* Photo Info */}
               <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-200">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">{formatDate(entry.date)}</p>
+                  <p className="text-sm font-medium">
+                    {entry.isAI ? 'KI-Zielbild' : formatDate(entry.date)}
+                  </p>
                   <div className="flex justify-between text-xs">
-                    <span>{entry.weight}kg</span>
+                    {entry.isAI ? (
+                      <span>Zielgewicht: {entry.targetWeight || 'N/A'}kg</span>
+                    ) : (
+                      <span>{entry.weight}kg</span>
+                    )}
                     {entry.body_fat_percentage && (
                       <span>{entry.body_fat_percentage}% KFA</span>
                     )}
                   </div>
                   
-                  {/* KI Action Button */}
-                  <div className="mt-2">
-                    {hasAiTransformation(entry.entryId) ? (
+                  {/* Action Buttons */}
+                  <div className="mt-2 space-y-1">
+                    {entry.isAI ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-6 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (entry.originalPrompt) {
+                            handleRegenerateAI(entry.originalPrompt + ', 3:4 aspect ratio, perfect framing');
+                          }
+                        }}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Neu generieren
+                      </Button>
+                    ) : hasAiTransformation(entry.entryId) ? (
                       <Button
                         size="sm"
                         variant="secondary"
@@ -339,23 +423,40 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
               </div>
             </div>
 
-            {/* Category Selector */}
-            <CardContent className="p-3">
-              <Select
-                value={entry.category}
-                onValueChange={(newCategory) => updatePhotoCategory(entry, newCategory)}
-                disabled={updatingPhoto === `${entry.entryId}-${entry.originalCategory}`}
-              >
-                <SelectTrigger className="w-full h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-            <SelectContent className="bg-background border border-border shadow-lg z-50">
-              <SelectItem value="front">Front</SelectItem>
-              <SelectItem value="back">Rücken</SelectItem>
-              <SelectItem value="side">Seite</SelectItem>
-            </SelectContent>
-              </Select>
-            </CardContent>
+            {/* Category Selector - Only for progress photos */}
+            {!entry.isAI && (
+              <CardContent className="p-3">
+                <Select
+                  value={entry.category}
+                  onValueChange={(newCategory) => updatePhotoCategory(entry, newCategory)}
+                  disabled={updatingPhoto === `${entry.entryId}-${entry.originalCategory}`}
+                >
+                  <SelectTrigger className="w-full h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border shadow-lg z-50">
+                    <SelectItem value="front">Front</SelectItem>
+                    <SelectItem value="back">Rücken</SelectItem>
+                    <SelectItem value="side">Seite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            )}
+            
+            {/* AI Image Info for AI images */}
+            {entry.isAI && (
+              <CardContent className="p-3">
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="font-medium">KI-Generiertes Zielbild</div>
+                  <div className="flex justify-between">
+                    <span>Kategorie: {getCategoryLabel(entry.category)}</span>
+                  </div>
+                  {entry.targetWeight && (
+                    <div>Zielgewicht: {entry.targetWeight}kg</div>
+                  )}
+                </div>
+              </CardContent>
+            )}
           </Card>
         ))}
       </div>
@@ -414,6 +515,24 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Universal Crop Modal */}
+      <UniversalCropModal
+        image={croppingState.image}
+        imageType={croppingState.imageType}
+        isOpen={croppingState.isOpen}
+        onClose={closeCropModal}
+        onCropComplete={(file) => handleCropComplete(file, (croppedFile) => {
+          // Handle the cropped file - could trigger upload or other actions
+          console.log('Cropped file:', croppedFile);
+          onPhotosUpdated?.(); // Refresh photos after cropping
+        })}
+        onRegenerateAI={handleRegenerateAI}
+        originalPrompt={croppingState.originalPrompt}
+        imageCategory={croppingState.imageCategory}
+        targetWeight={croppingState.targetWeight}
+        targetBodyFat={croppingState.targetBodyFat}
+      />
     </div>
   );
 };
