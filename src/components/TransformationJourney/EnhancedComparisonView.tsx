@@ -540,9 +540,9 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                         
                         <div className="w-full max-w-2xl mx-auto">
                           <BeforeAfterSlider
-                            beforeImage={getProgressPhotoUrl(currentPhoto)}
+                            beforeImage={getProgressPhotoUrl(currentPhoto, selectedAiImage.image_category)}
                             afterImage={selectedAiImage.image_url}
-                            beforeLabel="Dein Foto"
+                            beforeLabel={`Original (${selectedAiImage.image_category === 'front' ? 'Vorne' : selectedAiImage.image_category === 'back' ? 'Hinten' : 'Seite'})`}
                             afterLabel="KI Zielbild"
                             className="aspect-[3/4] rounded-lg overflow-hidden"
                           />

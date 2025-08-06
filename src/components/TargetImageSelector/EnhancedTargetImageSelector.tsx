@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 
 interface EnhancedTargetImageSelectorProps {
   generatedImages: {
-    imageUrls: string[];
+    imageUrls?: string[];
+    images?: { imageURL: string }[];
     count: number;
     prompt: string;
     hasProgressPhoto: boolean;
@@ -18,6 +19,9 @@ interface EnhancedTargetImageSelectorProps {
     targetWeight: number;
     currentBodyFat: number;
     targetBodyFat: number;
+    selectedCategory?: string;
+    selectedPhotoId?: string;
+    progressPhotoUrl?: string;
   };
   onImageSelected: () => void;
 }
@@ -27,10 +31,13 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
   onImageSelected
 }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('front');
+  const [selectedCategory, setSelectedCategory] = useState<string>(generatedImages.selectedCategory || 'front');
   const [saving, setSaving] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const { saveSelectedTargetImage } = useTargetImages();
+
+  // Support both old and new image URL formats
+  const imageUrls = generatedImages.imageUrls || generatedImages.images?.map(img => img.imageURL) || [];
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
@@ -44,8 +51,9 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
 
     setSaving(true);
     try {
-      const selectedImageUrl = generatedImages.imageUrls[selectedImageIndex];
+      const selectedImageUrl = imageUrls[selectedImageIndex];
       console.log('Saving selected image with category:', selectedImageUrl, selectedCategory);
+      console.log('Generated images data:', generatedImages);
       
       await saveSelectedTargetImage(
         selectedImageUrl, 
@@ -55,7 +63,10 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
           prompt: generatedImages.prompt,
           hasProgressPhoto: generatedImages.hasProgressPhoto,
           currentWeight: generatedImages.currentWeight,
-          currentBodyFat: generatedImages.currentBodyFat
+          currentBodyFat: generatedImages.currentBodyFat,
+          selectedCategory: generatedImages.selectedCategory || selectedCategory,
+          selectedPhotoId: generatedImages.selectedPhotoId,
+          progressPhotoUrl: generatedImages.progressPhotoUrl
         },
         selectedCategory
       );
@@ -110,7 +121,7 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
 
         {/* Image Selection Grid */}
         <div className="grid grid-cols-2 gap-4">
-          {generatedImages.imageUrls.map((imageUrl, index) => (
+          {imageUrls.map((imageUrl, index) => (
             <div
               key={index}
               className={`relative border-2 rounded-lg overflow-hidden transition-all ${

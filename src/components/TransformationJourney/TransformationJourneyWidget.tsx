@@ -70,6 +70,14 @@ export const TransformationJourneyWidget: React.FC = () => {
     const categoryToUse = selectedPhoto?.selectedCategory || selectedCategory;
     const originalPhotoUrl = getProgressPhotoUrl(photoToUse, categoryToUse as 'front' | 'side' | 'back');
     
+    console.log('🎯 Generate Target Image:', {
+      photoToUse: photoToUse?.id,
+      categoryToUse,
+      originalPhotoUrl,
+      selectedPhoto: selectedPhoto?.id,
+      selectedCategory
+    });
+    
     try {
       const result = await generateTargetImage(
         undefined, // targetWeight
@@ -78,23 +86,25 @@ export const TransformationJourneyWidget: React.FC = () => {
           setGenerationStage(stage);
           setGenerationProgress(progress || 0);
         },
-        originalPhotoUrl // Use selected progress photo
+        originalPhotoUrl, // Use selected progress photo
+        categoryToUse, // Pass the correct category
+        photoToUse?.id // Pass the photo ID for linking
       );
       
       if (result) {
+        // Store category and photo ID for saving later
+        result.selectedCategory = categoryToUse;
+        result.selectedPhotoId = photoToUse?.id;
         setGeneratedImages(result);
         
         // Set up for slider view if we have both images
-        if (originalPhotoUrl && targetImages.length > 0) {
+        if (originalPhotoUrl) {
           setLastGeneratedImage({
             originalPhoto: originalPhotoUrl,
-            generatedImage: targetImages[0]?.image_url || ""
+            generatedImage: result.images?.[0]?.imageURL || ""
           });
           setShowSlider(true);
         }
-        
-        // Stay on generate tab to show the selection
-        // setActiveTab('selector');
       }
     } catch (error) {
       console.error('Error generating target image:', error);

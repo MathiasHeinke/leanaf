@@ -90,7 +90,9 @@ export const useTargetImages = () => {
     targetWeight?: number,
     targetBodyFat?: number,
     onProgress?: (stage: string, progress?: number) => void,
-    progressPhotoUrl?: string
+    progressPhotoUrl?: string,
+    imageCategory?: string,
+    progressPhotoId?: string
   ) => {
     if (!user) return;
 
@@ -113,7 +115,9 @@ export const useTargetImages = () => {
         height: profileData?.height || 175,
         currentWeight: profileData?.weight || 80,
         fitnessGoal: profileData?.goal || 'fitness',
-        progressPhotoUrl: progressPhotoUrl
+        progressPhotoUrl: progressPhotoUrl,
+        imageCategory: imageCategory || 'unspecified',
+        progressPhotoId: progressPhotoId
       };
 
       console.log('Calling generate-target-image with:', requestData);
@@ -141,11 +145,11 @@ export const useTargetImages = () => {
     }
   };
 
-  const saveSelectedTargetImage = async (selectedImageUrl: string, imageData: any, imageCategory: string = 'unspecified') => {
+  const saveSelectedTargetImage = async (selectedImageUrl: string, imageData: any, imageCategory?: string) => {
     if (!user) return;
 
     try {
-      console.log('Saving selected target image...', { selectedImageUrl });
+      console.log('Saving selected target image...', { selectedImageUrl, imageData });
       
       const { data, error } = await supabase.functions.invoke('save-target-image', {
         body: {
@@ -156,8 +160,9 @@ export const useTargetImages = () => {
           hasProgressPhoto: imageData.hasProgressPhoto,
           currentWeight: imageData.currentWeight,
           currentBodyFat: imageData.currentBodyFat,
-          imageCategory: imageCategory,
-          progressPhotoUrl: imageData.progressPhotoUrl
+          imageCategory: imageCategory || imageData.selectedCategory || 'unspecified',
+          progressPhotoUrl: imageData.progressPhotoUrl,
+          progressPhotoId: imageData.selectedPhotoId
         }
       });
 
@@ -173,8 +178,8 @@ export const useTargetImages = () => {
         target_weight_kg: imageData.targetWeight,
         target_body_fat_percentage: imageData.targetBodyFat,
         generation_prompt: imageData.prompt,
-        image_category: imageCategory,
-        ai_generated_from_photo_id: data.ai_generated_from_photo_id || null,
+        image_category: imageCategory || imageData.selectedCategory || 'unspecified',
+        ai_generated_from_photo_id: data.ai_generated_from_photo_id || imageData.selectedPhotoId || null,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

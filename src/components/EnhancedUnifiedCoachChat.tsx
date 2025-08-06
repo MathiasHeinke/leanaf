@@ -109,13 +109,16 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   
   // ============= CHAT INITIALIZATION =============
   useEffect(() => {
-    if (!user?.id || initializationRef.current) return;
+    if (!user?.id) return;
     
-    initializationRef.current = true;
-    
+    // Always reinitialize when user or coach changes
     const init = async () => {
+      console.log(`🔄 Initializing chat for user ${user.id}, coach ${coach?.id || 'lucy'}`);
+      initializationRef.current = true;
+    
       try {
         setIsLoading(true);
+        setMessages([]);  // Clear old messages first
         
         // Load existing chat history for today
         const today = getCurrentDateString();
@@ -226,8 +229,10 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
       }
     };
     
+    // Always reset and initialize on user/coach change
+    initializationRef.current = false;
     init();
-  }, [user?.id, coach, enableAdvancedFeatures, sendEnhancedMessage, lastMetadata]);
+  }, [user?.id, coach?.id]);
 
   // ============= AUTO SCROLL =============
   useEffect(() => {

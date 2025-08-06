@@ -48,7 +48,8 @@ serve(async (req) => {
     currentWeight,
     currentBodyFat,
     imageCategory = 'unspecified',
-    progressPhotoUrl
+    progressPhotoUrl,
+    progressPhotoId
   } = await req.json();
 
     if (!selectedImageUrl) {
@@ -61,9 +62,10 @@ serve(async (req) => {
       .update({ is_active: false })
       .eq('user_id', userId);
 
-    // Find the progress photo ID if progressPhotoUrl is provided
-    let progressPhotoId = null;
-    if (progressPhotoUrl) {
+    // Use provided progressPhotoId or find it from URL
+    let finalProgressPhotoId = progressPhotoId;
+    
+    if (!finalProgressPhotoId && progressPhotoUrl) {
       const { data: progressPhotoData } = await supabase
         .from('weight_history')
         .select('id, photo_urls')
@@ -79,13 +81,19 @@ serve(async (req) => {
               : Object.values(photo.photo_urls);
             
             if (urls.some(url => url === progressPhotoUrl)) {
-              progressPhotoId = photo.id;
+              finalProgressPhotoId = photo.id;
               break;
             }
           }
         }
       }
     }
+    
+    console.log('Progress photo linking:', { 
+      progressPhotoId, 
+      finalProgressPhotoId, 
+      progressPhotoUrl: progressPhotoUrl?.substring(0, 50) + '...' 
+    });
 
     // Save the selected target image
     const { data: targetImage, error: insertError } = await supabase
@@ -98,7 +106,7 @@ serve(async (req) => {
         target_body_fat_percentage: targetBodyFat,
         generation_prompt: generationPrompt,
         image_category: imageCategory,
-        ai_generated_from_photo_id: progressPhotoId,
+        ai_generated_from_photo_id: finalProgressPhotoId,
         is_active: true
       })
       .select()
@@ -114,6 +122,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
+        id: targetImage.id,
+        ai_generated_from_photo_id: finalProgressPhotoId,
         targetImage,
         message: 'Target image saved successfully'
       }),
