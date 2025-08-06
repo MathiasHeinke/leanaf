@@ -223,6 +223,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                   afterImage={currentPair.targetUrl}
                   beforeLabel="Original"
                   afterLabel="KI-Generiert"
+                  showAlignButton={true}
                 />
               </CardContent>
             </Card>
@@ -365,6 +366,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                     afterImage={currentPair.targetUrl}
                     beforeLabel="Original"
                     afterLabel="KI-Zielbild"
+                    showAlignButton={true}
                   />
                 </CardContent>
               </Card>
@@ -393,6 +395,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                         afterImage={getProgressPhotoUrl(filteredProgress[filteredProgress.length - 1])}
                         beforeLabel={`Start (${new Date(filteredProgress[0].date).toLocaleDateString('de-DE')})`}
                         afterLabel={`Aktuell (${new Date(filteredProgress[filteredProgress.length - 1].date).toLocaleDateString('de-DE')})`}
+                        showAlignButton={true}
                       />
                     </CardContent>
                   </Card>

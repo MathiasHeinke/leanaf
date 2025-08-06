@@ -1,5 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Brain } from 'lucide-react';
+import { SmartCropModal } from '@/components/AvatarSelector/SmartCropModal';
 
 interface BeforeAfterSliderProps {
   beforeImage: string;
@@ -7,16 +9,21 @@ interface BeforeAfterSliderProps {
   beforeLabel?: string;
   afterLabel?: string;
   className?: string;
+  showAlignButton?: boolean;
+  onImagesAligned?: (alignedImages: string[]) => void;
 }
 
-export function BeforeAfterSlider({ 
-  beforeImage, 
-  afterImage, 
-  beforeLabel = "Original", 
-  afterLabel = "Generiert",
-  className 
-}: BeforeAfterSliderProps) {
+export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
+  beforeImage,
+  afterImage,
+  beforeLabel = "Vorher",
+  afterLabel = "Nachher",
+  className = "",
+  showAlignButton = false,
+  onImagesAligned
+}) => {
   const [sliderPosition, setSliderPosition] = useState(50);
+  const [showSmartCrop, setShowSmartCrop] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
@@ -58,7 +65,7 @@ export function BeforeAfterSlider({
     isDragging.current = false;
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -72,66 +79,103 @@ export function BeforeAfterSlider({
     };
   }, [handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
+  const handleAlignImages = () => {
+    setShowSmartCrop(true);
+  };
+
+  const handleAlignmentComplete = (alignedImages: string[]) => {
+    setShowSmartCrop(false);
+    if (onImagesAligned && alignedImages.length >= 2) {
+      onImagesAligned(alignedImages);
+    }
+  };
+
   return (
-    <div className={cn("relative w-full h-96 select-none", className)}>
-      <div 
-        ref={containerRef}
-        className="relative w-full h-full overflow-hidden rounded-lg cursor-col-resize shadow-lg"
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-      >
-        {/* After Image (Background) - Full width */}
-        <img
-          src={afterImage}
-          alt={afterLabel}
-          className="absolute inset-0 w-full h-full object-cover"
-          draggable={false}
-        />
-        
-        {/* Before Image (Overlay with clip-path for smooth transition) */}
+    <>
+      <div className="space-y-4">
+        {/* Align Button */}
+        {showAlignButton && (
+          <div className="flex justify-center">
+            <Button
+              onClick={handleAlignImages}
+              variant="outline"
+              size="sm"
+              className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-300/50 hover:border-purple-400"
+            >
+              <Brain className="h-4 w-4 mr-2 text-purple-600" />
+              KI-Ausrichtung
+            </Button>
+          </div>
+        )}
+
+        {/* Before/After Slider */}
         <div 
-          className="absolute inset-0 transition-all duration-100 ease-out"
-          style={{ 
-            clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`,
-            willChange: 'clip-path'
-          }}
+          ref={containerRef}
+          className={`relative w-full h-96 overflow-hidden rounded-lg cursor-ew-resize ${className}`}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
         >
+          {/* After Image (Background) */}
           <img
-            src={beforeImage}
-            alt={beforeLabel}
+            src={afterImage}
+            alt={afterLabel}
             className="absolute inset-0 w-full h-full object-cover"
             draggable={false}
-            style={{ width: '100%', height: '100%' }}
           />
-        </div>
+          
+          {/* Before Image (Overlay with clip-path) */}
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` 
+            }}
+          >
+            <img
+              src={beforeImage}
+              alt={beforeLabel}
+              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+            />
+          </div>
 
-        {/* Slider Line with improved visual feedback */}
-        <div 
-          className="absolute top-0 bottom-0 w-1 bg-white shadow-xl z-20 transition-all duration-100"
-          style={{ left: `calc(${sliderPosition}% - 2px)` }}
-        >
-          {/* Slider Handle with improved design */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-xl border-2 border-primary flex items-center justify-center cursor-col-resize hover:scale-110 transition-transform duration-200">
-            <div className="flex gap-0.5">
-              <div className="w-0.5 h-5 bg-primary rounded-full"></div>
-              <div className="w-0.5 h-5 bg-primary rounded-full"></div>
+          {/* Slider Line */}
+          <div 
+            className="absolute top-0 bottom-0 w-1 bg-white shadow-lg z-10"
+            style={{ left: `calc(${sliderPosition}% - 2px)` }}
+          >
+            {/* Slider Handle */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full shadow-lg border-2 border-primary flex items-center justify-center cursor-ew-resize">
+              <div className="flex gap-0.5">
+                <div className="w-0.5 h-4 bg-primary rounded-full"></div>
+                <div className="w-0.5 h-4 bg-primary rounded-full"></div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Enhanced Labels with better visibility */}
-        <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg">
-          {beforeLabel}
-        </div>
-        <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-sm font-medium shadow-lg">
-          {afterLabel}
-        </div>
+          {/* Labels */}
+          <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
+            {beforeLabel}
+          </div>
+          <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
+            {afterLabel}
+          </div>
 
-        {/* Percentage Display with improved design */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white px-4 py-1.5 rounded-lg text-sm font-medium shadow-lg">
-          {Math.round(sliderPosition)}% | {Math.round(100 - sliderPosition)}%
+          {/* Percentage Display */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-3 py-1.5 rounded-lg text-sm font-medium">
+            {Math.round(sliderPosition)}% | {Math.round(100 - sliderPosition)}%
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Smart Crop Modal */}
+      <SmartCropModal
+        images={[beforeImage, afterImage]}
+        isOpen={showSmartCrop}
+        onClose={() => setShowSmartCrop(false)}
+        onCropComplete={handleAlignmentComplete}
+        mode="align"
+        title="Bilder für perfekten Vergleich ausrichten"
+      />
+    </>
   );
-}
+};
