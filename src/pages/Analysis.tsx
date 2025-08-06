@@ -298,6 +298,16 @@ const Analysis = () => {
           {/* Goals Progress & Advanced Analytics */}
           <div className="space-y-6">
             <GoalsProgressWidget />
+            
+            {/* Weight & Body Measurements Charts */}
+            <HistoryCharts 
+              data={[]} // Empty nutrition data for more tab
+              weightHistory={weightHistory}
+              bodyMeasurementsHistory={bodyMeasurementsHistory}
+              timeRange="month"
+              loading={loading}
+            />
+            
             <AdvancedAnalyticsSection />
           </div>
         </TabsContent>
