@@ -75,6 +75,42 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
             />
           </div>
 
+          {/* Persistent Data Overlay */}
+          {(weight || bodyFat || isTarget) && (
+            <div className="absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm text-white p-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 text-sm">
+                  {weight && (
+                    <div className="flex items-center gap-1">
+                      <ScaleIcon className="h-3 w-3" />
+                      <span className="font-medium">{weight}kg</span>
+                    </div>
+                  )}
+                  {bodyFat && (
+                    <div className="flex items-center gap-1">
+                      <ActivityIcon className="h-3 w-3" />
+                      <span className="font-medium">{bodyFat}%</span>
+                    </div>
+                  )}
+                </div>
+                {(isTarget || hasAiTransformation) && (
+                  <div className="flex items-center gap-1">
+                    {isTarget && (
+                      <Badge className="bg-primary/80 text-white text-xs px-1 py-0">
+                        Ziel
+                      </Badge>
+                    )}
+                    {hasAiTransformation && !isTarget && (
+                      <Badge className="bg-purple-500/80 text-white text-xs px-1 py-0">
+                        KI
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Overlay Controls */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <div className="absolute top-2 right-2 flex gap-1">
