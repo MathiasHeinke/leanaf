@@ -98,8 +98,7 @@ export const useTargetImages = () => {
     imageCategory?: string,
     progressPhotoId?: string,
     musclePriority?: number,
-    realismFactor?: number,
-    definitionVsMass?: number
+    realismFactor?: number
   ) => {
     if (!user) return;
 
@@ -126,8 +125,7 @@ export const useTargetImages = () => {
         imageCategory: imageCategory || 'unspecified',
         progressPhotoId: progressPhotoId,
         musclePriority: musclePriority,
-        realismFactor: realismFactor,
-        definitionVsMass: definitionVsMass
+        realismFactor: realismFactor
       };
 
       console.log('Calling generate-target-image with:', requestData);

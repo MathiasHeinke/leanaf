@@ -66,8 +66,7 @@ serve(async (req) => {
       targetBodyFat, 
       progressPhotoUrl,
       musclePriority = 3,
-      realismFactor = 0.7,
-      definitionVsMass = 0.5
+      realismFactor = 0.7
     } = await req.json();
     
     console.log('=== DEBUG: Request payload ===');
@@ -179,18 +178,12 @@ serve(async (req) => {
       };
 
       const getRealismDescription = (factor: number) => {
-        if (factor < 0.3) return 'very conservative and realistic changes';
-        if (factor < 0.7) return 'optimistic but achievable transformation';
-        return 'ambitious maximum transformation potential';
+        if (factor > 0.7) return 'very conservative and realistic changes';
+        if (factor > 0.4) return 'balanced and achievable transformation';
+        return 'experimental and unrealistic transformation';
       };
 
-      const getDefinitionStyle = (factor: number) => {
-        if (factor < 0.3) return 'lean and cut with visible muscle definition';
-        if (factor > 0.7) return 'muscular mass with some bulk';
-        return 'balanced muscle definition and size';
-      };
-
-      detailedPrompt = `Transform this ${genderDesc} realistically ${timeframeDesc}: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Muscle priority: ${getMuscleDescription(musclePriority)}. Transformation style: ${getDefinitionStyle(definitionVsMass)}. Realistic timeline approach: ${getRealismDescription(realismFactor)}. ${ageDesc ? `Age-appropriate fitness level for ${ageDesc}.` : ''} Natural lighting, photorealistic, achievable physique proportions, realistic body composition changes.`;
+      detailedPrompt = `Transform this ${genderDesc} realistically ${timeframeDesc}: achieving ${targetBodyFatNum}% body fat at ${targetWeightNum}kg. Muscle priority: ${getMuscleDescription(musclePriority)}. Realistic timeline approach: ${getRealismDescription(realismFactor)}. ${ageDesc ? `Age-appropriate fitness level for ${ageDesc}.` : ''} Natural lighting, photorealistic, achievable physique proportions, realistic body composition changes.`;
     } else {
       // Text-to-image transformation prompt
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';

@@ -38,6 +38,23 @@ export const QuickBodyDataWidget: React.FC = () => {
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [showImageSelectorOverlay, setShowImageSelectorOverlay] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  
+  // Calculate realism score for goals
+  const realismScore = userProfile ? (() => {
+    const currentWeight = userProfile.weight || 70;
+    const targetWeight = userProfile.target_weight || currentWeight;
+    const currentBodyFat = 20; // Default since not stored in profile
+    const targetBodyFat = userProfile.target_body_fat_percentage || 15;
+    const targetDate = userProfile.target_date ? new Date(userProfile.target_date) : null;
+    const monthsToTarget = targetDate ? 
+      Math.ceil((targetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)) : 6;
+    
+    const weightChange = Math.abs(targetWeight - currentWeight);
+    const bodyFatChange = Math.abs(targetBodyFat - currentBodyFat);
+    return Math.min(100, Math.max(20, 
+      100 - (weightChange * 2) - (bodyFatChange * 3) + (monthsToTarget * 5)
+    ));
+  })() : 0;
   const photoInputRef = useRef<HTMLInputElement>(null);
   const targetInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,6 +205,32 @@ export const QuickBodyDataWidget: React.FC = () => {
                 </div>
               )}
             </div>
+            
+            {/* Realismus-Bewertung */}
+            {userProfile.target_weight && userProfile.target_body_fat_percentage && userProfile.target_date && (
+              <div className="mt-3 pt-3 border-t border-primary/10">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-primary">Realismus-Bewertung</span>
+                  <Badge variant={realismScore > 70 ? 'default' : realismScore > 40 ? 'secondary' : 'destructive'} className="text-xs">
+                    {realismScore.toFixed(0)}%
+                  </Badge>
+                </div>
+                <div className="w-full bg-muted/50 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      realismScore > 70 ? 'bg-green-500' : 
+                      realismScore > 40 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${realismScore}%` }}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {realismScore > 70 && "Ambitionierte aber machbare Ziele - erfordert Disziplin"}
+                  {realismScore > 40 && realismScore <= 70 && "Sehr ambitionierte Ziele"}
+                  {realismScore <= 40 && "Extrem ambitioniert - längerer Zeitrahmen empfohlen"}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

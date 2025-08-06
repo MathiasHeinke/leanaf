@@ -53,7 +53,6 @@ export const AiTargetImageGeneration = ({
   
   const [musclePriority, setMusclePriority] = useState([3]);
   const [realismFactor, setRealismFactor] = useState([0.7]);
-  const [definitionVsMass, setDefinitionVsMass] = useState([0.5]);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStage, setGenerationStage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -105,9 +104,9 @@ export const AiTargetImageGeneration = ({
   };
 
   const getRealismDescription = (factor: number) => {
-    if (factor < 0.3) return 'Konservativ - Sehr realistische Veränderung';
-    if (factor < 0.7) return 'Ausgewogen - Optimistische aber erreichbare Ziele';
-    return 'Ambitioniert - Maximale Transformation';
+    if (factor > 0.7) return 'Maximal realistisch - sehr konservativ';
+    if (factor > 0.4) return 'Realistisch - ausgewogen und erreichbar';
+    return 'Unrealistisch - experimentell';
   };
 
   const generatePrompt = () => {
@@ -147,8 +146,7 @@ export const AiTargetImageGeneration = ({
         'enhanced_generation',
         selectedProgressPhoto.id,
         musclePriority[0],
-        realismFactor[0],
-        definitionVsMass[0]
+        realismFactor[0]
       );
       
       if (result) {
@@ -270,61 +268,8 @@ export const AiTargetImageGeneration = ({
               {getRealismDescription(realismFactor[0])}
             </p>
           </div>
-
-          {/* Definition vs Mass */}
-          <div className="space-y-2">
-            <Label className="text-xs">
-              Definition vs. Masse: {Math.round(definitionVsMass[0] * 100)}%
-            </Label>
-            <Slider
-              value={definitionVsMass}
-              onValueChange={setDefinitionVsMass}
-              min={0}
-              max={1}
-              step={0.1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Mehr Definition</span>
-              <span>Mehr Masse</span>
-            </div>
-          </div>
         </div>
 
-        <Separator />
-
-        {/* Realism Assessment */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium">Realismus-Bewertung</h3>
-          
-          <div className="flex items-center gap-3">
-            <Progress value={realismScore} className="flex-1" />
-            <Badge variant={realismScore > 70 ? 'default' : realismScore > 40 ? 'secondary' : 'destructive'}>
-              {realismScore.toFixed(2)}%
-            </Badge>
-          </div>
-          
-          <div className="flex items-start gap-2">
-            {realismScore > 70 ? (
-              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5" />
-            )}
-            <div className="text-xs text-muted-foreground">
-              {realismScore > 70 && "Sehr realistische Ziele - gut erreichbar in der gegebenen Zeit"}
-              {realismScore > 40 && realismScore <= 70 && "Ambitionierte aber machbare Ziele - erfordert Disziplin"}
-              {realismScore <= 40 && "Sehr ambitionierte Ziele - möglicherweise längerer Zeitrahmen nötig"}
-            </div>
-          </div>
-        </div>
-
-        {/* Live Prompt Preview */}
-        <div className="space-y-2">
-          <Label className="text-xs">Live Prompt Vorschau:</Label>
-          <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground border">
-            {generatePrompt()}
-          </div>
-        </div>
 
         <Separator />
 
