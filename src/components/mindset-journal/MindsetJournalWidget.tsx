@@ -172,8 +172,9 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                 variant={isRecording ? "destructive" : "secondary"}
                 size="sm"
                 onClick={isRecording ? stopRecording : startRecording}
-                disabled={!hasPermission || isProcessing}
-                className="flex-1"
+                disabled={isProcessing}
+                className="flex-1 relative z-10 cursor-pointer"
+                type="button"
               >
                 {isRecording ? (
                   <>
