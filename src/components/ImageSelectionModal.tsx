@@ -8,6 +8,7 @@ import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ImageSelectionModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
 }) => {
   const { photos, loading } = useProgressPhotos();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
@@ -137,21 +139,21 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[85vh] p-4' : 'max-w-4xl max-h-[80vh]'} overflow-y-auto`}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Camera className="w-5 h-5" />
+          <DialogTitle className={`flex items-center gap-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+            <Camera className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
             Bild für AI-Generation auswählen
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className={`${isMobile ? 'space-y-4' : 'space-y-6'}`}>
           {/* Upload Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Neues Bild hochladen</h3>
+          <div className={`${isMobile ? 'space-y-3' : 'space-y-4'}`}>
+            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>Neues Bild hochladen</h3>
             
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg ${isMobile ? 'p-4' : 'p-8'} text-center transition-colors ${
                 dragActive 
                   ? 'border-primary bg-primary/5' 
                   : 'border-muted-foreground/25 hover:border-primary/50'
@@ -162,14 +164,14 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
             >
               {isUploading ? (
                 <div className="flex flex-col items-center gap-2">
-                  <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+                  <div className={`animate-spin ${isMobile ? 'w-6 h-6' : 'w-8 h-8'} border-2 border-primary border-t-transparent rounded-full`} />
                   <p className="text-sm text-muted-foreground">Wird hochgeladen...</p>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-4">
-                  <Upload className="w-12 h-12 text-muted-foreground" />
+                <div className={`flex flex-col items-center ${isMobile ? 'gap-3' : 'gap-4'}`}>
+                  <Upload className={`${isMobile ? 'w-8 h-8' : 'w-12 h-12'} text-muted-foreground`} />
                   <div>
-                    <p className="text-lg font-medium">Bild hier ablegen oder</p>
+                    <p className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>Bild hier ablegen oder</p>
                     <input
                       type="file"
                       accept="image/*"
@@ -184,9 +186,11 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                       </Button>
                     </label>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    JPG, PNG oder WEBP bis 50MB
-                  </p>
+                  {!isMobile && (
+                    <p className="text-sm text-muted-foreground">
+                      JPG, PNG oder WEBP bis 50MB
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -197,9 +201,9 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                 <img
                   src={uploadedImageUrl}
                   alt="Hochgeladenes Bild"
-                  className="w-full h-48 object-cover rounded"
+                  className={`w-full ${isMobile ? 'h-32' : 'h-48'} object-cover rounded`}
                 />
-                <p className="text-sm text-center mt-2 text-primary font-medium">
+                <p className="text-xs text-center mt-2 text-primary font-medium">
                   ✓ Hochgeladenes Bild (automatisch ausgewählt)
                 </p>
               </Card>
@@ -207,8 +211,8 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
           </div>
 
           {/* Progress Photos Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Oder Progress Photo auswählen</h3>
+          <div className={`${isMobile ? 'space-y-3' : 'space-y-4'}`}>
+            <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium`}>Oder Progress Photo auswählen</h3>
             
             {loading ? (
               <div className="flex justify-center py-8">
@@ -222,7 +226,7 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                 </p>
               </Card>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-64 overflow-y-auto">
+              <div className={`grid ${isMobile ? 'grid-cols-3 gap-2 max-h-48' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-64'} overflow-y-auto`}>
                 {photos.map((entry) => {
                   const photoUrls = getProgressPhotoUrls(entry);
                   return photoUrls.map((url, index) => (
@@ -239,11 +243,13 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                       <img
                         src={url}
                         alt={`Progress Photo ${entry.date}`}
-                        className="w-full h-32 object-cover rounded"
+                        className={`w-full ${isMobile ? 'h-24' : 'h-32'} object-cover rounded`}
                       />
-                      <p className="text-xs text-center mt-1 text-muted-foreground">
-                        {new Date(entry.date).toLocaleDateString('de-DE')}
-                      </p>
+                      {!isMobile && (
+                        <p className="text-xs text-center mt-1 text-muted-foreground">
+                          {new Date(entry.date).toLocaleDateString('de-DE')}
+                        </p>
+                      )}
                       {selectedImageUrl === url && (
                         <p className="text-xs text-center text-primary font-medium">
                           ✓ Ausgewählt
@@ -257,17 +263,34 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Abbrechen
-            </Button>
-            <Button 
-              onClick={handleGenerate}
-              disabled={!selectedImageUrl && !uploadedImageUrl}
-              className="min-w-32"
-            >
-              Jetzt generieren
-            </Button>
+          <div className={`flex ${isMobile ? 'flex-col gap-2 pt-3' : 'justify-end gap-3 pt-4'} border-t sticky bottom-0 bg-background`}>
+            {isMobile ? (
+              <>
+                <Button 
+                  onClick={handleGenerate}
+                  disabled={!selectedImageUrl && !uploadedImageUrl}
+                  className="w-full"
+                >
+                  Jetzt generieren
+                </Button>
+                <Button variant="outline" onClick={onClose} className="w-full">
+                  Abbrechen
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onClose}>
+                  Abbrechen
+                </Button>
+                <Button 
+                  onClick={handleGenerate}
+                  disabled={!selectedImageUrl && !uploadedImageUrl}
+                  className="min-w-32"
+                >
+                  Jetzt generieren
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </DialogContent>
