@@ -20,6 +20,8 @@ export const TransformationJourneyWidget: React.FC = () => {
   const [generatingTarget, setGeneratingTarget] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>('journey');
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStage, setGenerationStage] = useState('');
 
   // Helper function to get photo URL from progress photo
   const getProgressPhotoUrl = (entry: any, category: 'front' | 'side' | 'back') => {
@@ -29,12 +31,15 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   const handleGenerateTarget = async () => {
     setGeneratingTarget(true);
+    setGenerationProgress(0);
+    setGenerationStage('Starte Generierung...');
     try {
       const result = await generateTargetImage(
         undefined, // targetWeight
         undefined, // targetBodyFat
         (stage, progress) => {
-          console.log(`Generation stage: ${stage}, progress: ${progress}%`);
+          setGenerationStage(stage);
+          setGenerationProgress(progress || 0);
         },
         getProgressPhotoUrl(progressPhotos[0], 'front') // Use latest progress photo
       );
@@ -48,6 +53,8 @@ export const TransformationJourneyWidget: React.FC = () => {
       toast.error('Fehler beim Generieren des Zielbilds');
     } finally {
       setGeneratingTarget(false);
+      setGenerationProgress(0);
+      setGenerationStage('');
     }
   };
 
@@ -161,6 +168,21 @@ export const TransformationJourneyWidget: React.FC = () => {
                     </div>
                   </div>
                   
+                  {generatingTarget && (
+                    <div className="space-y-3 p-4 bg-primary/5 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{generationStage}</span>
+                        <span className="text-sm text-muted-foreground">{generationProgress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${generationProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
                   <Button 
                     onClick={handleGenerateTarget}
                     disabled={generatingTarget}
@@ -180,11 +202,27 @@ export const TransformationJourneyWidget: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="text-center p-6 border-2 border-dashed border-border rounded-lg">
+                <div className="text-center p-6 border-2 border-dashed border-border rounded-lg space-y-4">
                   <ImageIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                   <p className="text-sm text-muted-foreground mb-4">
                     Lade zuerst ein Fortschrittsfoto hoch, um ein personalisiertes Zielbild zu erstellen
                   </p>
+                  
+                  {generatingTarget && (
+                    <div className="space-y-3 p-4 bg-primary/5 rounded-lg border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{generationStage}</span>
+                        <span className="text-sm text-muted-foreground">{generationProgress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${generationProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
                   <Button 
                     onClick={handleGenerateTarget}
                     disabled={generatingTarget}
