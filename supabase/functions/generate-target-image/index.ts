@@ -129,41 +129,34 @@ serve(async (req) => {
     const targetWeightNum = targetWeight || profile?.target_weight || currentWeight;
     const targetBodyFatNum = targetBodyFat || profile?.target_body_fat_percentage || 15;
     
-    // Determine activity level based on workout frequency
-    let activityLevel = 'sedentary';
-    let workoutFrequency = '';
+    // Determine lifestyle level (simplified, no workout references)
+    let lifestyleLevel = 'balanced';
     
-    if (workoutsPerWeek >= 6) {
-      activityLevel = 'very active';
-      workoutFrequency = `${workoutsPerWeek}x week workout`;
-    } else if (workoutsPerWeek >= 4) {
-      activityLevel = 'active';
-      workoutFrequency = `${workoutsPerWeek}x week workout`;
+    if (workoutsPerWeek >= 4) {
+      lifestyleLevel = 'active';
     } else if (workoutsPerWeek >= 2) {
-      activityLevel = 'moderate active';
-      workoutFrequency = `${workoutsPerWeek}x week workout`;
+      lifestyleLevel = 'moderately active';
     }
     
-    // Create photorealistic prompt for fitness transformation
+    // Create photorealistic prompt focusing on natural appearance
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Photorealistic image editing prompt with explicit realism keywords
-      detailedPrompt = `Professional fitness photography, photorealistic, high-quality photo. Transform this person to show their natural fitness goal: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg body weight, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. Athletic and toned physique with natural muscle definition. Healthy, fit appearance without extreme musculature. Natural lighting, realistic human proportions, professional photography style. Focus on natural fitness progression rather than dramatic transformation. No cartoon, no anime, no illustration, photorealistic only.`;
+      // Photorealistic image editing prompt with natural, soft language
+      detailedPrompt = `Professional lifestyle photography, photorealistic, high-quality photo. Transform this person to show their healthy goal: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg body weight, ${lifestyleLevel} healthy lifestyle. Naturally fit and balanced physique with subtle body composition. Healthy, natural appearance with realistic proportions. Soft natural lighting, professional portrait photography style. Focus on natural health and balanced lifestyle rather than dramatic changes. No cartoon, no anime, no illustration, photorealistic only.`;
     } else {
-      // Fallback for text-only generation with photorealistic emphasis
+      // Fallback for text-only generation with natural emphasis
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
       const ageDesc = profile?.age ? `${profile.age}-year-old` : 'young adult';
       
-      detailedPrompt = `Professional fitness photography, photorealistic portrait of a fit ${ageDesc} ${genderDesc}. Body composition: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. Natural athletic build, toned physique, healthy appearance. Realistic human proportions, natural lighting, professional fitness photography. Focus on natural fitness and health rather than extreme musculature. No cartoon, no anime, no illustration, photorealistic only.`;
+      detailedPrompt = `Professional lifestyle photography, photorealistic portrait of a naturally fit ${ageDesc} ${genderDesc}. Body composition: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, ${lifestyleLevel} healthy lifestyle. Naturally balanced physique, healthy appearance with realistic proportions. Soft natural lighting, professional portrait photography. Focus on natural health and balanced lifestyle. No cartoon, no anime, no illustration, photorealistic only.`;
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);
     console.log('=== DEBUG: Prompt Generation ===');
     console.log('targetBodyFatNum:', targetBodyFatNum);
     console.log('targetWeightNum:', targetWeightNum);
-    console.log('activityLevel:', activityLevel);
-    console.log('workoutFrequency:', workoutFrequency);
+    console.log('lifestyleLevel:', lifestyleLevel);
     console.log('workoutsPerWeek:', workoutsPerWeek);
 
     // Test BFL API Key first
