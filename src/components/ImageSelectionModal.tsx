@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Upload, Camera, X } from 'lucide-react';
 import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ImageSelectionModalProps {
@@ -27,8 +28,10 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
   const [dragActive, setDragActive] = useState(false);
 
   const handleProgressPhotoSelect = (imageUrl: string) => {
+    console.log('Progress photo selected:', imageUrl);
     setSelectedImageUrl(imageUrl);
     setUploadedImageUrl(null); // Clear uploaded image when selecting progress photo
+    toast.success('Progress Photo ausgewählt');
   };
 
   const handleUploadedImageSelect = (imageUrl: string) => {
@@ -39,25 +42,45 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
   const handleFileUpload = async (files: FileList | File[]) => {
     if (!user || files.length === 0) return;
     
+    console.log('🚀 Starting upload:', { 
+      filesCount: files.length, 
+      userId: user.id, 
+      firstFile: files[0]?.name 
+    });
+    
     setIsUploading(true);
     try {
       const fileArray = Array.from(files);
-      console.log('Uploading files for AI generation:', fileArray);
       
+      // Test storage permissions first
+      const { data: testData, error: testError } = await supabase.storage
+        .from('meal-images')
+        .list('', { limit: 1 });
+      
+      if (testError) {
+        console.error('Storage permission test failed:', testError);
+        toast.error('Speicher-Zugriff fehlgeschlagen');
+        return;
+      }
+      
+      console.log('✅ Storage access verified, uploading...');
       const result = await uploadFilesWithProgress(fileArray, user.id);
+      
+      console.log('Upload result:', result);
       
       if (result.success && result.urls.length > 0) {
         const uploadedUrl = result.urls[0];
         setUploadedImageUrl(uploadedUrl);
         setSelectedImageUrl(null); // Clear progress photo selection
-        toast.success('Bild hochgeladen');
-        console.log('Image uploaded successfully:', uploadedUrl);
+        toast.success('Bild erfolgreich hochgeladen');
+        console.log('✅ Image uploaded successfully:', uploadedUrl);
       } else {
-        toast.error('Fehler beim Hochladen');
+        console.error('Upload failed:', result.errors);
+        toast.error(`Upload fehlgeschlagen: ${result.errors.join(', ')}`);
       }
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Fehler beim Hochladen');
+      console.error('❌ Upload error:', error);
+      toast.error(`Fehler beim Hochladen: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -150,17 +173,18 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                   <Upload className="w-12 h-12 text-muted-foreground" />
                   <div>
                     <p className="text-lg font-medium">Bild hier ablegen oder</p>
-                    <label className="inline-block">
-                      <Button variant="outline" className="mt-2" asChild>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileInput}
+                      className="hidden"
+                      multiple={false}
+                      id="file-upload-input"
+                    />
+                    <label htmlFor="file-upload-input">
+                      <Button variant="outline" className="mt-2 cursor-pointer" asChild>
                         <span>Datei auswählen</span>
                       </Button>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileInput}
-                        className="hidden"
-                        multiple={false}
-                      />
                     </label>
                   </div>
                   <p className="text-sm text-muted-foreground">
@@ -212,12 +236,13 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                   return photoUrls.map((url, index) => (
                     <Card
                       key={`${entry.id}-${index}`}
-                      className={`p-2 cursor-pointer transition-all ${
+                      className={`p-2 cursor-pointer transition-all select-none touch-manipulation ${
                         selectedImageUrl === url 
                           ? 'ring-2 ring-primary' 
                           : 'hover:ring-1 hover:ring-primary/50'
                       }`}
                       onClick={() => handleProgressPhotoSelect(url)}
+                      onTouchStart={() => handleProgressPhotoSelect(url)}
                     >
                       <img
                         src={url}
