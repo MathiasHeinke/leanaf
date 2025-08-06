@@ -564,65 +564,131 @@ export const WeightHistory = ({ weightHistory, loading, onDataUpdate }: WeightHi
     const photos = entry.photo_urls || [];
     const isUploading = uploadingPhotoFor === entry.id;
     const canAddMore = photos.length < 3;
+    const hasPhotos = photos.length > 0;
 
     return (
-      <div className="flex gap-1 mt-2 flex-wrap items-center">
-        {/* Existing photos */}
-        {photos.map((url, index) => (
-          <div key={index} className="relative group">
-            <button
-              onClick={() => setSelectedImageUrl(url)}
-              className="relative"
+      <div className="mt-3 border-t pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+            <Camera className="h-3 w-3" />
+            Progress Fotos ({photos.length}/3)
+          </span>
+          {canAddMore && (
+            <Button
+              onClick={() => triggerInlineUpload(entry.id!)}
+              disabled={isUploading}
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs gap-1 hover:bg-primary/10 hover:border-primary/50 transition-all"
             >
-              <img
-                src={url}
-                alt={`Progress ${index + 1}`}
-                className="w-12 h-12 object-cover rounded border hover:opacity-80 transition-opacity"
-              />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                <Eye className="h-4 w-4 text-white" />
-              </div>
-            </button>
-            
-            {/* Delete button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                deletePhoto(entry.id!, url);
-              }}
-              disabled={deletingPhotoUrl === url}
-              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Foto löschen"
-            >
-              {deletingPhotoUrl === url ? (
-                <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+              {isUploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b border-primary"></div>
+                  <span>Uploading...</span>
+                </>
               ) : (
-                <X className="h-3 w-3" />
+                <>
+                  <Plus className="h-3 w-3" />
+                  <span className="hidden sm:inline">Foto hinzufügen</span>
+                  <span className="sm:hidden">+</span>
+                </>
               )}
-            </button>
+            </Button>
+          )}
+        </div>
+        
+        {hasPhotos ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            {photos.map((url, index) => (
+              <div key={index} className="relative group">
+                <button
+                  onClick={() => setSelectedImageUrl(url)}
+                  className="relative block"
+                >
+                  <img
+                    src={url}
+                    alt={`Progress Foto ${index + 1}`}
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg border-2 border-muted cursor-pointer hover:border-primary/50 transition-all duration-200 hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                    <Eye className="h-4 w-4 text-white" />
+                  </div>
+                </button>
+                
+                {/* Delete button with better positioning */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deletePhoto(entry.id!, url);
+                  }}
+                  disabled={deletingPhotoUrl === url}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100 shadow-lg"
+                  title="Foto löschen"
+                >
+                  {deletingPhotoUrl === url ? (
+                    <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
+                  ) : (
+                    <X className="h-3 w-3" />
+                  )}
+                </button>
+                
+                {/* Photo index badge */}
+                <div className="absolute bottom-1 left-1 bg-black/60 text-white rounded px-1 text-xs">
+                  {index + 1}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-
-        {/* Add photo button */}
-        {canAddMore && (
-          <button
-            onClick={() => triggerInlineUpload(entry.id!)}
-            disabled={isUploading}
-            className="w-12 h-12 border-2 border-dashed border-muted-foreground/30 rounded flex items-center justify-center hover:border-primary/50 hover:bg-muted/20 transition-colors group"
-            title="Foto hinzufügen"
-          >
-            {isUploading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b border-primary"></div>
-            ) : (
-              <Plus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-            )}
-          </button>
+        ) : (
+          <div className="flex items-center justify-center py-8 border-2 border-dashed border-muted-foreground/20 rounded-lg bg-muted/5 hover:bg-muted/10 transition-colors">
+            <div className="text-center">
+              <Camera className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3 font-medium">Noch keine Progress-Fotos</p>
+              <Button
+                onClick={() => triggerInlineUpload(entry.id!)}
+                disabled={isUploading}
+                size="sm"
+                className="gap-2 shadow-sm"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b border-white"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Erstes Foto hinzufügen
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">Bis zu 3 Bilder möglich • JPG, PNG, WebP</p>
+            </div>
+          </div>
         )}
 
-        {/* Upload progress */}
+        {/* Enhanced upload progress */}
         {isUploading && uploadProgress.length > 0 && (
-          <div className="text-xs text-muted-foreground ml-2">
-            Uploading...
+          <div className="mt-3 p-2 bg-muted/20 rounded-lg border">
+            <div className="text-xs font-medium text-muted-foreground mb-2">Upload läuft...</div>
+            <div className="space-y-2">
+              {uploadProgress.map((progress, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground truncate">{progress.fileName}</div>
+                    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+                      <div 
+                        className="bg-primary h-1.5 rounded-full transition-all duration-300 ease-out" 
+                        style={{ width: `${progress.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-mono w-10 text-right">
+                    {progress.progress}%
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
