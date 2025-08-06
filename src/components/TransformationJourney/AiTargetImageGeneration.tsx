@@ -21,6 +21,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateRealismScore, getRealismLabel, getRealismVariant } from '@/utils/realismCalculator';
 import { useEffect, useState as useReactState } from 'react';
 // Format date utility function
 const formatDate = (date: Date | string): string => {
@@ -85,70 +86,14 @@ export const AiTargetImageGeneration = ({
   const monthsToTarget = targetDate ? 
     Math.ceil((targetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)) : 6;
   
-  // Calculate realism score based on medical standards
-  const weightChange = Math.abs(targetWeight - currentWeight);
-  const bodyFatChange = Math.abs(targetBodyFat - currentBodyFat);
-  const weeksToTarget = Math.max(1, monthsToTarget * 4.33);
-  const isGaining = targetWeight > currentWeight;
-  
-  // Weight loss/gain rate assessment
-  const weeklyWeightRate = weightChange / weeksToTarget;
-  let weightScore = 100;
-  
-  if (!isGaining) {
-    // Weight loss standards
-    if (weeklyWeightRate > 1.0) {
-      weightScore = Math.max(0, 30 - (weeklyWeightRate - 1.0) * 20); // Very unrealistic
-    } else if (weeklyWeightRate > 0.75) {
-      weightScore = 60; // Very ambitious but possible
-    } else if (weeklyWeightRate > 0.5) {
-      weightScore = 85; // Ambitious but realistic
-    } else {
-      weightScore = 100; // Very realistic
-    }
-  } else {
-    // Weight gain - generally more realistic
-    if (weeklyWeightRate > 0.5) {
-      weightScore = Math.max(40, 80 - (weeklyWeightRate - 0.5) * 60);
-    } else {
-      weightScore = 95;
-    }
-  }
-  
-  // Body fat change assessment
-  const monthlyBodyFatRate = bodyFatChange / monthsToTarget;
-  let bodyFatScore = 100;
-  
-  if (monthlyBodyFatRate > 3.0) {
-    bodyFatScore = Math.max(0, 20 - (monthlyBodyFatRate - 3.0) * 10); // Nearly impossible
-  } else if (monthlyBodyFatRate > 2.0) {
-    bodyFatScore = 40; // Very difficult
-  } else if (monthlyBodyFatRate > 1.5) {
-    bodyFatScore = 70; // Challenging but doable
-  } else {
-    bodyFatScore = 95; // Realistic
-  }
-  
-  // Timeline assessment
-  let timelineScore = 100;
-  if (weeksToTarget < 4 && (weightChange > 2 || bodyFatChange > 1)) {
-    timelineScore = 20; // Too short for meaningful change
-  } else if (weeksToTarget < 8 && (weightChange > 4 || bodyFatChange > 2)) {
-    timelineScore = 50; // Very tight timeline
-  }
-  
-  // Combined assessment - body recomposition is harder
-  let combinedPenalty = 0;
-  if (weightChange > 3 && bodyFatChange > 2) {
-    combinedPenalty = 20; // Simultaneous major changes are very difficult
-  } else if (weightChange > 1.5 && bodyFatChange > 1) {
-    combinedPenalty = 10; // Moderate combined changes
-  }
-  
-  // Final score calculation
-  const realismScore = Math.max(0, Math.min(100, 
-    (weightScore * 0.4 + bodyFatScore * 0.4 + timelineScore * 0.2) - combinedPenalty
-  ));
+  // Calculate realism score using unified calculator
+  const realismScore = calculateRealismScore({
+    currentWeight,
+    targetWeight,
+    currentBodyFat: undefined, // Let util use default
+    targetBodyFat,
+    targetDate: targetDate || new Date(Date.now() + monthsToTarget * 30 * 24 * 60 * 60 * 1000)
+  });
 
   const getMuscleDescription = (priority: number) => {
     const descriptions = [
@@ -276,31 +221,28 @@ export const AiTargetImageGeneration = ({
                 {monthsToTarget} Monate bis {formatDate(targetDate)}
               </div>
               <div className="text-xs text-muted-foreground">
-                ca. {(weightChange / monthsToTarget).toFixed(1)}kg/Monat
+                ca. {(Math.abs(targetWeight - currentWeight) / monthsToTarget).toFixed(1)}kg/Monat
               </div>
               
               {/* Realism Assessment under timeframe */}
               <div className="mt-2 pt-2 border-t border-muted/30">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-muted-foreground">Realismus-Bewertung</span>
-                  <Badge variant={realismScore > 70 ? 'default' : realismScore > 40 ? 'secondary' : 'destructive'} className="text-xs">
+                  <Badge variant={getRealismVariant(realismScore)} className="text-xs">
                     {realismScore.toFixed(0)}%
                   </Badge>
                 </div>
                 <div className="w-full bg-muted/30 rounded-full h-1.5">
                   <div 
                     className={`h-1.5 rounded-full transition-all duration-300 ${
-                      realismScore > 70 ? 'bg-green-500' : 
-                      realismScore > 40 ? 'bg-yellow-500' : 'bg-red-500'
+                      realismScore >= 61 ? 'bg-green-500' : 
+                      realismScore >= 31 ? 'bg-yellow-500' : 'bg-red-500'
                     }`}
                     style={{ width: `${Math.max(realismScore, 5)}%` }}
                   />
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {realismScore >= 81 && "Realistisch erreichbar - mit konstanter Disziplin"}
-                  {realismScore >= 61 && realismScore < 81 && "Ambitioniert aber machbar - mit viel Disziplin"}
-                  {realismScore >= 31 && realismScore < 61 && "Sehr schwer erreichbar - extremer Aufwand nötig"}
-                  {realismScore < 31 && "Unrealistisch/Gefährlich - Ziele anpassen empfohlen"}
+                  {getRealismLabel(realismScore)}
                 </div>
               </div>
             </div>
