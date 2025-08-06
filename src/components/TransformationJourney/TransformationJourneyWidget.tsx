@@ -63,7 +63,10 @@ export const TransformationJourneyWidget: React.FC = () => {
     setGeneratingTarget(true);
     setGenerationProgress(0);
     setGenerationStage('Starte Generierung...');
-    const originalPhotoUrl = getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], 'front');
+    
+    // Use selectedPhoto if available (from transformation button), otherwise use index
+    const photoToUse = selectedPhoto || rawProgressPhotos[selectedProgressPhotoIndex];
+    const originalPhotoUrl = getProgressPhotoUrl(photoToUse, 'front');
     
     try {
       const result = await generateTargetImage(

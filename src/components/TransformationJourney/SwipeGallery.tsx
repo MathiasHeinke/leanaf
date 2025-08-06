@@ -3,7 +3,8 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ZoomIn, Camera, WandIcon, EyeIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ZoomIn, Camera, WandIcon, EyeIcon, ChevronDownIcon } from 'lucide-react';
 
 interface SwipeGalleryProps {
   photos: Array<{
@@ -36,6 +37,7 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+  const [showDateSelector, setShowDateSelector] = useState(false);
 
   // Sort photos by date (newest first)
   const sortedPhotos = [...photos].sort((a, b) => 
@@ -94,6 +96,33 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
 
   const hasAiTransformation = (photoId: string) => {
     return targetImages.some(target => target.ai_generated_from_photo_id === photoId);
+  };
+
+  // Group photos by date
+  const photosByDate = photos.reduce((acc, photo) => {
+    const dateKey = photo.date;
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(photo);
+    return acc;
+  }, {} as Record<string, typeof photos>);
+
+  const currentDatePhotos = photosByDate[currentPhoto?.date] || [];
+  const hasMultiplePhotosOnDate = currentDatePhotos.length > 1;
+
+  const handleDateClick = () => {
+    if (hasMultiplePhotosOnDate) {
+      setShowDateSelector(true);
+    }
+  };
+
+  const handlePhotoSelection = (photoId: string) => {
+    const selectedPhotoData = currentDatePhotos.find(p => p.id === photoId);
+    if (selectedPhotoData && onPhotoSelect) {
+      onPhotoSelect(selectedPhotoData);
+    }
+    setShowDateSelector(false);
   };
 
   return (
@@ -168,8 +197,21 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
                       )}
                     </div>
                     
-                    <p className="text-base font-semibold">{formatDate(photo.date)}</p>
-                    <p className="text-sm opacity-90">{getDaysAgo(photo.date)}</p>
+                    <div 
+                      className={`${hasMultiplePhotosOnDate ? 'cursor-pointer hover:opacity-80' : ''}`}
+                      onClick={handleDateClick}
+                    >
+                      <div className="flex items-center gap-1">
+                        <p className="text-base font-semibold">{formatDate(photo.date)}</p>
+                        {hasMultiplePhotosOnDate && (
+                          <ChevronDownIcon className="h-4 w-4 opacity-70" />
+                        )}
+                      </div>
+                      <p className="text-sm opacity-90">{getDaysAgo(photo.date)}</p>
+                      {hasMultiplePhotosOnDate && (
+                        <p className="text-xs opacity-70">{currentDatePhotos.length} Fotos</p>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     {photo.weight && (
@@ -274,6 +316,54 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
               >
                 <span className="text-xl">×</span>
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Date Photo Selector Dialog */}
+      {showDateSelector && hasMultiplePhotosOnDate && (
+        <Dialog open={showDateSelector} onOpenChange={setShowDateSelector}>
+          <DialogContent className="max-w-md">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">Foto auswählen</h3>
+                <p className="text-sm text-muted-foreground">
+                  {formatDate(currentPhoto.date)} - {currentDatePhotos.length} Fotos verfügbar
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                {currentDatePhotos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handlePhotoSelection(photo.id)}
+                  >
+                    <img
+                      src={getImageUrl(photo, category)}
+                      alt={`Foto vom ${formatDate(photo.date)}`}
+                      className="w-12 h-12 object-cover rounded"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{photo.weight} kg</p>
+                          {photo.body_fat_percentage && (
+                            <p className="text-sm text-muted-foreground">{photo.body_fat_percentage}% KFA</p>
+                          )}
+                        </div>
+                        {hasAiTransformation(photo.id) && (
+                          <Badge variant="secondary" className="text-xs">
+                            <WandIcon className="h-3 w-3 mr-1" />
+                            KI
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
