@@ -21,15 +21,22 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get user ID from JWT
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Create client with anon key for auth validation
+    const authClient = createClient(supabaseUrl, supabaseAnonKey);
+    
+    // Get user ID from JWT using anon client
     const jwt = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(jwt);
     if (authError || !user) {
+      console.error('Auth error:', authError);
       throw new Error('Unauthorized');
     }
+
+    // Create service client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { 
       selectedImageUrl, 

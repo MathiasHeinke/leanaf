@@ -142,8 +142,8 @@ serve(async (req) => {
     let detailedPrompt;
 
     if (frontPhotoUrl) {
-      // Photorealistic image editing prompt with natural, soft language
-      detailedPrompt = `Professional lifestyle photography, photorealistic, high-quality photo. Transform this person to show their healthy goal: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg body weight, ${lifestyleLevel} healthy lifestyle. Naturally fit and balanced physique with subtle body composition. Healthy, natural appearance with realistic proportions. Soft natural lighting, professional portrait photography style. Focus on natural health and balanced lifestyle rather than dramatic changes. No cartoon, no anime, no illustration, photorealistic only.`;
+      // Shortened prompt for API limits
+      detailedPrompt = `Transform person: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, healthy physique. Photorealistic, natural lighting.`;
     } else {
       // Fallback for text-only generation with natural emphasis
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
