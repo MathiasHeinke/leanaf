@@ -295,8 +295,9 @@ const Analysis = () => {
         </TabsContent>
         
         <TabsContent value="more" className="mt-6">
-          {/* Advanced Analytics & Correlations */}
+          {/* Goals Progress & Advanced Analytics */}
           <div className="space-y-6">
+            <GoalsProgressWidget />
             <AdvancedAnalyticsSection />
           </div>
         </TabsContent>
