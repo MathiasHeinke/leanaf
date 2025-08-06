@@ -86,18 +86,19 @@ const uploadSingleFileWithProgress = async (
     throw new Error('Datei muss ein Bild oder Video sein');
   }
 
-  // Validate file size
-  const maxSize = isVideo ? 250 * 1024 * 1024 : 10 * 1024 * 1024;
+  // Validate file size (increased limits)
+  const maxSize = isVideo ? 250 * 1024 * 1024 : 50 * 1024 * 1024; // 50MB for images
   if (file.size > maxSize) {
-    const maxSizeText = isVideo ? '250MB' : '10MB';
+    const maxSizeText = isVideo ? '250MB' : '50MB';
     throw new Error(`Datei ist zu groß (max. ${maxSizeText})`);
   }
 
-  // Compress image if needed
+  // Compress image if needed (more aggressive compression for large files)
   let processedFile = file;
-  if (isImage && file.size > 1024 * 1024) {
+  if (isImage && file.size > 2 * 1024 * 1024) { // Compress anything over 2MB
     onProgress(10);
-    processedFile = await compressImage(file);
+    const quality = file.size > 10 * 1024 * 1024 ? 0.6 : 0.8; // Lower quality for very large files
+    processedFile = await compressImage(file, 1024, 1024, quality);
     onProgress(20);
   }
 

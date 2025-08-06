@@ -188,7 +188,7 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
                     </label>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    JPG, PNG oder WEBP bis 10MB
+                    JPG, PNG oder WEBP bis 50MB
                   </p>
                 </div>
               )}
