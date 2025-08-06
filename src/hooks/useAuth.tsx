@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { secureLogger } from '@/utils/secureLogger';
@@ -22,7 +21,6 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,15 +61,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (isIncomplete) {
         // New user - start premium trial and redirect to profile
         await startPremiumTrialForNewUser(user.id);
-        navigate('/profile');
+        setTimeout(() => {
+          window.location.href = '/profile';
+        }, 100);
       } else {
         // Existing user - redirect to home
-        navigate('/');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
       }
     } catch (error) {
       console.error('Error checking user status:', error);
       // Fallback to home
-      navigate('/');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
     }
   };
 
@@ -111,14 +115,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(null);
       setUser(null);
       await supabase.auth.signOut({ scope: 'global' });
-      navigate('/auth', { replace: true });
+      window.location.replace('/auth');
     } catch (error) {
       // Force cleanup even if signOut fails
       cleanupAuthState();
       setSession(null);
       setUser(null);
       console.error('Sign out error occurred');
-      navigate('/auth', { replace: true });
+      window.location.replace('/auth');
     }
   };
 
@@ -144,7 +148,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(null);
           setUser(null);
           if (window.location.pathname !== '/auth') {
-            navigate('/auth');
+            window.location.href = '/auth';
           }
         }
 
