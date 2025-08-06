@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2, CalendarIcon } from 'lucide-react';
@@ -374,6 +376,27 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       isGaining: isGaining
     };
   };
+
+  // Calculate realism score for goals
+  const calculateRealismScore = () => {
+    if (!weight || !targetWeight || !targetDate) return 0;
+    
+    const currentWeight = parseFloat(weight);
+    const goalWeight = parseFloat(targetWeight);
+    const currentBodyFat = 20; // Default since not always available
+    const goalBodyFat = targetBodyFat ? parseFloat(targetBodyFat) : 15;
+    const targetDateObj = new Date(targetDate);
+    const monthsToTarget = Math.ceil((targetDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
+    
+    const weightChange = Math.abs(goalWeight - currentWeight);
+    const bodyFatChange = Math.abs(goalBodyFat - currentBodyFat);
+    
+    return Math.min(100, Math.max(20, 
+      100 - (weightChange * 2) - (bodyFatChange * 3) + (monthsToTarget * 5)
+    ));
+  };
+
+  const realismScore = calculateRealismScore();
 
   const applyMacroStrategy = (strategy: string) => {
     // Only apply strategy if user hasn't manually modified macros
@@ -809,6 +832,24 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                         />
                       </PopoverContent>
                     </Popover>
+                  </div>
+                </div>
+              )}
+
+              {/* Realism Assessment */}
+              {targetWeight && targetDate && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">Realismus-Bewertung</span>
+                    <Badge variant={realismScore > 70 ? 'default' : realismScore > 40 ? 'secondary' : 'destructive'} className="text-xs">
+                      {realismScore.toFixed(0)}%
+                    </Badge>
+                  </div>
+                  <Progress value={realismScore} className="w-full h-2 mb-2" />
+                  <div className="text-xs text-muted-foreground">
+                    {realismScore > 70 && "Ambitionierte aber machbare Ziele - mit viel Disziplin"}
+                    {realismScore > 40 && realismScore <= 70 && "Sehr ambitionierte Ziele - mit extremer Disziplin"}
+                    {realismScore <= 40 && "Extrem ambitioniert - längerer Zeitrahmen empfohlen"}
                   </div>
                 </div>
               )}
