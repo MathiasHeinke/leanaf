@@ -119,6 +119,8 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         
         // Load existing chat history for today
         const today = getCurrentDateString();
+        console.log(`🔍 Loading chat history for user ${user.id}, coach ${coach?.id || 'lucy'}, date ${today}`);
+        
         const { data: existingMessages, error: historyError } = await supabase
           .from('coach_conversations')
           .select('*')
@@ -126,6 +128,8 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
           .eq('coach_personality', coach?.id || 'lucy')
           .eq('conversation_date', today)
           .order('created_at', { ascending: true });
+
+        console.log(`📊 History query result:`, { error: historyError, count: existingMessages?.length || 0 });
 
         if (!historyError && existingMessages && existingMessages.length > 0) {
           const loadedMessages: EnhancedChatMessage[] = existingMessages.map(msg => ({
@@ -140,11 +144,15 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
             coach_accent_color: coach?.accentColor
           }));
 
-          console.log(`📜 Loaded ${loadedMessages.length} existing messages for today`);
+          console.log(`📜 Successfully loaded ${loadedMessages.length} existing messages for today`);
           setMessages(loadedMessages);
           setIsLoading(false);
           setChatInitialized(true);
           return;
+        } else if (historyError) {
+          console.error('❌ Error loading chat history:', historyError);
+        } else {
+          console.log('ℹ️ No existing chat history found for today');
         }
 
         // Create intelligent greeting using enhanced system
