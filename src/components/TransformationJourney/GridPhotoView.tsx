@@ -23,9 +23,10 @@ interface GridPhotoViewProps {
   onPhotosUpdated?: () => void;
   onViewTransformation?: (photo: any) => void;
   onCreateTransformation?: (photo: any) => void;
+  startCropWorkflow?: (files: File[], weight?: number, bodyFat?: number, muscleMass?: number, notes?: string) => void;
 }
 
-export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImages = [], onPhotosUpdated, onViewTransformation, onCreateTransformation }) => {
+export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImages = [], onPhotosUpdated, onViewTransformation, onCreateTransformation, startCropWorkflow }) => {
   const { updatePhotoMetadata } = useProgressPhotos();
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');

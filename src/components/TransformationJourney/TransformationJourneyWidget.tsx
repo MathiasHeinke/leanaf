@@ -19,7 +19,13 @@ import { toast } from 'sonner';
 
 export const TransformationJourneyWidget: React.FC = () => {
   const { targetImages, deleteTargetImage, generateTargetImage, updateTargetImageUrl, refreshTargetImages, getLinkedPhotoPairs } = useTargetImages();
-  const { photos: rawProgressPhotos, loading, refreshPhotos } = useProgressPhotos();
+  const { 
+    photos: rawProgressPhotos, 
+    loading, 
+    refreshPhotos, 
+    startCropWorkflow,
+    ProgressPhotoCropModal 
+  } = useProgressPhotos();
   const [activeTab, setActiveTab] = useState("timeline");
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
@@ -174,6 +180,7 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
+      <ProgressPhotoCropModal />
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -220,6 +227,7 @@ export const TransformationJourneyWidget: React.FC = () => {
             photos={rawProgressPhotos} 
             targetImages={targetImages}
             onPhotosUpdated={refreshPhotos}
+            startCropWorkflow={startCropWorkflow}
             onViewTransformation={handleViewTransformation}
             onCreateTransformation={handleCreateTransformation}
           />

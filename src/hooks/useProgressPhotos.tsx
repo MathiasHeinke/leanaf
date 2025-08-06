@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { ProgressPhotoCropModal } from '@/components/TransformationJourney/ProgressPhotoCropModal';
 
 interface WeightEntry {
   id: string;
@@ -23,6 +24,16 @@ export const useProgressPhotos = () => {
   const { user } = useAuth();
   const [photos, setPhotos] = useState<WeightEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [currentCropFile, setCurrentCropFile] = useState<File | null>(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [croppedFiles, setCroppedFiles] = useState<File[]>([]);
+  const [pendingUploadData, setPendingUploadData] = useState<{
+    weight?: number;
+    bodyFat?: number;
+    muscleMass?: number;
+    notes?: string;
+  } | null>(null);
 
   const loadProgressPhotos = async () => {
     if (!user) return;
@@ -126,6 +137,46 @@ export const useProgressPhotos = () => {
       toast.error('Fehler beim Laden der Fortschrittsfotos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startCropWorkflow = async (files: File[], weight?: number, bodyFat?: number, muscleMass?: number, notes?: string) => {
+    if (!user || files.length === 0) return;
+    
+    setPendingFiles(files);
+    setCroppedFiles([]);
+    setPendingUploadData({ weight, bodyFat, muscleMass, notes });
+    
+    if (files.length > 0) {
+      setCurrentCropFile(files[0]);
+      setShowCropModal(true);
+    }
+  };
+
+  const handleCropComplete = (croppedFile: File) => {
+    const newCroppedFiles = [...croppedFiles, croppedFile];
+    setCroppedFiles(newCroppedFiles);
+    
+    const nextIndex = newCroppedFiles.length;
+    if (nextIndex < pendingFiles.length) {
+      setCurrentCropFile(pendingFiles[nextIndex]);
+    } else {
+      setShowCropModal(false);
+      setCurrentCropFile(null);
+      // All files cropped, proceed with upload
+      if (pendingUploadData) {
+        uploadProgressPhoto(
+          newCroppedFiles, 
+          pendingUploadData.weight, 
+          pendingUploadData.bodyFat, 
+          pendingUploadData.muscleMass, 
+          pendingUploadData.notes
+        );
+      }
+      // Reset state
+      setPendingFiles([]);
+      setCroppedFiles([]);
+      setPendingUploadData(null);
     }
   };
 
@@ -410,7 +461,26 @@ export const useProgressPhotos = () => {
     photos,
     loading,
     uploadProgressPhoto,
+    startCropWorkflow,
     refreshPhotos: loadProgressPhotos,
-    updatePhotoMetadata
+    updatePhotoMetadata,
+    showCropModal,
+    currentCropFile,
+    handleCropComplete,
+    croppedFiles,
+    ProgressPhotoCropModal: () => (
+      <ProgressPhotoCropModal
+        image={currentCropFile}
+        isOpen={showCropModal}
+        onClose={() => {
+          setShowCropModal(false);
+          setCurrentCropFile(null);
+          setPendingFiles([]);
+          setCroppedFiles([]);
+          setPendingUploadData(null);
+        }}
+        onCropComplete={handleCropComplete}
+      />
+    )
   };
 };

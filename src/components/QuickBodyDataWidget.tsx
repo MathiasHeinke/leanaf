@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 
 export const QuickBodyDataWidget: React.FC = () => {
   const { user } = useAuth();
-  const { photos, uploadProgressPhoto } = useProgressPhotos();
+  const { photos, startCropWorkflow, ProgressPhotoCropModal } = useProgressPhotos();
   const { targetImages, uploadTargetImage, generateTargetImage, loading: targetLoading, refreshTargetImages } = useTargetImages();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -117,7 +117,7 @@ export const QuickBodyDataWidget: React.FC = () => {
         return;
       }
 
-      await uploadProgressPhoto(selectedFiles, weightValue, bodyFatValue, muscleMassValue, notes);
+      await startCropWorkflow(selectedFiles, weightValue, bodyFatValue, muscleMassValue, notes);
       
       // Reset form
       setSelectedFiles([]);
@@ -138,7 +138,7 @@ export const QuickBodyDataWidget: React.FC = () => {
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     if (files.length > 0) {
-      await uploadProgressPhoto(files);
+      await startCropWorkflow(files);
     }
   };
 
@@ -682,5 +682,6 @@ export const QuickBodyDataWidget: React.FC = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
