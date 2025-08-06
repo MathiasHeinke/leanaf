@@ -79,13 +79,13 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     color: 'purple',
     accentColor: 'from-purple-500 to-purple-600',
     isPremium: true,
-    expertise: ['Neuroplastizität', 'HRV-Training', 'Schlafoptimierung', 'Vier-Quadranten-Analyse', 'Hormonoptimierung', 'Neurotransmitter-Balance', 'Libido Wheel Methodology', 'Male Health Optimization', 'Testosteron-Optimierung', 'Dopamin-Regulation'],
+    expertise: ['Neuroplastizität & HRV', 'Schlafoptimierung', 'Vier-Quadranten-Analyse', 'Transformational Breakthrough', 'Male Health Optimization', 'Libido Wheel Methodology'],
     access: {
-      tools: ['mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'hormone_optimization', 'libido_assessment', 'dopamine_detox_plan', 'testosterone_optimization'],
-      datasets: ['sleep_data', 'hrv_data', 'stress_levels', 'mindset_progress', 'hormone_levels', 'libido_metrics', 'neurotransmitter_data'],
-      rag: ['rag_psychology', 'rag_recovery', 'rag_mindset', 'rag_transformation', 'rag_hormone_optimization', 'rag_male_health', 'rag_neurotransmitters']
+      tools: ['mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'hormone_optimization', 'libido_assessment'],
+      datasets: ['sleep_data', 'hrv_data', 'mindset_progress', 'hormone_levels'],
+      rag: ['rag_psychology', 'rag_recovery', 'rag_transformation', 'rag_male_health']
     },
-    aliases: ['kai', 'dr kai', 'dr. kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach', 'hormone coach', 'libido coach', 'testosteron coach', 'dopamin coach']
+    aliases: ['kai', 'dr kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach', 'hormone coach', 'male health coach']
   },
   
   markus: {
