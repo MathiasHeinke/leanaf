@@ -52,6 +52,7 @@ export const GlobalHeader = ({
       case '/account': return 'Account';
       case '/admin': return 'Admin';
       case '/gehirn': return 'Gehirn';
+      case '/history': return 'Historie';
       default: return 'GetleanAI';
     }
   };
