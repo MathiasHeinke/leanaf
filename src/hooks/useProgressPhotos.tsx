@@ -131,6 +131,7 @@ export const useProgressPhotos = () => {
       if (checkError) throw checkError;
 
       let updatedEntry;
+      let weightHistoryId: string;
       
       if (existingEntry) {
         // Update existing entry with new photos
@@ -164,6 +165,7 @@ export const useProgressPhotos = () => {
 
         if (updateError) throw updateError;
         updatedEntry = data;
+        weightHistoryId = existingEntry.id;
       } else {
         // Create new entry
         const { data, error: insertError } = await supabase
@@ -182,6 +184,60 @@ export const useProgressPhotos = () => {
 
         if (insertError) throw insertError;
         updatedEntry = data;
+        weightHistoryId = data.id;
+      }
+
+      // Analyze each uploaded photo with OpenAI Vision
+      const photoAnalyses: Record<string, any> = {};
+      
+      for (let i = 0; i < uploadResult.urls.length; i++) {
+        const imageUrl = uploadResult.urls[i];
+        const photoKey = `photo_${i + 1}`;
+        
+        try {
+          const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-body-pose', {
+            body: {
+              imageUrl,
+              weightHistoryId
+            }
+          });
+
+          if (analysisError) {
+            console.error('Analysis error for photo', i + 1, ':', analysisError);
+            photoAnalyses[photoKey] = {
+              view: 'unknown',
+              confidence: 0,
+              muscle_definition: 5,
+              lighting_quality: 5,
+              pose_quality: 5,
+              notes: 'Analysis failed',
+              error: analysisError.message
+            };
+          } else {
+            photoAnalyses[photoKey] = analysisData.analysis;
+          }
+        } catch (error) {
+          console.error('Error analyzing photo', i + 1, ':', error);
+          photoAnalyses[photoKey] = {
+            view: 'unknown',
+            confidence: 0,
+            muscle_definition: 5,
+            lighting_quality: 5,
+            pose_quality: 5,
+            notes: 'Analysis failed',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          };
+        }
+      }
+
+      // Update weight_history with photo metadata
+      const { error: metadataError } = await supabase
+        .from('weight_history')
+        .update({ photo_metadata: photoAnalyses })
+        .eq('id', weightHistoryId);
+
+      if (metadataError) {
+        console.error('Error updating photo metadata:', metadataError);
       }
       
       // Refresh photos list

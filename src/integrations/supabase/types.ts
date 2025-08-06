@@ -146,6 +146,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_tracking: {
+        Row: {
+          cost_usd: number | null
+          created_at: string | null
+          id: string
+          request_metadata: Json | null
+          service_type: string
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string | null
+          id?: string
+          request_metadata?: Json | null
+          service_type: string
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string | null
+          id?: string
+          request_metadata?: Json | null
+          service_type?: string
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_rate_limits: {
         Row: {
           created_at: string | null
@@ -4808,6 +4838,7 @@ export type Database = {
           image_category: string | null
           muscle_percentage: number | null
           notes: string | null
+          photo_metadata: Json | null
           photo_urls: Json | null
           updated_at: string
           user_id: string
@@ -4823,6 +4854,7 @@ export type Database = {
           image_category?: string | null
           muscle_percentage?: number | null
           notes?: string | null
+          photo_metadata?: Json | null
           photo_urls?: Json | null
           updated_at?: string
           user_id: string
@@ -4838,6 +4870,7 @@ export type Database = {
           image_category?: string | null
           muscle_percentage?: number | null
           notes?: string | null
+          photo_metadata?: Json | null
           photo_urls?: Json | null
           updated_at?: string
           user_id?: string

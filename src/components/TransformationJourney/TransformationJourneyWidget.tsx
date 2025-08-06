@@ -7,6 +7,7 @@ import { useTargetImages } from '@/hooks/useTargetImages';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { EnhancedComparisonView } from './EnhancedComparisonView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
+import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { 
   ImageIcon, 
   SparklesIcon, 
@@ -44,6 +45,11 @@ export const TransformationJourneyWidget: React.FC = () => {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStage, setGenerationStage] = useState('');
   const [selectedProgressPhotoIndex, setSelectedProgressPhotoIndex] = useState(0);
+  const [showSlider, setShowSlider] = useState(false);
+  const [lastGeneratedImage, setLastGeneratedImage] = useState<{
+    originalPhoto: string;
+    generatedImage: string;
+  } | null>(null);
 
   // Helper function to get photo URL from raw progress photo (for AI generation)
   const getProgressPhotoUrl = (entry: any, category: 'front' | 'side' | 'back') => {
@@ -55,6 +61,8 @@ export const TransformationJourneyWidget: React.FC = () => {
     setGeneratingTarget(true);
     setGenerationProgress(0);
     setGenerationStage('Starte Generierung...');
+    const originalPhotoUrl = getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], 'front');
+    
     try {
       const result = await generateTargetImage(
         undefined, // targetWeight
@@ -63,11 +71,21 @@ export const TransformationJourneyWidget: React.FC = () => {
           setGenerationStage(stage);
           setGenerationProgress(progress || 0);
         },
-        getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], 'front') // Use selected progress photo
+        originalPhotoUrl // Use selected progress photo
       );
       
       if (result) {
         setGeneratedImages(result);
+        
+        // Set up for slider view if we have both images
+        if (originalPhotoUrl && targetImages.length > 0) {
+          setLastGeneratedImage({
+            originalPhoto: originalPhotoUrl,
+            generatedImage: targetImages[0]?.image_url || ""
+          });
+          setShowSlider(true);
+        }
+        
         setActiveTab('selector');
       }
     } catch (error) {
@@ -302,10 +320,45 @@ export const TransformationJourneyWidget: React.FC = () => {
 
         <TabsContent value="selector" className="space-y-6">
           {generatedImages && (
-            <EnhancedTargetImageSelector
-              generatedImages={generatedImages}
-              onImageSelected={handleImageSelected}
-            />
+            <div className="space-y-6">
+              {showSlider && lastGeneratedImage && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Vergleich: Original vs. Generiert</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSlider(false)}
+                    >
+                      Einzelbilder anzeigen
+                    </Button>
+                  </div>
+                  <BeforeAfterSlider
+                    beforeImage={lastGeneratedImage.originalPhoto}
+                    afterImage={lastGeneratedImage.generatedImage}
+                    beforeLabel="Original"
+                    afterLabel="KI-Generiert"
+                  />
+                </div>
+              )}
+              
+              {!showSlider && (
+                <EnhancedTargetImageSelector
+                  generatedImages={generatedImages}
+                  onImageSelected={handleImageSelected}
+                />
+              )}
+              
+              {!showSlider && lastGeneratedImage && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setShowSlider(true)}
+                >
+                  Vergleich anzeigen
+                </Button>
+              )}
+            </div>
           )}
         </TabsContent>
       </Tabs>
