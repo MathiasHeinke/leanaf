@@ -185,6 +185,13 @@ serve(async (req) => {
     }
 
     console.log('Target image saved successfully:', targetImage.id);
+    console.log('✅ Photo linking result:', {
+      targetImageId: targetImage.id,
+      linkedPhotoId: finalProgressPhotoId,
+      originalProgressPhotoUrl: progressPhotoUrl?.substring(0, 50) + '...',
+      category: imageCategory,
+      linkingWasSuccessful: !!finalProgressPhotoId
+    });
 
     return new Response(
       JSON.stringify({ 
@@ -192,7 +199,12 @@ serve(async (req) => {
         id: targetImage.id,
         ai_generated_from_photo_id: finalProgressPhotoId,
         targetImage,
-        message: 'Target image saved successfully'
+        message: 'Target image saved successfully',
+        linkingDetails: {
+          linkedPhotoId: finalProgressPhotoId,
+          category: imageCategory,
+          linkingSuccessful: !!finalProgressPhotoId
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

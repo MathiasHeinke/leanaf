@@ -66,9 +66,12 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
           currentBodyFat: generatedImages.currentBodyFat,
           selectedCategory: generatedImages.selectedCategory || selectedCategory,
           selectedPhotoId: generatedImages.selectedPhotoId,
-          progressPhotoUrl: generatedImages.progressPhotoUrl
+          progressPhotoUrl: generatedImages.progressPhotoUrl,
+          generationPrompt: generatedImages.prompt,
+          imageCategory: generatedImages.selectedCategory || selectedCategory,
+          progressPhotoId: generatedImages.selectedPhotoId
         },
-        selectedCategory
+        generatedImages.selectedCategory || selectedCategory
       );
 
       console.log('Target image saved successfully, calling callback');
@@ -99,6 +102,14 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
           </Badge>
           {generatedImages.hasProgressPhoto && (
             <Badge variant="secondary">Mit Progress Foto</Badge>
+          )}
+          {generatedImages.selectedCategory && (
+            <Badge variant="default">
+              Basiert auf: {generatedImages.selectedCategory === 'front' ? 'Vorderseite' : 
+                           generatedImages.selectedCategory === 'side' ? 'Seitlich' : 
+                           generatedImages.selectedCategory === 'back' ? 'Rückseite' : 
+                           generatedImages.selectedCategory}
+            </Badge>
           )}
         </div>
       </CardHeader>
