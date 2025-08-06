@@ -163,6 +163,12 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     supabase.rpc('fast_fluid_totals', { p_user: userId, p_d: date })
   ]);
 
+  console.log('🔍 RPC Results Debug:', {
+    fastMeals: { data: fastMeals.data, error: fastMeals.error },
+    fastVolume: { data: fastVolume.data, error: fastVolume.error },
+    fastFluids: { data: fastFluids.data, error: fastFluids.error }
+  });
+
   // Profile data
   const { data: profile } = await supabase
     .from('profiles')
@@ -252,27 +258,26 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     .eq('user_id', userId)
     .eq('date', date);
 
+  // Extract RPC response data correctly - fixing the data access
+  const mealTotals = fastMeals.data || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+  const volumeTotal = typeof fastVolume.data === 'number' ? fastVolume.data : 0;
+  const fluidTotal = typeof fastFluids.data === 'number' ? fastFluids.data : 0;
+
+  console.log('🔍 Extracted RPC Data:', { 
+    mealTotals,
+    volumeTotal,
+    fluidTotal
+  });
+
   const hasData = !!(
-    fastMeals.data?.calories || 
-    fastVolume.data || 
-    fastFluids.data || 
+    mealTotals.calories || 
+    volumeTotal || 
+    fluidTotal || 
     sessions?.length || 
     sleep || 
     weight ||
     supplements?.length
   );
-
-  console.log('🔍 Debug fastMeals:', { 
-    fastMealsRaw: fastMeals,
-    fastMealsData: fastMeals.data,
-    fastVolumeRaw: fastVolume,
-    fastFluidsRaw: fastFluids
-  });
-  
-  // Extract RPC response data correctly
-  const mealTotals = fastMeals.data || {};
-  const volumeTotal = fastVolume.data || 0;
-  const fluidTotal = fastFluids.data || 0;
   
   return {
     hasData,
@@ -294,14 +299,22 @@ async function collectRawData(userId: string, date: string, timezone: string = '
 }
 
 function deriveKPIs(raw: any) {
-  // Nutrition KPIs - Fallback wenn RPC fehlschlägt
+  console.log('📊 DeriveKPIs Input:', { 
+    fastMeals: raw.fastMeals, 
+    fastVolume: raw.fastVolume,
+    fastFluids: raw.fastFluids,
+    mealsCount: raw.meals?.length 
+  });
+
+  // Nutrition KPIs - Improved fallback logic
   let totalCalories = raw.fastMeals?.calories || 0;
   let totalProtein = raw.fastMeals?.protein || 0;
   let totalCarbs = raw.fastMeals?.carbs || 0;
   let totalFats = raw.fastMeals?.fats || 0;
   
   // Fallback: Direkt aus meals berechnen wenn RPC leer ist
-  if (totalCalories === 0 && raw.meals.length > 0) {
+  if (totalCalories === 0 && raw.meals?.length > 0) {
+    console.log('🔄 Using meals fallback calculation');
     totalCalories = raw.meals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0);
     totalProtein = raw.meals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0);
     totalCarbs = raw.meals.reduce((sum: number, m: any) => sum + (m.carbs || 0), 0);
@@ -324,37 +337,45 @@ function deriveKPIs(raw: any) {
     meals_count: raw.meals.length
   };
 
-  // Training KPIs  
-  const quickVolume = raw.quickWorkouts.reduce((sum: number, w: any) => 
-    sum + (w.sets || 0) * (w.reps || 0) * (w.weight_kg || 0), 0);
+  // Training KPIs - Fixed NULL handling
+  const quickVolume = raw.quickWorkouts?.reduce((sum: number, w: any) => 
+    sum + (w.sets || 0) * (w.reps || 0) * (w.weight_kg || 0), 0) || 0;
+  
+  // Ensure workout volume is never NULL, always a number (even if 0)
+  const workoutVolume = (raw.fastVolume || 0) + quickVolume;
   
   const training = {
-    volume_kg: raw.fastVolume + quickVolume,
-    sets: raw.exerciseSets.length + raw.quickWorkouts.reduce((sum: number, w: any) => sum + (w.sets || 0), 0),
-    avg_rpe: calculateAverageRPE(raw.exerciseSets),
-    duration_min: raw.sessions.reduce((sum: number, s: any) => sum + (s.duration_minutes || 0), 0),
-    muscle_groups: getUniqueValues(raw.exerciseSets, 'exercises.muscle_groups'),
-    exercise_types: getUniqueValues(raw.exerciseSets, 'exercises.exercise_type'),
-    sessions_count: raw.sessions.length,
-    quick_workouts_count: raw.quickWorkouts.length
+    volume_kg: workoutVolume, // Explicitly 0 instead of NULL for rest days
+    sets: (raw.exerciseSets?.length || 0) + (raw.quickWorkouts?.reduce((sum: number, w: any) => sum + (w.sets || 0), 0) || 0),
+    avg_rpe: calculateAverageRPE(raw.exerciseSets || []),
+    duration_min: raw.sessions?.reduce((sum: number, s: any) => sum + (s.duration_minutes || 0), 0) || 0,
+    muscle_groups: getUniqueValues(raw.exerciseSets || [], 'exercises.muscle_groups'),
+    exercise_types: getUniqueValues(raw.exerciseSets || [], 'exercises.exercise_type'),
+    sessions_count: raw.sessions?.length || 0,
+    quick_workouts_count: raw.quickWorkouts?.length || 0
   };
 
-  // Recovery KPIs
+  console.log('💪 Training KPIs calculated:', training);
+
+  // Recovery KPIs - Ensure defaults for missing data
   const recovery = {
-    sleep_hours: raw.sleep?.sleep_hours || 0,
-    sleep_score: raw.sleep?.sleep_score || 0,
+    sleep_hours: raw.sleep?.sleep_hours || raw.sleep?.hours_slept || 0,
+    sleep_score: raw.sleep?.sleep_score || raw.sleep?.quality_score || 0,
     sleep_quality: raw.sleep?.sleep_quality || null,
     motivation_level: raw.sleep?.motivation_level || null,
     recovery_feeling: null // TODO: add to schema if needed
   };
 
-  // Hydration KPIs
+  // Hydration KPIs - Ensure proper scoring
   const hydration = {
-    total_ml: raw.fastFluids,
-    caffeine_mg: calculateCaffeineIntake(raw.fluids),
-    alcohol_g: calculateAlcoholIntake(raw.fluids),
-    hydration_score: calculateHydrationScore(raw.fastFluids, raw.goals?.calories || 2000)
+    total_ml: raw.fastFluids || 0,
+    caffeine_mg: calculateCaffeineIntake(raw.fluids || []),
+    alcohol_g: calculateAlcoholIntake(raw.fluids || []),
+    hydration_score: calculateHydrationScore(raw.fastFluids || 0, raw.goals?.calories || 2000)
   };
+
+  console.log('🌊 Hydration KPIs calculated:', hydration);
+  console.log('😴 Recovery KPIs calculated:', recovery);
 
   // Supplements KPIs
   const supplements = {

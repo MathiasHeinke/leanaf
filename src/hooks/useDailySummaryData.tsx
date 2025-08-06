@@ -39,11 +39,11 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
   const parseStructuredData = (summary: any): DailySummaryData => {
     const structJson = summary.summary_struct_json || {};
     
-    // Handle multiple JSON structure formats
+    // Handle multiple JSON structure formats with improved fallbacks
     const kpis = structJson.kpis || structJson;
     const nutrition = kpis.nutrition || structJson.nutrition || {};
     const training = kpis.training || structJson.training || {};
-    const sleep = kpis.sleep || structJson.sleep || {};
+    const recovery = kpis.recovery || structJson.recovery || {};
     const hydration = kpis.hydration || structJson.hydration || {};
 
     console.log('🔍 Daily Summary Data for', summary.date, {
@@ -51,7 +51,7 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
       structJson,
       nutrition,
       training,
-      sleep,
+      recovery,
       hydration
     });
 
@@ -65,19 +65,22 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
     const result = {
       date: summary.date,
       displayDate,
-      totalCalories: nutrition.totals?.kcal || nutrition.kcal || summary.total_calories || 0,
-      totalProtein: nutrition.totals?.protein || nutrition.protein || summary.total_protein || 0,
-      totalCarbs: nutrition.totals?.carbs || nutrition.carbs || summary.total_carbs || 0,
-      totalFats: nutrition.totals?.fats || nutrition.fats || summary.total_fats || 0,
-      workoutVolume: training.volume_kg || training.volume || summary.workout_volume || 0,
+      // Multi-layer fallbacks for nutrition data
+      totalCalories: nutrition.totals?.kcal || nutrition.totals?.calories || nutrition.kcal || summary.total_calories || 0,
+      totalProtein: nutrition.totals?.protein_g || nutrition.totals?.protein || nutrition.protein || summary.total_protein || 0,
+      totalCarbs: nutrition.totals?.carbs_g || nutrition.totals?.carbs || nutrition.carbs || summary.total_carbs || 0,
+      totalFats: nutrition.totals?.fat_g || nutrition.totals?.fats || nutrition.fats || summary.total_fats || 0,
+      // Improved workout volume with NULL safety
+      workoutVolume: training.volume_kg !== null ? training.volume_kg : (training.volume || summary.workout_volume || 0),
       workoutMuscleGroups: training.muscle_groups || summary.workout_muscle_groups || [],
-      sleepScore: sleep.quality_score || sleep.score || summary.sleep_score || 0,
-      hydrationScore: hydration.score || hydration.quality_score || summary.hydration_score || 0,
+      // Improved sleep and hydration score extraction
+      sleepScore: recovery.sleep_score || recovery.quality_score || summary.sleep_score || 0,
+      hydrationScore: hydration.hydration_score || hydration.score || hydration.quality_score || summary.hydration_score || 0,
       topFoods: nutrition.top_foods || summary.top_foods || [],
       macroDistribution: {
-        protein: nutrition.distribution?.protein || nutrition.protein_percent || 0,
-        carbs: nutrition.distribution?.carbs || nutrition.carbs_percent || 0,
-        fats: nutrition.distribution?.fats || nutrition.fats_percent || 0
+        protein: nutrition.macro_pct?.protein_percent || nutrition.distribution?.protein || nutrition.protein_percent || 0,
+        carbs: nutrition.macro_pct?.carbs_percent || nutrition.distribution?.carbs || nutrition.carbs_percent || 0,
+        fats: nutrition.macro_pct?.fats_percent || nutrition.distribution?.fats || nutrition.fats_percent || 0
       },
       recoveryMetrics: summary.recovery_metrics || {},
       rawData: structJson
