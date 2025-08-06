@@ -174,7 +174,10 @@ export const TransformationJourneyWidget: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="photos" className="space-y-6">
-          <GridPhotoView photos={rawProgressPhotos} />
+          <GridPhotoView 
+            photos={rawProgressPhotos} 
+            onPhotosUpdated={refreshPhotos}
+          />
         </TabsContent>
 
         <TabsContent value="generate" className="space-y-6">

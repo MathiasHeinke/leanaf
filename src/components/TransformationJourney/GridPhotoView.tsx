@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -17,14 +17,21 @@ interface GridPhotoViewProps {
     photo_urls?: any;
     photo_metadata?: any;
   }>;
+  onPhotosUpdated?: () => void;
 }
 
-export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
+export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, onPhotosUpdated }) => {
   const { updatePhotoMetadata } = useProgressPhotos();
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [updatingPhoto, setUpdatingPhoto] = useState<string | null>(null);
+  const [localPhotos, setLocalPhotos] = useState(photos);
+
+  // Update local photos when props change
+  useEffect(() => {
+    setLocalPhotos(photos);
+  }, [photos]);
 
   // Get all photo URLs with metadata
   const getPhotoEntries = () => {
@@ -40,7 +47,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
       originalCategory: string;
     }> = [];
 
-    photos.forEach((photo) => {
+    localPhotos.forEach((photo) => {
       if (photo.photo_urls) {
         // Front photo
         if (photo.photo_urls.front) {
@@ -132,18 +139,49 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos }) => {
   const updatePhotoCategory = async (entry: any, newCategory: string) => {
     if (entry.originalCategory === newCategory) return;
     
-    setUpdatingPhoto(`${entry.entryId}-${entry.originalCategory}`);
+    const uniqueKey = `${entry.entryId}-${entry.originalCategory}`;
+    setUpdatingPhoto(uniqueKey);
+    
+    // Optimistic update - immediately update local state
+    setLocalPhotos(currentPhotos => 
+      currentPhotos.map(photo => {
+        if (photo.id === entry.entryId) {
+          const newUrls = { ...photo.photo_urls };
+          const urlToMove = newUrls[entry.originalCategory];
+          
+          if (urlToMove) {
+            // Remove from old category
+            delete newUrls[entry.originalCategory];
+            // Add to new category
+            newUrls[newCategory] = urlToMove;
+          }
+          
+          return { ...photo, photo_urls: newUrls };
+        }
+        return photo;
+      })
+    );
     
     try {
-      const success = await updatePhotoMetadata(entry.entryId, entry.originalCategory as 'front' | 'back' | 'side', newCategory as 'front' | 'back' | 'side');
+      const success = await updatePhotoMetadata(
+        entry.entryId, 
+        entry.originalCategory as 'front' | 'back' | 'side', 
+        newCategory as 'front' | 'back' | 'side'
+      );
       
       if (success) {
         toast.success(`Foto als ${getCategoryLabel(newCategory)} markiert`);
+        // Trigger parent component to refresh photos from database
+        onPhotosUpdated?.();
       } else {
+        // Rollback optimistic update
+        setLocalPhotos(photos);
         toast.error('Fehler beim Aktualisieren der Kategorie');
       }
     } catch (error) {
       console.error('Error updating photo category:', error);
+      // Rollback optimistic update
+      setLocalPhotos(photos);
       toast.error('Fehler beim Aktualisieren der Kategorie');
     } finally {
       setUpdatingPhoto(null);

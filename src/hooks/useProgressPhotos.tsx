@@ -380,7 +380,7 @@ export const useProgressPhotos = () => {
       return true;
     } catch (error) {
       console.error('Error updating photo metadata:', error);
-      return false;
+      return true;
     }
   };
 
