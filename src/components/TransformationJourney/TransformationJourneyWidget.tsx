@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { EnhancedComparisonView } from './EnhancedComparisonView';
@@ -42,6 +43,7 @@ export const TransformationJourneyWidget: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('journey');
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStage, setGenerationStage] = useState('');
+  const [selectedProgressPhotoIndex, setSelectedProgressPhotoIndex] = useState(0);
 
   // Helper function to get photo URL from raw progress photo (for AI generation)
   const getProgressPhotoUrl = (entry: any, category: 'front' | 'side' | 'back') => {
@@ -61,7 +63,7 @@ export const TransformationJourneyWidget: React.FC = () => {
           setGenerationStage(stage);
           setGenerationProgress(progress || 0);
         },
-        getProgressPhotoUrl(rawProgressPhotos[0], 'front') // Use latest raw progress photo
+        getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], 'front') // Use selected progress photo
       );
       
       if (result) {
@@ -174,16 +176,48 @@ export const TransformationJourneyWidget: React.FC = () => {
             <CardContent className="space-y-4">
               {rawProgressPhotos.length > 0 ? (
                 <div className="space-y-4">
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium">Fortschrittsfoto für KI-Generation auswählen:</label>
+                    <Select 
+                      value={selectedProgressPhotoIndex.toString()} 
+                      onValueChange={(value) => setSelectedProgressPhotoIndex(parseInt(value))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rawProgressPhotos.map((photo, index) => (
+                          <SelectItem key={index} value={index.toString()}>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={getProgressPhotoUrl(photo, 'front')}
+                                alt={`Foto vom ${photo.date}`}
+                                className="w-8 h-8 object-cover rounded"
+                              />
+                              <div className="text-left">
+                                <div className="font-medium">{photo.date}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {photo.weight}kg {photo.body_fat_percentage && `• ${photo.body_fat_percentage}% KFA`}
+                                </div>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <img
-                      src={getProgressPhotoUrl(rawProgressPhotos[0], 'front')}
-                      alt="Aktuelles Foto"
+                      src={getProgressPhotoUrl(rawProgressPhotos[selectedProgressPhotoIndex], 'front')}
+                      alt="Ausgewähltes Foto"
                       className="w-12 h-12 object-cover rounded-md"
                     />
                     <div>
-                      <p className="text-sm font-medium">Aktuelles Fortschrittsfoto verfügbar</p>
+                      <p className="text-sm font-medium">Ausgewähltes Foto für KI-Generation</p>
                       <p className="text-xs text-muted-foreground">
-                        Wird als Basis für die KI-Generation verwendet
+                        {rawProgressPhotos[selectedProgressPhotoIndex]?.date} • {rawProgressPhotos[selectedProgressPhotoIndex]?.weight}kg
+                        {rawProgressPhotos[selectedProgressPhotoIndex]?.body_fat_percentage && ` • ${rawProgressPhotos[selectedProgressPhotoIndex].body_fat_percentage}% KFA`}
                       </p>
                     </div>
                   </div>
