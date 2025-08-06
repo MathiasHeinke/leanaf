@@ -120,6 +120,11 @@ export const useTargetImages = () => {
         progressPhotoId: progressPhotoId
       };
 
+      console.log('🚀 Calling generate-target-image with requestData:', {
+        ...requestData,
+        progressPhotoUrl: progressPhotoUrl?.substring(0, 50) + '...'
+      });
+
       console.log('Calling generate-target-image with:', requestData);
       onProgress?.('streaming', 50);
 
