@@ -43,6 +43,7 @@ export const TargetImageSelector: React.FC<TargetImageSelectorProps> = ({
     setSaving(true);
     try {
       const selectedImageUrl = generatedImages.imageUrls[selectedImageIndex];
+      console.log('Saving selected image:', selectedImageUrl);
       
       await saveSelectedTargetImage(selectedImageUrl, {
         targetWeight: generatedImages.targetWeight,
@@ -53,9 +54,13 @@ export const TargetImageSelector: React.FC<TargetImageSelectorProps> = ({
         currentBodyFat: generatedImages.currentBodyFat
       });
 
+      console.log('Target image saved successfully, calling callback');
       onImageSelected();
+      
+      toast.success('Zielbild erfolgreich gespeichert!');
     } catch (error) {
       console.error('Error saving selected image:', error);
+      toast.error('Fehler beim Speichern des Zielbilds');
     } finally {
       setSaving(false);
     }

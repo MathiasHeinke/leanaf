@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 export const QuickBodyDataWidget: React.FC = () => {
   const { user } = useAuth();
   const { photos, uploadProgressPhoto } = useProgressPhotos();
-  const { targetImages, uploadTargetImage, generateTargetImage, loading: targetLoading } = useTargetImages();
+  const { targetImages, uploadTargetImage, generateTargetImage, loading: targetLoading, refreshTargetImages } = useTargetImages();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [weight, setWeight] = useState('');
@@ -585,9 +585,14 @@ export const QuickBodyDataWidget: React.FC = () => {
             <TargetImageSelector
               generatedImages={generatedImages}
               onImageSelected={() => {
+                console.log('Image selected callback triggered, refreshing...');
                 setShowImageSelectorOverlay(false);
                 setGeneratedImages(null);
-                toast.success('Zielbild wurde gespeichert!');
+                // Explicitly refresh target images after successful save
+                setTimeout(() => {
+                  console.log('Refreshing target images...');
+                  refreshTargetImages();
+                }, 300);
               }}
             />
           )}

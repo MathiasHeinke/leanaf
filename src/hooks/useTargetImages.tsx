@@ -160,8 +160,26 @@ export const useTargetImages = () => {
 
       console.log('Target image saved successfully:', data);
       
-      // Refresh the target images list
-      await loadTargetImages();
+      // Create new target image object to add to state immediately
+      const newTargetImage: TargetImage = {
+        id: data.id,
+        image_url: selectedImageUrl,
+        image_type: 'ai_generated',
+        target_weight_kg: imageData.targetWeight,
+        target_body_fat_percentage: imageData.targetBodyFat,
+        generation_prompt: imageData.prompt,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Update state immediately for instant UI feedback
+      setTargetImages(prev => [newTargetImage, ...prev]);
+      
+      console.log('Target images state updated, refreshing from database...');
+      
+      // Also refresh from database to ensure consistency
+      setTimeout(() => loadTargetImages(), 500);
       
       toast.success('Zielbild gespeichert!');
       return data;
