@@ -300,7 +300,7 @@ export const AiTargetImageGeneration = ({
           <div className="flex items-center gap-3">
             <Progress value={realismScore} className="flex-1" />
             <Badge variant={realismScore > 70 ? 'default' : realismScore > 40 ? 'secondary' : 'destructive'}>
-              {realismScore}%
+              {realismScore.toFixed(2)}%
             </Badge>
           </div>
           

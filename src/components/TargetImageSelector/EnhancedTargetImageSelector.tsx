@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { LoaderIcon, CheckIcon, ImageIcon, ExpandIcon, TagIcon } from 'lucide-react';
+import { LoaderIcon, CheckIcon, ImageIcon, ExpandIcon, TagIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { CategoryFilter } from '@/components/TransformationJourney/CategoryFilter';
 import { toast } from 'sonner';
@@ -34,6 +34,7 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
   const [selectedCategory, setSelectedCategory] = useState<string>(generatedImages.selectedCategory || 'front');
   const [saving, setSaving] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [enlargedImageIndex, setEnlargedImageIndex] = useState<number>(0);
   const { saveSelectedTargetImage } = useTargetImages();
 
   // Support both old and new image URL formats
@@ -41,6 +42,23 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
 
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
+  };
+
+  const handleEnlargeImage = (imageUrl: string, index: number) => {
+    setEnlargedImage(imageUrl);
+    setEnlargedImageIndex(index);
+  };
+
+  const handlePreviousImage = () => {
+    const prevIndex = enlargedImageIndex > 0 ? enlargedImageIndex - 1 : imageUrls.length - 1;
+    setEnlargedImageIndex(prevIndex);
+    setEnlargedImage(imageUrls[prevIndex]);
+  };
+
+  const handleNextImage = () => {
+    const nextIndex = enlargedImageIndex < imageUrls.length - 1 ? enlargedImageIndex + 1 : 0;
+    setEnlargedImageIndex(nextIndex);
+    setEnlargedImage(imageUrls[nextIndex]);
   };
 
   const handleSaveSelected = async () => {
@@ -147,7 +165,7 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setEnlargedImage(imageUrl);
+                  handleEnlargeImage(imageUrl, index);
                 }}
                 className="absolute top-2 left-2 bg-black/70 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
                 aria-label="Bild vergrößern"
@@ -187,19 +205,40 @@ export const EnhancedTargetImageSelector: React.FC<EnhancedTargetImageSelectorPr
         </div>
       </CardContent>
 
-      {/* Image Enlargement Modal */}
+      {/* Image Enlargement Modal with Navigation */}
       {enlargedImage && (
         <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Zielbild Vorschau</DialogTitle>
+              <DialogTitle>Zielbild Vorschau ({enlargedImageIndex + 1} von {imageUrls.length})</DialogTitle>
             </DialogHeader>
-            <div className="aspect-auto overflow-hidden rounded-lg">
+            <div className="relative aspect-auto overflow-hidden rounded-lg">
               <img
                 src={enlargedImage}
                 alt="Vergrößerte Ansicht des Zielbilds"
                 className="w-full h-auto object-contain max-h-[70vh]"
               />
+              
+              {/* Navigation Arrows */}
+              {imageUrls.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePreviousImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-colors"
+                    aria-label="Vorheriges Bild"
+                  >
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                  
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2 transition-colors"
+                    aria-label="Nächstes Bild"
+                  >
+                    <ChevronRightIcon className="h-5 w-5" />
+                  </button>
+                </>
+              )}
             </div>
           </DialogContent>
         </Dialog>
