@@ -195,9 +195,24 @@ serve(async (req) => {
       console.log('Input image URL:', inputImageUrl);
       console.log('BFL API key available:', !!bflApiKey);
       
+    // Debug: Check why BFL API might be skipped
+      console.log('=== DEBUG: BFL API Decision ===');
+      console.log('bflApiKey available:', !!bflApiKey);
+      console.log('inputImageUrl available:', !!inputImageUrl);
+      console.log('Both available for BFL:', !!(bflApiKey && inputImageUrl));
+      
+      if (!bflApiKey) {
+        console.log('❌ SKIPPING BFL API: No BFL_API_KEY found in environment');
+      }
+      if (!inputImageUrl) {
+        console.log('❌ SKIPPING BFL API: No input image URL provided');
+      }
+      
       // Try FLUX Kontext Pro if BFL API key is available and we have an input image
       if (bflApiKey && inputImageUrl) {
-        console.log(`Trying image generation ${index + 1} with FLUX Kontext Pro (image editing)`);
+        console.log(`✅ ATTEMPTING FLUX Kontext Pro generation ${index + 1} (image editing)`);
+        console.log('Using BFL_API_KEY:', bflApiKey ? bflApiKey.substring(0, 8) + '...' : 'NONE');
+        console.log('Using inputImageUrl:', inputImageUrl);
         
         for (let retry = 0; retry <= maxRetries; retry++) {
           try {
