@@ -38,7 +38,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
-  const [comparisonMode, setComparisonMode] = useState<'vergleich' | 'timeline' | 'split'>('vergleich');
+  const [comparisonMode, setComparisonMode] = useState<'vergleich' | 'timeline' | 'split'>('split');
 
   // Filter images by category
   const filteredTargets = targetImages.filter(img => 
@@ -119,6 +119,24 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
       {/* View Mode Toggle */}
       <div className="flex justify-center">
         <div className="flex bg-muted/50 rounded-lg p-1">
+          <Button
+            variant={comparisonMode === 'split' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setComparisonMode('split')}
+            className="rounded-md"
+          >
+            <SplitIcon className="h-4 w-4 mr-2" />
+            Split View
+          </Button>
+          <Button
+            variant={comparisonMode === 'timeline' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setComparisonMode('timeline')}
+            className="rounded-md"
+          >
+            <TrendingUpIcon className="h-4 w-4 mr-2" />
+            Timeline
+          </Button>
           {linkedPairs.length > 0 && (
             <Button
               variant={comparisonMode === 'vergleich' ? 'default' : 'ghost'}
@@ -130,24 +148,6 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
               Vergleich
             </Button>
           )}
-          <Button
-            variant={comparisonMode === 'timeline' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setComparisonMode('timeline')}
-            className="rounded-md"
-          >
-            <TrendingUpIcon className="h-4 w-4 mr-2" />
-            Timeline
-          </Button>
-          <Button
-            variant={comparisonMode === 'split' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setComparisonMode('split')}
-            className="rounded-md"
-          >
-            <SplitIcon className="h-4 w-4 mr-2" />
-            Split View
-          </Button>
         </div>
       </div>
 
@@ -325,12 +325,13 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                       isLatest={!selectedPhoto}
                     />
                   ) : (
-                    <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Kein Foto für {selectedCategory}</p>
-                      </div>
-                    </div>
+                     <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
+                       <div className="text-center text-muted-foreground">
+                         <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                         <p className="text-sm">Kein Foto für {selectedCategory}</p>
+                         <p className="text-xs mt-1">Lade dein erstes Foto hoch</p>
+                       </div>
+                     </div>
                   )}
                 </CardContent>
               </Card>
@@ -365,13 +366,13 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                       onDelete={() => onDeleteTarget(targetImage.id)}
                     />
                   ) : (
-                    <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <TargetIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Kein Zielbild für {selectedCategory}</p>
-                        <p className="text-xs mt-1">Erstelle ein Zielbild</p>
-                      </div>
-                    </div>
+                     <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
+                       <div className="text-center text-muted-foreground">
+                         <TargetIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                         <p className="text-sm">Kein Zielbild für {selectedCategory}</p>
+                         <p className="text-xs mt-1">Erstelle dein Zielbild im KI Tab</p>
+                       </div>
+                     </div>
                   )}
                 </CardContent>
               </Card>
