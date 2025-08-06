@@ -9,13 +9,11 @@ import { EnhancedComparisonView } from './EnhancedComparisonView';
 import { GridPhotoView } from './GridPhotoView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
-import { SmartCropModal } from '@/components/AvatarSelector/SmartCropModal';
 import { 
   ImageIcon, 
   SparklesIcon, 
   TrendingUpIcon, 
-  UploadIcon,
-  Brain
+  UploadIcon 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,8 +53,6 @@ export const TransformationJourneyWidget: React.FC = () => {
     originalPhoto: string;
     generatedImage: string;
   } | null>(null);
-  const [showSmartCrop, setShowSmartCrop] = useState(false);
-  const [imagesToAlign, setImagesToAlign] = useState<string[]>([]);
 
   // Helper function to get photo URL from raw progress photo (for AI generation)
   const getProgressPhotoUrl = (entry: any, category: 'front' | 'side' | 'back') => {
@@ -160,31 +156,6 @@ export const TransformationJourneyWidget: React.FC = () => {
     setActiveTab("generate");
   };
 
-  const handleSmartAlign = () => {
-    // Get the first two progress photos for alignment
-    const filteredPhotos = rawProgressPhotos
-      .filter(photo => getProgressPhotoUrl(photo, selectedCategory as 'front' | 'side' | 'back'))
-      .slice(0, 2);
-    
-    if (filteredPhotos.length >= 2) {
-      const photoUrls = filteredPhotos.map(photo => 
-        getProgressPhotoUrl(photo, selectedCategory as 'front' | 'side' | 'back')
-      ).filter(Boolean) as string[];
-      
-      setImagesToAlign(photoUrls);
-      setShowSmartCrop(true);
-    } else {
-      toast.error('Mindestens 2 Fortschrittsfotos in der ausgewählten Kategorie erforderlich');
-    }
-  };
-
-  const handleAlignmentComplete = (alignedImages: string[]) => {
-    setShowSmartCrop(false);
-    setImagesToAlign([]);
-    toast.success('Bilder erfolgreich ausgerichtet!');
-    // Here you could update the images or show them in a before/after view
-  };
-
   if (loading) {
     return (
       <Card className="w-full border-0 shadow-lg">
@@ -212,46 +183,15 @@ export const TransformationJourneyWidget: React.FC = () => {
         </TabsList>
 
         <TabsContent value="timeline" className="space-y-6">
-          <div className="space-y-4">
-            {/* Smart Alignment Tool */}
-            {progressPhotos.length >= 2 && (
-              <Card className="gradient-card border border-purple-200/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                        <Brain className="h-5 w-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-sm">KI-gestützte Bildausrichtung</h3>
-                        <p className="text-xs text-muted-foreground">
-                          Richte deine Fortschrittsfotos automatisch für perfekte Vergleiche aus
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleSmartAlign}
-                      variant="outline"
-                      size="sm"
-                      className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-300/50 hover:border-purple-400"
-                    >
-                      <Brain className="h-4 w-4 mr-2" />
-                      Ausrichten
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {targetImages.length > 0 || progressPhotos.length > 0 ? (
-              <EnhancedComparisonView
-                targetImages={targetImages}
-                progressPhotos={progressPhotos}
-                onDeleteTarget={handleDeleteTarget}
-                onViewTransformation={handleViewTransformation}
-                onCreateTransformation={handleCreateTransformation}
-              />
-            ) : (
+          {targetImages.length > 0 || progressPhotos.length > 0 ? (
+            <EnhancedComparisonView
+              targetImages={targetImages}
+              progressPhotos={progressPhotos}
+              onDeleteTarget={handleDeleteTarget}
+              onViewTransformation={handleViewTransformation}
+              onCreateTransformation={handleCreateTransformation}
+            />
+          ) : (
             <Card className="gradient-card">
               <CardContent className="p-8 text-center">
                 <ImageIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -271,8 +211,7 @@ export const TransformationJourneyWidget: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            )}
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="photos" className="space-y-6">
@@ -473,16 +412,6 @@ export const TransformationJourneyWidget: React.FC = () => {
         </TabsContent>
 
       </Tabs>
-
-      {/* Smart Crop Modal */}
-      <SmartCropModal
-        images={imagesToAlign}
-        isOpen={showSmartCrop}
-        onClose={() => setShowSmartCrop(false)}
-        onCropComplete={handleAlignmentComplete}
-        mode="align"
-        title="Fortschrittsfotos intelligent ausrichten"
-      />
     </div>
   );
 };
