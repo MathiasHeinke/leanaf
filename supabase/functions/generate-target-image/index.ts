@@ -532,9 +532,7 @@ serve(async (req) => {
         hasProgressPhoto: !!frontPhotoUrl,
         currentWeight,
         targetWeight: targetWeightNum,
-        targetBodyFat: targetBodyFatNum,
-        activityLevel,
-        workoutFrequency
+        targetBodyFat: targetBodyFatNum
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
