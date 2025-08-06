@@ -1,5 +1,5 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { secureLogger } from '@/utils/secureLogger';
@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const cleanupAuthState = () => {
     Object.keys(localStorage).forEach((key) => {
@@ -62,21 +63,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (isIncomplete) {
         // New user - start premium trial and redirect to profile
         await startPremiumTrialForNewUser(user.id);
-        setTimeout(() => {
-          window.location.href = '/profile';
-        }, 100);
+        navigate('/profile');
       } else {
         // Existing user - redirect to home
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 100);
+        navigate('/');
       }
     } catch (error) {
       console.error('Error checking user status:', error);
       // Fallback to home
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
+      navigate('/');
     }
   };
 
@@ -116,19 +111,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(null);
       setUser(null);
       await supabase.auth.signOut({ scope: 'global' });
-      window.location.replace('/auth');
+      navigate('/auth', { replace: true });
     } catch (error) {
       // Force cleanup even if signOut fails
       cleanupAuthState();
       setSession(null);
       setUser(null);
       console.error('Sign out error occurred');
-      window.location.replace('/auth');
+      navigate('/auth', { replace: true });
     }
   };
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
     let hasTriggeredSignInRedirect = false;
     
     // Set up auth state listener
@@ -149,7 +143,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('🚀 Processing sign-in redirect for new login');
           hasTriggeredSignInRedirect = true;
           
-          timeoutId = setTimeout(() => {
+          // Use setTimeout to avoid potential conflicts with auth state
+          setTimeout(() => {
             checkIfNewUserAndRedirect(session.user);
           }, 100);
         }
@@ -161,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(null);
           hasTriggeredSignInRedirect = false;
           if (window.location.pathname !== '/auth') {
-            window.location.href = '/auth';
+            navigate('/auth');
           }
         }
 
@@ -194,10 +189,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const value = {
     user,
