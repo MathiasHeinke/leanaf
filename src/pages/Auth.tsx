@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -28,17 +27,20 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [privacyAccepted, setPrivacyAccepted] = useState(true); // Vorausgewählt wie gewünscht
-  const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000)); // 5 attempts per 15 minutes
+  const [privacyAccepted, setPrivacyAccepted] = useState(true);
+  const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000));
   
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
   const { t } = useTranslation();
   const { logAuthAttempt, logSuspiciousActivity } = useSecurityMonitoring();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    // Only redirect if we're sure the user is authenticated and not loading
+    if (!authLoading && user && session) {
+      console.log('🔄 User already authenticated, redirecting to home');
       navigate('/');
+      return;
     }
     
     // Check rate limiting on component mount
@@ -53,7 +55,19 @@ const Auth = () => {
         });
       }
     }
-  }, [user, navigate, rateLimiter, logSuspiciousActivity]);
+  }, [user, session, authLoading, navigate, rateLimiter, logSuspiciousActivity]);
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Shield className="h-8 w-8 text-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Überprüfe Anmeldestatus...</p>
+        </div>
+      </div>
+    );
+  }
 
   const cleanupAuthState = () => {
     try {
@@ -146,7 +160,7 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt started', { email, isSignUp, isPasswordReset });
+    console.log('🔐 Login attempt started', { email, isSignUp, isPasswordReset });
     
     // Check rate limiting
     const clientId = `${navigator.userAgent}_${window.location.href}`;
@@ -158,22 +172,17 @@ const Auth = () => {
         client_info: navigator.userAgent,
         remaining_attempts: remaining
       });
-      console.log('Rate limit exceeded');
       return;
     }
     
     if (isPasswordReset) {
-      console.log('Handling password reset');
       handlePasswordReset();
       return;
     }
     
-    console.log('Validating form...');
     const isValid = validateForm();
-    console.log('Form validation result:', isValid, validationErrors);
     if (!isValid) return;
     
-    console.log('Starting authentication...');
     setLoading(true);
     setError('');
     
@@ -248,8 +257,9 @@ const Auth = () => {
             }
             
             if (data.user) {
+              console.log('✅ Sign in successful, auth state will handle redirect');
               toast.success(t('auth.signInSuccess'));
-              window.location.replace('/');
+              // Don't manually redirect - let the auth state change handle it
             }
             break;
           }
@@ -258,11 +268,9 @@ const Auth = () => {
           if (attempt >= maxAttempts) {
             throw networkError;
           }
-          // Removed console.log for production security
         }
       }
     } catch (error: any) {
-      // Log authentication failure for security monitoring
       await logAuthAttempt(
         isSignUp ? 'sign_up' : 'sign_in',
         false,
@@ -309,7 +317,6 @@ const Auth = () => {
       toast.success(t('auth.passwordResetSent'));
       setIsPasswordReset(false);
     } catch (error: any) {
-      // Secure error logging for password reset
       await logSuspiciousActivity('auth_error', {
         error_message: error.message,
         action: 'password_reset'
@@ -332,7 +339,6 @@ const Auth = () => {
       
       if (error) throw error;
     } catch (error: any) {
-      // Secure error logging for Google auth
       setError(t('auth.googleError'));
     } finally {
       setLoading(false);
@@ -351,7 +357,6 @@ const Auth = () => {
       
       if (error) throw error;
     } catch (error: any) {
-      // Secure error logging for Apple auth
       setError(t('auth.appleError'));
     } finally {
       setLoading(false);

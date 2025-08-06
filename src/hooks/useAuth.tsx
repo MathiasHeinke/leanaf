@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -128,25 +129,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    let hasTriggeredSignInRedirect = false;
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('🔐 Auth state change:', event, 'Current path:', window.location.pathname);
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle auth events with debouncing
-        if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+        // Only handle redirects for actual sign-in events from the auth page
+        if (event === 'SIGNED_IN' && 
+            session?.user && 
+            window.location.pathname === '/auth' && 
+            !hasTriggeredSignInRedirect) {
+          
+          console.log('🚀 Processing sign-in redirect for new login');
+          hasTriggeredSignInRedirect = true;
+          
           timeoutId = setTimeout(() => {
             checkIfNewUserAndRedirect(session.user);
           }, 100);
         }
         
         if (event === 'SIGNED_OUT') {
+          console.log('👋 User signed out');
           cleanupAuthState();
           setSession(null);
           setUser(null);
+          hasTriggeredSignInRedirect = false;
           if (window.location.pathname !== '/auth') {
             window.location.href = '/auth';
           }
@@ -168,6 +181,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      console.log('📋 Initial session check:', { 
+        hasSession: !!session, 
+        currentPath: window.location.pathname 
+      });
     }).catch(() => {
       cleanupAuthState();
       setSession(null);
