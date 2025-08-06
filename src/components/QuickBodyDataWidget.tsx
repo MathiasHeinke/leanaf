@@ -16,6 +16,7 @@ import { SmartCardOverlay } from '@/components/SmartCardOverlay';
 import { EnhancedStreamingIndicator } from '@/components/EnhancedStreamingIndicator';
 import { useEnhancedStreamingChat } from '@/hooks/useEnhancedStreamingChat';
 import { supabase } from '@/integrations/supabase/client';
+import { ImageSelectionModal } from '@/components/ImageSelectionModal';
 
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ export const QuickBodyDataWidget: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedProgressPhoto, setSelectedProgressPhoto] = useState<{ url: string; entryId: string } | null>(null);
+  const [showImageSelectionModal, setShowImageSelectionModal] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [showImageSelectorOverlay, setShowImageSelectorOverlay] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -463,53 +465,8 @@ export const QuickBodyDataWidget: React.FC = () => {
           </p>
 
           <Button
-            onClick={async () => {
-              if (!selectedProgressPhoto) {
-                toast.error('Wähle erst ein Fortschrittsfoto aus für bessere AI-Ergebnisse');
-                return;
-              }
-              
-              setIsGenerating(true);
-              startPerformanceTracking();
-              
-              try {
-                // Track different phases of AI generation
-                setTimeout(() => trackContextLoaded(), 500);
-                setTimeout(() => trackFirstToken(), 1000);
-                
-                // Progress tracking simulation
-                const progressInterval = setInterval(() => {
-                  trackStreamingProgress(Math.random() * 20 + 10);
-                }, 2000);
-
-                const result = await generateTargetImage(
-                  userProfile?.target_weight,
-                  userProfile?.target_body_fat_percentage,
-                  undefined,
-                  selectedProgressPhoto.url
-                );
-                
-                clearInterval(progressInterval);
-                trackStreamingComplete();
-                
-                if (result && result.imageUrls && result.imageUrls.length > 0) {
-                  setGeneratedImages(result);
-                  setShowImageSelectorOverlay(true);
-                  toast.success('4 AI-Zielbilder erfolgreich erstellt!');
-                } else {
-                  toast.error('Keine Bilder generiert');
-                  trackError('Keine Bilder generiert');
-                }
-              } catch (error) {
-                console.error('Error generating images:', error);
-                trackError(error instanceof Error ? error.message : 'Unbekannter Fehler');
-                toast.error('Fehler beim Erstellen der Zielbilder');
-              } finally {
-                setIsGenerating(false);
-                setTimeout(() => resetPerformanceTracking(), 3000);
-              }
-            }}
-            disabled={isGenerating || photos.length === 0}
+            onClick={() => setShowImageSelectionModal(true)}
+            disabled={isGenerating}
             className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
           >
             {isGenerating ? (
@@ -517,15 +474,10 @@ export const QuickBodyDataWidget: React.FC = () => {
                 <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Erstelle 4 Bilder...
               </>
-            ) : selectedProgressPhoto ? (
-              <>
-                <Zap className="h-4 w-4 mr-2" />
-                Jetzt mit ausgewähltem Bild generieren
-              </>
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />
-                Wähle zuerst ein Fortschrittsfoto aus
+                AI Bilder erstellen
               </>
             )}
           </Button>
@@ -655,6 +607,55 @@ export const QuickBodyDataWidget: React.FC = () => {
           accept="image/*"
           onChange={handleTargetImageUpload}
           className="hidden"
+        />
+
+        {/* Image Selection Modal */}
+        <ImageSelectionModal
+          isOpen={showImageSelectionModal}
+          onClose={() => setShowImageSelectionModal(false)}
+          onImageSelected={async (imageUrl: string) => {
+            console.log('Selected image URL for generation:', imageUrl);
+            
+            setIsGenerating(true);
+            startPerformanceTracking();
+            
+            try {
+              // Track different phases of AI generation
+              setTimeout(() => trackContextLoaded(), 500);
+              setTimeout(() => trackFirstToken(), 1000);
+              
+              // Progress tracking simulation
+              const progressInterval = setInterval(() => {
+                trackStreamingProgress(Math.random() * 20 + 10);
+              }, 2000);
+
+              const result = await generateTargetImage(
+                userProfile?.target_weight,
+                userProfile?.target_body_fat_percentage,
+                undefined,
+                imageUrl
+              );
+              
+              clearInterval(progressInterval);
+              trackStreamingComplete();
+              
+              if (result && result.imageUrls && result.imageUrls.length > 0) {
+                setGeneratedImages(result);
+                setShowImageSelectorOverlay(true);
+                toast.success('4 AI-Zielbilder erfolgreich erstellt!');
+              } else {
+                toast.error('Keine Bilder generiert');
+                trackError('Keine Bilder generiert');
+              }
+            } catch (error) {
+              console.error('Error generating images:', error);
+              trackError(error instanceof Error ? error.message : 'Unbekannter Fehler');
+              toast.error('Fehler beim Erstellen der Zielbilder');
+            } finally {
+              setIsGenerating(false);
+              setTimeout(() => resetPerformanceTracking(), 3000);
+            }
+          }}
         />
 
         {/* Image Modal */}
