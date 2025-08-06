@@ -62,30 +62,97 @@ serve(async (req) => {
       .update({ is_active: false })
       .eq('user_id', userId);
 
-    // Use provided progressPhotoId or find it from URL
+    // Use provided progressPhotoId or find it from URL with improved logic
     let finalProgressPhotoId = progressPhotoId;
     
     if (!finalProgressPhotoId && progressPhotoUrl) {
+      console.log('Searching for progress photo ID by URL:', progressPhotoUrl?.substring(0, 50) + '...');
+      
       const { data: progressPhotoData } = await supabase
         .from('weight_history')
-        .select('id, photo_urls')
+        .select('id, photo_urls, date')
         .eq('user_id', userId)
+        .not('photo_urls', 'is', null)
         .order('created_at', { ascending: false });
       
       // Find the progress photo that contains this URL
       if (progressPhotoData) {
         for (const photo of progressPhotoData) {
           if (photo.photo_urls) {
-            const urls = typeof photo.photo_urls === 'string' 
-              ? [photo.photo_urls] 
-              : Object.values(photo.photo_urls);
+            let urls: string[] = [];
             
-            if (urls.some(url => url === progressPhotoUrl)) {
+            // Handle different photo_urls formats more robustly
+            if (typeof photo.photo_urls === 'string') {
+              try {
+                const parsed = JSON.parse(photo.photo_urls);
+                urls = Array.isArray(parsed) ? parsed : Object.values(parsed);
+              } catch (e) {
+                urls = [photo.photo_urls];
+              }
+            } else if (Array.isArray(photo.photo_urls)) {
+              urls = photo.photo_urls;
+            } else if (photo.photo_urls && typeof photo.photo_urls === 'object') {
+              urls = Object.values(photo.photo_urls);
+            }
+            
+            // More flexible URL matching - check for partial matches and clean URLs
+            const matchFound = urls.some(url => {
+              if (!url || typeof url !== 'string') return false;
+              
+              // Clean both URLs for comparison
+              const cleanProgressUrl = progressPhotoUrl.split('?')[0];
+              const cleanDbUrl = url.split('?')[0];
+              
+              return cleanDbUrl === cleanProgressUrl || 
+                     url === progressPhotoUrl ||
+                     cleanDbUrl.includes(cleanProgressUrl.split('/').pop() || '') ||
+                     cleanProgressUrl.includes(cleanDbUrl.split('/').pop() || '');
+            });
+            
+            if (matchFound) {
               finalProgressPhotoId = photo.id;
+              console.log(`✅ Found matching photo ID: ${photo.id} for date: ${photo.date}`);
               break;
             }
           }
         }
+      }
+      
+      // Fallback: if no exact match found and we have a category, use the latest photo with that category
+      if (!finalProgressPhotoId && imageCategory && imageCategory !== 'unspecified') {
+        console.log(`⚠️ No exact URL match found, searching for latest ${imageCategory} photo...`);
+        
+        const { data: categoryPhotos } = await supabase
+          .from('weight_history')
+          .select('id, photo_urls, photo_metadata, date')
+          .eq('user_id', userId)
+          .not('photo_urls', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (categoryPhotos) {
+          for (const photo of categoryPhotos) {
+            // Check if photo has the requested category
+            const hasCategory = photo.photo_urls && 
+              ((typeof photo.photo_urls === 'object' && !Array.isArray(photo.photo_urls) && photo.photo_urls[imageCategory]) ||
+               (Array.isArray(photo.photo_urls) && photo.photo_urls.length > 0 && 
+                ((imageCategory === 'front' && photo.photo_urls[0]) ||
+                 (imageCategory === 'side' && photo.photo_urls[1]) ||
+                 (imageCategory === 'back' && photo.photo_urls[2]))));
+            
+            if (hasCategory) {
+              finalProgressPhotoId = photo.id;
+              console.log(`✅ Fallback: Using latest ${imageCategory} photo from ${photo.date}, ID: ${photo.id}`);
+              break;
+            }
+          }
+        }
+      }
+      
+      // Final fallback: use the very latest progress photo
+      if (!finalProgressPhotoId && progressPhotoData && progressPhotoData.length > 0) {
+        finalProgressPhotoId = progressPhotoData[0].id;
+        console.log(`⚠️ Using latest progress photo as final fallback, ID: ${finalProgressPhotoId}`);
       }
     }
     

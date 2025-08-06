@@ -72,16 +72,38 @@ export const useProgressPhotos = () => {
           }
         }
         
-        // Convert array to object format with smart categorization
+        // Convert array to object format with AI-enhanced categorization
         if (Array.isArray(photoUrls)) {
           const transformedUrls: any = {};
           photoUrls.forEach((url, index) => {
             if (url && typeof url === 'string' && url.trim() !== '') {
-              // Smart categorization: first = front, second = side, third = back, rest = additional fronts
-              if (index === 0) transformedUrls.front = url;
-              else if (index === 1) transformedUrls.side = url;
-              else if (index === 2) transformedUrls.back = url;
-              else transformedUrls[`front_${index}`] = url; // Additional front views
+              // Check if we have photo metadata for smarter categorization
+              const photoMetadata = entry.photo_metadata;
+              let category = '';
+              
+              if (photoMetadata && typeof photoMetadata === 'object') {
+                // Look for analysis that matches this photo URL
+                const metadataKey = `photo_${index + 1}`;
+                const analysis = photoMetadata[metadataKey];
+                
+                if (analysis && analysis.view && analysis.view !== 'unknown') {
+                  category = analysis.view;
+                } else {
+                  // Fallback to position-based categorization
+                  if (index === 0) category = 'front';
+                  else if (index === 1) category = 'side';
+                  else if (index === 2) category = 'back';
+                  else category = `front_${index}`;
+                }
+              } else {
+                // Default position-based categorization
+                if (index === 0) category = 'front';
+                else if (index === 1) category = 'side';
+                else if (index === 2) category = 'back';
+                else category = `front_${index}`;
+              }
+              
+              transformedUrls[category] = url;
             }
           });
           
