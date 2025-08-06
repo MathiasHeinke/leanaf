@@ -293,7 +293,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
       </div>
 
       {/* Photo Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {sortedEntries.map((entry, index) => (
           <Card key={`${entry.date}-${entry.category}`} className="overflow-hidden group hover:shadow-lg transition-all duration-200">
             <div className="relative aspect-[3/4]">
