@@ -3927,7 +3927,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_target_images_progress_photo"
+            columns: ["ai_generated_from_photo_id"]
+            isOneToOne: false
+            referencedRelation: "weight_history"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tool_usage_events: {
         Row: {
