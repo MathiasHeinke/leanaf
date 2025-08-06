@@ -79,12 +79,6 @@ export const TransformationJourneyWidget: React.FC = () => {
     });
     
     try {
-      console.log('🔥 Starting AI generation with params:', {
-        photoId: photoToUse?.id,
-        category: categoryToUse,
-        photoUrl: originalPhotoUrl?.substring(0, 50) + '...'
-      });
-
       const result = await generateTargetImage(
         undefined, // targetWeight
         undefined, // targetBodyFat
