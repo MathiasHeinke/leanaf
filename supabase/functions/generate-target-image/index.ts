@@ -149,13 +149,13 @@ serve(async (req) => {
 
     if (frontPhotoUrl) {
       // Photorealistic image editing prompt with explicit realism keywords
-      detailedPrompt = `Professional fitness photography, photorealistic, high-quality photo. Transform this person to show their fitness goal: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg body weight, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. Realistic human proportions, natural lighting, detailed muscle definition, professional gym photography style. No cartoon, no anime, no illustration, photorealistic only.`;
+      detailedPrompt = `Professional fitness photography, photorealistic, high-quality photo. Transform this person to show their natural fitness goal: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg body weight, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. Athletic and toned physique with natural muscle definition. Healthy, fit appearance without extreme musculature. Natural lighting, realistic human proportions, professional photography style. Focus on natural fitness progression rather than dramatic transformation. No cartoon, no anime, no illustration, photorealistic only.`;
     } else {
       // Fallback for text-only generation with photorealistic emphasis
       const genderDesc = profile?.gender === 'female' ? 'woman' : profile?.gender === 'male' ? 'man' : 'person';
       const ageDesc = profile?.age ? `${profile.age}-year-old` : 'young adult';
       
-      detailedPrompt = `Professional fitness photography, photorealistic portrait of a fit ${ageDesc} ${genderDesc}. Body composition: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. High-quality photo, realistic human proportions, natural lighting, detailed muscle definition, professional gym photography. No cartoon, no anime, no illustration, photorealistic only.`;
+      detailedPrompt = `Professional fitness photography, photorealistic portrait of a fit ${ageDesc} ${genderDesc}. Body composition: ${targetBodyFatNum}% body fat, ${targetWeightNum}kg, ${activityLevel} lifestyle${workoutFrequency ? ' with ' + workoutFrequency : ''}. Natural athletic build, toned physique, healthy appearance. Realistic human proportions, natural lighting, professional fitness photography. Focus on natural fitness and health rather than extreme musculature. No cartoon, no anime, no illustration, photorealistic only.`;
     }
 
     console.log('Generated simplified prompt:', detailedPrompt);

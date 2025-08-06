@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LoaderIcon, CheckIcon, ImageIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LoaderIcon, CheckIcon, ImageIcon, ExpandIcon } from 'lucide-react';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { toast } from 'sonner';
 
@@ -26,6 +27,7 @@ export const TargetImageSelector: React.FC<TargetImageSelectorProps> = ({
 }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const { saveSelectedTargetImage } = useTargetImages();
 
   const handleImageSelect = (index: number) => {
@@ -84,17 +86,17 @@ export const TargetImageSelector: React.FC<TargetImageSelectorProps> = ({
           {generatedImages.imageUrls.map((imageUrl, index) => (
             <div
               key={index}
-              className={`relative cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
+              className={`relative border-2 rounded-lg overflow-hidden transition-all ${
                 selectedImageIndex === index
                   ? 'border-primary ring-2 ring-primary/20'
                   : 'border-border hover:border-primary/50'
               }`}
-              onClick={() => handleImageSelect(index)}
             >
               <img
                 src={imageUrl}
                 alt={`Zielbild Option ${index + 1}`}
-                className="w-full h-48 object-cover"
+                className="w-full h-48 object-cover cursor-pointer"
+                onClick={() => handleImageSelect(index)}
               />
               
               {selectedImageIndex === index && (
@@ -102,6 +104,18 @@ export const TargetImageSelector: React.FC<TargetImageSelectorProps> = ({
                   <CheckIcon className="h-4 w-4" />
                 </div>
               )}
+              
+              {/* Enlarge Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEnlargedImage(imageUrl);
+                }}
+                className="absolute top-2 left-2 bg-black/70 hover:bg-black/90 text-white rounded-full p-1.5 transition-colors"
+                aria-label="Bild vergrößern"
+              >
+                <ExpandIcon className="h-3 w-3" />
+              </button>
               
               <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
                 Option {index + 1}
@@ -132,6 +146,24 @@ export const TargetImageSelector: React.FC<TargetImageSelectorProps> = ({
           <p className="text-xs">{generatedImages.prompt.substring(0, 200)}...</p>
         </div>
       </CardContent>
+
+      {/* Image Enlargement Modal */}
+      {enlargedImage && (
+        <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Zielbild Vorschau</DialogTitle>
+            </DialogHeader>
+            <div className="aspect-auto overflow-hidden rounded-lg">
+              <img
+                src={enlargedImage}
+                alt="Vergrößerte Ansicht des Zielbilds"
+                className="w-full h-auto object-contain max-h-[70vh]"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 };
