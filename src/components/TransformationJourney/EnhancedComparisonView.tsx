@@ -43,6 +43,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [comparisonMode, setComparisonMode] = useState<'vergleich' | 'timeline' | 'split'>('split');
+  const [selectedAiImageId, setSelectedAiImageId] = useState<string | null>(null);
 
   // Filter images by category
   const filteredTargets = targetImages.filter(img => 
@@ -89,6 +90,15 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
         return null;
       })
       .filter(pair => pair !== null);
+  };
+
+  // Get AI images for current photo
+  const getAiImagesForCurrentPhoto = () => {
+    if (!currentPhoto) return [];
+    
+    return filteredTargets.filter(target => 
+      target.ai_generated_from_photo_id === currentPhoto.id
+    );
   };
 
   const linkedPairs = getLinkedPhotoPairs();
@@ -417,33 +427,60 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
             )}
 
             {/* Interactive Before/After Slider */}
-            {currentPhoto && targetImage && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.2 }}
-              >
-                <Card className="gradient-card">
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <h3 className="text-lg font-semibold">Vorher/Nachher Vergleich</h3>
-                        <p className="text-sm text-muted-foreground">Ziehe den Slider um zwischen Original und Zielbild zu wechseln</p>
+            {(() => {
+              const availableAiImages = getAiImagesForCurrentPhoto();
+              const selectedAiImage = selectedAiImageId 
+                ? availableAiImages.find(img => img.id === selectedAiImageId)
+                : availableAiImages[0];
+
+              if (!currentPhoto || !selectedAiImage) return null;
+
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                  <Card className="gradient-card">
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        <div className="flex flex-col items-center space-y-2">
+                          <h3 className="text-lg font-semibold">Vorher/Nachher Vergleich</h3>
+                          <p className="text-sm text-muted-foreground">Ziehe den Slider um zwischen Original und Zielbild zu wechseln</p>
+                          
+                          {availableAiImages.length > 1 && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-muted-foreground">KI-Bild:</span>
+                              <select 
+                                value={selectedAiImageId || availableAiImages[0]?.id || ''}
+                                onChange={(e) => setSelectedAiImageId(e.target.value)}
+                                className="px-3 py-1 text-sm border rounded-md bg-background"
+                              >
+                                {availableAiImages.map((img, index) => (
+                                  <option key={img.id} value={img.id}>
+                                    {img.image_category} - Variante {index + 1}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="w-full max-w-2xl mx-auto">
+                          <BeforeAfterSlider
+                            beforeImage={getProgressPhotoUrl(currentPhoto)}
+                            afterImage={selectedAiImage.image_url}
+                            beforeLabel="Dein Foto"
+                            afterLabel="KI Zielbild"
+                            className="aspect-[3/4] rounded-lg overflow-hidden"
+                          />
+                        </div>
                       </div>
-                      <div className="w-full max-w-2xl mx-auto">
-                        <BeforeAfterSlider
-                          beforeImage={getProgressPhotoUrl(currentPhoto)}
-                          afterImage={targetImage.image_url}
-                          beforeLabel="Dein Foto"
-                          afterLabel="KI Zielbild"
-                          className="aspect-[3/4] rounded-lg overflow-hidden"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })()}
 
             {/* Progress to Goal */}
             {currentPhoto && targetImage && (
