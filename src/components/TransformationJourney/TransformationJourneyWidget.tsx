@@ -1,80 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTargetImages } from '@/hooks/useTargetImages';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 import { EnhancedComparisonView } from './EnhancedComparisonView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { 
   ImageIcon, 
   SparklesIcon, 
   TrendingUpIcon, 
-  PlusIcon,
   UploadIcon 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface ProgressPhoto {
-  date: string;
-  photo_front_url?: string;
-  photo_back_url?: string;
-  photo_side_url?: string;
-  weight: number;
-  body_fat_percentage?: number;
-}
-
 export const TransformationJourneyWidget: React.FC = () => {
-  const { user } = useAuth();
   const { targetImages, deleteTargetImage, generateTargetImage, refreshTargetImages } = useTargetImages();
-  const [progressPhotos, setProgressPhotos] = useState<ProgressPhoto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { photos: progressPhotos, loading, refreshPhotos } = useProgressPhotos();
   const [generatingTarget, setGeneratingTarget] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>('journey');
 
-  // Load progress photos from weight_history
-  const loadProgressPhotos = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('weight_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .not('photo_urls', 'is', null)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      
-      const photos: ProgressPhoto[] = (data || []).map(entry => {
-        const photoUrls = entry.photo_urls as any;
-        return {
-          date: entry.date,
-          photo_front_url: photoUrls?.front || null,
-          photo_back_url: photoUrls?.back || null,
-          photo_side_url: photoUrls?.side || null,
-          weight: entry.weight,
-          body_fat_percentage: entry.body_fat_percentage
-        };
-      });
-
-      setProgressPhotos(photos);
-    } catch (error) {
-      console.error('Error loading progress photos:', error);
-    } finally {
-      setLoading(false);
-    }
+  // Helper function to get photo URL from progress photo
+  const getProgressPhotoUrl = (entry: any, category: 'front' | 'side' | 'back') => {
+    if (!entry?.photo_urls) return null;
+    return entry.photo_urls[category] || null;
   };
-
-  useEffect(() => {
-    if (user) {
-      loadProgressPhotos();
-    }
-  }, [user]);
 
   const handleGenerateTarget = async () => {
     setGeneratingTarget(true);
@@ -85,7 +36,7 @@ export const TransformationJourneyWidget: React.FC = () => {
         (stage, progress) => {
           console.log(`Generation stage: ${stage}, progress: ${progress}%`);
         },
-        progressPhotos[0]?.photo_front_url // Use latest progress photo
+        getProgressPhotoUrl(progressPhotos[0], 'front') // Use latest progress photo
       );
       
       if (result) {
@@ -104,7 +55,7 @@ export const TransformationJourneyWidget: React.FC = () => {
     setGeneratedImages(null);
     setActiveTab('journey');
     refreshTargetImages();
-    loadProgressPhotos();
+    refreshPhotos();
   };
 
   const handleDeleteTarget = async (id: string) => {
@@ -135,41 +86,6 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header - Apple-style */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
-        <CardHeader className="pb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent flex items-center gap-3">
-                <TrendingUpIcon className="h-7 w-7 text-primary" />
-                Transformation Journey
-              </CardTitle>
-              <p className="text-muted-foreground mt-2">
-                Verfolge deinen Fortschritt mit Apple-like Swipe Navigation
-              </p>
-            </div>
-            
-            <div className="flex gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                <span className="font-medium">{progressPhotos.length} Fortschrittsfotos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-secondary rounded-full"></div>
-                <span className="font-medium">{targetImages.length} Zielbilder</span>
-              </div>
-            </div>
-          </div>
-          {progressPhotos.length > 0 && (
-            <div className="mt-4 text-right">
-              <p className="text-sm font-medium text-primary">
-                🎯 Deine Transformation läuft großartig!
-              </p>
-            </div>
-          )}
-        </CardHeader>
-      </Card>
-
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -233,7 +149,7 @@ export const TransformationJourneyWidget: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <img
-                      src={progressPhotos[0]?.photo_front_url}
+                      src={getProgressPhotoUrl(progressPhotos[0], 'front')}
                       alt="Aktuelles Foto"
                       className="w-12 h-12 object-cover rounded-md"
                     />
