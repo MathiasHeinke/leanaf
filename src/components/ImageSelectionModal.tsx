@@ -34,10 +34,7 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
     toast.success('Progress Photo ausgewählt');
   };
 
-  const handleUploadedImageSelect = (imageUrl: string) => {
-    setUploadedImageUrl(imageUrl);
-    setSelectedImageUrl(null); // Clear progress photo when selecting uploaded image
-  };
+  // Remove this function - uploaded images are automatically selected
 
   const handleFileUpload = async (files: FileList | File[]) => {
     if (!user || files.length === 0) return;
@@ -72,8 +69,8 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
         const uploadedUrl = result.urls[0];
         setUploadedImageUrl(uploadedUrl);
         setSelectedImageUrl(null); // Clear progress photo selection
-        toast.success('Bild erfolgreich hochgeladen');
-        console.log('✅ Image uploaded successfully:', uploadedUrl);
+        toast.success('Bild erfolgreich hochgeladen und ausgewählt');
+        console.log('✅ Image uploaded and auto-selected:', uploadedUrl);
       } else {
         console.error('Upload failed:', result.errors);
         toast.error(`Upload fehlgeschlagen: ${result.errors.join(', ')}`);
@@ -194,21 +191,16 @@ export const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({
               )}
             </div>
 
-            {/* Show uploaded image preview */}
+            {/* Show uploaded image preview - automatically selected */}
             {uploadedImageUrl && (
-              <Card 
-                className={`p-2 cursor-pointer transition-all ${
-                  uploadedImageUrl === uploadedImageUrl ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'
-                }`}
-                onClick={() => handleUploadedImageSelect(uploadedImageUrl)}
-              >
+              <Card className="p-2 ring-2 ring-primary">
                 <img
                   src={uploadedImageUrl}
                   alt="Hochgeladenes Bild"
                   className="w-full h-48 object-cover rounded"
                 />
                 <p className="text-sm text-center mt-2 text-primary font-medium">
-                  ✓ Hochgeladenes Bild ausgewählt
+                  ✓ Hochgeladenes Bild (automatisch ausgewählt)
                 </p>
               </Card>
             )}
