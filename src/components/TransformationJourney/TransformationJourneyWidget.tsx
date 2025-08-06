@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ComparisonView } from './ComparisonView';
+import { EnhancedComparisonView } from './EnhancedComparisonView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { 
   ImageIcon, 
@@ -177,7 +177,7 @@ export const TransformationJourneyWidget: React.FC = () => {
 
         <TabsContent value="journey" className="space-y-6">
           {targetImages.length > 0 || progressPhotos.length > 0 ? (
-            <ComparisonView
+            <EnhancedComparisonView
               targetImages={targetImages}
               progressPhotos={progressPhotos}
               onDeleteTarget={handleDeleteTarget}
