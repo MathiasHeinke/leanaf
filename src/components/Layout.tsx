@@ -17,6 +17,8 @@ export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [showSubscriptionDebug, setShowSubscriptionDebug] = useState(false);
   
+  // Detect if running in Lovable Preview mode
+  const isPreviewMode = window.location.hostname.includes('lovable.app');
   
   // Keyboard shortcut for subscription debug panel
   useEffect(() => {
@@ -32,7 +34,8 @@ export const Layout = ({ children }: LayoutProps) => {
   }, []);
   
   // Don't show header on auth page - early return AFTER hook calls
-  if (location.pathname === '/auth' || !user) {
+  // In preview mode, show full layout even without user
+  if (location.pathname === '/auth' || (!user && !isPreviewMode)) {
     return <>{children}</>;
   }
 
