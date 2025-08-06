@@ -16,14 +16,34 @@ import { toast } from 'sonner';
 
 export const TransformationJourneyWidget: React.FC = () => {
   const { targetImages, deleteTargetImage, generateTargetImage, refreshTargetImages } = useTargetImages();
-  const { photos: progressPhotos, loading, refreshPhotos } = useProgressPhotos();
+  const { photos: rawProgressPhotos, loading, refreshPhotos } = useProgressPhotos();
+  
+  // Transform progress photos to expected format for EnhancedComparisonView
+  const progressPhotos = rawProgressPhotos.map(photo => ({
+    date: photo.date,
+    weight: photo.weight,
+    body_fat_percentage: photo.body_fat_percentage,
+    photo_front_url: photo.photo_urls?.front,
+    photo_side_url: photo.photo_urls?.side,
+    photo_back_url: photo.photo_urls?.back,
+    id: photo.id,
+    notes: photo.notes
+  }));
+
+  // Debug logging
+  console.log('Raw Progress Photos:', rawProgressPhotos.length);
+  console.log('Transformed Progress Photos:', progressPhotos.length);
+  if (rawProgressPhotos.length > 0) {
+    console.log('First raw photo:', rawProgressPhotos[0]);
+    console.log('First transformed photo:', progressPhotos[0]);
+  }
   const [generatingTarget, setGeneratingTarget] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>('journey');
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStage, setGenerationStage] = useState('');
 
-  // Helper function to get photo URL from progress photo
+  // Helper function to get photo URL from raw progress photo (for AI generation)
   const getProgressPhotoUrl = (entry: any, category: 'front' | 'side' | 'back') => {
     if (!entry?.photo_urls) return null;
     return entry.photo_urls[category] || null;
@@ -41,7 +61,7 @@ export const TransformationJourneyWidget: React.FC = () => {
           setGenerationStage(stage);
           setGenerationProgress(progress || 0);
         },
-        getProgressPhotoUrl(progressPhotos[0], 'front') // Use latest progress photo
+        getProgressPhotoUrl(rawProgressPhotos[0], 'front') // Use latest raw progress photo
       );
       
       if (result) {
@@ -152,11 +172,11 @@ export const TransformationJourneyWidget: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {progressPhotos.length > 0 ? (
+              {rawProgressPhotos.length > 0 ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <img
-                      src={getProgressPhotoUrl(progressPhotos[0], 'front')}
+                      src={getProgressPhotoUrl(rawProgressPhotos[0], 'front')}
                       alt="Aktuelles Foto"
                       className="w-12 h-12 object-cover rounded-md"
                     />
