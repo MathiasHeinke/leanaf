@@ -543,17 +543,14 @@ export const TrainingDashboard: React.FC = () => {
             />
 
 
+            {/* Custom Exercise Manager */}
+            <CustomExerciseManager onExerciseAdded={loadSessions} />
+
             {/* Strength Goals & Progress */}
             <div className="grid gap-4 grid-cols-1">
               <StrengthGoalsWidget />
               <GoalProgressWidget />
             </div>
-
-            {/* Custom Exercise Manager */}
-            <CustomExerciseManager onExerciseAdded={loadSessions} />
-
-            {/* Profile Events Timeline */}
-            <ProfileEventsTimeline maxEvents={5} />
 
             {/* Workout Tips */}
             {hasActiveTimer && currentDuration > 300000 && ( // Show after 5 minutes
