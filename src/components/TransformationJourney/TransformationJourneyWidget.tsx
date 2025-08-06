@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 export const TransformationJourneyWidget: React.FC = () => {
   const { targetImages, deleteTargetImage, generateTargetImage, refreshTargetImages, getLinkedPhotoPairs } = useTargetImages();
   const { photos: rawProgressPhotos, loading, refreshPhotos } = useProgressPhotos();
+  const [activeTab, setActiveTab] = useState("timeline");
+  const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   
   // Transform progress photos to expected format for EnhancedComparisonView
   const progressPhotos = rawProgressPhotos.map(photo => ({
@@ -42,7 +44,6 @@ export const TransformationJourneyWidget: React.FC = () => {
   }
   const [generatingTarget, setGeneratingTarget] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<string>('journey');
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStage, setGenerationStage] = useState('');
   const [selectedProgressPhotoIndex, setSelectedProgressPhotoIndex] = useState(0);
@@ -102,7 +103,7 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   const handleImageSelected = () => {
     setGeneratedImages(null);
-    setActiveTab('journey');
+    setActiveTab('timeline');
     refreshTargetImages();
     refreshPhotos();
   };
@@ -115,6 +116,16 @@ export const TransformationJourneyWidget: React.FC = () => {
       console.error('Error deleting target image:', error);
       toast.error('Fehler beim Entfernen des Zielbilds');
     }
+  };
+
+  const handleViewTransformation = (photo: any) => {
+    setActiveTab("timeline");
+    // The Split View will automatically show the transformation
+  };
+
+  const handleCreateTransformation = (photo: any) => {
+    setSelectedPhoto(photo);
+    setActiveTab("generate");
   };
 
   if (loading) {
@@ -138,12 +149,12 @@ export const TransformationJourneyWidget: React.FC = () => {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="journey">Timeline</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
           <TabsTrigger value="photos">Alle Fotos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="journey" className="space-y-6">
+        <TabsContent value="timeline" className="space-y-6">
           {targetImages.length > 0 || progressPhotos.length > 0 ? (
             <EnhancedComparisonView
               targetImages={targetImages}
@@ -176,7 +187,10 @@ export const TransformationJourneyWidget: React.FC = () => {
         <TabsContent value="photos" className="space-y-6">
           <GridPhotoView 
             photos={rawProgressPhotos} 
+            targetImages={targetImages}
             onPhotosUpdated={refreshPhotos}
+            onViewTransformation={handleViewTransformation}
+            onCreateTransformation={handleCreateTransformation}
           />
         </TabsContent>
 

@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, Filter, Tag } from 'lucide-react';
+import { ZoomIn, Filter, Tag, WandIcon, EyeIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
 
@@ -17,10 +17,15 @@ interface GridPhotoViewProps {
     photo_urls?: any;
     photo_metadata?: any;
   }>;
+  targetImages?: Array<{
+    ai_generated_from_photo_id?: string | null;
+  }>;
   onPhotosUpdated?: () => void;
+  onViewTransformation?: (photo: any) => void;
+  onCreateTransformation?: (photo: any) => void;
 }
 
-export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, onPhotosUpdated }) => {
+export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImages = [], onPhotosUpdated, onViewTransformation, onCreateTransformation }) => {
   const { updatePhotoMetadata } = useProgressPhotos();
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -194,6 +199,10 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, onPhotosUp
     return { color: 'bg-red-100 text-red-800', text: 'Niedrig' };
   };
 
+  const hasAiTransformation = (photoId: string) => {
+    return targetImages.some(target => target.ai_generated_from_photo_id === photoId);
+  };
+
   const categoryCounts = {
     all: photoEntries.length,
     front: photoEntries.filter(e => e.category === 'front').length,
@@ -255,10 +264,16 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, onPhotosUp
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               
               {/* Category Badge */}
-              <div className="absolute top-2 left-2">
+              <div className="absolute top-2 left-2 flex flex-col gap-1">
                 <Badge className={`text-xs ${getCategoryColor(entry.category)}`}>
                   {getCategoryLabel(entry.category)}
                 </Badge>
+                {hasAiTransformation(entry.entryId) && (
+                  <Badge className="bg-purple-500/90 hover:bg-purple-600 text-white text-xs">
+                    <WandIcon className="h-3 w-3 mr-1" />
+                    KI-Transformiert
+                  </Badge>
+                )}
               </div>
 
               {/* Confidence Badge */}
@@ -280,12 +295,43 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, onPhotosUp
 
               {/* Photo Info */}
               <div className="absolute bottom-0 left-0 right-0 p-3 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-200">
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <p className="text-sm font-medium">{formatDate(entry.date)}</p>
                   <div className="flex justify-between text-xs">
                     <span>{entry.weight}kg</span>
                     {entry.body_fat_percentage && (
                       <span>{entry.body_fat_percentage}% KFA</span>
+                    )}
+                  </div>
+                  
+                  {/* KI Action Button */}
+                  <div className="mt-2">
+                    {hasAiTransformation(entry.entryId) ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-6 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewTransformation?.(entry.photo);
+                        }}
+                      >
+                        <EyeIcon className="h-3 w-3 mr-1" />
+                        Transformation ansehen
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-6 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCreateTransformation?.(entry.photo);
+                        }}
+                      >
+                        <WandIcon className="h-3 w-3 mr-1" />
+                        Mit KI transformieren
+                      </Button>
                     )}
                   </div>
                 </div>

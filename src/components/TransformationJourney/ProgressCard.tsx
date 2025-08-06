@@ -9,7 +9,9 @@ import {
   CalendarIcon, 
   ScaleIcon, 
   ActivityIcon,
-  SparklesIcon
+  SparklesIcon,
+  WandIcon,
+  EyeIcon
 } from 'lucide-react';
 
 interface ProgressCardProps {
@@ -20,7 +22,10 @@ interface ProgressCardProps {
   category?: string;
   isLatest?: boolean;
   isTarget?: boolean;
+  hasAiTransformation?: boolean;
   onDelete?: () => void;
+  onViewTransformation?: () => void;
+  onCreateTransformation?: () => void;
 }
 
 export const ProgressCard: React.FC<ProgressCardProps> = ({
@@ -31,7 +36,10 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
   category,
   isLatest,
   isTarget,
-  onDelete
+  hasAiTransformation,
+  onDelete,
+  onViewTransformation,
+  onCreateTransformation
 }) => {
   const [isEnlarged, setIsEnlarged] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -106,6 +114,12 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
                 Ziel
               </Badge>
             )}
+            {hasAiTransformation && !isTarget && (
+              <Badge className="bg-purple-500 hover:bg-purple-600 text-white text-xs">
+                <WandIcon className="h-3 w-3 mr-1" />
+                KI-Transformiert
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -135,6 +149,33 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
               </Badge>
             )}
           </div>
+
+          {/* KI Actions */}
+          {!isTarget && (
+            <div className="space-y-2">
+              {hasAiTransformation ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={onViewTransformation}
+                >
+                  <EyeIcon className="h-3 w-3 mr-1" />
+                  Transformation ansehen
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={onCreateTransformation}
+                >
+                  <WandIcon className="h-3 w-3 mr-1" />
+                  Mit KI transformieren
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Category indicator */}
           {category && category !== 'unspecified' && (

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, CarouselApi } from '@/components/ui/carousel';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ZoomIn, Camera } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ZoomIn, Camera, WandIcon, EyeIcon } from 'lucide-react';
 
 interface SwipeGalleryProps {
   photos: Array<{
+    id: string;
     date: string;
     weight: number;
     body_fat_percentage?: number;
@@ -13,14 +15,22 @@ interface SwipeGalleryProps {
   }>;
   getImageUrl: (photo: any, category: string) => string;
   category: string;
+  targetImages?: Array<{
+    ai_generated_from_photo_id?: string | null;
+  }>;
   onPhotoSelect?: (photo: any) => void;
+  onViewTransformation?: (photo: any) => void;
+  onCreateTransformation?: (photo: any) => void;
 }
 
 export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
   photos,
   getImageUrl,
   category,
-  onPhotoSelect
+  targetImages = [],
+  onPhotoSelect,
+  onViewTransformation,
+  onCreateTransformation
 }) => {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -82,6 +92,10 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
 
   const currentPhoto = sortedPhotos[current];
 
+  const hasAiTransformation = (photoId: string) => {
+    return targetImages.some(target => target.ai_generated_from_photo_id === photoId);
+  };
+
   return (
     <div className="space-y-6">
       {/* Removed redundant header - info is in photo overlays */}
@@ -109,12 +123,53 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
               {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
+              {/* KI Status Badge */}
+              {hasAiTransformation(photo.id) && (
+                <div className="absolute top-4 left-4">
+                  <Badge className="bg-purple-500/90 hover:bg-purple-600 text-white text-xs">
+                    <WandIcon className="h-3 w-3 mr-1" />
+                    KI-Transformiert
+                  </Badge>
+                </div>
+              )}
+
               {/* Photo info overlay - Always visible on mobile, hover on desktop */}
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white transform translate-y-0 md:translate-y-full md:group-hover:translate-y-0 transition-transform duration-300">
                 <div className="flex justify-between items-end">
                   <div>
                     <p className="text-base font-semibold">{formatDate(photo.date)}</p>
                     <p className="text-sm opacity-90">{getDaysAgo(photo.date)}</p>
+                    
+                    {/* KI Action Button */}
+                    <div className="mt-2">
+                      {hasAiTransformation(photo.id) ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewTransformation?.(photo);
+                          }}
+                        >
+                          <EyeIcon className="h-3 w-3 mr-1" />
+                          Transformation ansehen
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCreateTransformation?.(photo);
+                          }}
+                        >
+                          <WandIcon className="h-3 w-3 mr-1" />
+                          Mit KI transformieren
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right">
                     {photo.weight && (

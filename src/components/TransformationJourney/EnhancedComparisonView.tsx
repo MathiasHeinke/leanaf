@@ -243,6 +243,7 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                   photos={filteredProgress}
                   getImageUrl={getProgressPhotoUrl}
                   category={selectedCategory}
+                  targetImages={targetImages}
                   onPhotoSelect={setSelectedPhoto}
                 />
               </CardContent>
