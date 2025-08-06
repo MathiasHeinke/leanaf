@@ -123,11 +123,18 @@ export const TransformationJourneyWidget: React.FC = () => {
     }
   };
 
-  const handleImageSelected = () => {
+  const handleImageSelected = async () => {
     setGeneratedImages(null);
     setActiveTab('timeline');
-    refreshTargetImages();
-    refreshPhotos();
+    // Force refresh both data sources and wait for completion
+    await Promise.all([
+      refreshTargetImages(),
+      refreshPhotos()
+    ]);
+    // Trigger data refresh event for other components
+    import('@/hooks/useDataRefresh').then(({ triggerDataRefresh }) => {
+      triggerDataRefresh();
+    });
   };
 
   const handleDeleteTarget = async (id: string) => {

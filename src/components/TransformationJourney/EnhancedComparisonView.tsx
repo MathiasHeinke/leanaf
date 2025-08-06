@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,13 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [selectedTargetImageForCrop, setSelectedTargetImageForCrop] = useState<any>(null);
 
+  // Listen for data refresh events
+  useDataRefresh(() => {
+    console.log('🔄 Data refresh triggered in EnhancedComparisonView');
+    // Force component re-render by updating a timestamp
+    setSelectedPhoto(prev => ({ ...prev, _refreshTimestamp: Date.now() }));
+  });
+
   // Filter images by category
   const filteredTargets = targetImages.filter(img => 
     img.image_category === selectedCategory || img.image_category === 'unspecified'
@@ -79,25 +87,51 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
     }
   };
 
-  // Create linked photo pairs for Before/After slider
+  // Create linked photo pairs for Before/After slider with improved error handling
   const getLinkedPhotoPairs = () => {
-    return filteredTargets
+    console.log('🔗 Getting linked pairs:', {
+      filteredTargets: filteredTargets.length,
+      progressPhotos: progressPhotos.length,
+      targetImagesWithPhotoId: filteredTargets.filter(t => t.ai_generated_from_photo_id).length
+    });
+
+    const pairs = filteredTargets
       .filter(target => target.ai_generated_from_photo_id)
       .map(target => {
         const originalPhoto = progressPhotos.find(photo => 
           photo.id === target.ai_generated_from_photo_id
         );
+        
+        console.log(`🔍 Looking for photo ${target.ai_generated_from_photo_id}:`, {
+          found: !!originalPhoto,
+          targetImageId: target.id,
+          targetImageUrl: target.image_url
+        });
+        
         if (originalPhoto) {
-          return {
+          const originalUrl = getProgressPhotoUrl(originalPhoto);
+          const pair = {
             originalPhoto,
             targetImage: target,
-            originalUrl: getProgressPhotoUrl(originalPhoto),
+            originalUrl,
             targetUrl: target.image_url
           };
+          
+          console.log('✅ Created pair:', {
+            originalUrl: originalUrl?.substring(0, 50) + '...',
+            targetUrl: target.image_url?.substring(0, 50) + '...',
+            hasOriginalUrl: !!originalUrl,
+            hasTargetUrl: !!target.image_url
+          });
+          
+          return pair;
         }
         return null;
       })
-      .filter(pair => pair !== null);
+      .filter(pair => pair !== null && pair.originalUrl && pair.targetUrl);
+
+    console.log('🎯 Final linked pairs:', pairs.length);
+    return pairs;
   };
 
 
