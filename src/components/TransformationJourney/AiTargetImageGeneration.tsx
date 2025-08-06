@@ -220,6 +220,30 @@ export const AiTargetImageGeneration = ({
               <div className="text-xs text-muted-foreground">
                 ca. {(weightChange / monthsToTarget).toFixed(1)}kg/Monat
               </div>
+              
+              {/* Realism Assessment under timeframe */}
+              <div className="mt-2 pt-2 border-t border-muted/30">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">Realismus-Bewertung</span>
+                  <Badge variant={realismScore > 70 ? 'default' : realismScore > 40 ? 'secondary' : 'destructive'} className="text-xs">
+                    {realismScore.toFixed(0)}%
+                  </Badge>
+                </div>
+                <div className="w-full bg-muted/30 rounded-full h-1.5">
+                  <div 
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      realismScore > 70 ? 'bg-green-500' : 
+                      realismScore > 40 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${Math.max(realismScore, 5)}%` }}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {realismScore > 70 && "Ambitionierte aber machbare Ziele - erfordert Disziplin"}
+                  {realismScore > 40 && realismScore <= 70 && "Sehr ambitionierte Ziele"}
+                  {realismScore <= 40 && "Extrem ambitioniert - längerer Zeitrahmen empfohlen"}
+                </div>
+              </div>
             </div>
           )}
         </div>
