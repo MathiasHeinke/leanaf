@@ -230,8 +230,18 @@ serve(async (req) => {
               console.log(`Image fetched successfully, size: ${imageBuffer.byteLength} bytes`);
               
               // BFL API expects raw base64 string without data URL prefix
-              inputImageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
-              console.log(`Base64 conversion successful, length: ${inputImageBase64.length}`);
+              // Use chunk-based conversion to avoid stack overflow with large images
+              const uint8Array = new Uint8Array(imageBuffer);
+              const chunkSize = 8192; // Process in 8KB chunks to avoid stack overflow
+              let binaryString = '';
+              
+              for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                const chunk = uint8Array.subarray(i, i + chunkSize);
+                binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+              }
+              
+              inputImageBase64 = btoa(binaryString);
+              console.log(`Base64 conversion successful, length: ${inputImageBase64.length} characters`);
             } catch (imageError) {
               console.error('❌ Failed to fetch and convert input image:', imageError);
               throw new Error(`Failed to process input image: ${imageError.message}`);
@@ -385,9 +395,18 @@ serve(async (req) => {
               model: 'black-forest-labs/FLUX.1-schnell',
             });
             
-            // Convert blob to base64
+            // Convert blob to base64 using chunk-based approach
             const arrayBuffer = await image.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const chunkSize = 8192; // Process in 8KB chunks to avoid stack overflow
+            let binaryString = '';
+            
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+              const chunk = uint8Array.subarray(i, i + chunkSize);
+              binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+            }
+            
+            const base64 = btoa(binaryString);
             const imageUrl = `data:image/png;base64,${base64}`;
             
             console.log(`Successfully generated image ${index + 1} with FLUX.1-schnell (HuggingFace)`);
