@@ -119,11 +119,21 @@ export const TransformationJourneyWidget: React.FC = () => {
   };
 
   const handleViewTransformation = (photo: any) => {
+    // Find the photo index in raw progress photos
+    const photoIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
+    if (photoIndex !== -1) {
+      setSelectedProgressPhotoIndex(photoIndex);
+    }
     setActiveTab("timeline");
     // The Split View will automatically show the transformation
   };
 
   const handleCreateTransformation = (photo: any) => {
+    // Find the photo index in raw progress photos
+    const photoIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
+    if (photoIndex !== -1) {
+      setSelectedProgressPhotoIndex(photoIndex);
+    }
     setSelectedPhoto(photo);
     setActiveTab("generate");
   };
@@ -160,6 +170,8 @@ export const TransformationJourneyWidget: React.FC = () => {
               targetImages={targetImages}
               progressPhotos={progressPhotos}
               onDeleteTarget={handleDeleteTarget}
+              onViewTransformation={handleViewTransformation}
+              onCreateTransformation={handleCreateTransformation}
             />
           ) : (
             <Card className="gradient-card">

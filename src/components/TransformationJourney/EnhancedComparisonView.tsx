@@ -29,12 +29,16 @@ interface EnhancedComparisonViewProps {
     body_fat_percentage?: number;
   }>;
   onDeleteTarget: (id: string) => void;
+  onViewTransformation?: (photo: any) => void;
+  onCreateTransformation?: (photo: any) => void;
 }
 
 export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
   targetImages,
   progressPhotos,
-  onDeleteTarget
+  onDeleteTarget,
+  onViewTransformation,
+  onCreateTransformation
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
@@ -245,6 +249,8 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                   category={selectedCategory}
                   targetImages={targetImages}
                   onPhotoSelect={setSelectedPhoto}
+                  onViewTransformation={onViewTransformation}
+                  onCreateTransformation={onCreateTransformation}
                 />
               </CardContent>
             </Card>
@@ -300,8 +306,35 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Side-by-Side Comparison */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Use BeforeAfterSlider for linked pairs, otherwise fallback to side-by-side */}
+            {currentPair ? (
+              <Card className="gradient-card">
+                <CardHeader className="text-center">
+                  <CardTitle className="flex items-center justify-center gap-2">
+                    <SplitIcon className="h-5 w-5 text-primary" />
+                    Original vs. KI-Zielbild
+                  </CardTitle>
+                  <div className="flex gap-2 justify-center">
+                    <Badge variant="outline" className="text-xs">
+                      {new Date(currentPair.originalPhoto.date).toLocaleDateString('de-DE')}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {currentPair.originalPhoto.weight}kg
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <BeforeAfterSlider
+                    beforeImage={currentPair.originalUrl}
+                    afterImage={currentPair.targetUrl}
+                    beforeLabel="Original"
+                    afterLabel="KI-Zielbild"
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              /* Side-by-Side Comparison as fallback */
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Current/Selected Photo */}
               <Card className="gradient-card">
                 <CardHeader className="text-center">
@@ -324,6 +357,9 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                       bodyFat={currentPhoto.body_fat_percentage}
                       category={selectedCategory}
                       isLatest={!selectedPhoto}
+                      hasAiTransformation={targetImages.some(t => t.ai_generated_from_photo_id === currentPhoto.id)}
+                      onViewTransformation={() => onViewTransformation?.(currentPhoto)}
+                      onCreateTransformation={() => onCreateTransformation?.(currentPhoto)}
                     />
                   ) : (
                      <div className="aspect-[3/4] bg-muted rounded-lg flex items-center justify-center">
@@ -377,7 +413,8 @@ export const EnhancedComparisonView: React.FC<EnhancedComparisonViewProps> = ({
                   )}
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            )}
 
             {/* Progress to Goal */}
             {currentPhoto && targetImage && (

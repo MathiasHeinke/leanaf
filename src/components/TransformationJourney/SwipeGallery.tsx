@@ -137,29 +137,26 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white transform translate-y-0 md:translate-y-full md:group-hover:translate-y-0 transition-transform duration-300">
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-base font-semibold">{formatDate(photo.date)}</p>
-                    <p className="text-sm opacity-90">{getDaysAgo(photo.date)}</p>
-                    
-                    {/* KI Action Button */}
-                    <div className="mt-2">
+                    {/* KI Action Button - Move above date */}
+                    <div className="mb-2">
                       {hasAiTransformation(photo.id) ? (
                         <Button
                           size="sm"
                           variant="secondary"
-                          className="h-7 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                          className="h-8 text-xs bg-white/40 hover:bg-white/60 backdrop-blur-sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             onViewTransformation?.(photo);
                           }}
                         >
                           <EyeIcon className="h-3 w-3 mr-1" />
-                          Transformation ansehen
+                          KI Zielbild ansehen
                         </Button>
                       ) : (
                         <Button
                           size="sm"
                           variant="secondary"
-                          className="h-7 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm"
+                          className="h-8 text-xs bg-white/40 hover:bg-white/60 backdrop-blur-sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             onCreateTransformation?.(photo);
@@ -170,6 +167,9 @@ export const SwipeGallery: React.FC<SwipeGalleryProps> = ({
                         </Button>
                       )}
                     </div>
+                    
+                    <p className="text-base font-semibold">{formatDate(photo.date)}</p>
+                    <p className="text-sm opacity-90">{getDaysAgo(photo.date)}</p>
                   </div>
                   <div className="text-right">
                     {photo.weight && (
