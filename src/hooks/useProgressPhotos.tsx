@@ -38,28 +38,61 @@ export const useProgressPhotos = () => {
       console.log('Raw data from Supabase:', data);
       console.log('Total entries found:', data?.length || 0);
       
-      // Filter only entries that have actual photos
+      // Process and transform entries with photos
       const entriesWithPhotos = (data || []).filter(entry => {
-        console.log('Processing entry:', entry.id, 'photo_urls:', entry.photo_urls, 'type:', typeof entry.photo_urls);
-        
         let photoUrls = entry.photo_urls;
         
         // Handle different photo_urls formats
         if (typeof photoUrls === 'string') {
           try {
             photoUrls = JSON.parse(photoUrls);
-            console.log('Parsed photo_urls:', photoUrls);
           } catch (e) {
-            console.log('Failed to parse photo_urls string:', e);
             return false;
           }
         }
         
-        // Check if photoUrls is valid and has content
-        const hasPhotos = photoUrls && Array.isArray(photoUrls) && photoUrls.length > 0 && photoUrls.some(url => url && typeof url === 'string' && url.trim() !== '');
-        console.log('Entry has photos:', hasPhotos, 'photoUrls:', photoUrls);
+        // Support both array and object formats
+        if (Array.isArray(photoUrls)) {
+          return photoUrls.length > 0 && photoUrls.some(url => url && typeof url === 'string' && url.trim() !== '');
+        }
         
-        return hasPhotos;
+        if (photoUrls && typeof photoUrls === 'object') {
+          const urls = Object.values(photoUrls);
+          return urls.length > 0 && urls.some(url => url && typeof url === 'string' && url.trim() !== '');
+        }
+        
+        return false;
+      }).map(entry => {
+        // Transform array format to object format for compatibility
+        let photoUrls = entry.photo_urls;
+        if (typeof photoUrls === 'string') {
+          try {
+            photoUrls = JSON.parse(photoUrls);
+          } catch (e) {
+            photoUrls = [];
+          }
+        }
+        
+        // Convert array to object format with smart categorization
+        if (Array.isArray(photoUrls)) {
+          const transformedUrls: any = {};
+          photoUrls.forEach((url, index) => {
+            if (url && typeof url === 'string' && url.trim() !== '') {
+              // Smart categorization: first = front, second = side, third = back, rest = front
+              if (index === 0) transformedUrls.front = url;
+              else if (index === 1) transformedUrls.side = url;
+              else if (index === 2) transformedUrls.back = url;
+              else transformedUrls[`front_${index}`] = url; // Additional front views
+            }
+          });
+          
+          return {
+            ...entry,
+            photo_urls: transformedUrls
+          };
+        }
+        
+        return entry;
       });
       
       console.log('Filtered entries with photos:', entriesWithPhotos.length);
