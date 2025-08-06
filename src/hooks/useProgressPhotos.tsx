@@ -263,12 +263,77 @@ export const useProgressPhotos = () => {
       const entry = photos.find(p => p.id === photoId);
       if (!entry) return false;
 
-      // Update photo_metadata to reflect the new category
-      let updatedMetadata = entry.photo_metadata || {};
+      // Get original photo URL that we're changing category for
+      const originalPhotoUrl = entry.photo_urls[category];
+      if (!originalPhotoUrl) return false;
+
+      // Fetch the current database entry to get the original array format
+      const { data: dbEntry, error: fetchError } = await supabase
+        .from('weight_history')
+        .select('photo_urls, photo_metadata')
+        .eq('id', photoId)
+        .single();
+
+      if (fetchError || !dbEntry) {
+        console.error('Error fetching entry:', fetchError);
+        return false;
+      }
+
+      // Parse the photo_urls (handle both string and array formats)
+      let photoUrlsArray = dbEntry.photo_urls;
+      if (typeof photoUrlsArray === 'string') {
+        try {
+          photoUrlsArray = JSON.parse(photoUrlsArray);
+        } catch (e) {
+          photoUrlsArray = [];
+        }
+      }
+
+      if (!Array.isArray(photoUrlsArray)) {
+        console.error('photo_urls is not an array:', photoUrlsArray);
+        return false;
+      }
+
+      // Find the index of the photo we're updating
+      const categoryToIndex = { front: 0, side: 1, back: 2 };
+      const newCategoryToIndex = { front: 0, side: 1, back: 2 };
       
-      // If this photo was categorized differently, move the metadata
+      const currentIndex = categoryToIndex[category];
+      const newIndex = newCategoryToIndex[newCategory];
+      
+      // Find the actual URL in the array (in case order was already changed)
+      const actualIndex = photoUrlsArray.findIndex(url => url === originalPhotoUrl);
+      if (actualIndex === -1) {
+        console.error('Photo URL not found in array:', originalPhotoUrl);
+        return false;
+      }
+
+      // Create new array with photo moved to correct position
+      const newPhotoUrlsArray = [...photoUrlsArray];
+      
+      // Remove from current position
+      const [movedUrl] = newPhotoUrlsArray.splice(actualIndex, 1);
+      
+      // Insert at new position
+      newPhotoUrlsArray.splice(newIndex, 0, movedUrl);
+      
+      // Ensure array doesn't exceed 3 elements (remove extras from end)
+      while (newPhotoUrlsArray.length > 3) {
+        newPhotoUrlsArray.pop();
+      }
+
+      // Update metadata
+      let updatedMetadata = (dbEntry.photo_metadata && typeof dbEntry.photo_metadata === 'object') 
+        ? { ...dbEntry.photo_metadata } 
+        : {};
+      
+      // Move or create metadata for the new category
       if (updatedMetadata[category] && category !== newCategory) {
-        updatedMetadata[newCategory] = updatedMetadata[category];
+        updatedMetadata[newCategory] = {
+          ...updatedMetadata[category],
+          view: newCategory,
+          updated_manually: true
+        };
         delete updatedMetadata[category];
       } else if (!updatedMetadata[newCategory]) {
         updatedMetadata[newCategory] = {
@@ -278,9 +343,11 @@ export const useProgressPhotos = () => {
         };
       }
 
+      // Update database with both new array and metadata
       const { error } = await supabase
         .from('weight_history')
         .update({ 
+          photo_urls: newPhotoUrlsArray,
           photo_metadata: updatedMetadata,
           updated_at: new Date().toISOString()
         })
@@ -288,11 +355,24 @@ export const useProgressPhotos = () => {
 
       if (error) throw error;
 
-      // Update local state
+      // Update local state - transform array back to object format for UI
+      const transformedUrls: any = {};
+      newPhotoUrlsArray.forEach((url, index) => {
+        if (url && typeof url === 'string' && url.trim() !== '') {
+          if (index === 0) transformedUrls.front = url;
+          else if (index === 1) transformedUrls.side = url;
+          else if (index === 2) transformedUrls.back = url;
+        }
+      });
+
       setPhotos(currentPhotos => 
         currentPhotos.map(photo => 
           photo.id === photoId 
-            ? { ...photo, photo_metadata: updatedMetadata }
+            ? { 
+                ...photo, 
+                photo_urls: transformedUrls,
+                photo_metadata: updatedMetadata 
+              }
             : photo
         )
       );
