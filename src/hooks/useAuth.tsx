@@ -24,6 +24,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Detect if running in Lovable Preview mode
+  const isPreviewMode = window.location.hostname.includes('lovable.app');
 
   const cleanupAuthState = () => {
     Object.keys(localStorage).forEach((key) => {
@@ -61,21 +64,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (isIncomplete) {
         // New user - start premium trial and redirect to profile
         await startPremiumTrialForNewUser(user.id);
-        setTimeout(() => {
-          window.location.href = '/profile';
-        }, 100);
+        if (!isPreviewMode) {
+          setTimeout(() => {
+            window.location.href = '/profile';
+          }, 100);
+        }
       } else {
         // Existing user - redirect to home
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 100);
+        if (!isPreviewMode) {
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 100);
+        }
       }
     } catch (error) {
       console.error('Error checking user status:', error);
       // Fallback to home
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
+      if (!isPreviewMode) {
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
+      }
     }
   };
 
@@ -147,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           cleanupAuthState();
           setSession(null);
           setUser(null);
-          if (window.location.pathname !== '/auth') {
+          if (!isPreviewMode && window.location.pathname !== '/auth') {
             window.location.href = '/auth';
           }
         }
