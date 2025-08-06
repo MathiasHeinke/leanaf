@@ -132,6 +132,7 @@ serve(async (req) => {
     
     // Calculate target values
     const currentWeight = latestWeightEntry?.weight || profile?.weight || 70;
+    const currentBodyFat = latestWeightEntry?.body_fat_percentage || profile?.body_fat_percentage || 20;
     const targetWeightNum = targetWeight || profile?.target_weight || currentWeight;
     const targetBodyFatNum = targetBodyFat || profile?.target_body_fat_percentage || 15;
     
@@ -537,6 +538,7 @@ serve(async (req) => {
         prompt: detailedPrompt,
         hasProgressPhoto: !!frontPhotoUrl,
         currentWeight,
+        currentBodyFat,
         targetWeight: targetWeightNum,
         targetBodyFat: targetBodyFatNum
       }),
