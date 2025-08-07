@@ -1,7 +1,7 @@
 
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TranslationProvider } from "@/hooks/useTranslation";
@@ -14,7 +14,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import Profile from "./pages/Profile";
-import Subscription from "./pages/Subscription";
+import Credits from "./pages/Credits";
+import CreditsSuccess from "./pages/CreditsSuccess";
 import Onboarding from "./pages/Onboarding";
 import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
@@ -60,7 +61,8 @@ const App = () => (
                       <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/account" element={<Account />} />
                       <Route path="/profile" element={<Profile />} />
-                      <Route path="/subscription" element={<Subscription />} />
+                      <Route path="/credits" element={<Credits />} />
+                      <Route path="/credits/success" element={<CreditsSuccess />} />
                       <Route path="/coach" element={<CoachPage />} />
                       <Route path="/coach/:coachId" element={<CoachPage />} />
                       <Route path="/training" element={<TrainingPlus />} />
@@ -78,7 +80,8 @@ const App = () => (
                       <Route path="/marketing" element={<Marketing />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/gehirn" element={<GehirnPage />} />
-                      <Route path="/debug/trace/:traceId?" element={<TraceDebug />} />
+                      {/* Redirect old subscription route */}
+                      <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>

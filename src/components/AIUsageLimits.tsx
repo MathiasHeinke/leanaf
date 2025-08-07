@@ -87,7 +87,7 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
             </p>
             <Button 
               size="sm" 
-              onClick={() => navigate('/subscription')}
+              onClick={() => navigate('/credits')}
               className="w-full"
             >
               Jetzt upgraden
@@ -109,7 +109,7 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
               <Button 
                 size="sm" 
                 variant="outline" 
-                onClick={() => navigate('/subscription')}
+                onClick={() => navigate('/credits')}
                 className="text-xs px-2 py-1 h-6"
               >
                 Upgrade
@@ -136,7 +136,7 @@ export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, class
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  onClick={() => navigate('/subscription')}
+                  onClick={() => navigate('/credits')}
                   className="text-xs px-2 py-1 h-6"
                 >
                   Upgrade

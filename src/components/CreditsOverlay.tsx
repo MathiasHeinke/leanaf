@@ -39,7 +39,7 @@ export const CreditsOverlay: React.FC = () => {
             Du hast aktuell keine AI-Credits mehr. Lade dein Guthaben auf, um Analysen, Chat-Nachrichten und Bilderzeugung weiter zu nutzen.
           </p>
           <div className="flex gap-2">
-            <Button className="flex-1" onClick={() => { setOpen(false); navigate('/subscription'); }}>
+            <Button className="flex-1" onClick={() => { setOpen(false); navigate('/credits'); }}>
               Credits-Packs ansehen
             </Button>
             <Button variant="outline" onClick={() => setOpen(false)}>Später</Button>

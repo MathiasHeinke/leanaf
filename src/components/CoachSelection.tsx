@@ -62,7 +62,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = () => {
   const hasFullAccess = isPremium || (!adminLoading && isSuperAdmin);
 
   const handleUpgrade = () => {
-    navigate('/subscription');
+    navigate('/credits');
   };
 
   return (

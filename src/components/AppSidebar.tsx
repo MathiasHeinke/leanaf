@@ -61,7 +61,7 @@ const navigationItems = [
 
 const settingsItems = [
   { title: "Einstellungen", url: "/account", icon: Settings, key: "header.account" },
-  { title: "Subscription", url: "/subscription", icon: CreditCard, key: "header.subscription" },
+  { title: "Credits & Packs", url: "/credits", icon: CreditCard, key: "header.subscription" },
   { title: "Wissenschaft", url: "/science", icon: Microscope },
   { title: "Features", url: "/features", icon: Lightbulb },
   { title: "Roadmap", url: "/roadmap", icon: MapPin },

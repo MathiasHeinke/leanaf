@@ -76,8 +76,8 @@ export const useCoachLimitHandler = ({ coachPersonality, feature }: CoachLimitHa
     toast.error(message, {
       duration: 8000,
       action: {
-        label: "33% Rabatt sichern",
-        onClick: () => navigate('/subscription')
+        label: "Credits holen",
+        onClick: () => navigate('/credits')
       }
     });
   };

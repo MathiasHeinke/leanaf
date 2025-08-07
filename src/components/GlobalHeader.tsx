@@ -48,7 +48,7 @@ export const GlobalHeader = ({
       case '/analyse': return 'Analyse';
       case '/achievements': return 'Erfolge';
       case '/science': return 'Wissenschaft';
-      case '/subscription': return 'Abonnement';
+      case '/credits': return 'Credits & Packs';
       case '/account': return 'Account';
       case '/admin': return 'Admin';
       case '/gehirn': return 'Gehirn';

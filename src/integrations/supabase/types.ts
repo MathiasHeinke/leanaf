@@ -1071,6 +1071,36 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_payments_log: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          credits: number
+          pack: string
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          credits: number
+          pack: string
+          session_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          credits?: number
+          pack?: string
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cron_job_stats: {
         Row: {
           batch_size: number
@@ -5587,6 +5617,10 @@ export type Database = {
           updated_at: string | null
           user_id: string
         }
+      }
+      add_credits: {
+        Args: { p_user_id: string; p_credits: number }
+        Returns: Json
       }
       award_badge_atomically: {
         Args: {
