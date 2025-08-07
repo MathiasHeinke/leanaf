@@ -1,6 +1,9 @@
 
 project_id = "gzczjscctgyxjyodhnhk"
 
+[functions.enhanced-coach-non-streaming]
+verify_jwt = true
+
 [auth]
 # Configure OTP expiry settings
 enable_signup = true

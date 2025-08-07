@@ -815,10 +815,21 @@ async function executeTools(tools: { toolName: string; args: any }[], userId: st
   const toolHandlers: { [key: string]: Function } = {};
   
   try {
-    const { heavyTrainingPlan, massBuildingCalculator, mentalToughnessCoach } = await import('../tool-handlers/index.ts');
+    const { 
+      heavyTrainingPlan, 
+      massBuildingCalculator, 
+      mentalToughnessCoach,
+      trainingsplan,
+      createPlanDraft,
+      savePlanDraft 
+    } = await import('../tool-handlers/index.ts');
+    
     toolHandlers['heavyTrainingPlan'] = heavyTrainingPlan;
     toolHandlers['massBuildingCalculator'] = massBuildingCalculator;
     toolHandlers['mentalToughnessCoach'] = mentalToughnessCoach;
+    toolHandlers['trainingsplan'] = trainingsplan;
+    toolHandlers['createPlanDraft'] = createPlanDraft;
+    toolHandlers['savePlanDraft'] = savePlanDraft;
   } catch (error) {
     console.error('Error importing tool handlers:', error);
     return '';
