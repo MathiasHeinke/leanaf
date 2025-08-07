@@ -60,8 +60,13 @@ export const PremiumGate = ({
 
   const featureStatus = getFeatureStatus(feature);
   
-  // Super Admins get unlimited access to all premium features
-  if (featureStatus.hasAccess || (!adminLoading && isSuperAdmin)) {
+  // Super Admins get unlimited access to all premium features - ALWAYS
+  if (!adminLoading && isSuperAdmin) {
+    return <>{children}</>;
+  }
+
+  // Regular premium users get access if they have the feature
+  if (featureStatus.hasAccess) {
     return <>{children}</>;
   }
 

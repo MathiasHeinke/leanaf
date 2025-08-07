@@ -1,4 +1,5 @@
 import { useSubscription } from './useSubscription';
+import { useSecureAdminAccess } from './useSecureAdminAccess';
 
 // Define which features are available for each tier
 export const FEATURE_TIERS = {
@@ -41,8 +42,14 @@ export type FeatureTier = typeof FEATURE_TIERS[FeatureName];
 
 export const useFeatureAccess = () => {
   const { isPremium, isBasic, trial } = useSubscription();
+  const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
 
   const hasFeatureAccess = (feature: FeatureName): boolean => {
+    // Super Admins get unlimited access to all features - ALWAYS
+    if (!adminLoading && isSuperAdmin) {
+      return true;
+    }
+
     const requiredTier = FEATURE_TIERS[feature];
     
     if (requiredTier === 'free') {
