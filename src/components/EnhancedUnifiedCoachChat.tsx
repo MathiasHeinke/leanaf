@@ -17,7 +17,9 @@ import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { EnhancedChatInput } from '@/components/EnhancedChatInput';
+import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
 
 export interface CoachProfile {
   id: string;
@@ -53,6 +55,8 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [chatInitialized, setChatInitialized] = useState(false);
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
+  const [showQuickAction, setShowQuickAction] = useState(false);
+  const [pendingPlanData, setPendingPlanData] = useState<any>(null);
   
   // ============= REFS =============
   const initializationRef = useRef(false);
@@ -241,11 +245,14 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   }, [messages]);
 
   // ============= SEND MESSAGE =============
-  const handleSendMessage = useCallback(async () => {
-    if (!inputText.trim() || !user?.id || isChatLoading) return;
+  const handleSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
+    if (!message.trim() || !user?.id || isChatLoading) return;
     
-    const messageText = inputText.trim();
-    setInputText('');
+    const messageText = message.trim();
+    
+    // Check if this is a training plan analysis request
+    const isTrainingPlanAnalysis = messageText.toLowerCase().includes('trainingsplan') && 
+                                  !messageText.toLowerCase().includes('erstellen');
     
     // Create user message
     const userMessage: EnhancedChatMessage = {
@@ -284,20 +291,93 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         
         // Add assistant message to UI
         setMessages(prev => [...prev, assistantMessage]);
+
+        // Show quick action button after training plan analysis
+        if (isTrainingPlanAnalysis) {
+          setShowQuickAction(true);
+        }
+
+        // Check if response contains plan data
+        if (lastMetadata?.planData) {
+          setPendingPlanData(lastMetadata.planData);
+        }
       }
       
     } catch (error) {
       console.error('Error sending enhanced message:', error);
     }
-  }, [inputText, user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata]);
+  }, [user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata]);
 
-  // ============= KEYBOARD HANDLERS =============
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  // Handle training plan creation
+  const handleCreateTrainingPlan = useCallback(async () => {
+    if (!user?.id || isChatLoading) return;
+    
+    setShowQuickAction(false);
+    
+    try {
+      const response = await sendEnhancedMessage(
+        'Erstelle jetzt einen strukturierten Trainingsplan basierend auf meiner Analyse.', 
+        coach?.id || 'lucy'
+      );
+      
+      if (response) {
+        const assistantMessage: EnhancedChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: response,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.id || 'lucy',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor,
+          metadata: lastMetadata
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+
+        // Handle plan data from response
+        if (lastMetadata?.planData) {
+          setPendingPlanData(lastMetadata.planData);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error creating training plan:', error);
+      toast.error('Fehler beim Erstellen des Trainingsplans');
     }
-  };
+  }, [user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata]);
+
+  // ============= PLAN HANDLERS =============
+  const handleSavePlan = useCallback(async (planData: any) => {
+    if (!user?.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('workout_plan_drafts')
+        .insert({
+          user_id: user.id,
+          name: planData.name,
+          goal: planData.goal,
+          days_per_week: planData.daysPerWeek,
+          structure: planData.structure,
+          created_by_coach: coach?.id || 'lucy'
+        });
+
+      if (error) throw error;
+      
+      toast.success('Trainingsplan gespeichert!');
+      setPendingPlanData(null);
+      
+    } catch (error) {
+      console.error('Error saving plan:', error);
+      toast.error('Fehler beim Speichern');
+    }
+  }, [user?.id, coach?.id]);
+
+  const handleEditPlan = useCallback((planData: any) => {
+    setPendingPlanData(planData);
+  }, []);
 
   // ============= USER AVATAR HELPER =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -490,7 +570,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     }
     
     setInputText(fullMessage);
-    handleSendMessage();
+    handleSendMessage(fullMessage);
   }, [handleSendMessage]);
 
   // ============= FULLSCREEN LAYOUT =============
@@ -528,6 +608,26 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
           <div className="space-y-4 py-4">
             {messages.map(renderMessage)}
             {renderTypingIndicator()}
+            
+            {/* Training Plan Draft Card */}
+            {pendingPlanData && (
+              <div className="my-4">
+                <WorkoutPlanDraftCard
+                  planData={pendingPlanData}
+                  onSave={handleSavePlan}
+                  onEdit={handleEditPlan}
+                />
+              </div>
+            )}
+            
+            {/* Quick Action Button */}
+            {showQuickAction && (
+              <TrainingPlanQuickAction
+                onCreatePlan={handleCreateTrainingPlan}
+                isLoading={isChatLoading}
+              />
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -573,6 +673,26 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
             <div className="space-y-4 py-4">
               {messages.map(renderMessage)}
               {renderTypingIndicator()}
+              
+              {/* Training Plan Draft Card */}
+              {pendingPlanData && (
+                <div className="my-4">
+                  <WorkoutPlanDraftCard
+                    planData={pendingPlanData}
+                    onSave={handleSavePlan}
+                    onEdit={handleEditPlan}
+                  />
+                </div>
+              )}
+              
+              {/* Quick Action Button */}
+              {showQuickAction && (
+                <TrainingPlanQuickAction
+                  onCreatePlan={handleCreateTrainingPlan}
+                  isLoading={isChatLoading}
+                />
+              )}
+              
               <div ref={messagesEndRef} />
             </div>
           )}
