@@ -21,6 +21,7 @@ import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
+import { generateNextDayPlan } from '@/utils/generateNextDayPlan';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(

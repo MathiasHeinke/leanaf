@@ -129,12 +129,14 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
       const aiResponse = data.response;
       const rawMetadata = data.metadata || {};
       const normalizedMetadata = {
+        ...rawMetadata,
         traceId: data.traceId || rawMetadata.traceId,
         tokensUsed: rawMetadata.tokensUsed ?? rawMetadata.tokens_used ?? 0,
         duration: rawMetadata.duration ?? rawMetadata.processing_time_ms ?? 0,
         hasMemory: rawMetadata.hasMemory ?? false,
         hasRag: rawMetadata.hasRag ?? false,
         hasDaily: rawMetadata.hasDaily ?? false,
+        planData: data.planData || rawMetadata.planData || null,
       };
       
       console.log('✅ Enhanced chat response received:', {
