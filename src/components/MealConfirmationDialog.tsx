@@ -245,7 +245,7 @@ export const MealConfirmationDialog = ({
             .from('meals')
             .insert(mealPayload)
             .select()
-            .single();
+            .maybeSingle();
 
           if (error) {
             secureLogger.error(`Insert error (attempt ${attempt})`, error);

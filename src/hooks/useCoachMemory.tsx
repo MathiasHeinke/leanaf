@@ -97,7 +97,7 @@ export const useCoachMemory = (passedUserId?: string) => {
         .from('coach_memory')
         .select('updated_at')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       // Wenn Memory existiert und neuere updated_at hat, dann concurrent update
       if (currentMemory && memory) {

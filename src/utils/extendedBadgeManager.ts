@@ -51,7 +51,7 @@ export class ExtendedBadgeManager extends BadgeManager {
       .from('user_points')
       .select('current_level, level_name')
       .eq('user_id', this.userId)
-      .single();
+      .maybeSingle();
 
     if (!userPoints) return null;
 
@@ -153,7 +153,7 @@ export class ExtendedBadgeManager extends BadgeManager {
       .from('profiles')
       .select('created_at')
       .eq('user_id', this.userId)
-      .single();
+      .maybeSingle();
 
     if (!profile) return badges;
 
@@ -316,7 +316,7 @@ export class ExtendedBadgeManager extends BadgeManager {
         .from('profiles')
         .select('target_weight, start_weight, goal')
         .eq('user_id', this.userId)
-        .single(),
+        .maybeSingle(),
       
       supabase
         .from('weight_history')
@@ -372,7 +372,7 @@ export class ExtendedBadgeManager extends BadgeManager {
       .from('profiles')
       .select('start_bmi, current_bmi')
       .eq('user_id', this.userId)
-      .single();
+      .maybeSingle();
 
     if (!profile?.start_bmi || !profile?.current_bmi) return null;
 

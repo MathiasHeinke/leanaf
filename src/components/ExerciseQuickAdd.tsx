@@ -145,7 +145,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
           end_time: endTime.toISOString()
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (sessionError) throw sessionError;
 

@@ -99,7 +99,7 @@ export const FormcheckSummaryCard: React.FC<FormcheckSummaryCardProps> = ({
           improvement_tips: formcheckData.improvement_tips.filter(tip => tip.trim() !== '')
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

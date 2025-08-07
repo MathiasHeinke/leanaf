@@ -421,7 +421,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         .from('profiles')
         .select('profile_avatar_url, avatar_type, avatar_preset_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       setUserProfile(data);
     };

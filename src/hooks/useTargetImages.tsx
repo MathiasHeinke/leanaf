@@ -77,7 +77,7 @@ export const useTargetImages = () => {
           image_category: imageCategory
         }])
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       
@@ -110,7 +110,7 @@ export const useTargetImages = () => {
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       onProgress?.('context', 25);
 

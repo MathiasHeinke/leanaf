@@ -80,7 +80,7 @@ export const RAGTestingSuite: React.FC = () => {
         .select('id, title')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (latestEntry) {
         await RAGEmbeddingManager.generateSingleEmbedding(latestEntry.id);

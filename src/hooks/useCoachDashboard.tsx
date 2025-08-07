@@ -121,7 +121,7 @@ export const useCreateAdminNote = () => {
         metadata: {}
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;
@@ -135,7 +135,7 @@ export const useUpdateAdminNoteStatus = () => {
       .update({ status })
       .eq('id', noteId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;

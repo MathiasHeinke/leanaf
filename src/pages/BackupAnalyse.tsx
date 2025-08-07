@@ -49,12 +49,12 @@ const BackupAnalysis = () => {
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('daily_goals')
           .select('*')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
       ]);
 
       if (profileResult.data) {

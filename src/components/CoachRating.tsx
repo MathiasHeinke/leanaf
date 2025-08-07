@@ -51,7 +51,7 @@ export const CoachRating = ({ coachId, coachName, trigger, onRatingChanged }: Co
         .select('*')
         .eq('user_id', user.id)
         .eq('coach_id', coachId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading rating:', error);

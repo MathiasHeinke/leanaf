@@ -112,7 +112,7 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
         .from('profiles')
         .select('start_weight')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profileCheckError) throw profileCheckError;
 

@@ -166,7 +166,7 @@ export const SupplementComplianceWidget = () => {
         .from('profiles')
         .select('age, gender, fitness_goal')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       console.log('👤 User profile:', userProfile);
 

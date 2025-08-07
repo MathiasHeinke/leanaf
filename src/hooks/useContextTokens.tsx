@@ -37,7 +37,7 @@ export const useContextTokens = (userId?: string) => {
             .from('daily_goals')
             .select('calories')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
           // Try to get today's meals
           const today = getCurrentDateString();

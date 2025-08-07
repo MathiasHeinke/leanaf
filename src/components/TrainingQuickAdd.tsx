@@ -232,7 +232,7 @@ export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onS
           end_time: endTime.toISOString()
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (sessionError) throw sessionError;
 

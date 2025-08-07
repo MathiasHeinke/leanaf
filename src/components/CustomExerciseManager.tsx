@@ -172,7 +172,7 @@ export const CustomExerciseManager: React.FC<CustomExerciseManagerProps> = ({
           image_url: imageUrl
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

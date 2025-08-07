@@ -168,7 +168,7 @@ export const DayCard: React.FC<DayCardProps> = ({
         .from('exercise_sessions')
         .insert(newSessionData)
         .select()
-        .single();
+        .maybeSingle();
 
       if (sessionError) throw sessionError;
 

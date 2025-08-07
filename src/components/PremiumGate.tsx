@@ -48,7 +48,7 @@ export const PremiumGate = ({
         .from('profiles')
         .select('hide_premium_features')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (data) {
         setHidePremiumFeatures(data.hide_premium_features || false);

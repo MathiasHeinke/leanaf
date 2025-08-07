@@ -175,7 +175,7 @@ export const TrainingDashboard: React.FC = () => {
             workout_type: 'strength'
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (sessionError) throw sessionError;
 
@@ -219,7 +219,7 @@ export const TrainingDashboard: React.FC = () => {
         `)
         .eq('id', sessionId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       setEditSessionData(data);
     } catch (error) {
@@ -269,7 +269,7 @@ export const TrainingDashboard: React.FC = () => {
           )
         `)
         .eq('id', sessionId)
-        .single();
+        .maybeSingle();
 
       if (!originalSession) return;
 
@@ -284,7 +284,7 @@ export const TrainingDashboard: React.FC = () => {
           notes: originalSession.notes
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (!newSession) return;
 

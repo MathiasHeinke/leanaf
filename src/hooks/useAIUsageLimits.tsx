@@ -72,7 +72,7 @@ export const useAIUsageLimits = () => {
         .select('daily_count, monthly_count, last_reset_date, last_reset_month')
         .eq('user_id', user.id)
         .eq('feature_type', featureType)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error getting current usage:', error);

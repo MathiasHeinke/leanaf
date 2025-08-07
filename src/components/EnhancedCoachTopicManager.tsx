@@ -330,7 +330,7 @@ export const EnhancedCoachTopicManager = () => {
           priority_level: Math.round(topic.relevance_score * 5)
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (knowledgeError) throw knowledgeError;
 

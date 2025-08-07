@@ -66,7 +66,7 @@ export const useStrengthGoals = () => {
           notes: goalData.notes
         }])
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       
@@ -89,7 +89,7 @@ export const useStrengthGoals = () => {
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       

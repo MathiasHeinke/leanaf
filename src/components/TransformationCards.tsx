@@ -55,7 +55,7 @@ export const TransformationCards = () => {
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       // Load weight history
       const { data: weightHistory } = await supabase

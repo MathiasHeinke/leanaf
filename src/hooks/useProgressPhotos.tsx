@@ -235,7 +235,7 @@ export const useProgressPhotos = () => {
           })
           .eq('id', existingEntry.id)
           .select()
-          .single();
+          .maybeSingle();
 
         if (updateError) throw updateError;
         updatedEntry = data;
@@ -254,7 +254,7 @@ export const useProgressPhotos = () => {
             notes
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (insertError) throw insertError;
         updatedEntry = data;
@@ -345,7 +345,7 @@ export const useProgressPhotos = () => {
         .from('weight_history')
         .select('photo_urls, photo_metadata')
         .eq('id', photoId)
-        .single();
+        .maybeSingle();
 
       if (fetchError || !dbEntry) {
         console.error('Error fetching entry:', fetchError);

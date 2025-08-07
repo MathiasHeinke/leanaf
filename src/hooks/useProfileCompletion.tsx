@@ -44,7 +44,7 @@ export const useProfileCompletion = () => {
         .from('profiles')
         .select('display_name, weight, height, age, gender, goal, target_weight, target_date')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       // Check tracking preferences
       const { data: preferences } = await supabase

@@ -88,7 +88,7 @@ export const WeeklyCoachRecommendation = () => {
         .from('profiles')
         .select('coach_personality, display_name')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       const coachPersonality = profile?.coach_personality || 'sascha';
       setSelectedCoach(coachPersonality);
@@ -99,7 +99,7 @@ export const WeeklyCoachRecommendation = () => {
         .select('*')
         .eq('user_id', user.id)
         .eq('coach_id', coachPersonality)
-        .single();
+        .maybeSingle();
 
       let shouldShow = false;
 
@@ -113,7 +113,7 @@ export const WeeklyCoachRecommendation = () => {
             recommendation_count: 1
           })
           .select()
-          .single();
+          .maybeSingle();
 
         setRecommendation(newRec);
         shouldShow = true;
@@ -133,7 +133,7 @@ export const WeeklyCoachRecommendation = () => {
             })
             .eq('id', existingRec.id)
             .select()
-            .single();
+            .maybeSingle();
 
           setRecommendation(updatedRec);
           shouldShow = true;

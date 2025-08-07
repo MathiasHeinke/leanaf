@@ -109,7 +109,7 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
         .from('exercise_sessions')
         .insert(sessionData)
         .select()
-        .single();
+        .maybeSingle();
 
       if (sessionError) throw sessionError;
 

@@ -86,7 +86,7 @@ export const QuickBodyDataWidget: React.FC = () => {
       .from('profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     
     setUserProfile(profile);
   };

@@ -275,7 +275,7 @@ export const useAdminDebug = () => {
         .from('profiles')
         .select('email, display_name')
         .eq('user_id', targetUserId)
-        .single();
+        .maybeSingle();
 
       if (profileError || !profile?.email) {
         toast.error('Benutzer nicht gefunden oder keine E-Mail vorhanden');
@@ -324,7 +324,7 @@ export const useAdminDebug = () => {
           })
           .eq('email', profile.email)
           .select()
-          .single();
+          .maybeSingle();
 
         if (updateError) throw updateError;
         result = updateData;
@@ -340,7 +340,7 @@ export const useAdminDebug = () => {
             updated_at: new Date().toISOString()
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (insertError) throw insertError;
         result = insertData;
@@ -384,7 +384,7 @@ export const useAdminDebug = () => {
         .from('subscribers')
         .select('*')
         .eq('user_id', targetUserId)
-        .single();
+        .maybeSingle();
 
       const { error } = await supabase
         .from('subscribers')

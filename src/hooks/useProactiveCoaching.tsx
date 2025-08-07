@@ -52,7 +52,7 @@ export const useProactiveCoaching = () => {
         .from('profiles')
         .select('coach_personality')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       const coachPersonality = profile?.coach_personality || 'motivierend';
 
@@ -306,7 +306,7 @@ export const useProactiveCoaching = () => {
           coach_personality: personality
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (data) {
         const proactiveMessage: ProactiveMessage = {

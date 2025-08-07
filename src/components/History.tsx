@@ -408,7 +408,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
           created_at: new Date().toISOString()
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

@@ -29,7 +29,7 @@ export const PremiumSlide = ({ onComplete }: PremiumSlideProps) => {
         const { data, error } = await supabase
           .from('onboarding_stats')
           .select('*')
-          .single();
+          .maybeSingle();
         
         if (error) throw error;
         setStats(data);

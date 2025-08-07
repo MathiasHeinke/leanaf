@@ -47,7 +47,7 @@ export const usePointsSystem = () => {
         .from('user_points')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading user points:', error);
@@ -238,12 +238,12 @@ export const usePointsSystem = () => {
           .from('profiles')
           .select('goal, activity_level, target_weight, weight, height, age, gender, macro_strategy, muscle_maintenance_priority, coach_personality')
           .eq('user_id', user.id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('daily_goals')
           .select('calories, protein, carbs, fats, calorie_deficit')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
       ]);
 
       if (profileResult.error || goalsResult.error) {

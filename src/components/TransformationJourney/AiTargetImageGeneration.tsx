@@ -68,7 +68,7 @@ export const AiTargetImageGeneration = ({
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
       setProfileData(data);
     };
