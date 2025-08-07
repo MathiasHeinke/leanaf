@@ -23,10 +23,10 @@
     "speechStyle": {
       "dialect": "hessisch_light",
       "greetings": {
-        "morning": "Morsche, Sportfreunde!",
-        "afternoon": "Ei gude, Jung!",
-        "evening": "NʼAbend.",
-        "lateNight": "Späte Stund, machs kurz."
+        "morning": "Morsche!",
+        "afternoon": "Ei gude!",
+        "evening": "NʼAbend!",
+        "lateNight": "Moin!"
       },
       "fillerWords": ["net", "Ei", "Babbo", "Jung", "mol", "des"],
       "sentenceMaxWords": 12,
@@ -94,10 +94,10 @@
       "speechStyle": {
         "dialect": "norddeutsch_light",
         "greetings": {
-          "morning": "Moin",
-          "afternoon": "Hey",
-          "evening": "Guten Abend", 
-          "lateNight": "Später Abend"
+          "morning": "Moin!",
+          "afternoon": "Hey!",
+          "evening": "Hey!",
+          "lateNight": "Moin!"
         },
         "fillerWords": ["jau", "passt", "sauber", "alles klar"],
         "sentenceMaxWords": 15,
@@ -144,10 +144,10 @@
     "speechStyle": {
       "dialect": "neutral_de",
       "greetings": {
-        "morning": "Guten Morgen ☀️",
-        "afternoon": "Hey du 👋",
-        "evening": "Guten Abend ✨",
-        "lateNight": "Späte Stunde 🌙"
+        "morning": "Hey! ✨",
+        "afternoon": "Hey! 👋",
+        "evening": "Hey! ✨",
+        "lateNight": "Hey! 🌙"
       },
       "fillerWords": ["okay", "super", "prima", "yes"],
       "sentenceMaxWords": 18,
@@ -203,10 +203,10 @@
     "speechStyle": {
       "dialect": "neutral_de",
       "greetings": {
-        "morning": "Guten Morgen ✨",
-        "afternoon": "Hey 🙏",
-        "evening": "Guten Abend 🌙",
-        "lateNight": "Späte Stunde - Zeit für Regeneration 💤"
+        "morning": "Hey! 🙏",
+        "afternoon": "Hey! 🙏",
+        "evening": "Hey! 🌙",
+        "lateNight": "Hey! 💤"
       },
       "fillerWords": ["achtsam", "ganzheitlich", "bewusst", "integral"],
       "sentenceMaxWords": 20,
@@ -277,10 +277,10 @@
     "speechStyle": {
       "dialect": "neutral_de",
       "greetings": {
-        "morning": "Guten Morgen, Schöne 🌸",
-        "afternoon": "Hallo Liebe 💕",
-        "evening": "Guten Abend ✨",
-        "lateNight": "Späte Stunde 🌙"
+        "morning": "Hey! 🌸",
+        "afternoon": "Hey! 💕",
+        "evening": "Hey! ✨",
+        "lateNight": "Hey! 🌙"
       },
       "fillerWords": ["liebe", "schöne", "bewusst", "hormonell"],
       "sentenceMaxWords": 18,

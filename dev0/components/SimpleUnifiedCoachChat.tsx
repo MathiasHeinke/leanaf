@@ -474,34 +474,34 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
 function getSimpleGreeting(coachId: string): string {
   const greetings = {
     'lucy': [
-      'Hey! 💗 Wie kann ich dir heute helfen?',
-      'Hallo! ✨ Bereit für einen tollen Tag?',
-      'Hi! 🌟 Was steht heute an?'
+      'Hey! ✨',
+      'Hi! 💗',
+      'Hey! 🌟'
     ],
     'sascha': [
-      'Moin! 💪 Lass uns loslegen!',
-      'Hey! ⚡ Bereit durchzustarten?',
-      'Servus! 🔥 Was ist das Ziel heute?'
+      'Moin!',
+      'Hey!',
+      'Moin! 💪'
     ],
     'kai': [
-      'Hey! ⚡ Energie da für heute?',
-      'Moin! 🚀 Lass uns Gas geben!',
-      'Hi! 💫 Ready für Action?'
+      'Hey! 🙏',
+      'Hi! ⚡',
+      'Hey! 💫'
     ],
     'markus': [
-      'Hajo! 🔥 Ballern wir heute?',
-      'Servus! 💪 Schaffe was drauf?',
-      'Hey Jung! ⚡ Los geht\'s!'
+      'Ei gude!',
+      'Morsche!',
+      'NʼAbend!'
     ],
     'dr_vita': [
-      'Hallo! 🌸 Wie geht es dir heute?',
-      'Guten Tag! 💚 Bereit für Gesundheit?',
-      'Hallo! 🌿 Alles im grünen Bereich?'
+      'Hey! 🌸',
+      'Hi! 💚',
+      'Hey! 🌿'
     ],
     'sophia': [
-      'Namaste! 🌿 Bereit für Achtsamkeit?',
-      'Hallo! 🧘‍♀️ Los in den Flow?',
-      'Hi! ✨ Achtsam in den Tag starten?'
+      'Hey! 🌿',
+      'Hi! 🧘‍♀️',
+      'Hey! ✨'
     ]
   };
   

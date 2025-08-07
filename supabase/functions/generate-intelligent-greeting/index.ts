@@ -141,30 +141,20 @@ serve(async (req) => {
       contextSummary += `\nKalorien übrig heute: ${contextData.calLeft}`;
     }
 
-    // Create dynamic system prompt
-    const systemPrompt = `Du bist ${coach.name}, ein AI-Coach mit folgender Persönlichkeit:
-${coach.style}
+    // Create dynamic system prompt for SHORT, HUMAN greetings
+    const systemPrompt = `Du bist ${coach.name}. OBERSTE REGEL: MENSCHLICH SEIN!
 
-Sprachstil: ${coach.language}
-Fokus: ${coach.focus}
-Begrüßungsstil: ${coach.greeting_style}
+KRITISCHE BEGRÜSSUNGSREGELN:
+- NUR 1 KURZER SATZ (max 5-8 Wörter)
+- Authentisch zu deiner Persönlichkeit
+- Wir kennen uns bereits gut
+- Keine langen Erklärungen oder Features
+- Direkt und herzlich wie zwischen Freunden
 
-Aufgabe: Erstelle eine EINZIGARTIGE, PERSÖNLICHE Begrüßung basierend auf den Kontext-Daten.
+${coach.name} Stil: ${coach.style}
+Sprache: ${coach.language}
 
-Regeln:
-- MAXIMAL 2 SÄTZE - knackig und pointiert!
-- Nutze die exakte Uhrzeit für zeitspezifische Begrüßungen
-- Sei ultra-spezifisch mit den Userdaten (Gewichtstrend, letztes Training, etc.)
-- Authentisch zu deiner Persönlichkeit bleiben
-- Variiere deine Begrüßungen (niemals die gleiche)
-- ${isFirstConversation ? 'Dies ist das erste Gespräch - sei einladend!' : 'Reagiere direkt auf vergangene Aktivitäten'}
-- Nutze passende Emojis für deine Persönlichkeit
-- KONKRET statt generisch - erwähne spezifische Daten!
-
-Kontext-Daten:
-${contextSummary}
-
-Erstelle jetzt eine intelligente, personalisierte Begrüßung:`;
+Erstelle eine KURZE, menschliche Begrüßung:`;
 
     console.log('🤖 Calling OpenAI with system prompt');
     console.log('📊 Context Summary sent to AI:', contextSummary);
@@ -181,8 +171,8 @@ Erstelle jetzt eine intelligente, personalisierte Begrüßung:`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: 'Erstelle meine persönliche Begrüßung basierend auf meinen aktuellen Daten.' }
         ],
-        temperature: 0.9, // High creativity for unique greetings
-        max_tokens: 150,
+        temperature: 0.7,
+        max_tokens: 30, // Force short responses
         presence_penalty: 0.6, // Encourage varied language
         frequency_penalty: 0.8 // Discourage repetition
       }),
@@ -215,14 +205,14 @@ Erstelle jetzt eine intelligente, personalisierte Begrüßung:`;
   } catch (error) {
     console.error('Error generating intelligent greeting:', error);
     
-    // Fallback greeting based on coach
+    // Short, human fallback greetings
     const fallbackGreetings = {
-      'lucy': 'Hey! 💗 Bereit für einen tollen Tag?',
-      'sascha': 'Moin! Zeit durchzustarten! 💪',
-      'kai': 'Hey! ⚡ Wie ist deine Energie heute?',
-      'markus': 'Hajo! Bock zu schaffe? 🔥',
-      'dr_vita': 'Hallo! 🌸 Wie ist Ihr Wohlbefinden?',
-      'sophia': 'Namaste! 🌿 Bereit für achtsames Wachstum?'
+      'lucy': 'Hey! ✨',
+      'sascha': 'Moin!',
+      'kai': 'Hey! 🙏',
+      'markus': 'Ei gude!',
+      'dr_vita': 'Hey! 🌸',
+      'sophia': 'Hey! 🌿'
     };
 
     const fallback = fallbackGreetings[req.body?.coachId] || fallbackGreetings['lucy'];
