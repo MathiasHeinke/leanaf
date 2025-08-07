@@ -716,19 +716,14 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 // ============= HELPER FUNCTIONS =============
 function getSimpleGreeting(coachId: string): string {
   const greetings = {
-    'lucy': [
-      'Hey! 💗 Schön, dass du da bist! Ich habe alle meine Funktionen scharf gestellt und bin bereit für unser Gespräch.',
-      'Hallo! ✨ Bereit für einen tollen Tag? Ich kann jetzt auf alles zugreifen, was du mir erzählt hast.',
-      'Hi! 🌟 Was steht heute an? Ich hab mein Gedächtnis und mein Wissen dabei!'
-    ],
-    'sascha': [
-      'Moin! 💪 Lass uns loslegen! Ich hab alle deine Daten dabei.',
-      'Hey! ⚡ Bereit durchzustarten? Ich weiß noch, was wir letztes Mal besprochen haben.',
-      'Servus! 🔥 Was ist das Ziel heute? Mein System läuft auf Vollgas!'
-    ]
+    'lucy': ['Hey! ✨', 'Hi! 💗', 'Hallo! 🌟'],
+    'sascha': ['Moin!', 'Hey! 💪', 'Servus!'],
+    'markus': ['Ei gude!', 'Hey!', 'Morsche!'],
+    'kai': ['Hey! 🙏', 'Namaste!', 'Hi!'],
+    'dr_vita': ['Hallo! 🌸', 'Hi!', 'Hey!']
   };
   
-  const options = greetings[coachId] || ['Hallo! 👋 Wie kann ich dir helfen? Meine erweiterten Funktionen sind aktiv!'];
+  const options = greetings[coachId] || ['Hey! 👋'];
   return options[Math.floor(Math.random() * options.length)];
 }
 
