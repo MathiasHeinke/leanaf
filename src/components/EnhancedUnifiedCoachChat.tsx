@@ -20,6 +20,7 @@ import { EnhancedChatInput } from '@/components/EnhancedChatInput';
 import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
+import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -89,6 +90,39 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [pendingPlanData, setPendingPlanData] = useState<any>(null);
+
+  // Nutrition tool state (Meal analysis like on Index)
+  const [showMealDialog, setShowMealDialog] = useState(false);
+  const [mealAnalyzedData, setMealAnalyzedData] = useState<any | null>(null);
+  const [mealUploadedImages, setMealUploadedImages] = useState<string[]>([]);
+  const [mealSelectedType, setMealSelectedType] = useState<string>('other');
+
+  // Helper: normalize analyze-meal responses
+  const parseAnalyzeResponse = useCallback((data: any) => {
+    if (data?.total && typeof data.total === 'object') {
+      return {
+        title: data.title || 'Analysierte Mahlzeit',
+        calories: data.total.calories || 0,
+        protein: data.total.protein || 0,
+        carbs: data.total.carbs || 0,
+        fats: data.total.fats || 0,
+        meal_type: 'other',
+        confidence: data.confidence || 0.85
+      };
+    }
+    if (data?.calories !== undefined) {
+      return {
+        title: data.title || 'Analysierte Mahlzeit',
+        calories: data.calories || 0,
+        protein: data.protein || 0,
+        carbs: data.carbs || 0,
+        fats: data.fats || 0,
+        meal_type: data.meal_type || 'other',
+        confidence: data.confidence || 0.85
+      };
+    }
+    return null;
+  }, []);
   
   // ============= REFS =============
   const initializationRef = useRef(false);
@@ -590,19 +624,129 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   };
 
   // ============= ENHANCED SEND MESSAGE HANDLER =============
-  const handleEnhancedSendMessage = useCallback((message: string, mediaUrls?: string[], selectedTool?: string | null) => {
-    // Combine message with media context
-    let fullMessage = message;
+  const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
+    const msg = (message || '').trim();
+
+    // Route Tool Picker actions
+    if (selectedTool === 'mahlzeit') {
+      try {
+        // Show user message in chat
+        if (msg) {
+          const userMessage: EnhancedChatMessage = {
+            id: `user-${Date.now()}`,
+            role: 'user',
+            content: msg,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.id || 'lucy',
+            coach_name: coach?.name || 'Coach',
+            coach_avatar: coach?.imageUrl,
+            coach_color: coach?.color,
+            coach_accent_color: coach?.accentColor
+          };
+          setMessages(prev => [...prev, userMessage]);
+        }
+
+        const { data, error } = await supabase.functions.invoke('analyze-meal', {
+          body: {
+            text: msg || null,
+            images: mediaUrls && mediaUrls.length > 0 ? mediaUrls : null
+          }
+        });
+        if (error) throw error;
+
+        const parsed = parseAnalyzeResponse(data);
+        if (!parsed) {
+          toast.error('Analyse lieferte keine verwertbaren Daten');
+          return;
+        }
+
+        setMealAnalyzedData(parsed);
+        setMealUploadedImages(mediaUrls || []);
+        setMealSelectedType(parsed.meal_type || 'other');
+        setShowMealDialog(true);
+
+        // Assistant acknowledgement
+        const ack: EnhancedChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.id || 'lucy',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, ack]);
+        setInputText('');
+        return;
+      } catch (e: any) {
+        console.error('Meal analysis failed:', e);
+        toast.error('Mahlzeit-Analyse fehlgeschlagen');
+        return;
+      }
+    }
+
+    if (selectedTool === 'supplement') {
+      try {
+        if (msg) {
+          const userMessage: EnhancedChatMessage = {
+            id: `user-${Date.now()}`,
+            role: 'user',
+            content: msg,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.id || 'lucy',
+            coach_name: coach?.name || 'Coach',
+            coach_avatar: coach?.imageUrl,
+            coach_color: coach?.color,
+            coach_accent_color: coach?.accentColor
+          };
+          setMessages(prev => [...prev, userMessage]);
+        }
+
+        const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
+        const { data, error } = await supabase.functions.invoke('supplement-recognition', {
+          body: {
+            imageUrl: firstImage,
+            userId: user?.id,
+            userQuestion: msg || 'Bitte Supplements analysieren'
+          }
+        });
+        if (error) throw error;
+
+        const summary = typeof data === 'object' ? JSON.stringify(data).slice(0, 800) : String(data);
+        const assistantMessage: EnhancedChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: `💊 Supplement-Analyse abgeschlossen:\n${summary}${summary.length >= 800 ? '…' : ''}`,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.id || 'lucy',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setInputText('');
+        return;
+      } catch (e: any) {
+        console.error('Supplement analysis failed:', e);
+        toast.error('Supplement-Analyse fehlgeschlagen');
+        return;
+      }
+    }
+
+    // Default: normal chat flow (preserve existing behavior)
+    let fullMessage = msg;
     if (mediaUrls && mediaUrls.length > 0) {
       fullMessage += `\n\nAngehängte Medien: ${mediaUrls.join(', ')}`;
     }
     if (selectedTool) {
       fullMessage += `\n\nAusgewähltes Tool: ${selectedTool}`;
     }
-    
     setInputText(fullMessage);
-    handleSendMessage(fullMessage);
-  }, [handleSendMessage]);
+    await handleSendMessage(fullMessage);
+  }, [coach, user?.id, parseAnalyzeResponse, handleSendMessage]);
 
   // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
