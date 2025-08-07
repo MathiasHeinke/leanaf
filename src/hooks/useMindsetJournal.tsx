@@ -26,6 +26,7 @@ export interface EnhancedJournalEntry {
   date: string;
   raw_text: string;
   audio_url?: string;
+  photo_url?: string;
   mood_score: number;
   sentiment_tag: string;
   gratitude_items: string[];
@@ -38,6 +39,32 @@ export interface EnhancedJournalEntry {
   prompt_used?: string;
 }
 
+// Simple daily prompts - default view
+const DAILY_PROMPTS: MindsetPrompt[] = [
+  {
+    id: 'general_daily',
+    category: 'morning',
+    expertise: 'Tagesreflexion',
+    question: 'Was gibt\'s Neues?',
+    followUp: 'Wie geht es dir heute?'
+  },
+  {
+    id: 'general_midday',
+    category: 'midday', 
+    expertise: 'Tagesreflexion',
+    question: 'Was gibt\'s Neues?',
+    followUp: 'Wie läuft dein Tag bisher?'
+  },
+  {
+    id: 'general_evening',
+    category: 'evening',
+    expertise: 'Tagesreflexion', 
+    question: 'Was gibt\'s Neues?',
+    followUp: 'Wie war dein Tag heute?'
+  }
+];
+
+// Advanced mindset prompts - for when user clicks sparkles button
 const MINDSET_PROMPTS: MindsetPrompt[] = [
   // Morning Prompts
   {
@@ -99,10 +126,23 @@ export const useMindsetJournal = () => {
   const [recentEntries, setRecentEntries] = useState<EnhancedJournalEntry[]>([]);
   const [insights, setInsights] = useState<JournalInsight[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [useMindsetPrompts, setUseMindsetPrompts] = useState(false);
   const { toast } = useToast();
 
-  // Get smart prompt based on time of day
-  const getSmartPrompt = (): MindsetPrompt => {
+  // Get simple daily prompt by default
+  const getDailyPrompt = (): MindsetPrompt => {
+    const hour = new Date().getHours();
+    let category: 'morning' | 'midday' | 'evening';
+    
+    if (hour >= 6 && hour < 12) category = 'morning';
+    else if (hour >= 12 && hour < 18) category = 'midday';
+    else category = 'evening';
+
+    return DAILY_PROMPTS.find(p => p.category === category) || DAILY_PROMPTS[0];
+  };
+
+  // Get advanced mindset prompt
+  const getMindsetPrompt = (): MindsetPrompt => {
     const hour = new Date().getHours();
     let category: 'morning' | 'midday' | 'evening';
     
@@ -201,7 +241,8 @@ export const useMindsetJournal = () => {
         gratitude_items: entry.gratitude_items || [],
         highlight: entry.highlight,
         challenge: entry.challenge,
-        audio_url: entry.audio_url
+        audio_url: entry.audio_url,
+        photo_url: entry.photo_url
       };
 
       const { error } = await supabase
@@ -260,7 +301,7 @@ export const useMindsetJournal = () => {
 
   // Initialize
   useEffect(() => {
-    setCurrentPrompt(getSmartPrompt());
+    setCurrentPrompt(getDailyPrompt());
     loadRecentEntries();
   }, []);
 
@@ -271,15 +312,23 @@ export const useMindsetJournal = () => {
     }
   }, [recentEntries]);
 
+  const togglePromptMode = () => {
+    setUseMindsetPrompts(!useMindsetPrompts);
+    setCurrentPrompt(useMindsetPrompts ? getDailyPrompt() : getMindsetPrompt());
+  };
+
   return {
     currentPrompt,
     recentEntries,
     insights,
     isLoading,
-    getSmartPrompt,
+    useMindsetPrompts,
+    getDailyPrompt,
+    getMindsetPrompt,
     saveJournalEntry,
     requestKaiAnalysis,
-    refreshPrompt: () => setCurrentPrompt(getSmartPrompt()),
+    refreshPrompt: () => setCurrentPrompt(useMindsetPrompts ? getMindsetPrompt() : getDailyPrompt()),
+    togglePromptMode,
     loadRecentEntries
   };
 };

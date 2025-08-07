@@ -8,7 +8,9 @@ import { useMindsetJournal } from '@/hooks/useMindsetJournal';
 import { useEnhancedVoiceRecording } from '@/hooks/useEnhancedVoiceRecording';
 import { VoiceVisualizer } from './VoiceVisualizer';
 import { InsightsPanel } from './InsightsPanel';
+import { PhotoUpload } from '../PhotoUpload';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface MindsetJournalWidgetProps {
   onKaiTransfer?: (text: string) => void;
@@ -24,15 +26,21 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
   const [manualText, setManualText] = useState('');
   const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
   const [showInsights, setShowInsights] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
+  const { toast } = useToast();
   const {
     currentPrompt,
     recentEntries = [],
     insights = [],
     isLoading,
+    useMindsetPrompts = false,
     saveJournalEntry,
     requestKaiAnalysis,
-    refreshPrompt
+    refreshPrompt,
+    togglePromptMode
   } = useMindsetJournal() || {};
 
   const {
@@ -53,55 +61,87 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
     return 'Abend';
   };
 
+  const handlePhotoSelect = (file: File) => {
+    setSelectedPhoto(file);
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
+  };
+
+  const handlePhotoRemove = () => {
+    setSelectedPhoto(null);
+    setPhotoPreview('');
+  };
+
   const handleAnalyzeAndSave = async () => {
     const textToAnalyze = transcribedText || manualText;
-    if (!textToAnalyze.trim()) return;
+    if (!textToAnalyze.trim() && !selectedPhoto) return;
 
-    if (analysisMode === 'kai' && textToAnalyze.length > 50) {
-      // Use Kai's advanced analysis
-      const kaiAnalysis = await requestKaiAnalysis(textToAnalyze);
-      
-      if (kaiAnalysis) {
-        // Parse Kai's structured response and save enhanced entry
+    try {
+      setIsUploadingPhoto(true);
+
+      if (analysisMode === 'kai' && textToAnalyze.length > 50) {
+        // Use Kai's advanced analysis
+        const kaiAnalysis = await requestKaiAnalysis(textToAnalyze);
+        
+        if (kaiAnalysis) {
+          // Parse Kai's structured response and save enhanced entry
+          await saveJournalEntry({
+            raw_text: textToAnalyze,
+            mood_score: kaiAnalysis.mood_level || 0,
+            sentiment_tag: kaiAnalysis.sentiment || 'neutral',
+            gratitude_items: kaiAnalysis.gratitude_elements || [],
+            highlight: kaiAnalysis.highlight,
+            challenge: kaiAnalysis.challenge,
+            prompt_used: currentPrompt?.question,
+            photo_url: photoPreview || undefined
+          });
+        }
+      } else {
+        // Simple analysis
+        const words = textToAnalyze.toLowerCase();
+        const positiveWords = ['gut', 'super', 'toll', 'dankbar', 'glücklich', 'freude'];
+        const negativeWords = ['schlecht', 'müde', 'stress', 'schwer', 'traurig'];
+        
+        const positiveCount = positiveWords.filter(word => words.includes(word)).length;
+        const negativeCount = negativeWords.filter(word => words.includes(word)).length;
+        
+        let mood_score = 0;
+        if (positiveCount > negativeCount) mood_score = Math.min(5, positiveCount);
+        else if (negativeCount > positiveCount) mood_score = Math.max(-5, -negativeCount);
+
+        const gratitudePattern = /(?:dankbar für|bin dankbar|grateful for)\s+([^.!?]+)/gi;
+        const gratitudeMatches = [...textToAnalyze.matchAll(gratitudePattern)];
+        const gratitude_items = gratitudeMatches.map(match => match[1].trim()).slice(0, 3);
+
         await saveJournalEntry({
           raw_text: textToAnalyze,
-          mood_score: kaiAnalysis.mood_level || 0,
-          sentiment_tag: kaiAnalysis.sentiment || 'neutral',
-          gratitude_items: kaiAnalysis.gratitude_elements || [],
-          highlight: kaiAnalysis.highlight,
-          challenge: kaiAnalysis.challenge,
-          prompt_used: currentPrompt?.question
+          mood_score,
+          sentiment_tag: mood_score > 0 ? 'positive' : mood_score < 0 ? 'negative' : 'neutral',
+          gratitude_items,
+          prompt_used: currentPrompt?.question,
+          photo_url: photoPreview || undefined
         });
       }
-    } else {
-      // Simple analysis
-      const words = textToAnalyze.toLowerCase();
-      const positiveWords = ['gut', 'super', 'toll', 'dankbar', 'glücklich', 'freude'];
-      const negativeWords = ['schlecht', 'müde', 'stress', 'schwer', 'traurig'];
-      
-      const positiveCount = positiveWords.filter(word => words.includes(word)).length;
-      const negativeCount = negativeWords.filter(word => words.includes(word)).length;
-      
-      let mood_score = 0;
-      if (positiveCount > negativeCount) mood_score = Math.min(5, positiveCount);
-      else if (negativeCount > positiveCount) mood_score = Math.max(-5, -negativeCount);
 
-      const gratitudePattern = /(?:dankbar für|bin dankbar|grateful for)\s+([^.!?]+)/gi;
-      const gratitudeMatches = [...textToAnalyze.matchAll(gratitudePattern)];
-      const gratitude_items = gratitudeMatches.map(match => match[1].trim()).slice(0, 3);
-
-      await saveJournalEntry({
-        raw_text: textToAnalyze,
-        mood_score,
-        sentiment_tag: mood_score > 0 ? 'positive' : mood_score < 0 ? 'negative' : 'neutral',
-        gratitude_items,
-        prompt_used: currentPrompt?.question
+      // Clear inputs
+      setManualText('');
+      clearTranscription();
+      handlePhotoRemove();
+      
+      toast({
+        title: "Eintrag gespeichert ✨",
+        description: selectedPhoto ? "Text und Foto wurden hinzugefügt" : "Dein Gedanke wurde gespeichert"
       });
-    }
 
-    // Clear inputs
-    setManualText('');
-    clearTranscription();
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Eintrag konnte nicht gespeichert werden",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleTransferToKai = () => {
@@ -138,11 +178,12 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={refreshPrompt}
+              onClick={useMindsetPrompts ? refreshPrompt : togglePromptMode}
               className="h-6 px-2 text-xs"
+              title={useMindsetPrompts ? "Neue Mindset-Frage" : "Mindset-Fragen aktivieren"}
             >
               <Sparkles className="h-3 w-3 mr-1" />
-              Neue Frage
+              {useMindsetPrompts ? "Neue Frage" : "Mindset"}
             </Button>
           </CardTitle>
         </CardHeader>
@@ -220,23 +261,39 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
 
             {/* Text Input */}
             <Textarea
-              placeholder="Oder schreibe deine Gedanken hier..."
+              placeholder={isProcessing ? "Transkribiere..." : "Oder schreibe deine Gedanken hier..."}
               value={transcribedText || manualText}
               onChange={(e) => setManualText(e.target.value)}
               className="min-h-[80px] resize-none"
               disabled={isRecording || isProcessing}
             />
 
+            {/* Processing Status */}
+            {isProcessing && (
+              <div className="flex items-center gap-2 text-xs text-primary">
+                <div className="animate-spin h-3 w-3 border border-primary/30 border-t-primary rounded-full"></div>
+                <span>Transkribiere Aufnahme...</span>
+              </div>
+            )}
+
+            {/* Photo Upload */}
+            <PhotoUpload
+              onPhotoSelect={handlePhotoSelect}
+              onPhotoRemove={handlePhotoRemove}
+              photoPreview={photoPreview}
+              isUploading={isUploadingPhoto}
+            />
+
             {/* Action Buttons */}
             <div className="flex gap-2">
               <Button
                 onClick={handleAnalyzeAndSave}
-                disabled={!(transcribedText || manualText.trim()) || isLoading || isProcessing}
+                disabled={!(transcribedText || manualText.trim() || selectedPhoto) || isLoading || isProcessing || isUploadingPhoto}
                 size="sm"
                 className="flex-1"
               >
                 <Send className="h-4 w-4 mr-2" />
-                {analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
+                {isUploadingPhoto ? 'Speichere...' : analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
               </Button>
               
               {onKaiTransfer && (
