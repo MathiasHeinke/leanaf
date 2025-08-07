@@ -141,20 +141,30 @@ serve(async (req) => {
       contextSummary += `\nKalorien übrig heute: ${contextData.calLeft}`;
     }
 
-    // Create dynamic system prompt for SHORT, HUMAN greetings
-    const systemPrompt = `Du bist ${coach.name}. OBERSTE REGEL: MENSCHLICH SEIN!
+    // Create dynamic system prompt for CONTEXTUAL, VARIED greetings
+    const systemPrompt = `Du bist ${coach.name}, ein erfahrener Coach. Wir kennen uns gut und haben schon viele Gespräche geführt.
 
-KRITISCHE BEGRÜSSUNGSREGELN:
-- NUR 1 KURZER SATZ (max 5-8 Wörter)
-- Authentisch zu deiner Persönlichkeit
-- Wir kennen uns bereits gut
-- Keine langen Erklärungen oder Features
-- Direkt und herzlich wie zwischen Freunden
+DEINE PERSÖNLICHKEIT:
+- ${coach.style}
+- ${coach.language}
+- Fokus: ${coach.focus}
 
-${coach.name} Stil: ${coach.style}
-Sprache: ${coach.language}
+BEGRÜSSUNGSREGELN:
+- Kurz und knackig (2-4 Sätze max)
+- Nutze den aktuellen Kontext (Tageszeit, letzte Aktivitäten, Trends)
+- Variiere deine Begrüßungen je nach Situation
+- Sei persönlich und authentisch, nicht oberflächlich
+- Beziehe dich auf relevante Daten wenn sinnvoll
+- Bleib in deinem Stil aber sei flexibel
 
-Erstelle eine KURZE, menschliche Begrüßung:`;
+GUTE BEISPIELE für kontextuelle Begrüßungen:
+- Morgens: "Moin! Gut geschlafen? Lass uns den Tag rocken!"
+- Nach Training: "Hey! Wie war das Training gestern? Schon wieder bereit?"
+- Bei Gewichtstrend: "Servus! Die 2kg weniger sehen gut aus!"
+- Abends: "Hi! Schon Pläne für morgen?"
+- Bei wenig Kalorien übrig: "Hey! Heute schon gut gegessen?"
+
+Erstelle eine passende, kontextuelle Begrüßung:`;
 
     console.log('🤖 Calling OpenAI with system prompt');
     console.log('📊 Context Summary sent to AI:', contextSummary);
@@ -169,12 +179,12 @@ Erstelle eine KURZE, menschliche Begrüßung:`;
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Erstelle meine persönliche Begrüßung basierend auf meinen aktuellen Daten.' }
+          { role: 'user', content: `Kontext für die Begrüßung:\n${contextSummary}\n\nErstelle eine passende, persönliche Begrüßung die zu meiner aktuellen Situation passt.` }
         ],
-        temperature: 0.7,
-        max_tokens: 30, // Force short responses
-        presence_penalty: 0.6, // Encourage varied language
-        frequency_penalty: 0.8 // Discourage repetition
+        temperature: 0.8, // More creative and varied
+        max_tokens: 28, // Allow for 2-3 sentences
+        presence_penalty: 0.7, // Encourage contextual language
+        frequency_penalty: 0.6 // Some repetition ok for personality
       }),
     });
 
