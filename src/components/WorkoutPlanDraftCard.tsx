@@ -221,9 +221,10 @@ export const WorkoutPlanDraftCard: React.FC<WorkoutPlanDraftCardProps> = ({
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveEdited}
         planData={{
+          id: `draft-${Date.now()}`, // Generate temporary ID for draft
           name: name,
           goal: goal,
-          daysPerWeek: daysPerWeek,
+          days_per_wk: daysPerWeek,
           structure: structure
         }}
       />
