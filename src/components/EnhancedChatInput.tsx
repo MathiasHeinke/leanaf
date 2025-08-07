@@ -36,7 +36,7 @@ import { VoiceOverlay } from '@/components/VoiceOverlay';
 import { usePendingTools } from '@/hooks/usePendingTools';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { MindsetJournalWidget } from '@/components/mindset-journal';
+import { MindsetJournalWidget } from '@/components/mindset-journal/MindsetJournalWidget';
 
 // Tool configuration with colors
 import { Brain } from 'lucide-react';
