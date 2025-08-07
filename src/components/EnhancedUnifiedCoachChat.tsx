@@ -22,6 +22,7 @@ import { getCurrentDateString } from '@/utils/dateHelpers';
 import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 import { generateNextDayPlan } from '@/utils/generateNextDayPlan';
+import { PlanInlineEditor } from '@/components/PlanInlineEditor';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -429,7 +430,6 @@ if (enableAdvancedFeatures) {
   // ============= PLAN HANDLERS =============
   const handleSavePlan = useCallback(async (planData: any) => {
     if (!user?.id) return;
-    
     try {
       const { error } = await supabase
         .from('workout_plan_drafts')
@@ -437,21 +437,29 @@ if (enableAdvancedFeatures) {
           user_id: user.id,
           name: planData.name,
           goal: planData.goal,
-          days_per_week: planData.daysPerWeek,
-          structure: planData.structure,
-          created_by_coach: coach?.id || 'lucy'
+          days_per_wk: planData.daysPerWeek,
+          structure_json: planData.structure,
+          notes: planData.analysis || null,
         });
-
       if (error) throw error;
-      
       toast.success('Trainingsplan gespeichert!');
-      setPendingPlanData(null);
-      
+      // nicht schließen – wir wollen die Nachfrage anzeigen
     } catch (error) {
       console.error('Error saving plan:', error);
       toast.error('Fehler beim Speichern');
     }
-  }, [user?.id, coach?.id]);
+  }, [user?.id]);
+
+  const handleCreateNextDay = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const nextPlan = await generateNextDayPlan(user.id, 28);
+      setPendingPlanData(nextPlan);
+    } catch (e) {
+      console.error('Error generating next-day plan:', e);
+      toast.error('Konnte nächsten Tag nicht erstellen');
+    }
+  }, [user?.id]);
 
   const handleEditPlan = useCallback((planData: any) => {
     setPendingPlanData(planData);
@@ -800,10 +808,10 @@ if (enableAdvancedFeatures) {
             {/* Training Plan Draft Card */}
             {pendingPlanData && (
               <div className="my-4">
-                <WorkoutPlanDraftCard
-                  planData={pendingPlanData}
+                <PlanInlineEditor
+                  initialPlan={pendingPlanData}
                   onSave={handleSavePlan}
-                  onEdit={handleEditPlan}
+                  onRequestMoreDays={handleCreateNextDay}
                 />
               </div>
             )}
@@ -865,10 +873,10 @@ if (enableAdvancedFeatures) {
               {/* Training Plan Draft Card */}
               {pendingPlanData && (
                 <div className="my-4">
-                  <WorkoutPlanDraftCard
-                    planData={pendingPlanData}
+                  <PlanInlineEditor
+                    initialPlan={pendingPlanData}
                     onSave={handleSavePlan}
-                    onEdit={handleEditPlan}
+                    onRequestMoreDays={handleCreateNextDay}
                   />
                 </div>
               )}
