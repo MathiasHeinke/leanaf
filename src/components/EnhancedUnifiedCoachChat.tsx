@@ -21,6 +21,38 @@ import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
 
+// ============= HELPER FUNCTIONS =============
+async function generateIntelligentGreeting(
+  userId: string, 
+  coachId: string, 
+  options: { firstName?: string; isFirstConversation?: boolean } = {}
+): Promise<string | null> {
+  try {
+    console.log('🎯 Calling intelligent greeting function...');
+    
+    const { data, error } = await supabase.functions.invoke('generate-intelligent-greeting', {
+      body: {
+        userId,
+        coachId,
+        firstName: options.firstName || 'User',
+        isFirstConversation: options.isFirstConversation || false,
+        contextData: {}
+      }
+    });
+
+    if (error) {
+      console.error('❌ Error calling greeting function:', error);
+      return null;
+    }
+
+    console.log('✅ Intelligent greeting generated:', data?.greeting);
+    return data?.greeting || null;
+  } catch (error) {
+    console.error('❌ Exception in greeting function:', error);
+    return null;
+  }
+}
+
 export interface CoachProfile {
   id: string;
   name: string;
@@ -167,12 +199,11 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         console.log('🎯 No existing chat found, generating intelligent greeting...');
         
         if (enableAdvancedFeatures) {
-          // Use enhanced system for personalized greeting
-          const greeting = await sendEnhancedMessage(
-            'Generiere eine personalisierte Begrüßung basierend auf meinem Profil und Verlauf.', 
-            coach?.id || 'lucy',
-            { isGreeting: true }
-          );
+          // Use dedicated greeting function for personalized greeting
+          const greeting = await generateIntelligentGreeting(user.id, coach?.id || 'lucy', {
+            firstName: user.user_metadata?.name || 'User',
+            isFirstConversation: true
+          });
           
           if (greeting) {
             const welcomeMsg: EnhancedChatMessage = {
