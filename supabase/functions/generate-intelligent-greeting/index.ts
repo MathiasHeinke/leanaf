@@ -212,6 +212,7 @@ STILRICHTUNGEN (variiere zwischen diesen):
 ${strategy.examples.map(ex => `- ${ex}`).join('\n')}
 
 KONTEXT-REGELN:
+- MAXIMAL 2 kurze Sätze! Keine langen Erklärungen!
 - Vollständige Sätze (keine Abbrüche!)
 - Nutze aktuellen Kontext intelligent
 - VERSCHIEDENE Themen je nach Daten:
@@ -222,7 +223,7 @@ KONTEXT-REGELN:
 - Authentisch in deinem Stil bleiben
 - Echte Varianz zwischen verschiedenen Gesprächen
 
-WICHTIG: Erstelle eine VOLLSTÄNDIGE, natürliche Begrüßung ohne abgeschnittene Sätze!`;
+WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßung!`;
 
     console.log('🤖 Calling OpenAI with enhanced system prompt');
     console.log('📊 Context Summary sent to AI:', contextSummary);
