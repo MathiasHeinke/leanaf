@@ -3,10 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Plus, Minus, Save, X, Dumbbell, Clock, Target } from 'lucide-react';
+import { Plus, Save, X, Dumbbell, Target } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Exercise {
@@ -22,9 +21,6 @@ interface WorkoutDay {
   day: string;
   focus: string;
   exercises: Exercise[];
-  main_exercises?: string[];
-  rep_range?: string;
-  rest_between_sets?: string;
 }
 
 interface WorkoutPlanEditModalProps {
@@ -39,7 +35,6 @@ interface WorkoutPlanEditModalProps {
     structure?: {
       weekly_structure?: WorkoutDay[];
       principles?: string[];
-      markus_rules?: string[];
     };
   };
 }
@@ -56,8 +51,6 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
     days_per_wk: planData.days_per_wk,
     structure: planData.structure || { weekly_structure: [] }
   });
-
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setEditedPlan({
@@ -100,30 +93,13 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
     }
   };
 
-  const updateExerciseString = (dayIndex: number, exerciseIndex: number, field: 'name' | 'reps' | 'weight', value: string) => {
+  const updateExercise = (dayIndex: number, exerciseIndex: number, updates: Partial<Exercise>) => {
     const newStructure = { ...editedPlan.structure };
     if (newStructure.weekly_structure?.[dayIndex]?.exercises[exerciseIndex]) {
-      const exercise = newStructure.weekly_structure[dayIndex].exercises[exerciseIndex];
-      if (field === 'name') exercise.name = value;
-      else if (field === 'reps') exercise.reps = value;
-      else if (field === 'weight') exercise.weight = value;
-      setEditedPlan({ ...editedPlan, structure: newStructure });
-    }
-  };
-
-  const updateExerciseNumber = (dayIndex: number, exerciseIndex: number, field: 'sets' | 'rpe' | 'rest_seconds', value: string) => {
-    const newStructure = { ...editedPlan.structure };
-    if (newStructure.weekly_structure?.[dayIndex]?.exercises[exerciseIndex]) {
-      const exercise = newStructure.weekly_structure[dayIndex].exercises[exerciseIndex];
-      
-      if (field === 'sets') {
-        exercise.sets = parseInt(value) || 1;
-      } else if (field === 'rpe') {
-        exercise.rpe = value ? parseInt(value) : undefined;
-      } else if (field === 'rest_seconds') {
-        exercise.rest_seconds = value ? parseInt(value) : undefined;
-      }
-      
+      newStructure.weekly_structure[dayIndex].exercises[exerciseIndex] = {
+        ...newStructure.weekly_structure[dayIndex].exercises[exerciseIndex],
+        ...updates
+      };
       setEditedPlan({ ...editedPlan, structure: newStructure });
     }
   };
@@ -145,7 +121,6 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
   };
 
   const handleSave = () => {
-    // Validate plan
     if (!editedPlan.name.trim()) {
       toast({
         title: "Fehler",
@@ -155,34 +130,7 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
       return;
     }
 
-    if (!editedPlan.structure.weekly_structure || editedPlan.structure.weekly_structure.length === 0) {
-      toast({
-        title: "Fehler", 
-        description: "Der Trainingsplan muss mindestens einen Trainingstag enthalten.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate each day has exercises
-    const invalidDays = editedPlan.structure.weekly_structure.filter(day => 
-      !day.exercises || day.exercises.length === 0 || day.exercises.some(ex => !ex.name.trim())
-    );
-
-    if (invalidDays.length > 0) {
-      toast({
-        title: "Fehler",
-        description: "Alle Trainingstage müssen gültige Übungen enthalten.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    onSave({
-      ...planData,
-      ...editedPlan
-    });
-
+    onSave({ ...planData, ...editedPlan });
     toast({
       title: "Trainingsplan aktualisiert",
       description: "Deine Änderungen wurden gespeichert.",
@@ -200,7 +148,6 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Plan Basics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="plan-name">Plan Name</Label>
@@ -227,13 +174,12 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                 type="number"
                 min="1"
                 max="7"
-                value={editedPlan.days_per_wk}
+                value={editedPlan.days_per_wk.toString()}
                 onChange={(e) => setEditedPlan({ ...editedPlan, days_per_wk: parseInt(e.target.value) || 1 })}
               />
             </div>
           </div>
 
-          {/* Training Days */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Trainingstage</h3>
             
@@ -283,52 +229,52 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                         <div className="md:col-span-2">
                           <Label className="text-xs">Übung</Label>
                           <Input
-                            size="sm"
                             value={exercise.name}
-                            onChange={(e) => updateExerciseString(dayIndex, exerciseIndex, 'name', e.target.value)}
+                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, { name: e.target.value })}
                             placeholder="z.B. Bankdrücken"
+                            className="text-sm"
                           />
                         </div>
                         <div>
                           <Label className="text-xs">Sätze</Label>
                           <Input
-                            size="sm"
                             type="number"
                             min="1"
                             max="10"
                             value={exercise.sets.toString()}
-                            onChange={(e) => updateExerciseNumber(dayIndex, exerciseIndex, 'sets', e.target.value)}
+                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, { sets: parseInt(e.target.value) || 1 })}
+                            className="text-sm"
                           />
                         </div>
                         <div>
                           <Label className="text-xs">Wiederholungen</Label>
                           <Input
-                            size="sm"
                             value={exercise.reps}
-                            onChange={(e) => updateExerciseString(dayIndex, exerciseIndex, 'reps', e.target.value)}
+                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, { reps: e.target.value })}
                             placeholder="8-12"
+                            className="text-sm"
                           />
                         </div>
                         <div>
                           <Label className="text-xs">Gewicht (kg)</Label>
                           <Input
-                            size="sm"
                             value={exercise.weight || ''}
-                            onChange={(e) => updateExerciseString(dayIndex, exerciseIndex, 'weight', e.target.value)}
+                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, { weight: e.target.value })}
                             placeholder="80"
+                            className="text-sm"
                           />
                         </div>
                         <div className="flex items-end gap-1">
                           <div className="flex-1">
                             <Label className="text-xs">RPE</Label>
                             <Input
-                              size="sm"
                               type="number"
                               min="1"
                               max="10"
                               value={exercise.rpe?.toString() || ''}
-                              onChange={(e) => updateExerciseNumber(dayIndex, exerciseIndex, 'rpe', e.target.value)}
+                              onChange={(e) => updateExercise(dayIndex, exerciseIndex, { rpe: e.target.value ? parseInt(e.target.value) : undefined })}
                               placeholder="8"
+                              className="text-sm"
                             />
                           </div>
                           <Button
@@ -342,52 +288,11 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                         </div>
                       </div>
                     ))}
-
-                    {(!day.exercises || day.exercises.length === 0) && (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <Target className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p>Noch keine Übungen hinzugefügt</p>
-                        <p className="text-sm">Klicke auf "Übung hinzufügen" um zu starten</p>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
             ))}
-
-            {/* Add Day Button */}
-            <Button
-              variant="outline"
-              onClick={() => {
-                const newStructure = { ...editedPlan.structure };
-                if (!newStructure.weekly_structure) newStructure.weekly_structure = [];
-                newStructure.weekly_structure.push({
-                  day: `Tag ${newStructure.weekly_structure.length + 1}`,
-                  focus: '',
-                  exercises: []
-                });
-                setEditedPlan({ ...editedPlan, structure: newStructure });
-              }}
-              className="w-full gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Trainingstag hinzufügen
-            </Button>
           </div>
-
-          {/* Plan Principles (Read-only) */}
-          {editedPlan.structure.principles && (
-            <div>
-              <h4 className="font-medium mb-2">Trainingsprinzipien</h4>
-              <div className="space-y-1">
-                {editedPlan.structure.principles.map((principle, index) => (
-                  <Badge key={index} variant="secondary" className="mr-2 mb-1">
-                    {principle}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <DialogFooter>
