@@ -127,16 +127,24 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
       }
 
       const aiResponse = data.response;
-      const metadata = data.metadata || {};
+      const rawMetadata = data.metadata || {};
+      const normalizedMetadata = {
+        traceId: data.traceId || rawMetadata.traceId,
+        tokensUsed: rawMetadata.tokensUsed ?? rawMetadata.tokens_used ?? 0,
+        duration: rawMetadata.duration ?? rawMetadata.processing_time_ms ?? 0,
+        hasMemory: rawMetadata.hasMemory ?? false,
+        hasRag: rawMetadata.hasRag ?? false,
+        hasDaily: rawMetadata.hasDaily ?? false,
+      };
       
       console.log('✅ Enhanced chat response received:', {
         responseLength: aiResponse.length,
-        tokensUsed: metadata.tokensUsed,
-        duration: metadata.duration,
-        hasMemory: metadata.hasMemory,
-        hasRag: metadata.hasRag,
-        hasDaily: metadata.hasDaily,
-        traceId: data.traceId
+        tokensUsed: normalizedMetadata.tokensUsed,
+        duration: normalizedMetadata.duration,
+        hasMemory: normalizedMetadata.hasMemory,
+        hasRag: normalizedMetadata.hasRag,
+        hasDaily: normalizedMetadata.hasDaily,
+        traceId: normalizedMetadata.traceId
       });
 
       // Add AI response to memory
@@ -176,21 +184,14 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
         content: aiResponse,
         created_at: new Date().toISOString(),
         coach_personality: coachId,
-        metadata: {
-          traceId: data.traceId,
-          tokensUsed: metadata.tokensUsed,
-          duration: metadata.duration,
-          hasMemory: metadata.hasMemory,
-          hasRag: metadata.hasRag,
-          hasDaily: metadata.hasDaily
-        }
+        metadata: normalizedMetadata
       };
 
       conversationHistoryRef.current.push(userChatMessage, assistantChatMessage);
       
       setLastResponse(aiResponse);
-      setLastMetadata(metadata);
-      options.onSuccess?.(aiResponse, metadata);
+      setLastMetadata(normalizedMetadata);
+      options.onSuccess?.(aiResponse, normalizedMetadata);
       
       return aiResponse;
 
