@@ -73,9 +73,9 @@ serve(async (req) => {
   }
 
   try {
-    const { userProfile, goals, planName, coachId, useAI = false } = await req.json();
+    const { userProfile, goals = ['Hypertrophy'], planName, coachId, useAI = false, mode = 'next_day', lookbackDays = 28 } = await req.json();
     
-    console.log('Generating training plan:', { userProfile, goals, planName, coachId, useAI });
+    console.log('Generating training plan:', { userProfile, goals, planName, coachId, useAI, mode, lookbackDays });
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -116,8 +116,11 @@ serve(async (req) => {
     if (useAI) {
       // AI-based generation (placeholder for future LLM integration)
       generatedPlan = await generatePlanWithAI(userProfile, goals, strengthProfile, exerciseTemplates);
+    } else if (mode === 'next_day') {
+      // History-based next-day generation (uses last training data)
+      generatedPlan = await generatePlanFromHistory(supabase, user.id, userProfile, goals, lookbackDays);
     } else {
-      // Template-based generation (current implementation)
+      // Template-based generation
       generatedPlan = generatePlanFromTemplate(userProfile, goals, strengthProfile, exerciseTemplates);
     }
 
@@ -445,6 +448,143 @@ function generateUpperBodyExercises(templates: any[], strengthProfile: any[]) {
       ]
     }
   ];
+}
+
+// History-based next-day generation using recent exercise data
+async function generatePlanFromHistory(supabase: any, userId: string, userProfile: any, goals: string[], lookbackDays: number) {
+  // Helper mappings
+  const classifyExercise = (name: string): 'push'|'pull'|'legs'|'other' => {
+    const n = (name || '').toLowerCase();
+    if (/(bankdr|bench|schrägbank|dips|trizeps|overhead|schulterdr)/.test(n)) return 'push';
+    if (/(klimm|pull|rudern|row|lat|bizeps|curl|face pull)/.test(n)) return 'pull';
+    if (/(kniebeug|squat|beinpresse|kreuzheb|deadlift|hamstring|ausfallschritt|lunge|waden)/.test(n)) return 'legs';
+    return 'other';
+  };
+  const nextSplit = (after: 'push'|'pull'|'legs'|'other'): 'push'|'pull'|'legs' => {
+    if (after === 'push') return 'pull';
+    if (after === 'pull') return 'legs';
+    return 'push';
+  };
+  const estimate1RM = (weightKg?: number|null, reps?: number|null) => {
+    if (!weightKg || !reps || reps <= 0) return null;
+    return weightKg * (1 + reps / 30);
+  };
+
+  const since = new Date();
+  since.setDate(since.getDate() - lookbackDays);
+
+  // Load recent sets incl. exercise names
+  const { data: sets, error } = await supabase
+    .from('exercise_sets')
+    .select('created_at, weight_kg, reps, exercises ( name )')
+    .eq('user_id', userId)
+    .gte('created_at', since.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('Failed to fetch exercise_sets, falling back to template:', error);
+    return generatePlanFromTemplate(userProfile, goals, [], []);
+  }
+
+  // Determine last split and favorites
+  let lastType: 'push'|'pull'|'legs'|'other' = 'other';
+  const counts: Record<'push'|'pull'|'legs', Record<string, number>> = { push: {}, pull: {}, legs: {} };
+  const perExerciseLast: Record<string, { weight?: number; reps?: number }> = {};
+
+  for (const s of sets || []) {
+    const exName = s.exercises?.name || '';
+    if (!exName) continue;
+    const t = classifyExercise(exName);
+    if (t !== 'other') {
+      counts[t][exName] = (counts[t][exName] || 0) + 1;
+    }
+    // remember first occurrence as the latest set for that exercise
+    if (!(exName in perExerciseLast) && (s.weight_kg || s.reps)) {
+      perExerciseLast[exName] = { weight: s.weight_kg ?? undefined, reps: s.reps ?? undefined };
+    }
+  }
+
+  if (sets && sets.length > 0) {
+    const sample = sets.slice(0, 12);
+    const c: Record<'push'|'pull'|'legs', number> = { push: 0, pull: 0, legs: 0 };
+    for (const s of sample) {
+      const exName = s.exercises?.name || '';
+      const t = classifyExercise(exName);
+      if (t !== 'other') c[t]++;
+    }
+    const ordered = Object.entries(c).sort((a,b)=>b[1]-a[1]);
+    lastType = (ordered[0]?.[1] ?? 0) > 0 ? (ordered[0][0] as any) : 'other';
+  }
+
+  const target = nextSplit(lastType);
+  const defaults = {
+    push: { focus: 'Brust/Schultern/Trizeps', exercises: ['Bankdrücken', 'Schrägbankdrücken', 'Dips', 'Schulterdrücken', 'Seitheben'] },
+    pull: { focus: 'Rücken/Bizeps', exercises: ['Klimmzüge', 'Langhantelrudern', 'T-Bar Rudern', 'Face Pulls', 'Langhantel-Curls'] },
+    legs: { focus: 'Beine', exercises: ['Kniebeugen', 'Beinpresse', 'Rumänisches Kreuzheben', 'Ausfallschritte', 'Wadenheben'] },
+  } as const;
+
+  const usedSorted = Object.entries(counts[target]).sort((a,b)=>b[1]-a[1]).map(([n])=>n);
+  const chosen = Array.from(new Set([...usedSorted, ...defaults[target].exercises])).slice(0, 5);
+
+  const makeSets = (name: string) => {
+    const last = perExerciseLast[name];
+    const est = estimate1RM(last?.weight, last?.reps);
+    const pct = est ? Math.round((0.72) * 100) : null; // display only as info
+    const isHeavy = /kniebeug|squat|kreuz|deadlift|beinpresse/i.test(name);
+    const baseReps = isHeavy ? [8,6,6] : [12,10,8];
+    const rest = isHeavy ? 180 : 120;
+    return baseReps.map((r, idx) => ({
+      setNumber: idx + 1,
+      targetReps: r,
+      targetRepsRange: isHeavy ? '5-8' : '8-12',
+      targetRPE: isHeavy ? 8 : 7,
+      restSeconds: rest,
+      isWarmup: false,
+      ...(est ? { targetPct1RM: 70 } : {})
+    }));
+  };
+
+  const exList = chosen.map((name, i) => ({
+    exerciseName: name,
+    exerciseType: 'strength',
+    muscleGroups: [],
+    equipment: [],
+    position: i + 1,
+    isSuperset: false,
+    progressionType: 'linear',
+    sets: makeSets(name),
+    notes: undefined
+  }));
+
+  const planType = (goals || []).join(' ').toLowerCase().includes('kraft') ? 'strength' : 'hypertrophy';
+  return {
+    name: planName || `PPL Next Day – ${target[0].toUpperCase()+target.slice(1)}`,
+    description: `Nächster ${target.toUpperCase()}-Tag basierend auf deinen letzten ${lookbackDays} Tagen (Favoriten + 1RM-Schätzung).`,
+    planType,
+    durationWeeks: 1,
+    targetFrequency: 1,
+    goals: goals && goals.length ? goals : ['Hypertrophy'],
+    days: [
+      {
+        dayId: 'next',
+        dayName: `${target[0].toUpperCase()+target.slice(1)} Tag`,
+        focus: defaults[target].focus,
+        position: 1,
+        isRestDay: false,
+        exercises: exList
+      }
+    ],
+    scientificBasis: {
+      methodology: 'Evidence-Based Training',
+      researchCitations: ['Schoenfeld_2019', 'Helms_2020'],
+      appliedPrinciples: ['Progressive Overload', 'Specificity', 'Fatigue Management']
+    },
+    progressionScheme: {
+      type: 'linear',
+      volumeProgression: true,
+      intensityProgression: true
+    }
+  };
 }
 
 // Placeholder for future AI integration

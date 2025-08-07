@@ -100,6 +100,21 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [mealUploadedImages, setMealUploadedImages] = useState<string[]>([]);
   const [mealSelectedType, setMealSelectedType] = useState<string>('other');
 
+  // ============= USER PROFILE (for plan generation) =============
+  const [userProfile, setUserProfile] = useState<any>(null);
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('profile_avatar_url, avatar_type, avatar_preset_id, goal')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setUserProfile(data);
+    };
+    fetchUserProfile();
+  }, [user?.id]);
+
   // Helper: normalize analyze-meal responses
   const parseAnalyzeResponse = useCallback((data: any) => {
     if (data?.total && typeof data.total === 'object') {
@@ -390,42 +405,72 @@ if (enableAdvancedFeatures) {
   // Handle training plan creation
   const handleCreateTrainingPlan = useCallback(async () => {
     if (!user?.id || isChatLoading) return;
-    
     setShowQuickAction(false);
-    
-    try {
-      const response = await sendEnhancedMessage(
-        'Erstelle jetzt einen strukturierten Trainingsplan basierend auf meiner Analyse.', 
-        coach?.id || 'lucy'
-      );
-      
-      if (response) {
-        const assistantMessage: EnhancedChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor,
-          metadata: lastMetadata
-        };
-        
-        setMessages(prev => [...prev, assistantMessage]);
 
-        // Handle plan data from response
-        if (lastMetadata?.planData) {
-          setPendingPlanData(lastMetadata.planData);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-enhanced-training-plan', {
+        body: {
+          userProfile: userProfile || {},
+          goals: [userProfile?.goal || 'Hypertrophy'],
+          planName: 'Nächster Trainingstag',
+          coachId: coach?.id || 'sascha',
+          useAI: false,
+          mode: 'next_day',
+          lookbackDays: 28
         }
-      }
-      
-    } catch (error) {
-      console.error('Error creating training plan:', error);
+      });
+      if (error) throw error;
+
+      const mapToInline = (plan: any) => {
+        const firstDay = (plan?.days || []).find((d: any) => !d.isRestDay) || (plan?.days || [])[0];
+        const exercises = (firstDay?.exercises || []).map((ex: any) => ({
+          name: ex.exerciseName,
+          sets: Array.isArray(ex.sets) ? ex.sets.length : 3,
+          reps: ex.sets?.[0]?.targetRepsRange || String(ex.sets?.[0]?.targetReps || '8-12'),
+          weight: '',
+          rpe: ex.sets?.[0]?.targetRPE ?? 7,
+          rest_seconds: ex.sets?.[0]?.restSeconds ?? 120,
+          sets_detail: (ex.sets || []).slice(0,3).map((s: any) => ({
+            weight: '',
+            reps: s.targetRepsRange || String(s.targetReps || ''),
+            rpe: s.targetRPE ?? 7
+          }))
+        }));
+        return {
+          name: plan.name || 'Nächster Trainingstag',
+          goal: plan.planType || 'custom',
+          daysPerWeek: 1,
+          structure: {
+            weekly_structure: [
+              { day: firstDay?.dayName || 'Training', focus: firstDay?.focus || '', exercises }
+            ],
+            principles: plan.scientificBasis?.appliedPrinciples || []
+          },
+          analysis: plan.scientificBasis?.methodology || ''
+        };
+      };
+
+      const inline = mapToInline(data?.plan || data);
+      setPendingPlanData(inline);
+
+      // Add assistant confirmation message
+      const assistantMessage: EnhancedChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: '✅ Ich habe deinen nächsten Trainingstag basierend auf deinen letzten Einheiten erstellt. Du kannst ihn unten noch anpassen und speichern.',
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.id || 'lucy',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error('Error creating training plan:', err);
       toast.error('Fehler beim Erstellen des Trainingsplans');
     }
-  }, [user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata]);
+  }, [user?.id, coach, isChatLoading, userProfile]);
 
   // ============= PLAN HANDLERS =============
   const handleSavePlan = useCallback(async (planData: any) => {
@@ -465,36 +510,15 @@ if (enableAdvancedFeatures) {
     setPendingPlanData(planData);
   }, []);
 
-  // ============= USER AVATAR HELPER =============
-  const [userProfile, setUserProfile] = useState<any>(null);
-  
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user?.id) return;
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('profile_avatar_url, avatar_type, avatar_preset_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      setUserProfile(data);
-    };
-    
-    fetchUserProfile();
-  }, [user?.id]);
-  
+  // User avatar helper derived from profile
   const getUserAvatarUrl = () => {
     if (!userProfile) return null;
-    
     if (userProfile.avatar_type === 'uploaded' && userProfile.profile_avatar_url) {
       return userProfile.profile_avatar_url;
     }
-    
     if (userProfile.avatar_type === 'preset' && userProfile.avatar_preset_id) {
       return `/avatars/preset/avatar-${userProfile.avatar_preset_id}.png`;
     }
-    
     return null;
   };
 
