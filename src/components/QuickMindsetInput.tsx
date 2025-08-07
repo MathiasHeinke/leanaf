@@ -40,11 +40,14 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
   const {
     isRecording = false,
     isProcessing = false,
+    isLoading: isVoiceLoading = false,
     transcribedText = '',
     audioLevel = 0,
+    hasCachedAudio = false,
     startRecording = async () => {},
     stopRecording = async () => {},
-    clearTranscription = () => {}
+    clearTranscription = () => {},
+    retryTranscription = async () => null
   } = voiceRecording || {};
 
   const getCurrentTimeOfDay = () => {
@@ -205,8 +208,8 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
               variant={isRecording ? "destructive" : "secondary"}
               size="sm"
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isProcessing}
-              className="flex-1"
+              disabled={isProcessing || isVoiceLoading}
+              className="flex-1 relative"
             >
               {isRecording ? (
                 <>
@@ -217,6 +220,9 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
                 <>
                   <Mic className="h-4 w-4 mr-2" />
                   Voice Input
+                  {hasCachedAudio && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
+                  )}
                 </>
               )}
             </Button>
@@ -257,11 +263,42 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
             disabled={isRecording || isProcessing}
           />
 
-          {/* Processing Status */}
-          {isProcessing && (
-            <div className="flex items-center gap-2 text-xs text-violet-600 dark:text-violet-400">
-              <div className="animate-spin h-3 w-3 border border-violet-300 border-t-violet-600 rounded-full"></div>
-              <span>Transkribiere Aufnahme...</span>
+          {/* Processing Status & Audio Cache Info */}
+          {(isProcessing || isVoiceLoading || hasCachedAudio) && (
+            <div className="space-y-2">
+              {(isProcessing || isVoiceLoading) && (
+                <div className="flex items-center gap-2 text-xs text-violet-600 dark:text-violet-400">
+                  <div className="animate-spin h-3 w-3 border border-violet-300 border-t-violet-600 rounded-full"></div>
+                  <span>{isProcessing ? "Transkribiere Aufnahme..." : "Verarbeite..."}</span>
+                </div>
+              )}
+              
+              {hasCachedAudio && !isProcessing && !isVoiceLoading && (
+                <div className="flex items-center justify-between p-2 bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 rounded-md">
+                  <div className="flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
+                    <div className="w-2 h-2 bg-violet-500 rounded-full"></div>
+                    <span>Audio gespeichert</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={retryTranscription}
+                      className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                    >
+                      Nochmal versuchen
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearTranscription}
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Löschen
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

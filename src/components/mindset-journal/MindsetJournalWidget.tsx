@@ -46,12 +46,15 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
   const {
     isRecording = false,
     isProcessing = false,
+    isLoading: isVoiceLoading = false,
     transcribedText = '',
     audioLevel = 0,
     hasPermission = false,
+    hasCachedAudio = false,
     startRecording = () => {},
     stopRecording = () => {},
-    clearTranscription = () => {}
+    clearTranscription = () => {},
+    retryTranscription = async () => null
   } = useEnhancedVoiceRecording() || {};
 
   const getCurrentTimeOfDay = () => {
@@ -215,7 +218,7 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                 variant={isRecording ? "destructive" : "secondary"}
                 size="sm"
                 onClick={isRecording ? stopRecording : startRecording}
-                disabled={isProcessing}
+                disabled={isProcessing || isVoiceLoading}
                 className="flex-1 relative z-10 cursor-pointer"
                 type="button"
               >
@@ -228,6 +231,9 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                   <>
                     <Mic className="h-4 w-4 mr-2" />
                     Voice Input
+                    {hasCachedAudio && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    )}
                   </>
                 )}
               </Button>
@@ -268,11 +274,42 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
               disabled={isRecording || isProcessing}
             />
 
-            {/* Processing Status */}
-            {isProcessing && (
-              <div className="flex items-center gap-2 text-xs text-primary">
-                <div className="animate-spin h-3 w-3 border border-primary/30 border-t-primary rounded-full"></div>
-                <span>Transkribiere Aufnahme...</span>
+            {/* Processing Status & Audio Cache Info */}
+            {(isProcessing || isVoiceLoading || hasCachedAudio) && (
+              <div className="space-y-2">
+                {(isProcessing || isVoiceLoading) && (
+                  <div className="flex items-center gap-2 text-xs text-primary">
+                    <div className="animate-spin h-3 w-3 border border-primary/30 border-t-primary rounded-full"></div>
+                    <span>{isProcessing ? "Transkribiere Aufnahme..." : "Verarbeite..."}</span>
+                  </div>
+                )}
+                
+                {hasCachedAudio && !isProcessing && !isVoiceLoading && (
+                  <div className="flex items-center justify-between p-2 bg-background/50 border border-primary/20 rounded-md">
+                    <div className="flex items-center gap-2 text-xs text-primary">
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                      <span>Audio gespeichert</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={retryTranscription}
+                        className="h-6 px-2 text-xs text-primary hover:text-primary/80"
+                      >
+                        Nochmal versuchen
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearTranscription}
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        Löschen
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
