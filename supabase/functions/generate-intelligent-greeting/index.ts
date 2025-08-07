@@ -35,13 +35,14 @@ serve(async (req) => {
     }
 
     // Fetch comprehensive user context + profile data
-    const [profileData, recentMeals, recentWorkouts, weightData, sleepData, userProfile] = await Promise.all([
+    const [profileData, recentMeals, recentWorkouts, weightData, sleepData, userProfile, recentJournal] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('meals').select('*').eq('user_id', userId).gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(3),
       supabase.from('workouts').select('*').eq('user_id', userId).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(3),
       supabase.from('weights').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
       supabase.from('sleep_data').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3),
-      supabase.from('profiles').select('first_name, preferred_name').eq('user_id', userId).maybeSingle()
+      supabase.from('profiles').select('first_name, preferred_name').eq('user_id', userId).maybeSingle(),
+      supabase.from('journal_entries').select('energy_level, mood_score, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(1)
     ]);
 
     // Build comprehensive context with precise timing (German timezone)
@@ -141,6 +142,15 @@ serve(async (req) => {
       contextSummary += `\nKalorien übrig heute: ${contextData.calLeft}`;
     }
 
+    // Mindset Journey (Tagebuch) – letzte Notiz
+    if (recentJournal.data && recentJournal.data.length > 0) {
+      const j = recentJournal.data[0];
+      const hoursSince = Math.max(0, Math.round((Date.now() - new Date(j.created_at).getTime()) / (1000 * 60 * 60)));
+      const moodTxt = typeof j.mood_score === 'number' ? `, Stimmung: ${j.mood_score}` : '';
+      const energyTxt = typeof j.energy_level === 'number' ? `, Energie: ${j.energy_level}` : '';
+      contextSummary += `\nMindset-Journey: letzte Notiz vor ${hoursSince} Std${moodTxt}${energyTxt}`;
+    }
+
     // Enhanced coach-specific greeting strategies
     const coachGreetingStrategies = {
       'sascha': {
@@ -164,13 +174,13 @@ serve(async (req) => {
         ]
       },
       'kai': {
-        themes: ['mental', 'philosophisch', 'flow', 'achtsamkeit', 'balance'],
+        themes: ['mindset', 'achtsamkeit', 'heutige_gefuehlslage', 'erlebnisse', 'selbstfürsorge', 'was_würde_dir_gut_tun', 'flow', 'balance'],
         examples: [
-          'Servus! Wie ist dein Flow heute?',
-          'Hey! Spürst du die Balance?',
-          'Servus! In welcher Energie bist du?',
-          'Hey! Bereit für mentale Stärke?',
-          'Servus! Wie ist dein innerer Zustand?'
+          'Servus! Wie ging\'s dir heute innerlich—was hat dich bewegt?',
+          'Hey! Was würde dir jetzt gut tun—eine kurze Atemübung oder einfach Ruhe?',
+          'Servus! Welche Erfahrung hat heute deinen Mindset geprägt?',
+          'Hey! Magst du teilen, was gerade am meisten Raum in dir braucht?',
+          'Servus! Wie kann ich dir heute etwas Gutes tun—Impulse, Struktur oder Mitgefühl?'
         ]
       },
       'markus': {
@@ -197,6 +207,10 @@ serve(async (req) => {
 
     // Create dynamic, contextual system prompt with expanded variance
     const strategy = coachGreetingStrategies[coachId] || coachGreetingStrategies['lucy'];
+    const mindsetKaiRule = coachId === 'kai' ? `SPEZIFISCH FÜR KAI:
+- Beziehe dich vorrangig auf die Mindset Journey (Tagebuch) des Tages: Gefühlslage, Erlebnisse, innere Themen
+- Stelle 1 einfühlsame Frage und biete 1 Mini-Impuls oder kleine Fürsorge ("Was würde dir jetzt gut tun?")
+` : '';
     const systemPrompt = `Du bist ${coach.name}, ein erfahrener Coach. Erstelle eine authentische, contextuelle Begrüßung.
 
 DEINE PERSÖNLICHKEIT & STIL:
@@ -208,10 +222,11 @@ DEINE PERSÖNLICHKEIT & STIL:
 VARIANZ-STRATEGIEN für ${coach.name}:
 Themes: ${strategy.themes.join(', ')}
 
-STILRICHTUNGEN (variiere zwischen diesen):
-${strategy.examples.map(ex => `- ${ex}`).join('\n')}
-
-KONTEXT-REGELN:
+    STILRICHTUNGEN (variiere zwischen diesen):
+    ${strategy.examples.map(ex => `- ${ex}`).join('\n')}
+    
+    ${mindsetKaiRule}
+    KONTEXT-REGELN:
 - MAXIMAL 2 kurze Sätze! Keine langen Erklärungen!
 - Vollständige Sätze (keine Abbrüche!)
 - Nutze aktuellen Kontext intelligent
