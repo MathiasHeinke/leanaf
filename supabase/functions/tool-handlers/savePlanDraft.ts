@@ -1,86 +1,88 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default async function handleSavePlanDraft(conv: any[], userId: string, args: any) {
-  const { draft_id } = args;
-  
   try {
-    console.log('Saving workout plan draft:', { draft_id, userId });
-    
-    // Get the draft
-    const { data: draft, error: fetchError } = await supabase
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const { draft_id } = args;
+
+    if (!draft_id) {
+      throw new Error('Draft ID is required');
+    }
+
+    // Fetch the draft plan
+    const { data: draftData, error: draftError } = await supabase
       .from('workout_plan_drafts')
       .select('*')
       .eq('id', draft_id)
       .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (fetchError || !draft) {
-      console.error('Error fetching draft:', fetchError);
-      return {
-        role: 'assistant',
-        content: 'Entwurf nicht gefunden oder Zugriff verweigert.',
-      };
+      .single();
+
+    if (draftError || !draftData) {
+      throw new Error('Draft plan not found or access denied');
     }
-    
-    // Save to workout_plans table
-    const { error: saveError } = await supabase
+
+    // Convert draft to active workout plan
+    const { data: planData, error: planError } = await supabase
       .from('workout_plans')
       .insert({
-        user_id: userId,
-        name: draft.name,
-        description: `${draft.goal} - ${draft.days_per_wk} Tage pro Woche`,
-        category: inferCategory(draft.goal),
-        exercises: draft.structure_json?.weekly_structure || [],
-        estimated_duration: draft.structure_json?.estimated_duration || 45,
-        is_active: true,
-        created_at: new Date().toISOString()
-      });
-    
-    if (saveError) {
-      console.error('Error saving workout plan:', saveError);
-      return {
-        role: 'assistant',
-        content: 'Fehler beim Speichern des Trainingsplans. Bitte versuche es erneut.',
-      };
-    }
-    
-    // Optional: Delete or mark draft as saved
-    await supabase
-      .from('workout_plan_drafts')
-      .delete()
-      .eq('id', draft_id)
-      .eq('user_id', userId);
-    
-    return {
-      role: 'assistant',
-      content: `✅ Trainingsplan **${draft.name}** wurde erfolgreich gespeichert und ist jetzt aktiv!`,
-      meta: { clearTool: true }
-    };
-  } catch (error) {
-    console.error('Error in savePlanDraft handler:', error);
-    return {
-      role: 'assistant',
-      content: 'Ein Fehler ist aufgetreten beim Speichern des Trainingsplans.',
-    };
-  }
-}
+        created_by: userId,
+        name: draftData.plan_name,
+        category: draftData.goal || 'custom',
+        description: draftData.notes || `Trainingsplan erstellt am ${new Date().toLocaleDateString('de-DE')}`,
+        exercises: draftData.plan_structure?.weekly_structure?.flatMap((day: any) => 
+          day.exercises?.map((ex: any) => ({
+            name: ex.name || ex.exercise_name || 'Unbenannte Übung',
+            sets: ex.sets || 3,
+            reps: ex.reps || '8-12',
+            weight: ex.weight || '',
+            rpe: ex.rpe || null,
+            rest_seconds: ex.rest_seconds || 120,
+            day: day.day,
+            focus: day.focus
+          })) || []
+        ) || [],
+        estimated_duration: 60,
+        difficulty_level: 'intermediate',
+        tags: [draftData.goal || 'custom', 'coach-generated'],
+        metadata: {
+          source: 'coach_draft',
+          original_structure: draftData.plan_structure,
+          days_per_week: draftData.days_per_week || draftData.plan_structure?.weekly_structure?.length || 0
+        }
+      })
+      .select()
+      .single();
 
-function inferCategory(goal: string): string {
-  const lowerGoal = goal.toLowerCase();
-  
-  if (lowerGoal.includes('muskel') || lowerGoal.includes('mass')) {
-    return 'Muskelaufbau';
-  } else if (lowerGoal.includes('kraft') || lowerGoal.includes('power')) {
-    return 'Krafttraining';
-  } else if (lowerGoal.includes('abnehm') || lowerGoal.includes('fett')) {
-    return 'Fettabbau';
-  } else if (lowerGoal.includes('ausdauer') || lowerGoal.includes('cardio')) {
-    return 'Ausdauer';
-  } else {
-    return 'Allgemeine Fitness';
+    if (planError) {
+      console.error('Error creating workout plan:', planError);
+      throw planError;
+    }
+
+    return {
+      role: 'assistant',
+      content: `**Trainingsplan erfolgreich gespeichert! ✅**
+
+"${draftData.plan_name}" ist jetzt als aktiver Trainingsplan verfügbar.
+
+**Was passiert jetzt:**
+• Der Plan steht unter "Meine Trainingspläne" zur Verfügung
+• Du kannst ihn jederzeit starten und Trainings protokollieren
+• Alle Übungen und Gewichte sind bereits eingestellt
+
+**Tipp:** Nutze die Trainingsprotokollierung, um deine Fortschritte zu verfolgen! 📈`
+    };
+
+  } catch (error) {
+    console.error('Error in savePlanDraft:', error);
+    return {
+      role: 'assistant',
+      content: `**Fehler beim Speichern** ❌
+
+Der Trainingsplan konnte nicht gespeichert werden. Versuche es in ein paar Minuten erneut.`
+    };
   }
 }

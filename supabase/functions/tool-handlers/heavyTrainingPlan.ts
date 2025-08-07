@@ -5,17 +5,95 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 );
 
+// Load and analyze user workout history for Markus-style recommendations
+async function analyzeUserStrengthHistory(supabase: any, userId: string): Promise<any> {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { data: exerciseData, error } = await supabase
+      .from('exercise_sets')
+      .select(`
+        weight_kg,
+        reps,
+        rpe,
+        exercises (name)
+      `)
+      .eq('user_id', userId)
+      .gte('created_at', startDate);
+
+    if (error || !exerciseData || exerciseData.length === 0) {
+      return { hasHistory: false };
+    }
+
+    // Find max weights for key exercises
+    const maxWeights = {
+      bankdrücken: 0,
+      kniebeugen: 0,
+      kreuzheben: 0,
+      schulterdrücken: 0
+    };
+
+    exerciseData.forEach(set => {
+      if (!set.exercises?.name || !set.weight_kg) return;
+      
+      const name = set.exercises.name.toLowerCase();
+      if (name.includes('bankdrück') || name.includes('bench')) {
+        maxWeights.bankdrücken = Math.max(maxWeights.bankdrücken, set.weight_kg);
+      } else if (name.includes('kniebeuge') || name.includes('squat')) {
+        maxWeights.kniebeugen = Math.max(maxWeights.kniebeugen, set.weight_kg);
+      } else if (name.includes('kreuzheb') || name.includes('deadlift')) {
+        maxWeights.kreuzheben = Math.max(maxWeights.kreuzheben, set.weight_kg);
+      } else if (name.includes('schulterdrück') || name.includes('overhead')) {
+        maxWeights.schulterdrücken = Math.max(maxWeights.schulterdrücken, set.weight_kg);
+      }
+    });
+
+    // Generate Markus-style insights
+    const insights = [];
+    const totalMax = Object.values(maxWeights).reduce((sum, weight) => sum + weight, 0);
+    
+    if (totalMax > 300) {
+      insights.push("Respekt! Du bist bereit für Markus' schwere Gewichte!");
+    } else if (totalMax > 200) {
+      insights.push("Solide Basis - Zeit, die Gewichte zu pushen!");
+    } else {
+      insights.push("Erstmal Grundlagen aufbauen, dann wird's heavy!");
+    }
+
+    if (maxWeights.bankdrücken > 100) {
+      insights.push(`Bankdrücken bei ${maxWeights.bankdrücken}kg - das ist schon ordentlich!`);
+    }
+
+    return {
+      hasHistory: true,
+      maxWeights,
+      insights,
+      readyForHeavy: totalMax > 250
+    };
+
+  } catch (error) {
+    console.error('Error analyzing strength history:', error);
+    return { hasHistory: false };
+  }
+}
+
 export default async function handleHeavyTrainingPlan(conv: any[], userId: string, args: any) {
   try {
     const { goal, training_days, experience_level, max_weights, focus_areas } = args;
 
-    // Markus Rühl's Heavy Training Philosophy
+    // Analyze user's strength history first
+    const strengthAnalysis = await analyzeUserStrengthHistory(supabase, userId);
+
+    // Markus Rühl's Heavy Training Philosophy with user data integration
     const heavyTrainingTemplate = generateHeavyTrainingPlan({
       goal: goal || 'mass_building',
       trainingDays: training_days || 4,
       experienceLevel: experience_level || 'intermediate', 
-      maxWeights: max_weights || {},
-      focusAreas: focus_areas || ['chest', 'back', 'legs']
+      maxWeights: strengthAnalysis.maxWeights || max_weights || {},
+      focusAreas: focus_areas || ['chest', 'back', 'legs'],
+      userStrengthData: strengthAnalysis
     });
 
     // Store the plan
@@ -34,11 +112,24 @@ export default async function handleHeavyTrainingPlan(conv: any[], userId: strin
 
     if (error) throw error;
 
+    // Generate response with strength insights
+    let strengthInsights = '';
+    if (strengthAnalysis.hasHistory) {
+      strengthInsights = `\n**Deine aktuellen Kraftwerte:**
+${Object.entries(strengthAnalysis.maxWeights)
+  .filter(([_, weight]) => weight > 0)
+  .map(([exercise, weight]) => `• ${exercise}: ${weight}kg`)
+  .join('\n')}
+
+**Markus sagt:** ${strengthAnalysis.insights.join(' ')}`;
+    }
+
     return {
       role: 'assistant',
       content: `**Markus Rühl Heavy Training Plan erstellt! 💪**
 
 "Wenn du nach dem Satz noch lächeln kannst, war's zu leicht!" 
+${strengthInsights}
 
 **Dein Plan:**
 • **${heavyTrainingTemplate.split_type}** (${training_days} Tage/Woche)
@@ -52,16 +143,23 @@ ${heavyTrainingTemplate.weekly_structure.map((day: any) =>
 
 **Markus' Regel:** Ego raus, Fokus auf Technik! Schwer trainieren heißt nicht schlampig trainieren.
 
-Der Plan wurde als Entwurf gespeichert. Bereit für echtes Heavy Training? 🔥`,
+Der Plan wurde als Entwurf gespeichert und berücksichtigt deine bisherigen Kraftwerte! 🔥`,
       preview_card: {
         title: "Heavy Training Plan - Markus Rühl Style",
-        description: `${training_days} Tage/Woche • Schwere Grundübungen • 6-8 Reps`,
+        description: `${training_days} Tage/Woche • Schwere Grundübungen • ${strengthAnalysis.hasHistory ? 'Datenbasiert' : 'Classic'}`,
         content: heavyTrainingTemplate.weekly_structure.map((day: any) => 
           `${day.day}: ${day.focus}`
         ).join(' | '),
         actions: [
+          { label: "Plan bearbeiten", action: "edit_workout_plan", data: { plan_id: planData.id } },
           { label: "Plan starten", action: "start_workout_plan", data: { plan_id: planData.id } }
-        ]
+        ],
+        metadata: {
+          userAnalytics: strengthAnalysis.hasHistory ? {
+            strengthProfile: strengthAnalysis.maxWeights,
+            recommendations: strengthAnalysis.insights
+          } : undefined
+        }
       }
     };
 
@@ -75,7 +173,33 @@ Der Plan wurde als Entwurf gespeichert. Bereit für echtes Heavy Training? 🔥`
 }
 
 function generateHeavyTrainingPlan(params: any) {
-  const { goal, trainingDays, experienceLevel, focusAreas } = params;
+  const { goal, trainingDays, experienceLevel, focusAreas, userStrengthData } = params;
+  
+  // Calculate suggested starting weights based on user's max weights
+  const getSuggestedWeight = (exerciseName: string): string => {
+    if (!userStrengthData?.hasHistory || !userStrengthData.maxWeights) return '';
+    
+    const maxWeights = userStrengthData.maxWeights;
+    let maxWeight = 0;
+    
+    if (exerciseName.toLowerCase().includes('bankdrück')) {
+      maxWeight = maxWeights.bankdrücken;
+    } else if (exerciseName.toLowerCase().includes('kniebeuge')) {
+      maxWeight = maxWeights.kniebeugen;
+    } else if (exerciseName.toLowerCase().includes('kreuzheb')) {
+      maxWeight = maxWeights.kreuzheben;
+    } else if (exerciseName.toLowerCase().includes('schulterdrück')) {
+      maxWeight = maxWeights.schulterdrücken;
+    }
+    
+    if (maxWeight > 0) {
+      // Start with 85% of current max for 6-8 reps
+      const suggestedWeight = Math.round(maxWeight * 0.85 * 2.5) / 2.5;
+      return ` (Start: ${suggestedWeight}kg)`;
+    }
+    
+    return '';
+  };
 
   // Markus Rühl's preferred split patterns
   const splitTemplates = {
@@ -85,30 +209,54 @@ function generateHeavyTrainingPlan(params: any) {
         {
           day: "Tag 1", 
           focus: "Brust/Trizeps",
-          main_exercises: ["Bankdrücken", "Schrägbankdrücken", "Dips", "Enges Bankdrücken"],
+          main_exercises: [`Bankdrücken${getSuggestedWeight('Bankdrücken')}`, "Schrägbankdrücken", "Dips", "Enges Bankdrücken"],
           rep_range: "6-8",
-          rest_between_sets: "3-4 Minuten"
+          rest_between_sets: "3-4 Minuten",
+          exercises: [
+            { name: `Bankdrücken${getSuggestedWeight('Bankdrücken')}`, sets: 4, reps: "6-8", weight: getSuggestedWeight('Bankdrücken').replace(/[^\d.]/g, '') },
+            { name: "Schrägbankdrücken", sets: 3, reps: "6-8" },
+            { name: "Dips", sets: 3, reps: "8-10" },
+            { name: "Enges Bankdrücken", sets: 3, reps: "6-8" }
+          ]
         },
         {
           day: "Tag 2",
           focus: "Rücken/Bizeps", 
-          main_exercises: ["Kreuzheben", "Klimmzüge", "Langhantelrudern", "Langhantel-Curls"],
+          main_exercises: [`Kreuzheben${getSuggestedWeight('Kreuzheben')}`, "Klimmzüge", "Langhantelrudern", "Langhantel-Curls"],
           rep_range: "6-8",
-          rest_between_sets: "3-4 Minuten"
+          rest_between_sets: "3-4 Minuten",
+          exercises: [
+            { name: `Kreuzheben${getSuggestedWeight('Kreuzheben')}`, sets: 4, reps: "6-8", weight: getSuggestedWeight('Kreuzheben').replace(/[^\d.]/g, '') },
+            { name: "Klimmzüge", sets: 3, reps: "6-8" },
+            { name: "Langhantelrudern", sets: 3, reps: "6-8" },
+            { name: "Langhantel-Curls", sets: 3, reps: "8-10" }
+          ]
         },
         {
           day: "Tag 3", 
           focus: "Beine",
-          main_exercises: ["Kniebeugen", "Beinpresse", "Rumänisches Kreuzheben", "Wadenheben"],
+          main_exercises: [`Kniebeugen${getSuggestedWeight('Kniebeugen')}`, "Beinpresse", "Rumänisches Kreuzheben", "Wadenheben"],
           rep_range: "6-8 (Kniebeugen), 8-12 (Isolation)",
-          rest_between_sets: "4-5 Minuten"
+          rest_between_sets: "4-5 Minuten",
+          exercises: [
+            { name: `Kniebeugen${getSuggestedWeight('Kniebeugen')}`, sets: 4, reps: "6-8", weight: getSuggestedWeight('Kniebeugen').replace(/[^\d.]/g, '') },
+            { name: "Beinpresse", sets: 3, reps: "8-12" },
+            { name: "Rumänisches Kreuzheben", sets: 3, reps: "6-8" },
+            { name: "Wadenheben", sets: 4, reps: "12-15" }
+          ]
         },
         {
           day: "Tag 4",
           focus: "Schultern/Arme",
-          main_exercises: ["Schulterdrücken", "Seitheben", "Langhantel-Curls", "French Press"],
+          main_exercises: [`Schulterdrücken${getSuggestedWeight('Schulterdrücken')}`, "Seitheben", "Langhantel-Curls", "French Press"],
           rep_range: "6-8 (Grundübungen), 8-10 (Isolation)",
-          rest_between_sets: "3-4 Minuten"
+          rest_between_sets: "3-4 Minuten",
+          exercises: [
+            { name: `Schulterdrücken${getSuggestedWeight('Schulterdrücken')}`, sets: 4, reps: "6-8", weight: getSuggestedWeight('Schulterdrücken').replace(/[^\d.]/g, '') },
+            { name: "Seitheben", sets: 3, reps: "8-10" },
+            { name: "Langhantel-Curls", sets: 3, reps: "8-10" },
+            { name: "French Press", sets: 3, reps: "8-10" }
+          ]
         }
       ]
     },

@@ -267,6 +267,155 @@ const COACH_PERSONAS = [
   }
 ];
 
+// Load and analyze user workout history for data-driven planning
+async function analyzeUserWorkoutHistory(supabase: any, userId: string): Promise<any> {
+  try {
+    // Get last 30 days of workout data
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+    // Fetch exercise sets with exercise details
+    const { data: exerciseData, error } = await supabase
+      .from('exercise_sets')
+      .select(`
+        weight_kg,
+        reps,
+        rpe,
+        created_at,
+        exercises (
+          name,
+          category,
+          muscle_groups
+        )
+      `)
+      .eq('user_id', userId)
+      .gte('created_at', startDate)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching workout history:', error);
+      return { hasHistory: false };
+    }
+
+    if (!exerciseData || exerciseData.length === 0) {
+      return { hasHistory: false };
+    }
+
+    // Analyze exercise performance
+    const exerciseStats = new Map();
+    let totalVolume = 0;
+    const muscleGroupVolume = new Map();
+    const rpeValues: number[] = [];
+
+    exerciseData.forEach(set => {
+      if (!set.exercises?.name || !set.weight_kg || !set.reps) return;
+
+      const volume = set.weight_kg * set.reps;
+      totalVolume += volume;
+      
+      if (set.rpe) rpeValues.push(set.rpe);
+
+      const exerciseName = set.exercises.name;
+      if (!exerciseStats.has(exerciseName)) {
+        exerciseStats.set(exerciseName, {
+          maxWeight: 0,
+          totalVolume: 0,
+          avgRpe: 0,
+          rpeCount: 0,
+          category: set.exercises.category,
+          muscleGroups: set.exercises.muscle_groups || []
+        });
+      }
+
+      const stats = exerciseStats.get(exerciseName);
+      stats.maxWeight = Math.max(stats.maxWeight, set.weight_kg);
+      stats.totalVolume += volume;
+      if (set.rpe) {
+        stats.avgRpe = (stats.avgRpe * stats.rpeCount + set.rpe) / (stats.rpeCount + 1);
+        stats.rpeCount++;
+      }
+
+      // Track muscle group volumes
+      if (set.exercises.muscle_groups) {
+        set.exercises.muscle_groups.forEach((mg: string) => {
+          muscleGroupVolume.set(mg, (muscleGroupVolume.get(mg) || 0) + volume);
+        });
+      }
+    });
+
+    // Calculate strength profile for major lifts
+    const strengthProfile = {
+      squat: 0,
+      bench: 0,
+      deadlift: 0,
+      overhead_press: 0
+    };
+
+    for (const [name, stats] of exerciseStats) {
+      const nameLower = name.toLowerCase();
+      if (nameLower.includes('kniebeuge') || nameLower.includes('squat')) {
+        strengthProfile.squat = Math.max(strengthProfile.squat, stats.maxWeight);
+      } else if (nameLower.includes('bankdrück') || nameLower.includes('bench')) {
+        strengthProfile.bench = Math.max(strengthProfile.bench, stats.maxWeight);
+      } else if (nameLower.includes('kreuzheb') || nameLower.includes('deadlift')) {
+        strengthProfile.deadlift = Math.max(strengthProfile.deadlift, stats.maxWeight);
+      } else if (nameLower.includes('schulterdrück') || nameLower.includes('overhead') || nameLower.includes('military')) {
+        strengthProfile.overhead_press = Math.max(strengthProfile.overhead_press, stats.maxWeight);
+      }
+    }
+
+    // Generate insights and recommendations
+    const avgRpe = rpeValues.length > 0 ? rpeValues.reduce((sum, rpe) => sum + rpe, 0) / rpeValues.length : 0;
+    const muscleGroupArray = Array.from(muscleGroupVolume.entries()).sort((a, b) => b[1] - a[1]);
+    
+    const recommendations = [];
+    
+    // RPE-based recommendations
+    if (avgRpe > 8.5) {
+      recommendations.push("Deine RPE ist sehr hoch (>8.5) - Zeit für eine Deload-Woche");
+    } else if (avgRpe < 7) {
+      recommendations.push("Du kannst die Intensität steigern - aktuelle RPE ist niedrig");
+    }
+
+    // Volume balance recommendations
+    if (muscleGroupArray.length > 1) {
+      const topVolume = muscleGroupArray[0][1];
+      const undertrainedGroups = muscleGroupArray.filter(([group, volume]) => volume < topVolume * 0.6);
+      if (undertrainedGroups.length > 0) {
+        recommendations.push(`Schwächer trainierte Muskelgruppen: ${undertrainedGroups.map(g => g[0]).join(', ')}`);
+      }
+    }
+
+    // Strength level recommendations
+    const hasStrongLifts = Object.values(strengthProfile).some(weight => weight > 100);
+    if (hasStrongLifts) {
+      recommendations.push("Starke Grundübungen erkannt - perfekt für schweres Training");
+    } else {
+      recommendations.push("Fokus auf Grundübungen-Entwicklung empfohlen");
+    }
+
+    return {
+      hasHistory: true,
+      totalWorkouts: Math.ceil(exerciseData.length / 15), // Estimate sessions
+      totalVolume: Math.round(totalVolume),
+      avgRpe: Math.round(avgRpe * 10) / 10,
+      strengthProfile,
+      topExercises: Array.from(exerciseStats.entries())
+        .sort((a, b) => b[1].totalVolume - a[1].totalVolume)
+        .slice(0, 5)
+        .map(([name, stats]) => ({ name, ...stats })),
+      muscleGroupBalance: muscleGroupArray.slice(0, 5),
+      recommendations,
+      workoutFrequency: Math.round((exerciseData.length / 30) * 7 * 10) / 10 // sessions per week
+    };
+
+  } catch (error) {
+    console.error('Error analyzing workout history:', error);
+    return { hasHistory: false };
+  }
+}
+
 // Enhanced user profile extraction with comprehensive data
 function extractUserProfile(conversation: any[], userId?: string): any {
   // Convert conversation to simple format for extraction
@@ -289,23 +438,28 @@ function extractUserProfile(conversation: any[], userId?: string): any {
 // Load user profile from database and merge with extracted profile
 async function loadUserProfile(supabase: any, userId: string, extractedProfile?: any): Promise<any> {
   try {
+    // Load profile from profiles table instead of user_profiles
     const { data: profileData } = await supabase
-      .from('user_profiles')
-      .select('profile')
+      .from('profiles')
+      .select('*')
       .eq('user_id', userId)
       .maybeSingle();
     
-    const existingProfile = profileData?.profile || {};
+    const existingProfile = profileData || {};
+    
+    // Also analyze workout history for data-driven insights
+    const workoutAnalysis = await analyzeUserWorkoutHistory(supabase, userId);
     
     // Merge extracted with existing (extracted has priority for new data)
     return {
       ...existingProfile,
       ...extractedProfile,
+      workoutHistory: workoutAnalysis,
       userId
     };
   } catch (error) {
     console.error('Error loading user profile:', error);
-    return extractedProfile || { userId };
+    return { ...extractedProfile, userId };
   }
 }
 
