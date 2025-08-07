@@ -2287,72 +2287,264 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_daily_summaries: {
+        Row: {
+          ai_summary: string | null
+          avg_wellness_score: number | null
+          created_at: string
+          date: string
+          dominant_emotions: Json | null
+          id: string
+          key_themes: string[] | null
+          photo_highlights: Json | null
+          total_entries: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          avg_wellness_score?: number | null
+          created_at?: string
+          date: string
+          dominant_emotions?: Json | null
+          id?: string
+          key_themes?: string[] | null
+          photo_highlights?: Json | null
+          total_entries?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          avg_wellness_score?: number | null
+          created_at?: string
+          date?: string
+          dominant_emotions?: Json | null
+          id?: string
+          key_themes?: string[] | null
+          photo_highlights?: Json | null
+          total_entries?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
+          ai_analysis_metadata: Json | null
           ai_summary_md: string | null
           audio_url: string | null
           challenge: string | null
           created_at: string
           date: string
+          emotional_scores: Json | null
           energy_level: number | null
+          entry_sequence_number: number | null
           gratitude_items: string[] | null
           highlight: string | null
           id: string
           kai_insight: string | null
           manifestation_items: string[] | null
           mood_score: number | null
+          photo_analysis: Json | null
+          photo_url: string | null
           prompt_used: string | null
           quadrant_analysis: Json | null
           raw_text: string | null
           sentiment_tag: string | null
           stress_indicators: string[] | null
+          timestamp: string | null
           transformation_themes: string[] | null
           updated_at: string
           user_id: string
+          wellness_score: number | null
         }
         Insert: {
+          ai_analysis_metadata?: Json | null
           ai_summary_md?: string | null
           audio_url?: string | null
           challenge?: string | null
           created_at?: string
           date: string
+          emotional_scores?: Json | null
           energy_level?: number | null
+          entry_sequence_number?: number | null
           gratitude_items?: string[] | null
           highlight?: string | null
           id?: string
           kai_insight?: string | null
           manifestation_items?: string[] | null
           mood_score?: number | null
+          photo_analysis?: Json | null
+          photo_url?: string | null
           prompt_used?: string | null
           quadrant_analysis?: Json | null
           raw_text?: string | null
           sentiment_tag?: string | null
           stress_indicators?: string[] | null
+          timestamp?: string | null
           transformation_themes?: string[] | null
           updated_at?: string
           user_id: string
+          wellness_score?: number | null
         }
         Update: {
+          ai_analysis_metadata?: Json | null
           ai_summary_md?: string | null
           audio_url?: string | null
           challenge?: string | null
           created_at?: string
           date?: string
+          emotional_scores?: Json | null
           energy_level?: number | null
+          entry_sequence_number?: number | null
           gratitude_items?: string[] | null
           highlight?: string | null
           id?: string
           kai_insight?: string | null
           manifestation_items?: string[] | null
           mood_score?: number | null
+          photo_analysis?: Json | null
+          photo_url?: string | null
           prompt_used?: string | null
           quadrant_analysis?: Json | null
           raw_text?: string | null
           sentiment_tag?: string | null
           stress_indicators?: string[] | null
+          timestamp?: string | null
           transformation_themes?: string[] | null
           updated_at?: string
           user_id?: string
+          wellness_score?: number | null
+        }
+        Relationships: []
+      }
+      journal_monthly_summaries: {
+        Row: {
+          created_at: string
+          development_insights: string | null
+          entries_count: number | null
+          id: string
+          life_areas_progress: Json | null
+          month: string
+          photo_memory_highlights: Json | null
+          transformation_themes: string[] | null
+          updated_at: string
+          user_id: string
+          wellness_index: number | null
+        }
+        Insert: {
+          created_at?: string
+          development_insights?: string | null
+          entries_count?: number | null
+          id?: string
+          life_areas_progress?: Json | null
+          month: string
+          photo_memory_highlights?: Json | null
+          transformation_themes?: string[] | null
+          updated_at?: string
+          user_id: string
+          wellness_index?: number | null
+        }
+        Update: {
+          created_at?: string
+          development_insights?: string | null
+          entries_count?: number | null
+          id?: string
+          life_areas_progress?: Json | null
+          month?: string
+          photo_memory_highlights?: Json | null
+          transformation_themes?: string[] | null
+          updated_at?: string
+          user_id?: string
+          wellness_index?: number | null
+        }
+        Relationships: []
+      }
+      journal_photo_analyses: {
+        Row: {
+          ai_interpretation: string | null
+          color_palette: Json | null
+          confidence_score: number | null
+          created_at: string
+          detected_objects: Json | null
+          id: string
+          journal_entry_id: string
+          memory_tags: string[] | null
+          mood_analysis: Json | null
+          photo_url: string
+          scene_description: string | null
+        }
+        Insert: {
+          ai_interpretation?: string | null
+          color_palette?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          detected_objects?: Json | null
+          id?: string
+          journal_entry_id: string
+          memory_tags?: string[] | null
+          mood_analysis?: Json | null
+          photo_url: string
+          scene_description?: string | null
+        }
+        Update: {
+          ai_interpretation?: string | null
+          color_palette?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          detected_objects?: Json | null
+          id?: string
+          journal_entry_id?: string
+          memory_tags?: string[] | null
+          mood_analysis?: Json | null
+          photo_url?: string
+          scene_description?: string | null
+        }
+        Relationships: []
+      }
+      journal_weekly_summaries: {
+        Row: {
+          achievements: string[] | null
+          ai_insights: string | null
+          created_at: string
+          entries_count: number | null
+          growth_areas: string[] | null
+          id: string
+          pattern_insights: Json | null
+          updated_at: string
+          user_id: string
+          week_end: string
+          week_start: string
+          wellness_trend: number | null
+        }
+        Insert: {
+          achievements?: string[] | null
+          ai_insights?: string | null
+          created_at?: string
+          entries_count?: number | null
+          growth_areas?: string[] | null
+          id?: string
+          pattern_insights?: Json | null
+          updated_at?: string
+          user_id: string
+          week_end: string
+          week_start: string
+          wellness_trend?: number | null
+        }
+        Update: {
+          achievements?: string[] | null
+          ai_insights?: string | null
+          created_at?: string
+          entries_count?: number | null
+          growth_areas?: string[] | null
+          id?: string
+          pattern_insights?: Json | null
+          updated_at?: string
+          user_id?: string
+          week_end?: string
+          week_start?: string
+          wellness_trend?: number | null
         }
         Relationships: []
       }
@@ -3238,6 +3430,39 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weight?: number | null
+        }
+        Relationships: []
+      }
+      progressive_prompts: {
+        Row: {
+          category: string
+          context_tags: string[] | null
+          created_at: string
+          follow_up_text: string | null
+          id: string
+          prompt_level: number
+          question_text: string
+          usage_frequency: number | null
+        }
+        Insert: {
+          category: string
+          context_tags?: string[] | null
+          created_at?: string
+          follow_up_text?: string | null
+          id?: string
+          prompt_level: number
+          question_text: string
+          usage_frequency?: number | null
+        }
+        Update: {
+          category?: string
+          context_tags?: string[] | null
+          created_at?: string
+          follow_up_text?: string | null
+          id?: string
+          prompt_level?: number
+          question_text?: string
+          usage_frequency?: number | null
         }
         Relationships: []
       }
@@ -5373,6 +5598,10 @@ export type Database = {
       get_day_context: {
         Args: { p_user: string; p_day: string }
         Returns: Json
+      }
+      get_next_entry_sequence: {
+        Args: { p_user_id: string; p_date: string }
+        Returns: number
       }
       get_or_cache_query_embedding: {
         Args: { query_text: string; query_embedding: string }

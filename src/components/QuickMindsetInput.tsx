@@ -1,33 +1,34 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart } from "lucide-react";
-import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
-import { useMindsetJournal } from "@/hooks/useMindsetJournal";
-import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
-import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
-import { cn } from "@/lib/utils";
+import React, { useState } from 'react';
+import { Brain, Mic, MicOff, Send, RefreshCw, Camera, Clock, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { CollapsibleQuickInput } from '@/components/CollapsibleQuickInput';
+import { PhotoUpload } from '@/components/PhotoUpload';
+import { useEnhancedMindsetJournal } from '@/hooks/useEnhancedMindsetJournal';
+import { useEnhancedVoiceRecording } from '@/hooks/useEnhancedVoiceRecording';
 
 interface QuickMindsetInputProps {
   onMindsetAdded?: () => void;
 }
 
-export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) => {
+export function QuickMindsetInput({ onMindsetAdded }: QuickMindsetInputProps) {
   const [manualText, setManualText] = useState('');
-  const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
-
-  const mindsetJournal = useMindsetJournal();
-  const voiceRecording = useEnhancedVoiceRecording();
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
 
   const {
     currentPrompt,
+    todaysEntries,
     recentEntries = [],
     isLoading = false,
-    saveJournalEntry = async () => {},
-    requestKaiAnalysis = async () => null,
-    refreshPrompt = () => {}
-  } = mindsetJournal || {};
+    isAnalyzing = false,
+    lastAnalysis,
+    saveJournalEntry,
+    getTodaysWellnessSummary,
+    getFormattedEntryTime,
+    entryCount = 0
+  } = useEnhancedMindsetJournal();
 
   const {
     isRecording = false,
@@ -37,224 +38,207 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
     startRecording = async () => {},
     stopRecording = async () => {},
     clearTranscription = () => {}
-  } = voiceRecording || {};
-
-  const getCurrentTimeOfDay = () => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour < 12) return 'Morgen';
-    if (hour >= 12 && hour < 18) return 'Mittag';
-    return 'Abend';
-  };
+  } = useEnhancedVoiceRecording();
 
   const handleAnalyzeAndSave = async () => {
     const textToAnalyze = transcribedText || manualText;
     if (!textToAnalyze.trim()) return;
 
-    if (analysisMode === 'kai' && textToAnalyze.length > 50) {
-      // Use Kai's advanced analysis
-      const kaiAnalysis = await requestKaiAnalysis(textToAnalyze);
+    try {
+      await saveJournalEntry(textToAnalyze, selectedPhoto || undefined);
       
-      if (kaiAnalysis) {
-        await saveJournalEntry({
-          raw_text: textToAnalyze,
-          mood_score: kaiAnalysis.mood_level || 0,
-          sentiment_tag: kaiAnalysis.sentiment || 'neutral',
-          gratitude_items: kaiAnalysis.gratitude_elements || [],
-          highlight: kaiAnalysis.highlight,
-          challenge: kaiAnalysis.challenge,
-          prompt_used: currentPrompt?.question
-        });
-      }
-    } else {
-      // Simple analysis
-      const words = textToAnalyze.toLowerCase();
-      const positiveWords = ['gut', 'super', 'toll', 'dankbar', 'glücklich', 'freude'];
-      const negativeWords = ['schlecht', 'müde', 'stress', 'schwer', 'traurig'];
+      // Clear inputs
+      setManualText('');
+      setSelectedPhoto(null);
+      clearTranscription();
       
-      const positiveCount = positiveWords.filter(word => words.includes(word)).length;
-      const negativeCount = negativeWords.filter(word => words.includes(word)).length;
-      
-      let mood_score = 0;
-      if (positiveCount > negativeCount) mood_score = Math.min(5, positiveCount);
-      else if (negativeCount > positiveCount) mood_score = Math.max(-5, -negativeCount);
-
-      const gratitudePattern = /(?:dankbar für|bin dankbar|grateful for)\s+([^.!?]+)/gi;
-      const gratitudeMatches = [...textToAnalyze.matchAll(gratitudePattern)];
-      const gratitude_items = gratitudeMatches.map(match => match[1].trim()).slice(0, 3);
-
-      await saveJournalEntry({
-        raw_text: textToAnalyze,
-        mood_score,
-        sentiment_tag: mood_score > 0 ? 'positive' : mood_score < 0 ? 'negative' : 'neutral',
-        gratitude_items,
-        prompt_used: currentPrompt?.question
-      });
+      onMindsetAdded?.();
+    } catch (error) {
+      console.error('Error saving mindset entry:', error);
     }
-
-    // Clear inputs and notify parent
-    setManualText('');
-    clearTranscription();
-    onMindsetAdded?.();
   };
 
-  const getMoodBadgeColor = (score: number) => {
-    if (score >= 3) return 'bg-success/20 text-success border-success/30';
-    if (score >= 1) return 'bg-primary/20 text-primary border-primary/30';
-    if (score === 0) return 'bg-muted text-muted-foreground border-muted';
-    if (score >= -2) return 'bg-warning/20 text-warning border-warning/30';
-    return 'bg-destructive/20 text-destructive border-destructive/30';
-  };
-
-  // Check if user has entries today
-  const today = new Date().toISOString().split('T')[0];
-  const hasEntriesToday = recentEntries.some(entry => 
-    new Date(entry.date).toISOString().split('T')[0] === today
-  );
+  // Get wellness summary for today
+  const wellnessSummary = getTodaysWellnessSummary();
 
   return (
     <CollapsibleQuickInput
       title="Mindset Journal"
       icon={<Brain className="h-5 w-5" />}
       theme="violet"
-      isCompleted={hasEntriesToday}
-      completedText={hasEntriesToday ? `${recentEntries.filter(entry => 
-        new Date(entry.date).toISOString().split('T')[0] === today
-      ).length} Einträge heute` : undefined}
-      defaultOpen={!hasEntriesToday}
+      isCompleted={entryCount > 0}
+      completedText={entryCount > 0 ? `${entryCount} Einträge heute` : undefined}
+      defaultOpen={entryCount === 0}
     >
       <div className="space-y-4">
-        {/* Smart Prompt */}
+        {/* Smart Prompt with Entry Counter */}
         {currentPrompt && (
-          <div className="p-3 rounded-lg bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border border-violet-200/50 dark:border-violet-800/30">
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg border">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
-                  {currentPrompt.expertise}
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {getCurrentTimeOfDay()}
-                </Badge>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refreshPrompt}
-                className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
-              >
-                <Sparkles className="h-3 w-3" />
-              </Button>
+              <p className="text-sm font-medium text-foreground">
+                {currentPrompt.question_text}
+              </p>
+              <Badge variant="secondary" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" />
+                {entryCount + 1}. Eintrag
+              </Badge>
             </div>
-            <p className="text-sm font-medium text-violet-900 dark:text-violet-100 mb-1">
-              {currentPrompt.question}
-            </p>
-            {currentPrompt.followUp && (
-              <p className="text-xs text-violet-600 dark:text-violet-400">
-                💡 {currentPrompt.followUp}
+            {currentPrompt.follow_up_text && (
+              <p className="text-xs text-muted-foreground">
+                {currentPrompt.follow_up_text}
               </p>
             )}
           </div>
         )}
 
-        {/* Input Methods */}
-        <div className="space-y-3">
-          {/* Voice Input & Analysis Mode */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant={isRecording ? "destructive" : "secondary"}
-              size="sm"
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isProcessing}
-              className="flex-1"
-            >
-              {isRecording ? (
-                <>
-                  <MicOff className="h-4 w-4 mr-2" />
-                  Stoppen
-                </>
-              ) : (
-                <>
-                  <Mic className="h-4 w-4 mr-2" />
-                  Voice Input
-                </>
-              )}
-            </Button>
+        {/* Wellness Summary */}
+        {wellnessSummary && (
+          <div className="mb-4 p-2 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Heutiger Wellness-Score</span>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-3 w-3 text-primary" />
+                <span className="text-sm font-medium text-primary">
+                  {wellnessSummary.averageWellnessScore}/100
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
-            {/* Analysis Mode Toggle */}
-            <div className="flex border rounded-md">
+        {/* Input Methods */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
               <Button
-                variant={analysisMode === 'simple' ? "secondary" : "ghost"}
+                variant="outline"
                 size="sm"
-                onClick={() => setAnalysisMode('simple')}
-                className="rounded-r-none border-0 text-xs px-2"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isProcessing}
+                className={`w-full ${isRecording ? 'bg-destructive/10 border-destructive text-destructive' : ''}`}
               >
-                Basic
+                {isRecording ? (
+                  <>
+                    <MicOff className="h-4 w-4 mr-2" />
+                    Aufnahme beenden
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-4 w-4 mr-2" />
+                    Sprechen
+                  </>
+                )}
               </Button>
-              <Button
-                variant={analysisMode === 'kai' ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setAnalysisMode('kai')}
-                className="rounded-l-none border-0 text-xs px-2"
-              >
-                <Brain className="h-3 w-3 mr-1" />
-                Kai
-              </Button>
+              
+              {/* Audio Level Visualizer */}
+              {isRecording && (
+                <div className="absolute -bottom-2 left-0 right-0 h-1 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-destructive transition-all duration-100 ease-out"
+                    style={{ width: `${Math.min(audioLevel * 100, 100)}%` }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Voice Visualizer */}
-          {(isRecording || audioLevel > 0) && (
-            <VoiceVisualizer audioLevel={audioLevel} isRecording={isRecording} />
-          )}
-
-          {/* Text Input */}
-          <Textarea
-            placeholder="Oder schreibe deine Gedanken hier..."
-            value={transcribedText || manualText}
-            onChange={(e) => setManualText(e.target.value)}
-            className="min-h-[60px] resize-none"
-            disabled={isRecording || isProcessing}
+          {/* Photo Upload */}
+          <PhotoUpload
+            onPhotoSelect={setSelectedPhoto}
+            onPhotoRemove={() => setSelectedPhoto(null)}
+            selectedPhoto={selectedPhoto}
           />
 
-          {/* Submit Button */}
-          <Button
-            onClick={handleAnalyzeAndSave}
-            disabled={!(transcribedText || manualText.trim()) || isLoading || isProcessing}
-            size="sm"
-            className="w-full"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
-          </Button>
+          {/* Transcribed or Manual Text */}
+          <Textarea
+            placeholder="Oder schreibe deine Gedanken hier..."
+            value={manualText}
+            onChange={(e) => setManualText(e.target.value)}
+            className="min-h-[100px] resize-none"
+          />
+
+          {transcribedText && (
+            <div className="p-3 bg-muted/50 rounded-lg border">
+              <p className="text-sm text-muted-foreground mb-1">Aufgenommener Text:</p>
+              <p className="text-sm">{transcribedText}</p>
+            </div>
+          )}
         </div>
 
+        {/* Analysis Status */}
+        {isAnalyzing && (
+          <div className="p-3 bg-primary/5 rounded-lg border border-primary/10">
+            <div className="flex items-center gap-2">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+              <span className="text-sm text-primary">KI analysiert deine Reflexion...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Latest Analysis Results */}
+        {lastAnalysis && (
+          <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+              ✨ Analyse abgeschlossen
+            </p>
+            <div className="text-xs text-green-700 dark:text-green-300 space-y-1">
+              <div>Wellness-Score: {lastAnalysis.wellness_score}/100</div>
+              {lastAnalysis.insights.map((insight, index) => (
+                <div key={index}>• {insight}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Button */}
+        <Button 
+          onClick={handleAnalyzeAndSave}
+          disabled={isLoading || isAnalyzing || (!transcribedText && !manualText.trim())}
+          className="w-full"
+        >
+          {isLoading || isAnalyzing ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              {isAnalyzing ? 'KI analysiert...' : 'Speichere...'}
+            </>
+          ) : (
+            <>
+              <Send className="h-4 w-4 mr-2" />
+              Speichern & KI-Analyse
+            </>
+          )}
+        </Button>
+
         {/* Today's Entries Preview */}
-        {hasEntriesToday && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground">Heutige Einträge</h4>
-            <div className="flex gap-2 flex-wrap">
-              {recentEntries
-                .filter(entry => new Date(entry.date).toISOString().split('T')[0] === today)
-                .slice(0, 3)
-                .map((entry, index) => (
-                <div
-                  key={entry.id || index}
-                  className="flex items-center gap-1 p-2 rounded-md bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30"
-                >
-                  <Badge
-                    variant="outline"
-                    className={cn("text-xs px-1", getMoodBadgeColor(entry.mood_score))}
-                  >
-                    {entry.mood_score > 0 ? '😊' : entry.mood_score < 0 ? '😔' : '😐'}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(entry.date).toLocaleTimeString('de-DE', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
-                  {entry.gratitude_items.length > 0 && (
-                    <Heart className="h-3 w-3 text-violet-500" />
+        {todaysEntries && todaysEntries.length > 0 && (
+          <div className="pt-4 border-t">
+            <h4 className="text-sm font-medium text-foreground mb-3">
+              Heutige Einträge ({todaysEntries.length})
+            </h4>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {todaysEntries.slice(0, 3).map((entry, index) => (
+                <div key={entry.id || index} className="p-2 bg-muted/50 rounded text-xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-muted-foreground">
+                      {getFormattedEntryTime(entry)}
+                    </span>
+                    {entry.wellness_score && (
+                      <Badge 
+                        variant="secondary" 
+                        className="text-xs px-2 py-0 bg-primary/10 text-primary"
+                      >
+                        {entry.wellness_score}/100
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-foreground line-clamp-2">
+                    {(entry.raw_text || '').length > 80 ? `${(entry.raw_text || '').substring(0, 80)}...` : (entry.raw_text || '')}
+                  </p>
+                  {entry.photo_url && (
+                    <div className="mt-1 flex items-center gap-1 text-muted-foreground">
+                      <Camera className="h-3 w-3" />
+                      <span className="text-xs">Mit Foto</span>
+                    </div>
                   )}
                 </div>
               ))}
@@ -264,4 +248,4 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
       </div>
     </CollapsibleQuickInput>
   );
-};
+}
