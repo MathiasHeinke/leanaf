@@ -13,43 +13,51 @@ export interface OpenAIConfig {
 
 // Modell-Routing nach Qualitätsbedarf
 export const MODEL_CONFIGS = {
-  // GPT-4.1 für tiefes Schlussfolgern, beste Instruktions-Treue
+  // GPT-5 Standard – High-level reasoning, RAG, planning
   REASONING: {
-    model: 'gpt-4.1-2025-04-14',
+    model: 'gpt-5',
     temperature: 0.2,
     top_p: 0.95,
     frequency_penalty: 0.1,
     stream: false
   } as OpenAIConfig,
 
-  // GPT-4.1 für Vision + rasches Feedback (≤3s)
+  // Vision Fast – cheap multimodal for quick feedback (meals, supplements)
   VISION_FAST: {
-    model: 'gpt-4.1-2025-04-14', 
+    model: 'gpt-4o-mini',
     temperature: 0.4,
     top_p: 1,
     stream: false
   } as OpenAIConfig,
 
-  // GPT-4o-mini für Massendurchsatz, unkritisch
+  // Vision Precise – best quality for body images and important visuals
+  VISION_PRECISE: {
+    model: 'gpt-5',
+    temperature: 0.2,
+    top_p: 0.95,
+    stream: false
+  } as OpenAIConfig,
+
+  // Bulk/High-throughput – inexpensive default
   BULK: {
-    model: 'gpt-4o-mini',
+    model: 'gpt-5-nano',
     temperature: 0.6,
     top_p: 1,
     stream: false
   } as OpenAIConfig,
 
-  // Verifikation / Parsing (Verify Meal, Extract Exercise)
+  // Verification/Parsing – deterministic JSON/classification
   VERIFICATION: {
-    model: 'gpt-4.1-2025-04-14',
+    model: 'gpt-5-mini',
     temperature: 0.0,
     top_p: 0,
     frequency_penalty: 0,
     presence_penalty: 0
   } as OpenAIConfig,
 
-  // Kreative Vorschläge (Generate Coach Suggestion)
+  // Creative suggestions and tone-friendly outputs
   CREATIVE: {
-    model: 'gpt-4.1-2025-04-14',
+    model: 'gpt-5-mini',
     temperature: 0.7,
     top_p: 1,
     frequency_penalty: 0,
@@ -57,9 +65,9 @@ export const MODEL_CONFIGS = {
     stream: false
   } as OpenAIConfig,
 
-  // Zusammenfassen (Day Summary)
+  // Summaries (day summaries etc.)
   SUMMARY: {
-    model: 'gpt-4o-mini', // Optimiert für Durchsatz
+    model: 'gpt-5-nano',
     temperature: 0.3,
     top_p: 0.9,
     frequency_penalty: 0.2,
@@ -67,9 +75,9 @@ export const MODEL_CONFIGS = {
     stream: false
   } as OpenAIConfig,
 
-  // Langketten-Analyse (Sleep/Workout Analysis)  
+  // Long-chain analysis (sleep/workout analysis)
   ANALYSIS: {
-    model: 'gpt-4.1-2025-04-14',
+    model: 'gpt-5',
     temperature: 0.2,
     top_p: 0.95,
     frequency_penalty: 0.1,
@@ -77,9 +85,9 @@ export const MODEL_CONFIGS = {
     stream: false
   } as OpenAIConfig,
 
-  // Emotions-/Intent-Klassen, JSON-Output
+  // Structured outputs – JSON schemas, intent detection
   STRUCTURED: {
-    model: 'gpt-4.1-2025-04-14',
+    model: 'gpt-5-mini',
     temperature: 0.1,
     top_p: 0.9,
     frequency_penalty: 0,
@@ -99,14 +107,14 @@ export const TASK_CONFIGS = {
   'extract-exercise-data': MODEL_CONFIGS.VERIFICATION,
   'coach-workout-analysis': MODEL_CONFIGS.ANALYSIS,
 
-  // Body & Health Analysis
-  'body-analysis': MODEL_CONFIGS.VISION_FAST,
+  // Body & Health Analysis (prefer precise vision)
+  'body-analysis': MODEL_CONFIGS.VISION_PRECISE,
   'coach-sleep-analysis': MODEL_CONFIGS.ANALYSIS,
   'coach-weight-analysis': MODEL_CONFIGS.ANALYSIS,
 
   // Coach Features
-  'coach-analysis': MODEL_CONFIGS.VISION_FAST,
-  'coach-media-analysis': MODEL_CONFIGS.REASONING,
+  'coach-analysis': MODEL_CONFIGS.REASONING,
+  'coach-media-analysis': MODEL_CONFIGS.VISION_PRECISE,
   'coach-recipes': MODEL_CONFIGS.REASONING,
   'generate-coach-suggestions': MODEL_CONFIGS.CREATIVE,
   'unified-coach-engine': MODEL_CONFIGS.REASONING,
@@ -125,6 +133,23 @@ export const TASK_CONFIGS = {
   'generate-intelligent-greeting': MODEL_CONFIGS.CREATIVE,
   'send-marketing-email': MODEL_CONFIGS.BULK
 };
+
+export function resolveModel(model: string): string {
+  switch (model) {
+    case 'gpt-5':
+      return 'gpt-4.1-2025-04-14';
+    case 'gpt-5-mini':
+      return 'gpt-4o-mini';
+    case 'gpt-5-nano':
+      return 'gpt-4o-mini';
+    default:
+      return model;
+  }
+}
+
+export function getTaskModel(task: keyof typeof TASK_CONFIGS): string {
+  return resolveModel(TASK_CONFIGS[task].model);
+}
 
 // Retry-Policy: Exponentielles Backoff
 export async function callOpenAIWithRetry(
@@ -172,9 +197,12 @@ export const WHISPER_CONFIG = {
 
 // Token cost calculation (per 1M tokens, updated pricing)
 const TOKEN_COSTS = {
+  'gpt-5': { input: 0.00000125, output: 0.00001 },
+  'gpt-5-mini': { input: 0.00000025, output: 0.000002 },
+  'gpt-5-nano': { input: 0.00000005, output: 0.0000004 },
   'gpt-4o-mini': { input: 0.00000015, output: 0.0000006 },
   'gpt-4o': { input: 0.005, output: 0.015 },
-  'gpt-4.1-2025-04-14': { input: 0.000003, output: 0.000012 },
+  'gpt-4.1-2025-04-14': { input: 0.000002, output: 0.000008 },
   'text-embedding-3-small': { input: 0.00002, output: 0 },
   'text-embedding-3-large': { input: 0.00013, output: 0 },
   'whisper-1': { input: 0.006, output: 0 } // per minute

@@ -8,7 +8,8 @@ import {
   detectPII, 
   getCircuitBreakerStatus,
   recordError,
-  recordSuccess
+  recordSuccess,
+  getTaskModel
 } from '../_shared/openai-config.ts';
 
 // Debug Direct Chat v2.1 - Force Deployment
@@ -26,16 +27,16 @@ serve(async req => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const { userId, message, coachId = "lucy", model = "gpt-4.1-2025-04-14" } = await req.json();
+    const { userId, message, coachId = "lucy", model = "auto" } = await req.json();
     if (!userId || !message) {
       return json(400, { error: "`userId` und `message` sind Pflicht." });
     }
-
+    const effectiveModel = model === 'auto' ? getTaskModel('debug-direct-chat') : model;
     // Generate trace ID and start timer
     const traceId = `debug_${userId}_${Date.now()}`;
     const startTime = Date.now();
 
-    console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Model ${model}, Message: ${message.substring(0, 50)}...`);
+    console.log(`🔧 Debug-Direct-Chat: User ${userId}, Coach ${coachId}, Model ${effectiveModel}, Message: ${message.substring(0, 50)}...`);
 
     const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } });
     
@@ -43,7 +44,7 @@ serve(async req => {
     await logTelemetryData(supa, traceId, 'T_request_start', {
       user_id: userId,
       coach_id: coachId,
-      model: model,
+      model: effectiveModel,
       user_message: message.substring(0, 200), // First 200 chars
       message_length: message.length,
       function_name: 'debug-direct-chat',
@@ -75,7 +76,7 @@ serve(async req => {
     // OpenAI API call with timing
     const apiStartTime = Date.now();
     const requestBody = {
-      model: model,
+      model: effectiveModel,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: message },
@@ -125,7 +126,7 @@ serve(async req => {
     // Calculate telemetry metrics
     const inputTokens = data.usage?.prompt_tokens || 0;
     const outputTokens = data.usage?.completion_tokens || 0;
-    const cost = calculateCost(model, inputTokens, outputTokens);
+    const cost = calculateCost(effectiveModel, inputTokens, outputTokens);
     const sentiment = analyzeSentiment(answer);
     const hasPII = detectPII(answer + message);
     const tokensPerSecond = outputTokens > 0 ? (outputTokens / (fullStreamTime / 1000)) : 0;
@@ -143,7 +144,7 @@ serve(async req => {
       pii_detected: hasPII,
       response_length: answer.length,
       tokens_per_second: tokensPerSecond,
-      model: model,
+       model: effectiveModel,
       coach_id: coachId,
       user_id: userId,
       performance_grade: firstTokenTime < 1000 ? 'A' : firstTokenTime < 2000 ? 'B' : 'C',
@@ -175,7 +176,7 @@ serve(async req => {
       content: answer,
       debug: { 
         tokens: data.usage?.total_tokens,
-        model: model,
+        model: effectiveModel,
         firstToken_ms: firstTokenTime,
         fullStream_ms: fullStreamTime,
         cost_usd: cost,
