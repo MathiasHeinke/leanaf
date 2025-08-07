@@ -18,6 +18,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  let requestedCoachId = 'lucy';
 
   try {
     const { 
@@ -27,6 +28,8 @@ serve(async (req) => {
       isFirstConversation = false,
       contextData = {} 
     } = await req.json();
+
+    requestedCoachId = coachId;
 
     console.log('🎯 Generating AI greeting for:', { userId, coachId, firstName, isFirstConversation });
 
@@ -39,8 +42,8 @@ serve(async (req) => {
       supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('meals').select('*').eq('user_id', userId).gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(3),
       supabase.from('workouts').select('*').eq('user_id', userId).gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(3),
-      supabase.from('weights').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('sleep_data').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3),
+      supabase.from('weight_history').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
+      supabase.from('sleep_tracking').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }).limit(3),
       supabase.from('profiles').select('first_name, preferred_name').eq('user_id', userId).maybeSingle(),
       supabase.from('journal_entries').select('energy_level, mood_score, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(1)
     ]);
@@ -299,7 +302,7 @@ WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßu
       'sophia': 'Hey! 🌿'
     };
 
-    const fallback = fallbackGreetings[req.body?.coachId] || fallbackGreetings['lucy'];
+    const fallback = fallbackGreetings[requestedCoachId] || fallbackGreetings['lucy'];
 
     return new Response(
       JSON.stringify({ 
