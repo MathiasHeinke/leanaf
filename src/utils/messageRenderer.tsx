@@ -5,6 +5,7 @@ import { MealCard } from '@/components/MealCard';
 import { ExerciseCard } from '@/components/ExerciseCard';
 import { MindsetCard } from '@/components/MindsetCard';
 import { TrainingPlanCard } from '@/components/TrainingPlanCard';
+import { EnhancedTrainingPlanCard } from '@/components/EnhancedTrainingPlanCard';
 import { SimpleMessageItem } from '@/components/SimpleMessageItem';
 import { ToolActionButton } from '@/components/ToolActionButton';
 
@@ -13,6 +14,7 @@ export interface CardMessage {
   role: 'assistant';
   type: 'card';
   tool: 'supplement' | 'meal' | 'exercise' | 'mindset' | 'plan' | 'workout_plan' | 'trainingsplan';
+  card?: 'enhanced_training_plan' | 'workout_plan' | 'trainingsplan';
   payload: any;
   created_at: string;
   coach_personality: string;
@@ -107,7 +109,26 @@ export function renderMessage(
       case 'plan':
       case 'workout_plan':
       case 'trainingsplan':
-        // Use TrainingPlanCard component
+        // Check if it's an enhanced training plan
+        if (cardMessage.card === 'enhanced_training_plan') {
+          return (
+            <EnhancedTrainingPlanCard
+              key={cardMessage.id}
+              name={cardMessage.payload.name}
+              plan={cardMessage.payload.plan || []}
+              goal={cardMessage.payload.goal}
+              daysPerWeek={cardMessage.payload.daysPerWeek}
+              description={cardMessage.payload.description}
+              principles={cardMessage.payload.principles}
+              userStats={cardMessage.payload.userStats}
+              coachStyle={cardMessage.payload.coachStyle}
+              progressionPlan={cardMessage.payload.progressionPlan}
+              savedPlanId={cardMessage.payload.savedPlanId}
+            />
+          );
+        }
+        
+        // Use standard TrainingPlanCard component
         return (
           <TrainingPlanCard
             key={cardMessage.id}
