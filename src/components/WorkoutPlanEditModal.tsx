@@ -80,14 +80,14 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
       };
     }
 
-        newStructure.weekly_structure[dayIndex].exercises.push({
-          name: '',
-          sets: 3,
-          reps: '8-12',
-          weight: '',
-          rpe: 8,
-          rest_seconds: 120
-        } as Exercise);
+    newStructure.weekly_structure[dayIndex].exercises.push({
+      name: '',
+      sets: 3,
+      reps: '8-12',
+      weight: '',
+      rpe: 8,
+      rest_seconds: 120
+    });
 
     setEditedPlan({ ...editedPlan, structure: newStructure });
   };
@@ -100,10 +100,30 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
     }
   };
 
-  const updateExercise = (dayIndex: number, exerciseIndex: number, field: keyof Exercise, value: any) => {
+  const updateExerciseString = (dayIndex: number, exerciseIndex: number, field: 'name' | 'reps' | 'weight', value: string) => {
     const newStructure = { ...editedPlan.structure };
     if (newStructure.weekly_structure?.[dayIndex]?.exercises[exerciseIndex]) {
-      newStructure.weekly_structure[dayIndex].exercises[exerciseIndex][field] = value;
+      const exercise = newStructure.weekly_structure[dayIndex].exercises[exerciseIndex];
+      if (field === 'name') exercise.name = value;
+      else if (field === 'reps') exercise.reps = value;
+      else if (field === 'weight') exercise.weight = value;
+      setEditedPlan({ ...editedPlan, structure: newStructure });
+    }
+  };
+
+  const updateExerciseNumber = (dayIndex: number, exerciseIndex: number, field: 'sets' | 'rpe' | 'rest_seconds', value: string) => {
+    const newStructure = { ...editedPlan.structure };
+    if (newStructure.weekly_structure?.[dayIndex]?.exercises[exerciseIndex]) {
+      const exercise = newStructure.weekly_structure[dayIndex].exercises[exerciseIndex];
+      
+      if (field === 'sets') {
+        exercise.sets = parseInt(value) || 1;
+      } else if (field === 'rpe') {
+        exercise.rpe = value ? parseInt(value) : undefined;
+      } else if (field === 'rest_seconds') {
+        exercise.rest_seconds = value ? parseInt(value) : undefined;
+      }
+      
       setEditedPlan({ ...editedPlan, structure: newStructure });
     }
   };
@@ -265,7 +285,7 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                           <Input
                             size="sm"
                             value={exercise.name}
-                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, 'name', e.target.value)}
+                            onChange={(e) => updateExerciseString(dayIndex, exerciseIndex, 'name', e.target.value)}
                             placeholder="z.B. Bankdrücken"
                           />
                         </div>
@@ -276,8 +296,8 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                             type="number"
                             min="1"
                             max="10"
-                            value={exercise.sets}
-                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, 'sets', parseInt(e.target.value) || 1)}
+                            value={exercise.sets.toString()}
+                            onChange={(e) => updateExerciseNumber(dayIndex, exerciseIndex, 'sets', e.target.value)}
                           />
                         </div>
                         <div>
@@ -285,7 +305,7 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                           <Input
                             size="sm"
                             value={exercise.reps}
-                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, 'reps', e.target.value)}
+                            onChange={(e) => updateExerciseString(dayIndex, exerciseIndex, 'reps', e.target.value)}
                             placeholder="8-12"
                           />
                         </div>
@@ -294,7 +314,7 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                           <Input
                             size="sm"
                             value={exercise.weight || ''}
-                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, 'weight', e.target.value)}
+                            onChange={(e) => updateExerciseString(dayIndex, exerciseIndex, 'weight', e.target.value)}
                             placeholder="80"
                           />
                         </div>
@@ -306,8 +326,8 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                               type="number"
                               min="1"
                               max="10"
-                              value={exercise.rpe || ''}
-                              onChange={(e) => updateExercise(dayIndex, exerciseIndex, 'rpe', e.target.value ? parseInt(e.target.value) : undefined)}
+                              value={exercise.rpe?.toString() || ''}
+                              onChange={(e) => updateExerciseNumber(dayIndex, exerciseIndex, 'rpe', e.target.value)}
                               placeholder="8"
                             />
                           </div>

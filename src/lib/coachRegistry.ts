@@ -59,7 +59,7 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     isPremium: true,
     expertise: ['Periodisierung', 'Progressive Overload', 'Biomechanik-Optimierung'],
     access: {
-      tools: ['trainingsplan', 'progression_analysis', 'biomechanics'],
+      tools: ['trainingsplan', 'progression_analysis', 'biomechanics', 'savePlanDraft'],
       datasets: ['training_history', 'performance_data', 'strength_logs'],
       rag: ['rag_training', 'rag_periodization', 'rag_biomechanics']
     },
@@ -103,7 +103,7 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     isPremium: true,
     expertise: ['Heavy+Volume Training', 'Extreme Hypertrophie', 'Mentale Härte', 'Masseaufbau'],
     access: {
-      tools: ['heavy_training_plan', 'mass_building', 'mental_toughness'],
+      tools: ['heavy_training_plan', 'mass_building', 'mental_toughness', 'savePlanDraft'],
       datasets: ['strength_data', 'mass_progress', 'heavy_lifts'],
       rag: ['rag_bodybuilding', 'rag_heavy_training', 'rag_mass_building']
     },
