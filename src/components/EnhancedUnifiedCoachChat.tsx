@@ -26,7 +26,7 @@ import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 async function generateIntelligentGreeting(
   userId: string, 
   coachId: string, 
-  options: { firstName?: string; isFirstConversation?: boolean } = {}
+  options: { firstName?: string; isFirstConversation?: boolean; alreadyGreeted?: boolean } = {}
 ): Promise<string | null> {
   try {
     console.log('🎯 Calling intelligent greeting function...');
@@ -37,6 +37,7 @@ async function generateIntelligentGreeting(
         coachId,
         firstName: options.firstName || 'User',
         isFirstConversation: options.isFirstConversation || false,
+        alreadyGreeted: options.alreadyGreeted || false,
         contextData: {}
       }
     });
@@ -266,24 +267,39 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         };
         setMessages([placeholderMsg]);
         
-        if (enableAdvancedFeatures) {
-          // Try to upgrade placeholder with intelligent greeting (2.5s timeout)
-          const timeoutMs = 2500;
-          const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs));
-          const greeting = await Promise.race([
-            generateIntelligentGreeting(user.id, coach?.id || 'lucy', {
-              firstName: user.user_metadata?.name || 'User',
-              isFirstConversation: true
-            }),
-            timeoutPromise
-          ]);
-          
-          if (greeting) {
-            setMessages(prev => prev.map(m => m.id === placeholderId ? { ...m, content: greeting, metadata: lastMetadata } : m));
-          } else {
-            console.warn('⏱️ Greeting timeout or error - keeping placeholder');
-          }
-        }
+if (enableAdvancedFeatures) {
+  // Fire and append dynamic follow-up as a second bubble (no salutation)
+  generateIntelligentGreeting(user.id, coach?.id || 'lucy', {
+    firstName: user.user_metadata?.name || 'User',
+    isFirstConversation: true,
+    alreadyGreeted: true
+  })
+    .then((greeting) => {
+      if (!greeting) return;
+      const cleaned = (greeting || '')
+        .replace(/^(moin|hi|hallo|servus|hey|guten\s+(morgen|tag|abend|nachmittag|mittag))[,!\s]*([–-]\s*)?/i, '')
+        .trim();
+      if (!cleaned) return;
+      if (cleaned.toLowerCase() === (placeholderGreeting || '').toLowerCase()) return;
+
+      const followupMsg: EnhancedChatMessage = {
+        id: `welcome-followup-${Date.now()}`,
+        role: 'assistant',
+        content: cleaned,
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.id || 'lucy',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor,
+        metadata: lastMetadata
+      };
+      setMessages(prev => [...prev, followupMsg]);
+    })
+    .catch((e) => {
+      console.warn('⚠️ Intelligent greeting failed:', e);
+    });
+}
         
         setIsLoading(false);
         setChatInitialized(true);

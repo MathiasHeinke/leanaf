@@ -27,12 +27,13 @@ serve(async (req) => {
       coachId, 
       firstName, 
       isFirstConversation = false,
-      contextData = {} 
+      contextData = {},
+      alreadyGreeted = false 
     } = await req.json();
 
     requestedCoachId = coachId;
 
-    console.log('🎯 Generating AI greeting for:', { userId, coachId, firstName, isFirstConversation });
+    console.log('🎯 Generating AI greeting for:', { userId, coachId, firstName, isFirstConversation, alreadyGreeted });
 
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
@@ -215,6 +216,11 @@ serve(async (req) => {
 - Beziehe dich vorrangig auf die Mindset Journey (Tagebuch) des Tages: Gefühlslage, Erlebnisse, innere Themen
 - Stelle 1 einfühlsame Frage und biete 1 Mini-Impuls oder kleine Fürsorge ("Was würde dir jetzt gut tun?")
 ` : '';
+    const followupRules = alreadyGreeted ? `FOLLOW-UP-MODUS:
+- KEINE Begrüßung. Kein "Moin", "Hey", "Hallo", "Servus", "Guten ...".
+- Starte direkt mit einer konkreten, menschlichen Nachfrage oder einem kurzen Impuls.
+- Maximal 2 kurze Sätze. Keine erneute Anrede.
+` : '';
     const systemPrompt = `Du bist ${coach.name}, ein erfahrener Coach. Erstelle eine authentische, contextuelle Begrüßung.
 
 DEINE PERSÖNLICHKEIT & STIL:
@@ -230,6 +236,7 @@ Themes: ${strategy.themes.join(', ')}
     ${strategy.examples.map(ex => `- ${ex}`).join('\n')}
     
     ${mindsetKaiRule}
+    ${followupRules}
     KONTEXT-REGELN:
 - MAXIMAL 2 kurze Sätze! Keine langen Erklärungen!
 - Vollständige Sätze (keine Abbrüche!)
@@ -257,7 +264,7 @@ WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßu
         model: getTaskModel('generate-intelligent-greeting'),
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Aktuelle Situation:\n${contextSummary}\n\nErstelle eine authentische, vollständige Begrüßung die zu meiner Situation passt. Nutze deinen individuellen Stil und variiere das Thema.` }
+          { role: 'user', content: `Aktuelle Situation:\n${contextSummary}\n\n${alreadyGreeted ? 'Erstelle eine kurze Follow-up-Nachricht OHNE Begrüßung: direkte Nachfrage oder kurzer Impuls. Max. 2 Sätze.' : 'Erstelle eine authentische, vollständige Begrüßung die zu meiner Situation passt. Nutze deinen individuellen Stil und variiere das Thema.'}` }
         ],
         temperature: 0.9, // Higher creativity for more variance
         max_tokens: 60, // Increased for complete sentences
