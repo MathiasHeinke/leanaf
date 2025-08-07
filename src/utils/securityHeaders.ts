@@ -1,18 +1,20 @@
 // Enhanced security headers for the application
 export const getEnhancedSecurityHeaders = () => {
   return {
-    'Content-Security-Policy': [
+'Content-Security-Policy': [
       "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://gzczjscctgyxjyodhnhk.supabase.co https://api.openai.com https://api.ipify.org wss://gzczjscctgyxjyodhnhk.supabase.co",
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "img-src 'self' data: blob: https:",
+      "connect-src 'self' https://gzczjscctgyxjyodhnhk.supabase.co https://*.supabase.co https://api.openai.com https://api.anthropic.com https://api.ipify.org wss://gzczjscctgyxjyodhnhk.supabase.co wss://*.supabase.co",
       "media-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
       "upgrade-insecure-requests"
     ].join('; '),
     'X-Frame-Options': 'DENY',
