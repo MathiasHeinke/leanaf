@@ -180,7 +180,25 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   
   // ============= CHAT INITIALIZATION =============
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('ℹ️ No authenticated user found, showing simple greeting');
+      const fallbackGreeting = getSimpleGreeting(coach?.id || 'lucy');
+      const welcomeMsg: EnhancedChatMessage = {
+        id: `welcome-${Date.now()}`,
+        role: 'assistant',
+        content: fallbackGreeting,
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.id || 'lucy',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor
+      };
+      setMessages([welcomeMsg]);
+      setIsLoading(false);
+      setChatInitialized(true);
+      return;
+    }
     
     // Always reinitialize when user or coach changes
     const init = async () => {
@@ -232,61 +250,39 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         // Create intelligent greeting using enhanced system
         console.log('🎯 No existing chat found, generating intelligent greeting...');
         
+        // Show immediate simple greeting placeholder
+        const placeholderId = `welcome-${Date.now()}`;
+        const placeholderGreeting = getSimpleGreeting(coach?.id || 'lucy');
+        const placeholderMsg: EnhancedChatMessage = {
+          id: placeholderId,
+          role: 'assistant',
+          content: placeholderGreeting,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.id || 'lucy',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages([placeholderMsg]);
+        
         if (enableAdvancedFeatures) {
-          // Use dedicated greeting function for personalized greeting
-          const greeting = await generateIntelligentGreeting(user.id, coach?.id || 'lucy', {
-            firstName: user.user_metadata?.name || 'User',
-            isFirstConversation: true
-          });
+          // Try to upgrade placeholder with intelligent greeting (2.5s timeout)
+          const timeoutMs = 2500;
+          const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs));
+          const greeting = await Promise.race([
+            generateIntelligentGreeting(user.id, coach?.id || 'lucy', {
+              firstName: user.user_metadata?.name || 'User',
+              isFirstConversation: true
+            }),
+            timeoutPromise
+          ]);
           
           if (greeting) {
-            const welcomeMsg: EnhancedChatMessage = {
-              id: `welcome-${Date.now()}`,
-              role: 'assistant',
-              content: greeting,
-              created_at: new Date().toISOString(),
-              coach_personality: coach?.id || 'lucy',
-              coach_name: coach?.name || 'Coach',
-              coach_avatar: coach?.imageUrl,
-              coach_color: coach?.color,
-              coach_accent_color: coach?.accentColor,
-              metadata: lastMetadata
-            };
-            
-            setMessages([welcomeMsg]);
+            setMessages(prev => prev.map(m => m.id === placeholderId ? { ...m, content: greeting, metadata: lastMetadata } : m));
           } else {
-            // Fallback to simple greeting
-            const fallbackGreeting = getSimpleGreeting(coach?.id || 'lucy');
-            const welcomeMsg: EnhancedChatMessage = {
-              id: `welcome-${Date.now()}`,
-              role: 'assistant',
-              content: fallbackGreeting,
-              created_at: new Date().toISOString(),
-              coach_personality: coach?.id || 'lucy',
-              coach_name: coach?.name || 'Coach',
-              coach_avatar: coach?.imageUrl,
-              coach_color: coach?.color,
-              coach_accent_color: coach?.accentColor
-            };
-            
-            setMessages([welcomeMsg]);
+            console.warn('⏱️ Greeting timeout or error - keeping placeholder');
           }
-        } else {
-          // Simple greeting for basic mode
-          const greeting = getSimpleGreeting(coach?.id || 'lucy');
-          const welcomeMsg: EnhancedChatMessage = {
-            id: `welcome-${Date.now()}`,
-            role: 'assistant',
-            content: greeting,
-            created_at: new Date().toISOString(),
-            coach_personality: coach?.id || 'lucy',
-            coach_name: coach?.name || 'Coach',
-            coach_avatar: coach?.imageUrl,
-            coach_color: coach?.color,
-            coach_accent_color: coach?.accentColor
-          };
-          
-          setMessages([welcomeMsg]);
         }
         
         setIsLoading(false);
