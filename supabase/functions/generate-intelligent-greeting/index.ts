@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getTaskModel } from '../_shared/openai-config.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
@@ -253,7 +254,7 @@ WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßu
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: getTaskModel('generate-intelligent-greeting'),
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Aktuelle Situation:\n${contextSummary}\n\nErstelle eine authentische, vollständige Begrüßung die zu meiner Situation passt. Nutze deinen individuellen Stil und variiere das Thema.` }

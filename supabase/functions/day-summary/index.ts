@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.205.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { DateTime } from "https://esm.sh/luxon@3.4";
+import { getTaskModel } from '../_shared/openai-config.ts';
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -1015,7 +1016,7 @@ Keine Einleitung, keine Abschiedsfloskeln.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14', // Latest flagship model
+        model: getTaskModel('day-summary'), // Latest flagship model via router
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

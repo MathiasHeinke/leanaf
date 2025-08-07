@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
+import { getTaskModel } from '../_shared/openai-config.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -424,7 +424,7 @@ async function generateCoachFeedback(meal: MealData, profile: UserProfile, score
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: getTaskModel('evaluate-meal'),
         messages: [
           { 
             role: 'system', 

@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getTaskModel } from '../_shared/openai-config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,7 +77,7 @@ Bitte analysiere die Bilder und berechne den Prozentsatz der verzehrten Menge. B
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: getTaskModel('enhanced-meal-analysis'),
         messages: messages,
         max_tokens: 1000,
         temperature: 0.3,
@@ -130,7 +131,7 @@ Bitte analysiere die Bilder und berechne den Prozentsatz der verzehrten Menge. B
         recommendations: analysis.recommendations,
         metadata: {
           processed_at: new Date().toISOString(),
-          model_used: 'gpt-4o',
+          model_used: getTaskModel('enhanced-meal-analysis'),
           original_image_count: originalImages.length,
           leftover_image_count: leftoverImages.length
         }

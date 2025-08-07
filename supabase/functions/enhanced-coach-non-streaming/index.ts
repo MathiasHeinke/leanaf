@@ -972,7 +972,7 @@ serve(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: getTaskModel('unified-coach-engine'),
         messages: messages,
         temperature: normalizedCoachId === 'markus' ? 0.8 : 0.7,
         max_tokens: toolResults ? 700 : 500 // More tokens if tools were used

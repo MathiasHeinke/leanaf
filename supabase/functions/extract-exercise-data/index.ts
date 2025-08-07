@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getTaskModel } from '../_shared/openai-config.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 
 const corsHeaders = {
@@ -314,7 +315,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-4.1-2025-04-14',
+              model: getTaskModel('extract-exercise-data'),
               messages: [
                 {
                   role: "system",
@@ -448,7 +449,7 @@ RULES:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: getTaskModel('extract-exercise-data'),
         messages,
         max_tokens: 500,
         temperature: 0.1

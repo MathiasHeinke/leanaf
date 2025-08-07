@@ -9,7 +9,8 @@ import {
   detectPII, 
   getCircuitBreakerStatus, 
   recordError,
-  recordSuccess
+  recordSuccess,
+  getTaskModel
 } from '../_shared/openai-config.ts';
 
 const corsHeaders = {
@@ -174,10 +175,10 @@ Antworte authentisch in deinem Stil und nutze dein Fachwissen, um dem Nutzer zu 
           
           // Log OpenAI request details
           await logTelemetryData(supabase, traceId, 'T_openai_request', {
-            model: 'gpt-4.1-2025-04-14',
+            model: getTaskModel('unified-coach-engine'),
             config: config,
             openai_request_body: JSON.stringify({
-              model: 'gpt-4.1-2025-04-14',
+              model: getTaskModel('unified-coach-engine'),
               messages,
               ...config,
               stream: true
@@ -193,7 +194,7 @@ Antworte authentisch in deinem Stil und nutze dein Fachwissen, um dem Nutzer zu 
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'gpt-4.1-2025-04-14',
+              model: getTaskModel('unified-coach-engine'),
               messages,
               ...config,
               stream: true
@@ -224,11 +225,11 @@ Antworte authentisch in deinem Stil und nutze dein Fachwissen, um dem Nutzer zu 
                     if (data === '[DONE]') {
                       // Stream complete - log final metrics and response content
                       const fullStreamTime = Date.now() - requestStartTime;
-                      const cost = calculateCost('gpt-4.1-2025-04-14', inputTokens, outputTokens);
-                      const sentiment = analyzeSentiment(fullResponseText);
-                      const hasPII = detectPII(fullResponseText + message);
-                      const tokensPerSecond = outputTokens > 0 ? (outputTokens / (fullStreamTime / 1000)) : 0;
-                      const breaker = getCircuitBreakerStatus();
+                       const cost = calculateCost(getTaskModel('unified-coach-engine'), inputTokens, outputTokens);
+                       const sentiment = analyzeSentiment(fullResponseText);
+                       const hasPII = detectPII(fullResponseText + message);
+                       const tokensPerSecond = outputTokens > 0 ? (outputTokens / (fullStreamTime / 1000)) : 0;
+                       const breaker = getCircuitBreakerStatus();
 
                       await logTelemetryData(supabase, traceId, 'T_stream_complete', {
                         fullStream_ms: fullStreamTime,
@@ -241,7 +242,7 @@ Antworte authentisch in deinem Stil und nutze dein Fachwissen, um dem Nutzer zu 
                         pii_detected: hasPII,
                         response_length: fullResponseText.length,
                         tokens_per_second: tokensPerSecond,
-                        model: 'gpt-4.1-2025-04-14',
+                         model: getTaskModel('unified-coach-engine'),
                         coach_id: coachId,
                         user_id: userId,
                         conversation_length: conversationHistory?.length || 0,
@@ -268,11 +269,11 @@ Antworte authentisch in deinem Stil und nutze dein Fachwissen, um dem Nutzer zu 
                         if (firstTokenTime === null) {
                           firstTokenTime = Date.now() - requestStartTime;
                           await logTelemetryData(supabase, traceId, 'T_first_token', {
-                            firstToken_ms: firstTokenTime,
-                            model: 'gpt-4.1-2025-04-14',
-                            coach_id: coachId,
-                            user_id: userId,
-                            ...getCircuitBreakerStatus()
+                             firstToken_ms: firstTokenTime,
+                             model: getTaskModel('unified-coach-engine'),
+                             coach_id: coachId,
+                             user_id: userId,
+                             ...getCircuitBreakerStatus()
                           });
                         }
                         

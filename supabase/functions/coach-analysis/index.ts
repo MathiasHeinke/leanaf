@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { getTaskModel } from '../_shared/openai-config.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -142,7 +143,7 @@ Antworte nur mit der Begrüßungsnachricht, kein JSON.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: getTaskModel('coach-analysis'),
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
@@ -184,7 +185,7 @@ Antworte kurz und menschlich (max 30 Wörter).`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: getTaskModel('coach-analysis'),
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }
@@ -236,7 +237,7 @@ Antworte kurz und menschlich (max 30 Wörter).`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+           model: getTaskModel('coach-analysis'),
           messages,
           max_tokens: 500,
           temperature: 0.7,
@@ -307,7 +308,7 @@ Sei ${personality}, analytisch und gib konkrete, umsetzbare Tipps mit psychologi
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: getTaskModel('coach-analysis'),
           messages: [
             { role: 'system', content: systemMessage },
             { role: 'user', content: prompt }

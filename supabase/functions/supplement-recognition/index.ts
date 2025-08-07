@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { getTaskModel } from '../_shared/openai-config.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -129,7 +130,7 @@ WICHTIG:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: getTaskModel('supplement-recognition'),
         messages: messages,
         max_tokens: 1200,
         temperature: 0.3, // Lower temperature for more consistent recognition

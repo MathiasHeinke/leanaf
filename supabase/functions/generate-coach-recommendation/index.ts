@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getTaskModel } from '../_shared/openai-config.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -33,7 +34,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: getTaskModel('generate-coach-suggestions'),
         messages: [
           { role: 'system', content: prompt },
           { role: 'user', content: 'Generiere jetzt die Coach-Empfehlung für das Pro-Paket.' }
