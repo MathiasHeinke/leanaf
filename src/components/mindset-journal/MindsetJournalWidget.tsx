@@ -25,24 +25,24 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
 
   const {
     currentPrompt,
-    recentEntries,
-    insights,
+    recentEntries = [],
+    insights = [],
     isLoading,
     saveJournalEntry,
     requestKaiAnalysis,
     refreshPrompt
-  } = useMindsetJournal();
+  } = useMindsetJournal() || {};
 
   const {
-    isRecording,
-    isProcessing,
-    transcribedText,
-    audioLevel,
-    hasPermission,
-    startRecording,
-    stopRecording,
-    clearTranscription
-  } = useEnhancedVoiceRecording();
+    isRecording = false,
+    isProcessing = false,
+    transcribedText = '',
+    audioLevel = 0,
+    hasPermission = false,
+    startRecording = () => {},
+    stopRecording = () => {},
+    clearTranscription = () => {}
+  } = useEnhancedVoiceRecording() || {};
 
   const getCurrentTimeOfDay = () => {
     const hour = new Date().getHours();
