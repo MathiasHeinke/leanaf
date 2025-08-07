@@ -17,24 +17,27 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
   const [manualText, setManualText] = useState('');
   const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
 
+  const mindsetJournal = useMindsetJournal();
+  const voiceRecording = useEnhancedVoiceRecording();
+
   const {
     currentPrompt,
     recentEntries = [],
-    isLoading,
-    saveJournalEntry,
-    requestKaiAnalysis,
-    refreshPrompt
-  } = useMindsetJournal() || {};
+    isLoading = false,
+    saveJournalEntry = async () => {},
+    requestKaiAnalysis = async () => null,
+    refreshPrompt = () => {}
+  } = mindsetJournal || {};
 
   const {
     isRecording = false,
     isProcessing = false,
     transcribedText = '',
     audioLevel = 0,
-    startRecording = () => {},
-    stopRecording = () => {},
+    startRecording = async () => {},
+    stopRecording = async () => {},
     clearTranscription = () => {}
-  } = useEnhancedVoiceRecording() || {};
+  } = voiceRecording || {};
 
   const getCurrentTimeOfDay = () => {
     const hour = new Date().getHours();
