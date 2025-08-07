@@ -93,11 +93,11 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
           // Parse Kai's structured response and save enhanced entry
           await saveJournalEntry({
             raw_text: textToAnalyze,
-            mood_score: kaiAnalysis.mood_level || 0,
-            sentiment_tag: kaiAnalysis.sentiment || 'neutral',
-            gratitude_items: kaiAnalysis.gratitude_elements || [],
-            highlight: kaiAnalysis.highlight,
-            challenge: kaiAnalysis.challenge,
+            mood_score: kaiAnalysis.mood_score || 0,
+            sentiment_tag: kaiAnalysis.sentiment_tag || 'neutral',
+            gratitude_items: kaiAnalysis.gratitude_items || [],
+            ai_summary_md: kaiAnalysis.ai_summary_md,
+            kai_insight: kaiAnalysis.kai_insight,
             prompt_used: currentPrompt?.question,
             photo_url: photoPreview || undefined
           });

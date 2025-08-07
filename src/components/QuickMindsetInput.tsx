@@ -36,6 +36,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
     useMindsetPrompts = false,
     saveJournalEntry = async () => {},
     requestKaiAnalysis = async () => null,
+    uploadPhoto = async () => null,
     refreshPrompt = () => {},
     togglePromptMode = () => {}
   } = mindsetJournal || {};
@@ -80,6 +81,24 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
 
     try {
       setIsUploadingPhoto(true);
+      let photoUrl = '';
+
+      // Upload photo first if selected
+      if (selectedPhoto && typeof selectedPhoto === 'object') {
+        const uploadedUrl = await uploadPhoto(selectedPhoto);
+        if (uploadedUrl) {
+          photoUrl = uploadedUrl;
+        } else {
+          toast({
+            title: "Fehler",
+            description: "Fehler beim Hochladen des Fotos",
+            variant: "destructive"
+          });
+          return;
+        }
+      } else if (photoPreview) {
+        photoUrl = photoPreview;
+      }
 
       if (analysisMode === 'kai' && textToAnalyze.length > 50) {
         // Use Kai's advanced analysis
@@ -88,13 +107,16 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
         if (kaiAnalysis) {
           await saveJournalEntry({
             raw_text: textToAnalyze,
-            mood_score: kaiAnalysis.mood_level || 0,
-            sentiment_tag: kaiAnalysis.sentiment || 'neutral',
-            gratitude_items: kaiAnalysis.gratitude_elements || [],
-            highlight: kaiAnalysis.highlight,
-            challenge: kaiAnalysis.challenge,
+            mood_score: kaiAnalysis.mood_score || 0,
+            sentiment_tag: kaiAnalysis.sentiment_tag || 'neutral',
+            gratitude_items: kaiAnalysis.gratitude_items || [],
+            ai_summary_md: kaiAnalysis.ai_summary_md,
+            kai_insight: kaiAnalysis.kai_insight,
+            transformation_themes: kaiAnalysis.transformation_themes,
+            energy_level: kaiAnalysis.energy_level,
+            stress_indicators: kaiAnalysis.stress_indicators,
             prompt_used: currentPrompt?.question,
-            photo_url: photoPreview || undefined
+            photo_url: photoUrl || undefined
           });
         }
       } else {

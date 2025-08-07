@@ -36,6 +36,9 @@ export interface EnhancedJournalEntry {
   highlight?: string;
   challenge?: string;
   kai_insights?: JournalInsight[];
+  ai_summary_md?: string;
+  kai_insight?: string;
+  transformation_themes?: string[];
   prompt_used?: string;
 }
 
@@ -271,31 +274,76 @@ export const useMindsetJournal = () => {
     }
   };
 
-  // Request Kai's analysis for a text
-  const requestKaiAnalysis = async (text: string) => {
+  // Upload photo to Supabase Storage
+  const uploadPhoto = async (file: File): Promise<string | null> => {
     try {
-      const response = await supabase.functions.invoke('enhanced-coach-non-streaming', {
-        body: {
-          message: `Bitte analysiere diesen Tagebuch-Eintrag im Kontext meiner Persönlichkeitsentwicklung: "${text}". 
-          
-          Gib mir strukturierte Insights zu:
-          1. Mood/Energie-Level (1-10)
-          2. Erkannte Stress-Indikatoren
-          3. Dankbarkeits-Elemente
-          4. Manifestations-/Ziel-Themen
-          5. Highlight des Tages
-          6. Größte Herausforderung
-          
-          Antworte im JSON-Format für strukturierte Verarbeitung.`,
-          coachId: 'kai',
-          userId: (await supabase.auth.getUser()).data.user?.id
-        }
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.data.user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('journal-photos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('journal-photos')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      return null;
+    }
+  };
+
+  // Request Kai's analysis for a text
+  const requestKaiAnalysis = async (text: string): Promise<{
+    ai_summary_md: string;
+    transformation_themes: string[];
+    mood_score: number;
+    sentiment_tag: string;
+    energy_level: number;
+    stress_indicators: string[];
+    gratitude_items: string[];
+    kai_insight: string;
+  }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-mindset-kai', {
+        body: { text, userId: supabase.auth.getUser().then(u => u.data.user?.id) }
       });
 
-      return response.data;
+      if (error) throw error;
+      
+      // Parse structured response
+      const analysis = data?.analysis || '';
+      
+      // Extract structured data from analysis text or provide defaults
+      return {
+        ai_summary_md: analysis,
+        transformation_themes: data?.themes || [],
+        mood_score: data?.mood_score || 0,
+        sentiment_tag: data?.sentiment || 'neutral',
+        energy_level: data?.energy_level || 5,
+        stress_indicators: data?.stress_indicators || [],
+        gratitude_items: data?.gratitude_items || [],
+        kai_insight: analysis
+      };
     } catch (error) {
-      console.error('Error requesting Kai analysis:', error);
-      return null;
+      console.error('Error in KAI analysis:', error);
+      return {
+        ai_summary_md: 'Analyse konnte nicht erstellt werden.',
+        transformation_themes: [],
+        mood_score: 0,
+        sentiment_tag: 'neutral',
+        energy_level: 5,
+        stress_indicators: [],
+        gratitude_items: [],
+        kai_insight: 'Fehler bei der KAI-Analyse.'
+      };
     }
   };
 
@@ -327,6 +375,7 @@ export const useMindsetJournal = () => {
     getMindsetPrompt,
     saveJournalEntry,
     requestKaiAnalysis,
+    uploadPhoto,
     refreshPrompt: () => setCurrentPrompt(useMindsetPrompts ? getMindsetPrompt() : getDailyPrompt()),
     togglePromptMode,
     loadRecentEntries

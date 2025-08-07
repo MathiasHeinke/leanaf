@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { EnhancedJournalEntry } from "@/hooks/useMindsetJournal";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MindsetJournalEntryCardProps {
   entry: EnhancedJournalEntry;
@@ -67,15 +68,46 @@ export const MindsetJournalEntryCard = ({ entry }: MindsetJournalEntryCardProps)
     
     try {
       setIsUploadingPhoto(true);
-      // TODO: Implement photo upload and update journal entry
-      // This would need to be integrated with the journal hook
+      
+      // Upload photo to Supabase Storage
+      const photoFile = selectedPhoto;
+      
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) throw new Error('Not authenticated');
+
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${user.data.user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('journal-photos')
+        .upload(fileName, photoFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('journal-photos')
+        .getPublicUrl(fileName);
+
+      // Update the journal entry with the photo URL
+      const { error: updateError } = await supabase
+        .from('journal_entries')
+        .update({ photo_url: data.publicUrl })
+        .eq('id', entry.id);
+
+      if (updateError) throw updateError;
+      
       toast({
         title: "Foto hinzugefügt ✨",
         description: "Das Foto wurde zu deinem Eintrag hinzugefügt"
       });
       setIsAddingPhoto(false);
       handlePhotoRemove();
+      
+      // Refresh the page to show the new photo
+      window.location.reload();
+      
     } catch (error) {
+      console.error('Error uploading photo:', error);
       toast({
         title: "Fehler",
         description: "Foto konnte nicht hinzugefügt werden",
