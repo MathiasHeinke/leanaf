@@ -21,39 +21,40 @@ export const TrainingPlanQuickAction: React.FC<TrainingPlanQuickActionProps> = (
       animate={{ opacity: 1, y: 0 }}
       className={`w-full max-w-4xl mx-auto mb-4 ${className}`}
     >
-      <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20 border-purple-200 dark:border-purple-800">
+      <Card className="border border-border">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Dumbbell className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-purple-900 dark:text-purple-100">
-                  Personalisierter Trainingsplan
-                </h4>
-                <p className="text-sm text-purple-700 dark:text-purple-300">
-                  Erstelle einen evidenzbasierten Plan basierend auf deinen Daten
-                </p>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-[auto,1fr,auto] items-center gap-4">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Dumbbell className="w-5 h-5 text-primary" />
             </div>
-            <Button 
-              onClick={onCreatePlan}
-              disabled={isLoading}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Erstelle...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Trainingsplan erstellen
-                </>
-              )}
-            </Button>
+            <div className="space-y-1">
+              <h4 className="text-base font-semibold">
+                Personalisierter Trainingsplan
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Erstelle einen evidenzbasierten Plan basierend auf deinen Daten
+              </p>
+            </div>
+            <div className="justify-self-start md:justify-self-end">
+              <Button 
+                onClick={onCreatePlan}
+                disabled={isLoading}
+                variant="default"
+                aria-label="Trainingsplan erstellen"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Erstelle...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Trainingsplan erstellen
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

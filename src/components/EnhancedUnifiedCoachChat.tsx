@@ -93,6 +93,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [pendingPlanData, setPendingPlanData] = useState<any>(null);
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
   // Nutrition tool state (Meal analysis like on Index)
   const [showMealDialog, setShowMealDialog] = useState(false);
@@ -404,8 +405,9 @@ if (enableAdvancedFeatures) {
 
   // Handle training plan creation
   const handleCreateTrainingPlan = useCallback(async () => {
-    if (!user?.id || isChatLoading) return;
+    if (!user?.id || isChatLoading || isCreatingPlan) return;
     setShowQuickAction(false);
+    setIsCreatingPlan(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-enhanced-training-plan', {
@@ -469,8 +471,11 @@ if (enableAdvancedFeatures) {
     } catch (err) {
       console.error('Error creating training plan:', err);
       toast.error('Fehler beim Erstellen des Trainingsplans');
+      setShowQuickAction(true);
+    } finally {
+      setIsCreatingPlan(false);
     }
-  }, [user?.id, coach, isChatLoading, userProfile]);
+  }, [user?.id, coach, isChatLoading, userProfile, isCreatingPlan]);
 
   // ============= PLAN HANDLERS =============
   const handleSavePlan = useCallback(async (planData: any) => {
@@ -844,7 +849,7 @@ if (enableAdvancedFeatures) {
             {showQuickAction && (
               <TrainingPlanQuickAction
                 onCreatePlan={handleCreateTrainingPlan}
-                isLoading={isChatLoading}
+                isLoading={isCreatingPlan}
               />
             )}
             
@@ -909,7 +914,7 @@ if (enableAdvancedFeatures) {
               {showQuickAction && (
                 <TrainingPlanQuickAction
                   onCreatePlan={handleCreateTrainingPlan}
-                  isLoading={isChatLoading}
+                  isLoading={isCreatingPlan}
                 />
               )}
               

@@ -118,7 +118,7 @@ serve(async (req) => {
       generatedPlan = await generatePlanWithAI(userProfile, goals, strengthProfile, exerciseTemplates);
     } else if (mode === 'next_day') {
       // History-based next-day generation (uses last training data)
-      generatedPlan = await generatePlanFromHistory(supabase, user.id, userProfile, goals, lookbackDays);
+      generatedPlan = await generatePlanFromHistory(supabase, user.id, userProfile, goals, lookbackDays, planName);
     } else {
       // Template-based generation
       generatedPlan = generatePlanFromTemplate(userProfile, goals, strengthProfile, exerciseTemplates);
@@ -228,7 +228,7 @@ serve(async (req) => {
           ]
         },
         metadata: {
-          generationMethod: useAI ? 'ai' : 'template',
+          generationMethod: useAI ? 'ai' : (mode === 'next_day' ? 'history' : 'template'),
           coachId,
           strengthProfile: strengthProfile?.length || 0,
           templatesUsed: exerciseTemplates?.length || 0
@@ -451,7 +451,7 @@ function generateUpperBodyExercises(templates: any[], strengthProfile: any[]) {
 }
 
 // History-based next-day generation using recent exercise data
-async function generatePlanFromHistory(supabase: any, userId: string, userProfile: any, goals: string[], lookbackDays: number) {
+async function generatePlanFromHistory(supabase: any, userId: string, userProfile: any, goals: string[], lookbackDays: number, planName?: string) {
   // Helper mappings
   const classifyExercise = (name: string): 'push'|'pull'|'legs'|'other' => {
     const n = (name || '').toLowerCase();
