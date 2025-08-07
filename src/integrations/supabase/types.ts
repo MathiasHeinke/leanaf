@@ -110,6 +110,57 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_credits_usage: {
+        Row: {
+          cost: number
+          created_at: string
+          credits_after: number
+          credits_before: number
+          feature_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string
+          credits_after: number
+          credits_before: number
+          feature_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          credits_after?: number
+          credits_before?: number
+          feature_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_feature_costs: {
+        Row: {
+          cost: number
+          created_at: string
+          feature_type: string
+          updated_at: string
+        }
+        Insert: {
+          cost: number
+          created_at?: string
+          feature_type: string
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          feature_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_usage_limits: {
         Row: {
           created_at: string
@@ -4520,6 +4571,9 @@ export type Database = {
           credits_total: number | null
           id: string
           last_reset_date: string | null
+          last_reset_month: string
+          monthly_quota: number
+          tester: boolean
           updated_at: string | null
           user_id: string
         }
@@ -4529,6 +4583,9 @@ export type Database = {
           credits_total?: number | null
           id?: string
           last_reset_date?: string | null
+          last_reset_month?: string
+          monthly_quota?: number
+          tester?: boolean
           updated_at?: string | null
           user_id: string
         }
@@ -4538,6 +4595,9 @@ export type Database = {
           credits_total?: number | null
           id?: string
           last_reset_date?: string | null
+          last_reset_month?: string
+          monthly_quota?: number
+          tester?: boolean
           updated_at?: string | null
           user_id?: string
         }
@@ -5513,6 +5573,21 @@ export type Database = {
       }
     }
     Functions: {
+      _ensure_user_credits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string | null
+          credits_remaining: number | null
+          credits_total: number | null
+          id: string
+          last_reset_date: string | null
+          last_reset_month: string
+          monthly_quota: number
+          tester: boolean
+          updated_at: string | null
+          user_id: string
+        }
+      }
       award_badge_atomically: {
         Args: {
           p_user_id: string
@@ -5566,6 +5641,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      consume_credits_for_feature: {
+        Args: { p_feature_type: string; p_deduct?: boolean }
+        Returns: Json
+      }
       current_user_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
@@ -5594,6 +5673,10 @@ export type Database = {
       fast_sets_volume: {
         Args: { p_user: string; p_d: string }
         Returns: number
+      }
+      get_credits_status: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       get_day_context: {
         Args: { p_user: string; p_day: string }
