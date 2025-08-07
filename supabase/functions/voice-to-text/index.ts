@@ -1,6 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,12 +33,12 @@ serve(async (req) => {
   }
 
   try {
-    const { audio } = await req.json();
+    const { audio, fileId } = await req.json();
     
-    console.log('Voice-to-text started, audio data type:', typeof audio);
+    console.log('Voice-to-text started, audio type:', typeof audio, 'fileId:', fileId);
     
-    if (!audio) {
-      throw new Error('No audio data provided');
+    if (!audio && !fileId) {
+      throw new Error('No audio data or fileId provided');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -48,17 +49,43 @@ serve(async (req) => {
     // Convert audio data to binary
     let binaryAudio: Uint8Array;
     
-    if (typeof audio === 'string') {
-      // Base64 string
-      binaryAudio = base64ToUint8Array(audio);
-    } else if (Array.isArray(audio)) {
-      // Array of bytes (legacy format)
-      binaryAudio = new Uint8Array(audio);
+    if (fileId) {
+      // Get audio from Supabase Storage
+      console.log('Fetching audio from server file:', fileId);
+      
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      
+      const { data, error } = await supabase.storage
+        .from('coach-media')
+        .download(`voice-recordings/${fileId}.webm`);
+      
+      if (error) {
+        console.error('Error downloading file from storage:', error);
+        throw new Error(`Failed to download audio file: ${error.message}`);
+      }
+      
+      binaryAudio = new Uint8Array(await data.arrayBuffer());
+      console.log('Audio file downloaded from server, size:', binaryAudio.length, 'bytes');
+      
+    } else if (audio) {
+      // Process base64 audio
+      if (typeof audio === 'string') {
+        // Base64 string
+        binaryAudio = base64ToUint8Array(audio);
+      } else if (Array.isArray(audio)) {
+        // Array of bytes (legacy format)
+        binaryAudio = new Uint8Array(audio);
+      } else {
+        throw new Error('Invalid audio data format');
+      }
+      
+      console.log('Audio data converted, size:', binaryAudio.length, 'bytes');
     } else {
-      throw new Error('Invalid audio data format');
+      throw new Error('No audio data or fileId provided');
     }
-
-    console.log('Audio data converted, size:', binaryAudio.length, 'bytes');
     
     // Prepare form data
     const formData = new FormData();

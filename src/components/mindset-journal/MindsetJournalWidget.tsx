@@ -51,10 +51,13 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
     audioLevel = 0,
     hasPermission = false,
     hasCachedAudio = false,
+    hasPersistedAudio = false,
     startRecording = () => {},
     stopRecording = () => {},
     clearTranscription = () => {},
-    retryTranscription = async () => null
+    retryTranscription = async () => null,
+    retryFromServer = async () => null,
+    clearPersistedAudio = () => {}
   } = useEnhancedVoiceRecording() || {};
 
   const getCurrentTimeOfDay = () => {
@@ -275,7 +278,7 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
             />
 
             {/* Processing Status & Audio Cache Info */}
-            {(isProcessing || isVoiceLoading || hasCachedAudio) && (
+            {(isProcessing || isVoiceLoading || hasPersistedAudio) && (
               <div className="space-y-2">
                 {(isProcessing || isVoiceLoading) && (
                   <div className="flex items-center gap-2 text-xs text-primary">
@@ -284,11 +287,14 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                   </div>
                 )}
                 
-                {hasCachedAudio && !isProcessing && !isVoiceLoading && (
-                  <div className="flex items-center justify-between p-2 bg-background/50 border border-primary/20 rounded-md">
-                    <div className="flex items-center gap-2 text-xs text-primary">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span>Audio gespeichert</span>
+                {hasPersistedAudio && !isProcessing && !isVoiceLoading && (
+                  <div className="flex items-center justify-between p-2 bg-background/50 border border-success/20 rounded-md">
+                    <div className="flex items-center gap-2 text-xs text-success">
+                      <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                      <span>Audio permanent gespeichert</span>
+                      <Badge variant="outline" className="text-xs border-success/30 text-success">
+                        Persistent
+                      </Badge>
                     </div>
                     <div className="flex gap-1">
                       <Button
@@ -296,14 +302,25 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                         size="sm"
                         onClick={retryTranscription}
                         className="h-6 px-2 text-xs text-primary hover:text-primary/80"
+                        title="Retry from LocalStorage"
                       >
-                        Nochmal versuchen
+                        Lokal
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={clearTranscription}
+                        onClick={retryFromServer}
+                        className="h-6 px-2 text-xs text-accent hover:text-accent/80"
+                        title="Retry from Server"
+                      >
+                        Server
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearPersistedAudio}
                         className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                        title="Clear all audio"
                       >
                         Löschen
                       </Button>

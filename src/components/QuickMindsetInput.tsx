@@ -44,10 +44,13 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
     transcribedText = '',
     audioLevel = 0,
     hasCachedAudio = false,
+    hasPersistedAudio = false,
     startRecording = async () => {},
     stopRecording = async () => {},
     clearTranscription = () => {},
-    retryTranscription = async () => null
+    retryTranscription = async () => null,
+    retryFromServer = async () => null,
+    clearPersistedAudio = () => {}
   } = voiceRecording || {};
 
   const getCurrentTimeOfDay = () => {
@@ -220,8 +223,8 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
                 <>
                   <Mic className="h-4 w-4 mr-2" />
                   Voice Input
-                  {hasCachedAudio && (
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
+                  {hasPersistedAudio && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full animate-pulse" />
                   )}
                 </>
               )}
@@ -264,7 +267,7 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
           />
 
           {/* Processing Status & Audio Cache Info */}
-          {(isProcessing || isVoiceLoading || hasCachedAudio) && (
+          {(isProcessing || isVoiceLoading || hasPersistedAudio) && (
             <div className="space-y-2">
               {(isProcessing || isVoiceLoading) && (
                 <div className="flex items-center gap-2 text-xs text-violet-600 dark:text-violet-400">
@@ -273,11 +276,14 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
                 </div>
               )}
               
-              {hasCachedAudio && !isProcessing && !isVoiceLoading && (
+              {hasPersistedAudio && !isProcessing && !isVoiceLoading && (
                 <div className="flex items-center justify-between p-2 bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 rounded-md">
                   <div className="flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
-                    <div className="w-2 h-2 bg-violet-500 rounded-full"></div>
-                    <span>Audio gespeichert</span>
+                    <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                    <span>Audio permanent gespeichert</span>
+                    <Badge variant="outline" className="text-xs border-success/30 text-success">
+                      Persistent
+                    </Badge>
                   </div>
                   <div className="flex gap-1">
                     <Button
@@ -285,14 +291,25 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
                       size="sm"
                       onClick={retryTranscription}
                       className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                      title="Retry from LocalStorage"
                     >
-                      Nochmal versuchen
+                      Lokal
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={clearTranscription}
+                      onClick={retryFromServer}
+                      className="h-6 px-2 text-xs text-accent hover:text-accent/80"
+                      title="Retry from Server"
+                    >
+                      Server
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearPersistedAudio}
                       className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                      title="Clear all audio"
                     >
                       Löschen
                     </Button>

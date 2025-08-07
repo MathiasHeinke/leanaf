@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,7 +17,13 @@ interface UseEnhancedVoiceRecordingReturn {
   sendTranscription: () => Promise<string | null>;
   hasPermission: boolean;
   hasCachedAudio: boolean;
+  hasPersistedAudio: boolean;
+  retryFromServer: () => Promise<string | null>;
+  clearPersistedAudio: () => void;
 }
+
+const AUDIO_STORAGE_KEY = 'voice_recording_audio';
+const AUDIO_META_STORAGE_KEY = 'voice_recording_meta';
 
 export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => {
   const [isRecording, setIsRecording] = useState(false);
@@ -28,11 +34,109 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
   const [audioLevel, setAudioLevel] = useState(0);
   const [hasPermission, setHasPermission] = useState(false);
   const [cachedAudioBlob, setCachedAudioBlob] = useState<Blob | null>(null);
+  const [serverFileId, setServerFileId] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number>();
+
+  // Check for persisted audio on mount
+  useEffect(() => {
+    const checkPersistedAudio = () => {
+      try {
+        const persistedMeta = localStorage.getItem(AUDIO_META_STORAGE_KEY);
+        if (persistedMeta) {
+          const meta = JSON.parse(persistedMeta);
+          setServerFileId(meta.fileId || null);
+          console.log('📁 Found persisted audio metadata:', meta);
+        }
+        
+        const persistedAudio = localStorage.getItem(AUDIO_STORAGE_KEY);
+        if (persistedAudio) {
+          // Convert base64 back to blob
+          try {
+            const binaryString = atob(persistedAudio);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'audio/webm' });
+            setCachedAudioBlob(blob);
+            console.log('📁 Restored audio from LocalStorage');
+          } catch (error) {
+            console.error('❌ Failed to restore audio from LocalStorage:', error);
+            localStorage.removeItem(AUDIO_STORAGE_KEY);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error checking persisted audio:', error);
+      }
+    };
+
+    checkPersistedAudio();
+  }, []);
+
+  // Save audio to LocalStorage
+  const saveAudioToStorage = useCallback(async (audioBlob: Blob) => {
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      const binaryString = Array.from(uint8Array, byte => String.fromCharCode(byte)).join('');
+      const base64Audio = btoa(binaryString);
+      
+      localStorage.setItem(AUDIO_STORAGE_KEY, base64Audio);
+      console.log('💾 Audio saved to LocalStorage');
+    } catch (error) {
+      console.error('❌ Failed to save audio to LocalStorage:', error);
+    }
+  }, []);
+
+  // Upload audio to server
+  const uploadAudioToServer = useCallback(async (audioBlob: Blob): Promise<string | null> => {
+    try {
+      console.log('📤 Uploading audio to server...');
+      
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.webm');
+      
+      const { data, error } = await supabase.functions.invoke('upload-audio', {
+        body: formData
+      });
+      
+      if (error) throw error;
+      
+      const fileId = data?.fileId;
+      if (fileId) {
+        setServerFileId(fileId);
+        
+        // Save metadata to LocalStorage
+        const metadata = {
+          fileId,
+          uploadedAt: new Date().toISOString(),
+          timestamp: Date.now()
+        };
+        localStorage.setItem(AUDIO_META_STORAGE_KEY, JSON.stringify(metadata));
+        
+        console.log('✅ Audio uploaded to server with ID:', fileId);
+        return fileId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Failed to upload audio to server:', error);
+      return null;
+    }
+  }, []);
+
+  // Clear persisted audio
+  const clearPersistedAudio = useCallback(() => {
+    localStorage.removeItem(AUDIO_STORAGE_KEY);
+    localStorage.removeItem(AUDIO_META_STORAGE_KEY);
+    setServerFileId(null);
+    setCachedAudioBlob(null);
+    console.log('🗑️ Cleared all persisted audio');
+  }, []);
 
   // Check for microphone permission
   const checkPermission = useCallback(async () => {
@@ -134,8 +238,16 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
           
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           
-          // Cache audio blob and automatically start transcription
+          // Cache audio blob and save to storage for persistence
           setCachedAudioBlob(audioBlob);
+          
+          // Save to LocalStorage for quick recovery
+          await saveAudioToStorage(audioBlob);
+          
+          // Upload to server for long-term storage (don't wait)
+          uploadAudioToServer(audioBlob).catch(error => {
+            console.error('❌ Background server upload failed:', error);
+          });
           
           console.log('✅ Audio recorded and cached, starting automatic transcription...');
           
@@ -149,7 +261,9 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
               setTranscribedText(transcriptionResult);
               setTranscript(transcriptionResult);
               toast.success(`Sprache erkannt: "${transcriptionResult.substring(0, 50)}${transcriptionResult.length > 50 ? '...' : ''}"`);
-              setCachedAudioBlob(null); // Clear cache after successful transcription
+              
+              // Clear all cached audio after successful transcription
+              clearPersistedAudio();
             } else {
               toast.error('Transkription fehlgeschlagen');
             }
@@ -195,7 +309,7 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
         setTranscribedText(transcriptionResult);
         setTranscript(transcriptionResult);
         toast.success(`Sprache erkannt: "${transcriptionResult.substring(0, 50)}${transcriptionResult.length > 50 ? '...' : ''}"`);
-        setCachedAudioBlob(null);
+        clearPersistedAudio();
       } else {
         toast.error('Transkription fehlgeschlagen');
       }
@@ -261,7 +375,7 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
         setTranscript(result);
         setTranscribedText(result);
         toast.success(`Sprache erkannt: "${result.substring(0, 50)}${result.length > 50 ? '...' : ''}"`);
-        setCachedAudioBlob(null); // Clear cache on success
+        clearPersistedAudio(); // Clear all persisted audio on success
       } else {
         toast.error('Transkription fehlgeschlagen - bitte neu aufnehmen');
       }
@@ -272,12 +386,51 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
     }
   }, [cachedAudioBlob]);
 
+  // Retry transcription from server
+  const retryFromServer = useCallback(async (): Promise<string | null> => {
+    if (!serverFileId) {
+      toast.error('Keine Server-Datei verfügbar');
+      return null;
+    }
+    
+    setIsLoading(true);
+    console.log('🔄 Retrying transcription from server file:', serverFileId);
+    
+    try {
+      // Get file from server and transcribe
+      const { data, error } = await supabase.functions.invoke('voice-to-text', {
+        body: { fileId: serverFileId }
+      });
+      
+      if (error) throw error;
+      
+      const result = data?.text || '';
+      
+      if (result) {
+        setTranscript(result);
+        setTranscribedText(result);
+        toast.success(`Sprache erkannt: "${result.substring(0, 50)}${result.length > 50 ? '...' : ''}"`);
+        clearPersistedAudio(); // Clear on success
+      } else {
+        toast.error('Server-Transkription fehlgeschlagen');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Server transcription failed:', error);
+      toast.error('Server-Transkription fehlgeschlagen');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [serverFileId, clearPersistedAudio]);
+
   const clearTranscription = useCallback(() => {
     setTranscript('');
     setTranscribedText('');
-    setCachedAudioBlob(null);
-    console.log('🗑️ Transcription and cache cleared');
-  }, []);
+    clearPersistedAudio();
+    console.log('🗑️ Transcription and all persisted audio cleared');
+  }, [clearPersistedAudio]);
 
   return {
     isRecording,
@@ -292,6 +445,9 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
     retryTranscription,
     sendTranscription,
     hasPermission,
-    hasCachedAudio: !!cachedAudioBlob
+    hasCachedAudio: !!cachedAudioBlob,
+    hasPersistedAudio: !!cachedAudioBlob || !!serverFileId,
+    retryFromServer,
+    clearPersistedAudio
   };
 };
