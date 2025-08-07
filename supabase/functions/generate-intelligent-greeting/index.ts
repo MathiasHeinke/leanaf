@@ -141,32 +141,90 @@ serve(async (req) => {
       contextSummary += `\nKalorien übrig heute: ${contextData.calLeft}`;
     }
 
-    // Create dynamic system prompt for CONTEXTUAL, VARIED greetings
-    const systemPrompt = `Du bist ${coach.name}, ein erfahrener Coach. Wir kennen uns gut und haben schon viele Gespräche geführt.
+    // Enhanced coach-specific greeting strategies
+    const coachGreetingStrategies = {
+      'sascha': {
+        themes: ['provokant', 'ehrlich', 'training_check', 'direkt', 'norddeutsch'],
+        examples: [
+          'Moin! Na, wieder Ausreden?',
+          'Hey! Bereit für Ehrlichkeit?', 
+          'Moin! Heute ohne Wenn und Aber?',
+          'Hey! Zeit für klare Ansagen!',
+          'Moin! Gut geschlafen oder wieder gegrübelt?'
+        ]
+      },
+      'lucy': {
+        themes: ['energetisch', 'motivational', 'ernährung', 'positiv', 'lifestyle'],
+        examples: [
+          'Hey! ✨ Du strahlst heute!',
+          'Hi! Wie ist deine Energie?',
+          'Hey! Schön dich zu sehen! 💪',
+          'Hi! Bereit für positive Vibes?',
+          'Hey! Was Gutes gegessen heute?'
+        ]
+      },
+      'kai': {
+        themes: ['mental', 'philosophisch', 'flow', 'achtsamkeit', 'balance'],
+        examples: [
+          'Servus! Wie ist dein Flow heute?',
+          'Hey! Spürst du die Balance?',
+          'Servus! In welcher Energie bist du?',
+          'Hey! Bereit für mentale Stärke?',
+          'Servus! Wie ist dein innerer Zustand?'
+        ]
+      },
+      'markus': {
+        themes: ['arbeit', 'schaffen', 'leistung', 'schwäbisch', 'disziplin'],
+        examples: [
+          'Abend! Was steht morgen an?',
+          'Hey! Bereit zum schaffe?',
+          'Abend! Zeit für echte Arbeit?',
+          'Hey! Packmer\'s richtig an?',
+          'Abend! Heute schon was gschafft?'
+        ]
+      },
+      'dr_vita': {
+        themes: ['ganzheitlich', 'wohlbefinden', 'hormone', 'medizinisch', 'weiblich'],
+        examples: [
+          'Guten Abend! Wie fühlen Sie sich heute?',
+          'Hallo! Wie ist Ihr Wohlbefinden?',
+          'Guten Abend! Alles in Balance?',
+          'Hallo! Wie ist Ihre Energie heute?',
+          'Guten Abend! Hören Sie auf Ihren Körper?'
+        ]
+      }
+    };
 
-DEINE PERSÖNLICHKEIT:
+    // Create dynamic, contextual system prompt with expanded variance
+    const strategy = coachGreetingStrategies[coachId] || coachGreetingStrategies['lucy'];
+    const systemPrompt = `Du bist ${coach.name}, ein erfahrener Coach. Erstelle eine authentische, contextuelle Begrüßung.
+
+DEINE PERSÖNLICHKEIT & STIL:
 - ${coach.style}
 - ${coach.language}
 - Fokus: ${coach.focus}
+- Greeting-Stil: ${coach.greeting_style}
 
-BEGRÜSSUNGSREGELN:
-- Kurz und knackig (2-4 Sätze max)
-- Nutze den aktuellen Kontext (Tageszeit, letzte Aktivitäten, Trends)
-- Variiere deine Begrüßungen je nach Situation
-- Sei persönlich und authentisch, nicht oberflächlich
-- Beziehe dich auf relevante Daten wenn sinnvoll
-- Bleib in deinem Stil aber sei flexibel
+VARIANZ-STRATEGIEN für ${coach.name}:
+Themes: ${strategy.themes.join(', ')}
 
-GUTE BEISPIELE für kontextuelle Begrüßungen:
-- Morgens: "Moin! Gut geschlafen? Lass uns den Tag rocken!"
-- Nach Training: "Hey! Wie war das Training gestern? Schon wieder bereit?"
-- Bei Gewichtstrend: "Servus! Die 2kg weniger sehen gut aus!"
-- Abends: "Hi! Schon Pläne für morgen?"
-- Bei wenig Kalorien übrig: "Hey! Heute schon gut gegessen?"
+STILRICHTUNGEN (variiere zwischen diesen):
+${strategy.examples.map(ex => `- ${ex}`).join('\n')}
 
-Erstelle eine passende, kontextuelle Begrüßung:`;
+KONTEXT-REGELN:
+- Vollständige Sätze (keine Abbrüche!)
+- Nutze aktuellen Kontext intelligent
+- VERSCHIEDENE Themen je nach Daten:
+  * Bei Training-Daten → Training erwähnen
+  * Bei Gewichtstrend → darauf eingehen  
+  * Bei bestimmter Tageszeit → passend begrüßen
+  * Ohne spezielle Daten → allgemeine Themen (Energie, Pläne, Wohlbefinden)
+- Authentisch in deinem Stil bleiben
+- Echte Varianz zwischen verschiedenen Gesprächen
 
-    console.log('🤖 Calling OpenAI with system prompt');
+WICHTIG: Erstelle eine VOLLSTÄNDIGE, natürliche Begrüßung ohne abgeschnittene Sätze!`;
+
+    console.log('🤖 Calling OpenAI with enhanced system prompt');
     console.log('📊 Context Summary sent to AI:', contextSummary);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -179,12 +237,12 @@ Erstelle eine passende, kontextuelle Begrüßung:`;
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Kontext für die Begrüßung:\n${contextSummary}\n\nErstelle eine passende, persönliche Begrüßung die zu meiner aktuellen Situation passt.` }
+          { role: 'user', content: `Aktuelle Situation:\n${contextSummary}\n\nErstelle eine authentische, vollständige Begrüßung die zu meiner Situation passt. Nutze deinen individuellen Stil und variiere das Thema.` }
         ],
-        temperature: 0.8, // More creative and varied
-        max_tokens: 28, // Allow for 2-3 sentences
-        presence_penalty: 0.7, // Encourage contextual language
-        frequency_penalty: 0.6 // Some repetition ok for personality
+        temperature: 0.9, // Higher creativity for more variance
+        max_tokens: 60, // Increased for complete sentences
+        presence_penalty: 0.8, // Strong encouragement for contextual language
+        frequency_penalty: 0.7 // Reduce repetitive patterns
       }),
     });
 
