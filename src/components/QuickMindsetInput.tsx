@@ -7,20 +7,23 @@ import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
+import { MindsetJournalDetailWidget } from "@/components/mindset-journal/MindsetJournalDetailWidget";
 import { PhotoUpload } from "./PhotoUpload";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 interface QuickMindsetInputProps {
   onMindsetAdded?: () => void;
+  currentDate?: Date;
 }
 
-export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) => {
+export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: QuickMindsetInputProps) => {
   const [manualText, setManualText] = useState('');
   const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showDetailWidget, setShowDetailWidget] = useState(false);
 
   const { toast } = useToast();
   const mindsetJournal = useMindsetJournal();
@@ -151,10 +154,10 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
     return 'bg-destructive/20 text-destructive border-destructive/30';
   };
 
-  // Check if user has entries today
-  const today = new Date().toISOString().split('T')[0];
-  const hasEntriesToday = recentEntries.some(entry => 
-    new Date(entry.date).toISOString().split('T')[0] === today
+  // Check if user has entries for current date
+  const currentDateStr = currentDate.toISOString().split('T')[0];
+  const hasEntriesForDate = recentEntries.some(entry => 
+    new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
 
   return (
@@ -162,11 +165,11 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
       title="Mindset Journal"
       icon={<Brain className="h-5 w-5" />}
       theme="violet"
-      isCompleted={hasEntriesToday}
-      completedText={hasEntriesToday ? `${recentEntries.filter(entry => 
-        new Date(entry.date).toISOString().split('T')[0] === today
-      ).length} Einträge heute` : undefined}
-      defaultOpen={!hasEntriesToday}
+      isCompleted={hasEntriesForDate}
+      completedText={hasEntriesForDate ? `${recentEntries.filter(entry => 
+        new Date(entry.date).toISOString().split('T')[0] === currentDateStr
+      ).length} Einträge` : undefined}
+      defaultOpen={!hasEntriesForDate}
     >
       <div className="space-y-4">
         {/* Smart Prompt */}
@@ -339,18 +342,31 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
           </Button>
         </div>
 
-        {/* Today's Entries Preview */}
-        {hasEntriesToday && (
+        {/* Entries Preview for Current Date */}
+        {hasEntriesForDate && (
           <div className="space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground">Heutige Einträge</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-medium text-muted-foreground">
+                {currentDateStr === new Date().toISOString().split('T')[0] ? 'Heutige Einträge' : 'Einträge'}
+              </h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDetailWidget(true)}
+                className="text-xs h-auto py-1 px-2 text-violet-600 hover:text-violet-700 dark:text-violet-400"
+              >
+                Alle anzeigen
+              </Button>
+            </div>
             <div className="flex gap-2 flex-wrap">
               {recentEntries
-                .filter(entry => new Date(entry.date).toISOString().split('T')[0] === today)
+                .filter(entry => new Date(entry.date).toISOString().split('T')[0] === currentDateStr)
                 .slice(0, 3)
                 .map((entry, index) => (
                 <div
                   key={entry.id || index}
-                  className="flex items-center gap-1 p-2 rounded-md bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30"
+                  onClick={() => setShowDetailWidget(true)}
+                  className="flex items-center gap-1 p-2 rounded-md bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 cursor-pointer hover:bg-violet-100/50 dark:hover:bg-violet-900/40 transition-colors"
                 >
                   <Badge
                     variant="outline"
@@ -372,6 +388,13 @@ export const QuickMindsetInput = ({ onMindsetAdded }: QuickMindsetInputProps) =>
             </div>
           </div>
         )}
+
+        {/* Detail Widget */}
+        <MindsetJournalDetailWidget
+          open={showDetailWidget}
+          onOpenChange={setShowDetailWidget}
+          selectedDate={currentDateStr}
+        />
       </div>
     </CollapsibleQuickInput>
   );

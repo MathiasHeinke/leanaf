@@ -525,7 +525,10 @@ const Index = () => {
       case 'mindset':
         return (
           <SortableCard key="mindset" id="mindset">
-            <QuickMindsetInput onMindsetAdded={() => loadTodaysData(currentDate)} />
+            <QuickMindsetInput 
+              onMindsetAdded={() => loadTodaysData(currentDate)}
+              currentDate={currentDate}
+            />
           </SortableCard>
         );
       default:
