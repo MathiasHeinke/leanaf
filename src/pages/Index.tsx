@@ -14,6 +14,7 @@ import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
+import { QuickMindsetInput } from "@/components/QuickMindsetInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
@@ -69,7 +70,7 @@ const Index = () => {
   // Card order state
   const [cardOrder, setCardOrder] = useState<string[]>(() => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
-    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements', 'supplements', 'fluids'];
+    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements', 'supplements', 'fluids', 'mindset'];
   });
 
   // Check authentication and redirect if needed
@@ -521,6 +522,12 @@ const Index = () => {
             <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
           </SortableCard>
         );
+      case 'mindset':
+        return (
+          <SortableCard key="mindset" id="mindset">
+            <QuickMindsetInput onMindsetAdded={() => loadTodaysData(currentDate)} />
+          </SortableCard>
+        );
       default:
         return null;
     }
@@ -609,7 +616,8 @@ const Index = () => {
                   'fluids': 'fluid_tracking'
                 };
                 const trackingType = trackingTypeMap[cardType as keyof typeof trackingTypeMap];
-                return !trackingType || isTrackingEnabled(trackingType);
+                // Always show mindset journal regardless of tracking preferences
+                return cardType === 'mindset' || !trackingType || isTrackingEnabled(trackingType);
               }).map(cardType => renderCardByType(cardType))}
             </div>
           </SortableContext>

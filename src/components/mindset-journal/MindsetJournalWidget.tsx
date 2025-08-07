@@ -13,11 +13,13 @@ import { cn } from '@/lib/utils';
 interface MindsetJournalWidgetProps {
   onKaiTransfer?: (text: string) => void;
   className?: string;
+  layout?: 'dashboard' | 'chat';
 }
 
 export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({ 
   onKaiTransfer, 
-  className 
+  className,
+  layout = 'chat'
 }) => {
   const [manualText, setManualText] = useState('');
   const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
