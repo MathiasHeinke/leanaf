@@ -1,11 +1,13 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Plus, X } from "lucide-react";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
-import { QuickMealSheet } from "./QuickMealSheet";
-import { QuickWorkoutModal } from "@/components/QuickWorkoutModal";
-import { QuickSleepModal } from "@/components/quick/QuickSleepModal";
-import { QuickSupplementsModal } from "@/components/quick/QuickSupplementsModal";
 import { toast } from "@/components/ui/sonner";
+import { quickAddBus } from "./quickAddBus";
+
+const QuickMealSheet = lazy(() => import("./QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
+const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").then(m => ({ default: m.QuickWorkoutModal })));
+const QuickSleepModal = lazy(() => import("@/components/quick/QuickSleepModal"));
+const QuickSupplementsModal = lazy(() => import("@/components/quick/QuickSupplementsModal"));
 
 export const QuickAddFAB: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -13,6 +15,7 @@ export const QuickAddFAB: React.FC = () => {
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [sleepOpen, setSleepOpen] = useState(false);
   const [suppsOpen, setSuppsOpen] = useState(false);
+  const [recommendedWorkoutType, setRecommendedWorkoutType] = useState<string | undefined>('walking');
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
 
@@ -42,6 +45,20 @@ export const QuickAddFAB: React.FC = () => {
     setMenuOpen(false);
   }, []);
 
+  useEffect(() => {
+    const unsub = quickAddBus.subscribe((action) => {
+      setMenuOpen(false);
+      if (action.type === 'meal') setMealOpen(true);
+      if (action.type === 'sleep') setSleepOpen(true);
+      if (action.type === 'supplements') setSuppsOpen(true);
+      if (action.type === 'workout') {
+        setRecommendedWorkoutType(action.payload?.recommendedType);
+        setWorkoutOpen(true);
+      }
+    });
+    return unsub;
+  }, []);
+
   return (
     <>
       {/* Floating Action Button */}
@@ -62,16 +79,24 @@ export const QuickAddFAB: React.FC = () => {
       <QuickActionsMenu open={menuOpen} onSelect={handleSelect} onClose={() => setMenuOpen(false)} />
 
       {/* Meal flow (Sheet) */}
-      <QuickMealSheet open={mealOpen} onOpenChange={setMealOpen} />
+      <Suspense fallback={null}>
+        <QuickMealSheet open={mealOpen} onOpenChange={setMealOpen} />
+      </Suspense>
 
       {/* Workout flow (existing modal) */}
-      <QuickWorkoutModal isOpen={workoutOpen} onClose={() => setWorkoutOpen(false)} contextData={{ recommendedType: 'walking' }} />
+      <Suspense fallback={null}>
+        <QuickWorkoutModal isOpen={workoutOpen} onClose={() => setWorkoutOpen(false)} contextData={{ recommendedType: recommendedWorkoutType ?? 'walking' }} />
+      </Suspense>
 
       {/* Sleep flow */}
-      <QuickSleepModal isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
+      <Suspense fallback={null}>
+        <QuickSleepModal isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
+      </Suspense>
 
       {/* Supplements flow */}
-      <QuickSupplementsModal isOpen={suppsOpen} onClose={() => setSuppsOpen(false)} />
+      <Suspense fallback={null}>
+        <QuickSupplementsModal isOpen={suppsOpen} onClose={() => setSuppsOpen(false)} />
+      </Suspense>
     </>
   );
 };

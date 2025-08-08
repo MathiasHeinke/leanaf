@@ -27,6 +27,13 @@ export interface UsePlusDataResult {
   remainingKcal?: number | null;
   proteinDelta?: number | null;
   carbBudget?: number | null;
+  hydrationMlToday?: number;
+  sleepLoggedToday?: boolean;
+  sleepDurationToday?: number;
+  stepsToday?: number;
+  stepsTarget?: number;
+  workoutLoggedToday?: boolean;
+  supplementsLoggedToday?: boolean;
 }
 
 export const usePlusData = (): UsePlusDataResult => {
@@ -34,6 +41,12 @@ export const usePlusData = (): UsePlusDataResult => {
   const [error, setError] = useState<string | undefined>();
   const [goals, setGoals] = useState<PlusGoals | null>(null);
   const [last7, setLast7] = useState<PlusDaySummary[]>([]);
+  const [hydrationMlToday, setHydrationMlToday] = useState<number>(0);
+  const [sleepDurationToday, setSleepDurationToday] = useState<number>(0);
+  const [sleepLoggedToday, setSleepLoggedToday] = useState<boolean>(false);
+  const [stepsToday, setStepsToday] = useState<number>(0);
+  const [workoutLoggedToday, setWorkoutLoggedToday] = useState<boolean>(false);
+  const [supplementsLoggedToday, setSupplementsLoggedToday] = useState<boolean>(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,7 +66,7 @@ export const usePlusData = (): UsePlusDataResult => {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
       const fromStr = sevenDaysAgo.toISOString().slice(0, 10);
 
-      const [goalsRes, summariesRes] = await Promise.all([
+      const [goalsRes, summariesRes, fluidsRes, sleepRes, workoutsRes, suppsRes] = await Promise.all([
         supabase
           .from('daily_goals')
           .select('calories, protein, carbs, fats, calorie_deficit')
@@ -66,10 +79,17 @@ export const usePlusData = (): UsePlusDataResult => {
           .gte('date', fromStr)
           .lte('date', todayStr)
           .order('date', { ascending: true }),
+        supabase.rpc('fast_fluid_totals', { p_user: userId, p_d: todayStr }),
+        supabase.from('sleep_tracking').select('sleep_hours').eq('user_id', userId).eq('date', todayStr).maybeSingle(),
+        supabase.from('workouts').select('steps, duration_minutes, did_workout').eq('user_id', userId).eq('date', todayStr),
+        supabase.from('supplement_intake_log').select('id').eq('user_id', userId).eq('date', todayStr).eq('taken', true).limit(1)
       ]);
 
       if (goalsRes.error) throw goalsRes.error;
       if (summariesRes.error) throw summariesRes.error;
+      if (fluidsRes.error) throw fluidsRes.error;
+      if ((workoutsRes as any).error) throw (workoutsRes as any).error;
+      if ((suppsRes as any).error) throw (suppsRes as any).error;
 
       setGoals(goalsRes.data || null);
       setLast7(
@@ -81,6 +101,18 @@ export const usePlusData = (): UsePlusDataResult => {
           total_fats: Number(r.total_fats || 0),
         }))
       );
+
+      setHydrationMlToday(Number(fluidsRes.data || 0));
+      const sleepHours = Number((sleepRes.data as any)?.sleep_hours || 0);
+      setSleepDurationToday(sleepHours);
+      setSleepLoggedToday(sleepHours > 0);
+
+      const workouts = (workoutsRes.data as any[]) || [];
+      const totalSteps = workouts.reduce((sum, w) => sum + Number(w.steps || 0), 0);
+      setStepsToday(totalSteps);
+      setWorkoutLoggedToday(workouts.some((w) => w.did_workout === true));
+
+      setSupplementsLoggedToday(!!(suppsRes.data && (suppsRes.data as any[]).length > 0));
     } catch (e: any) {
       setError(e?.message ?? 'Fehler beim Laden');
     } finally {
@@ -119,5 +151,5 @@ export const usePlusData = (): UsePlusDataResult => {
     return Math.max(0, Math.round((goals.carbs || 0) - consumed));
   }, [goals, today]);
 
-  return { loading, error, goals, today, last7, remainingKcal, proteinDelta, carbBudget };
+  return { loading, error, goals, today, last7, remainingKcal, proteinDelta, carbBudget, hydrationMlToday, sleepLoggedToday, sleepDurationToday, stepsToday, stepsTarget: 7000, workoutLoggedToday, supplementsLoggedToday };
 };

@@ -14,6 +14,8 @@ import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { getCurrentDateString } from "@/utils/dateHelpers";
+import { usePointsSystem } from '@/hooks/usePointsSystem';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 
 interface SupplementOption {
   id: string;
@@ -168,6 +170,8 @@ export const QuickSupplementInput = () => {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [openGroups, setOpenGroups] = useState<string[]>(getDefaultOpenGroups());
+
+  const { awardPoints, getPointsForActivity, updateStreak } = usePointsSystem();
 
   // Load supplements and user supplements
   useEffect(() => {
@@ -336,6 +340,12 @@ export const QuickSupplementInput = () => {
     }
   };
 
+  const countTakenToday = () => {
+    return Object.values(todayIntake).reduce((sum, timings) => {
+      return sum + Object.values(timings || {}).filter(Boolean).length;
+    }, 0);
+  };
+
   const handleIntakeChange = async (supplementId: string, timing: string, taken: boolean) => {
     console.log('handleIntakeChange called:', { supplementId, timing, taken });
     
@@ -345,6 +355,9 @@ export const QuickSupplementInput = () => {
     }
 
     const today = getCurrentDateString();
+
+    // Determine if this is the first intake today BEFORE optimistic update
+    const wasFirstIntake = taken && countTakenToday() === 0;
 
     // Optimistic update
     setTodayIntake(prev => ({
@@ -394,6 +407,16 @@ export const QuickSupplementInput = () => {
       }
 
       console.log('Database update successful for:', { supplementId, timing, taken });
+
+      if (wasFirstIntake) {
+        try {
+          await awardPoints('supplement_taken', getPointsForActivity('supplement_taken'), 'Supplemente: erste Einnahme heute');
+          await updateStreak('supplement_tracking');
+        } catch (e) {
+          console.error('Error awarding points for supplements', e);
+        }
+        triggerDataRefresh();
+      }
 
       if (taken) {
         toast.success('Einnahme markiert');

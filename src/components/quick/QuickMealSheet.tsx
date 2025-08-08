@@ -6,7 +6,8 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
-
+import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { getMealBasePoints } from "@/utils/mealPointsHelper";
 interface QuickMealSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,7 +31,7 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
   } = useGlobalMealInput();
 
   const { user } = useAuth();
-
+  const { awardPoints, updateStreak } = usePointsSystem();
   const onCloseAll = () => {
     resetForm();
     onOpenChange(false);
@@ -57,6 +58,11 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
       });
 
       if (error) throw error;
+
+      const hasPhoto = (uploadedImages?.length ?? 0) > 0;
+      const basePoints = getMealBasePoints(hasPhoto);
+      await awardPoints(hasPhoto ? 'meal_tracked_with_photo' : 'meal_tracked', basePoints, 'Schnell-Eintrag Mahlzeit');
+      await updateStreak('meal_tracking');
 
       toast.success("Mahlzeit gespeichert");
       triggerDataRefresh();

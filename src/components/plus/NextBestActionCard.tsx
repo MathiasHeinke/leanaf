@@ -9,6 +9,10 @@ import { Zap, ArrowRight, Check, Moon, Dumbbell, Droplets, Pill, Utensils } from
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { Progress } from '@/components/ui/progress';
 import confetti from 'canvas-confetti';
+import { openMeal, openSleep, openSupplements, openWorkout } from '@/components/quick/quickAddBus';
+import { supabase } from '@/integrations/supabase/client';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
+import { toast } from '@/components/ui/sonner';
 
 interface NextBestActionCardProps {
   data: UsePlusDataResult;
@@ -175,9 +179,38 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ data }) 
                       <Button
                         className="w-full"
                         size="sm"
-                        onClick={() => {
-                          // TODO: link to actual logging flows
-                          setManualDone((prev) => ({ ...prev, [m.id]: true }));
+                        onClick={async () => {
+                          if (m.completed) return;
+                          try {
+                            switch (m.type) {
+                              case 'macros':
+                                openMeal();
+                                break;
+                              case 'sleep':
+                                openSleep();
+                                break;
+                              case 'supplements':
+                                openSupplements();
+                                break;
+                              case 'workout':
+                                openWorkout({ recommendedType: 'walking' });
+                                break;
+                              case 'hydration': {
+                                const { data: auth } = await supabase.auth.getUser();
+                                const userId = auth.user?.id;
+                                if (!userId) { toast.error('Bitte zuerst anmelden'); break; }
+                                const today = new Date().toISOString().slice(0,10);
+                                const { error } = await supabase.from('user_fluids').insert({ user_id: userId, amount_ml: 500, date: today, consumed_at: new Date().toISOString() });
+                                if (error) throw error;
+                                toast.success('500 ml hinzugefügt');
+                                triggerDataRefresh();
+                                break;
+                              }
+                            }
+                            setManualDone((prev) => ({ ...prev, [m.id]: true }));
+                          } catch (e) {
+                            toast.error('Aktion fehlgeschlagen');
+                          }
                         }}
                         disabled={m.completed}
                       >
