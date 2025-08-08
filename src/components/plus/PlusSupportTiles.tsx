@@ -26,7 +26,7 @@ export const PlusSupportTiles: React.FC<PlusSupportTilesProps> = ({ data }) => {
         <CardTitle>Hydration & Schlaf</CardTitle>
         <CardDescription>Unterstützende Faktoren für dein Ziel</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <CardContent className="grid grid-cols-1 gap-6">
         {/* Hydration */}
         <div className="rounded-xl glass-card p-4">
           {loading ? (
