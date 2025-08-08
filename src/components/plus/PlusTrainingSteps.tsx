@@ -27,7 +27,7 @@ export const PlusTrainingSteps: React.FC<PlusTrainingStepsProps> = ({ data }) =>
         <CardTitle>Training & Schritte</CardTitle>
         <CardDescription>Wöchentliches Training und tägliche Bewegung</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <CardContent className="grid grid-cols-1 gap-6">
         {/* Training Progress */}
         <div className="rounded-xl glass-card p-4">
           {loading ? (

@@ -20,7 +20,7 @@ export const PlusMacroDeltas: React.FC<PlusMacroDeltasProps> = ({ data }) => {
         <CardTitle>Makro-Deltas</CardTitle>
         <CardDescription>Protein-Delta und Carb‑Budget für heute</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <CardContent className="grid grid-cols-1 gap-6">
         {/* Protein */}
         <div className="rounded-xl glass-card p-4">
           {loading ? (
