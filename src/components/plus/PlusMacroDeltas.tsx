@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UsePlusDataResult } from '@/hooks/usePlusData';
@@ -14,14 +15,14 @@ export const PlusMacroDeltas: React.FC<PlusMacroDeltasProps> = ({ data }) => {
   const proteinBadgeVariant: 'default' | 'secondary' = (today?.total_protein || 0) >= (goals?.protein || 0) ? 'default' : 'secondary';
 
   return (
-    <Card>
+    <PlusCard>
       <CardHeader>
         <CardTitle>Makro-Deltas</CardTitle>
         <CardDescription>Protein-Delta und Carb‑Budget für heute</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Protein */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-xl glass-card p-4">
           {loading ? (
             <Skeleton className="h-16 w-full" />
           ) : (
@@ -37,7 +38,7 @@ export const PlusMacroDeltas: React.FC<PlusMacroDeltasProps> = ({ data }) => {
         </div>
 
         {/* Carbs */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-xl glass-card p-4">
           {loading ? (
             <Skeleton className="h-16 w-full" />
           ) : (
@@ -52,6 +53,6 @@ export const PlusMacroDeltas: React.FC<PlusMacroDeltasProps> = ({ data }) => {
           )}
         </div>
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };

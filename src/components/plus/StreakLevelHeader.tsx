@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -28,7 +29,7 @@ export const StreakLevelHeader: React.FC = () => {
   }, []);
 
   return (
-    <Card>
+    <PlusCard>
       <CardContent className="flex items-center justify-between py-4">
         <div>
           <div className="text-sm text-muted-foreground">Momentum‑Board</div>
@@ -40,6 +41,6 @@ export const StreakLevelHeader: React.FC = () => {
           <Badge variant="outline">🔥 Tagesmission aktiv</Badge>
         </div>
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -24,7 +25,7 @@ export const MiniJournalQuick: React.FC = () => {
   const hasContent = selectedMood || note.trim();
 
   return (
-    <Card>
+    <PlusCard>
       <CardHeader>
         <CardTitle className="text-lg">Wie fühlst du dich heute?</CardTitle>
       </CardHeader>
@@ -69,6 +70,6 @@ export const MiniJournalQuick: React.FC = () => {
           {saved ? '✓ Gespeichert' : 'Speichern'}
         </Button>
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };

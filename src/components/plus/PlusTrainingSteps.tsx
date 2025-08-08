@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,14 +22,14 @@ export const PlusTrainingSteps: React.FC<PlusTrainingStepsProps> = ({ data }) =>
   const stepsPercentage = Math.min(100, (steps.current / steps.target) * 100);
 
   return (
-    <Card>
+    <PlusCard>
       <CardHeader>
         <CardTitle>Training & Schritte</CardTitle>
         <CardDescription>Wöchentliches Training und tägliche Bewegung</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Training Progress */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-xl glass-card p-4">
           {loading ? (
             <Skeleton className="h-20 w-full" />
           ) : (
@@ -54,7 +55,7 @@ export const PlusTrainingSteps: React.FC<PlusTrainingStepsProps> = ({ data }) =>
         </div>
 
         {/* Steps Progress */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-xl glass-card p-4">
           {loading ? (
             <Skeleton className="h-20 w-full" />
           ) : (
@@ -80,6 +81,6 @@ export const PlusTrainingSteps: React.FC<PlusTrainingStepsProps> = ({ data }) =>
           )}
         </div>
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };

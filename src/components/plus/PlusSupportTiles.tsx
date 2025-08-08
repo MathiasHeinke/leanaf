@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,27 +21,27 @@ export const PlusSupportTiles: React.FC<PlusSupportTilesProps> = ({ data }) => {
   const hydrationPercentage = Math.min(100, (hydration.current / hydration.target) * 100);
 
   return (
-    <Card>
+    <PlusCard>
       <CardHeader>
         <CardTitle>Hydration & Schlaf</CardTitle>
         <CardDescription>Unterstützende Faktoren für dein Ziel</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Hydration */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-xl glass-card p-4">
           {loading ? (
             <Skeleton className="h-20 w-full" />
           ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Droplets className="h-4 w-4 text-blue-500" />
+                <Droplets className="h-4 w-4 text-primary" />
                 <div className="text-sm text-muted-foreground">Flüssigkeit heute</div>
               </div>
               <div>
                 <div className="text-xl font-semibold">{hydration.current} ml / {hydration.target} ml</div>
                 <div className="w-full bg-muted rounded-full h-2 mt-2">
                   <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
                     style={{ width: `${hydrationPercentage}%` }}
                   />
                 </div>
@@ -54,13 +55,13 @@ export const PlusSupportTiles: React.FC<PlusSupportTilesProps> = ({ data }) => {
         </div>
 
         {/* Sleep */}
-        <div className="rounded-lg border border-border/50 p-4">
+        <div className="rounded-xl glass-card p-4">
           {loading ? (
             <Skeleton className="h-20 w-full" />
           ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Moon className="h-4 w-4 text-purple-500" />
+                <Moon className="h-4 w-4 text-primary" />
                 <div className="text-sm text-muted-foreground">Schlaf letzte Nacht</div>
               </div>
               <div className="flex items-center justify-between">
@@ -79,6 +80,6 @@ export const PlusSupportTiles: React.FC<PlusSupportTilesProps> = ({ data }) => {
           )}
         </div>
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };

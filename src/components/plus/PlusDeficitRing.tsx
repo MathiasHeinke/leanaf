@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts';
@@ -35,7 +36,7 @@ export const PlusDeficitRing: React.FC<PlusDeficitRingProps> = ({ data }) => {
   }, [remainingKcal]);
 
   return (
-    <Card>
+    <PlusCard>
       <CardHeader>
         <CardTitle>Kalorien-Defizit</CardTitle>
         <CardDescription>Nordstern – Fortschritt heute mit 7‑Tage‑Trend</CardDescription>
@@ -102,6 +103,6 @@ export const PlusDeficitRing: React.FC<PlusDeficitRingProps> = ({ data }) => {
           )}
         </div>
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };

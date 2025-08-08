@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CardContent } from '@/components/ui/card';
+import PlusCard from '@/components/plus/PlusCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,7 +60,7 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ data }) 
   const action = getNextBestAction();
 
   return (
-    <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+    <PlusCard className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
       <CardContent className="p-6">
         {loading ? (
           <Skeleton className="h-24 w-full" />
@@ -90,6 +91,6 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ data }) 
           </div>
         )}
       </CardContent>
-    </Card>
+    </PlusCard>
   );
 };
