@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, Flame, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 import { MomentumMovement } from '@/components/momentum/MomentumMovement';
-import { MomentumFab } from '@/components/momentum/MomentumFab';
+import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 
 interface TodayMeal {
   id: string;
@@ -211,7 +211,7 @@ const MomentumPage: React.FC = () => {
         <MomentumMovement />
       </div>
 
-      <MomentumFab />
+      <QuickAddFAB />
     </main>
   );
 };
