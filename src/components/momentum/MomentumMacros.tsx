@@ -78,39 +78,59 @@ const fats = {
             </div>
           </div>
         ) : (
-          <div className="relative mx-auto h-44 w-44">
-            {/* Outer = Protein */}
-            <div
-              className="absolute inset-0 rounded-full"
-              style={{ background: `conic-gradient(hsl(var(--primary)) ${pPct*360}deg, hsl(var(--secondary)) ${pPct*360}deg)` }}
-            />
-            <div className="absolute inset-[10%] rounded-full bg-background border border-border/60" />
-
-            {/* Middle = Carbs */}
-            <div className="absolute inset-[14%]">
+          <>
+            <div className="relative mx-auto h-44 w-44">
+              {/* Outer = Protein */}
               <div
                 className="absolute inset-0 rounded-full"
-                style={{ background: `conic-gradient(hsl(var(--accent)) ${cPct*360}deg, hsl(var(--secondary)) ${cPct*360}deg)` }}
+                style={{ background: `conic-gradient(hsl(var(--primary) / 0.5) ${pPct*360}deg, hsl(var(--border) / 0.25) ${pPct*360}deg)` }}
               />
-              <div className="absolute inset-[12%] rounded-full bg-background border border-border/60" />
+              <div className="absolute inset-[10%] rounded-full bg-background border border-border/50" />
+
+              {/* Middle = Carbs */}
+              <div className="absolute inset-[14%]">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: `conic-gradient(hsl(var(--accent) / 0.45) ${cPct*360}deg, hsl(var(--border) / 0.25) ${cPct*360}deg)` }}
+                />
+                <div className="absolute inset-[12%] rounded-full bg-background border border-border/50" />
+              </div>
+
+              {/* Inner = Fat */}
+              <div className="absolute inset-[28%]">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: `conic-gradient(hsl(var(--foreground) / 0.35) ${fPct*360}deg, hsl(var(--border) / 0.25) ${fPct*360}deg)` }}
+                />
+                <div className="absolute inset-[20%] rounded-full bg-background border border-border/50" />
+              </div>
             </div>
 
-            {/* Inner = Fat */}
-            <div className="absolute inset-[28%]">
-              <div
-                className="absolute inset-0 rounded-full"
-                style={{ background: `conic-gradient(hsl(var(--foreground)) ${fPct*360}deg, hsl(var(--secondary)) ${fPct*360}deg)` }}
-              />
-              <div className="absolute inset-[20%] rounded-full bg-background border border-border/60" />
+            {/* Legend below rings for clearer labeling */}
+            <div className="mt-4 space-y-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--primary) / 0.7)' }} />
+                  Protein
+                </span>
+                <span className="tabular-nums">{Math.round(protein.used)}/{Math.round(protein.goal)} g</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--accent) / 0.7)' }} />
+                  Carbs
+                </span>
+                <span className="tabular-nums">{Math.round(carbs.used)}/{Math.round(carbs.goal)} g</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--foreground) / 0.6)' }} />
+                  Fett
+                </span>
+                <span className="tabular-nums">{Math.round(fats.used)}/{Math.round(fats.goal)} g</span>
+              </div>
             </div>
-
-            <div className="absolute inset-0 flex items-center justify-center">
-<div className="text-center">
-  <div className="text-xs text-muted-foreground">{label || 'Heute'}</div>
-  <div className="text-sm tabular-nums">P {Math.round(protein.used)} · C {Math.round(carbs.used)} · F {Math.round(fats.used)}</div>
-</div>
-            </div>
-          </div>
+          </>
         )}
       </CardContent>
     </Card>

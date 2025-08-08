@@ -70,9 +70,17 @@ export const QuickAddFAB: React.FC = () => {
         <button
           onClick={toggleMenu}
           aria-label={menuOpen ? "Schnellmenü schließen" : "Schnellmenü öffnen"}
-className="rounded-full w-16 h-16 md:w-16 md:h-16 bg-background text-foreground border border-border shadow-lg transition-transform duration-200 hover:scale-105"
+          aria-pressed={menuOpen}
+          className="rounded-full w-16 h-16 md:w-16 md:h-16 grid place-items-center bg-background text-foreground border border-border shadow-lg transition-all duration-200 hover:scale-105"
         >
-          {menuOpen ? <Minus className="w-6 h-6 transition-transform duration-200" /> : <Plus className="w-7 h-7 transition-transform duration-200" />}
+          <span className="relative inline-block">
+            <Plus
+              className={`${menuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'} absolute inset-0 m-auto w-7 h-7 transition-all duration-200`}
+            />
+            <Minus
+              className={`${menuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'} relative w-6 h-6 transition-all duration-200`}
+            />
+          </span>
         </button>
       </div>
 
