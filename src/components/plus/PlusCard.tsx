@@ -10,7 +10,7 @@ const PlusCard = React.forwardRef<HTMLDivElement, PlusCardProps>(({ className, .
       ref={ref}
       className={cn(
         // Subtle glassmorphism surface using design tokens
-        "glass-card modern-shadow hover-lift border border-border/40 backdrop-blur-md",
+        "rounded-2xl glass-card modern-shadow hover-lift border border-border/40 backdrop-blur-md",
         className
       )}
       {...props}

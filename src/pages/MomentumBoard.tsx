@@ -52,8 +52,8 @@ const MomentumBoard: React.FC = () => {
     <main className="relative">
       <h1 className="sr-only">Momentum-Board – GetLeanAI+</h1>
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-primary/20 via-background to-background blur-2xl" />
-      <div className="container mx-auto px-4 pt-0 pb-6 max-w-6xl">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-6 lg:gap-8">
           <div className="md:col-span-12"><StreakLevelHeader /></div>
           <div className="md:col-span-7"><NextBestActionCard data={data} /></div>
           <div className="md:col-span-5"><PlusDeficitRing data={data} /></div>
