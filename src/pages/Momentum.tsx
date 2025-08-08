@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlusData } from '@/hooks/usePlusData';
@@ -9,6 +9,7 @@ import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 import { MomentumMovement } from '@/components/momentum/MomentumMovement';
 import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 interface TodayMeal {
   id: string;
@@ -162,23 +163,26 @@ const MomentumPage: React.FC = () => {
     if (canonical) canonical.href = `${window.location.origin}/momentum`;
   }, []);
 
-  useEffect(() => {
-    const fetchMeals = async () => {
-      if (!user) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('v_today_meals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('ts', { ascending: false });
-      if (error) {
-        console.error('Failed to load today meals', error);
-      }
-      setMeals(data || []);
-      setLoading(false);
-    };
-    fetchMeals();
+  const fetchMeals = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('v_today_meals')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('ts', { ascending: false });
+    if (error) {
+      console.error('Failed to load today meals', error);
+    }
+    setMeals(data || []);
+    setLoading(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    fetchMeals();
+  }, [fetchMeals]);
+
+  useDataRefresh(fetchMeals);
 
   return (
     <ErrorBoundary>

@@ -27,6 +27,7 @@ export const QuickAddFAB: React.FC = () => {
     }
     if (type === "workout") {
       setMenuOpen(false);
+      setRecommendedWorkoutType('walking');
       setWorkoutOpen(true);
       return;
     }

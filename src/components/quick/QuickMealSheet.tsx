@@ -48,16 +48,36 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
         return;
       }
 
-      const { error } = await supabase.from('meals').insert({
-        user_id: user.id,
-        text: analyzedMealData.title,
-        calories: Math.round(analyzedMealData.calories || 0),
-        protein: Math.round(analyzedMealData.protein || 0),
-        carbs: Math.round(analyzedMealData.carbs || 0),
-        fats: Math.round(analyzedMealData.fats || 0)
-      });
+      const { data: mealInsert, error: mealError } = await supabase
+        .from('meals')
+        .insert({
+          user_id: user.id,
+          text: analyzedMealData.title,
+          calories: Math.round(analyzedMealData.calories || 0),
+          protein: Math.round(analyzedMealData.protein || 0),
+          carbs: Math.round(analyzedMealData.carbs || 0),
+          fats: Math.round(analyzedMealData.fats || 0)
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (mealError) throw mealError;
+
+      const newMealId = (mealInsert as any)?.id;
+
+      // Persist uploaded images if present
+      if ((uploadedImages?.length ?? 0) > 0 && newMealId) {
+        const imageInserts = uploadedImages.map((imageUrl) => ({
+          user_id: user.id,
+          meal_id: newMealId,
+          image_url: imageUrl,
+        }));
+        const { error: imagesError } = await supabase.from('meal_images').insert(imageInserts);
+        if (imagesError) {
+          console.error('Error saving meal images', imagesError);
+          toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
+        }
+      }
 
       const hasPhoto = (uploadedImages?.length ?? 0) > 0;
       const basePoints = getMealBasePoints(hasPhoto);

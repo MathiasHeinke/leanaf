@@ -60,6 +60,7 @@ const MomentumBoard: React.FC = () => {
     );
   }
 
+  return (
     <ErrorBoundary>
       <main className="relative">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-primary/20 via-background to-background blur-2xl" />
@@ -86,6 +87,7 @@ const MomentumBoard: React.FC = () => {
         <QuickAddFAB />
       </main>
     </ErrorBoundary>
+  );
 };
 
 export default MomentumBoard;
